@@ -118,6 +118,10 @@ type Querier interface {
 	// Whether an account of the tenant other than the one named already holds the
 	// inbox an address reaches, under any tag.
 	CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, arg CanonicalEmailHeldByAnotherUserForTenantParams) (bool, error)
+	// The oldest run no worker has finished, and none holds a claim on younger
+	// than stale_before, with the claim taken. SKIP LOCKED keeps two workers that
+	// ask at once from taking the same run.
+	ClaimPaymentReconciliation(ctx context.Context, arg ClaimPaymentReconciliationParams) (PaymentReconciliation, error)
 	// Claim the next due pending rows. SKIP LOCKED lets concurrent workers
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
@@ -387,6 +391,10 @@ type Querier interface {
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	CreatePageTranslation(ctx context.Context, arg CreatePageTranslationParams) (PageTranslation, error)
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
+	// No row when the period and source already have a run the worker has not
+	// finished.
+	CreatePaymentReconciliation(ctx context.Context, arg CreatePaymentReconciliationParams) (PaymentReconciliation, error)
+	CreatePaymentReconciliationFinding(ctx context.Context, arg CreatePaymentReconciliationFindingParams) error
 	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
@@ -565,6 +573,10 @@ type Querier interface {
 	// orphan image sweep, which deletes them once no row names them.
 	DeleteEpisodeImageByIDForEpisode(ctx context.Context, arg DeleteEpisodeImageByIDForEpisodeParams) (int32, error)
 	DeleteEpisodeTranslation(ctx context.Context, arg DeleteEpisodeTranslationParams) (int64, error)
+	// The finished run of a period and source, which a run started again
+	// replaces. An unfinished one is left for the worker, and the run started
+	// again answers it instead.
+	DeleteFinishedPaymentReconciliation(ctx context.Context, arg DeleteFinishedPaymentReconciliationParams) error
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
@@ -688,6 +700,10 @@ type Querier interface {
 	// reach them again. Each expiry is dated when its grant expired. A grant a
 	// spend holds is passed over and reached by a later pass.
 	ExpireLapsedCoinGrants(ctx context.Context, batch int32) ([]ExpireLapsedCoinGrantsRow, error)
+	FailPaymentReconciliation(ctx context.Context, arg FailPaymentReconciliationParams) (int64, error)
+	// Records the counts of a run whose claim is still the one that ran it, so a
+	// run another worker has taken over since writes nothing.
+	FinishPaymentReconciliation(ctx context.Context, arg FinishPaymentReconciliationParams) (int64, error)
 	// The console handles only the tickets staff issued. A wait-for-free ticket is
 	// one the reader took themselves, so the console neither lists it nor revokes
 	// it, and looking one up here finds nothing.
@@ -1020,6 +1036,8 @@ type Querier interface {
 	// The page with its translation in exactly this locale, and no row when the
 	// page has none: an edit aimed at one language must not land on another.
 	GetPageWithTranslationForTenant(ctx context.Context, arg GetPageWithTranslationForTenantParams) (GetPageWithTranslationForTenantRow, error)
+	GetPaymentReconciliation(ctx context.Context, arg GetPaymentReconciliationParams) (PaymentReconciliation, error)
+	GetPaymentReconciliationForPeriod(ctx context.Context, arg GetPaymentReconciliationForPeriodParams) (PaymentReconciliation, error)
 	// What the site shows as a banner: the newest announcement still inside its
 	// pinned window, in its translation for the locale asked for. It names no
 	// user, so a visitor with no session gets the same answer as a signed-in
@@ -2157,6 +2175,9 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTenantAscParams) ([]ListGenresByTenantAscRow, error)
 	ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTenantDescParams) ([]ListGenresByTenantDescRow, error)
+	ListHeldDisputesReceivedBefore(ctx context.Context, arg ListHeldDisputesReceivedBeforeParams) ([]ListHeldDisputesReceivedBeforeRow, error)
+	ListHeldRefundsReceivedBefore(ctx context.Context, arg ListHeldRefundsReceivedBeforeParams) ([]ListHeldRefundsReceivedBeforeRow, error)
+	ListHeldStoreRefundsReceivedBefore(ctx context.Context, arg ListHeldStoreRefundsReceivedBeforeParams) ([]ListHeldStoreRefundsReceivedBeforeRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
 	// Admin ListLabels is (created_at, id) DESC. Forward uses the DESC query;
@@ -2414,6 +2435,17 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]ListPagesForTenantAscRow, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]ListPagesForTenantDescRow, error)
+	// Admin ListPaymentReconciliationFindings is (occurred_at, id) ASC, the order
+	// the lines happened in. Forward uses the ASC query; backward uses DESC, and
+	// the handler flips its rows back. A NULL kind or is_test is no filter.
+	ListPaymentReconciliationFindingsAsc(ctx context.Context, arg ListPaymentReconciliationFindingsAscParams) ([]PaymentReconciliationFinding, error)
+	ListPaymentReconciliationFindingsDesc(ctx context.Context, arg ListPaymentReconciliationFindingsDescParams) ([]PaymentReconciliationFinding, error)
+	ListPaymentReconciliationsAsc(ctx context.Context, arg ListPaymentReconciliationsAscParams) ([]PaymentReconciliation, error)
+	// Admin ListPaymentReconciliations is (started_at, id) DESC. Forward uses the
+	// DESC query; backward uses ASC so idx_payment_reconciliations_tenant_started_at
+	// can be scanned in reverse. The handler flips ASC rows back into display
+	// order. cursor rules: proto/README.md.
+	ListPaymentReconciliationsDesc(ctx context.Context, arg ListPaymentReconciliationsDescParams) ([]PaymentReconciliation, error)
 	// Every announcement whose pinned window has passed, across all tenants, for
 	// the ticker job that clears the flag and drops what the sites cached.
 	ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedAnnouncementsDueRow, error)
@@ -2648,6 +2680,12 @@ type Querier interface {
 	// and ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
+	// What ExportPurchases writes for a range of instants: every purchase charged
+	// through a provider or a store in it, and every refund of one dated in it.
+	// A refund in full is dated by refunded_at; a refund in part has no date of
+	// its own, so it is listed with the period its purchase was made in. A
+	// purchase paid with coins, or granted without a payment, charged nothing.
+	ListPurchasesForExport(ctx context.Context, arg ListPurchasesForExportParams) ([]ListPurchasesForExportRow, error)
 	// What the console shows of each purchase named, in no particular order: the
 	// episode bought, the volume, the series bundle, or the pack of coins, and the
 	// series of any of the first three. The
@@ -2736,6 +2774,19 @@ type Querier interface {
 	// ListRecommendedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error)
+	// The purchases a provider's payments name, wherever they fall, so that a
+	// payment the provider took in the period and the install confirmed after it
+	// still matches its purchase.
+	ListReconciledPurchasesByPaymentIDs(ctx context.Context, arg ListReconciledPurchasesByPaymentIDsParams) ([]ListReconciledPurchasesByPaymentIDsRow, error)
+	// ListReconciledPurchasesByPaymentIDs for a store's transactions.
+	ListReconciledPurchasesByStoreTransactionIDs(ctx context.Context, arg ListReconciledPurchasesByStoreTransactionIDsParams) ([]ListReconciledPurchasesByStoreTransactionIDsRow, error)
+	// The purchases a source charged for in a range of instants, by the provider
+	// or the store they name. A purchase paid with coins names the provider
+	// `coins`, which no source is.
+	ListReconciledPurchasesInPeriod(ctx context.Context, arg ListReconciledPurchasesInPeriodParams) ([]ListReconciledPurchasesInPeriodRow, error)
+	// The payment intents among payment_ids that paid a plan's invoice rather
+	// than a purchase, which a reconciliation of purchases leaves out.
+	ListReconciledSubscriptionPaymentIntents(ctx context.Context, arg ListReconciledSubscriptionPaymentIntentsParams) ([]string, error)
 	// Orphan image reclamation (publiractl job purge-orphan-images).
 	//
 	// Every image this repository stores lives in two places: an `*_images` row

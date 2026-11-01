@@ -56,6 +56,8 @@ type Server struct {
 	subscriptions   map[string]map[string]any
 	acknowledgments map[string]int
 	voided          map[string][]map[string]any
+	// orders are keyed by package and order ID.
+	orders map[string]map[string]any
 	// VoidedRequests records the query of every Voided Purchases request.
 	VoidedRequests []url.Values
 }
@@ -70,6 +72,7 @@ func NewServer(t testing.TB) *Server {
 		subscriptions:   map[string]map[string]any{},
 		acknowledgments: map[string]int{},
 		voided:          map[string][]map[string]any{},
+		orders:          map[string]map[string]any{},
 	}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
@@ -128,12 +131,65 @@ func (s *Server) Acknowledgments(packageName, token string) int {
 // voidedAt, shaped as the recorded Voided Purchases response is.
 func (s *Server) Void(t testing.TB, packageName, token string, voidedAt time.Time) {
 	t.Helper()
+	s.VoidPurchasedAt(t, packageName, token, voidedAt, voidedAt)
+}
+
+// VoidPurchasedAt is Void for a purchase made at purchasedAt.
+func (s *Server) VoidPurchasedAt(t testing.TB, packageName, token string, purchasedAt, voidedAt time.Time) {
+	t.Helper()
 	entry := load(t, "voided_purchase")
 	entry["purchaseToken"] = token
+	entry["purchaseTimeMillis"] = strconv.FormatInt(purchasedAt.UnixMilli(), 10)
 	entry["voidedTimeMillis"] = strconv.FormatInt(voidedAt.UnixMilli(), 10)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.voided[packageName] = append(s.voided[packageName], entry)
+}
+
+// PutOrder stores the order the purchase token made of productID in
+// packageName names, charging total minor units of currency, a currency of
+// two decimal places when decimals is 2, refunded as state names. The purchase
+// has to be put first, and carries the order's ID from then on; its
+// purchaseTimeMillis becomes purchasedAt.
+func (s *Server) PutOrder(t testing.TB, packageName, productID, token string, purchasedAt time.Time, currency string, decimals int, total, refunded int64, state string) {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	purchase, ok := s.purchases[key(packageName, productID, token)]
+	if !ok {
+		t.Fatalf("no purchase %s of %s to put an order for", token, productID)
+	}
+	orderID := "GPA." + token
+	purchase["orderId"] = orderID
+	purchase["purchaseTimeMillis"] = strconv.FormatInt(purchasedAt.UnixMilli(), 10)
+	order := map[string]any{
+		"orderId":       orderID,
+		"purchaseToken": token,
+		"state":         state,
+		"createTime":    purchasedAt.UTC().Format(time.RFC3339Nano),
+		"total":         money(currency, decimals, total),
+	}
+	switch state {
+	case googleplay.OrderStateRefunded:
+		order["orderHistory"] = map[string]any{"refundEvent": map[string]any{"refundDetails": map[string]any{"total": money(currency, decimals, refunded)}}}
+	case googleplay.OrderStatePartiallyRefunded:
+		order["orderHistory"] = map[string]any{"partialRefundEvents": []any{map[string]any{"state": "PROCESSED_SUCCESSFULLY", "refundDetails": map[string]any{"total": money(currency, decimals, refunded)}}}}
+	}
+	s.orders[packageName+"/"+orderID] = order
+}
+
+// money spells minor units of a currency of decimals places as
+// google.type.Money does.
+func money(currency string, decimals int, minor int64) map[string]any {
+	scale := int64(1)
+	for range decimals {
+		scale *= 10
+	}
+	return map[string]any{
+		"currencyCode": currency,
+		"units":        strconv.FormatInt(minor/scale, 10),
+		"nanos":        (minor % scale) * (1_000_000_000 / scale),
+	}
 }
 
 // Consumes counts the consume requests the purchase received.
@@ -176,6 +232,20 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/androidpublisher/v3/applications/"), "/")
+	// /androidpublisher/v3/applications/{package}/orders/{orderId}
+	if len(parts) == 3 && parts[1] == "orders" {
+		s.mu.Lock()
+		order, ok := s.orders[parts[0]+"/"+parts[2]]
+		s.mu.Unlock()
+		if !ok {
+			body, _ := recorded.ReadFile("testdata/not_found.json")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write(body)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(order)
+		return
+	}
 	// /androidpublisher/v3/applications/{package}/purchases/subscriptionsv2/tokens/{token}
 	if len(parts) == 5 && parts[1] == "purchases" && parts[2] == "subscriptionsv2" && parts[3] == "tokens" {
 		s.serveSubscription(w, parts[0], parts[4], "", false)

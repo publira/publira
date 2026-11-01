@@ -2,7 +2,7 @@
 title: Scaling out
 description: What to run more of when an install outgrows what it started on, what every copy has to share, and the parts that do not scale out.
 published: 2026-10-22
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads and the worker's daily rebuilds move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
@@ -84,11 +84,11 @@ An install that keeps one edge can serve the image hosts on it instead, routing 
 
 ## Splitting the worker by queue
 
-The worker keeps its work on four queues: `outbox`, the mail, push notifications, and cache revalidation of the outbox; `ticker`, the jobs that act at a scheduled time; `maintenance`, the rebuilds and purges; and `search_index`, the search index build. A copy given `--queue` takes the work of the queues it names and no other, so the outbox can have copies of its own, sized apart from the one that runs the hour-long rebuilds. When the mail and push notifications of an install have to go out promptly while the rebuilds run, run two processes in place of the one `publira worker`:
+The worker keeps its work on five queues: `outbox`, the mail, push notifications, and cache revalidation of the outbox; `ticker`, the jobs that act at a scheduled time; `maintenance`, the rebuilds and purges; `search_index`, the search index build; and `payment_reconciliation`, the payment reconciliations Tenant admins start. A copy given `--queue` takes the work of the queues it names and no other, so the outbox can have copies of its own, sized apart from the one that runs the hour-long rebuilds. When the mail and push notifications of an install have to go out promptly while the rebuilds run, run two processes in place of the one `publira worker`:
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation
 ```
 
 The first sends and revalidates and does nothing else: scale it with the outbox's load, and it signs in to the database as one login rather than three. The second runs every scheduled job, and rarely needs a second copy, since each of its jobs runs on one copy at a time however many there are. On `publira server --with-worker`, the same flag narrows the worker it hosts.
@@ -110,7 +110,7 @@ Every copy of `publira server` and `publira worker` opens one pool of connection
 | `publira server` serving `storefront` with a replica | 1 more, on the replica rather than the primary |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1, and 1 more with `ticker`, and 1 more with `maintenance` or `search_index`: 1 for `--queue outbox` |
+| `publira worker --queue <queues>` | 1, and 1 more with `ticker`, and 1 more with any of `maintenance`, `search_index`, and `payment_reconciliation`: 1 for `--queue outbox` |
 | `publira worker` hosting `maintenance` with a replica | 1 more, on the replica rather than the primary |
 | A `publiractl` command while it runs | 1, and 1 more on the replica for `job aggregate-content-stats` and `job build-recommend-features` given one |
 

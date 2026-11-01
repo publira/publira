@@ -152,3 +152,31 @@ func TestListVoidedPurchasesFollowsEveryPage(t *testing.T) {
 		t.Fatalf("type = %q, want one-time products (0)", query.Get("type"))
 	}
 }
+
+func TestGetOrderReadsWhatTheOrderChargedAndRefunded(t *testing.T) {
+	server := googleplaytest.NewServer(t)
+	server.Put(t, packageName, productID, token, googleplaytest.Purchased, accountID)
+	purchasedAt := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	server.PutOrder(t, packageName, productID, token, purchasedAt, "USD", 2, 299, 100, googleplay.OrderStatePartiallyRefunded)
+
+	purchase, err := server.Client().GetProductPurchase(context.Background(), key(t), packageName, productID, token)
+	if err != nil {
+		t.Fatalf("GetProductPurchase: %v", err)
+	}
+	if purchase.PurchaseTimeMillis != "1772355600000" {
+		t.Fatalf("purchaseTimeMillis = %q, want the order's time", purchase.PurchaseTimeMillis)
+	}
+	order, err := server.Client().GetOrder(context.Background(), key(t), packageName, purchase.OrderID)
+	if err != nil {
+		t.Fatalf("GetOrder: %v", err)
+	}
+	if order.State != googleplay.OrderStatePartiallyRefunded || order.Total == nil || *order.Total != (googleplay.Money{CurrencyCode: "USD", Units: "2", Nanos: 990_000_000}) {
+		t.Fatalf("order = %+v, want 2.99 USD partially refunded", order)
+	}
+	if refunds := order.Refunds(); len(refunds) != 1 || refunds[0] != (googleplay.Money{CurrencyCode: "USD", Units: "1", Nanos: 0}) {
+		t.Fatalf("refunds = %+v, want 1.00 USD", refunds)
+	}
+	if _, err := server.Client().GetOrder(context.Background(), key(t), packageName, "GPA.unknown"); !errors.Is(err, googleplay.ErrPurchaseNotFound) {
+		t.Fatalf("GetOrder of an unknown order error = %v, want ErrPurchaseNotFound", err)
+	}
+}

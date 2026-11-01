@@ -351,6 +351,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "purchase_refunded",
             },
             {
+              label: t("admin.audit.actions.payment_reconciliation_started"),
+              value: "payment_reconciliation_started",
+            },
+            {
               label: t("admin.audit.actions.subscription_plan_created"),
               value: "subscription_plan_created",
             },
@@ -393,6 +397,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
             {
               label: t("admin.audit.actions.stats_exported"),
               value: "stats_exported",
+            },
+            {
+              label: t("admin.audit.actions.purchases_exported"),
+              value: "purchases_exported",
             },
             {
               label: t("admin.audit.actions.audit_log_exported"),

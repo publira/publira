@@ -742,6 +742,43 @@ type PageVersion struct {
 	AgreementRequiredAt sql.NullTime  `json:"agreement_required_at"`
 }
 
+type PaymentReconciliation struct {
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Provider      sql.NullString `json:"provider"`
+	Store         sql.NullString `json:"store"`
+	StartDate     time.Time      `json:"start_date"`
+	EndDate       time.Time      `json:"end_date"`
+	TimeZone      string         `json:"time_zone"`
+	StartsAt      time.Time      `json:"starts_at"`
+	EndsAt        time.Time      `json:"ends_at"`
+	StartedAt     time.Time      `json:"started_at"`
+	ClaimedAt     sql.NullTime   `json:"claimed_at"`
+	FinishedAt    sql.NullTime   `json:"finished_at"`
+	Failure       sql.NullString `json:"failure"`
+	RecordCount   sql.NullInt32  `json:"record_count"`
+	PurchaseCount sql.NullInt32  `json:"purchase_count"`
+	MatchedCount  sql.NullInt32  `json:"matched_count"`
+	FindingCount  sql.NullInt32  `json:"finding_count"`
+}
+
+type PaymentReconciliationFinding struct {
+	ID                     uuid.UUID      `json:"id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	ReconciliationID       uuid.UUID      `json:"reconciliation_id"`
+	Kind                   string         `json:"kind"`
+	IsTest                 bool           `json:"is_test"`
+	PurchaseID             uuid.NullUUID  `json:"purchase_id"`
+	ProviderPaymentID      sql.NullString `json:"provider_payment_id"`
+	PurchaseAmount         sql.NullInt64  `json:"purchase_amount"`
+	PurchaseRefundedAmount sql.NullInt64  `json:"purchase_refunded_amount"`
+	PurchaseCurrency       sql.NullString `json:"purchase_currency"`
+	RecordAmount           sql.NullInt64  `json:"record_amount"`
+	RecordRefundedAmount   sql.NullInt64  `json:"record_refunded_amount"`
+	RecordCurrency         sql.NullString `json:"record_currency"`
+	OccurredAt             time.Time      `json:"occurred_at"`
+}
+
 type PlatformAuditLog struct {
 	ID                  uuid.UUID      `json:"id"`
 	ActorRole           string         `json:"actor_role"`

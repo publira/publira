@@ -50,8 +50,11 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 	for _, args := range everyArgs() {
 		opts := insertOptsOf(t, args)
 		wantQueue := QueueName
-		if _, ok := args.(BuildSearchIndexArgs); ok {
+		switch args.(type) {
+		case BuildSearchIndexArgs:
 			wantQueue = SearchIndexQueueName
+		case ReconcilePaymentsArgs:
+			wantQueue = PaymentReconciliationQueueName
 		}
 		if opts.Queue != wantQueue {
 			t.Fatalf("%s queue = %q, want %q", args.Kind(), opts.Queue, wantQueue)
@@ -78,6 +81,7 @@ func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
 		BuildRecommendFeaturesArgs{},
 		CloseRoyaltyStatementsArgs{},
 		BuildSearchIndexArgs{},
+		ReconcilePaymentsArgs{},
 	} {
 		opts := insertOptsOf(t, args)
 		if !slices.Equal(opts.UniqueOpts.ByState, inFlight()) {
@@ -117,15 +121,16 @@ func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 // queue of their own rather than holding workers the outbox drain is sized for.
 // The search index build has a second one, so a saved engine is not waiting
 // behind the daily rebuilds, and one worker on it, so two builds never fill
-// the same alias.
+// the same alias. The payment reconciliations have a third for the same
+// reason, since a Tenant admin is waiting on each.
 func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
 	queues := jobs.Queues()
-	if len(queues) != 2 {
-		t.Fatalf("queues = %v, want exactly two", queues)
+	if len(queues) != 3 {
+		t.Fatalf("queues = %v, want exactly three", queues)
 	}
-	for name, maxWorkers := range map[string]int{QueueName: queueMaxWorkers, SearchIndexQueueName: 1} {
+	for name, maxWorkers := range map[string]int{QueueName: queueMaxWorkers, SearchIndexQueueName: 1, PaymentReconciliationQueueName: 1} {
 		queue, ok := queues[name]
 		if !ok {
 			t.Fatalf("queues = %v, want one named %q", queues, name)
@@ -141,12 +146,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 
 // Only the head of the daily rebuild chain is scheduled, since each link
 // enqueues the next, and every purge, the automatic royalty close, the voided
-// purchase sync, and the search index build are scheduled on their own.
+// purchase sync, the search index build, and the payment reconciliations are
+// scheduled on their own.
 func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, the voided purchase sync, and the search index build", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 10; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, the voided purchase sync, the search index build, and the payment reconciliations", got, want)
 	}
 }
 
@@ -159,7 +165,7 @@ func TestUnhostedNeedsNoPool(t *testing.T) {
 	if err := jobs.Register(river.NewWorkers()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
+	if got, want := len(jobs.PeriodicJobs()), 10; got != want {
 		t.Fatalf("periodic jobs = %d, want the same %d a hosted set schedules", got, want)
 	}
 }
@@ -331,6 +337,7 @@ func everyArgs() []river.JobArgs {
 		CloseRoyaltyStatementsArgs{},
 		SyncGooglePlayVoidedPurchasesArgs{},
 		BuildSearchIndexArgs{},
+		ReconcilePaymentsArgs{},
 	}
 }
 

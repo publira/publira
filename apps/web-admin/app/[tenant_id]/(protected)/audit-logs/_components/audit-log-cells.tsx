@@ -385,7 +385,7 @@ const contactMessageActionName = (action: string) => {
 
 /**
  * A staff refund of a reader's purchase: the request, and what the provider
- * did about it.
+ * did about it; or a reconciliation of the purchases with the provider.
  */
 const purchaseActionName = (action: string) => {
   switch (action) {
@@ -397,6 +397,12 @@ const purchaseActionName = (action: string) => {
 
     case "purchase_refunded": {
       return <Message message="admin.audit.actions.purchase_refunded" />;
+    }
+
+    case "payment_reconciliation_started": {
+      return (
+        <Message message="admin.audit.actions.payment_reconciliation_started" />
+      );
     }
 
     default: {
@@ -457,7 +463,10 @@ const coinActionName = (action: string) => {
   }
 };
 
-/** A CSV download: a royalty statement, an analytics report, or the log. */
+/**
+ * A CSV download: a royalty statement, an analytics report, the purchases, or
+ * the log.
+ */
 const exportActionName = (action: string) => {
   switch (action) {
     case "royalty_statement_exported": {
@@ -468,6 +477,10 @@ const exportActionName = (action: string) => {
 
     case "stats_exported": {
       return <Message message="admin.audit.actions.stats_exported" />;
+    }
+
+    case "purchases_exported": {
+      return <Message message="admin.audit.actions.purchases_exported" />;
     }
 
     case "audit_log_exported": {
@@ -1029,6 +1042,14 @@ const tenantTargetName = (targetType: string) => {
 
     case "payment_config": {
       return <Message message="admin.audit.targets.payment_config" />;
+    }
+
+    case "payment_reconciliation": {
+      return <Message message="admin.audit.targets.payment_reconciliation" />;
+    }
+
+    case "purchases": {
+      return <Message message="admin.audit.targets.purchases" />;
     }
 
     case "revenue_stats": {

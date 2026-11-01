@@ -130,6 +130,8 @@ type Transaction struct {
 	SignedDate            int64  `json:"signedDate"`
 	RevocationDate        int64  `json:"revocationDate,omitempty"`
 	ExpiresDate           int64  `json:"expiresDate,omitempty"`
+	Price                 int64  `json:"price,omitempty"`
+	Currency              string `json:"currency,omitempty"`
 }
 
 // RenewalInfo is a JWSRenewalInfoDecodedPayload with the fields a test sets.

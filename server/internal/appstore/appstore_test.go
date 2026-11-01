@@ -35,7 +35,9 @@ func transaction() appstoretest.Transaction {
 
 func TestVerifyTransactionReadsATransactionSignedByATrustedChain(t *testing.T) {
 	signer := appstoretest.NewSigner(t)
-	got, err := signer.Verifier().VerifyTransaction(signer.Sign(t, transaction()))
+	signed := transaction()
+	signed.Price, signed.Currency = 300_000, "JPY"
+	got, err := signer.Verifier().VerifyTransaction(signer.Sign(t, signed))
 	if err != nil {
 		t.Fatalf("VerifyTransaction: %v", err)
 	}
@@ -47,6 +49,9 @@ func TestVerifyTransactionReadsATransactionSignedByATrustedChain(t *testing.T) {
 		Type:                  appstore.TypeConsumable,
 		AppAccountToken:       "0192f7a6-3c5e-7b3a-9d2e-1f0a2b3c4d5e",
 		Environment:           appstore.EnvironmentProduction,
+		PurchaseDate:          signed.PurchaseDate,
+		Price:                 300_000,
+		Currency:              "JPY",
 	}
 	if got != want {
 		t.Fatalf("VerifyTransaction = %+v, want %+v", got, want)
@@ -222,5 +227,39 @@ func TestVerifyNotificationRefusesOneAnotherChainSigned(t *testing.T) {
 	})
 	if _, err := signer.Verifier().VerifyNotification(signed); !errors.Is(err, appstore.ErrInvalidSignature) {
 		t.Fatalf("VerifyNotification error = %v, want ErrInvalidSignature", err)
+	}
+}
+
+func TestGetTransactionHistoryReadsEveryPageOfTheCustomersConsumables(t *testing.T) {
+	signer := appstoretest.NewSigner(t)
+	history := appstoretest.NewHistory(t, signer)
+	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	put := func(customer, id string, at time.Time, productType string) {
+		tx := transaction()
+		tx.TransactionID, tx.OriginalTransactionID = id, id
+		tx.Type = productType
+		tx.PurchaseDate = at.UnixMilli()
+		history.Put(customer, tx)
+	}
+	put("reader", "1", from.Add(time.Hour), appstore.TypeConsumable)
+	put("reader", "2", from.Add(2*time.Hour), appstore.TypeConsumable)
+	put("reader", "3", from.Add(3*time.Hour), appstore.TypeAutoRenewableSubscription)
+	put("reader", "4", from.Add(-time.Hour), appstore.TypeConsumable)
+	put("another reader", "5", from.Add(time.Hour), appstore.TypeConsumable)
+
+	signed, err := history.Client().GetTransactionHistory(context.Background(), credentials(t), appstore.EnvironmentProduction, "2", from, from.Add(24*time.Hour))
+	if err != nil {
+		t.Fatalf("GetTransactionHistory: %v", err)
+	}
+	var ids []string
+	for _, s := range signed {
+		tx, err := signer.Verifier().VerifyTransaction(s)
+		if err != nil {
+			t.Fatalf("VerifyTransaction: %v", err)
+		}
+		ids = append(ids, tx.TransactionID)
+	}
+	if strings.Join(ids, ",") != "1,2" {
+		t.Fatalf("history = %v, want the reader's two consumables of the range", ids)
 	}
 }
