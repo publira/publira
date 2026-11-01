@@ -74,6 +74,29 @@ func (q *Queries) ApplyUnappliedRefundToSubscriptionPayment(ctx context.Context,
 	return i, err
 }
 
+const LockProviderPayment = `-- name: LockProviderPayment :exec
+SELECT pg_advisory_xact_lock(hashtextextended(
+    'provider-payment:' || $1::uuid::text || ':' || $2::text || ':' || $3::text,
+    0
+))
+`
+
+type LockProviderPaymentParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+// Serializes the writes about one payment of a provider for the rest of the
+// transaction: recording a subscription payment and applying the refund held
+// for it, against matching a refund to it or holding the refund. Without it,
+// a refund matched while the payment's insert is uncommitted finds nothing and
+// is held, and the insert finds nothing held, so the refund is never applied.
+func (q *Queries) LockProviderPayment(ctx context.Context, arg LockProviderPaymentParams) error {
+	_, err := q.db.ExecContext(ctx, LockProviderPayment, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
+	return err
+}
+
 const RecordFailedRefundOnSubscriptionPayment = `-- name: RecordFailedRefundOnSubscriptionPayment :one
 UPDATE subscription_payments sp
 SET refunded_amount = LEAST(sp.amount, $1::integer)

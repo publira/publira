@@ -3192,6 +3192,12 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// Serializes the writes about one payment of a provider for the rest of the
+	// transaction: recording a subscription payment and applying the refund held
+	// for it, against matching a refund to it or holding the refund. Without it,
+	// a refund matched while the payment's insert is uncommitted finds nothing and
+	// is held, and the insert finds nothing held, so the refund is never applied.
+	LockProviderPayment(ctx context.Context, arg LockProviderPaymentParams) error
 	// Locks a preset before it is deleted. An account electing it takes a key
 	// share on the row through its foreign key, so the lock waits for an election
 	// in flight to commit, and the clear that follows sees it; an election that

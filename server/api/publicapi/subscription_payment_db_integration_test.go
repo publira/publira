@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
@@ -191,5 +192,59 @@ func TestDBProcessPaymentWebhookRecordsEachPaidInvoiceOnce(t *testing.T) {
 	}
 	if got := f.countRows(t, "SELECT count(*) FROM subscription_payments WHERE tenant_id = $1 AND stripe_invoice_id = 'in_orphan'", f.tenant.ID); got != 0 {
 		t.Fatalf("payments of a subscription of no plan = %d, want none", got)
+	}
+}
+
+// A refund delivered while its payment is being recorded waits for the
+// payment's transaction, under the lock both take, and is then applied to the
+// payment rather than held for one that has already looked for it.
+func TestDBProcessPaymentWebhookAppliesARefundRacingItsPayment(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	subscriptionID := f.pg.SeedSubscription(t, f.tenant.ID, f.reader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_racing"})
+	ctx := context.Background()
+
+	// The payment's transaction, as recordSubscriptionPayment runs it: the
+	// lock, then the insert, not committed yet.
+	tx, err := f.pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the payment's transaction: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := tx.ExecContext(ctx, dbmodels.LockProviderPayment, f.tenant.ID, stripe.ID, "pi_racing"); err != nil {
+		t.Fatalf("lock the payment: %v", err)
+	}
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO subscription_payments (id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at)
+		VALUES ($1, $2, $3, $4, 'in_racing', 'pi_racing', 980, 'JPY', $5, $6, $5)
+	`, uuid.Must(uuid.NewV7()), f.tenant.ID, subscriptionID, plan.ID, start, start.AddDate(0, 1, 0)); err != nil {
+		t.Fatalf("insert the payment: %v", err)
+	}
+
+	payload, headers := f.stripe.Refunded(t, f.credentials, paymentprovidertest.Refund{PaymentID: "pi_racing", Currency: "JPY", AmountRefunded: 300})
+	delivered := make(chan error, 1)
+	go func() { delivered <- f.deliver(t, payload, headers) }()
+	deadline := time.Now().Add(30 * time.Second)
+	for f.countRows(t, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND database = (SELECT oid FROM pg_database WHERE datname = current_database())") == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the refund never waited for the payment's lock")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit the payment: %v", err)
+	}
+	if err := <-delivered; err != nil {
+		t.Fatalf("deliver the refund: %v", err)
+	}
+
+	if got := f.subscriptionPayment(t, "in_racing").refunded; got.Int32 != 300 {
+		t.Fatalf("refunded = %d, want the 300 that raced the payment", got.Int32)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_refunds WHERE tenant_id = $1", f.tenant.ID); got != 0 {
+		t.Fatalf("held refunds = %d, want none", got)
 	}
 }

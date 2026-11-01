@@ -1,3 +1,14 @@
+-- name: LockProviderPayment :exec
+-- Serializes the writes about one payment of a provider for the rest of the
+-- transaction: recording a subscription payment and applying the refund held
+-- for it, against matching a refund to it or holding the refund. Without it,
+-- a refund matched while the payment's insert is uncommitted finds nothing and
+-- is held, and the insert finds nothing held, so the refund is never applied.
+SELECT pg_advisory_xact_lock(hashtextextended(
+    'provider-payment:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('provider')::text || ':' || sqlc.arg('provider_payment_id')::text,
+    0
+));
+
 -- name: RecordSubscriptionPayment :one
 -- Records an invoice Stripe reports paid, on the subscription and the plan it
 -- is recorded on. A redelivered notification of the same invoice matches the

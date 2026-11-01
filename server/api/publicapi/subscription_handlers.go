@@ -715,8 +715,9 @@ func recordIDStrings(ids []uuid.UUID) []string {
 // payment can arrive before the one that starts the subscription, and a paid
 // renewal moves its period on. A redelivered notification records nothing
 // twice. A refund whose notification overtook the payment's is applied and
-// released in the same transaction, so a payment is never committed without
-// the refund held for it.
+// released in the same transaction, under the lock a refund takes to match or
+// hold itself, so a payment is never committed without the refund held for
+// it.
 func (s *apiServer) recordSubscriptionPayment(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -735,6 +736,15 @@ func (s *apiServer) recordSubscriptionPayment(
 	}
 	return s.recordSubscription(ctx, tenantID, provider, credentials, paymentprovider.SubscriptionChanged{ID: event.ID, SubscriptionID: event.SubscriptionID},
 		func(ctx context.Context, queries *dbmodels.Queries, subscription dbmodels.RecordSubscriptionFromStripeRow) error {
+			if paymentID.Valid {
+				if err := queries.LockProviderPayment(ctx, dbmodels.LockProviderPaymentParams{
+					TenantID:          tenantID,
+					Provider:          provider.Declaration().ID,
+					ProviderPaymentID: paymentID.String,
+				}); err != nil {
+					return s.internalDBError(ctx, "failed to lock a payment", err, logAttrs...)
+				}
+			}
 			payment, err := queries.RecordSubscriptionPayment(ctx, dbmodels.RecordSubscriptionPaymentParams{
 				ID:                    uuid.Must(uuid.NewV7()),
 				TenantID:              tenantID,
