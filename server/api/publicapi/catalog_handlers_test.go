@@ -783,6 +783,11 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 			AddRow(listedVolumeID, episodeID).
 			AddRow(listedVolumeID, uuid.Must(uuid.NewV7())).
 			AddRow(unlistedVolumeID, uuid.Must(uuid.NewV7())))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListVolumeBookstoreLinksByVolumeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"volume_id", "label", "url"}).
+			AddRow(listedVolumeID, "Kinokuniya", "https://example.com/kinokuniya/volume-1").
+			AddRow(listedVolumeID, "Amazon", "https://example.com/amazon/volume-1"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListVolumeCoverImageVariantsByImageIDs)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "volume_cover_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -856,6 +861,9 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if want := []string{episodeID.String()}; !slices.Equal(volume.EpisodeIds, want) {
 		t.Fatalf("volume episode_ids = %v, want only the listed %v", volume.EpisodeIds, want)
+	}
+	if links := volume.BookstoreLinks; len(links) != 2 || links[0].Label != "Kinokuniya" || links[0].Url != "https://example.com/kinokuniya/volume-1" || links[1].Label != "Amazon" {
+		t.Fatalf("volume bookstore_links = %+v, want Kinokuniya then Amazon", links)
 	}
 	if len(volume.CoverImageVariants) != 1 || !strings.HasPrefix(volume.CoverImageVariants[0].Url, "/images/volume-covers/"+coverID.String()+"/portrait/600") {
 		t.Fatalf("volume cover = %+v, want the portrait variant under /images/volume-covers", volume.CoverImageVariants)

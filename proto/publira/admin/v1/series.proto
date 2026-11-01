@@ -1193,6 +1193,9 @@ message AdminVolume {
   repeated publira.types.v1.SeriesEyeCatchVariant cover_image_variants = 11;
   string created_at = 12;
   string updated_at = 13;
+  // Where the volume's printed edition is sold, in the volume's own order,
+  // which SetVolumeBookstoreLinks writes.
+  repeated publira.types.v1.BookstoreLink bookstore_links = 14;
 }
 
 message ListVolumesRequest {
@@ -1267,6 +1270,20 @@ message SetVolumeEpisodesRequest {
 }
 
 message SetVolumeEpisodesResponse {
+  AdminVolume volume = 1;
+}
+
+// Replaces the volume's bookstore links, in the order given; an empty list
+// leaves it with none. At most 10, each held to what
+// publira.types.v1.BookstoreLink says of its fields, or the call is
+// invalid_argument. UpdateVolume leaves the links as they are.
+message SetVolumeBookstoreLinksRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  repeated publira.types.v1.BookstoreLink bookstore_links = 3;
+}
+
+message SetVolumeBookstoreLinksResponse {
   AdminVolume volume = 1;
 }
 
@@ -1417,6 +1434,8 @@ service AdminSeriesService {
   rpc PublishVolume(PublishVolumeRequest) returns (PublishVolumeResponse) {}
   // Minimum role: tenant_editor.
   rpc SetVolumeEpisodes(SetVolumeEpisodesRequest) returns (SetVolumeEpisodesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc SetVolumeBookstoreLinks(SetVolumeBookstoreLinksRequest) returns (SetVolumeBookstoreLinksResponse) {}
   // Minimum role: tenant_editor.
   rpc ReorderVolumes(ReorderVolumesRequest) returns (ReorderVolumesResponse) {}
   // Minimum role: tenant_editor.

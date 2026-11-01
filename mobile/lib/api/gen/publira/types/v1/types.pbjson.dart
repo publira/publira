@@ -1380,6 +1380,14 @@ const Volume$json = {
       '6': '.publira.types.v1.SeriesEyeCatchVariant',
       '10': 'coverImageVariants'
     },
+    {
+      '1': 'bookstore_links',
+      '3': 9,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.BookstoreLink',
+      '10': 'bookstoreLinks'
+    },
   ],
 };
 
@@ -1390,7 +1398,22 @@ final $typed_data.Uint8List volumeDescriptor = $convert.base64Decode(
     'BXByaWNlGAUgASgFUgVwcmljZRIfCgtlcGlzb2RlX2lkcxgGIAMoCVIKZXBpc29kZUlkcxIzCh'
     'Zjb3Zlcl9pbWFnZV91cGRhdGVkX2F0GAcgASgJUhNjb3ZlckltYWdlVXBkYXRlZEF0ElkKFGNv'
     'dmVyX2ltYWdlX3ZhcmlhbnRzGAggAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYX'
-    'RjaFZhcmlhbnRSEmNvdmVySW1hZ2VWYXJpYW50cw==');
+    'RjaFZhcmlhbnRSEmNvdmVySW1hZ2VWYXJpYW50cxJICg9ib29rc3RvcmVfbGlua3MYCSADKAsy'
+    'Hy5wdWJsaXJhLnR5cGVzLnYxLkJvb2tzdG9yZUxpbmtSDmJvb2tzdG9yZUxpbmtz');
+
+@$core.Deprecated('Use bookstoreLinkDescriptor instead')
+const BookstoreLink$json = {
+  '1': 'BookstoreLink',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'url', '3': 2, '4': 1, '5': 9, '10': 'url'},
+  ],
+};
+
+/// Descriptor for `BookstoreLink`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List bookstoreLinkDescriptor = $convert.base64Decode(
+    'Cg1Cb29rc3RvcmVMaW5rEhQKBWxhYmVsGAEgASgJUgVsYWJlbBIQCgN1cmwYAiABKAlSA3VybA'
+    '==');
 
 @$core.Deprecated('Use seriesBundleDescriptor instead')
 const SeriesBundle$json = {

@@ -499,6 +499,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.PayEpisodeWithCoinsResponse': PayEpisodeWithCoinsResponse$json,
   '.publira.v1.MyPurchase': $1.MyPurchase$json,
   '.publira.types.v1.Volume': $0.Volume$json,
+  '.publira.types.v1.BookstoreLink': $0.BookstoreLink$json,
   '.publira.types.v1.SeriesBundle': $0.SeriesBundle$json,
   '.publira.types.v1.PurchasedCoinPack': $0.PurchasedCoinPack$json,
   '.publira.v1.StartCoinPackCheckoutRequest': StartCoinPackCheckoutRequest$json,

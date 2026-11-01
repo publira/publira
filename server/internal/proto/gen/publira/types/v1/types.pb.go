@@ -3825,8 +3825,11 @@ type Volume struct {
 	// none, and the series' eye-catch stands in for it then.
 	CoverImageUpdatedAt string                   `protobuf:"bytes,7,opt,name=cover_image_updated_at,json=coverImageUpdatedAt,proto3" json:"cover_image_updated_at,omitempty"`
 	CoverImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,8,rep,name=cover_image_variants,json=coverImageVariants,proto3" json:"cover_image_variants,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Where the volume's printed edition is sold, in the order the console put
+	// the links in. Empty for a volume with none.
+	BookstoreLinks []*BookstoreLink `protobuf:"bytes,9,rep,name=bookstore_links,json=bookstoreLinks,proto3" json:"bookstore_links,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Volume) Reset() {
@@ -3915,6 +3918,69 @@ func (x *Volume) GetCoverImageVariants() []*SeriesEyeCatchVariant {
 	return nil
 }
 
+func (x *Volume) GetBookstoreLinks() []*BookstoreLink {
+	if x != nil {
+		return x.BookstoreLinks
+	}
+	return nil
+}
+
+// A link to where a volume's printed edition is sold at an online bookstore.
+type BookstoreLink struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the link's button says, which the tenant writes itself, such as the
+	// bookstore's name. 1 to 50 characters.
+	Label string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// An https URL of at most 2048 characters.
+	Url           string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BookstoreLink) Reset() {
+	*x = BookstoreLink{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BookstoreLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BookstoreLink) ProtoMessage() {}
+
+func (x *BookstoreLink) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BookstoreLink.ProtoReflect.Descriptor instead.
+func (*BookstoreLink) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *BookstoreLink) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *BookstoreLink) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
 // The rest of a series, bought in one StartSeriesRemainderCheckout: every
 // episode the reader could buy and did not hold when the checkout started.
 // Buying it opens each of them, which the episode reads then report as
@@ -3934,7 +4000,7 @@ type SeriesBundle struct {
 
 func (x *SeriesBundle) Reset() {
 	*x = SeriesBundle{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3946,7 +4012,7 @@ func (x *SeriesBundle) String() string {
 func (*SeriesBundle) ProtoMessage() {}
 
 func (x *SeriesBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3959,7 +4025,7 @@ func (x *SeriesBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeriesBundle.ProtoReflect.Descriptor instead.
 func (*SeriesBundle) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SeriesBundle) GetId() string {
@@ -4000,7 +4066,7 @@ type PurchasedCoinPack struct {
 
 func (x *PurchasedCoinPack) Reset() {
 	*x = PurchasedCoinPack{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[24]
+	mi := &file_publira_types_v1_types_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4012,7 +4078,7 @@ func (x *PurchasedCoinPack) String() string {
 func (*PurchasedCoinPack) ProtoMessage() {}
 
 func (x *PurchasedCoinPack) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[24]
+	mi := &file_publira_types_v1_types_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4025,7 +4091,7 @@ func (x *PurchasedCoinPack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchasedCoinPack.ProtoReflect.Descriptor instead.
 func (*PurchasedCoinPack) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{24}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PurchasedCoinPack) GetId() string {
@@ -4070,7 +4136,7 @@ type ReaderIconPreset struct {
 
 func (x *ReaderIconPreset) Reset() {
 	*x = ReaderIconPreset{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[25]
+	mi := &file_publira_types_v1_types_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4082,7 +4148,7 @@ func (x *ReaderIconPreset) String() string {
 func (*ReaderIconPreset) ProtoMessage() {}
 
 func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[25]
+	mi := &file_publira_types_v1_types_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4095,7 +4161,7 @@ func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReaderIconPreset.ProtoReflect.Descriptor instead.
 func (*ReaderIconPreset) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{25}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReaderIconPreset) GetId() string {
@@ -4142,7 +4208,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[26]
+	mi := &file_publira_types_v1_types_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4154,7 +4220,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[26]
+	mi := &file_publira_types_v1_types_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4167,7 +4233,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{26}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -4468,7 +4534,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
 	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x122\n" +
 	"\x15agreement_required_at\x18\n" +
-	" \x01(\tR\x13agreementRequiredAt\"\xb3\x02\n" +
+	" \x01(\tR\x13agreementRequiredAt\"\xfd\x02\n" +
 	"\x06Volume\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -4479,7 +4545,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\vepisode_ids\x18\x06 \x03(\tR\n" +
 	"episodeIds\x123\n" +
 	"\x16cover_image_updated_at\x18\a \x01(\tR\x13coverImageUpdatedAt\x12Y\n" +
-	"\x14cover_image_variants\x18\b \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x12coverImageVariants\"n\n" +
+	"\x14cover_image_variants\x18\b \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x12coverImageVariants\x12H\n" +
+	"\x0fbookstore_links\x18\t \x03(\v2\x1f.publira.types.v1.BookstoreLinkR\x0ebookstoreLinks\"7\n" +
+	"\rBookstoreLink\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\"n\n" +
 	"\fSeriesBundle\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\repisode_count\x18\x02 \x01(\x05R\fepisodeCount\x12)\n" +
@@ -4603,7 +4673,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -4645,10 +4715,11 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*PageTranslation)(nil),       // 37: publira.types.v1.PageTranslation
 	(*PageVersion)(nil),           // 38: publira.types.v1.PageVersion
 	(*Volume)(nil),                // 39: publira.types.v1.Volume
-	(*SeriesBundle)(nil),          // 40: publira.types.v1.SeriesBundle
-	(*PurchasedCoinPack)(nil),     // 41: publira.types.v1.PurchasedCoinPack
-	(*ReaderIconPreset)(nil),      // 42: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 43: publira.types.v1.RetentionPeriods
+	(*BookstoreLink)(nil),         // 40: publira.types.v1.BookstoreLink
+	(*SeriesBundle)(nil),          // 41: publira.types.v1.SeriesBundle
+	(*PurchasedCoinPack)(nil),     // 42: publira.types.v1.PurchasedCoinPack
+	(*ReaderIconPreset)(nil),      // 43: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 44: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	19, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
@@ -4676,12 +4747,13 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	4,  // 22: publira.types.v1.TenantBrandMark.kind:type_name -> publira.types.v1.TenantBrandMarkKind
 	32, // 23: publira.types.v1.TenantBrandMark.image_variants:type_name -> publira.types.v1.TenantImageVariant
 	24, // 24: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	19, // 25: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
-	26, // [26:26] is the sub-list for method output_type
-	26, // [26:26] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	40, // 25: publira.types.v1.Volume.bookstore_links:type_name -> publira.types.v1.BookstoreLink
+	19, // 26: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -4695,7 +4767,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      17,
-			NumMessages:   27,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

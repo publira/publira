@@ -143,6 +143,12 @@ const volumeActionName = (action: string) => {
       return <Message message="admin.audit.actions.volume_unpublished" />;
     }
 
+    case "volume_bookstore_links_updated": {
+      return (
+        <Message message="admin.audit.actions.volume_bookstore_links_updated" />
+      );
+    }
+
     case "volumes_reordered": {
       return <Message message="admin.audit.actions.volumes_reordered" />;
     }

@@ -405,6 +405,7 @@
         "volume_updated": "권 변경",
         "volume_published": "권 공개",
         "volume_unpublished": "권 공개 내림",
+        "volume_bookstore_links_updated": "권 서점 링크 변경",
         "volumes_reordered": "권 순서 변경",
         "creator_role_created": "작가 역할 생성",
         "creator_role_updated": "작가 역할 변경",

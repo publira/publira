@@ -3707,6 +3707,7 @@ class Volume extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? episodeIds,
     $core.String? coverImageUpdatedAt,
     $core.Iterable<SeriesEyeCatchVariant>? coverImageVariants,
+    $core.Iterable<BookstoreLink>? bookstoreLinks,
   }) {
     final result = Volume._();
     if (id != null) result.id = id;
@@ -3719,6 +3720,7 @@ class Volume extends $pb.GeneratedMessage {
       result.coverImageUpdatedAt = coverImageUpdatedAt;
     if (coverImageVariants != null)
       result.coverImageVariants.addAll(coverImageVariants);
+    if (bookstoreLinks != null) result.bookstoreLinks.addAll(bookstoreLinks);
     return result;
   }
 
@@ -3745,6 +3747,8 @@ class Volume extends $pb.GeneratedMessage {
     ..aOS(7, _omitFieldNames ? '' : 'coverImageUpdatedAt')
     ..pPM<SeriesEyeCatchVariant>(8, _omitFieldNames ? '' : 'coverImageVariants',
         subBuilder: SeriesEyeCatchVariant.$_createMessage)
+    ..pPM<BookstoreLink>(9, _omitFieldNames ? '' : 'bookstoreLinks',
+        subBuilder: BookstoreLink.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3835,6 +3839,85 @@ class Volume extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(8)
   $pb.PbList<SeriesEyeCatchVariant> get coverImageVariants => $_getList(7);
+
+  /// Where the volume's printed edition is sold, in the order the console put
+  /// the links in. Empty for a volume with none.
+  @$pb.TagNumber(9)
+  $pb.PbList<BookstoreLink> get bookstoreLinks => $_getList(8);
+}
+
+/// A link to where a volume's printed edition is sold at an online bookstore.
+class BookstoreLink extends $pb.GeneratedMessage {
+  factory BookstoreLink({
+    $core.String? label,
+    $core.String? url,
+  }) {
+    final result = BookstoreLink._();
+    if (label != null) result.label = label;
+    if (url != null) result.url = url;
+    return result;
+  }
+
+  BookstoreLink._();
+
+  factory BookstoreLink.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BookstoreLink()..mergeFromBuffer(data, registry);
+  factory BookstoreLink.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BookstoreLink()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BookstoreLink',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: BookstoreLink.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aOS(2, _omitFieldNames ? '' : 'url')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BookstoreLink clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BookstoreLink copyWith(void Function(BookstoreLink) updates) =>
+      super.copyWith((message) => updates(message as BookstoreLink))
+          as BookstoreLink;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BookstoreLink() / BookstoreLink.new instead')
+  static BookstoreLink create() => BookstoreLink._();
+  static $pb.GeneratedMessage $_createMessage() => BookstoreLink._();
+  @$core.override
+  BookstoreLink createEmptyInstance() => BookstoreLink._();
+  @$core.pragma('dart2js:noInline')
+  static BookstoreLink getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BookstoreLink>(
+          BookstoreLink.$_createMessage);
+  static BookstoreLink? _defaultInstance;
+
+  /// What the link's button says, which the tenant writes itself, such as the
+  /// bookstore's name. 1 to 50 characters.
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  /// An https URL of at most 2048 characters.
+  @$pb.TagNumber(2)
+  $core.String get url => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set url($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUrl() => $_clearField(2);
 }
 
 /// The rest of a series, bought in one StartSeriesRemainderCheckout: every

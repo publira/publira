@@ -2121,6 +2121,14 @@ type Volume struct {
 	UpdatedAt    time.Time     `json:"updated_at"`
 }
 
+type VolumeBookstoreLink struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	VolumeID uuid.UUID `json:"volume_id"`
+	Position int32     `json:"position"`
+	Label    string    `json:"label"`
+	Url      string    `json:"url"`
+}
+
 type VolumeCoverImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
