@@ -18,10 +18,7 @@ const renderDialog = ({
       <CatalogSearchDialog.Root>
         <CatalogSearchDialog.Trigger>Search works</CatalogSearchDialog.Trigger>
         <CatalogSearchDialog.Popup>
-          <CatalogSearchDialog.Header>
-            <CatalogSearchDialog.Title>Search</CatalogSearchDialog.Title>
-            <CatalogSearchDialog.Close aria-label="Close search" />
-          </CatalogSearchDialog.Header>
+          <CatalogSearchDialog.Title>Search</CatalogSearchDialog.Title>
           <form
             action="/search"
             onSubmit={(event) => {
@@ -37,6 +34,7 @@ const renderDialog = ({
             </select>
             <button type="submit">Search</button>
           </form>
+          <CatalogSearchDialog.Close aria-label="Close search" />
         </CatalogSearchDialog.Popup>
       </CatalogSearchDialog.Root>
     </div>

@@ -73,8 +73,12 @@ const CatalogSearchDialogTrigger = ({ children }: { children: ReactNode }) => (
 );
 
 /**
- * The modal, near the top of the window rather than its middle, so the field
- * stays where the eye is while a phone's keyboard takes the lower half.
+ * The modal. Below `sm` it covers the window, the way a phone's own search
+ * does: the keyword row along the top, the button along the foot, and the
+ * filters between them as the one part that scrolls. From `sm` up it is a
+ * panel near the top of the window rather than its middle, so the field stays
+ * where the eye is. In both, the form's keyword row is the popup's top edge,
+ * so the popup has no padding of its own.
  *
  * Focus lands on the keyword field, the reason the dialog was opened, and goes
  * back to the trigger on the way out — whether the reader dismissed it or
@@ -98,7 +102,7 @@ const CatalogSearchDialogPopup = ({ children }: { children: ReactNode }) => {
       <Dialog.Backdrop />
       <Dialog.Viewport>
         <Dialog.Popup
-          className="top-4 grid max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),40rem)] translate-y-0 gap-5 overflow-y-auto sm:top-[12vh] sm:max-h-[76vh]"
+          className="top-[12vh] flex max-h-[76vh] w-[min(calc(100vw-2rem),40rem)] translate-y-0 flex-col overflow-hidden p-0 max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:translate-x-0 max-sm:rounded-none max-sm:border-0"
           initialFocus={focusKeyword}
           onSubmit={close}
           ref={popupRef}
@@ -110,17 +114,20 @@ const CatalogSearchDialogPopup = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/** The title row: the dialog's name and its close button. */
-const CatalogSearchDialogHeader = ({ children }: { children: ReactNode }) => (
-  <div className="flex items-center justify-between gap-4">{children}</div>
-);
-
+/**
+ * The dialog's name. The keyword field's placeholder already says what the
+ * dialog is for, so the name is for assistive technology alone and draws
+ * nothing above the field.
+ */
 const CatalogSearchDialogTitle = ({ children }: { children: ReactNode }) => (
-  <Dialog.Title className="font-serif text-lg leading-tight font-medium text-foreground">
-    {children}
-  </Dialog.Title>
+  <Dialog.Title className="sr-only">{children}</Dialog.Title>
 );
 
+/**
+ * Closes the dialog without searching. It lies over the end of the keyword
+ * row, which the form leaves clear for it, and comes last in the popup so Tab
+ * reaches it after the form.
+ */
 const CatalogSearchDialogClose = ({
   "aria-label": ariaLabel,
 }: {
@@ -129,21 +136,20 @@ const CatalogSearchDialogClose = ({
 }) => (
   <Dialog.Close
     aria-label={ariaLabel}
-    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:size-11"
+    className="absolute top-2.5 right-3 inline-flex size-9 items-center justify-center rounded-control text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:top-1.5 pointer-coarse:size-11"
   >
-    <CloseIcon aria-hidden="true" className="size-4" />
+    <CloseIcon aria-hidden="true" className="size-5" />
   </Dialog.Close>
 );
 
-/** Same footprint as the close button, while its name is resolved. */
+/** Same footprint and place as the close button, while its name is resolved. */
 const CatalogSearchDialogCloseSkeleton = () => (
-  <Skeleton className="size-9 shrink-0 rounded-control pointer-coarse:size-11" />
+  <Skeleton className="absolute top-2.5 right-3 size-9 rounded-control pointer-coarse:top-1.5 pointer-coarse:size-11" />
 );
 
 export {
   CatalogSearchDialogClose as Close,
   CatalogSearchDialogCloseSkeleton as CloseSkeleton,
-  CatalogSearchDialogHeader as Header,
   CatalogSearchDialogPopup as Popup,
   CatalogSearchDialogRoot as Root,
   CatalogSearchDialogTitle as Title,

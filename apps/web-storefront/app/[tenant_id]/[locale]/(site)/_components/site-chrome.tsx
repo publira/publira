@@ -394,18 +394,16 @@ const SiteSearch = ({ id }: { id: string }) => (
       </Suspense>
     </CatalogSearchDialog.Trigger>
     <CatalogSearchDialog.Popup>
-      <CatalogSearchDialog.Header>
-        <CatalogSearchDialog.Title>
-          <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
-            <Message message="storefront.search.title" />
-          </Suspense>
-        </CatalogSearchDialog.Title>
-        <Suspense fallback={<CatalogSearchDialog.CloseSkeleton />}>
-          <CatalogSearchCloseButton />
+      <CatalogSearchDialog.Title>
+        <Suspense fallback={null}>
+          <Message message="storefront.search.title" />
         </Suspense>
-      </CatalogSearchDialog.Header>
-      <Suspense fallback={<CatalogSearchFormSkeleton />}>
-        <CatalogSearchForm id={id} />
+      </CatalogSearchDialog.Title>
+      <Suspense fallback={<CatalogSearchFormSkeleton variant="dialog" />}>
+        <CatalogSearchForm id={id} variant="dialog" />
+      </Suspense>
+      <Suspense fallback={<CatalogSearchDialog.CloseSkeleton />}>
+        <CatalogSearchCloseButton />
       </Suspense>
     </CatalogSearchDialog.Popup>
   </CatalogSearchDialog.Root>

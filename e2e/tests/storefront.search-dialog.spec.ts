@@ -60,13 +60,13 @@ const expectEveryControlReachable = async (
 ): Promise<void> => {
   const controls = [
     dialog.getByRole("searchbox", { name: "Search works" }),
-    dialog.getByRole("button", { exact: true, name: "Search" }),
     dialog.getByRole("combobox", { name: "Genre" }),
     dialog.getByRole("combobox", { name: "Sort" }),
     dialog.getByRole("combobox", { name: "Status" }),
     dialog.getByRole("checkbox", { name: "Only series with free episodes" }),
-    // Focus stays in the dialog: past the last field it comes round to the
-    // close button at the top.
+    dialog.getByRole("button", { exact: true, name: "Search" }),
+    // The close button lies over the end of the keyword row and comes last,
+    // after everything the reader came to use.
     dialog.getByRole("button", { name: "Close search" }),
   ];
 
@@ -77,8 +77,9 @@ const expectEveryControlReachable = async (
 };
 
 /**
- * The search dialog the band and the drawer open: the keyword with the series
- * list's sort and filters beside it, submitted as a plain `GET` to `/search`.
+ * The search dialog the band and the drawer open: the keyword along its top
+ * edge with the series list's sort and filters below it, submitted as a plain
+ * `GET` to `/search`.
  */
 test.describe("web-storefront search dialog at a desktop width", () => {
   test.beforeEach(async ({ page }) => {
