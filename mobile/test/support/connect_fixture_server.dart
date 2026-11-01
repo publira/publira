@@ -1004,13 +1004,15 @@ class ConnectFixtureServer {
   /// Which notifications reach the member per category and channel, which
   /// `GetNotificationSettings` answers and `UpdateNotificationSettings`
   /// writes cell by cell. Every cell on by default, as the API answers an
-  /// account that has saved nothing.
+  /// account that has saved nothing, except the announcement push cells,
+  /// which start off.
   var memberNotificationPreferences = allNotificationPreferences();
 
   /// The same cells for the account [signedUpAccessToken] stands for.
   var _signedUpNotificationPreferences = allNotificationPreferences();
 
-  /// Every cell of `NotificationPreferences` on.
+  /// Every cell of `NotificationPreferences` as the API answers an account
+  /// that has saved nothing. The announcement push cells start off.
   static pb.NotificationPreferences allNotificationPreferences() =>
       pb.NotificationPreferences(
         followedEpisodesInboxEnabled: true,
@@ -1024,6 +1026,8 @@ class ConnectFixtureServer {
         commentsInboxEnabled: true,
         commentsEmailEnabled: true,
         announcementsInboxEnabled: true,
+        announcementsWebPushEnabled: false,
+        announcementsMobilePushEnabled: false,
         announcementsEmailEnabled: true,
       );
 
@@ -4223,6 +4227,13 @@ class ConnectFixtureServer {
     ..announcementsInboxEnabled = update.hasAnnouncementsInboxEnabled()
         ? update.announcementsInboxEnabled
         : stored.announcementsInboxEnabled
+    ..announcementsWebPushEnabled = update.hasAnnouncementsWebPushEnabled()
+        ? update.announcementsWebPushEnabled
+        : stored.announcementsWebPushEnabled
+    ..announcementsMobilePushEnabled =
+        update.hasAnnouncementsMobilePushEnabled()
+        ? update.announcementsMobilePushEnabled
+        : stored.announcementsMobilePushEnabled
     ..followedEpisodesEmailEnabled = _mergeNotificationEmailCell(
       stored,
       update,

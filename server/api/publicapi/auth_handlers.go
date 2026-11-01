@@ -1533,7 +1533,7 @@ func (s *apiServer) scopeReaderStateUser(ctx context.Context, userID uuid.UUID) 
 }
 
 // defaultNotificationPreferences is what a reader who has saved nothing reads
-// back: every cell on, which is how such a reader is notified.
+// back. Every cell is on, except the announcement push cells, which start off.
 //
 // The same values are what the insert branch of
 // UpsertUserNotificationSettings writes for a cell the request omitted, and
@@ -1552,6 +1552,8 @@ func defaultNotificationPreferences() *publirav1.NotificationPreferences {
 		CommentsInboxEnabled:              true,
 		CommentsEmailEnabled:              true,
 		AnnouncementsInboxEnabled:         true,
+		AnnouncementsWebPushEnabled:       false,
+		AnnouncementsMobilePushEnabled:    false,
 		AnnouncementsEmailEnabled:         true,
 	}
 }
@@ -1569,6 +1571,8 @@ func notificationPreferencesFromRow(row dbmodels.UserNotificationSetting) *publi
 		CommentsInboxEnabled:              row.CommentsInboxEnabled,
 		CommentsEmailEnabled:              row.CommentsEmailEnabled,
 		AnnouncementsInboxEnabled:         row.AnnouncementsInboxEnabled,
+		AnnouncementsWebPushEnabled:       row.AnnouncementsWebPushEnabled,
+		AnnouncementsMobilePushEnabled:    row.AnnouncementsMobilePushEnabled,
 		AnnouncementsEmailEnabled:         row.AnnouncementsEmailEnabled,
 	}
 }
@@ -1645,9 +1649,8 @@ func notificationPreferenceCell(value *bool) sql.NullBool {
 }
 
 // GetNotificationSettings answers which notifications reach the authenticated
-// reader on each channel. A reader who has saved nothing gets every cell on
-// rather than an error or an empty message, because that is how they are
-// notified.
+// reader on each channel. A reader who has saved nothing gets the defaults
+// rather than an error or an empty message.
 func (s *apiServer) GetNotificationSettings(
 	ctx context.Context,
 	req *publirav1.GetNotificationSettingsRequest,
@@ -1714,6 +1717,8 @@ func (s *apiServer) UpdateNotificationSettings(
 		CommentsInboxEnabled:              notificationPreferenceCell(req.CommentsInboxEnabled),
 		CommentsEmailEnabled:              email.comments,
 		AnnouncementsInboxEnabled:         notificationPreferenceCell(req.AnnouncementsInboxEnabled),
+		AnnouncementsWebPushEnabled:       notificationPreferenceCell(req.AnnouncementsWebPushEnabled),
+		AnnouncementsMobilePushEnabled:    notificationPreferenceCell(req.AnnouncementsMobilePushEnabled),
 		AnnouncementsEmailEnabled:         email.announcements,
 	})
 	if err != nil {

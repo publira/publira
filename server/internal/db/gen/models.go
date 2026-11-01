@@ -2029,6 +2029,8 @@ type UserNotificationSetting struct {
 	FollowedCreatorsEmailEnabled      bool      `json:"followed_creators_email_enabled"`
 	CommentsEmailEnabled              bool      `json:"comments_email_enabled"`
 	AnnouncementsEmailEnabled         bool      `json:"announcements_email_enabled"`
+	AnnouncementsWebPushEnabled       bool      `json:"announcements_web_push_enabled"`
+	AnnouncementsMobilePushEnabled    bool      `json:"announcements_mobile_push_enabled"`
 }
 
 type UserPageConsent struct {

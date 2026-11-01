@@ -457,7 +457,9 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeCommentApprovedNotification, outbox.NewCommentApprovedNotificationHandler(commentApprovedHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer, searchCacheRecorder))
-	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
+	memberPush := outbox.NewMemberPushNotificationHandler(pushHandlers)
+	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, memberPush)
+	handlers.RegisterMessage(outbox.EventTypeAnnouncementPushNotification, memberPush)
 	googlePlayHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
 	handlers.Register(outbox.EventTypeGooglePlaySubscriptionAcknowledge, outbox.NewGooglePlaySubscriptionAcknowledgeHandler(googlePlayHandlers))

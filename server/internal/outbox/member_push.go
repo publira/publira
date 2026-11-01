@@ -29,6 +29,12 @@ import (
 // Firebase.
 const EventTypeMemberPushNotification = "member_push_notification"
 
+// EventTypeAnnouncementPushNotification mirrors an announcement onto the
+// devices its recipients registered. The same handler drains it as
+// [EventTypeMemberPushNotification]. It is a type of its own so a worker that
+// does not push announcements leaves the event pending.
+const EventTypeAnnouncementPushNotification = "announcement_push_notification"
+
 // Notification types that reach a device. The mobile app is the reader app, so
 // only member-facing types are on the list: a tenant administrator and an
 // operator read their console bell instead. A member type added later stays
@@ -36,9 +42,10 @@ const EventTypeMemberPushNotification = "member_push_notification"
 //
 // comment_approved is member-facing and still absent: it tells a reader what
 // happened to their own comment, and that belongs in the bell rather than on a
-// lock screen.
+// lock screen. announcement_posted is admitted, and its push cells start off.
 var pushedNotificationTypes = map[string]struct{}{
-	"episode_published": {},
+	"episode_published":   {},
+	"announcement_posted": {},
 }
 
 // MemberPushNotificationPayload names the notification rows the push mirrors
@@ -55,6 +62,9 @@ type MemberPushNotificationPayload struct {
 	SeriesTitle      string `json:"series_title"`
 	EpisodeID        string `json:"episode_id"`
 	EpisodeTitle     string `json:"episode_title"`
+	// AnnouncementID is set for an announcement. The title each reader is
+	// shown is on their notification row, and the route opens the announcement.
+	AnnouncementID string `json:"announcement_id,omitempty"`
 }
 
 // PushSender sends to a device with the Firebase credentials of the tenant it
@@ -114,9 +124,11 @@ var defaultMemberPushPaging = memberPushPaging{
 // NewMemberPushNotificationHandler delivers one member notification to every
 // device its recipients registered.
 //
-// The message is the tenant's own content rather than copy: the title is the
-// series and the body is the episode. The server holds no message catalog in
-// Go — the localized copy this repository owns is rendered by the email
+// The message is the tenant's own content rather than copy. An episode's title
+// is the series and its body the episode, the same for every recipient. An
+// announcement's title is the one on that recipient's notification row, in
+// their language, and its body is empty. The server holds no message catalog
+// in Go — the localized copy this repository owns is rendered by the email
 // renderer for mail and compiled into the app for screens — and a title
 // rendered in the tenant's language would reach a reader whose device is set
 // to another one. Content is what both readers can read.
@@ -316,19 +328,28 @@ func (s memberPushSender) device(ctx context.Context, device dbmodels.ListPushDe
 	defer cancel()
 
 	data := memberPushData(device.NotificationID, s.notificationType, s.payload)
+	title, body := s.payload.SeriesTitle, s.payload.EpisodeTitle
+	if s.notificationType == NotificationTypeAnnouncementPosted {
+		var err error
+		title, err = announcementPushTitle(device.Payload)
+		if err != nil {
+			return memberPushOutcome{err: fmt.Errorf("read announcement push title: %w", err)}
+		}
+		body = ""
+	}
 	var sendErr error
 	switch device.Platform {
 	case "android", "ios":
 		if s.cfg.Sender == nil {
 			sendErr = errors.New("FCM sender is not configured")
 		} else {
-			sendErr = s.cfg.Sender.Send(sendCtx, s.tenantID, push.Message{Token: device.Token, Title: s.payload.SeriesTitle, Body: s.payload.EpisodeTitle, Data: data})
+			sendErr = s.cfg.Sender.Send(sendCtx, s.tenantID, push.Message{Token: device.Token, Title: title, Body: body, Data: data})
 		}
 	case "web":
 		if s.cfg.WebSender == nil {
 			sendErr = errors.New("web push sender is not configured")
 		} else {
-			sendErr = s.cfg.WebSender.Send(sendCtx, push.WebPushSubscription{Endpoint: device.Endpoint.String, P256dh: device.P256dh.String, Auth: device.Auth.String}, push.WebPushMessage{Title: s.payload.SeriesTitle, Body: s.payload.EpisodeTitle, Data: data})
+			sendErr = s.cfg.WebSender.Send(sendCtx, push.WebPushSubscription{Endpoint: device.Endpoint.String, P256dh: device.P256dh.String, Auth: device.Auth.String}, push.WebPushMessage{Title: title, Body: body, Data: data})
 		}
 	default:
 		sendErr = fmt.Errorf("unsupported push platform %q", device.Platform)
@@ -351,8 +372,9 @@ func (s memberPushSender) device(ctx context.Context, device dbmodels.ListPushDe
 }
 
 // memberPushData is the routing block the app reads once the reader taps the
-// notification. `route` is the viewer path, which is nested under the series
-// route so the back gesture lands on the series rather than leaving the app.
+// notification. An announcement opens on its own page. An episode's `route`
+// is the viewer path, nested under the series route so the back gesture lands
+// on the series rather than leaving the app.
 func memberPushData(
 	notificationID uuid.UUID,
 	notificationType string,
@@ -361,6 +383,11 @@ func memberPushData(
 	data := map[string]string{
 		"notification_id":   notificationID.String(),
 		"notification_type": notificationType,
+	}
+	if announcementID := strings.TrimSpace(payload.AnnouncementID); announcementID != "" {
+		data["announcement_id"] = announcementID
+		data["route"] = "/announcements/" + announcementID
+		return data
 	}
 	seriesID := strings.TrimSpace(payload.SeriesID)
 	episodeID := strings.TrimSpace(payload.EpisodeID)

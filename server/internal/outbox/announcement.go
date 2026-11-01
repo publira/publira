@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -38,9 +39,8 @@ const EventTypeTargetedAnnouncementNotification = "targeted_announcement_notific
 // handler writes. The storefront assembles its copy from this plus the payload;
 // there is no title or body column.
 //
-// It reaches the bell and the mail. It is not on the push allowlist, because an
-// announcement is the tenant talking to its whole readership at a time of the
-// operator's choosing, which is not what a lock screen is for.
+// It reaches the bell, the mail, and, for a reader who turned the push cells
+// on, the device. The push cells start off.
 const NotificationTypeAnnouncementPosted = "announcement_posted"
 
 // AnnouncementDeliveryPreferred and AnnouncementDeliveryEveryone are the
@@ -76,6 +76,13 @@ func AnnouncementIdempotencyKey(announcementID uuid.UUID) string {
 // event of an announcement with an audience.
 func TargetedAnnouncementIdempotencyKey(announcementID uuid.UUID) string {
 	return EventTypeTargetedAnnouncementNotification + ":" + announcementID.String()
+}
+
+// AnnouncementPushIdempotencyKey is the outbox key for one announcement's push.
+// It is the notification's own identity, so a re-run of the fan-out pushes
+// nothing a second time.
+func AnnouncementPushIdempotencyKey(announcementID uuid.UUID) string {
+	return "push:" + NotificationTypeAnnouncementPosted + ":" + AnnouncementSubjectKey(announcementID)
 }
 
 // AnnouncementNotificationPayload is the JSON body of either event. It carries
@@ -115,8 +122,8 @@ type announcementNotificationQuerier interface {
 }
 
 // NewAnnouncementNotificationHandler writes one bell notification per reader a
-// posted announcement addresses, and queues the mail that mirrors them. It
-// handles both [EventTypeAnnouncementNotification] and
+// posted announcement addresses, and queues the mail and the push that mirror
+// them. It handles both [EventTypeAnnouncementNotification] and
 // [EventTypeTargetedAnnouncementNotification]: the announcement row says
 // whether it has an audience, and the recipient query reads it from there.
 func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfig) Handler {
@@ -234,8 +241,8 @@ func announcementNotificationHandler(
 		}
 		if notified == 0 {
 			// A retry evaluates the audience again, and a reader an earlier
-			// attempt wrote a row for may no longer meet it. The mail reads
-			// the rows that were written, so it is still owed for them.
+			// attempt wrote a row for may no longer meet it. The mail and the
+			// push read the rows that were written, so both are still owed.
 			written, err := queries.AnnouncementHasNotifications(ctx, dbmodels.AnnouncementHasNotificationsParams{
 				TenantID:   tenantID,
 				SubjectKey: AnnouncementSubjectKey(announcementID),
@@ -243,25 +250,69 @@ func announcementNotificationHandler(
 			if err != nil {
 				return fmt.Errorf("check announcement notifications: %w", err)
 			}
-			if written {
-				return queueNotificationEmail(ctx, queries, tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID))
+			if !written {
+				// A tenant with no users, or an audience nobody meets, still has
+				// the announcement on its own list. Completing is the honest
+				// answer: a retry would find the same empty readership, and a
+				// reader who comes to meet the audience later is not sent it.
+				logAnnouncement(ctx, cfg.Logger, "no readers to notify about an announcement", event,
+					"announcement_id", announcementID.String())
+				return nil
 			}
-			// A tenant with no users, or an audience nobody meets, still has
-			// the announcement on its own list. Completing is the honest
-			// answer: a retry would find the same empty readership, and a
-			// reader who comes to meet the audience later is not sent it.
-			logAnnouncement(ctx, cfg.Logger, "no readers to notify about an announcement", event,
-				"announcement_id", announcementID.String())
-			return nil
+		}
+		if err := enqueueAnnouncementPush(ctx, queries, tenantID, announcementID); err != nil {
+			return err
 		}
 		return queueNotificationEmail(ctx, queries, tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID))
 	}
 }
 
+// enqueueAnnouncementPush schedules the push for the notification rows above,
+// on the querier that wrote them. The handler resolves each reader's title
+// from their own row when it drains the event. The idempotency key is the
+// notification's own identity, so a re-run pushes nothing a second time.
+func enqueueAnnouncementPush(ctx context.Context, q announcementNotificationQuerier, tenantID, announcementID uuid.UUID) error {
+	payload, err := json.Marshal(MemberPushNotificationPayload{
+		TenantID:         tenantID.String(),
+		NotificationType: NotificationTypeAnnouncementPosted,
+		SubjectKey:       AnnouncementSubjectKey(announcementID),
+		AnnouncementID:   announcementID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("encode announcement push payload: %w", err)
+	}
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("allocate outbox event id: %w", err)
+	}
+	_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      EventTypeAnnouncementPushNotification,
+		Payload:        payload,
+		IdempotencyKey: AnnouncementPushIdempotencyKey(announcementID),
+		AvailableAt:    time.Now().UTC(),
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("insert announcement push outbox event: %w", err)
+	}
+	return nil
+}
+
+// announcementPushTitle is the title on one recipient's notification row, the
+// translation their own locale picked when the row was written.
+func announcementPushTitle(payload json.RawMessage) (string, error) {
+	var body announcementNotificationBody
+	if err := json.Unmarshal(payload, &body); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(body.AnnouncementTitle), nil
+}
+
 // announcementCategory files an announcement's rows by its delivery. One for
-// everyone is filed under a category no preference governs, so its row is
-// listed in every inbox, and a channel the type is later admitted to lets it
-// through the same way without a rule of its own.
+// everyone is filed under a category no inbox or email cell governs, so its
+// row is listed in every inbox and mailed to every confirmed address. Its
+// push still answers to the announcement push cells.
 func announcementCategory(delivery string) (string, error) {
 	switch delivery {
 	case AnnouncementDeliveryPreferred:

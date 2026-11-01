@@ -120,6 +120,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeEpisodePublishedNotification,
 		outbox.EventTypeCommentApprovedNotification,
 		outbox.EventTypeMemberPushNotification,
+		outbox.EventTypeAnnouncementPushNotification,
 	}
 	others := []string{
 		outbox.EventTypeTenantAdminInvitationEmail,

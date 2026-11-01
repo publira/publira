@@ -68,12 +68,15 @@ WHERE token = sqlc.arg('token');
 --
 -- It is also left out where its recipient turned the push off for the row's
 -- category: the Web Push cell decides for a browser, and the mobile push cell
--- for a phone. A recipient who saved nothing holds every cell on, and a
--- category with no push cell — one the push allowlist does not admit, or the
--- staff one no preference governs — keeps the device.
+-- for a phone. A recipient who saved nothing holds every cell on, except the
+-- announcement push cells, which start off, so an announcement reaches no
+-- device of theirs. A category with no push cell — one the push allowlist does
+-- not admit, or the staff one no preference governs — keeps the device. An
+-- announcement sent to everyone takes the same announcement push cells.
 -- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
+    n.payload,
     d.user_id,
     d.token,
     d.platform,
@@ -102,11 +105,15 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
                 CASE n.category
                     WHEN 'followed_episodes' THEN s.followed_episodes_web_push_enabled
                     WHEN 'followed_creators' THEN s.followed_creators_web_push_enabled
+                    WHEN 'announcements' THEN COALESCE(s.announcements_web_push_enabled, false)
+                    WHEN 'everyone' THEN COALESCE(s.announcements_web_push_enabled, false)
                 END
             ELSE
                 CASE n.category
                     WHEN 'followed_episodes' THEN s.followed_episodes_mobile_push_enabled
                     WHEN 'followed_creators' THEN s.followed_creators_mobile_push_enabled
+                    WHEN 'announcements' THEN COALESCE(s.announcements_mobile_push_enabled, false)
+                    WHEN 'everyone' THEN COALESCE(s.announcements_mobile_push_enabled, false)
                 END
         END,
         true
