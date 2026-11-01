@@ -30,6 +30,13 @@ type Querier interface {
 	// when no dispute is held for the payment, which is the ordinary case. The
 	// held row is deleted by the caller in the same transaction.
 	ApplyUnappliedDisputeToPurchase(ctx context.Context, arg ApplyUnappliedDisputeToPurchaseParams) (Purchase, error)
+	// Writes a dispute held because its notification overtook the payment's onto
+	// the payment. Held as lost, it sets dispute_lost_at from that instant, by
+	// the rule RecordLostDisputeOnSubscriptionPayment uses; held open, it changes
+	// the payment not at all. Nothing matches when no dispute is held, which is
+	// the ordinary case. The held row is deleted by the caller in the same
+	// transaction.
+	ApplyUnappliedDisputeToSubscriptionPayment(ctx context.Context, arg ApplyUnappliedDisputeToSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordRefundOnPurchase uses. Nothing matches when no refund is
 	// held for the payment, which is the ordinary case.
@@ -1176,9 +1183,11 @@ type Querier interface {
 	//
 	// A subscription payment is counted on the day it was paid, beside the
 	// purchases rather than among them, under the same terms: paid in currency
-	// and not in Stripe's test mode. What went back on it is its refunded_amount,
-	// taken off the day it was paid. A payment belongs to no series, so only the
-	// totals and the days count it.
+	// and not in Stripe's test mode. What went back on it is
+	// purchase_returned_amount of its amount, the whole of it once a dispute of
+	// the payment was lost and otherwise its refunded_amount, taken off the day
+	// it was paid. A payment belongs to no series, so only the totals and the
+	// days count it.
 	//
 	// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 	// which carries every column GetRevenueTotals and ListRevenueByDay read, so
@@ -1252,6 +1261,10 @@ type Querier interface {
 	// intent's, the order an account deletion takes them in.
 	GetStoreSubscriptionIntentOwner(ctx context.Context, arg GetStoreSubscriptionIntentOwnerParams) (uuid.UUID, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
+	// The subscription payment paid through a PaymentIntent. No row is a
+	// PaymentIntent no payment here was paid through, which is an open dispute
+	// the caller holds until the payment is recorded.
+	GetSubscriptionPaymentIDByPaymentIntent(ctx context.Context, arg GetSubscriptionPaymentIDByPaymentIntentParams) (uuid.UUID, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
 	// The plan a store product is sold as, published or not: a subscription the
 	// store has charged for is recorded on its plan even after staff unpublished
@@ -2883,10 +2896,11 @@ type Querier interface {
 	// Every query here counts the same payments: those whose period ends within
 	// the bounds GetRoyaltyMonthBounds answers for the month, paid in currency,
 	// the tenant's, not made in Stripe's test mode, which paid the tenant nothing,
-	// and not refunded in full. A partial refund stays shared and is carried as
-	// refunded_amount, divided over the parts by episode_part_of_purchase_amount
-	// as a purchase's is. A payment no part of which falls on anyone is in no
-	// line and in no total: it is the tenant's revenue alone.
+	// not refunded in full, and not lost to a dispute. A partial refund stays
+	// shared and is carried as refunded_amount, divided over the parts by
+	// episode_part_of_purchase_amount as a purchase's is. A lost dispute is no
+	// sale, as a payment refunded in full is. A payment no part of which falls on
+	// anyone is in no line and in no total: it is the tenant's revenue alone.
 	// Computes the subscription lines of one tenant month: every credit on an
 	// episode a payment of the month was shared to, with the parts of the
 	// month's payments that fall on it. sale_count is how many payments did. It
@@ -3257,10 +3271,11 @@ type Querier interface {
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
 	// Serializes the writes about one payment of a provider for the rest of the
-	// transaction: recording a subscription payment and applying the refund held
-	// for it, against matching a refund to it or holding the refund. Without it,
-	// a refund matched while the payment's insert is uncommitted finds nothing and
-	// is held, and the insert finds nothing held, so the refund is never applied.
+	// transaction: recording a subscription payment and applying the refund or the
+	// dispute held for it, against matching a refund or a dispute to it or holding
+	// one. Without it, one matched while the payment's insert is uncommitted finds
+	// nothing and is held, and the insert finds nothing held, so it is never
+	// applied.
 	LockProviderPayment(ctx context.Context, arg LockProviderPaymentParams) error
 	// Locks a preset before it is deleted. An account electing it takes a key
 	// share on the row through its foreign key, so the lock waits for an election
@@ -3782,6 +3797,12 @@ type Querier interface {
 	// reason already stored. Nothing matches when the payment belongs to another
 	// tenant, another provider, or no purchase here.
 	RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLostDisputeOnPurchaseParams) (Purchase, error)
+	// Records that the dispute of the subscription payment was lost: the reader's
+	// bank has returned the money, so the payment counts as refunded in full and
+	// is no longer a sale on a royalty statement. A repeated delivery leaves the
+	// instant already stored. Nothing matches a PaymentIntent no payment here was
+	// paid through. The subscription itself is left as Stripe holds it.
+	RecordLostDisputeOnSubscriptionPayment(ctx context.Context, arg RecordLostDisputeOnSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// A paged handler records how far it has got after each page, so a run
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.

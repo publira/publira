@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	stripego "github.com/stripe/stripe-go/v87"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
@@ -246,5 +247,242 @@ func TestDBProcessPaymentWebhookAppliesARefundRacingItsPayment(t *testing.T) {
 	}
 	if got := f.countRows(t, "SELECT count(*) FROM unapplied_refunds WHERE tenant_id = $1", f.tenant.ID); got != 0 {
 		t.Fatalf("held refunds = %d, want none", got)
+	}
+}
+
+// subscriptionDisputeLostAt is when the dispute of an invoice's payment was
+// recorded lost, invalid while it was not.
+func (f *subscriptionFixture) subscriptionDisputeLostAt(t *testing.T, invoiceID string) sql.NullTime {
+	t.Helper()
+	var at sql.NullTime
+	if err := f.pg.DB.QueryRowContext(context.Background(), `
+		SELECT dispute_lost_at
+		FROM subscription_payments
+		WHERE tenant_id = $1 AND stripe_invoice_id = $2
+	`, f.tenant.ID, invoiceID).Scan(&at); err != nil {
+		t.Fatalf("read dispute_lost_at of %s: %v", invoiceID, err)
+	}
+	return at
+}
+
+func (f *subscriptionFixture) subscriptionRowStatus(t *testing.T, stripeSubscriptionID string) string {
+	t.Helper()
+	var status string
+	if err := f.pg.DB.QueryRowContext(context.Background(), `
+		SELECT status FROM subscriptions
+		WHERE tenant_id = $1 AND stripe_subscription_id = $2
+	`, f.tenant.ID, stripeSubscriptionID).Scan(&status); err != nil {
+		t.Fatalf("read the status of %s: %v", stripeSubscriptionID, err)
+	}
+	return status
+}
+
+// payInvoice records one paid invoice of a new plan, the way the webhook does.
+func (f *subscriptionFixture) payInvoice(t *testing.T, invoiceID, paymentID string) paymentprovidertest.SubscriptionPayment {
+	t.Helper()
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_" + invoiceID, Published: true})
+	subscription := stripetest.Subscription{
+		ID:               "sub_" + invoiceID,
+		CustomerID:       "cus_" + invoiceID,
+		PriceID:          "price_" + invoiceID,
+		Status:           "active",
+		CurrentPeriodEnd: time.Date(2026, time.April, 2, 0, 0, 0, 0, time.UTC).Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_"+invoiceID),
+	}
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], subscription)
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	payment := paymentprovidertest.SubscriptionPayment{
+		InvoiceID:      invoiceID,
+		SubscriptionID: subscription.ID,
+		PaymentID:      paymentID,
+		TenantID:       f.tenant.ID,
+		ReaderID:       f.reader.ID,
+		PlanID:         plan.ID,
+		Amount:         980,
+		Currency:       "JPY",
+		PeriodStart:    start,
+		PeriodEnd:      start.AddDate(0, 1, 0),
+	}
+	payload, headers := f.stripe.SubscriptionPaid(t, f.credentials, payment)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver %s: %v", invoiceID, err)
+	}
+	return payment
+}
+
+// A lost dispute of a subscription payment records when the bank returned the
+// money, and leaves the refund columns and the subscription as they were. A
+// repeated delivery does not move that instant. An open dispute, and one the
+// tenant won, change nothing and are not held.
+func TestDBProcessPaymentWebhookRecordsALostDisputeOnASubscriptionPayment(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	f.payInvoice(t, "in_disputed", "pi_disputed")
+
+	payload, headers := f.stripe.Disputed(t, f.credentials, "pi_disputed")
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the open dispute: %v", err)
+	}
+	if at := f.subscriptionDisputeLostAt(t, "in_disputed"); at.Valid {
+		t.Fatalf("an open dispute was recorded lost at %v", at.Time)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 0 {
+		t.Fatalf("held disputes = %d, want none for a payment that is here", got)
+	}
+
+	payload, headers = f.stripe.DisputeClosed(t, f.credentials, "pi_disputed", stripego.DisputeStatusWon)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the won dispute: %v", err)
+	}
+	if at := f.subscriptionDisputeLostAt(t, "in_disputed"); at.Valid {
+		t.Fatalf("a won dispute was recorded lost at %v", at.Time)
+	}
+
+	payload, headers = f.stripe.Refunded(t, f.credentials, paymentprovidertest.Refund{PaymentID: "pi_disputed", Currency: "JPY", AmountRefunded: 300})
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the partial refund: %v", err)
+	}
+	payload, headers = f.stripe.DisputeClosed(t, f.credentials, "pi_disputed", stripego.DisputeStatusLost)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the lost dispute: %v", err)
+	}
+	lostAt := f.subscriptionDisputeLostAt(t, "in_disputed")
+	if !lostAt.Valid {
+		t.Fatal("a lost dispute was not recorded")
+	}
+	if got := f.subscriptionPayment(t, "in_disputed").refunded; got.Int32 != 300 {
+		t.Fatalf("refunded = %d, want the partial refund left as it was", got.Int32)
+	}
+	if status := f.subscriptionRowStatus(t, "sub_in_disputed"); status != "active" {
+		t.Fatalf("subscription status = %s, want active", status)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 0 {
+		t.Fatalf("held disputes = %d, want none", got)
+	}
+
+	payload, headers = f.stripe.DisputeClosed(t, f.credentials, "pi_disputed", stripego.DisputeStatusLost)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the lost dispute again: %v", err)
+	}
+	if repeat := f.subscriptionDisputeLostAt(t, "in_disputed"); !repeat.Time.Equal(lostAt.Time) {
+		t.Fatalf("a repeated delivery moved the loss: %v -> %v", lostAt.Time, repeat.Time)
+	}
+}
+
+// A lost dispute that arrives before the invoice is held, and the payment
+// takes it when the invoice arrives. A later delivery of the dispute that
+// opened it does not record the loss a second time.
+func TestDBProcessPaymentWebhookAppliesALostDisputeThatArrivedBeforeItsSubscriptionPayment(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_early_dispute", Published: true})
+	subscription := stripetest.Subscription{
+		ID:               "sub_early_dispute",
+		CustomerID:       "cus_early_dispute",
+		PriceID:          "price_early_dispute",
+		Status:           "active",
+		CurrentPeriodEnd: time.Date(2026, time.April, 2, 0, 0, 0, 0, time.UTC).Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_early_dispute"),
+	}
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], subscription)
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	payment := paymentprovidertest.SubscriptionPayment{
+		InvoiceID:      "in_early_dispute",
+		SubscriptionID: subscription.ID,
+		PaymentID:      "pi_early_dispute",
+		TenantID:       f.tenant.ID,
+		ReaderID:       f.reader.ID,
+		PlanID:         plan.ID,
+		Amount:         980,
+		Currency:       "JPY",
+		PeriodStart:    start,
+		PeriodEnd:      start.AddDate(0, 1, 0),
+	}
+
+	payload, headers := f.stripe.DisputeClosed(t, f.credentials, "pi_early_dispute", stripego.DisputeStatusLost)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the early lost dispute: %v", err)
+	}
+	payload, headers = f.stripe.Disputed(t, f.credentials, "pi_early_dispute")
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the dispute that opened it: %v", err)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 1 {
+		t.Fatalf("held disputes = %d, want the early one kept once", got)
+	}
+
+	payload, headers = f.stripe.SubscriptionPaid(t, f.credentials, payment)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the paid invoice: %v", err)
+	}
+	if !f.subscriptionDisputeLostAt(t, "in_early_dispute").Valid {
+		t.Fatal("the held dispute was not recorded lost on the new payment")
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 0 {
+		t.Fatalf("held disputes = %d, want the applied one released", got)
+	}
+	if status := f.subscriptionRowStatus(t, "sub_early_dispute"); status != "active" {
+		t.Fatalf("subscription status = %s, want active", status)
+	}
+}
+
+// An open dispute that arrives before the invoice is released when the
+// invoice arrives, without counting the payment as lost, and the decision
+// lost later is recorded on the payment.
+func TestDBProcessPaymentWebhookReleasesAnOpenDisputeWhenItsSubscriptionPaymentArrives(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_open_dispute", Published: true})
+	subscription := stripetest.Subscription{
+		ID:               "sub_open_dispute",
+		CustomerID:       "cus_open_dispute",
+		PriceID:          "price_open_dispute",
+		Status:           "active",
+		CurrentPeriodEnd: time.Date(2026, time.April, 2, 0, 0, 0, 0, time.UTC).Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_open_dispute"),
+	}
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], subscription)
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	payment := paymentprovidertest.SubscriptionPayment{
+		InvoiceID:      "in_open_dispute",
+		SubscriptionID: subscription.ID,
+		PaymentID:      "pi_open_dispute",
+		TenantID:       f.tenant.ID,
+		ReaderID:       f.reader.ID,
+		PlanID:         plan.ID,
+		Amount:         980,
+		Currency:       "JPY",
+		PeriodStart:    start,
+		PeriodEnd:      start.AddDate(0, 1, 0),
+	}
+
+	payload, headers := f.stripe.Disputed(t, f.credentials, "pi_open_dispute")
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the early dispute: %v", err)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 1 {
+		t.Fatalf("held disputes = %d, want the early one", got)
+	}
+
+	payload, headers = f.stripe.SubscriptionPaid(t, f.credentials, payment)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the paid invoice: %v", err)
+	}
+	if at := f.subscriptionDisputeLostAt(t, "in_open_dispute"); at.Valid {
+		t.Fatalf("an open dispute was recorded lost at %v", at.Time)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM unapplied_disputes WHERE tenant_id = $1", f.tenant.ID); got != 0 {
+		t.Fatalf("held disputes = %d, want the applied one released", got)
+	}
+
+	payload, headers = f.stripe.DisputeClosed(t, f.credentials, "pi_open_dispute", stripego.DisputeStatusLost)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the lost dispute: %v", err)
+	}
+	if !f.subscriptionDisputeLostAt(t, "in_open_dispute").Valid {
+		t.Fatal("a lost dispute was not recorded")
 	}
 }

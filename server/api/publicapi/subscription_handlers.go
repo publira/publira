@@ -714,10 +714,10 @@ func recordIDStrings(ids []uuid.UUID) []string {
 // the subscription as the provider holds it now: the notification of the
 // payment can arrive before the one that starts the subscription, and a paid
 // renewal moves its period on. A redelivered notification records nothing
-// twice. A refund whose notification overtook the payment's is applied and
-// released in the same transaction, under the lock a refund takes to match or
-// hold itself, so a payment is never committed without the refund held for
-// it.
+// twice. A refund or a dispute whose notification overtook the payment's is
+// applied and released in the same transaction, under the lock a refund or a
+// dispute takes to match or hold itself, so a payment is never committed
+// without the one held for it.
 func (s *apiServer) recordSubscriptionPayment(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -769,6 +769,9 @@ func (s *apiServer) recordSubscriptionPayment(
 				if err := s.applyHeldRefundToSubscriptionPayment(ctx, queries, tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
 					return s.internalDBError(ctx, "failed to apply a held refund to a subscription payment", err, logAttrs...)
 				}
+				if _, err := s.applyHeldDisputeToSubscriptionPayment(ctx, queries, tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
+					return s.internalDBError(ctx, "failed to apply a held dispute to a subscription payment", err, logAttrs...)
+				}
 			}
 			s.logger.InfoContext(ctx, "recorded a subscription payment", append(logAttrs,
 				"subscription_payment_id", payment.ID,
@@ -800,4 +803,38 @@ func (s *apiServer) applyHeldRefundToSubscriptionPayment(ctx context.Context, qu
 		return fmt.Errorf("release held refund: %w", err)
 	}
 	return nil
+}
+
+// applyHeldDisputeToSubscriptionPayment writes the dispute held for paymentID
+// onto the subscription payment paid through it, and releases the hold. A
+// dispute held as lost sets dispute_lost_at; one held open changes the payment
+// not at all. It reports whether that left the payment lost.
+func (s *apiServer) applyHeldDisputeToSubscriptionPayment(ctx context.Context, queries Querier, tenantID uuid.UUID, providerID, paymentID string) (bool, error) {
+	payment, err := queries.ApplyUnappliedDisputeToSubscriptionPayment(ctx, dbmodels.ApplyUnappliedDisputeToSubscriptionPaymentParams{
+		TenantID:              tenantID,
+		Provider:              providerID,
+		StripePaymentIntentID: paymentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("apply held dispute: %w", err)
+	}
+	if err := queries.ReleaseUnappliedDispute(ctx, dbmodels.ReleaseUnappliedDisputeParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
+	}); err != nil {
+		return false, fmt.Errorf("release held dispute: %w", err)
+	}
+	if !payment.DisputeLostAt.Valid {
+		return false, nil
+	}
+	s.logger.InfoContext(ctx, "recorded a lost dispute that arrived before its subscription payment",
+		"tenant_id", tenantID,
+		"subscription_payment_id", payment.ID,
+		"payment_id", paymentID,
+	)
+	return true, nil
 }

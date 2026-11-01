@@ -13,6 +13,53 @@ import (
 	"github.com/google/uuid"
 )
 
+const ApplyUnappliedDisputeToSubscriptionPayment = `-- name: ApplyUnappliedDisputeToSubscriptionPayment :one
+UPDATE subscription_payments sp
+SET dispute_lost_at = COALESCE(sp.dispute_lost_at, d.lost_at)
+FROM unapplied_disputes d
+WHERE d.tenant_id = sp.tenant_id
+    AND d.provider = $1::text
+    AND d.provider_payment_id = sp.stripe_payment_intent_id
+    AND sp.tenant_id = $2
+    AND sp.stripe_payment_intent_id = $3::text
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
+`
+
+type ApplyUnappliedDisputeToSubscriptionPaymentParams struct {
+	Provider              string    `json:"provider"`
+	TenantID              uuid.UUID `json:"tenant_id"`
+	StripePaymentIntentID string    `json:"stripe_payment_intent_id"`
+}
+
+// Writes a dispute held because its notification overtook the payment's onto
+// the payment. Held as lost, it sets dispute_lost_at from that instant, by
+// the rule RecordLostDisputeOnSubscriptionPayment uses; held open, it changes
+// the payment not at all. Nothing matches when no dispute is held, which is
+// the ordinary case. The held row is deleted by the caller in the same
+// transaction.
+func (q *Queries) ApplyUnappliedDisputeToSubscriptionPayment(ctx context.Context, arg ApplyUnappliedDisputeToSubscriptionPaymentParams) (SubscriptionPayment, error) {
+	row := q.db.QueryRowContext(ctx, ApplyUnappliedDisputeToSubscriptionPayment, arg.Provider, arg.TenantID, arg.StripePaymentIntentID)
+	var i SubscriptionPayment
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SubscriptionID,
+		&i.PlanID,
+		&i.StripeInvoiceID,
+		&i.StripePaymentIntentID,
+		&i.Amount,
+		&i.Currency,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PaidAt,
+		&i.RefundedAmount,
+		&i.IsTest,
+		&i.CreatedAt,
+		&i.DisputeLostAt,
+	)
+	return i, err
+}
+
 const ApplyUnappliedRefundToSubscriptionPayment = `-- name: ApplyUnappliedRefundToSubscriptionPayment :one
 WITH held AS (
     SELECT r.refunded_amount,
@@ -38,7 +85,7 @@ SET refunded_amount = LEAST(
 FROM held
 WHERE sp.tenant_id = $1
     AND sp.stripe_payment_intent_id = $2::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
 `
 
 type ApplyUnappliedRefundToSubscriptionPaymentParams struct {
@@ -70,8 +117,31 @@ func (q *Queries) ApplyUnappliedRefundToSubscriptionPayment(ctx context.Context,
 		&i.RefundedAmount,
 		&i.IsTest,
 		&i.CreatedAt,
+		&i.DisputeLostAt,
 	)
 	return i, err
+}
+
+const GetSubscriptionPaymentIDByPaymentIntent = `-- name: GetSubscriptionPaymentIDByPaymentIntent :one
+SELECT id
+FROM subscription_payments
+WHERE tenant_id = $1
+    AND stripe_payment_intent_id = $2::text
+`
+
+type GetSubscriptionPaymentIDByPaymentIntentParams struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	StripePaymentIntentID string    `json:"stripe_payment_intent_id"`
+}
+
+// The subscription payment paid through a PaymentIntent. No row is a
+// PaymentIntent no payment here was paid through, which is an open dispute
+// the caller holds until the payment is recorded.
+func (q *Queries) GetSubscriptionPaymentIDByPaymentIntent(ctx context.Context, arg GetSubscriptionPaymentIDByPaymentIntentParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionPaymentIDByPaymentIntent, arg.TenantID, arg.StripePaymentIntentID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const LockProviderPayment = `-- name: LockProviderPayment :exec
@@ -88,10 +158,11 @@ type LockProviderPaymentParams struct {
 }
 
 // Serializes the writes about one payment of a provider for the rest of the
-// transaction: recording a subscription payment and applying the refund held
-// for it, against matching a refund to it or holding the refund. Without it,
-// a refund matched while the payment's insert is uncommitted finds nothing and
-// is held, and the insert finds nothing held, so the refund is never applied.
+// transaction: recording a subscription payment and applying the refund or the
+// dispute held for it, against matching a refund or a dispute to it or holding
+// one. Without it, one matched while the payment's insert is uncommitted finds
+// nothing and is held, and the insert finds nothing held, so it is never
+// applied.
 func (q *Queries) LockProviderPayment(ctx context.Context, arg LockProviderPaymentParams) error {
 	_, err := q.db.ExecContext(ctx, LockProviderPayment, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
 	return err
@@ -103,7 +174,7 @@ SET refunded_amount = LEAST(sp.amount, $1::integer)
 WHERE sp.tenant_id = $2
     AND sp.stripe_payment_intent_id = $3::text
     AND sp.currency = $4::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
 `
 
 type RecordFailedRefundOnSubscriptionPaymentParams struct {
@@ -141,6 +212,48 @@ func (q *Queries) RecordFailedRefundOnSubscriptionPayment(ctx context.Context, a
 		&i.RefundedAmount,
 		&i.IsTest,
 		&i.CreatedAt,
+		&i.DisputeLostAt,
+	)
+	return i, err
+}
+
+const RecordLostDisputeOnSubscriptionPayment = `-- name: RecordLostDisputeOnSubscriptionPayment :one
+UPDATE subscription_payments
+SET dispute_lost_at = COALESCE(dispute_lost_at, NOW())
+WHERE tenant_id = $1
+    AND stripe_payment_intent_id = $2::text
+RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at
+`
+
+type RecordLostDisputeOnSubscriptionPaymentParams struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	StripePaymentIntentID string    `json:"stripe_payment_intent_id"`
+}
+
+// Records that the dispute of the subscription payment was lost: the reader's
+// bank has returned the money, so the payment counts as refunded in full and
+// is no longer a sale on a royalty statement. A repeated delivery leaves the
+// instant already stored. Nothing matches a PaymentIntent no payment here was
+// paid through. The subscription itself is left as Stripe holds it.
+func (q *Queries) RecordLostDisputeOnSubscriptionPayment(ctx context.Context, arg RecordLostDisputeOnSubscriptionPaymentParams) (SubscriptionPayment, error) {
+	row := q.db.QueryRowContext(ctx, RecordLostDisputeOnSubscriptionPayment, arg.TenantID, arg.StripePaymentIntentID)
+	var i SubscriptionPayment
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SubscriptionID,
+		&i.PlanID,
+		&i.StripeInvoiceID,
+		&i.StripePaymentIntentID,
+		&i.Amount,
+		&i.Currency,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PaidAt,
+		&i.RefundedAmount,
+		&i.IsTest,
+		&i.CreatedAt,
+		&i.DisputeLostAt,
 	)
 	return i, err
 }
@@ -161,7 +274,7 @@ SET refunded_amount = LEAST(
     )
 WHERE sp.tenant_id = $3
     AND sp.stripe_payment_intent_id = $4::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
 `
 
 type RecordRefundOnSubscriptionPaymentParams struct {
@@ -200,6 +313,7 @@ func (q *Queries) RecordRefundOnSubscriptionPayment(ctx context.Context, arg Rec
 		&i.RefundedAmount,
 		&i.IsTest,
 		&i.CreatedAt,
+		&i.DisputeLostAt,
 	)
 	return i, err
 }
@@ -233,7 +347,7 @@ INSERT INTO subscription_payments (
     $12
 )
 ON CONFLICT (tenant_id, stripe_invoice_id) DO NOTHING
-RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at
+RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at
 `
 
 type RecordSubscriptionPaymentParams struct {
@@ -286,6 +400,7 @@ func (q *Queries) RecordSubscriptionPayment(ctx context.Context, arg RecordSubsc
 		&i.RefundedAmount,
 		&i.IsTest,
 		&i.CreatedAt,
+		&i.DisputeLostAt,
 	)
 	return i, err
 }
