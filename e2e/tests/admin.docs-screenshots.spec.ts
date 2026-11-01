@@ -169,6 +169,7 @@ for (const locale of DOCS_LOCALES) {
         ["time-zone", "admin.settings.timezone.title"],
         ["languages", "admin.settings.locales.title"],
         ["reader-comments", "admin.settings.comments.title"],
+        ["author-pages", "admin.settings.creator_pages.title"],
         ["age-verification", "admin.settings.age_verification.title"],
         ["terms-and-privacy-policy", "admin.settings.legal_pages.title"],
         ["reader-sign-up", "admin.settings.sign_up.title"],

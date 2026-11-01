@@ -5,6 +5,7 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantCrawlerSettings,
+  mockUpdateTenantCreatorPageSettings,
   mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantLocales,
@@ -17,6 +18,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantCrawlerSettings: vi.fn(),
+  mockUpdateTenantCreatorPageSettings: vi.fn(),
   mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantLocales: vi.fn(),
@@ -89,6 +91,12 @@ vi.mock("#lib/tenant-crawler-settings", () => ({
   tenantCrawlerSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:crawler-settings`,
   updateTenantCrawlerSettings: mockUpdateTenantCrawlerSettings,
+}));
+
+vi.mock("#lib/tenant-creator-page-settings", () => ({
+  tenantCreatorPageSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:creator-page-settings`,
+  updateTenantCreatorPageSettings: mockUpdateTenantCreatorPageSettings,
 }));
 
 vi.mock("#lib/tenant-email-rejection-settings", () => ({
@@ -1302,4 +1310,89 @@ describe("updateTenantSiteVerificationAction", () => {
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+});
+
+const CREATOR_PAGE_TENANT_ID = "018f1080-0001-7000-8000-000000000001";
+
+const creatorPageFormData = (
+  switches: { pages?: string; sales?: string },
+  tenantId: string | File = CREATOR_PAGE_TENANT_ID
+): FormData => {
+  const formData = new FormData();
+
+  formData.set("tenant_id", tenantId);
+
+  if (switches.pages !== undefined) {
+    formData.set("creator_pages_enabled", switches.pages);
+  }
+
+  if (switches.sales !== undefined) {
+    formData.set("creator_pages_show_sales", switches.sales);
+  }
+
+  return formData;
+};
+
+describe("updateTenantCreatorPageSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("saves sales while the pages stay off, then revalidates the tag", async () => {
+    mockUpdateTenantCreatorPageSettings.mockResolvedValueOnce({
+      creatorPagesEnabled: false,
+      creatorPagesShowSales: true,
+      ok: true,
+    });
+
+    const { updateTenantCreatorPageSettingsAction } = await import("./actions");
+
+    const result = await updateTenantCreatorPageSettingsAction(
+      null,
+      creatorPageFormData({ sales: "on" })
+    );
+
+    expect(result).toEqual({
+      message: "The author page settings were saved.",
+      ok: true,
+    });
+    expect(mockUpdateTenantCreatorPageSettings).toHaveBeenCalledWith(
+      {
+        creatorPagesEnabled: false,
+        creatorPagesShowSales: true,
+        tenantId: CREATOR_PAGE_TENANT_ID,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${CREATOR_PAGE_TENANT_ID}:creator-page-settings`
+    );
+  });
+
+  it.each([
+    ["missing", ""],
+    ["not a tenant id", "TENANT001"],
+    ["a file", new File(["id"], "tenant.txt", { type: "text/plain" })],
+  ])(
+    "refuses a tenant id that is %s without calling the API",
+    async (_, tenantId) => {
+      const { updateTenantCreatorPageSettingsAction } =
+        await import("./actions");
+
+      const result = await updateTenantCreatorPageSettingsAction(
+        null,
+        creatorPageFormData({ sales: "on" }, tenantId)
+      );
+
+      expect(result).toEqual({
+        message:
+          "The tenant ID could not be found. Check the URL and try again.",
+        ok: false,
+      });
+      expect(mockUpdateTenantCreatorPageSettings).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-28
+updated: 2026-11-01
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -71,6 +71,16 @@ The default language is always offered: its box stays ticked and cannot be clear
 A series can set its own **Comments** choice on its form, which then applies to that series instead of this one. A series left on **Follow the tenant setting** follows any later change here. Choose **Save the comment settings** to save.
 
 ![The Reader comments card: How comments are published, Reports that remove a comment set to 3, and Save the comment settings.](./settings-reader-comments.png)
+
+### Author pages
+
+Two boxes, both off on a new tenant. **Show Authors their own pages** lets a reader linked to an Author open that Author's pages, as [Linking an Author to a reader account](../1-catalog/4-authors.md#linking-an-author-to-a-reader-account) describes. While it is off, those pages stay hidden, even when the second box is on.
+
+**Show statements and sales figures** adds each episode's sales and the Author's part of every closed royalty statement to those pages. It can be saved while the pages are off, and it takes effect when the pages are turned on. With the pages on and this box off, the reader still sees the follower count and each episode's views and completions, and not the sales or the statements.
+
+Choose **Save the author page settings** to save.
+
+![The Author pages card: Show Authors their own pages, Show statements and sales figures, and Save the author page settings.](./settings-author-pages.png)
 
 ### Age verification
 

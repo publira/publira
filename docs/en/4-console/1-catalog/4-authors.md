@@ -45,11 +45,11 @@ Once linked, the reader:
 - Is not offered a purchase of those episodes, and cannot rate them.
 - Is shown with an **Author** badge on their comments on those episodes, with their name linked to the Author's page.
 
-A linked reader sees nothing more of the Author until the tenant turns on its Author pages. With them on, the reader can read, for each Author they are linked to:
+A linked reader sees nothing more of the Author until a Tenant admin turns on **Show Authors their own pages** under **Author pages** on [Settings](../3-setup/1-settings.md#author-pages). With it on, the reader can read, for each Author they are linked to:
 
 - How many readers follow the Author now.
 - Each episode credited to the Author that is published on the site, with its member views and completions over the last 28 days, counted as **Episodes** under **Analytics** counts them. The rate is worked out from the two, as there.
-- When the tenant also shows its Authors their sales, each of those episodes' sales over the same 28 days and what they made after refunds, and the Author's part of every closed royalty statement, as [Reports and royalties](../6-reports-and-royalties.md#what-a-linked-author-reads-of-a-statement) describes.
+- When **Show statements and sales figures** is on as well, each of those episodes' sales over the same 28 days and what they made after refunds, and the Author's part of every closed royalty statement, as [Reports and royalties](../6-reports-and-royalties.md#what-a-linked-author-reads-of-a-statement) describes.
 
 The reader sees only the Authors they are linked to, and never another Author's figures or lines, even an Author credited beside theirs. A staff account sees none, even one linked before it became staff.
 
