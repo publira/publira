@@ -12,6 +12,7 @@ import { getMessages } from "#lib/get-messages";
 import {
   SUBSCRIPTION_PLAN_DESCRIPTION_MAX_LENGTH,
   SUBSCRIPTION_PLAN_NAME_MAX_LENGTH,
+  SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH,
 } from "#lib/subscription-plan-shared";
 import type {
   SubscriptionPlanItem,
@@ -37,8 +38,8 @@ interface SubscriptionPlanFormProps {
 }
 
 /**
- * The name, the description, the Stripe Price, what the plan opens, and
- * whether the site lists it. Every field is saved together, since
+ * The name, the description, the Stripe Price, the products the app sells the
+ * plan as, what the plan opens, and whether the site lists it. Every field is saved together, since
  * `UpdateSubscriptionPlan` replaces the whole plan.
  *
  * Awaits the catalog for the placeholders, which are attributes rather than
@@ -130,6 +131,54 @@ export const SubscriptionPlanForm = async ({
             <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.subscription_plans.form.price_description" />
+              </Suspense>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+
+        <Field.Root>
+          <Field.Label>
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="admin.subscription_plans.form.app_store_product_id" />
+            </Suspense>
+          </Field.Label>
+          <Field.Content>
+            <Input
+              autoComplete="off"
+              defaultValue={initialPlan?.appStoreProductId}
+              maxLength={SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH}
+              name="app_store_product_id"
+              spellCheck={false}
+              type="text"
+            />
+            <ActionForm.FieldError name="appStoreProductId" />
+            <Field.Description>
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.subscription_plans.form.app_store_product_id_description" />
+              </Suspense>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+
+        <Field.Root>
+          <Field.Label>
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="admin.subscription_plans.form.google_play_product_id" />
+            </Suspense>
+          </Field.Label>
+          <Field.Content>
+            <Input
+              autoComplete="off"
+              defaultValue={initialPlan?.googlePlayProductId}
+              maxLength={SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH}
+              name="google_play_product_id"
+              spellCheck={false}
+              type="text"
+            />
+            <ActionForm.FieldError name="googlePlayProductId" />
+            <Field.Description>
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.subscription_plans.form.google_play_product_id_description" />
               </Suspense>
             </Field.Description>
           </Field.Content>

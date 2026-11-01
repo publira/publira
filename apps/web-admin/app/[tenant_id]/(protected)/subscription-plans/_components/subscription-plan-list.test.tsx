@@ -30,8 +30,10 @@ vi.mock("../_lib/actions", () => ({
 const plan = (
   overrides: Partial<SubscriptionPlanItem> = {}
 ): SubscriptionPlanItem => ({
+  appStoreProductId: "",
   currency: "JPY",
   description: "",
+  googlePlayProductId: "",
   id: "018f0e6a-7000-7000-8000-000000000001",
   interval: "month",
   intervalCount: 1,
@@ -113,6 +115,42 @@ describe("SubscriptionPlanList", () => {
     const yearly = rowOf("One series a year");
     expect(yearly.getByText("¥980 a year")).toBeTruthy();
     expect(yearly.getByText("1 series")).toBeTruthy();
+  });
+
+  it("names the stores whose app sells each plan", () => {
+    render(
+      <SubscriptionPlanList
+        locale="en"
+        plans={[
+          plan({
+            appStoreProductId: "monthly_pass",
+            googlePlayProductId: "monthly_pass",
+          }),
+          plan({
+            googlePlayProductId: "yearly_pass",
+            id: "018f0e6a-7000-7000-8000-000000000002",
+            name: "Yearly pass",
+            publicId: "PLAN0002",
+          }),
+          plan({
+            id: "018f0e6a-7000-7000-8000-000000000003",
+            name: "Web pass",
+            publicId: "PLAN0003",
+          }),
+        ]}
+        tenantId="TENANT001"
+      />
+    );
+
+    const monthly = rowOf("Monthly pass");
+    expect(monthly.getByText("App Store")).toBeTruthy();
+    expect(monthly.getByText("Google Play")).toBeTruthy();
+
+    const yearly = rowOf("Yearly pass");
+    expect(yearly.queryByText("App Store")).toBeNull();
+    expect(yearly.getByText("Google Play")).toBeTruthy();
+
+    expect(rowOf("Web pass").getByText("None")).toBeTruthy();
   });
 
   it("says the tenant has no plans yet", () => {

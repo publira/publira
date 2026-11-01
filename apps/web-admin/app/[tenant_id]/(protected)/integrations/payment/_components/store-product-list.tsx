@@ -9,13 +9,17 @@ import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { SubscriptionPlanBilling } from "#components/subscription-plan-billing";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantStoreProduct } from "#lib/store-payment-settings";
+import type { SubscriptionPlanItem } from "#lib/subscription-plan-shared";
 
 interface StoreProductListProps {
   listErrorMessage?: string;
   locale: Locale;
   products: TenantStoreProduct[];
+  /** The plans that name a product in at least one store. */
+  subscriptionPlans: SubscriptionPlanItem[];
 }
 
 /**
@@ -24,11 +28,17 @@ interface StoreProductListProps {
  * stores show a product under the name the tenant gives it there, so a list
  * with a pack says the pack's product is to carry the tenant's word for its
  * coins.
+ *
+ * Below them, each subscription plan that names a store product, with the
+ * auto-renewable subscription it is sold as in each store. Such a product is
+ * created at the plan's price and period, so the plan's billing stands beside
+ * it.
  */
 export const StoreProductList = async ({
   listErrorMessage,
   locale,
   products,
+  subscriptionPlans,
 }: StoreProductListProps) => {
   if (listErrorMessage) {
     return (
@@ -65,7 +75,7 @@ export const StoreProductList = async ({
           </ConsoleSection.Description>
         </ConsoleSection.Heading>
       </ConsoleSection.Header>
-      {products.length === 0 ? (
+      {products.length === 0 && subscriptionPlans.length === 0 ? (
         <EmptyState.Root>
           <EmptyState.Heading>
             <EmptyState.Title>
@@ -80,7 +90,8 @@ export const StoreProductList = async ({
             </EmptyState.Description>
           </EmptyState.Heading>
         </EmptyState.Root>
-      ) : (
+      ) : null}
+      {products.length > 0 ? (
         <Table.Root>
           <Table.Header>
             <Table.Row>
@@ -137,11 +148,98 @@ export const StoreProductList = async ({
             ))}
           </Table.Body>
         </Table.Root>
-      )}
+      ) : null}
       {products.some((product) => product.coinPack) ? (
         <p className="text-sm text-muted-foreground">
           {t("admin.settings.store_products.coin_pack_names")}
         </p>
+      ) : null}
+      {subscriptionPlans.length > 0 ? (
+        <div className="grid gap-3">
+          <div className="grid gap-1">
+            <h3 className="text-sm font-medium text-foreground">
+              <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+                <Message message="admin.settings.store_products.subscriptions_title" />
+              </Suspense>
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.settings.store_products.subscriptions_description" />
+              </Suspense>
+            </p>
+          </div>
+          <Table.Root>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.settings.store_products.plan" />
+                  </Suspense>
+                </Table.Head>
+                <Table.Head>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="admin.settings.store_products.app_store" />
+                  </Suspense>
+                </Table.Head>
+                <Table.Head>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="admin.settings.store_products.google_play" />
+                  </Suspense>
+                </Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {subscriptionPlans.map((plan) => (
+                <Table.Row key={plan.id}>
+                  <Table.Cell>
+                    <p className="font-medium">{plan.name}</p>
+                    <p className="text-sm text-muted-foreground tabular-nums">
+                      <SubscriptionPlanBilling locale={locale} plan={plan} />
+                    </p>
+                  </Table.Cell>
+                  <Table.Cell>
+                    {plan.appStoreProductId ? (
+                      <Identifier.Root>
+                        <Identifier.Value>
+                          {plan.appStoreProductId}
+                        </Identifier.Value>
+                        <Identifier.Copy
+                          aria-label={t(
+                            "admin.settings.store_products.copy_product_id"
+                          )}
+                          value={plan.appStoreProductId}
+                        />
+                      </Identifier.Root>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        {t("admin.settings.store_products.not_sold")}
+                      </span>
+                    )}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {plan.googlePlayProductId ? (
+                      <Identifier.Root>
+                        <Identifier.Value>
+                          {plan.googlePlayProductId}
+                        </Identifier.Value>
+                        <Identifier.Copy
+                          aria-label={t(
+                            "admin.settings.store_products.copy_product_id"
+                          )}
+                          value={plan.googlePlayProductId}
+                        />
+                      </Identifier.Root>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        {t("admin.settings.store_products.not_sold")}
+                      </span>
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </div>
       ) : null}
     </ConsoleSection.Root>
   );

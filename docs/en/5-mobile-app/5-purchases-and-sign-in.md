@@ -42,10 +42,13 @@ The app sells each episode as a store product named after its price, which durin
 
 Each pack of the tenant's coins on sale is listed there too, as `coins_` followed by the pack's ID, and is created the same way, as a consumable at the pack's price. The app offers a pack only once the store on the reader's phone has its product. The name a store shows for a product on its payment sheet and its receipts is the one you give it in App Store Connect and Play Console, not one Publira sends, so give each pack's product the tenant's word for its coins, in every language the app is listed in.
 
+Each [subscription plan](../4-console/5-subscription-plans.md#creating-a-plan) that names a store product is listed there too, under **Subscription plans**, with the **App Store product ID** and the **Google Play product ID** entered on the plan. Create each as a subscription in its store, not as a consumable, billed at the plan's price and billing period.
+
 In **App Store Connect**:
 
 - Accept the Paid Apps agreement, and complete the banking and tax details it asks for. No product can be sold until it is in effect.
 - Create the listed products under the app's **In-App Purchases**, as consumables.
+- Create each plan's product under the app's **Subscriptions**, as an auto-renewable subscription in a subscription group, with the plan's billing period and price. A reader holds one subscription at a time, so put every plan in the same group.
 - Create the key the install verifies purchases with, and enter its **Issuer ID**, **Key ID**, and **Private key (.p8)** under the **App Store** section of **In-app purchase**.
 - Enter the **App Store Server Notifications URL** the console shows as both the Production and the Sandbox Server URL, under the app's **App Information**. A refund Apple reports there takes the episode back from the reader.
 
@@ -54,6 +57,7 @@ In **Play Console**:
 - Set up a payments profile, so the account can sell.
 - Upload an App Bundle to a testing track before creating products. Play Console can refuse products for an app that has not yet uploaded a build that uses Google Play's billing, which every Publira build does.
 - Create the listed products as one-time products.
+- Create each plan's product as a subscription, and give it an auto-renewing base plan with the plan's billing period and price. Activate the base plan, or the product cannot be bought.
 - Create a service account in Google Cloud with the Google Play Android Developer API enabled, and enter its **Service account key (JSON)** under the **Google Play** section of **In-app purchase**. Then invite the **Service account** the console shows under **Users and permissions** in Play Console, with two of the app's permissions: **View financial data, orders, and cancellation survey responses**, which the install verifies each purchase and reads refunds with, and **Manage orders and subscriptions**, which it consumes each purchase with. A purchase the install cannot verify does not open the episode the reader paid for, and one it cannot consume is refunded by Google after three days.
 - Have Google Play send its real-time developer notifications to the install, so a refund takes the episode back as soon as Google reports it rather than within the hour. In Google Cloud, create a Pub/Sub topic and give `google-play-developer-notifications@system.gserviceaccount.com` the **Pub/Sub Publisher** role on it. Add a push subscription to the topic whose endpoint is the **Google Play real-time developer notifications URL** the console shows, with authentication turned on and the **Service account** the console shows as the account it pushes as; creating it takes the **Service Account User** role on that account. Then name the topic under **Monetization setup** in Play Console, and send a test notification from there. The install refuses a push authenticated as another account or to another URL.
 

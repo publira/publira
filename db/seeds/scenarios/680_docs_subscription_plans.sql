@@ -6,8 +6,11 @@
 -- published plan nobody pays for. This file adds two plans beside it: one of
 -- the whole catalog, which the tenant's reader holds an active subscription
 -- to, and an unpublished yearly plan of the same label, so the list shows
--- every scope, both states, and a subscriber. Their Prices are placeholders:
--- neither screen asks Stripe for anything.
+-- every scope, both states, and a subscriber. Both are sold in the tenant's
+-- app as a product of each store, beside the first plan, which is not, so the
+-- list shows a plan the app sells and one it does not. Their Prices and
+-- products are placeholders: neither screen asks Stripe or a store for
+-- anything.
 --
 -- The subscription runs out years ahead, so the plan counts its subscriber on
 -- every run.
@@ -44,7 +47,9 @@ INSERT INTO subscription_plans (
     recurring_interval,
     recurring_interval_count,
     scope,
-    is_published
+    is_published,
+    app_store_product_id,
+    google_play_product_id
 )
 SELECT
     p.id,
@@ -58,7 +63,9 @@ SELECT
     p.recurring_interval,
     1,
     p.scope,
-    p.is_published
+    p.is_published,
+    p.store_product_id,
+    p.store_product_id
 FROM tenants t
 CROSS JOIN (
     VALUES
@@ -71,7 +78,8 @@ CROSS JOIN (
             1500,
             'month',
             'all',
-            true
+            true,
+            'all_access_monthly'
         ),
         (
             '018f11b0-0001-7000-8000-000000000002'::uuid,
@@ -82,7 +90,8 @@ CROSS JOIN (
             9800,
             'year',
             'label',
-            false
+            false,
+            'night_pass_yearly'
         )
 ) AS p(
     id,
@@ -93,7 +102,8 @@ CROSS JOIN (
     price_amount,
     recurring_interval,
     scope,
-    is_published
+    is_published,
+    store_product_id
 )
 WHERE t.public_id = 'SbsfTNNTAAA1';
 

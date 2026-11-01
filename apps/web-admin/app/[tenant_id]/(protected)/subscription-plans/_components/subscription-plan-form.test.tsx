@@ -49,8 +49,10 @@ const SERIES = {
 };
 
 const plan: SubscriptionPlanItem = {
+  appStoreProductId: "monthly_pass",
   currency: "JPY",
   description: "Every episode of the label, every month.",
+  googlePlayProductId: "",
   id: "018f0e6a-7000-7000-8000-000000000001",
   interval: "month",
   intervalCount: 1,
@@ -102,6 +104,14 @@ describe("SubscriptionPlanForm", () => {
     expect(
       screen.getByLabelText<HTMLTextAreaElement>("Description").required
     ).toBe(false);
+
+    // The app sells a plan in a store only once it names a product there.
+    for (const label of ["App Store product ID", "Google Play product ID"]) {
+      const input = screen.getByLabelText<HTMLInputElement>(label);
+      expect(input.required).toBe(false);
+      expect(input.value).toBe("");
+    }
+
     expect(
       screen.getByRole("radio", { name: "Whole catalog" }).ariaChecked
     ).toBe("true");
@@ -124,6 +134,12 @@ describe("SubscriptionPlanForm", () => {
     expect(
       screen.getByLabelText<HTMLInputElement>(/Stripe Price ID/u).value
     ).toBe("price_monthly");
+    expect(
+      screen.getByLabelText<HTMLInputElement>("App Store product ID").value
+    ).toBe("monthly_pass");
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Google Play product ID").value
+    ).toBe("");
     expect(screen.getByRole("radio", { name: "Labels" }).ariaChecked).toBe(
       "true"
     );
@@ -152,6 +168,39 @@ describe("SubscriptionPlanForm", () => {
 
     expect(postedValues("scope")).toEqual(["label"]);
     expect(screen.getByText("Night Owl")).toBeTruthy();
+  });
+
+  it("marks the store product ID the save refused on its own field", async () => {
+    await renderForm({
+      action: () =>
+        Promise.resolve({
+          fieldErrors: {
+            appStoreProductId:
+              "Another plan is already sold as this App Store product.",
+          },
+          message: "Please check the information you entered.",
+          ok: false,
+        }),
+      initialPlan: plan,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    const error = await screen.findByText(
+      "Another plan is already sold as this App Store product."
+    );
+
+    // Beside the App Store field, and not beside Google Play's.
+    expect(
+      screen
+        .getByLabelText("App Store product ID")
+        .parentElement?.contains(error)
+    ).toBe(true);
+    expect(
+      screen
+        .getByLabelText("Google Play product ID")
+        .parentElement?.contains(error)
+    ).toBe(false);
   });
 
   it("says why a list of choices is missing beside its picker", async () => {

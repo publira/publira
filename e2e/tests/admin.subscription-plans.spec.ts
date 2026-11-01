@@ -18,7 +18,9 @@ import { WEB_ADMIN_SUBSCRIPTION_PLANS_BASE_URL } from "../src/urls";
  * A tenant administrator creating a subscription plan at
  * `/subscription-plans` against a Price on the tenant's Stripe account, here
  * the stack's stand-in for Stripe, editing and unpublishing it, and deleting
- * it, while the plan a reader already pays for is kept.
+ * it, while the plan a reader already pays for is kept. The plan names the
+ * product each store sells it as, which Store products then lists for the
+ * tenant to create.
  */
 
 const PLANS_PATH = "/subscription-plans";
@@ -67,13 +69,24 @@ const takePaymentsThroughStripe = async (page: Page): Promise<string> => {
 /** Fills the plan form for a plan of the scenario's label. */
 const fillLabelPlan = async (
   page: Page,
-  plan: { name: string; priceId: string }
+  plan: {
+    appStoreProductId?: string;
+    googlePlayProductId?: string;
+    name: string;
+    priceId: string;
+  }
 ) => {
   await page.getByLabel(/^Name/u).fill(plan.name);
   await page
     .getByLabel("Description")
     .fill("Every episode of the label, every month.");
   await page.getByLabel(/^Stripe Price ID/u).fill(plan.priceId);
+  await page
+    .getByLabel("App Store product ID")
+    .fill(plan.appStoreProductId ?? "");
+  await page
+    .getByLabel("Google Play product ID")
+    .fill(plan.googlePlayProductId ?? "");
   await page.getByRole("radio", { name: "Labels" }).click();
   const labels = page.getByPlaceholder("Search labels");
   await labels.click();
@@ -107,6 +120,8 @@ test.describe("Subscription plans", () => {
     await expect(seeded).toContainText("¥980 a month");
     await expect(seeded).toContainText("Whole catalog");
     await expect(seeded).toContainText("Published");
+    // The app sells it in no store.
+    await expect(seeded).toContainText("None");
     await expect(
       seeded.getByRole("cell", { exact: true, name: "1" })
     ).toBeVisible();
@@ -127,7 +142,7 @@ test.describe("Subscription plans", () => {
     ).toBeVisible();
   });
 
-  test("creates a plan of a label against a Stripe Price, then unpublishes and deletes it", async ({
+  test("creates a plan of a label against a Stripe Price and two store products, then unpublishes and deletes it", async ({
     page,
   }) => {
     const name = "Label pass";
@@ -166,7 +181,12 @@ test.describe("Subscription plans", () => {
     ).toBeVisible();
 
     await page.goto(adminUrl(`${PLANS_PATH}/new`));
-    await fillLabelPlan(page, { name, priceId });
+    await fillLabelPlan(page, {
+      appStoreProductId: "label_pass",
+      googlePlayProductId: "label.pass",
+      name,
+      priceId,
+    });
     await page
       .getByRole("button", { exact: true, name: "Create plan" })
       .click();
@@ -180,6 +200,12 @@ test.describe("Subscription plans", () => {
     await expect(page.getByRole("textbox", { name: /^Name/u })).toHaveValue(
       name
     );
+    await expect(
+      page.getByRole("textbox", { name: "App Store product ID" })
+    ).toHaveValue("label_pass");
+    await expect(
+      page.getByRole("textbox", { name: "Google Play product ID" })
+    ).toHaveValue("label.pass");
     await expect(page.getByRole("radio", { name: "Labels" })).toBeChecked();
     await expect(
       page.getByText(SUBSCRIPTION_PLANS_LABEL.name).filter({ visible: true })
@@ -199,9 +225,52 @@ test.describe("Subscription plans", () => {
     await expect(
       created.getByRole("cell", { exact: true, name: "0" })
     ).toBeVisible();
+    await expect(created).toContainText("App Store");
+    await expect(created).toContainText("Google Play");
+
+    // Store products names the subscription to create in each store.
+    await page.goto(adminUrl("/integrations/payment"));
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Subscription plans" })
+    ).toBeVisible();
+    const product = page.getByRole("row").filter({ hasText: name });
+    await expect(product).toContainText("¥1,200 a month");
+    await expect(product).toContainText("label_pass");
+    await expect(product).toContainText("label.pass");
+
+    // A second plan cannot be sold as the same App Store product, and the
+    // field that says so is that one.
+    const secondPriceId = await createStripePrice(secretKey, {
+      amount: 2400,
+      currency: "jpy",
+      interval: "month",
+    });
+
+    await page.goto(adminUrl(`${PLANS_PATH}/new`));
+    await fillLabelPlan(page, {
+      appStoreProductId: "label_pass",
+      name: "Second label pass",
+      priceId: secondPriceId,
+    });
+    await page
+      .getByRole("button", { exact: true, name: "Create plan" })
+      .click();
+    await expect(
+      page.getByText(
+        "Another plan is already sold as this App Store product. Create a subscription of its own for this plan in App Store Connect."
+      )
+    ).toBeVisible();
+    await expect(
+      page.getByText("Please check the information you entered.")
+    ).toBeVisible();
+
+    await page.goto(adminUrl(PLANS_PATH));
+    await expect(planRow(page, "Second label pass")).toHaveCount(0);
 
     // Nobody has subscribed to it, so it can go.
-    await created.getByRole("button", { exact: true, name: "Delete" }).click();
+    await planRow(page, name)
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
     await page
       .getByRole("alertdialog")
       .getByRole("button", { exact: true, name: "Delete" })

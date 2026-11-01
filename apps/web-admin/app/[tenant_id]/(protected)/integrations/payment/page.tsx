@@ -241,6 +241,7 @@ const StoreProducts = async () => {
       listErrorMessage={result.ok ? undefined : result.message}
       locale={locale}
       products={result.ok ? result.products : []}
+      subscriptionPlans={result.ok ? result.subscriptionPlans : []}
     />
   );
 };

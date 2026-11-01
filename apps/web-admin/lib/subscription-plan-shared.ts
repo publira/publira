@@ -24,6 +24,7 @@ export type SubscriptionIntervalValue = "day" | "month" | "week" | "year";
 export const SUBSCRIPTION_PLAN_NAME_MAX_LENGTH = 100;
 export const SUBSCRIPTION_PLAN_DESCRIPTION_MAX_LENGTH = 2000;
 export const SUBSCRIPTION_PLAN_MAX_TARGETS = 100;
+export const SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH = 100;
 
 /** A plan as the console shows and edits it. */
 export interface SubscriptionPlanItem {
@@ -48,6 +49,13 @@ export interface SubscriptionPlanItem {
   published: boolean;
   /** Readers whose subscription is trialing, active, or past due. */
   subscriberCount: number;
+  /**
+   * The auto-renewable subscription the plan is sold as in the tenant's iOS
+   * app; empty when the app does not sell it there.
+   */
+  appStoreProductId: string;
+  /** The same in the Android app, as the Play Console names it. */
+  googlePlayProductId: string;
 }
 
 /** A label or a series a plan can name, as the scope picker offers it. */
