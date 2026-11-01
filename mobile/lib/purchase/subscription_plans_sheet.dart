@@ -46,7 +46,7 @@ Future<Object?> showSubscriptionPlansSheet(
 /// Under the plans it says the subscription renews until the reader cancels
 /// it in the store, and links to the tenant's terms of use and privacy
 /// policy where the tenant has set them. Each link opens that page in the
-/// app.
+/// app, and does nothing while a subscription is in flight.
 ///
 /// A subscription the store took, settled or not, closes the sheet with its
 /// outcome, and so does a failure, which the screen behind reports. A payment
@@ -239,6 +239,9 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
     );
   }
 
+  /// Opens [slug] in the app. Does nothing while a subscription is in
+  /// flight: the page would cover this sheet, and the pop that closes the
+  /// sheet with the outcome would close the page instead.
   Widget _legalLink({
     required Key key,
     required String label,
@@ -246,8 +249,11 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
   }) {
     return TextButton(
       key: key,
-      onPressed: () =>
-          unawaited(context.pushInTab<void>(AppRoutes.publishedPagePath(slug))),
+      onPressed: _subscribing == null
+          ? () => unawaited(
+              context.pushInTab<void>(AppRoutes.publishedPagePath(slug)),
+            )
+          : null,
       child: AutospacedText(label),
     );
   }

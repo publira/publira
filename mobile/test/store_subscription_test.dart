@@ -581,6 +581,35 @@ void main() {
       );
     });
 
+    testWidgets('leaves the legal pages closed while a subscription is in '
+        'flight', (tester) async {
+      final gate = purchases.subscriptionStartGate = Completer<void>();
+      final auth = FakeAuthRepository()
+        ..termsPage = terms
+        ..privacyPage = privacy;
+      await pumpLocked(tester, authRepository: auth, pages: legalPages());
+
+      await openPlans(tester);
+      await pumpUntilFound(tester, legal);
+      await tester.tap(subscribe);
+      await pumpUntilTrue(
+        tester,
+        () => purchases.subscriptionIntents.isNotEmpty,
+      );
+
+      expect(tester.widget<ButtonStyleButton>(termsLink).onPressed, isNull);
+      expect(tester.widget<ButtonStyleButton>(privacyLink).onPressed, isNull);
+      await tester.ensureVisible(termsLink);
+      await tester.tap(termsLink);
+      await tester.pump();
+      expect(find.text('The terms you agree to.'), findsNothing);
+      expect(sheet, findsOneWidget);
+
+      gate.complete();
+      await pumpUntilFound(tester, pages);
+      expect(sheet, findsNothing);
+    });
+
     testWidgets('leaves out a page the tenant has not set', (tester) async {
       final auth = FakeAuthRepository()..termsPage = terms;
       await pumpLocked(tester, authRepository: auth, pages: legalPages());
