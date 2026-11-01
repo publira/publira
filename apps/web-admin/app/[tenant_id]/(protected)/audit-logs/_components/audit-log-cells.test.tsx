@@ -277,19 +277,23 @@ describe("AuditLogActionCell", () => {
 
   it.each(
     getLocales().flatMap((locale) =>
-      (["preferred", "everyone"] as const).map(
-        (delivery) => [locale, delivery] as const
-      )
+      (
+        [
+          ["preferred", "delivery=preferred"],
+          ["everyone", "delivery=everyone"],
+          ["targeted", "delivery=preferred;audience=targeted"],
+        ] as const
+      ).map(([delivery, reason]) => [locale, delivery, reason] as const)
     )
   )(
     "names who a posted announcement's notification was for in %s: %s",
-    async (locale, delivery) => {
+    async (locale, delivery, reason) => {
       const cell = await renderActionCell(
         locale,
         "announcement_created",
         "announcement",
         "ANNOUNCEMENT001",
-        `delivery=${delivery}`
+        reason
       );
 
       const label = sharedMessage(

@@ -690,11 +690,14 @@ type Querier interface {
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	// Worker fan-out: whether the announcement answers to its readers'
-	// announcements cell ('preferred') or reaches every one of them ('everyone').
-	GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (string, error)
+	// announcements cell ('preferred') or reaches every one of them ('everyone'),
+	// and the audience it is addressed to, which the worker validates before it
+	// writes a row for anyone.
+	GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (GetAnnouncementDeliveryRow, error)
 	// Returns the announcement with the caller's read state, in its translation
-	// for the locale asked for. A row owned by another tenant comes back as no
-	// rows, so its existence is not disclosed.
+	// for the locale asked for. A row owned by another tenant, and a targeted one
+	// the caller was not sent, come back as no rows, so its existence is not
+	// disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	// The console's audience statistics: how a tenant's series were followed,
 	// read, and reacted to over a period of its own days.
@@ -1722,12 +1725,20 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]ListActiveSeriesIDsByPublishedAtDescRow, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]ListActiveSeriesIDsByTitleAscRow, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]ListActiveSeriesIDsByTitleDescRow, error)
-	// Worker fan-out: everyone an announcement addressed to the whole tenant
-	// reaches, each with the title of the translation they are told about. It is
-	// the audience `ListAnnouncementsForUser*` already serves such a row to —
-	// every user the tenant owns — so the bell counts what the announcements inbox
-	// lists rather than a subset of it. The translation is the one the reader's
-	// last locale picks, and the tenant default locale's for a reader who has none.
+	// The tenant's subscription plans an audience names, the same way.
+	ListAnnouncementAudiencePlans(ctx context.Context, arg ListAnnouncementAudiencePlansParams) ([]ListAnnouncementAudiencePlansRow, error)
+	// The tenant's series an audience names, by public id as the console sends
+	// them or by id as the audience stores them, so one query turns either into
+	// the other.
+	ListAnnouncementAudienceSeries(ctx context.Context, arg ListAnnouncementAudienceSeriesParams) ([]ListAnnouncementAudienceSeriesRow, error)
+	// Worker fan-out: everyone the announcement's audience selects at the moment
+	// it is delivered, each with the title of the translation they are told about.
+	// An announcement for everyone reaches every user the tenant owns, the
+	// audience `ListAnnouncementsForUser*` serves such a row to, so the bell counts
+	// what the announcements inbox lists rather than a subset of it; a targeted one
+	// is listed only to the readers this writes a row for. The translation is the
+	// one the reader's last locale picks, and the tenant default locale's for a
+	// reader who has none.
 	//
 	// Keyset paging on user_id, because the result grows with the tenant's
 	// readership and the caller writes one row per recipient. The pair is
@@ -3445,13 +3456,14 @@ type Querier interface {
 	// so a reorder can check the client's expected order against a list no
 	// concurrent write can move underneath it.
 	LockVolumesForSeries(ctx context.Context, arg LockVolumesForSeriesParams) ([]uuid.UUID, error)
-	// Inserts a read row for every announcement of the caller's tenant that lacks
+	// Inserts a read row for every announcement listed to the caller that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
 	MarkAllPlatformNotificationsAsRead(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	// Upserts, so marking an already-read announcement refreshes read_at instead
-	// of failing. The SELECT confines the insert to the caller's own tenant.
+	// of failing. The SELECT confines the insert to the caller's own tenant and to
+	// an announcement listed to the caller.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkCampaignBannerEndRevalidated(ctx context.Context, id uuid.UUID) error
 	// The marks re-check the instant, so a banner rescheduled ahead between the

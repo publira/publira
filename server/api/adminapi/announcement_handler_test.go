@@ -38,6 +38,7 @@ func announcementColumns() *sqlmock.Rows {
 		"pinned",
 		"pinned_until",
 		"delivery",
+		"audience",
 	})
 }
 
@@ -59,6 +60,7 @@ func addAnnouncementRow(
 		false,
 		sql.NullTime{},
 		outbox.AnnouncementDeliveryPreferred,
+		nil,
 	)
 }
 
@@ -123,9 +125,9 @@ func TestCreateAnnouncementWritesEveryTranslationAndQueuesOneNotificationEvent(t
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred).
+		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil).
 		WillReturnRows(announcementRowColumns().
-			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred))
+			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil))
 	// The English copy is sent first, and the default locale's still answers
 	// the announcement's own title and body.
 	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "en", "Update", "Body", now)
@@ -207,9 +209,9 @@ func TestCreateAnnouncementStoresAndRecordsItsDelivery(t *testing.T) {
 
 			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-				WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, tc.stored).
+				WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, tc.stored, nil).
 				WillReturnRows(announcementRowColumns().
-					AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, tc.stored))
+					AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, tc.stored, nil))
 			expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Terms of use updated", "Body", now)
 			expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 			mock.ExpectCommit()
@@ -357,7 +359,7 @@ func expectAnnouncementTranslationsRead(
 // announcementRowColumns is what CreateAnnouncement returns: the announcements
 // row alone, without the translation the list queries join.
 func announcementRowColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery"})
+	return sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience"})
 }
 
 func announcementTranslationColumns() *sqlmock.Rows {

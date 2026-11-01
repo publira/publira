@@ -7,9 +7,10 @@ INSERT INTO announcements (
     metadata,
     pinned,
     pinned_until,
-    delivery
+    delivery,
+    audience
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: CreateAnnouncementTranslation :one
@@ -44,19 +45,48 @@ ORDER BY locale;
 
 -- name: GetAnnouncementDelivery :one
 -- Worker fan-out: whether the announcement answers to its readers'
--- announcements cell ('preferred') or reaches every one of them ('everyone').
-SELECT delivery
+-- announcements cell ('preferred') or reaches every one of them ('everyone'),
+-- and the audience it is addressed to, which the worker validates before it
+-- writes a row for anyone.
+SELECT delivery,
+    audience
 FROM announcements
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('announcement_id');
 
+-- name: ListAnnouncementAudienceSeries :many
+-- The tenant's series an audience names, by public id as the console sends
+-- them or by id as the audience stores them, so one query turns either into
+-- the other.
+SELECT id,
+    public_id
+FROM series
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND (
+        public_id = ANY(sqlc.arg('public_ids')::text [])
+        OR id = ANY(sqlc.arg('ids')::uuid [])
+    );
+
+-- name: ListAnnouncementAudiencePlans :many
+-- The tenant's subscription plans an audience names, the same way.
+SELECT id,
+    public_id
+FROM subscription_plans
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND (
+        public_id = ANY(sqlc.arg('public_ids')::text [])
+        OR id = ANY(sqlc.arg('ids')::uuid [])
+    );
+
 -- name: ListAnnouncementRecipients :many
--- Worker fan-out: everyone an announcement addressed to the whole tenant
--- reaches, each with the title of the translation they are told about. It is
--- the audience `ListAnnouncementsForUser*` already serves such a row to —
--- every user the tenant owns — so the bell counts what the announcements inbox
--- lists rather than a subset of it. The translation is the one the reader's
--- last locale picks, and the tenant default locale's for a reader who has none.
+-- Worker fan-out: everyone the announcement's audience selects at the moment
+-- it is delivered, each with the title of the translation they are told about.
+-- An announcement for everyone reaches every user the tenant owns, the
+-- audience `ListAnnouncementsForUser*` serves such a row to, so the bell counts
+-- what the announcements inbox lists rather than a subset of it; a targeted one
+-- is listed only to the readers this writes a row for. The translation is the
+-- one the reader's last locale picks, and the tenant default locale's for a
+-- reader who has none.
 --
 -- Keyset paging on user_id, because the result grows with the tenant's
 -- readership and the caller writes one row per recipient. The pair is
@@ -67,6 +97,13 @@ SELECT u.id AS user_id,
 FROM users u
     CROSS JOIN LATERAL announcement_translation_for(sqlc.arg('announcement_id')::uuid, COALESCE(u.last_locale, '')) tr
 WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id IN (
+        SELECT m.user_id
+        FROM announcements n
+            CROSS JOIN LATERAL announcement_audience_members(n.tenant_id, n.audience) m(user_id)
+        WHERE n.tenant_id = u.tenant_id
+            AND n.id = sqlc.arg('announcement_id')::uuid
+    )
     AND u.id > sqlc.arg('after_user_id')
 ORDER BY u.id
 LIMIT sqlc.arg('limit');
@@ -90,7 +127,8 @@ SELECT
     n.created_at,
     n.pinned,
     n.pinned_until,
-    n.delivery
+    n.delivery,
+    n.audience
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')
@@ -120,7 +158,8 @@ SELECT
     n.created_at,
     n.pinned,
     n.pinned_until,
-    n.delivery
+    n.delivery,
+    n.audience
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')
@@ -160,6 +199,17 @@ FROM announcements n
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = sqlc.narg('user_id')
+        )
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -187,6 +237,17 @@ FROM announcements n
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = sqlc.narg('user_id')
+        )
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -202,8 +263,9 @@ LIMIT sqlc.arg('limit');
 
 -- name: GetAnnouncementForUser :one
 -- Returns the announcement with the caller's read state, in its translation
--- for the locale asked for. A row owned by another tenant comes back as no
--- rows, so its existence is not disclosed.
+-- for the locale asked for. A row owned by another tenant, and a targeted one
+-- the caller was not sent, come back as no rows, so its existence is not
+-- disclosed.
 SELECT
     n.*,
     tr.locale,
@@ -216,27 +278,61 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.id = sqlc.arg('id')
-    AND n.tenant_id = sqlc.arg('tenant_id');
+    AND n.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = sqlc.narg('user_id')
+        )
+    );
 
 -- name: MarkAnnouncementAsRead :one
 -- Upserts, so marking an already-read announcement refreshes read_at instead
--- of failing. The SELECT confines the insert to the caller's own tenant.
+-- of failing. The SELECT confines the insert to the caller's own tenant and to
+-- an announcement listed to the caller.
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $3
+        )
+    )
 ON CONFLICT (announcement_id, user_id) DO UPDATE
 SET read_at = EXCLUDED.read_at
 RETURNING *;
 
 -- name: MarkAllAnnouncementsAsRead :execrows
--- Inserts a read row for every announcement of the caller's tenant that lacks
+-- Inserts a read row for every announcement listed to the caller that lacks
 -- one.
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $2
+        )
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM announcement_reads nr

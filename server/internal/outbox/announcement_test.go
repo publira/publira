@@ -130,6 +130,33 @@ func TestAnnouncementNotificationRejectsADeliveryItDoesNotKnow(t *testing.T) {
 	}
 }
 
+// An audience the worker cannot read is a dead event rather than an
+// announcement delivered to nobody, or to everyone.
+func TestAnnouncementNotificationRejectsAnAudienceItCannotRead(t *testing.T) {
+	for name, audience := range map[string]string{
+		"a later version":   `{"version": 2, "conditions": [{"type": "never_purchased"}]}`,
+		"no conditions":     `{"version": 1, "conditions": []}`,
+		"an unknown type":   `{"version": 1, "conditions": [{"type": "bought_coins"}]}`,
+		"a type twice":      `{"version": 1, "conditions": [{"type": "never_purchased"}, {"type": "never_purchased"}]}`,
+		"days out of range": `{"version": 1, "conditions": [{"type": "signed_up_within_days", "days": 0}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			queries := &stubAnnouncementQuerier{
+				audience: json.RawMessage(audience),
+				users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
+			}
+
+			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+			if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); !IsPermanent(err) {
+				t.Fatalf("handler error = %v, want a permanent error", err)
+			}
+			if len(queries.created) != 0 || queries.listCalls != 0 {
+				t.Fatalf("notifications written = %d after %d recipient queries, want none", len(queries.created), queries.listCalls)
+			}
+		})
+	}
+}
+
 func TestAnnouncementNotificationCompletesWhenTheAnnouncementIsGone(t *testing.T) {
 	queries := &stubAnnouncementQuerier{
 		deliveryErr: sql.ErrNoRows,
@@ -249,7 +276,9 @@ func announcementEvent(
 
 type stubAnnouncementQuerier struct {
 	// delivery is what GetAnnouncementDelivery answers, preferred when empty.
-	delivery           string
+	delivery string
+	// audience is the stored audience it answers, none when nil.
+	audience           json.RawMessage
 	deliveryErr        error
 	users              []dbmodels.ListAnnouncementRecipientsRow
 	listedTenant       uuid.NullUUID
@@ -272,14 +301,18 @@ func (s *stubAnnouncementQuerier) InsertOutboxEvent(
 func (s *stubAnnouncementQuerier) GetAnnouncementDelivery(
 	context.Context,
 	dbmodels.GetAnnouncementDeliveryParams,
-) (string, error) {
+) (dbmodels.GetAnnouncementDeliveryRow, error) {
 	if s.deliveryErr != nil {
-		return "", s.deliveryErr
+		return dbmodels.GetAnnouncementDeliveryRow{}, s.deliveryErr
 	}
-	if s.delivery == "" {
-		return AnnouncementDeliveryPreferred, nil
+	row := dbmodels.GetAnnouncementDeliveryRow{Delivery: s.delivery}
+	if row.Delivery == "" {
+		row.Delivery = AnnouncementDeliveryPreferred
 	}
-	return s.delivery, nil
+	if s.audience != nil {
+		row.Audience = &s.audience
+	}
+	return row, nil
 }
 
 // ListAnnouncementRecipients answers the keyset the handler pages with, so a

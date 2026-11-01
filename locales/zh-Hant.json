@@ -521,7 +521,8 @@
       "reasons": {
         "announcement_delivery": {
           "preferred": "依通知設定通知",
-          "everyone": "通知所有讀者"
+          "everyone": "通知所有讀者",
+          "targeted": "通知符合條件的讀者"
         },
         "purchase_refund_in_part": "價款中的{$amount}：{$reason}"
       }

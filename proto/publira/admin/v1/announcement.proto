@@ -26,8 +26,87 @@ message AnnouncementTranslation {
   string body = 3;
 }
 
-// An announcement is addressed to everyone who opens the tenant's site; a
-// message to one person is a notification.
+// Whether an audience condition asks for a live subscription or one that has
+// ended.
+enum SubscriptionState {
+  SUBSCRIPTION_STATE_UNSPECIFIED = 0;
+  // A subscription that opens its plan's episodes now: trialing, active, or
+  // past due.
+  SUBSCRIPTION_STATE_ACTIVE = 1;
+  // A reader who has had a subscription and holds no live one.
+  SUBSCRIPTION_STATE_ENDED = 2;
+}
+
+// The readers a targeted announcement is delivered to: those who meet every
+// condition at the moment it is delivered, so a reader who comes to meet them
+// later is not sent it. Each condition type appears at most once.
+message AnnouncementAudience {
+  repeated AnnouncementAudienceCondition conditions = 1;
+}
+
+// One condition of an audience.
+message AnnouncementAudienceCondition {
+  // The reader follows the series.
+  message FollowsSeries {
+    string series_public_id = 1;
+  }
+
+  // The reader holds a purchase of an episode of the series, bought alone, in
+  // a volume, or in a bundle, that has not been revoked.
+  message BoughtSeriesEpisode {
+    string series_public_id = 1;
+  }
+
+  // The reader's subscription is in the state asked for.
+  message Subscription {
+    // The plan the subscription is to. Empty means any plan.
+    string plan_public_id = 1;
+    // Required.
+    SubscriptionState state = 2;
+  }
+
+  // The reader has never bought anything from the tenant.
+  message NeverPurchased {}
+
+  // The reader has read nothing for at least this many days, or never read
+  // anything.
+  message LastReadDaysAgo {
+    // 1 to 3650.
+    int32 days = 1;
+  }
+
+  // The reader signed up no more than this many days ago.
+  message SignedUpWithinDays {
+    // 1 to 3650.
+    int32 days = 1;
+  }
+
+  // The reader reads the site in the locale: the one their last signed-in
+  // request named, or the tenant's default locale for a reader who never named
+  // one.
+  message Locale {
+    // A locale the tenant offers.
+    string locale = 1;
+  }
+
+  // The reader has registered a phone running the tenant's app for push
+  // notifications.
+  message HasMobilePushDevice {}
+
+  oneof condition {
+    FollowsSeries follows_series = 1;
+    BoughtSeriesEpisode bought_series_episode = 2;
+    Subscription subscription = 3;
+    NeverPurchased never_purchased = 4;
+    LastReadDaysAgo last_read_days_ago = 5;
+    SignedUpWithinDays signed_up_within_days = 6;
+    Locale locale = 7;
+    HasMobilePushDevice has_mobile_push_device = 8;
+  }
+}
+
+// An announcement is addressed to everyone who opens the tenant's site, or to
+// the readers its audience selects; a message to one person is a notification.
 message AdminAnnouncement {
   reserved 5, 6, 7;
   reserved "audience_type", "target_user_public_id", "target_user_name";
@@ -48,6 +127,8 @@ message AdminAnnouncement {
   repeated AnnouncementTranslation translations = 11;
   // Which readers its notification reached. Never unspecified.
   AnnouncementDelivery delivery = 12;
+  // The readers it was addressed to. Unset is everyone who opens the site.
+  AnnouncementAudience audience = 13;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -94,6 +175,12 @@ message CreateAnnouncementRequest {
   // Which readers the announcement's notification reaches. Unspecified is
   // preferred.
   AnnouncementDelivery delivery = 10;
+  // The readers the announcement is addressed to, at least one condition. Unset
+  // addresses everyone who opens the site. A targeted announcement is listed
+  // only to the readers it was delivered to and is never shown to a visitor
+  // with no session, so pinning it or delivering it to everyone is
+  // invalid_argument.
+  AnnouncementAudience audience = 11;
 }
 
 message CreateAnnouncementResponse {

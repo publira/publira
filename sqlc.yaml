@@ -21,3 +21,11 @@ sql:
             go_type:
               type: "int32"
               slice: true
+          # A nullable jsonb column is otherwise a pqtype.NullRawMessage, a
+          # dependency nothing else needs. A nil pointer is the NULL that
+          # addresses everyone, and database/sql scans either way into it.
+          - column: "announcements.audience"
+            go_type:
+              import: "encoding/json"
+              type: "RawMessage"
+              pointer: true
