@@ -34,7 +34,10 @@ const signIn = (page: Page, path = PURCHASES_PATH) =>
 
 const rows = (page: Page) => page.getByRole("table").getByRole("row");
 
-const drawer = (page: Page) => page.getByRole("dialog", { name: "Purchase" });
+// The name is the whole title. A substring would also match the refund
+// confirmation, "Refund this purchase?", while that dialog is still closing.
+const drawer = (page: Page) =>
+  page.getByRole("dialog", { exact: true, name: "Purchase" });
 
 /**
  * Takes the tenant's payments through Stripe, which makes a Stripe purchase
