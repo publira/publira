@@ -4327,6 +4327,10 @@ type Querier interface {
 	// The user agents and paths arrive validated, normalized, and without
 	// duplicates.
 	UpsertTenantCrawlerSettings(ctx context.Context, arg UpsertTenantCrawlerSettingsParams) (TenantCrawlerSetting, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. Both switches
+	// are written together because the console offers them as one card, and a
+	// tenant may record that sales will be shown before turning the pages on.
+	UpsertTenantCreatorPageSettings(ctx context.Context, arg UpsertTenantCreatorPageSettingsParams) (TenantConfig, error)
 	UpsertTenantDarkTheme(ctx context.Context, arg UpsertTenantDarkThemeParams) (TenantThemeDark, error)
 	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)

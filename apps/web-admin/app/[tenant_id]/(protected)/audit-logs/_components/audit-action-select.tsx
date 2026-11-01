@@ -443,6 +443,12 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_comment_settings_updated",
             },
             {
+              label: t(
+                "admin.audit.actions.tenant_creator_page_settings_updated"
+              ),
+              value: "tenant_creator_page_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.tenant_age_verification_updated"),
               value: "tenant_age_verification_updated",
             },

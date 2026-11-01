@@ -102,6 +102,7 @@ export const auditActions = [
   "tenant_timezone_updated",
   "tenant_default_locale_updated",
   "tenant_comment_settings_updated",
+  "tenant_creator_page_settings_updated",
   "tenant_age_verification_updated",
   "tenant_reader_icon_policy_updated",
   "tenant_reader_icon_preset_uploaded",

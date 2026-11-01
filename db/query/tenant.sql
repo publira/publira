@@ -272,6 +272,22 @@ FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1;
 
+-- name: UpsertTenantCreatorPageSettings :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Both switches
+-- are written together because the console offers them as one card, and a
+-- tenant may record that sales will be shown before turning the pages on.
+INSERT INTO tenant_config (tenant_id, creator_pages_enabled, creator_pages_show_sales)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('creator_pages_enabled'),
+        sqlc.arg('creator_pages_show_sales')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET creator_pages_enabled = EXCLUDED.creator_pages_enabled,
+    creator_pages_show_sales = EXCLUDED.creator_pages_show_sales,
+    updated_at = NOW()
+RETURNING *;
+
 -- name: UpsertTenantAppPurchaseRoute :one
 -- An upsert for the reason UpsertTenantCommentSettings gives.
 INSERT INTO tenant_config (tenant_id, app_purchase_route)

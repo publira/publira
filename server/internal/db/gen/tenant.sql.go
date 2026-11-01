@@ -1001,6 +1001,57 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 	return i, err
 }
 
+const UpsertTenantCreatorPageSettings = `-- name: UpsertTenantCreatorPageSettings :one
+INSERT INTO tenant_config (tenant_id, creator_pages_enabled, creator_pages_show_sales)
+VALUES (
+        $1,
+        $2,
+        $3
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET creator_pages_enabled = EXCLUDED.creator_pages_enabled,
+    creator_pages_show_sales = EXCLUDED.creator_pages_show_sales,
+    updated_at = NOW()
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
+`
+
+type UpsertTenantCreatorPageSettingsParams struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	CreatorPagesEnabled   bool      `json:"creator_pages_enabled"`
+	CreatorPagesShowSales bool      `json:"creator_pages_show_sales"`
+}
+
+// An upsert for the reason UpsertTenantCommentSettings gives. Both switches
+// are written together because the console offers them as one card, and a
+// tenant may record that sales will be shown before turning the pages on.
+func (q *Queries) UpsertTenantCreatorPageSettings(ctx context.Context, arg UpsertTenantCreatorPageSettingsParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, UpsertTenantCreatorPageSettings, arg.TenantID, arg.CreatorPagesEnabled, arg.CreatorPagesShowSales)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
+		&i.AgeVerification,
+		&i.PurchaseAvailability,
+		&i.AppStoreUrl,
+		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
+		&i.AndroidApplicationID,
+		pq.Array(&i.AndroidSha256CertFingerprints),
+		&i.IosTeamID,
+		&i.IosBundleIdentifier,
+		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
+	)
+	return i, err
+}
+
 const UpsertTenantLegalPages = `-- name: UpsertTenantLegalPages :one
 INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
 VALUES (
