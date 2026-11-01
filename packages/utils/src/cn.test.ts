@@ -35,6 +35,11 @@ describe("cn", () => {
     expect(cn("p-2", "hover:p-4")).toBe("p-2 hover:p-4");
   });
 
+  it("lets the later of two radii win when one is a brand token", () => {
+    expect(cn("rounded-full", "rounded-control")).toBe("rounded-control");
+    expect(cn("rounded-control", "rounded-full")).toBe("rounded-full");
+  });
+
   it("keeps utilities from different conflict groups side by side", () => {
     expect(cn("px-3", "py-2")).toBe("px-3 py-2");
   });
