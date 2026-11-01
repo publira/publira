@@ -24,6 +24,8 @@ A pack of the tenant's coins the reader bought is listed in **Purchases** too, n
 
 A reader who subscribes to one of the tenant's subscription plans reads every episode it covers in the app as well, and the episode list says **Included in your plan** in place of those episodes' prices. Plans are sold on the site alone. With **Web checkout**, a locked episode that a published plan covers offers **See plans**, which opens the site's plan page in the phone's browser; the reader subscribes there, and the app reads the episode again when they come back to it. With **In-app purchase**, the store sells no plan, so the app does not send the reader to the site for one.
 
+A subscriber's **Account** screen shows **Your plan** as **My Page** on the site does: the plan's name and, depending on where the subscription stands, when it renews, when it ends after a cancellation, a payment to fix, or that it has ended. With **Web checkout**, **Manage billing** there opens Stripe's customer portal in the phone's browser, where the reader updates their card, reads their invoices, or cancels, and the app reads the plan again when they come back to it. With **In-app purchase**, the plan is shown without **Manage billing**: the app does not send the reader to a payment page outside the store.
+
 ### Coins
 
 A tenant that sells its own coins sells them in the app too, as long as the app sells through **In-app purchase**: the stores require a currency spent inside an app to be bought through them, so with **Web checkout** the app shows nothing about coins, and a locked episode offers what it offered before. Every place the app names the coins uses the tenant's word for them in the reader's language.

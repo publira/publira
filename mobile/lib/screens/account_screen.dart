@@ -20,6 +20,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
+import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/push/push_controller.dart';
@@ -94,6 +95,9 @@ class AccountScreen extends StatelessWidget {
                       onTap: () => context.push(AppRoutes.accountName),
                     ),
                     const Divider(height: 1),
+                    // Keyed by the reader, so another account signing in reads
+                    // its own plan rather than showing the last one's.
+                    _PlanSection(key: ValueKey(('plan', session.userPublicId))),
                     const _PurchasesEntry(),
                     // Keyed by the reader, so another account signing in reads
                     // its own balance rather than showing the last one's.
@@ -747,6 +751,256 @@ class _PurchasesEntry extends StatelessWidget {
         const Divider(height: 1),
       ],
     );
+  }
+}
+
+/// The reader's plan: which one, and where it stands in the states a reader
+/// can do something about — paid up and renewing, canceled and running out, a
+/// payment to fix, or over. It is read when the screen is, again when the
+/// reader comes back to the tab, and again when they come back to the app
+/// from the billing portal, where they may have changed it.
+///
+/// A plan the tenant's web checkout bills offers **Manage billing**, which
+/// opens the billing portal in the system browser, only where the app sells
+/// through that checkout: an app that sells through the store does not send
+/// the reader to an outside payment page. A plan a store bills is changed in
+/// that store, which the section names instead.
+///
+/// Left out for a reader who has never subscribed, and in a build carrying no
+/// [PurchaseScope].
+class _PlanSection extends StatefulWidget {
+  const _PlanSection({super.key});
+
+  @override
+  State<_PlanSection> createState() => _PlanSectionState();
+}
+
+class _PlanSectionState extends State<_PlanSection> {
+  MySubscription? _subscription;
+
+  /// Whether the plan offers **Manage billing**.
+  var _managesBilling = false;
+  var _failed = false;
+  var _opening = false;
+  var _reads = 0;
+
+  /// Whether the billing portal was handed to the browser since the plan was
+  /// last read, so the reader's return to the app reads it again.
+  var _portalOpened = false;
+
+  /// Whether the account tab was on screen when last asked.
+  var _active = true;
+  var _started = false;
+
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _resumed);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The tab stays mounted while another is on screen, from which the
+    // reader may have subscribed, so coming back to it reads the plan again.
+    final active = AppTabScope.isActive(context);
+    final returned = active && !_active;
+    _active = active;
+    if (_started && !returned) {
+      return;
+    }
+    _started = true;
+    unawaited(_read());
+  }
+
+  void _resumed() {
+    if (_portalOpened) {
+      unawaited(_read());
+    }
+  }
+
+  Future<void> _read() async {
+    final read = ++_reads;
+    _portalOpened = false;
+    final purchase = PurchaseScope.repositoryOf(context);
+    final launcher = PurchaseScope.maybeOf(context)?.launcher;
+    if (purchase == null) {
+      return;
+    }
+    MySubscription? subscription;
+    var managesBilling = false;
+    var failed = false;
+    try {
+      subscription = await purchase.mySubscription();
+      if (subscription != null && subscription.store == null) {
+        managesBilling =
+            launcher != null &&
+            await purchase.appPurchaseRoute() ==
+                AppPurchaseRoute.externalCheckout;
+      }
+    } on PurchaseFailure {
+      // A route that cannot be read still shows the plan, with no way out of
+      // the app it might not be allowed to offer.
+      failed = subscription == null;
+    }
+    if (!mounted || read != _reads) {
+      return;
+    }
+    setState(() {
+      _subscription = subscription;
+      _managesBilling = managesBilling;
+      _failed = failed;
+    });
+  }
+
+  Future<void> _manageBilling() async {
+    final purchase = PurchaseScope.maybeOf(context);
+    if (purchase == null || _opening) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    void report(String message) =>
+        messenger.showSnackBar(SnackBar(content: AutospacedText(message)));
+    setState(() {
+      _opening = true;
+    });
+    try {
+      final url = await purchase.repository!.startBillingPortal();
+      if (await purchase.launcher!.open(url)) {
+        _portalOpened = true;
+      } else {
+        report(messages.accountBillingFailed);
+      }
+    } on PurchaseFailure catch (failure) {
+      if (!mounted) {
+        return;
+      }
+      switch (failure.kind) {
+        case PurchaseFailureKind.sessionExpired:
+          unawaited(context.pushInTab(AppRoutes.signInPath()));
+        case PurchaseFailureKind.notSold:
+          report(messages.accountBillingUnavailable);
+        case PurchaseFailureKind.network:
+          report(messages.errorsRpcUnavailable);
+        case PurchaseFailureKind.alreadyPurchased ||
+            PurchaseFailureKind.gone ||
+            PurchaseFailureKind.storeUnavailable ||
+            PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.unexpected:
+          report(messages.accountBillingFailed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _opening = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    if (_failed) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            key: const ValueKey('account-plan-error'),
+            title: AutospacedText(messages.accountPlanHeading),
+            subtitle: AutospacedText(messages.accountPlanLoadFailed),
+            trailing: TextButton(
+              key: const ValueKey('account-plan-retry'),
+              onPressed: () => unawaited(_read()),
+              child: AutospacedText(messages.commonRetry),
+            ),
+          ),
+          const Divider(height: 1),
+        ],
+      );
+    }
+    final subscription = _subscription;
+    if (subscription == null) {
+      return const SizedBox.shrink();
+    }
+    final state = _stateOf(messages, subscription);
+    final store = subscription.status.held ? subscription.store : null;
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      key: const ValueKey('account-plan'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          title: AutospacedText(messages.accountPlanHeading),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (subscription.planName.isNotEmpty)
+                AutospacedText(
+                  subscription.planName,
+                  style: textTheme.titleMedium,
+                ),
+              if (state != null) AutospacedText(state),
+              if (store != null)
+                AutospacedText(switch (store) {
+                  InAppPurchaseStore.appStore =>
+                    messages.accountPlanManagedInAppStore,
+                  InAppPurchaseStore.googlePlay =>
+                    messages.accountPlanManagedInGooglePlay,
+                }),
+            ],
+          ),
+        ),
+        if (_managesBilling)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OutlinedButton(
+                key: const ValueKey('account-manage-billing'),
+                onPressed: _opening ? null : () => unawaited(_manageBilling()),
+                child: AutospacedText(messages.accountManageBilling),
+              ),
+            ),
+          ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+
+  /// Where [subscription] stands, or `null` for a running plan whose period
+  /// end the API did not report, which leaves nothing to say about it.
+  static String? _stateOf(AppMessages messages, MySubscription subscription) {
+    switch (subscription.status) {
+      case SubscriptionStatus.active || SubscriptionStatus.trialing:
+        final end = subscription.currentPeriodEnd;
+        if (end == null) {
+          return null;
+        }
+        final date = messages.formatDate(end);
+        return subscription.cancelAtPeriodEnd
+            ? messages.accountPlanEndsOn(date: date)
+            : messages.accountPlanRenewsOn(date: date);
+      case SubscriptionStatus.pastDue:
+        return messages.accountPlanPastDue;
+      case SubscriptionStatus.paused || SubscriptionStatus.unpaid:
+        return messages.accountPlanOnHold;
+      case SubscriptionStatus.incomplete:
+        return messages.accountPlanIncomplete;
+      case SubscriptionStatus.incompleteExpired ||
+          SubscriptionStatus.canceled ||
+          SubscriptionStatus.unknown:
+        return messages.accountPlanEnded;
+    }
   }
 }
 

@@ -478,7 +478,10 @@
       "web": {
         "rpcs": ["GetMySubscription", "CreateBillingPortalSession"]
       },
-      "exception": "Not in the app yet: #4877."
+      "mobile": {
+        "routes": ["/account"],
+        "rpcs": ["GetMySubscription", "CreateBillingPortalSession"]
+      }
     },
     {
       "name": "The tenant's coins: the balance and its expiry on My Page and on a page of their own, the packs on sale and the history, and paying for an episode with them at its gate",

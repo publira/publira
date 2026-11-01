@@ -75,6 +75,24 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// answer.
   PurchaseFailure? plansFailure;
 
+  /// What [mySubscription] answers.
+  MySubscription? subscription;
+
+  /// Thrown by [mySubscription], standing in for an API that cannot answer.
+  PurchaseFailure? subscriptionFailure;
+
+  /// How many times [mySubscription] was asked.
+  var subscriptionReads = 0;
+
+  /// The page [startBillingPortal] answers.
+  Uri portalUrl = Uri.parse('https://billing.stripe.test/p/session/reader');
+
+  /// Thrown by [startBillingPortal].
+  PurchaseFailure? portalFailure;
+
+  /// How many times [startBillingPortal] was asked.
+  var portalStarts = 0;
+
   /// The quote of the rest of the series [seriesEpisodeAccess] answers.
   SeriesRemainderOffer? remainder;
 
@@ -162,6 +180,26 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     return plans;
+  }
+
+  @override
+  Future<MySubscription?> mySubscription() async {
+    subscriptionReads++;
+    final failure = subscriptionFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return subscription;
+  }
+
+  @override
+  Future<Uri> startBillingPortal() async {
+    portalStarts++;
+    final failure = portalFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return portalUrl;
   }
 
   @override

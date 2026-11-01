@@ -562,6 +562,113 @@ void main() {
     expect(await repository().seriesOfEpisode(paidEpisodeId), isNull);
   });
 
+  group('the reader\'s plan', () {
+    test('reads the plan, where it stands, and who bills it', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.mySubscription = pb.Subscription(
+        plan: pb.SubscriptionPlan(name: ' Unlimited '),
+        status: pb.SubscriptionStatus.SUBSCRIPTION_STATUS_PAST_DUE,
+        currentPeriodEnd: '2026-12-01T12:00:00Z',
+        cancelAtPeriodEnd: true,
+        store: pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+      );
+
+      final subscription = (await repository().mySubscription())!;
+
+      expect(subscription.planName, 'Unlimited');
+      expect(subscription.status, SubscriptionStatus.pastDue);
+      expect(
+        subscription.currentPeriodEnd,
+        DateTime.utc(2026, 12, 1, 12).toLocal(),
+      );
+      expect(subscription.cancelAtPeriodEnd, isTrue);
+      expect(subscription.store, InAppPurchaseStore.googlePlay);
+    });
+
+    test('a plan the web checkout bills names no store', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.mySubscription = pb.Subscription(
+        plan: pb.SubscriptionPlan(name: 'Unlimited'),
+        status: pb.SubscriptionStatus.SUBSCRIPTION_STATUS_ACTIVE,
+      );
+
+      final subscription = (await repository().mySubscription())!;
+
+      expect(subscription.status, SubscriptionStatus.active);
+      expect(subscription.currentPeriodEnd, isNull);
+      expect(subscription.store, isNull);
+    });
+
+    test('a status this build has no name for reads as over', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.mySubscription = pb.Subscription(
+        plan: pb.SubscriptionPlan(name: 'Unlimited'),
+      );
+
+      final subscription = (await repository().mySubscription())!;
+
+      expect(subscription.status, SubscriptionStatus.unknown);
+      expect(subscription.status.held, isFalse);
+    });
+
+    test('a reader who has never subscribed holds no plan', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+
+      expect(await repository().mySubscription(), isNull);
+    });
+
+    test('a guest is not sent to the API for a plan', () async {
+      expect(await repository().mySubscription(), isNull);
+      expect(server.requestsTo('GetMySubscription'), isEmpty);
+    });
+
+    test('a session the API refuses asks for a sign-in', () async {
+      accessToken = 'expired';
+
+      await expectLater(
+        repository().mySubscription(),
+        failsWith(PurchaseFailureKind.sessionExpired),
+      );
+    });
+
+    test('billing opens the page the API answers', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+
+      expect(
+        await repository().startBillingPortal(),
+        Uri.parse(server.billingPortalUrl),
+      );
+    });
+
+    test('billing with nothing to manage says so', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.billingPortalRefusal = 'failed_precondition';
+
+      await expectLater(
+        repository().startBillingPortal(),
+        failsWith(PurchaseFailureKind.notSold),
+      );
+    });
+
+    test('billing is not handed to the browser unless it is https', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.billingPortalUrl = 'http://billing.stripe.test/p/session/member';
+
+      await expectLater(
+        repository().startBillingPortal(),
+        failsWith(PurchaseFailureKind.unexpected),
+      );
+    });
+
+    test('a guest is not sent to the API for billing', () async {
+      await expectLater(
+        repository().startBillingPortal(),
+        failsWith(PurchaseFailureKind.sessionExpired),
+      );
+      expect(server.requestsTo('CreateBillingPortalSession'), isEmpty);
+    });
+  });
+
   group('the purchase library', () {
     pb.MyPurchase purchase(
       String id, {

@@ -262,4 +262,180 @@ void main() {
       expect(find.text('Included in your plan'), findsNothing);
     });
   });
+
+  group('the account screen', () {
+    final plan = find.byKey(const ValueKey('account-plan'));
+    final manageBilling = find.byKey(const ValueKey('account-manage-billing'));
+    final renewal = DateTime.utc(2026, 12, 1, 12);
+
+    MySubscription subscription({
+      SubscriptionStatus status = SubscriptionStatus.active,
+      bool cancelAtPeriodEnd = false,
+      InAppPurchaseStore? store,
+    }) => MySubscription(
+      planName: 'Unlimited',
+      status: status,
+      currentPeriodEnd: renewal,
+      cancelAtPeriodEnd: cancelAtPeriodEnd,
+      store: store,
+    );
+
+    Future<void> pumpAccount(WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.account,
+        session: fakeSession,
+      );
+      await pumpUntilFound(tester, find.byKey(const ValueKey('account-list')));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('names the plan and the day it renews, and opens billing in '
+        'the browser', (tester) async {
+      purchases.subscription = subscription();
+      await pumpAccount(tester);
+
+      expect(
+        find.descendant(of: plan, matching: find.text('Unlimited')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: plan,
+          matching: find.text('Renews on Dec 1, 2026.'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(manageBilling);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(launcher.opened, [purchases.portalUrl]);
+    });
+
+    testWidgets('says when a canceled plan ends', (tester) async {
+      purchases.subscription = subscription(cancelAtPeriodEnd: true);
+      await pumpAccount(tester);
+
+      expect(
+        find.text('Ends on Dec 1, 2026. You can keep reading until then.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says a payment is to be fixed, and that a plan is over', (
+      tester,
+    ) async {
+      purchases.subscription = subscription(status: SubscriptionStatus.pastDue);
+      await pumpAccount(tester);
+
+      expect(
+        find.text(
+          'Your last payment did not go through. Update your payment method '
+          'to keep reading.',
+        ),
+        findsOneWidget,
+      );
+      // Billing is where the payment method is updated.
+      expect(manageBilling, findsOneWidget);
+
+      purchases.subscription = subscription(
+        status: SubscriptionStatus.canceled,
+      );
+      // The tab stays mounted while another is on screen, and coming back to
+      // it reads the plan again.
+      await tester.tap(find.byKey(const ValueKey('tab-library')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byKey(const ValueKey('tab-account')));
+      await pumpUntilFound(tester, find.text('This plan has ended.'));
+    });
+
+    testWidgets('offers no billing where the app sells through the store', (
+      tester,
+    ) async {
+      purchases
+        ..route = AppPurchaseRoute.store
+        ..subscription = subscription();
+      await pumpAccount(tester);
+
+      expect(find.text('Renews on Dec 1, 2026.'), findsOneWidget);
+      expect(manageBilling, findsNothing);
+    });
+
+    testWidgets('sends a plan a store bills to that store', (tester) async {
+      purchases.subscription = subscription(store: InAppPurchaseStore.appStore);
+      await pumpAccount(tester);
+
+      expect(
+        find.text(
+          'You subscribed through the App Store. Change or cancel the plan '
+          'there.',
+        ),
+        findsOneWidget,
+      );
+      expect(manageBilling, findsNothing);
+    });
+
+    testWidgets('shows nothing to a reader who has never subscribed', (
+      tester,
+    ) async {
+      await pumpAccount(tester);
+
+      expect(purchases.subscriptionReads, 1);
+      expect(find.text('Your plan'), findsNothing);
+    });
+
+    testWidgets('reads a plan that could not be read again on retry', (
+      tester,
+    ) async {
+      purchases.subscriptionFailure = const PurchaseFailure(
+        PurchaseFailureKind.network,
+      );
+      await pumpAccount(tester);
+
+      expect(find.text('Could not load your plan.'), findsOneWidget);
+      purchases
+        ..subscriptionFailure = null
+        ..subscription = subscription();
+      await tester.tap(find.byKey(const ValueKey('account-plan-retry')));
+      await pumpUntilFound(tester, plan);
+
+      expect(find.text('Could not load your plan.'), findsNothing);
+    });
+
+    testWidgets('says so when the tenant has no billing to open', (
+      tester,
+    ) async {
+      purchases
+        ..subscription = subscription()
+        ..portalFailure = const PurchaseFailure(PurchaseFailureKind.notSold);
+      await pumpAccount(tester);
+
+      await tester.tap(manageBilling);
+      await pumpUntilFound(
+        tester,
+        find.text('Billing cannot be managed on this site at the moment.'),
+      );
+      expect(launcher.opened, isEmpty);
+    });
+
+    testWidgets(
+      'reads the plan again when the reader comes back from billing',
+      (tester) async {
+        purchases.subscription = subscription();
+        await pumpAccount(tester);
+        await tester.tap(manageBilling);
+        await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+        purchases.subscription = subscription(cancelAtPeriodEnd: true);
+        tester.binding
+          ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+          ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await pumpUntilFound(
+          tester,
+          find.text('Ends on Dec 1, 2026. You can keep reading until then.'),
+        );
+        expect(purchases.subscriptionReads, 2);
+      },
+    );
+  });
 }

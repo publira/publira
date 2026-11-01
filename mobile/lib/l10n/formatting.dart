@@ -102,6 +102,13 @@ extension AppMessagesFormatting on AppMessages {
   String formatDateTimeWithWeekday(DateTime value) =>
       DateFormat.MMMEd(intlLocale).add_jm().format(value.toLocal());
 
+  /// The day [value] falls on, written the way this locale writes a date, in
+  /// the zone the device is set to for the reason [formatDateTime] gives. It
+  /// is for an instant whose time of day the reader does not act on, such as
+  /// the day a plan renews.
+  String formatDate(DateTime value) =>
+      DateFormat.yMMMd(intlLocale).format(value.toLocal());
+
   /// A calendar date with no instant behind it, such as a birth date, written
   /// the way this locale writes one. [date] is read by its fields, so no zone
   /// can move it onto the day before.

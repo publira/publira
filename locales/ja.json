@@ -5681,6 +5681,8 @@
   },
   "mobile": {
     "account": {
+      "billing_failed": "支払いの管理を開けませんでした。もう一度お試しください。",
+      "billing_unavailable": "現在このサイトでは支払いの管理を利用できません。",
       "birth_date": "生年月日",
       "birth_date_confirm_description": "生年月日は一度登録すると変更できません。",
       "birth_date_confirm_title": "生年月日を{$date}で登録しますか？",
@@ -5720,6 +5722,7 @@
       "icon_uploaded": "アイコンを更新しました。",
       "icon_uploading": "アップロード中…",
       "linked_accounts": "連携アカウント",
+      "manage_billing": "支払いの管理",
       "name": "お名前",
       "name_unset": "(未設定)",
       "notification_category_announcements": "お知らせ",
@@ -5741,6 +5744,16 @@
       "pages": "このサイトについて",
       "pages_description": "利用規約やプライバシーポリシーなど、このサイトが公開しているページです。",
       "passkeys": "パスキー",
+      "plan_ended": "このプランは終了しました。",
+      "plan_ends_on": "{$date}に終了します。それまでは引き続き読めます。",
+      "plan_heading": "ご利用中のプラン",
+      "plan_incomplete": "初回の支払いがまだ完了していません。",
+      "plan_load_failed": "ご利用中のプランを読み込めませんでした。",
+      "plan_managed_in_app_store": "App Storeで登録したプランです。変更や解約はApp Storeで行ってください。",
+      "plan_managed_in_google_play": "Google Playで登録したプランです。変更や解約はGoogle Playで行ってください。",
+      "plan_on_hold": "支払いが完了するまでプランは停止しています。支払い方法を更新してください。",
+      "plan_past_due": "前回の支払いが完了しませんでした。読み続けるには、支払い方法を更新してください。",
+      "plan_renews_on": "{$date}に更新されます。",
       "sign_out": "サインアウト",
       "signed_out": "サインインしていません",
       "title": "アカウント"
