@@ -27,10 +27,17 @@ const StatusMessage = ({ status }: { status: "published" | "scheduled" }) => {
   return <Message message="admin.calendar.status_scheduled" />;
 };
 
+/**
+ * Not prefetched. Each entry opens a different episode, and the server
+ * prerenders an episode's App Shell the first time its URL is asked for, so a
+ * month of a few dozen releases would cost that many renders as soon as it is
+ * shown, for the one entry an operator opens.
+ */
 const EntryLink = ({ episode }: { episode: EpisodePublicationItem }) => (
   <Link
     className="grid min-w-0 gap-0.5 rounded-control px-1.5 py-1 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     href={`/series/${episode.seriesPublicId}/episodes/${episode.episodePublicId}`}
+    prefetch={false}
   >
     <span className="line-clamp-2 text-xs break-words text-muted-foreground">
       {episode.seriesTitle}

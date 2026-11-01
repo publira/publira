@@ -83,6 +83,38 @@ test.describe("web-admin publishing calendar", () => {
     await expect(episodeFormFields(page).title).toHaveValue(firstEpisode);
   });
 
+  test("a month of releases prefetches none of the episodes it lists", async ({
+    page,
+  }) => {
+    const prefetched: URL[] = [];
+    page.on("request", (request) => {
+      if (request.headers()["next-router-prefetch"]) {
+        prefetched.push(new URL(request.url()));
+      }
+    });
+
+    await signInAsSeedAdmin(page, "/calendar?month=2026-02");
+
+    await expect(page.getByRole("link", { name: firstEpisode })).toBeVisible();
+    // The links to the months either side are still prefetched, which is what
+    // tells a missing episode prefetch from a page that prefetches nothing.
+    await expect
+      .poll(() =>
+        prefetched.filter(({ searchParams }) => searchParams.has("month"))
+      )
+      .not.toHaveLength(0);
+    // An absence no web-first assertion can wait for, so the wait is for the
+    // network to have gone quiet.
+    // oxlint-disable-next-line sonarjs/no-networkidle-wait
+    await page.waitForLoadState("networkidle");
+
+    expect(
+      prefetched.flatMap(({ pathname }) =>
+        pathname.includes("/episodes/") ? [pathname] : []
+      )
+    ).toEqual([]);
+  });
+
   test("a month with no release says so", async ({ page }) => {
     await signInAsSeedAdmin(page, "/calendar?month=2020-01");
 
