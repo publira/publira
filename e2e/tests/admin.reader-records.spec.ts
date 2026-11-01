@@ -47,6 +47,13 @@ test.describe("web-admin reader purchases and tickets", () => {
   test("lists the reader's purchase and ticket with their state and episode", async ({
     page,
   }) => {
+    const prefetched: URL[] = [];
+    page.on("request", (request) => {
+      if (request.headers()["next-router-prefetch"]) {
+        prefetched.push(new URL(request.url()));
+      }
+    });
+
     await signInAsSeedAdmin(page, `/readers/${READER_RECORDS_BUYER.publicId}`);
 
     const purchase = sectionRows(page, "Purchases").filter({
@@ -88,6 +95,22 @@ test.describe("web-admin reader purchases and tickets", () => {
       "href",
       /\/series\/SeedSERSAAA1\/episodes\/SeedEPSDAAA2$/u
     );
+
+    // The back link is still prefetched, which is what tells a quiet sidebar
+    // from a page that prefetches nothing.
+    await expect
+      .poll(() => prefetched.some(({ pathname }) => pathname === "/readers"))
+      .toBe(true);
+    // An absence no web-first assertion can wait for, so the wait is for the
+    // network to have gone quiet.
+    // oxlint-disable-next-line sonarjs/no-networkidle-wait
+    await page.waitForLoadState("networkidle");
+
+    const prefetchedPaths = prefetched.map(({ pathname }) => pathname);
+
+    expect(prefetchedPaths).not.toContain("/calendar");
+    expect(prefetchedPaths).not.toContain("/analytics/audience");
+    expect(prefetchedPaths).not.toContain("/analytics/episodes");
   });
 
   test("revoking a ticket from the reader page updates its row", async ({

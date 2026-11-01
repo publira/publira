@@ -165,12 +165,18 @@ const ConsoleSidebarNavigationLink = ({
   // to close it itself.
   const mobileNavigation = useContext(ConsoleMobileNavigationContext);
 
+  // Not prefetched. The sidebar renders every destination at once, and the
+  // server prerenders a route's App Shell the first time its URL is asked
+  // for. Prefetching that whole list as soon as a page is shown spends those
+  // renders on pages the operator has not opened, and the page they are
+  // reading does not finish streaming its own sections.
   return (
     <Link
       aria-current={current ? "page" : undefined}
       className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground pointer-coarse:py-3"
       href={href}
       onClick={mobileNavigation?.close}
+      prefetch={false}
     >
       {children}
     </Link>

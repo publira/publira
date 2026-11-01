@@ -19,9 +19,14 @@ import * as ConsoleSidebar from "../console-sidebar";
 vi.mock("next/link", () => ({
   default: ({
     children,
+    prefetch,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a {...props} data-next-link="true">
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) => (
+    <a
+      {...props}
+      data-next-link="true"
+      data-prefetch={prefetch === undefined ? undefined : String(prefetch)}
+    >
       {children}
     </a>
   ),
@@ -97,6 +102,20 @@ describe("Console layout slots", () => {
     ).toBe("true");
     expect(screen.getByText("Platform Console")).toBeTruthy();
     expect(screen.getByRole("link", { name: "/tenants" })).toBeTruthy();
+  });
+
+  it("does not prefetch a sidebar entry", () => {
+    renderNavigation();
+
+    for (const href of hrefs) {
+      expect(screen.getByRole("link", { name: href }).dataset.prefetch).toBe(
+        "false"
+      );
+    }
+
+    expect(
+      screen.getByRole("link", { name: /Publira/u }).dataset.prefetch
+    ).toBeUndefined();
   });
 
   it("uses navigation aria labels supplied by the caller", () => {
