@@ -48,6 +48,10 @@ import {
   parseCrawlerPaths,
 } from "#lib/tenant-crawler-settings-shared";
 import {
+  tenantCreatorPageSettingsCacheTag,
+  updateTenantCreatorPageSettings,
+} from "#lib/tenant-creator-page-settings";
+import {
   tenantEmailRejectionSettingsCacheTag,
   updateTenantEmailRejectionSettings,
 } from "#lib/tenant-email-rejection-settings";
@@ -85,6 +89,7 @@ import type {
   TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
   TenantCrawlerSettingsActionState,
+  TenantCreatorPageSettingsActionState,
   TenantEmailRejectionActionState,
   TenantLegalPagesActionState,
   TenantLocalesActionState,
@@ -173,6 +178,15 @@ const tenantCommentSettingsSchema = async (locale: Locale) => {
     }),
   });
 };
+
+/**
+ * Both boxes are written together. An unchecked box is absent from the form,
+ * which is off. Sales on while the pages stay off is a pair the server keeps.
+ */
+const tenantCreatorPageSettingsSchema = z.object({
+  creatorPagesEnabled: checkboxOnFormSchema,
+  creatorPagesShowSales: checkboxOnFormSchema,
+});
 
 const tenantAgeVerificationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -540,6 +554,68 @@ export const updateTenantCommentSettingsAction = async (
 
   return {
     message: t("admin.settings.comments.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantCreatorPageSettingsAction = async (
+  _prevState: TenantCreatorPageSettingsActionState,
+  formData: FormData
+): Promise<TenantCreatorPageSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
+  if (!tenantId) {
+    return {
+      message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const parsed = tenantCreatorPageSettingsSchema.safeParse(
+    toFormDataInput(formData, {
+      creatorPagesEnabled: { kind: "value", name: "creator_pages_enabled" },
+      creatorPagesShowSales: {
+        kind: "value",
+        name: "creator_pages_show_sales",
+      },
+    })
+  );
+
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantCreatorPageSettings(
+      {
+        creatorPagesEnabled: parsed.data.creatorPagesEnabled,
+        creatorPagesShowSales: parsed.data.creatorPagesShowSales,
+        tenantId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads these through a private cache, so without this
+  // the operator would keep seeing the previous switches in the same session.
+  // The storefront's own cached copy is dropped by the API as the update lands.
+  updateTag(tenantCreatorPageSettingsCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.creator_pages.saved"),
     ok: true,
   };
 };

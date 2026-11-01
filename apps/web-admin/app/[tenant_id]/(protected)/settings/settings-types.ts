@@ -53,6 +53,17 @@ export type TenantCommentSettingsActionState =
     }
   | null;
 
+export type TenantCreatorPageSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
 export type TenantAgeVerificationActionState =
   | {
       ok: true;

@@ -2894,6 +2894,19 @@
           "auto_hide_range": "Enter a whole number between 0 and {$max}."
         }
       },
+      "creator_pages": {
+        "title": "Author pages",
+        "description": "Whether a reader linked to an Author can open that Author's pages, and whether those pages include statements and sales figures.",
+        "enabled_label": "Show Authors their own pages",
+        "enabled_description": "A linked reader can open each Author they are linked to. The pages stay hidden while this is off, even when sales figures are set to be shown.",
+        "show_sales_label": "Show statements and sales figures",
+        "show_sales_description": "With the pages on, a linked reader sees each episode's sales and the Author's part of every closed royalty statement. This can be saved while the pages are off, and it takes effect when the pages are turned on.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "submit": "Save the author page settings",
+        "saved": "The author page settings were saved.",
+        "load_failed": "Could not load the author page settings. Please try again later.",
+        "save_failed": "Could not save the author page settings. Please try again later."
+      },
       "age_verification": {
         "title": "Age verification",
         "description": "Which of your age ratings a reader has to prove an age for. A reader proves theirs by saving a date of birth on their account, and a work they are not old enough for stays closed to them.",
