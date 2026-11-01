@@ -1,5 +1,6 @@
 import { SearchIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Form from "next/form";
@@ -69,8 +70,9 @@ export const CatalogSearchFormSkeleton = ({
  * The filters are a fieldset of their own because only the series group has a
  * genre, a serialization status, or a price; its legend says so, and the
  * search screen answers a narrowed search with that group alone. A tenant that
- * curates no genre, and a genre read that could not answer, leave the other
- * three controls rather than holding the search behind one dropdown.
+ * curates no genre leaves the other three controls. A genre read that could
+ * not answer leaves them usable too, and says so where the genre control would
+ * be rather than passing the failure off as a tenant with no genres.
  *
  * No `token` field, which is what makes a new submission start at page one: a
  * cursor names a row of the result it was built for, and the server rejects
@@ -104,7 +106,6 @@ export const CatalogSearchForm = async ({
   ]);
 
   const label = t("storefront.nav.search_label");
-  const genreOptions = genres.ok ? genres.value : [];
 
   const filters = (
     <fieldset
@@ -117,7 +118,22 @@ export const CatalogSearchForm = async ({
         {t("storefront.search.filters_legend")}
       </legend>
 
-      {genreOptions.length > 0 && (
+      {!genres.ok && (
+        <div className="grid gap-1.5">
+          <span className={CONTROL_LABEL}>
+            {t("storefront.series.filter_genre")}
+          </span>
+          {/* The genre a search is already narrowed by still travels with
+              the next submission, so a list that could not be read does not
+              drop it without the reader choosing to. */}
+          {defaultFilters.genre && (
+            <input name="genre" type="hidden" value={defaultFilters.genre} />
+          )}
+          <FormMessage variant="warning">{genres.message}</FormMessage>
+        </div>
+      )}
+
+      {genres.ok && genres.value.length > 0 && (
         <div className="grid gap-1.5">
           <label className={CONTROL_LABEL} htmlFor={`${id}-genre`}>
             {t("storefront.series.filter_genre")}
@@ -129,7 +145,7 @@ export const CatalogSearchForm = async ({
             name="genre"
           >
             <option value="">{t("storefront.series.filter_genre_all")}</option>
-            {genreOptions.map((genre) => (
+            {genres.value.map((genre) => (
               <option
                 key={genre.publicId}
                 lang={genre.locale}
