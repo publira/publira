@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -256,6 +257,122 @@ func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatWasOnSale(t *testi
 	}
 	if want := episodeIDStrings(v.episodes[1], v.episodes[0]); !slices.Equal(reordered.EpisodeIds, want) {
 		t.Fatalf("episode_ids = %v, want %v", reordered.EpisodeIds, want)
+	}
+}
+
+func (v volumeEnv) setBookstoreLinks(volumeID string, links ...*publirattypesv1.BookstoreLink) (*publiraadminv1.AdminVolume, error) {
+	res, err := v.env.seriesClient().SetVolumeBookstoreLinks(v.ctx(), &publiraadminv1.SetVolumeBookstoreLinksRequest{
+		Tenant:         v.tenant.tenantContext(),
+		VolumeId:       volumeID,
+		BookstoreLinks: links,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.Volume, nil
+}
+
+// bookstoreLinkStrings renders links as label=url, in their order, so a
+// comparison reads both fields at once.
+func bookstoreLinkStrings(links []*publirattypesv1.BookstoreLink) []string {
+	values := make([]string, 0, len(links))
+	for _, link := range links {
+		values = append(values, link.GetLabel()+"="+link.GetUrl())
+	}
+	return values
+}
+
+// A volume's bookstore links are replaced as a list, in the order given, and
+// survive the console rewriting the volume's title and price, which is why
+// they have an RPC of their own.
+func TestDBSetVolumeBookstoreLinksReplacesTheListInOrder(t *testing.T) {
+	t.Parallel()
+
+	v := newVolumeEnv(t)
+	volume := v.create(t, "Volume 1", 900)
+
+	set, err := v.setBookstoreLinks(volume.Id,
+		&publirattypesv1.BookstoreLink{Label: "  Kinokuniya  ", Url: " https://example.com/kinokuniya/volume-1 "},
+		&publirattypesv1.BookstoreLink{Label: "Amazon", Url: "https://example.com/amazon/volume-1"},
+	)
+	if err != nil {
+		t.Fatalf("SetVolumeBookstoreLinks: %v", err)
+	}
+	want := []string{"Kinokuniya=https://example.com/kinokuniya/volume-1", "Amazon=https://example.com/amazon/volume-1"}
+	if got := bookstoreLinkStrings(set.BookstoreLinks); !slices.Equal(got, want) {
+		t.Fatalf("bookstore_links = %v, want %v", got, want)
+	}
+
+	if _, err := v.env.seriesClient().UpdateVolume(v.ctx(), &publiraadminv1.UpdateVolumeRequest{
+		Tenant:   v.tenant.tenantContext(),
+		VolumeId: volume.Id,
+		Title:    "Volume One",
+		Price:    800,
+		Currency: "USD",
+	}); err != nil {
+		t.Fatalf("UpdateVolume: %v", err)
+	}
+	listed := v.list(t)
+	if len(listed) != 1 || !slices.Equal(bookstoreLinkStrings(listed[0].BookstoreLinks), want) {
+		t.Fatalf("listed volumes = %+v after UpdateVolume, want the links kept", listed)
+	}
+
+	cleared, err := v.setBookstoreLinks(volume.Id)
+	if err != nil {
+		t.Fatalf("SetVolumeBookstoreLinks(none): %v", err)
+	}
+	if len(cleared.BookstoreLinks) != 0 {
+		t.Fatalf("bookstore_links = %v after an empty list, want none", cleared.BookstoreLinks)
+	}
+	if count := v.env.countRows(t, "SELECT count(*) FROM volume_bookstore_links WHERE tenant_id = $1", v.tenant.Tenant.ID); count != 0 {
+		t.Fatalf("bookstore links stored = %d, want none", count)
+	}
+	if count := v.volumeAuditCount(t, "volume_bookstore_links_updated", "volume", volume.PublicId); count != 2 {
+		t.Fatalf("audit volume_bookstore_links_updated = %d, want 2", count)
+	}
+}
+
+// A refused list names the field that is wrong and leaves the links the
+// volume had.
+func TestDBSetVolumeBookstoreLinksRefusesWhatALinkCannotBe(t *testing.T) {
+	t.Parallel()
+
+	v := newVolumeEnv(t)
+	volume := v.create(t, "Volume 1", 900)
+	kept := &publirattypesv1.BookstoreLink{Label: "Amazon", Url: "https://example.com/amazon/volume-1"}
+	if _, err := v.setBookstoreLinks(volume.Id, kept); err != nil {
+		t.Fatalf("SetVolumeBookstoreLinks: %v", err)
+	}
+
+	eleven := make([]*publirattypesv1.BookstoreLink, 0, 11)
+	for range 11 {
+		eleven = append(eleven, &publirattypesv1.BookstoreLink{Label: "Store", Url: "https://example.com/store"})
+	}
+	for name, test := range map[string]struct {
+		links []*publirattypesv1.BookstoreLink
+		field string
+	}{
+		"an eleventh link":         {eleven, "bookstore_links"},
+		"an http URL":              {[]*publirattypesv1.BookstoreLink{kept, {Label: "Store", Url: "http://example.com/store"}}, "bookstore_links[1].url"},
+		"an HTTPS URL in capitals": {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "HTTPS://example.com/store"}}, "bookstore_links[0].url"},
+		"a URL with no host":       {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https:///store"}}, "bookstore_links[0].url"},
+		"a URL with only a port":   {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https://:443/store"}}, "bookstore_links[0].url"},
+		"a URL of 2049 characters": {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https://example.com/" + strings.Repeat("a", 2029)}}, "bookstore_links[0].url"},
+		"a label of 51 characters": {[]*publirattypesv1.BookstoreLink{{Label: strings.Repeat("a", 51), Url: "https://example.com/store"}}, "bookstore_links[0].label"},
+		"no label":                 {[]*publirattypesv1.BookstoreLink{{Label: "  ", Url: "https://example.com/store"}}, "bookstore_links[0].label"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := v.setBookstoreLinks(volume.Id, test.links...)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("SetVolumeBookstoreLinks = %v, want invalid_argument", err)
+			}
+			assertBadRequestField(t, err, test.field)
+		})
+	}
+
+	listed := v.list(t)
+	if len(listed) != 1 || !slices.Equal(bookstoreLinkStrings(listed[0].BookstoreLinks), bookstoreLinkStrings([]*publirattypesv1.BookstoreLink{kept})) {
+		t.Fatalf("listed volumes = %+v, want the link it had", listed)
 	}
 }
 

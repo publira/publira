@@ -141,6 +141,42 @@ func (env volumePurchaseEnv) access(t *testing.T, ctx context.Context) map[uuid.
 	return access
 }
 
+// The series page lists a volume's bookstore links in the volume's own order,
+// whatever order the rows were written in.
+func TestDBGetSeriesDetailListsAVolumesBookstoreLinksInOrder(t *testing.T) {
+	t.Parallel()
+
+	env := newVolumePurchaseEnv(t, "VOLLINKS", "volume-links.example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		INSERT INTO volume_bookstore_links (tenant_id, volume_id, "position", label, url)
+		VALUES ($1, $2, 1, 'Amazon', 'https://example.com/amazon/volume-1'),
+			($1, $2, 0, 'Kinokuniya', 'https://example.com/kinokuniya/volume-1')
+	`, env.tenant.ID, env.volume.ID); err != nil {
+		t.Fatalf("insert bookstore links: %v", err)
+	}
+
+	detail, err := env.catalog.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(env.tenant),
+		PublicId: env.series.PublicID,
+	})
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+	if len(detail.Volumes) != 1 {
+		t.Fatalf("volumes = %v, want the one on sale", detail.Volumes)
+	}
+	got := make([]string, 0, 2)
+	for _, link := range detail.Volumes[0].BookstoreLinks {
+		got = append(got, link.Label+"="+link.Url)
+	}
+	if want := []string{"Kinokuniya=https://example.com/kinokuniya/volume-1", "Amazon=https://example.com/amazon/volume-1"}; strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("bookstore_links = %v, want %v", got, want)
+	}
+}
+
 // Buying a volume opens every episode it holds and none outside it, keeps the
 // reader from paying for any of them again, and is listed in the library as
 // the volume it bought.

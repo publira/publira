@@ -405,6 +405,7 @@
         "volume_updated": "更新了卷",
         "volume_published": "發布了卷",
         "volume_unpublished": "取消發布了卷",
+        "volume_bookstore_links_updated": "更新了卷的書店連結",
         "volumes_reordered": "調整了卷順序",
         "creator_role_created": "建立了作者角色",
         "creator_role_updated": "更新了作者角色",

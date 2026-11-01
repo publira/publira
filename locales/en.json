@@ -405,6 +405,7 @@
         "volume_updated": "Volume updated",
         "volume_published": "Volume published",
         "volume_unpublished": "Volume unpublished",
+        "volume_bookstore_links_updated": "Volume bookstore links updated",
         "volumes_reordered": "Volumes reordered",
         "creator_role_created": "Author role created",
         "creator_role_updated": "Author role updated",

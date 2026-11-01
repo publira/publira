@@ -162,6 +162,9 @@ const (
 	// AdminSeriesServiceSetVolumeEpisodesProcedure is the procedure name of the AdminSeriesService's
 	// SetVolumeEpisodes RPC.
 	AdminSeriesServiceSetVolumeEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/SetVolumeEpisodes"
+	// AdminSeriesServiceSetVolumeBookstoreLinksProcedure is the procedure name of the
+	// AdminSeriesService's SetVolumeBookstoreLinks RPC.
+	AdminSeriesServiceSetVolumeBookstoreLinksProcedure = "/publira.admin.v1.AdminSeriesService/SetVolumeBookstoreLinks"
 	// AdminSeriesServiceReorderVolumesProcedure is the procedure name of the AdminSeriesService's
 	// ReorderVolumes RPC.
 	AdminSeriesServiceReorderVolumesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderVolumes"
@@ -496,6 +499,13 @@ var (
 			Procedure:  AdminSeriesServiceSetVolumeEpisodesProcedure,
 		}
 	})
+	adminSeriesServiceSetVolumeBookstoreLinksSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("SetVolumeBookstoreLinks"),
+			Procedure:  AdminSeriesServiceSetVolumeBookstoreLinksProcedure,
+		}
+	})
 	adminSeriesServiceReorderVolumesSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -626,6 +636,8 @@ type AdminSeriesServiceClient interface {
 	// Minimum role: tenant_editor.
 	SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error)
 	// Minimum role: tenant_editor.
+	SetVolumeBookstoreLinks(context.Context, *v1.SetVolumeBookstoreLinksRequest) (*v1.SetVolumeBookstoreLinksResponse, error)
+	// Minimum role: tenant_editor.
 	ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error)
 	// Minimum role: tenant_editor.
 	UploadVolumeCoverImage(context.Context, *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error)
@@ -747,6 +759,8 @@ type AdminSeriesServiceHandler interface {
 	// Minimum role: tenant_editor.
 	SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error)
 	// Minimum role: tenant_editor.
+	SetVolumeBookstoreLinks(context.Context, *v1.SetVolumeBookstoreLinksRequest) (*v1.SetVolumeBookstoreLinksResponse, error)
+	// Minimum role: tenant_editor.
 	ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error)
 	// Minimum role: tenant_editor.
 	UploadVolumeCoverImage(context.Context, *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error)
@@ -805,6 +819,7 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceUpdateVolumeSpec(), Handler: adapter.updateVolume},
 		connect.Method{Spec: adminSeriesServicePublishVolumeSpec(), Handler: adapter.publishVolume},
 		connect.Method{Spec: adminSeriesServiceSetVolumeEpisodesSpec(), Handler: adapter.setVolumeEpisodes},
+		connect.Method{Spec: adminSeriesServiceSetVolumeBookstoreLinksSpec(), Handler: adapter.setVolumeBookstoreLinks},
 		connect.Method{Spec: adminSeriesServiceReorderVolumesSpec(), Handler: adapter.reorderVolumes},
 		connect.Method{Spec: adminSeriesServiceUploadVolumeCoverImageSpec(), Handler: adapter.uploadVolumeCoverImage},
 		connect.Method{Spec: adminSeriesServiceDeleteVolumeCoverImageSpec(), Handler: adapter.deleteVolumeCoverImage},
@@ -996,6 +1011,10 @@ func (UnimplementedAdminSeriesServiceHandler) PublishVolume(context.Context, *v1
 
 func (UnimplementedAdminSeriesServiceHandler) SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.SetVolumeEpisodes is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) SetVolumeBookstoreLinks(context.Context, *v1.SetVolumeBookstoreLinksRequest) (*v1.SetVolumeBookstoreLinksResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.SetVolumeBookstoreLinks is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error) {
@@ -1377,6 +1396,14 @@ func (c *adminSeriesServiceClient) PublishVolume(ctx context.Context, req *v1.Pu
 func (c *adminSeriesServiceClient) SetVolumeEpisodes(ctx context.Context, req *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error) {
 	var res v1.SetVolumeEpisodesResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceSetVolumeEpisodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) SetVolumeBookstoreLinks(ctx context.Context, req *v1.SetVolumeBookstoreLinksRequest) (*v1.SetVolumeBookstoreLinksResponse, error) {
+	var res v1.SetVolumeBookstoreLinksResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceSetVolumeBookstoreLinksSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1954,6 +1981,18 @@ func (h adminSeriesServiceHandler) setVolumeEpisodes(ctx context.Context, _ conn
 		return err
 	}
 	res, err := h.svc.SetVolumeEpisodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) setVolumeBookstoreLinks(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SetVolumeBookstoreLinksRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SetVolumeBookstoreLinks(ctx, &req)
 	if err != nil {
 		return err
 	}

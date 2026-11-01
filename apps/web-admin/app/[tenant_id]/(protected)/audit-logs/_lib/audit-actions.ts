@@ -23,6 +23,7 @@ export const auditActions = [
   "volume_updated",
   "volume_published",
   "volume_unpublished",
+  "volume_bookstore_links_updated",
   "volumes_reordered",
   "creator_created",
   "creator_updated",
