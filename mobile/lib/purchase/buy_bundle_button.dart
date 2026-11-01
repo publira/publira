@@ -91,6 +91,7 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
           report(messages.errorsRpcUnavailable);
         case PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.otherAccount ||
             PurchaseFailureKind.unexpected:
           report(messages.purchaseStartFailed);
       }

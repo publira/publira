@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/announcements/http_announcement_repository.dart';
@@ -56,6 +57,7 @@ import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
+import 'package:publira/purchase/store_subscriber.dart';
 import 'package:publira/push/http_push_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_device_store.dart';
@@ -105,6 +107,7 @@ class PubliraApp extends StatefulWidget {
     this.purchases,
     this.checkoutLauncher,
     this.storePurchaser,
+    this.storeSubscriber,
     this.coins,
     this.waitFree,
     this.offline,
@@ -208,6 +211,15 @@ class PubliraApp extends StatefulWidget {
       tenants: tenants,
       store: purchaseStore,
     );
+    final storeSubscriber = inAppPurchase == null || purchaseStore == null
+        ? null
+        : StoreSubscriber(
+            platform: inAppPurchase,
+            store: purchaseStore,
+            repository: purchases,
+            applicationId: () =>
+                PackageInfo.fromPlatform().then((info) => info.packageName),
+          );
     final waitFree = HttpWaitFreeRepository(client: client, tenants: tenants);
     final catalog = OfflineCatalogRepository(
       origin: HttpCatalogRepository(
@@ -270,13 +282,15 @@ class PubliraApp extends StatefulWidget {
       pages: HttpPageRepository(client: client, tenants: tenants),
       purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
-      storePurchaser: inAppPurchase == null || purchaseStore == null
+      storePurchaser: storeSubscriber == null
           ? null
           : StorePurchaser(
-              platform: inAppPurchase,
-              store: purchaseStore,
+              platform: storeSubscriber.platform,
+              store: storeSubscriber.store,
               repository: purchases,
+              isSubscription: storeSubscriber.isSubscription,
             ),
+      storeSubscriber: storeSubscriber,
       coins: HttpCoinRepository(client: client, tenants: tenants),
       waitFree: waitFree,
       offline: library,
@@ -417,6 +431,11 @@ class PubliraApp extends StatefulWidget {
   /// platform on iOS or Android. The app starts it on launch and has it
   /// confirm what the store still holds on sign-in and on resume.
   final StorePurchaser? storePurchaser;
+
+  /// The store's subscriptions, for a tenant whose app sells its plans
+  /// through it, started, and confirming what the store still holds, as
+  /// [storePurchaser] is.
+  final StoreSubscriber? storeSubscriber;
 
   /// The tenant's coins and the reader's balance of them, which a locked
   /// episode is paid for with and the account screen leads to.
@@ -596,6 +615,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.tenantAvailability?.addListener(_onTenantAvailabilityChanged);
     unawaited(_restore());
     unawaited(widget.storePurchaser?.start());
+    unawaited(widget.storeSubscriber?.start());
     unawaited(widget.tenantBrand?.start());
     unawaited(_readAnnouncements());
   }
@@ -738,6 +758,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       unawaited(widget.notifications?.refresh());
       unawaited(widget.progress?.flush());
       unawaited(widget.storePurchaser?.reconcile());
+      unawaited(widget.storeSubscriber?.reconcile());
     }
   }
 
@@ -840,6 +861,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
         // A transaction the store reported before there was a session could
         // not be confirmed.
         unawaited(widget.storePurchaser?.reconcile());
+        unawaited(widget.storeSubscriber?.reconcile());
       } else {
         widget.notifications?.reset();
       }
@@ -987,6 +1009,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                                       repository: widget.purchases,
                                       launcher: widget.checkoutLauncher,
                                       storePurchaser: widget.storePurchaser,
+                                      storeSubscriber: widget.storeSubscriber,
                                       child: CoinScope(
                                         repository: widget.coins,
                                         child: WaitFreeScope(

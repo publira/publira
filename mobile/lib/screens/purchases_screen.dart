@@ -359,6 +359,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       PurchaseFailureKind.storeUnavailable ||
       PurchaseFailureKind.notSold ||
       PurchaseFailureKind.notSettled ||
+      PurchaseFailureKind.otherAccount ||
       PurchaseFailureKind.unexpected => messages.purchasesFailed,
     };
   }

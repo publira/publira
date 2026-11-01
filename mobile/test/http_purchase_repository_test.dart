@@ -195,6 +195,60 @@ void main() {
     );
   });
 
+  test('a subscription is opened for the plan through the store', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final intent = await repository().startStoreSubscription(
+      'plan-all',
+      InAppPurchaseStore.googlePlay,
+    );
+
+    expect(intent.intentId, ConnectFixtureServer.storeIntentId);
+    expect(intent.productId, ConnectFixtureServer.storeSubscriptionProductId);
+    final call = server.requestsTo('StartStoreSubscription').single;
+    final request = call.decode(pb.StartStoreSubscriptionRequest());
+    expect(request.planId, 'plan-all');
+    expect(
+      request.store,
+      pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+    );
+    expect(call.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('a subscription transaction is handed to the server with its '
+      'product', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    await repository().confirmStoreSubscription(
+      store: InAppPurchaseStore.googlePlay,
+      transaction: 'purchase-token',
+      productId: 'plan_unlimited',
+    );
+
+    final request = server
+        .requestsTo('ConfirmStoreSubscription')
+        .single
+        .decode(pb.ConfirmStoreSubscriptionRequest());
+    expect(request.transaction, 'purchase-token');
+    expect(request.productId, 'plan_unlimited');
+  });
+
+  test('a subscription recorded for another reader stays theirs', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server
+      ..storeConfirmStatus = HttpStatus.forbidden
+      ..storeConfirmErrorCode = 'permission_denied';
+
+    await expectLater(
+      repository().confirmStoreSubscription(
+        store: InAppPurchaseStore.appStore,
+        transaction: 'signed-transaction',
+        productId: '',
+      ),
+      failsWith(PurchaseFailureKind.otherAccount),
+    );
+  });
+
   test('a guest is not sent to the API for a store purchase', () async {
     await expectLater(
       repository().startStorePurchase(
@@ -261,17 +315,22 @@ void main() {
     server.subscriptionPlans = [
       pb.SubscriptionPlan(
         id: 'plan-all',
+        name: 'Unlimited',
         scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_ALL,
+        appStoreProductId: 'plan_ios',
+        googlePlayProductId: 'plan_play',
       ),
       pb.SubscriptionPlan(
         id: 'plan-label',
         scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_LABEL,
-        labels: [pb.PublishedLabel(publicId: 'SeedLABLAAA1')],
+        labels: [
+          pb.PublishedLabel(publicId: 'SeedLABLAAA1', name: 'Seed Label'),
+        ],
       ),
       pb.SubscriptionPlan(
         id: 'plan-series',
         scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_SERIES,
-        series: [pb.Series(publicId: seriesId)],
+        series: [pb.Series(publicId: seriesId, title: 'Seed Series')],
       ),
       // A scope this build has no name for opens nothing it could say.
       pb.SubscriptionPlan(id: 'plan-unknown'),
@@ -288,7 +347,13 @@ void main() {
       ],
     );
     expect(plans[1].labelIds, {'SeedLABLAAA1'});
+    expect(plans[1].labelNames, ['Seed Label']);
     expect(plans[2].seriesIds, {seriesId});
+    expect(plans[2].seriesTitles, ['Seed Series']);
+    expect(plans[0].id, 'plan-all');
+    expect(plans[0].name, 'Unlimited');
+    expect(plans[0].productIdIn(InAppPurchaseStore.appStore), 'plan_ios');
+    expect(plans[0].productIdIn(InAppPurchaseStore.googlePlay), 'plan_play');
     final call = server.requestsTo('ListSubscriptionPlans').single;
     expect(
       call.decode(pb.ListSubscriptionPlansRequest()).surface,
@@ -566,7 +631,11 @@ void main() {
     test('reads the plan, where it stands, and who bills it', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.mySubscription = pb.Subscription(
-        plan: pb.SubscriptionPlan(name: ' Unlimited '),
+        plan: pb.SubscriptionPlan(
+          name: ' Unlimited ',
+          appStoreProductId: 'plan_ios',
+          googlePlayProductId: 'plan_play',
+        ),
         status: pb.SubscriptionStatus.SUBSCRIPTION_STATUS_PAST_DUE,
         currentPeriodEnd: '2026-12-01T12:00:00Z',
         cancelAtPeriodEnd: true,
@@ -583,6 +652,8 @@ void main() {
       );
       expect(subscription.cancelAtPeriodEnd, isTrue);
       expect(subscription.store, InAppPurchaseStore.googlePlay);
+      // Google Play's page of subscriptions is opened on this product.
+      expect(subscription.productId, 'plan_play');
     });
 
     test('a plan the web checkout bills names no store', () async {

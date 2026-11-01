@@ -26,6 +26,11 @@ enum PurchaseFailureKind {
   /// pending purchase), so it is confirmed again later.
   notSettled,
 
+  /// What the store charged is recorded for another account of the tenant,
+  /// which keeps it: a subscription restored while signed in to a second
+  /// account.
+  otherAccount,
+
   /// Anything else, including a tenant that has stopped taking payments.
   unexpected,
 }

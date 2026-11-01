@@ -1076,13 +1076,17 @@ class ConnectFixtureServer {
   int storeStartStatus = HttpStatus.ok;
   String storeStartErrorCode = 'failed_precondition';
 
-  /// The status and Connect code `ConfirmStorePurchase` answers with.
+  /// The status and Connect code `ConfirmStorePurchase` and
+  /// `ConfirmStoreSubscription` answer with.
   int storeConfirmStatus = HttpStatus.ok;
   String storeConfirmErrorCode = 'failed_precondition';
 
   /// The intent `StartStorePurchase` opens and the product it names.
   static const storeIntentId = '018f0e90-1000-7000-8000-000000000001';
   static const storeProductId = 'episode_500';
+
+  /// The subscription `StartStoreSubscription` names.
+  static const storeSubscriptionProductId = 'plan_unlimited_monthly';
 
   /// The status `StartEpisodeCheckout` answers a checkout it would otherwise
   /// start with, so a test can fail one.
@@ -2266,6 +2270,42 @@ class ConnectFixtureServer {
         () => pb.StartSeriesRemainderCheckoutResponse(
           checkoutUrl: checkoutUrlFor(body.seriesId).toString(),
         ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/StartStoreSubscription')) {
+      recorded.decode(pb.StartStoreSubscriptionRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.StartStoreSubscriptionResponse(
+          intentId: storeIntentId,
+          productId: storeSubscriptionProductId,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/ConfirmStoreSubscription')) {
+      recorded.decode(pb.ConfirmStoreSubscriptionRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (storeConfirmStatus != HttpStatus.ok) {
+        await _writeError(
+          request,
+          storeConfirmStatus,
+          storeConfirmErrorCode,
+          'refused',
+        );
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.ConfirmStoreSubscriptionResponse(subscription: pb.Subscription()),
       );
       return;
     }

@@ -34,7 +34,9 @@ import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
+import 'package:publira/purchase/store_subscriber.dart';
 import 'package:publira/purchase/subscription_offer.dart';
+import 'package:publira/purchase/subscription_plans_sheet.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
@@ -55,7 +57,7 @@ class _OpenEpisode {
     this.readerHasBirthDate = false,
     this.provenRating,
     this.waitFree,
-    this.plansOffered = false,
+    this.plans = const [],
     this.coins,
   });
 
@@ -73,9 +75,9 @@ class _OpenEpisode {
   /// says nothing about it.
   final WaitFreeOffer? waitFree;
 
-  /// Whether a plan the tenant sells opens a locked body, so its gate offers
-  /// the plans.
-  final bool plansOffered;
+  /// The plans the tenant sells that open a locked body, which its gate
+  /// offers.
+  final List<SubscriptionPlan> plans;
 
   /// What a locked body's gate offers for the tenant's coins, or `null` when
   /// it says nothing about them.
@@ -205,6 +207,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   StreamSubscription<String>? _packsRecorded;
   StorePurchaser? _listenedPurchaser;
 
+  /// The store's recorded subscriptions, heard so that a gate a plan held
+  /// pending would open reads the body again once the plan is recorded.
+  StreamSubscription<String>? _plansRecorded;
+  StoreSubscriber? _listenedSubscriber;
+
   /// Whether the body last read is locked, which is when a granted pack can
   /// change what the screen offers.
   var _bodyLocked = false;
@@ -229,6 +236,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       _listenedPurchaser = purchaser;
       unawaited(_packsRecorded?.cancel());
       _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted && _bodyLocked) {
+          _reload();
+        }
+      });
+    }
+    final subscriber = PurchaseScope.maybeOf(context)?.storeSubscriber;
+    if (!identical(subscriber, _listenedSubscriber)) {
+      _listenedSubscriber = subscriber;
+      unawaited(_plansRecorded?.cancel());
+      _plansRecorded = subscriber?.recorded.listen((_) {
         if (mounted && _bodyLocked) {
           _reload();
         }
@@ -378,6 +395,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   void dispose() {
     _paymentLock.dispose();
     unawaited(_packsRecorded?.cancel());
+    unawaited(_plansRecorded?.cancel());
     _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
@@ -471,14 +489,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             signedIn: auth.isSignedIn,
             locale: locale,
           );
-    final plansOffered =
-        purchase != null &&
-        await offersSubscriptionPlan(
-          purchase: purchase,
-          catalog: catalog,
-          detail: detail,
-          locale: locale,
-        );
+    final plans = purchase == null
+        ? const <SubscriptionPlan>[]
+        : await subscriptionPlansOpening(
+            purchase: purchase,
+            catalog: catalog,
+            detail: detail,
+            locale: locale,
+          );
     final coinOffer = coins == null || purchase == null
         ? null
         : await readCoinGateOffer(
@@ -495,7 +513,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       readerHasBirthDate: age?.hasBirthDate ?? false,
       provenRating: age?.provenAgeRating(DateTime.now()),
       waitFree: offer,
-      plansOffered: plansOffered,
+      plans: plans,
       coins: coinOffer,
     );
   }
@@ -668,7 +686,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         messages,
         detail,
         open.waitFree,
-        plansOffered: open.plansOffered,
+        plans: open.plans,
         coins: open.coins,
       );
     }
@@ -716,9 +734,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// series and the tenant offer them, and the nearest later episode the
   /// reader could read instead.
   ///
-  /// The plans are offered where a plan the tenant sells opens the episode
-  /// and the tenant sells through its web checkout: the store sells no plan,
-  /// so an app on the store route sends nobody to the site for one.
+  /// The plans are offered where a plan the tenant sells opens the episode:
+  /// on the site in the browser where the tenant sells through its web
+  /// checkout, and in a sheet of the app where it sells through the store,
+  /// which lists the plans the store sells. An app on the store route sends
+  /// nobody to the site for one.
   ///
   /// The tenant's coins are offered on the store route alone, and lead where
   /// the reader's coins pay for the episode: the purchase stands beside them
@@ -727,7 +747,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     AppMessages messages,
     EpisodeDetail detail,
     WaitFreeOffer? waitFree, {
-    required bool plansOffered,
+    required List<SubscriptionPlan> plans,
     CoinGateOffer? coins,
   }) {
     final signedIn = AuthScope.of(context).isSignedIn;
@@ -824,18 +844,35 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           )
         : null;
     final site = LinkScope.maybeOf(context)?.site;
-    final plans =
-        plansOffered &&
-            _acceptsPayments &&
-            _sellsOnWeb &&
-            site != null &&
-            PurchaseScope.maybeOf(context) != null
-        ? OutlinedButton(
-            key: const ValueKey('episode-see-plans'),
-            onPressed: () => unawaited(_openPlans(site)),
-            child: AutospacedText(messages.purchaseSeePlans),
-          )
-        : null;
+    final subscriber = PurchaseScope.maybeOf(context)?.storeSubscriber;
+    final storePlans = subscriber == null
+        ? const <SubscriptionPlan>[]
+        : [
+            for (final plan in plans)
+              if (plan.productIdIn(subscriber.store).isNotEmpty) plan,
+          ];
+    final VoidCallback? onSeePlans;
+    if (!_acceptsPayments || PurchaseScope.maybeOf(context) == null) {
+      onSeePlans = null;
+    } else if (_sellsOnWeb) {
+      onSeePlans = plans.isNotEmpty && site != null
+          ? () => unawaited(_openPlans(site))
+          : null;
+    } else {
+      onSeePlans = subscriber != null && storePlans.isNotEmpty
+          ? () => unawaited(_openStorePlans(subscriber, storePlans))
+          : null;
+    }
+    final seePlans = onSeePlans == null
+        ? null
+        : ListenableBuilder(
+            listenable: _paymentLock,
+            builder: (context, _) => OutlinedButton(
+              key: const ValueKey('episode-see-plans'),
+              onPressed: _paymentLock.held ? null : onSeePlans,
+              child: AutospacedText(messages.purchaseSeePlans),
+            ),
+          );
     final Widget? accessAction;
     if (buy != null) {
       accessAction = buy;
@@ -880,7 +917,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           ],
         ),
       },
-      actions: [?ticket, ?accessAction, ?rent, ?plans, _backToSeries(messages)],
+      actions: [
+        ?ticket,
+        ?accessAction,
+        ?rent,
+        ?seePlans,
+        _backToSeries(messages),
+      ],
       footer: nextFree == null
           ? null
           : TextButton(
@@ -988,6 +1031,87 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       messenger.showSnackBar(
         SnackBar(content: AutospacedText(messages.purchasePlansOpenFailed)),
       );
+    }
+  }
+
+  /// Lists [plans] in a sheet of the app, as the store sells them, and
+  /// subscribes the reader to the one they choose with the store's payment
+  /// sheet. A subscription the store took is confirmed as a purchase is: the
+  /// gate says the payment is being confirmed, and the body is read again
+  /// until it opens.
+  Future<void> _openStorePlans(
+    StoreSubscriber subscriber,
+    List<SubscriptionPlan> plans,
+  ) async {
+    if (!_paymentLock.acquire()) {
+      return;
+    }
+    Future<StoreSubscriptionOutcome>? subscribing;
+    Object? result;
+    try {
+      result = await showSubscriptionPlansSheet(
+        context,
+        plans: plans,
+        subscriber: subscriber,
+        subscribe: (planId) => subscribing = subscriber.subscribe(planId),
+      );
+      // A sheet dismissed while a subscription was under way leaves it
+      // running: the lock stays held, and its outcome is the screen's to
+      // report, until it settles.
+      final pending = subscribing;
+      if (result == null && pending != null) {
+        try {
+          final outcome = await pending;
+          result = outcome == StoreSubscriptionOutcome.cancelled
+              ? null
+              : outcome;
+        } on PurchaseFailure catch (failure) {
+          result = failure;
+        }
+      }
+    } finally {
+      _paymentLock.release();
+    }
+    if (!mounted) {
+      return;
+    }
+    final messages = AppMessages.of(context);
+    void report(String message) => ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: AutospacedText(message)));
+    switch (result) {
+      case StoreSubscriptionOutcome.subscribed ||
+          StoreSubscriptionOutcome.pending:
+        context.pushReplacementInTab(
+          AppRoutes.episodeViewerPath(
+            widget.seriesId,
+            widget.episodeId,
+            checkout: CheckoutOutcome.success,
+          ),
+        );
+      case PurchaseFailure(:final kind):
+        switch (kind) {
+          case PurchaseFailureKind.sessionExpired:
+            unawaited(context.pushInTab(AppRoutes.signInPath()));
+          case PurchaseFailureKind.alreadyPurchased:
+            // The reader holds a plan already, which may be the one that
+            // opens the episode.
+            report(messages.purchaseAlreadySubscribed);
+            _reload();
+          case PurchaseFailureKind.network:
+            report(messages.errorsRpcUnavailable);
+          case PurchaseFailureKind.storeUnavailable:
+            report(messages.purchaseStoreUnavailable);
+          case PurchaseFailureKind.notSold || PurchaseFailureKind.gone:
+            report(messages.purchaseSubscriptionUnavailable);
+            _reload();
+          case PurchaseFailureKind.notSettled ||
+              PurchaseFailureKind.otherAccount ||
+              PurchaseFailureKind.unexpected:
+            report(messages.purchaseSubscriptionFailed);
+        }
+      case _:
+      // The sheet was dismissed.
     }
   }
 

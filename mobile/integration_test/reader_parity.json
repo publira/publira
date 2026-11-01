@@ -470,7 +470,11 @@
       },
       "mobile": {
         "routes": ["/series/:seriesId/episodes/:episodeId"],
-        "rpcs": ["ListSubscriptionPlans"]
+        "rpcs": [
+          "ListSubscriptionPlans",
+          "StartStoreSubscription",
+          "ConfirmStoreSubscription"
+        ]
       }
     },
     {
@@ -480,7 +484,11 @@
       },
       "mobile": {
         "routes": ["/account"],
-        "rpcs": ["GetMySubscription", "CreateBillingPortalSession"]
+        "rpcs": [
+          "GetMySubscription",
+          "CreateBillingPortalSession",
+          "ConfirmStoreSubscription"
+        ]
       }
     },
     {

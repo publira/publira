@@ -8,47 +8,46 @@ import 'package:publira/purchase/purchase_repository.dart';
 /// hands the reader to in the browser.
 const subscriptionPlansPath = '/plans';
 
-/// Whether a plan the tenant sells opens [detail]'s series, which is what
+/// The plans the tenant sells that open [detail]'s series, which is what
 /// makes a locked episode offer the plans: a plan of the whole tenant, of the
-/// series, or of the label the series is filed under.
+/// series, or of the label the series is filed under. They are in the order
+/// the tenant created them.
 ///
 /// The episode read does not name the series' label, so the series is read
-/// for it, and only when a plan of labels could be the one that opens it.
-/// Either read failing offers no plan, which leaves the gate as it is for a
+/// for it, and only when a plan of labels could be one that opens it. The
+/// plans failing to read answers none, which leaves the gate as it is for a
 /// tenant that sells none.
-Future<bool> offersSubscriptionPlan({
+Future<List<SubscriptionPlan>> subscriptionPlansOpening({
   required PurchaseRepository purchase,
   required CatalogRepository catalog,
   required EpisodeDetail detail,
   required String locale,
 }) async {
   if (detail.access != EpisodeAccess.locked) {
-    return false;
+    return const [];
   }
   final List<SubscriptionPlan> plans;
   try {
     plans = await purchase.subscriptionPlans();
   } on PurchaseFailure {
-    return false;
+    return const [];
   }
-  if (plans.any((plan) => plan.opens(seriesId: detail.seriesId))) {
-    return true;
+  var labelId = '';
+  if (plans.any((plan) => plan.scope == SubscriptionPlanScope.label)) {
+    try {
+      labelId =
+          (await catalog.getSeries(
+            detail.seriesId,
+            locale: locale,
+          ))?.series.labelId ??
+          '';
+    } on CatalogFailure {
+      // The plans of labels are left out, and the others still open it.
+    }
   }
-  if (!plans.any((plan) => plan.scope == SubscriptionPlanScope.label)) {
-    return false;
-  }
-  final String labelId;
-  try {
-    labelId =
-        (await catalog.getSeries(
-          detail.seriesId,
-          locale: locale,
-        ))?.series.labelId ??
-        '';
-  } on CatalogFailure {
-    return false;
-  }
-  return plans.any(
-    (plan) => plan.opens(seriesId: detail.seriesId, labelId: labelId),
+  return List.unmodifiable(
+    plans.where(
+      (plan) => plan.opens(seriesId: detail.seriesId, labelId: labelId),
+    ),
   );
 }

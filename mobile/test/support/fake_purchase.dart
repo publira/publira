@@ -327,6 +327,63 @@ class FakePurchaseRepository implements PurchaseRepository {
     onConfirmed?.call();
   }
 
+  /// Plans [startStoreSubscription] was asked for, in order.
+  final List<String> subscriptionIntents = <String>[];
+
+  /// What [startStoreSubscription] throws, if anything.
+  PurchaseFailure? subscriptionStartFailure;
+
+  /// Holds [startStoreSubscription] until completed, while the server is
+  /// still being asked.
+  Completer<void>? subscriptionStartGate;
+
+  /// Transactions [confirmStoreSubscription] recorded, in order.
+  final List<String> subscriptionsConfirmed = <String>[];
+
+  /// What [confirmStoreSubscription] throws, if anything: a subscription the
+  /// server holds for another account, or a store it could not reach.
+  PurchaseFailure? subscriptionConfirmFailure;
+
+  /// Called for each subscription [confirmStoreSubscription] records, which
+  /// is when the server opens the plan's episodes to the reader.
+  void Function(String productId)? onSubscriptionConfirmed;
+
+  /// The intent [startStoreSubscription] answers for [planId].
+  static String subscriptionIntentFor(String planId) =>
+      'subscription-intent-$planId'.toLowerCase();
+
+  @override
+  Future<StorePurchaseIntent> startStoreSubscription(
+    String planId,
+    InAppPurchaseStore store,
+  ) async {
+    subscriptionIntents.add(planId);
+    await subscriptionStartGate?.future;
+    final failure = subscriptionStartFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    final plan = plans.firstWhere((plan) => plan.id == planId);
+    return StorePurchaseIntent(
+      intentId: subscriptionIntentFor(planId),
+      productId: plan.productIdIn(store),
+    );
+  }
+
+  @override
+  Future<void> confirmStoreSubscription({
+    required InAppPurchaseStore store,
+    required String transaction,
+    required String productId,
+  }) async {
+    final failure = subscriptionConfirmFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    subscriptionsConfirmed.add(transaction);
+    onSubscriptionConfirmed?.call(productId);
+  }
+
   @override
   Future<MyPurchasePage> listMyPurchases({
     required String locale,

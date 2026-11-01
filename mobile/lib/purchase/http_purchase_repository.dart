@@ -147,6 +147,9 @@ class HttpPurchaseRepository implements PurchaseRepository {
           // A scope this build has no name for opens nothing it could say.
           if (_planScopes[plan.scope] case final scope?)
             SubscriptionPlan(
+              id: plan.id.trim(),
+              name: plan.name.trim(),
+              description: plan.description.trim(),
               scope: scope,
               labelIds: Set.unmodifiable({
                 for (final label in plan.labels)
@@ -156,6 +159,19 @@ class HttpPurchaseRepository implements PurchaseRepository {
                 for (final series in plan.series)
                   if (series.publicId.isNotEmpty) series.publicId,
               }),
+              labelNames: List.unmodifiable([
+                for (final label in plan.labels)
+                  if (label.name.trim() case final name when name.isNotEmpty)
+                    name,
+              ]),
+              seriesTitles: List.unmodifiable([
+                for (final series in plan.series)
+                  if (series.title.trim() case final title
+                      when title.isNotEmpty)
+                    title,
+              ]),
+              appStoreProductId: plan.appStoreProductId.trim(),
+              googlePlayProductId: plan.googlePlayProductId.trim(),
             ),
       ]);
     } on ConnectException catch (error) {
@@ -185,19 +201,26 @@ class HttpPurchaseRepository implements PurchaseRepository {
         return null;
       }
       final subscription = body.subscription;
+      final plan = subscription.plan;
+      final store = switch (subscription.store) {
+        pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE =>
+          InAppPurchaseStore.appStore,
+        pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY =>
+          InAppPurchaseStore.googlePlay,
+        _ => null,
+      };
       return MySubscription(
-        planName: subscription.plan.name.trim(),
+        planName: plan.name.trim(),
         status:
             _subscriptionStatuses[subscription.status] ??
             SubscriptionStatus.unknown,
         currentPeriodEnd: _readInstant(subscription.currentPeriodEnd),
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-        store: switch (subscription.store) {
-          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE =>
-            InAppPurchaseStore.appStore,
-          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY =>
-            InAppPurchaseStore.googlePlay,
-          _ => null,
+        store: store,
+        productId: switch (store) {
+          InAppPurchaseStore.appStore => plan.appStoreProductId.trim(),
+          InAppPurchaseStore.googlePlay => plan.googlePlayProductId.trim(),
+          null => '',
         },
       );
     } on ConnectException catch (error) {
@@ -443,6 +466,70 @@ class HttpPurchaseRepository implements PurchaseRepository {
       if (error.code == 'failed_precondition') {
         throw PurchaseFailure(
           PurchaseFailureKind.notSettled,
+          message: error.message,
+        );
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<StorePurchaseIntent> startStoreSubscription(
+    String planId,
+    InAppPurchaseStore store,
+  ) async {
+    // Read once and sent explicitly, so the intent is opened for the reader
+    // who tapped and no one else.
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.SubscriptionServiceApi(_client)
+          .startStoreSubscription(
+            ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+            pb.StartStoreSubscriptionRequest(
+              planId: planId,
+              store: _store(store),
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      final intentId = body.intentId.trim();
+      final productId = body.productId.trim();
+      if (intentId.isEmpty || productId.isEmpty) {
+        throw const PurchaseFailure(
+          PurchaseFailureKind.unexpected,
+          message: 'intentId and productId are required',
+        );
+      }
+      return StorePurchaseIntent(intentId: intentId, productId: productId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<void> confirmStoreSubscription({
+    required InAppPurchaseStore store,
+    required String transaction,
+    required String productId,
+  }) async {
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      await pb.SubscriptionServiceApi(_client).confirmStoreSubscription(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ConfirmStoreSubscriptionRequest(
+          productId: productId,
+          store: _store(store),
+          tenant: pb.TenantContext(tenantId: tenantId),
+          transaction: transaction,
+        ),
+      );
+    } on ConnectException catch (error) {
+      // Here the subscription is another reader's, rather than a plan that
+      // is not published.
+      if (error.code == 'permission_denied') {
+        throw PurchaseFailure(
+          PurchaseFailureKind.otherAccount,
           message: error.message,
         );
       }

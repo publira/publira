@@ -428,6 +428,16 @@ final class AppMessages {
     return _format('mobile.account.manage_billing');
   }
 
+  /// `mobile.account.manage_subscription`
+  String get accountManageSubscription {
+    return _format('mobile.account.manage_subscription');
+  }
+
+  /// `mobile.account.manage_subscription_failed`
+  String get accountManageSubscriptionFailed {
+    return _format('mobile.account.manage_subscription_failed');
+  }
+
   /// `mobile.account.name`
   String get accountName {
     return _format('mobile.account.name');
@@ -581,6 +591,36 @@ final class AppMessages {
   /// `mobile.account.plan_renews_on`
   String accountPlanRenewsOn({required String date}) {
     return _format('mobile.account.plan_renews_on', {'date': date});
+  }
+
+  /// `mobile.account.plan_restore_hint`
+  String get accountPlanRestoreHint {
+    return _format('mobile.account.plan_restore_hint');
+  }
+
+  /// `mobile.account.restore_failed`
+  String get accountRestoreFailed {
+    return _format('mobile.account.restore_failed');
+  }
+
+  /// `mobile.account.restore_found`
+  String get accountRestoreFound {
+    return _format('mobile.account.restore_found');
+  }
+
+  /// `mobile.account.restore_none`
+  String get accountRestoreNone {
+    return _format('mobile.account.restore_none');
+  }
+
+  /// `mobile.account.restore_other_account`
+  String get accountRestoreOtherAccount {
+    return _format('mobile.account.restore_other_account');
+  }
+
+  /// `mobile.account.restore_purchases`
+  String get accountRestorePurchases {
+    return _format('mobile.account.restore_purchases');
   }
 
   /// `mobile.account.sign_out`
@@ -2722,6 +2762,11 @@ final class AppMessages {
     return _format('mobile.passkeys.unnamed');
   }
 
+  /// `mobile.purchase.already_subscribed`
+  String get purchaseAlreadySubscribed {
+    return _format('mobile.purchase.already_subscribed');
+  }
+
   /// `mobile.purchase.buy`
   String purchaseBuy({required String price}) {
     return _format('mobile.purchase.buy', {'price': price});
@@ -2752,9 +2797,71 @@ final class AppMessages {
     return _format('mobile.purchase.not_sold_in_app');
   }
 
+  /// `mobile.purchase.plan_billing_day`
+  String purchasePlanBillingDay({required num count, required String price}) {
+    return _format('mobile.purchase.plan_billing_day', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.plan_billing_month`
+  String purchasePlanBillingMonth({required num count, required String price}) {
+    return _format('mobile.purchase.plan_billing_month', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.plan_billing_week`
+  String purchasePlanBillingWeek({required num count, required String price}) {
+    return _format('mobile.purchase.plan_billing_week', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.plan_billing_year`
+  String purchasePlanBillingYear({required num count, required String price}) {
+    return _format('mobile.purchase.plan_billing_year', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.plan_scope_all`
+  String get purchasePlanScopeAll {
+    return _format('mobile.purchase.plan_scope_all');
+  }
+
+  /// `mobile.purchase.plan_scope_labels`
+  String purchasePlanScopeLabels({required String labels}) {
+    return _format('mobile.purchase.plan_scope_labels', {'labels': labels});
+  }
+
+  /// `mobile.purchase.plan_scope_series`
+  String purchasePlanScopeSeries({required String series}) {
+    return _format('mobile.purchase.plan_scope_series', {'series': series});
+  }
+
+  /// `mobile.purchase.plans_description`
+  String get purchasePlansDescription {
+    return _format('mobile.purchase.plans_description');
+  }
+
+  /// `mobile.purchase.plans_empty`
+  String get purchasePlansEmpty {
+    return _format('mobile.purchase.plans_empty');
+  }
+
   /// `mobile.purchase.plans_open_failed`
   String get purchasePlansOpenFailed {
     return _format('mobile.purchase.plans_open_failed');
+  }
+
+  /// `mobile.purchase.plans_title`
+  String get purchasePlansTitle {
+    return _format('mobile.purchase.plans_title');
   }
 
   /// `mobile.purchase.rent_for`
@@ -2788,6 +2895,21 @@ final class AppMessages {
   /// `mobile.purchase.store_unavailable`
   String get purchaseStoreUnavailable {
     return _format('mobile.purchase.store_unavailable');
+  }
+
+  /// `mobile.purchase.subscribe`
+  String get purchaseSubscribe {
+    return _format('mobile.purchase.subscribe');
+  }
+
+  /// `mobile.purchase.subscription_failed`
+  String get purchaseSubscriptionFailed {
+    return _format('mobile.purchase.subscription_failed');
+  }
+
+  /// `mobile.purchase.subscription_unavailable`
+  String get purchaseSubscriptionUnavailable {
+    return _format('mobile.purchase.subscription_unavailable');
   }
 
   /// `mobile.purchases.account_description`
@@ -3967,6 +4089,9 @@ const _jaSources = <String, String>{
   'mobile.account.icon_uploading': 'アップロード中…',
   'mobile.account.linked_accounts': '連携アカウント',
   'mobile.account.manage_billing': '支払いの管理',
+  'mobile.account.manage_subscription': 'サブスクリプションの管理',
+  'mobile.account.manage_subscription_failed':
+      'ストアのサブスクリプションを開けませんでした。もう一度お試しください。',
   'mobile.account.name': 'お名前',
   'mobile.account.name_unset': '(未設定)',
   'mobile.account.notification_category_announcements': 'お知らせ',
@@ -4003,6 +4128,13 @@ const _jaSources = <String, String>{
   'mobile.account.plan_on_hold': '支払いが完了するまでプランは停止しています。支払い方法を更新してください。',
   'mobile.account.plan_past_due': '前回の支払いが完了しませんでした。読み続けるには、支払い方法を更新してください。',
   'mobile.account.plan_renews_on': '{\$date}に更新されます。',
+  'mobile.account.plan_restore_hint': '別の端末でストアから購読した場合は、ここでプランを復元できます。',
+  'mobile.account.restore_failed': '購入を復元できませんでした。時間をおいて再試行してください。',
+  'mobile.account.restore_found': 'プランを復元しました。',
+  'mobile.account.restore_none': '復元できるサブスクリプションはストアにありません。',
+  'mobile.account.restore_other_account':
+      'このサブスクリプションは別のアカウントで登録されています。そのアカウントでサインインすると読めます。',
+  'mobile.account.restore_purchases': '購入を復元',
   'mobile.account.sign_out': 'サインアウト',
   'mobile.account.signed_out': 'サインインしていません',
   'mobile.account.title': 'アカウント',
@@ -4456,13 +4588,29 @@ const _jaSources = <String, String>{
   'mobile.passkeys.rename': '名前を変更',
   'mobile.passkeys.title': 'パスキー',
   'mobile.passkeys.unnamed': '名前のないパスキー',
+  'mobile.purchase.already_subscribed': 'すでにプランを利用しています。アカウント画面で確認できます。',
   'mobile.purchase.buy': '{\$price}で購入',
   'mobile.purchase.cancelled': '購入手続きをキャンセルしました。料金は発生していません。',
   'mobile.purchase.check_again': 'もう一度確認',
   'mobile.purchase.confirming': '決済を確認しています。購入が反映されると本文を表示します。',
   'mobile.purchase.included_in_plan': 'プランに含まれています',
   'mobile.purchase.not_sold_in_app': '現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。',
+  'mobile.purchase.plan_billing_day':
+      '.input {\$count :integer}\n.match \$count\n1 {{1日ごとに{\$price}}}\n* {{{\$count}日ごとに{\$price}}}',
+  'mobile.purchase.plan_billing_month':
+      '.input {\$count :integer}\n.match \$count\n1 {{月額{\$price}}}\n* {{{\$count}か月ごとに{\$price}}}',
+  'mobile.purchase.plan_billing_week':
+      '.input {\$count :integer}\n.match \$count\n1 {{1週間ごとに{\$price}}}\n* {{{\$count}週間ごとに{\$price}}}',
+  'mobile.purchase.plan_billing_year':
+      '.input {\$count :integer}\n.match \$count\n1 {{年額{\$price}}}\n* {{{\$count}年ごとに{\$price}}}',
+  'mobile.purchase.plan_scope_all': 'すべての作品が対象です。',
+  'mobile.purchase.plan_scope_labels': '{\$labels}の作品が対象です。',
+  'mobile.purchase.plan_scope_series': '{\$series}が対象です。',
+  'mobile.purchase.plans_description':
+      'プランの対象のエピソードを1話ずつ購入せずに読めます。解約するまでストアから請求されます。',
+  'mobile.purchase.plans_empty': '現在アプリで購読できるプランはありません。時間をおいて再試行してください。',
   'mobile.purchase.plans_open_failed': 'プランを開けませんでした。時間をおいて再試行してください。',
+  'mobile.purchase.plans_title': 'サブスクリプションプラン',
   'mobile.purchase.rent_for': '{\$period}レンタル({\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}時間',
   'mobile.purchase.see_plans': 'プランを見る',
@@ -4470,6 +4618,10 @@ const _jaSources = <String, String>{
   'mobile.purchase.start_failed': '購入手続きを開始できませんでした。時間をおいて再試行してください。',
   'mobile.purchase.store_unavailable':
       'この端末では購入できません。ストアにサインインしているか、購入が制限されていないかを確認してください。',
+  'mobile.purchase.subscribe': '購読する',
+  'mobile.purchase.subscription_failed': '購読の手続きを開始できませんでした。時間をおいて再試行してください。',
+  'mobile.purchase.subscription_unavailable':
+      '現在このプランはアプリで購読できません。時間をおいて再試行してください。',
   'mobile.purchases.account_description':
       'この端末に保存していないエピソードも含め、購入したエピソードとパックを確認できます。',
   'mobile.purchases.canceled': '取り消し済み',
@@ -4803,6 +4955,9 @@ const _enSources = <String, String>{
   'mobile.account.icon_uploading': 'Uploading…',
   'mobile.account.linked_accounts': 'Linked accounts',
   'mobile.account.manage_billing': 'Manage billing',
+  'mobile.account.manage_subscription': 'Manage subscription',
+  'mobile.account.manage_subscription_failed':
+      'Could not open the store\'s subscriptions. Try again.',
   'mobile.account.name': 'Name',
   'mobile.account.name_unset': 'Not set',
   'mobile.account.notification_category_announcements': 'Announcements',
@@ -4849,6 +5004,15 @@ const _enSources = <String, String>{
   'mobile.account.plan_past_due':
       'Your last payment did not go through. Update your payment method to keep reading.',
   'mobile.account.plan_renews_on': 'Renews on {\$date}.',
+  'mobile.account.plan_restore_hint':
+      'Subscribed through the store on another device? Restore the plan here.',
+  'mobile.account.restore_failed':
+      'Could not restore purchases. Try again later.',
+  'mobile.account.restore_found': 'Your plan has been restored.',
+  'mobile.account.restore_none': 'The store holds no subscription to restore.',
+  'mobile.account.restore_other_account':
+      'This subscription belongs to another account. Sign in with that account to read with it.',
+  'mobile.account.restore_purchases': 'Restore purchases',
   'mobile.account.sign_out': 'Sign out',
   'mobile.account.signed_out': 'You are not signed in.',
   'mobile.account.title': 'Account',
@@ -5386,6 +5550,8 @@ const _enSources = <String, String>{
   'mobile.passkeys.rename': 'Rename',
   'mobile.passkeys.title': 'Passkeys',
   'mobile.passkeys.unnamed': 'Unnamed passkey',
+  'mobile.purchase.already_subscribed':
+      'You already have a plan. See it on the account screen.',
   'mobile.purchase.buy': 'Buy for {\$price}',
   'mobile.purchase.cancelled':
       'The purchase was cancelled. You have not been charged.',
@@ -5395,8 +5561,24 @@ const _enSources = <String, String>{
   'mobile.purchase.included_in_plan': 'Included in your plan',
   'mobile.purchase.not_sold_in_app':
       'This episode cannot be bought in the app right now. Try again later.',
+  'mobile.purchase.plan_billing_day':
+      '.input {\$count :integer}\n.match \$count\n1 {{{\$price} a day}}\n* {{{\$price} every {\$count} days}}',
+  'mobile.purchase.plan_billing_month':
+      '.input {\$count :integer}\n.match \$count\n1 {{{\$price} a month}}\n* {{{\$price} every {\$count} months}}',
+  'mobile.purchase.plan_billing_week':
+      '.input {\$count :integer}\n.match \$count\n1 {{{\$price} a week}}\n* {{{\$price} every {\$count} weeks}}',
+  'mobile.purchase.plan_billing_year':
+      '.input {\$count :integer}\n.match \$count\n1 {{{\$price} a year}}\n* {{{\$price} every {\$count} years}}',
+  'mobile.purchase.plan_scope_all': 'Covers every work.',
+  'mobile.purchase.plan_scope_labels': 'Covers the works of {\$labels}.',
+  'mobile.purchase.plan_scope_series': 'Covers {\$series}.',
+  'mobile.purchase.plans_description':
+      'Read every episode a plan covers without buying each one. The store bills the plan until you cancel it.',
+  'mobile.purchase.plans_empty':
+      'None of these plans can be subscribed to in the app right now. Try again later.',
   'mobile.purchase.plans_open_failed':
       'Could not open the plans. Try again later.',
+  'mobile.purchase.plans_title': 'Subscription plans',
   'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
   'mobile.purchase.rental_period':
       '.input {\$hours :integer}\n.match \$hours\none {{{\$hours} hour}}\n* {{{\$hours} hours}}',
@@ -5406,6 +5588,11 @@ const _enSources = <String, String>{
       'Could not start the purchase. Try again later.',
   'mobile.purchase.store_unavailable':
       'Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed.',
+  'mobile.purchase.subscribe': 'Subscribe',
+  'mobile.purchase.subscription_failed':
+      'Could not start the subscription. Try again later.',
+  'mobile.purchase.subscription_unavailable':
+      'This plan cannot be subscribed to in the app right now. Try again later.',
   'mobile.purchases.account_description':
       'Episodes and packs you bought, including episodes not saved on this device.',
   'mobile.purchases.canceled': 'Canceled',
@@ -5755,6 +5942,9 @@ const _koSources = <String, String>{
   'mobile.account.icon_uploading': '업로드 중…',
   'mobile.account.linked_accounts': '연결된 계정',
   'mobile.account.manage_billing': '결제 관리',
+  'mobile.account.manage_subscription': '구독 관리',
+  'mobile.account.manage_subscription_failed':
+      '스토어의 구독 화면을 열 수 없습니다. 다시 시도해 주세요.',
   'mobile.account.name': '이름',
   'mobile.account.name_unset': '미설정',
   'mobile.account.notification_category_announcements': '공지사항',
@@ -5792,6 +5982,13 @@ const _koSources = <String, String>{
   'mobile.account.plan_on_hold': '결제가 완료될 때까지 플랜이 일시 정지됩니다. 결제 수단을 변경해 주세요.',
   'mobile.account.plan_past_due': '지난 결제가 완료되지 않았습니다. 계속 읽으려면 결제 수단을 변경해 주세요.',
   'mobile.account.plan_renews_on': '{\$date}에 갱신됩니다.',
+  'mobile.account.plan_restore_hint': '다른 기기에서 스토어로 구독했다면 여기에서 플랜을 복원할 수 있습니다.',
+  'mobile.account.restore_failed': '구매를 복원할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.account.restore_found': '플랜을 복원했습니다.',
+  'mobile.account.restore_none': '스토어에 복원할 구독이 없습니다.',
+  'mobile.account.restore_other_account':
+      '이 구독은 다른 계정에 등록되어 있습니다. 해당 계정으로 로그인하면 읽을 수 있습니다.',
+  'mobile.account.restore_purchases': '구매 복원',
   'mobile.account.sign_out': '로그아웃',
   'mobile.account.signed_out': '로그인되어 있지 않습니다',
   'mobile.account.title': '계정',
@@ -6256,6 +6453,8 @@ const _koSources = <String, String>{
   'mobile.passkeys.rename': '이름 변경',
   'mobile.passkeys.title': '패스키',
   'mobile.passkeys.unnamed': '이름 없는 패스키',
+  'mobile.purchase.already_subscribed':
+      '이미 이용 중인 플랜이 있습니다. 계정 화면에서 확인할 수 있습니다.',
   'mobile.purchase.buy': '{\$price}에 구매',
   'mobile.purchase.cancelled': '구매를 취소했습니다. 요금은 청구되지 않았습니다.',
   'mobile.purchase.check_again': '다시 확인',
@@ -6263,7 +6462,22 @@ const _koSources = <String, String>{
   'mobile.purchase.included_in_plan': '플랜에 포함됨',
   'mobile.purchase.not_sold_in_app':
       '지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.plan_billing_day':
+      '.input {\$count :integer}\n.match \$count\n1 {{1일마다 {\$price}}}\n* {{{\$count}일마다 {\$price}}}',
+  'mobile.purchase.plan_billing_month':
+      '.input {\$count :integer}\n.match \$count\n1 {{월 {\$price}}}\n* {{{\$count}개월마다 {\$price}}}',
+  'mobile.purchase.plan_billing_week':
+      '.input {\$count :integer}\n.match \$count\n1 {{1주마다 {\$price}}}\n* {{{\$count}주마다 {\$price}}}',
+  'mobile.purchase.plan_billing_year':
+      '.input {\$count :integer}\n.match \$count\n1 {{연 {\$price}}}\n* {{{\$count}년마다 {\$price}}}',
+  'mobile.purchase.plan_scope_all': '모든 작품이 포함됩니다.',
+  'mobile.purchase.plan_scope_labels': '{\$labels}의 작품이 포함됩니다.',
+  'mobile.purchase.plan_scope_series': '{\$series}이(가) 포함됩니다.',
+  'mobile.purchase.plans_description':
+      '플랜에 포함된 에피소드를 하나씩 구매하지 않고 읽을 수 있습니다. 해지할 때까지 스토어에서 요금이 청구됩니다.',
+  'mobile.purchase.plans_empty': '현재 앱에서 구독할 수 있는 플랜이 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.plans_open_failed': '플랜을 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.plans_title': '구독 플랜',
   'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}시간',
   'mobile.purchase.see_plans': '플랜 보기',
@@ -6271,6 +6485,10 @@ const _koSources = <String, String>{
   'mobile.purchase.start_failed': '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.store_unavailable':
       '이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요.',
+  'mobile.purchase.subscribe': '구독하기',
+  'mobile.purchase.subscription_failed': '구독을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.subscription_unavailable':
+      '현재 이 플랜은 앱에서 구독할 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchases.account_description':
       '이 기기에 저장하지 않은 에피소드까지 포함해 구매한 에피소드와 팩을 확인할 수 있습니다.',
   'mobile.purchases.canceled': '취소됨',
@@ -6579,6 +6797,8 @@ const _zhHansSources = <String, String>{
   'mobile.account.icon_uploading': '正在上传…',
   'mobile.account.linked_accounts': '关联账户',
   'mobile.account.manage_billing': '管理付款',
+  'mobile.account.manage_subscription': '管理订阅',
+  'mobile.account.manage_subscription_failed': '无法打开商店的订阅页面。请重试。',
   'mobile.account.name': '昵称',
   'mobile.account.name_unset': '未设置',
   'mobile.account.notification_category_announcements': '公告',
@@ -6613,6 +6833,12 @@ const _zhHansSources = <String, String>{
   'mobile.account.plan_on_hold': '在付款完成前，您的方案已暂停。请更新付款方式。',
   'mobile.account.plan_past_due': '您上次的付款未能完成。如需继续阅读，请更新付款方式。',
   'mobile.account.plan_renews_on': '将于{\$date}续订。',
+  'mobile.account.plan_restore_hint': '如果您曾在其他设备上通过商店订阅，可在此恢复方案。',
+  'mobile.account.restore_failed': '无法恢复购买。请稍后再试。',
+  'mobile.account.restore_found': '已恢复您的方案。',
+  'mobile.account.restore_none': '商店中没有可恢复的订阅。',
+  'mobile.account.restore_other_account': '此订阅属于另一个账户。请使用该账户登录后阅读。',
+  'mobile.account.restore_purchases': '恢复购买',
   'mobile.account.sign_out': '退出登录',
   'mobile.account.signed_out': '您尚未登录。',
   'mobile.account.title': '账户',
@@ -7035,19 +7261,37 @@ const _zhHansSources = <String, String>{
   'mobile.passkeys.rename': '重命名',
   'mobile.passkeys.title': '通行密钥',
   'mobile.passkeys.unnamed': '未命名的通行密钥',
+  'mobile.purchase.already_subscribed': '您已有方案，可在账户页面查看。',
   'mobile.purchase.buy': '以{\$price}购买',
   'mobile.purchase.cancelled': '购买已取消，未产生任何扣款。',
   'mobile.purchase.check_again': '再次确认',
   'mobile.purchase.confirming': '我们正在确认您的付款。购买生效后即可打开该章节。',
   'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前无法在应用中购买该章节。请稍后再试。',
+  'mobile.purchase.plan_billing_day':
+      '.input {\$count :integer}\n.match \$count\n1 {{每天{\$price}}}\n* {{每{\$count}天{\$price}}}',
+  'mobile.purchase.plan_billing_month':
+      '.input {\$count :integer}\n.match \$count\n1 {{每月{\$price}}}\n* {{每{\$count}个月{\$price}}}',
+  'mobile.purchase.plan_billing_week':
+      '.input {\$count :integer}\n.match \$count\n1 {{每周{\$price}}}\n* {{每{\$count}周{\$price}}}',
+  'mobile.purchase.plan_billing_year':
+      '.input {\$count :integer}\n.match \$count\n1 {{每年{\$price}}}\n* {{每{\$count}年{\$price}}}',
+  'mobile.purchase.plan_scope_all': '涵盖所有作品。',
+  'mobile.purchase.plan_scope_labels': '涵盖{\$labels}的作品。',
+  'mobile.purchase.plan_scope_series': '涵盖{\$series}。',
+  'mobile.purchase.plans_description': '无需逐话购买，即可阅读方案涵盖的所有章节。在您取消之前，商店会持续扣款。',
+  'mobile.purchase.plans_empty': '目前没有可在应用内订阅的方案。请稍后再试。',
   'mobile.purchase.plans_open_failed': '无法打开方案。请稍后再试。',
+  'mobile.purchase.plans_title': '订阅方案',
   'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小时',
   'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在网站上销售',
   'mobile.purchase.start_failed': '无法开始购买。请稍后再试。',
   'mobile.purchase.store_unavailable': '此设备无法进行购买。请确认已登录商店且未限制购买。',
+  'mobile.purchase.subscribe': '订阅',
+  'mobile.purchase.subscription_failed': '无法开始订阅。请稍后再试。',
+  'mobile.purchase.subscription_unavailable': '此方案目前无法在应用内订阅。请稍后再试。',
   'mobile.purchases.account_description': '查看您购买的章节和套餐，包括未保存在此设备上的章节。',
   'mobile.purchases.canceled': '已取消',
   'mobile.purchases.coin_pack_title':
@@ -7332,6 +7576,8 @@ const _zhHantSources = <String, String>{
   'mobile.account.icon_uploading': '正在上傳…',
   'mobile.account.linked_accounts': '已連結的帳戶',
   'mobile.account.manage_billing': '管理付款',
+  'mobile.account.manage_subscription': '管理訂閱',
+  'mobile.account.manage_subscription_failed': '無法開啟商店的訂閱頁面。請重試。',
   'mobile.account.name': '名稱',
   'mobile.account.name_unset': '未設定',
   'mobile.account.notification_category_announcements': '公告',
@@ -7366,6 +7612,12 @@ const _zhHantSources = <String, String>{
   'mobile.account.plan_on_hold': '在付款完成前，您的方案已暫停。請更新付款方式。',
   'mobile.account.plan_past_due': '您上次的付款未能完成。如需繼續閱讀，請更新付款方式。',
   'mobile.account.plan_renews_on': '將於{\$date}續訂。',
+  'mobile.account.plan_restore_hint': '如果您曾在其他裝置上透過商店訂閱，可在此恢復方案。',
+  'mobile.account.restore_failed': '無法恢復購買。請稍後再試。',
+  'mobile.account.restore_found': '已恢復您的方案。',
+  'mobile.account.restore_none': '商店中沒有可恢復的訂閱。',
+  'mobile.account.restore_other_account': '此訂閱屬於另一個帳戶。請使用該帳戶登入後閱讀。',
+  'mobile.account.restore_purchases': '恢復購買',
   'mobile.account.sign_out': '登出',
   'mobile.account.signed_out': '您尚未登入。',
   'mobile.account.title': '帳戶',
@@ -7790,19 +8042,37 @@ const _zhHantSources = <String, String>{
   'mobile.passkeys.rename': '重新命名',
   'mobile.passkeys.title': '通行金鑰',
   'mobile.passkeys.unnamed': '未命名的通行金鑰',
+  'mobile.purchase.already_subscribed': '您已有方案，可在帳戶頁面查看。',
   'mobile.purchase.buy': '以{\$price}購買',
   'mobile.purchase.cancelled': '購買已取消，未產生任何扣款。',
   'mobile.purchase.check_again': '再次確認',
   'mobile.purchase.confirming': '我們正在確認您的付款。購買生效後即可開啟該章節。',
   'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前無法在應用程式中購買該章節。請稍後再試。',
+  'mobile.purchase.plan_billing_day':
+      '.input {\$count :integer}\n.match \$count\n1 {{每天{\$price}}}\n* {{每{\$count}天{\$price}}}',
+  'mobile.purchase.plan_billing_month':
+      '.input {\$count :integer}\n.match \$count\n1 {{每月{\$price}}}\n* {{每{\$count}個月{\$price}}}',
+  'mobile.purchase.plan_billing_week':
+      '.input {\$count :integer}\n.match \$count\n1 {{每週{\$price}}}\n* {{每{\$count}週{\$price}}}',
+  'mobile.purchase.plan_billing_year':
+      '.input {\$count :integer}\n.match \$count\n1 {{每年{\$price}}}\n* {{每{\$count}年{\$price}}}',
+  'mobile.purchase.plan_scope_all': '涵蓋所有作品。',
+  'mobile.purchase.plan_scope_labels': '涵蓋{\$labels}的作品。',
+  'mobile.purchase.plan_scope_series': '涵蓋{\$series}。',
+  'mobile.purchase.plans_description': '無需逐話購買，即可閱讀方案涵蓋的所有章節。在您取消之前，商店會持續扣款。',
+  'mobile.purchase.plans_empty': '目前沒有可在應用程式內訂閱的方案。請稍後再試。',
   'mobile.purchase.plans_open_failed': '無法開啟方案。請稍後再試。',
+  'mobile.purchase.plans_title': '訂閱方案',
   'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小時',
   'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在網站上販售',
   'mobile.purchase.start_failed': '無法開始購買。請稍後再試。',
   'mobile.purchase.store_unavailable': '此裝置無法進行購買。請確認已登入商店且未限制購買。',
+  'mobile.purchase.subscribe': '訂閱',
+  'mobile.purchase.subscription_failed': '無法開始訂閱。請稍後再試。',
+  'mobile.purchase.subscription_unavailable': '此方案目前無法在應用程式內訂閱。請稍後再試。',
   'mobile.purchases.account_description': '查看您購買的章節和套餐，包括未儲存在此裝置上的章節。',
   'mobile.purchases.canceled': '已取消',
   'mobile.purchases.coin_pack_title':

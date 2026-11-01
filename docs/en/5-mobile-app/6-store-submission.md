@@ -2,6 +2,7 @@
 title: Submitting to the stores
 description: List a tenant's app on the App Store and Google Play, and give each store's review what it asks the publisher for.
 published: 2026-10-06
+updated: 2026-11-01
 ---
 
 The app is listed under the publisher's own developer accounts, and each store reviews it before readers can install it. Most of what a review asks for is about the publisher rather than the code: who runs the service, what data it keeps, and an account the reviewer can sign in with. This page lists what to prepare, then the steps in each store.
@@ -16,7 +17,7 @@ Both stores' reviewers sign in to an app that has accounts, and neither can crea
 2. Sign in to the app with it once, to check it works.
 3. Enter the address and password in each store's review information, described below.
 
-Make sure the tenant has published at least one series with an episode the account can read, so the reviewer sees what the app is for. When the app sells episodes, a reviewer's purchase is a store test purchase: it opens the episode, is not charged, and is left out of royalty statements.
+Make sure the tenant has published at least one series with an episode the account can read, so the reviewer sees what the app is for. When the app sells episodes, a reviewer's purchase is a store test purchase: it opens the episode, is not charged, and is left out of royalty statements. When it sells subscription plans, the reviewer subscribes from **See plans** on a locked episode a plan covers, and may restore the subscription with **Restore purchases** on the **Account** screen, so make sure the account can reach such an episode.
 
 ### The pages a listing links to
 
@@ -43,7 +44,7 @@ Everything is sent over HTTPS to the install, at the address the app was built w
 2. **Upload a build**, as [Building and signing](./2-building.md#ios) describes, and try it through TestFlight.
 3. **Fill in the listing**: the name, description, screenshots, keywords, category, the privacy policy and support addresses, the **App Privacy** answers, and the age rating questionnaire, which depends on the tenant's catalog.
 4. **Fill in the review information**: the demo account's address and password, and contact details for the reviewer. Add a note when anything about the service needs explaining, such as which series to open.
-5. **Add the in-app purchases** when the app sells through the App Store: the first products are submitted for review together with a version of the app.
+5. **Add the in-app purchases** when the app sells through the App Store: the first products, and the first subscription of a subscription group, are submitted for review together with a version of the app.
 6. **Submit the version for review.**
 
 ## Google Play

@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
+import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
 
 /// An [InAppPurchasePlatform] a widget test drives, standing in for StoreKit:
 /// the payment sheet answers with whatever [sheet] reports, and the store's
@@ -26,8 +29,29 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   /// its price, such as a pack of coins.
   Map<String, int> prices = {};
 
+  /// The auto-renewable subscriptions the store has, each with the price it
+  /// displays and the period it bills, as StoreKit 2 reports them.
+  Map<String, ({String price, SK2SubscriptionPeriod period})> subscriptions =
+      {};
+
+  /// The subscriptions the store has as Google Play describes them: one
+  /// entry per base plan and per offer this reader may take, keyed by product
+  /// ID.
+  Map<String, List<SubscriptionOfferDetailsWrapper>> playSubscriptions = {};
+
+  /// What the store reports when asked to restore: StoreKit's current
+  /// entitlements.
+  List<PurchaseDetails> entitlements = [];
+
+  /// How many times the store was asked to restore.
+  var restores = 0;
+
   /// How many times the store was asked for its products.
   var productQueries = 0;
+
+  /// How many of the next product queries fail, answered as Google Play
+  /// answers one: no products, and the error beside them.
+  var failingProductQueries = 0;
 
   /// What the payment sheet reports once it is opened for a purchase.
   List<PurchaseDetails> Function(PurchaseParam param) sheet;
@@ -68,6 +92,39 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
     appAccountToken: intentId.toUpperCase(),
   );
 
+  /// A transaction of an auto-renewable subscription as StoreKit 2 reports
+  /// it, which carries the date the subscription renews or expires.
+  static SK2PurchaseDetails subscriptionTransaction({
+    required String id,
+    required String productId,
+    required String intentId,
+    PurchaseStatus status = PurchaseStatus.purchased,
+  }) {
+    final token = intentId.toUpperCase();
+    return SK2PurchaseDetails(
+      productID: productId,
+      purchaseID: id,
+      verificationData: PurchaseVerificationData(
+        localVerificationData: '',
+        serverVerificationData: 'jws-$id',
+        source: 'app_store',
+      ),
+      transactionDate: '0',
+      status: status,
+      appAccountToken: token,
+      expirationDate: '4102444800000',
+      sk2Transaction: SK2Transaction(
+        id: id,
+        originalId: id,
+        productId: productId,
+        purchaseDate: '0',
+        expirationDate: '4102444800000',
+        appAccountToken: token,
+        subscriptionGroupID: 'group',
+      ),
+    );
+  }
+
   /// An order StoreKit reports without a transaction: a pending Ask to Buy,
   /// or a sheet the reader closed.
   static SK2PurchaseDetails orderWithoutTransaction(
@@ -102,8 +159,53 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
     Set<String> identifiers,
   ) async {
     productQueries++;
+    if (failingProductQueries > 0) {
+      failingProductQueries--;
+      return ProductDetailsResponse(
+        productDetails: const [],
+        notFoundIDs: identifiers.toList(),
+        error: IAPError(
+          source: 'google_play',
+          code: 'service_unavailable',
+          message: '',
+        ),
+      );
+    }
     return ProductDetailsResponse(
       productDetails: [
+        for (final id in identifiers)
+          if (playSubscriptions[id] case final offers?)
+            ...GooglePlayProductDetails.fromProductDetails(
+              ProductDetailsWrapper(
+                description: '',
+                name: id,
+                productId: id,
+                productType: ProductType.subs,
+                subscriptionOfferDetails: offers,
+                title: id,
+              ),
+            ),
+        for (final id in identifiers)
+          if (subscriptions[id] case final subscription?)
+            AppStoreProduct2Details.fromSK2Product(
+              SK2Product(
+                id: id,
+                displayName: id,
+                displayPrice: subscription.price,
+                description: '',
+                price: 0,
+                type: SK2ProductType.autoRenewable,
+                priceLocale: SK2PriceLocale(
+                  currencyCode: 'JPY',
+                  currencySymbol: '¥',
+                ),
+                subscription: SK2SubscriptionInfo(
+                  subscriptionGroupID: 'group',
+                  promotionalOffers: const [],
+                  subscriptionPeriod: subscription.period,
+                ),
+              ),
+            ),
         for (final id in identifiers.where(products.contains))
           ProductDetails(
             id: id,
@@ -114,7 +216,14 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
             currencyCode: 'JPY',
           ),
       ],
-      notFoundIDs: identifiers.where((id) => !products.contains(id)).toList(),
+      notFoundIDs: identifiers
+          .where(
+            (id) =>
+                !products.contains(id) &&
+                !subscriptions.containsKey(id) &&
+                !playSubscriptions.containsKey(id),
+          )
+          .toList(),
     );
   }
 
@@ -136,10 +245,36 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   }
 
   @override
+  Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) async {
+    bought.add(purchaseParam);
+    final reported = subscriptionSheet(purchaseParam);
+    scheduleMicrotask(() => report(reported));
+    return true;
+  }
+
+  /// What the payment sheet reports once it is opened for a subscription.
+  List<PurchaseDetails> Function(PurchaseParam param) subscriptionSheet =
+      subscribesAtOnce;
+
+  /// The reader subscribed without being asked anything else.
+  static List<PurchaseDetails> subscribesAtOnce(PurchaseParam param) => [
+    subscriptionTransaction(
+      id: '3000000000000001',
+      productId: param.productDetails.id,
+      intentId: param.applicationUserName!,
+    ),
+  ];
+
+  @override
   Future<void> completePurchase(PurchaseDetails purchase) async {
     finished.add(purchase);
   }
 
   @override
-  Future<void> restorePurchases({String? applicationUserName}) async {}
+  Future<void> restorePurchases({String? applicationUserName}) async {
+    restores++;
+    if (entitlements.isNotEmpty) {
+      report(entitlements);
+    }
+  }
 }
