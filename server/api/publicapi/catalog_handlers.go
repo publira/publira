@@ -1287,6 +1287,7 @@ func (s *apiServer) GetEpisodeDetail(
 		PreviewImages:     make([]*publirattypesv1.EpisodeImage, 0),
 		NextFreeEpisode:   nextFreeEpisode,
 		PublishedLocales:  row.PublishedLocales,
+		PreviewPages:      make([]*publirattypesv1.EpisodeImage, 0),
 	}
 	res.FreeUntil = episode.FreeUntil
 	if includeImages {
@@ -1315,6 +1316,28 @@ func (s *apiServer) GetEpisodeDetail(
 		res.PreviewImages = make([]*publirattypesv1.EpisodeImage, 0, len(previews))
 		for _, preview := range previews {
 			res.PreviewImages = append(res.PreviewImages, protomapper.EpisodePreviewImageFromRow(images, preview))
+		}
+	}
+	// The pages a locked episode opens as a preview are served the way a free
+	// body is, and carry the token a free body would: a reader the age rule
+	// stopped is AGE_RESTRICTED and never reaches here, so the token is the
+	// shared one unless the rule covers the series, and then the reader's own.
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED && row.Price > 0 && row.PreviewPageCount > 0 {
+		pages, listErr := s.queriesFor(ctx).ListEpisodePreviewPagesByEpisodeID(ctx, row.ID)
+		if listErr != nil {
+			return nil, s.internalDBError(ctx, "failed to list episode preview pages", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
+		}
+		if len(pages) > 0 {
+			token, tokenErr := s.freeBodyMediaToken(tenant, row.ID, requiredMinimumAge, reader)
+			if tokenErr != nil {
+				return nil, s.internalError(ctx, "failed to issue episode preview media token", tokenErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
+			}
+			res.PreviewPages = make([]*publirattypesv1.EpisodeImage, 0, len(pages))
+			for _, page := range pages {
+				mapped := protomapper.EpisodeImageFromEpisodeImage(images, dbmodels.ListEpisodeImagesByEpisodeIDRow(page))
+				mapped.ImageUrl = auth.WithMediaTokenQuery(mapped.ImageUrl, token)
+				res.PreviewPages = append(res.PreviewPages, mapped)
+			}
 		}
 	}
 	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, episode); err != nil {

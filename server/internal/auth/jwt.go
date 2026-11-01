@@ -188,7 +188,8 @@ func (m *TokenManager) IssueAdminMediaToken(
 }
 
 // IssueFreeEpisodeMediaToken creates the media token a free episode's body
-// image URLs carry. A reader of a free body has no credential to derive an
+// image URLs carry, and the URLs of the pages a priced episode opens as a
+// preview. A reader of a free body has no credential to derive an
 // image key from, and IssueMediaToken cannot stand in for one: it names a
 // reader, and a per-reader token would make every free page URL distinct and
 // expire long before the shared, cached episode read that carries it.

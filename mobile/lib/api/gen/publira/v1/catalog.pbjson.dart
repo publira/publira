@@ -770,6 +770,14 @@ const GetEpisodeDetailResponse$json = {
       '5': 9,
       '10': 'publishedLocales'
     },
+    {
+      '1': 'preview_pages',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.EpisodeImage',
+      '10': 'previewPages'
+    },
   ],
 };
 
@@ -787,7 +795,8 @@ final $typed_data.Uint8List getEpisodeDetailResponseDescriptor = $convert.base64
     '9pbWFnZXMYCSADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZVINcHJldmlld0lt'
     'YWdlcxJHChFuZXh0X2ZyZWVfZXBpc29kZRgKIAEoCzIbLnB1YmxpcmEudjEuRXBpc29kZU5laW'
     'doYm9yUg9uZXh0RnJlZUVwaXNvZGUSKwoRcHVibGlzaGVkX2xvY2FsZXMYCyADKAlSEHB1Ymxp'
-    'c2hlZExvY2FsZXM=');
+    'c2hlZExvY2FsZXMSQwoNcHJldmlld19wYWdlcxgMIAMoCzIeLnB1YmxpcmEudHlwZXMudjEuRX'
+    'Bpc29kZUltYWdlUgxwcmV2aWV3UGFnZXM=');
 
 @$core.Deprecated('Use publishedCreatorDescriptor instead')
 const PublishedCreator$json = {

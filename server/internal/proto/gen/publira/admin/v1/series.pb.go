@@ -2052,8 +2052,12 @@ type UpdateEpisodePricingRequest struct {
 	// episode is never rented.
 	RentalPrice       int32 `protobuf:"varint,6,opt,name=rental_price,json=rentalPrice,proto3" json:"rental_price,omitempty"`
 	RentalPeriodHours int32 `protobuf:"varint,7,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// How many of the body's opening pages anyone may read without buying the
+	// episode, as Episode.preview_page_count. A negative count is
+	// invalid_argument. Absent keeps the stored count.
+	PreviewPageCount *int32 `protobuf:"varint,8,opt,name=preview_page_count,json=previewPageCount,proto3,oneof" json:"preview_page_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateEpisodePricingRequest) Reset() {
@@ -2131,6 +2135,13 @@ func (x *UpdateEpisodePricingRequest) GetRentalPrice() int32 {
 func (x *UpdateEpisodePricingRequest) GetRentalPeriodHours() int32 {
 	if x != nil {
 		return x.RentalPeriodHours
+	}
+	return 0
+}
+
+func (x *UpdateEpisodePricingRequest) GetPreviewPageCount() int32 {
+	if x != nil && x.PreviewPageCount != nil {
+		return *x.PreviewPageCount
 	}
 	return 0
 }
@@ -2693,8 +2704,11 @@ type CreateEpisodeRequest struct {
 	// create an episode that is not rented.
 	RentalPrice       int32 `protobuf:"varint,13,opt,name=rental_price,json=rentalPrice,proto3" json:"rental_price,omitempty"`
 	RentalPeriodHours int32 `protobuf:"varint,14,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// How many of the body's opening pages anyone may read without buying the
+	// episode, validated as UpdateEpisodePricingRequest's is. 0 opens none.
+	PreviewPageCount int32 `protobuf:"varint,15,opt,name=preview_page_count,json=previewPageCount,proto3" json:"preview_page_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateEpisodeRequest) Reset() {
@@ -2814,6 +2828,13 @@ func (x *CreateEpisodeRequest) GetRentalPrice() int32 {
 func (x *CreateEpisodeRequest) GetRentalPeriodHours() int32 {
 	if x != nil {
 		return x.RentalPeriodHours
+	}
+	return 0
+}
+
+func (x *CreateEpisodeRequest) GetPreviewPageCount() int32 {
+	if x != nil {
+		return x.PreviewPageCount
 	}
 	return 0
 }
@@ -8212,7 +8233,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\"\x9b\x01\n" +
 	"\x1aUpdateEpisodeTitleResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12H\n" +
-	"\ftranslations\x18\x02 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\xac\x02\n" +
+	"\ftranslations\x18\x02 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\xf6\x02\n" +
 	"\x1bUpdateEpisodePricingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
@@ -8221,7 +8242,9 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x14reading_period_hours\x18\x04 \x01(\x05R\x12readingPeriodHours\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12!\n" +
 	"\frental_price\x18\x06 \x01(\x05R\vrentalPrice\x12.\n" +
-	"\x13rental_period_hours\x18\a \x01(\x05R\x11rentalPeriodHours\"S\n" +
+	"\x13rental_period_hours\x18\a \x01(\x05R\x11rentalPeriodHours\x121\n" +
+	"\x12preview_page_count\x18\b \x01(\x05H\x00R\x10previewPageCount\x88\x01\x01B\x15\n" +
+	"\x13_preview_page_count\"S\n" +
 	"\x1cUpdateEpisodePricingResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xa8\x02\n" +
 	"\x1aUpdateEpisodeLayoutRequest\x127\n" +
@@ -8258,7 +8281,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episodeIds\x120\n" +
 	"\x14expected_episode_ids\x18\a \x03(\tR\x12expectedEpisodeIdsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\x10series_public_idR\x12episode_public_idsR\x1bexpected_episode_public_ids\"P\n" +
 	"\x17ReorderEpisodesResponse\x125\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\xd4\x04\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\x82\x05\n" +
 	"\x14CreateEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
@@ -8274,7 +8297,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\bcurrency\x18\v \x01(\tR\bcurrency\x12\x16\n" +
 	"\x06locale\x18\f \x01(\tR\x06locale\x12!\n" +
 	"\frental_price\x18\r \x01(\x05R\vrentalPrice\x12.\n" +
-	"\x13rental_period_hours\x18\x0e \x01(\x05R\x11rentalPeriodHoursJ\x04\b\x02\x10\x03R\x10series_public_id\"\xf2\x01\n" +
+	"\x13rental_period_hours\x18\x0e \x01(\x05R\x11rentalPeriodHours\x12,\n" +
+	"\x12preview_page_count\x18\x0f \x01(\x05R\x10previewPageCountJ\x04\b\x02\x10\x03R\x10series_public_id\"\xf2\x01\n" +
 	"\x15CreateEpisodeResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12Z\n" +
 	"\x15purchase_availability\x18\x02 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12H\n" +
@@ -9111,6 +9135,7 @@ func file_publira_admin_v1_series_proto_init() {
 	file_publira_admin_v1_series_proto_msgTypes[3].OneofWrappers = []any{}
 	file_publira_admin_v1_series_proto_msgTypes[6].OneofWrappers = []any{}
 	file_publira_admin_v1_series_proto_msgTypes[18].OneofWrappers = []any{}
+	file_publira_admin_v1_series_proto_msgTypes[21].OneofWrappers = []any{}
 	file_publira_admin_v1_series_proto_msgTypes[23].OneofWrappers = []any{}
 	file_publira_admin_v1_series_proto_msgTypes[24].OneofWrappers = []any{}
 	file_publira_admin_v1_series_proto_msgTypes[55].OneofWrappers = []any{

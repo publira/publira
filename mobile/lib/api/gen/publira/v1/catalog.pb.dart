@@ -1593,6 +1593,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     $core.Iterable<$0.EpisodeImage>? previewImages,
     EpisodeNeighbor? nextFreeEpisode,
     $core.Iterable<$core.String>? publishedLocales,
+    $core.Iterable<$0.EpisodeImage>? previewPages,
   }) {
     final result = GetEpisodeDetailResponse._();
     if (episode != null) result.episode = episode;
@@ -1607,6 +1608,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     if (nextFreeEpisode != null) result.nextFreeEpisode = nextFreeEpisode;
     if (publishedLocales != null)
       result.publishedLocales.addAll(publishedLocales);
+    if (previewPages != null) result.previewPages.addAll(previewPages);
     return result;
   }
 
@@ -1644,6 +1646,8 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     ..aOM<EpisodeNeighbor>(10, _omitFieldNames ? '' : 'nextFreeEpisode',
         subBuilder: EpisodeNeighbor.$_createMessage)
     ..pPS(11, _omitFieldNames ? '' : 'publishedLocales')
+    ..pPM<$0.EpisodeImage>(12, _omitFieldNames ? '' : 'previewPages',
+        subBuilder: $0.EpisodeImage.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1694,7 +1698,8 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   $0.Series ensureSeries() => $_ensure(1);
 
   /// Body images. Empty when access is EPISODE_ACCESS_LOCKED or
-  /// EPISODE_ACCESS_AGE_RESTRICTED; preview_images stands in for them there.
+  /// EPISODE_ACCESS_AGE_RESTRICTED; preview_images stands in for them there,
+  /// and preview_pages for as many of them as the episode opens as a preview.
   @$pb.TagNumber(3)
   $pb.PbList<$0.EpisodeImage> get images => $_getList(2);
 
@@ -1797,6 +1802,20 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   /// Episode.locale whenever the tenant offers that locale.
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get publishedLocales => $_getList(10);
+
+  /// The body's opening pages that the episode opens to every reader as a
+  /// preview: the first Episode.preview_page_count of them, in reading order,
+  /// or fewer when the body is shorter. They are the pages themselves, in the
+  /// shape `images` carries them, and a reader goes on to the purchase gate
+  /// after the last of them. Set only when access is EPISODE_ACCESS_LOCKED and
+  /// empty otherwise: an open body is all in `images`, and a reader the
+  /// tenant's age rule stops is shown no page.
+  ///
+  /// Each image_url carries the media token a free body's pages carry, so it
+  /// is the same for every reader on a series the age rule does not cover and
+  /// the reader's own on one it does.
+  @$pb.TagNumber(12)
+  $pb.PbList<$0.EpisodeImage> get previewPages => $_getList(11);
 }
 
 /// A creator that currently has at least one published series.

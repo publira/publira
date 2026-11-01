@@ -859,6 +859,13 @@ const Episode$json = {
       '10': 'coinRentalPrice'
     },
     {'1': 'coin_name', '3': 26, '4': 1, '5': 9, '10': 'coinName'},
+    {
+      '1': 'preview_page_count',
+      '3': 27,
+      '4': 1,
+      '5': 5,
+      '10': 'previewPageCount'
+    },
   ],
 };
 
@@ -884,7 +891,8 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'ABKAlSBmxvY2FsZRIlCg5jYW1wYWlnbl9wcmljZRgWIAEoBVINY2FtcGFpZ25QcmljZRIoChBj'
     'YW1wYWlnbl9lbmRzX2F0GBcgASgJUg5jYW1wYWlnbkVuZHNBdBIdCgpjb2luX3ByaWNlGBggAS'
     'gFUgljb2luUHJpY2USKgoRY29pbl9yZW50YWxfcHJpY2UYGSABKAVSD2NvaW5SZW50YWxQcmlj'
-    'ZRIbCgljb2luX25hbWUYGiABKAlSCGNvaW5OYW1l');
+    'ZRIbCgljb2luX25hbWUYGiABKAlSCGNvaW5OYW1lEiwKEnByZXZpZXdfcGFnZV9jb3VudBgbIA'
+    'EoBVIQcHJldmlld1BhZ2VDb3VudA==');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

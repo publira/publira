@@ -75,12 +75,13 @@ func SeriesFromGetSeriesByIDForTenantRow(row dbmodels.GetSeriesByIDForTenantRow)
 
 func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
-		Id:         row.ID.String(),
-		PublicId:   row.PublicID,
-		Title:      row.Title,
-		OrderIndex: row.OrderIndex,
-		Price:      row.Price,
-		Status:     row.Status,
+		Id:               row.ID.String(),
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		OrderIndex:       row.OrderIndex,
+		Price:            row.Price,
+		Status:           row.Status,
+		PreviewPageCount: row.PreviewPageCount,
 	}
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
@@ -103,12 +104,13 @@ func EpisodeFromGetEpisodeByIDForTenantRow(row dbmodels.GetEpisodeByIDForTenantR
 
 func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
-		Id:         row.ID.String(),
-		PublicId:   row.PublicID,
-		Title:      row.Title,
-		OrderIndex: row.OrderIndex,
-		Price:      row.Price,
-		Status:     row.Status,
+		Id:               row.ID.String(),
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		OrderIndex:       row.OrderIndex,
+		Price:            row.Price,
+		Status:           row.Status,
+		PreviewPageCount: row.PreviewPageCount,
 	}
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
@@ -129,14 +131,15 @@ func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisod
 // than for a link to one.
 func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
-		Id:          row.ID.String(),
-		PublicId:    row.PublicID,
-		Title:       row.Title,
-		Locale:      row.TitleLocale,
-		OrderIndex:  row.OrderIndex,
-		Price:       row.Price,
-		Status:      row.Status,
-		RatingCount: row.RatingCount,
+		Id:               row.ID.String(),
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		Locale:           row.TitleLocale,
+		OrderIndex:       row.OrderIndex,
+		Price:            row.Price,
+		Status:           row.Status,
+		PreviewPageCount: row.PreviewPageCount,
+		RatingCount:      row.RatingCount,
 	}
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
@@ -157,12 +160,13 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 
 func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeriesForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
-		Id:         row.ID.String(),
-		PublicId:   row.PublicID,
-		Title:      row.Title,
-		OrderIndex: row.OrderIndex,
-		Price:      row.Price,
-		Status:     row.Status,
+		Id:               row.ID.String(),
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		OrderIndex:       row.OrderIndex,
+		Price:            row.Price,
+		Status:           row.Status,
+		PreviewPageCount: row.PreviewPageCount,
 	}
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32

@@ -155,7 +155,13 @@ SELECT ei.id,
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
     ) AS is_published,
-    reader_may_open_episode(s.tenant_id, $1::uuid, e.id) AS has_access,
+    -- A page the episode's preview opens is the reader's whether or not they
+    -- hold a grant, so a reader the age rule asks for proof of reaches it with
+    -- their own token, as they reach a free body.
+    (
+        reader_may_open_episode(s.tenant_id, $1::uuid, e.id)
+        OR episode_page_in_preview(e.id, ei.id)
+    )::boolean AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided
     -- here: which rating demands which age is one mapping the whole build
     -- shares, and it lives in Go. A series the tenant has not classified has no
@@ -271,7 +277,12 @@ SELECT ei.id,
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
     ) AS is_published,
-    (fe.episode_id IS NOT NULL)::boolean AS has_public_access,
+    -- A free body, or a page among the opening pages a priced episode's
+    -- preview opens to everyone.
+    (
+        fe.episode_id IS NOT NULL
+        OR episode_page_in_preview(e.id, ei.id)
+    )::boolean AS has_public_access,
     -- When the body is public only because a window is open, this is the
     -- instant it stops being public. The caller bounds how long the response
     -- may be cached by it, so no copy of a paid page outlives the campaign.
@@ -624,6 +635,81 @@ func (q *Queries) ListEpisodePreviewImagesByEpisodeID(ctx context.Context, arg L
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayOrder,
+			&i.Width,
+			&i.Height,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodePreviewPagesByEpisodeID = `-- name: ListEpisodePreviewPagesByEpisodeID :many
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+WHERE ei.episode_id = $1
+    AND episode_page_in_preview(ei.episode_id, ei.id)
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC,
+    ei.id ASC
+`
+
+type ListEpisodePreviewPagesByEpisodeIDRow struct {
+	ID            uuid.UUID `json:"id"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	EpisodeID     uuid.UUID `json:"episode_id"`
+	DisplayOrder  int32     `json:"display_order"`
+	CreatedAt     time.Time `json:"created_at"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+// The pages a priced episode's preview opens to every reader, in the shape and
+// order ListEpisodeImagesByEpisodeID lists the whole body in. Which pages
+// those are is episode_page_in_preview's to say, so this lists exactly the
+// pages the image route serves without a grant.
+func (q *Queries) ListEpisodePreviewPagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodePreviewPagesByEpisodeIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodePreviewPagesByEpisodeID, episodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodePreviewPagesByEpisodeIDRow
+	for rows.Next() {
+		var i ListEpisodePreviewPagesByEpisodeIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.EpisodeID,
+			&i.DisplayOrder,
+			&i.CreatedAt,
+			&i.ContentType,
+			&i.FileSizeBytes,
 			&i.Width,
 			&i.Height,
 		); err != nil {

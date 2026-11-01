@@ -342,8 +342,8 @@ Which JWT a body is bound to depends on which rule let the request through:
 
 | Body | Bound to | `Cache-Control` |
 | --- | --- | --- |
-| Unlocked by a grant — a purchase, a ticket, a credit on the episode, or a staff role in the tenant | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
-| Free (`price = 0`) | The episode's rotating media token (see [`internal/auth`](internal/auth/doc.go)) and its synthetic `sub` | `public, max-age=3600` |
+| Unlocked by a grant — a purchase, a ticket, a credit on the episode, or a staff role in the tenant — or a preview page, below, on a series the tenant's age rule covers | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
+| Free (`price = 0`), or a preview page: one of the first `episode_listings.preview_page_count` pages of a priced episode | The episode's rotating media token (see [`internal/auth`](internal/auth/doc.go)) and its synthetic `sub` | `public, max-age=3600` |
 
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)

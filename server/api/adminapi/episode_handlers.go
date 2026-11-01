@@ -128,6 +128,7 @@ type episodePageRow struct {
 	readingPeriodHours sql.NullInt32
 	rentalPrice        sql.NullInt32
 	rentalPeriodHours  sql.NullInt32
+	previewPageCount   int32
 	status             string
 	scheduledAt        sql.NullTime
 	publishedAt        sql.NullTime
@@ -136,12 +137,13 @@ type episodePageRow struct {
 
 func (r episodePageRow) toProto() (*publirattypesv1.Episode, error) {
 	episode := &publirattypesv1.Episode{
-		Id:         r.id.String(),
-		PublicId:   r.publicID,
-		Title:      r.title,
-		OrderIndex: r.orderIndex,
-		Price:      r.price,
-		Status:     r.status,
+		Id:               r.id.String(),
+		PublicId:         r.publicID,
+		Title:            r.title,
+		OrderIndex:       r.orderIndex,
+		Price:            r.price,
+		Status:           r.status,
+		PreviewPageCount: r.previewPageCount,
 	}
 	if r.readingPeriodHours.Valid {
 		episode.ReadingPeriodHours = r.readingPeriodHours.Int32
@@ -199,6 +201,7 @@ func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []ep
 			readingPeriodHours: row.ReadingPeriodHours,
 			rentalPrice:        row.RentalPrice,
 			rentalPeriodHours:  row.RentalPeriodHours,
+			previewPageCount:   row.PreviewPageCount,
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
@@ -220,6 +223,7 @@ func mapEpisodeDescRows(rows []dbmodels.ListEpisodesBySeriesForTenantDescRow) []
 			readingPeriodHours: row.ReadingPeriodHours,
 			rentalPrice:        row.RentalPrice,
 			rentalPeriodHours:  row.RentalPeriodHours,
+			previewPageCount:   row.PreviewPageCount,
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
@@ -619,6 +623,9 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
+	if req.PreviewPageCount < 0 {
+		return nil, errNegativePreviewPageCount()
+	}
 	scheduledAt, err := parseScheduledAtOrZero(req.ScheduledAt)
 	if err != nil {
 		return nil, err
@@ -719,6 +726,7 @@ func (s *adminServer) CreateEpisode(
 		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
 		RentalPrice:        rentalPrice,
 		RentalPeriodHours:  rentalPeriodHours,
+		PreviewPageCount:   req.PreviewPageCount,
 		ScheduledAt:        scheduledAt,
 		Status:             status,
 		TenantID:           tenant.ID,
@@ -758,7 +766,7 @@ func (s *adminServer) CreateEpisode(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
-	episode := &publirattypesv1.Episode{Id: base.ID.String(), PublicId: base.PublicID, Title: req.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
+	episode := &publirattypesv1.Episode{Id: base.ID.String(), PublicId: base.PublicID, Title: req.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status, PreviewPageCount: listing.PreviewPageCount}
 	if listing.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = listing.ReadingPeriodHours.Int32
 	}
@@ -1389,6 +1397,13 @@ func (s *adminServer) UpdateEpisodePricing(
 	if err != nil {
 		return nil, err
 	}
+	previewPageCount := sql.NullInt32{}
+	if req.PreviewPageCount != nil {
+		if *req.PreviewPageCount < 0 {
+			return nil, errNegativePreviewPageCount()
+		}
+		previewPageCount = sql.NullInt32{Int32: *req.PreviewPageCount, Valid: true}
+	}
 
 	// Purchases, and the checkouts and store purchase intents already started,
 	// carry the terms they were made on, so only the listing is written. The
@@ -1406,6 +1421,7 @@ func (s *adminServer) UpdateEpisodePricing(
 			ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
 			RentalPrice:        rentalPrice,
 			RentalPeriodHours:  rentalPeriodHours,
+			PreviewPageCount:   previewPageCount,
 		})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode pricing", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
@@ -1440,6 +1456,12 @@ func (s *adminServer) UpdateEpisodePricing(
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePricingResponse{Episode: mapped}, nil
+}
+
+// errNegativePreviewPageCount is the refusal of a preview that opens fewer
+// than no pages, on both RPCs that write one.
+func errNegativePreviewPageCount() error {
+	return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("preview_page_count must be greater than or equal to 0"), "preview_page_count")
 }
 
 // checkPriceCurrency refuses a price above zero entered in a currency the
