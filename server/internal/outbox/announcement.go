@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/announcementaudience"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
@@ -24,6 +25,14 @@ import (
 // form to come back, and it grows with the tenant's readership rather than with
 // what was posted.
 const EventTypeAnnouncementNotification = "announcement_notification"
+
+// EventTypeTargetedAnnouncementNotification is the same fan-out for an
+// announcement with an audience, which reaches only the readers the audience
+// selects when the event is handled. It is a type of its own because the
+// previous release's worker handles [EventTypeAnnouncementNotification] by
+// notifying every user of the tenant; a type it does not know it leaves
+// pending, for a worker that reads the audience to claim.
+const EventTypeTargetedAnnouncementNotification = "targeted_announcement_notification"
 
 // NotificationTypeAnnouncementPosted is the notifications.notification_type the
 // handler writes. The storefront assembles its copy from this plus the payload;
@@ -63,10 +72,16 @@ func AnnouncementIdempotencyKey(announcementID uuid.UUID) string {
 	return EventTypeAnnouncementNotification + ":" + announcementID.String()
 }
 
-// AnnouncementNotificationPayload is the JSON body of the event. Every user of
-// the tenant is addressed by it. It carries no copy: the title each reader is
-// told is the one their own locale picks, so it is read per reader when the
-// event is handled.
+// TargetedAnnouncementIdempotencyKey is [AnnouncementIdempotencyKey] for the
+// event of an announcement with an audience.
+func TargetedAnnouncementIdempotencyKey(announcementID uuid.UUID) string {
+	return EventTypeTargetedAnnouncementNotification + ":" + announcementID.String()
+}
+
+// AnnouncementNotificationPayload is the JSON body of either event. It carries
+// no copy and no audience: the title each reader is told is the one their own
+// locale picks, and who the readers are is what the audience selects when the
+// event is handled, so both are read then.
 type AnnouncementNotificationPayload struct {
 	TenantID       string `json:"tenant_id"`
 	AnnouncementID string `json:"announcement_id"`
@@ -92,14 +107,18 @@ type AnnouncementNotificationHandlerConfig struct {
 // announcementNotificationQuerier is the statements the handler runs, named so
 // a test can drive the fan-out without a database behind it.
 type announcementNotificationQuerier interface {
-	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (string, error)
+	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (dbmodels.GetAnnouncementDeliveryRow, error)
 	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
+	AnnouncementHasNotifications(ctx context.Context, arg dbmodels.AnnouncementHasNotificationsParams) (bool, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 }
 
 // NewAnnouncementNotificationHandler writes one bell notification per reader a
-// posted announcement addresses, and queues the mail that mirrors them.
+// posted announcement addresses, and queues the mail that mirrors them. It
+// handles both [EventTypeAnnouncementNotification] and
+// [EventTypeTargetedAnnouncementNotification]: the announcement row says
+// whether it has an audience, and the recipient query reads it from there.
 func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
 		// Reported per event rather than at registration, and as a plain error
@@ -129,7 +148,7 @@ func announcementNotificationHandler(
 		if err != nil {
 			return Permanent(fmt.Errorf("announcement notification payload announcement_id is invalid: %w", err))
 		}
-		delivery, err := queries.GetAnnouncementDelivery(ctx, dbmodels.GetAnnouncementDeliveryParams{
+		announcement, err := queries.GetAnnouncementDelivery(ctx, dbmodels.GetAnnouncementDeliveryParams{
 			TenantID:       tenantID,
 			AnnouncementID: announcementID,
 		})
@@ -143,8 +162,19 @@ func announcementNotificationHandler(
 		if err != nil {
 			return fmt.Errorf("get announcement delivery: %w", err)
 		}
-		category, err := announcementCategory(delivery)
+		category, err := announcementCategory(announcement.Delivery)
 		if err != nil {
+			return Permanent(err)
+		}
+		// The recipient query evaluates the stored audience itself, and selects
+		// nobody for one it cannot read. Refusing it here instead makes an
+		// audience no worker can deliver a dead event someone sees, rather than
+		// an announcement that completed having told nobody.
+		var audience []byte
+		if announcement.Audience != nil {
+			audience = *announcement.Audience
+		}
+		if _, _, err := announcementaudience.Decode(audience); err != nil {
 			return Permanent(err)
 		}
 		insert := func(recipient dbmodels.ListAnnouncementRecipientsRow) error {
@@ -203,9 +233,23 @@ func announcementNotificationHandler(
 			}
 		}
 		if notified == 0 {
-			// A tenant with no users still has the announcement on its own
-			// list. Completing is the honest answer: a retry would find the
-			// same empty readership.
+			// A retry evaluates the audience again, and a reader an earlier
+			// attempt wrote a row for may no longer meet it. The mail reads
+			// the rows that were written, so it is still owed for them.
+			written, err := queries.AnnouncementHasNotifications(ctx, dbmodels.AnnouncementHasNotificationsParams{
+				TenantID:   tenantID,
+				SubjectKey: AnnouncementSubjectKey(announcementID),
+			})
+			if err != nil {
+				return fmt.Errorf("check announcement notifications: %w", err)
+			}
+			if written {
+				return queueNotificationEmail(ctx, queries, tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID))
+			}
+			// A tenant with no users, or an audience nobody meets, still has
+			// the announcement on its own list. Completing is the honest
+			// answer: a retry would find the same empty readership, and a
+			// reader who comes to meet the audience later is not sent it.
 			logAnnouncement(ctx, cfg.Logger, "no readers to notify about an announcement", event,
 				"announcement_id", announcementID.String())
 			return nil

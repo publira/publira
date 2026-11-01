@@ -130,6 +130,33 @@ func TestAnnouncementNotificationRejectsADeliveryItDoesNotKnow(t *testing.T) {
 	}
 }
 
+// An audience the worker cannot read is a dead event rather than an
+// announcement delivered to nobody, or to everyone.
+func TestAnnouncementNotificationRejectsAnAudienceItCannotRead(t *testing.T) {
+	for name, audience := range map[string]string{
+		"a later version":   `{"version": 2, "conditions": [{"type": "never_purchased"}]}`,
+		"no conditions":     `{"version": 1, "conditions": []}`,
+		"an unknown type":   `{"version": 1, "conditions": [{"type": "bought_coins"}]}`,
+		"a type twice":      `{"version": 1, "conditions": [{"type": "never_purchased"}, {"type": "never_purchased"}]}`,
+		"days out of range": `{"version": 1, "conditions": [{"type": "signed_up_within_days", "days": 0}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			queries := &stubAnnouncementQuerier{
+				audience: json.RawMessage(audience),
+				users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
+			}
+
+			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+			if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); !IsPermanent(err) {
+				t.Fatalf("handler error = %v, want a permanent error", err)
+			}
+			if len(queries.created) != 0 || queries.listCalls != 0 {
+				t.Fatalf("notifications written = %d after %d recipient queries, want none", len(queries.created), queries.listCalls)
+			}
+		})
+	}
+}
+
 func TestAnnouncementNotificationCompletesWhenTheAnnouncementIsGone(t *testing.T) {
 	queries := &stubAnnouncementQuerier{
 		deliveryErr: sql.ErrNoRows,
@@ -176,6 +203,23 @@ func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) 
 	}
 	if len(queries.created) != 0 || len(queries.queued) != 0 {
 		t.Fatalf("notifications, outbox events = %d, %d, want none", len(queries.created), len(queries.queued))
+	}
+}
+
+// A retry evaluates the audience again. When it selects nobody now, the rows an
+// earlier attempt wrote are still owed their mail.
+func TestAnnouncementNotificationQueuesTheMailOfAnEarlierAttemptsRows(t *testing.T) {
+	queries := &stubAnnouncementQuerier{
+		audience: json.RawMessage(`{"version": 1, "conditions": [{"type": "never_purchased"}]}`),
+		written:  true,
+	}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.queued) != 1 || queries.queued[0].EventType != EventTypeNotificationEmail {
+		t.Fatalf("outbox events = %v, want the one notification_email", queries.queued)
 	}
 }
 
@@ -249,7 +293,12 @@ func announcementEvent(
 
 type stubAnnouncementQuerier struct {
 	// delivery is what GetAnnouncementDelivery answers, preferred when empty.
-	delivery           string
+	delivery string
+	// audience is the stored audience it answers, none when nil.
+	audience json.RawMessage
+	// written is what AnnouncementHasNotifications answers: whether an earlier
+	// attempt already wrote a row for the announcement.
+	written            bool
 	deliveryErr        error
 	users              []dbmodels.ListAnnouncementRecipientsRow
 	listedTenant       uuid.NullUUID
@@ -272,14 +321,18 @@ func (s *stubAnnouncementQuerier) InsertOutboxEvent(
 func (s *stubAnnouncementQuerier) GetAnnouncementDelivery(
 	context.Context,
 	dbmodels.GetAnnouncementDeliveryParams,
-) (string, error) {
+) (dbmodels.GetAnnouncementDeliveryRow, error) {
 	if s.deliveryErr != nil {
-		return "", s.deliveryErr
+		return dbmodels.GetAnnouncementDeliveryRow{}, s.deliveryErr
 	}
-	if s.delivery == "" {
-		return AnnouncementDeliveryPreferred, nil
+	row := dbmodels.GetAnnouncementDeliveryRow{Delivery: s.delivery}
+	if row.Delivery == "" {
+		row.Delivery = AnnouncementDeliveryPreferred
 	}
-	return s.delivery, nil
+	if s.audience != nil {
+		row.Audience = &s.audience
+	}
+	return row, nil
 }
 
 // ListAnnouncementRecipients answers the keyset the handler pages with, so a
@@ -310,6 +363,13 @@ func (s *stubAnnouncementQuerier) ListAnnouncementRecipients(
 		return nil, nil
 	}
 	return s.users[start:end], nil
+}
+
+func (s *stubAnnouncementQuerier) AnnouncementHasNotifications(
+	context.Context,
+	dbmodels.AnnouncementHasNotificationsParams,
+) (bool, error) {
+	return s.written || len(s.created) > 0, nil
 }
 
 func (s *stubAnnouncementQuerier) CreateNotification(

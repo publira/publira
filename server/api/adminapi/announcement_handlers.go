@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/announcementaudience"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -80,15 +81,23 @@ func announcementDeliveryToProto(delivery string) publiraadminv1.AnnouncementDel
 }
 
 // announcementCreatedReason is the audit reason of a post, which says who its
-// notification was for.
-func announcementCreatedReason(delivery string) string {
+// notification was for. A targeted one says only that it had an audience: the
+// conditions are on the announcement, which the log names.
+func announcementCreatedReason(delivery string, targeted bool) string {
+	if targeted {
+		return "delivery=" + delivery + ";audience=targeted"
+	}
 	return "delivery=" + delivery
 }
 
 // mapAdminAnnouncement answers one announcement as the console lists it: the
 // title and body of its translation in the tenant default locale, beside every
-// translation it has.
-func mapAdminAnnouncement(row dbmodels.ListAnnouncementsForTenantDescRow, translations []dbmodels.AnnouncementTranslation) *publiraadminv1.AdminAnnouncement {
+// translation it has, and the audience it was addressed to, nil for everyone.
+func mapAdminAnnouncement(
+	row dbmodels.ListAnnouncementsForTenantDescRow,
+	translations []dbmodels.AnnouncementTranslation,
+	audience *publiraadminv1.AnnouncementAudience,
+) *publiraadminv1.AdminAnnouncement {
 	items := make([]*publiraadminv1.AnnouncementTranslation, 0, len(translations))
 	for _, translation := range translations {
 		items = append(items, &publiraadminv1.AnnouncementTranslation{
@@ -107,7 +116,48 @@ func mapAdminAnnouncement(row dbmodels.ListAnnouncementsForTenantDescRow, transl
 		PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
 		Translations: items,
 		Delivery:     announcementDeliveryToProto(row.Delivery),
+		Audience:     audience,
 	}
+}
+
+// announcementAudiencesOf answers the audience of every row that has one,
+// keyed by announcement, naming its series and plans by public id in one query
+// each for the whole page. An audience this release cannot read, written by a
+// later one, is answered with no conditions, so the row still reads as
+// targeted rather than as an announcement for everyone.
+func (s *adminServer) announcementAudiencesOf(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	rows []dbmodels.ListAnnouncementsForTenantDescRow,
+) (map[uuid.UUID]*publiraadminv1.AnnouncementAudience, error) {
+	stored := make(map[uuid.UUID]announcementaudience.Audience, len(rows))
+	answered := make(map[uuid.UUID]*publiraadminv1.AnnouncementAudience, len(rows))
+	for _, row := range rows {
+		if row.Audience == nil {
+			continue
+		}
+		audience, ok, err := announcementaudience.Decode(*row.Audience)
+		if err != nil || !ok {
+			answered[row.ID] = &publiraadminv1.AnnouncementAudience{}
+			continue
+		}
+		stored[row.ID] = audience
+	}
+	if len(stored) == 0 {
+		return answered, nil
+	}
+	audiences := make([]announcementaudience.Audience, 0, len(stored))
+	for _, audience := range stored {
+		audiences = append(audiences, audience)
+	}
+	names, err := announcementaudience.LookUpPublicIDs(ctx, s.queriesFor(ctx), tenantID, audiences...)
+	if err != nil {
+		return nil, err
+	}
+	for id, audience := range stored {
+		answered[id] = announcementaudience.ToProto(audience, names)
+	}
+	return answered, nil
 }
 
 // formatPinnedUntil renders the instant a banner stops at. An empty answer is
@@ -224,10 +274,14 @@ func (s *adminServer) ListAnnouncements(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list announcement translations", err, "tenant_id", tenant.ID.String())
 	}
+	audiences, err := s.announcementAudiencesOf(ctx, tenant.ID, rows)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list announcement audiences", err, "tenant_id", tenant.ID.String())
+	}
 
 	items := make([]*publiraadminv1.AdminAnnouncement, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapAdminAnnouncement(row, translations[row.ID]))
+		items = append(items, mapAdminAnnouncement(row, translations[row.ID], audiences[row.ID]))
 	}
 
 	res := &publiraadminv1.ListAnnouncementsResponse{Announcements: items}
@@ -291,12 +345,18 @@ func (s *adminServer) CreateAnnouncement(
 		}
 	}
 
+	audience, err := s.announcementAudienceFrom(ctx, tenant, req, delivery)
+	if err != nil {
+		return nil, err
+	}
+
 	created, owed, err := s.storeAnnouncement(ctx, tenant, announcementContent{
 		translations: translations,
 		linkURL:      linkURL,
 		pinned:       pinned,
 		pinnedUntil:  pinnedUntil,
 		delivery:     delivery,
+		audience:     audience,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
@@ -311,13 +371,43 @@ func (s *adminServer) CreateAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
-		Reason:      announcementCreatedReason(delivery),
+		Reason:      announcementCreatedReason(delivery, audience != nil),
 		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.CreateAnnouncementResponse{
 		Announcement: created,
 	}, nil
+}
+
+// announcementAudienceFrom reads the audience CreateAnnouncement was sent, nil
+// for an announcement addressed to everyone. A targeted announcement is never
+// pinned, since a banner is shown to every visitor, and never delivered to
+// everyone, since a notice no reader may miss is not one a condition may keep
+// from some of them.
+func (s *adminServer) announcementAudienceFrom(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	req *publiraadminv1.CreateAnnouncementRequest,
+	delivery string,
+) (*announcementaudience.Audience, error) {
+	if req.Audience == nil {
+		return nil, nil
+	}
+	if req.Pinned {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("an announcement with an audience cannot be pinned"), "pinned")
+	}
+	if delivery == outbox.AnnouncementDeliveryEveryone {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("an announcement with an audience cannot be delivered to everyone"), "delivery")
+	}
+	audience, err := announcementaudience.FromProto(ctx, s.queriesFor(ctx), tenant, req.Audience)
+	if err != nil {
+		if fieldErr := rpcerrors.FromFieldError(err); fieldErr != nil {
+			return nil, fieldErr
+		}
+		return nil, s.internalDBError(ctx, "failed to resolve announcement audience", err, "tenant_id", tenant.ID.String())
+	}
+	return &audience, nil
 }
 
 // announcementTranslationInput is one locale's copy CreateAnnouncement was
@@ -370,6 +460,8 @@ type announcementContent struct {
 	pinned       bool
 	pinnedUntil  sql.NullTime
 	delivery     string
+	// audience is nil for an announcement addressed to everyone.
+	audience *announcementaudience.Audience
 }
 
 // storeAnnouncement writes the announcement row and its translations and, in
@@ -420,7 +512,15 @@ func (s *adminServer) storeAnnouncement(
 			listed.Body = translation.Body
 		}
 	}
-	return mapAdminAnnouncement(listed, translations), owed, nil
+	var audience *publiraadminv1.AnnouncementAudience
+	if content.audience != nil {
+		names, err := announcementaudience.LookUpPublicIDs(ctx, s.queriesFor(ctx), tenant.ID, *content.audience)
+		if err != nil {
+			return nil, revalidate.Owed{}, err
+		}
+		audience = announcementaudience.ToProto(*content.audience, names)
+	}
+	return mapAdminAnnouncement(listed, translations, audience), owed, nil
 }
 
 // createAnnouncementRow writes one announcement with its translations and
@@ -435,6 +535,14 @@ func createAnnouncementRow(
 	if err != nil {
 		return dbmodels.Announcement{}, nil, fmt.Errorf("allocate announcement id: %w", err)
 	}
+	var audience *json.RawMessage
+	if content.audience != nil {
+		encoded, err := content.audience.Encode()
+		if err != nil {
+			return dbmodels.Announcement{}, nil, fmt.Errorf("encode announcement audience: %w", err)
+		}
+		audience = &encoded
+	}
 	row, err := queries.CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
 		ID:               announcementID,
 		TenantID:         tenantID,
@@ -444,6 +552,7 @@ func createAnnouncementRow(
 		Pinned:           content.pinned,
 		PinnedUntil:      content.pinnedUntil,
 		Delivery:         content.delivery,
+		Audience:         audience,
 	})
 	if err != nil {
 		return dbmodels.Announcement{}, nil, err
@@ -476,9 +585,11 @@ func createAnnouncementRow(
 // enqueueAnnouncementNotification queues the bell delivery of one announcement.
 //
 // The worker owns the fan-out: an announcement addresses every user the tenant
-// has, and an operator submitting the console form must not wait on an insert
-// per person. The idempotency key is the announcement's own identity, so a
-// redelivered event notifies nobody a second time.
+// has, or every one its audience selects, and an operator submitting the
+// console form must not wait on an insert per person. The idempotency key is
+// the announcement's own identity, so a redelivered event notifies nobody a
+// second time. One with an audience is queued as an event of its own type, so
+// that a worker that would deliver it to everyone never claims it.
 func enqueueAnnouncementNotification(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -491,6 +602,10 @@ func enqueueAnnouncementNotification(
 	})
 	if err != nil {
 		return fmt.Errorf("marshal announcement notification event: %w", err)
+	}
+	if row.Audience != nil {
+		return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeTargetedAnnouncementNotification, payload,
+			outbox.TargetedAnnouncementIdempotencyKey(row.ID))
 	}
 	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAnnouncementNotification, payload,
 		outbox.AnnouncementIdempotencyKey(row.ID))

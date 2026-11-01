@@ -521,7 +521,8 @@
       "reasons": {
         "announcement_delivery": {
           "preferred": "通知設定に従って通知",
-          "everyone": "すべての読者に通知"
+          "everyone": "すべての読者に通知",
+          "targeted": "条件に合う読者に通知"
         },
         "purchase_refund_in_part": "代金のうち{$amount}({$reason})"
       }

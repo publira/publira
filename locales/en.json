@@ -521,7 +521,8 @@
       "reasons": {
         "announcement_delivery": {
           "preferred": "Notified as each reader's settings allow",
-          "everyone": "Notified to every reader"
+          "everyone": "Notified to every reader",
+          "targeted": "Notified to the readers its conditions select"
         },
         "purchase_refund_in_part": "{$amount} of the price: {$reason}"
       }

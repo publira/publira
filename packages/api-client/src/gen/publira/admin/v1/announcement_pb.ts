@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/announcement.proto.
  */
 export const file_publira_admin_v1_announcement: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChdBbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIOCgZsb2NhbGUYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCSLNAgoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRISCgpjcmVhdGVkX2F0GAggASgJEg4KBnBpbm5lZBgJIAEoCBIUCgxwaW5uZWRfdW50aWwYCiABKAkSPwoMdHJhbnNsYXRpb25zGAsgAygLMikucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhI4CghkZWxpdmVyeRgMIAEoDjImLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50RGVsaXZlcnlKBAgFEAZKBAgGEAdKBAgHEAhSDWF1ZGllbmNlX3R5cGVSFXRhcmdldF91c2VyX3B1YmxpY19pZFIQdGFyZ2V0X3VzZXJfbmFtZSJ3ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQigwEKGUxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLLAgoZQ3JlYXRlQW5ub3VuY2VtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSPwoMdHJhbnNsYXRpb25zGAkgAygLMikucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIQCghsaW5rX3VybBgEIAEoCRIOCgZwaW5uZWQYByABKAgSFAoMcGlubmVkX3VudGlsGAggASgJEjgKCGRlbGl2ZXJ5GAogASgOMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnREZWxpdmVyeUoECAIQA0oECAMQBEoECAUQBkoECAYQB1IFdGl0bGVSBGJvZHlSDWF1ZGllbmNlX3R5cGVSFnRhcmdldF91c2VyX3B1YmxpY19pZHMibAoaQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2USOQoMYW5ub3VuY2VtZW50GAIgASgLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudEoECAEQAlINYW5ub3VuY2VtZW50cyJkChhVbnBpbkFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIbChlVbnBpbkFubm91bmNlbWVudFJlc3BvbnNlKoYBChRBbm5vdW5jZW1lbnREZWxpdmVyeRIlCiFBTk5PVU5DRU1FTlRfREVMSVZFUllfVU5TUEVDSUZJRUQQABIjCh9BTk5PVU5DRU1FTlRfREVMSVZFUllfUFJFRkVSUkVEEAESIgoeQU5OT1VOQ0VNRU5UX0RFTElWRVJZX0VWRVJZT05FEAIy7QIKGEFkbWluQW5ub3VuY2VtZW50U2VydmljZRJuChFMaXN0QW5ub3VuY2VtZW50cxIqLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFubm91bmNlbWVudHNSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1Jlc3BvbnNlIgAScQoSQ3JlYXRlQW5ub3VuY2VtZW50EisucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXNwb25zZSIAEm4KEVVucGluQW5ub3VuY2VtZW50EioucHVibGlyYS5hZG1pbi52MS5VbnBpbkFubm91bmNlbWVudFJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChdBbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIOCgZsb2NhbGUYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCSJbChRBbm5vdW5jZW1lbnRBdWRpZW5jZRJDCgpjb25kaXRpb25zGAEgAygLMi8ucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbiLRCAodQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24SVwoOZm9sbG93c19zZXJpZXMYASABKAsyPS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkZvbGxvd3NTZXJpZXNIABJkChVib3VnaHRfc2VyaWVzX2VwaXNvZGUYAiABKAsyQy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkJvdWdodFNlcmllc0VwaXNvZGVIABJUCgxzdWJzY3JpcHRpb24YAyABKAsyPC5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLlN1YnNjcmlwdGlvbkgAElkKD25ldmVyX3B1cmNoYXNlZBgEIAEoCzI+LnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uTmV2ZXJQdXJjaGFzZWRIABJdChJsYXN0X3JlYWRfZGF5c19hZ28YBSABKAsyPy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkxhc3RSZWFkRGF5c0Fnb0gAEmMKFXNpZ25lZF91cF93aXRoaW5fZGF5cxgGIAEoCzJCLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uU2lnbmVkVXBXaXRoaW5EYXlzSAASSAoGbG9jYWxlGAcgASgLMjYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5Mb2NhbGVIABJlChZoYXNfbW9iaWxlX3B1c2hfZGV2aWNlGAggASgLMkMucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5IYXNNb2JpbGVQdXNoRGV2aWNlSAAaKQoNRm9sbG93c1NlcmllcxIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJGi8KE0JvdWdodFNlcmllc0VwaXNvZGUSGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRpaCgxTdWJzY3JpcHRpb24SFgoOcGxhbl9wdWJsaWNfaWQYASABKAkSMgoFc3RhdGUYAiABKA4yIy5wdWJsaXJhLmFkbWluLnYxLlN1YnNjcmlwdGlvblN0YXRlGhAKDk5ldmVyUHVyY2hhc2VkGh8KD0xhc3RSZWFkRGF5c0FnbxIMCgRkYXlzGAEgASgFGiIKElNpZ25lZFVwV2l0aGluRGF5cxIMCgRkYXlzGAEgASgFGhgKBkxvY2FsZRIOCgZsb2NhbGUYASABKAkaFQoTSGFzTW9iaWxlUHVzaERldmljZUILCgljb25kaXRpb24ihwMKEUFkbWluQW5ub3VuY2VtZW50EgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBGJvZHkYAyABKAkSEAoIbGlua191cmwYBCABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJEj8KDHRyYW5zbGF0aW9ucxgLIAMoCzIpLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50VHJhbnNsYXRpb24SOAoIZGVsaXZlcnkYDCABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGA0gASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUoECAUQBkoECAYQB0oECAcQCFINYXVkaWVuY2VfdHlwZVIVdGFyZ2V0X3VzZXJfcHVibGljX2lkUhB0YXJnZXRfdXNlcl9uYW1lIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoUDChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI/Cgx0cmFuc2xhdGlvbnMYCSADKAsyKS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudFRyYW5zbGF0aW9uEhAKCGxpbmtfdXJsGAQgASgJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAkSOAoIZGVsaXZlcnkYCiABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGAsgASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUoECAIQA0oECAMQBEoECAUQBkoECAYQB1IFdGl0bGVSBGJvZHlSDWF1ZGllbmNlX3R5cGVSFnRhcmdldF91c2VyX3B1YmxpY19pZHMibAoaQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2USOQoMYW5ub3VuY2VtZW50GAIgASgLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudEoECAEQAlINYW5ub3VuY2VtZW50cyJkChhVbnBpbkFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIbChlVbnBpbkFubm91bmNlbWVudFJlc3BvbnNlKoYBChRBbm5vdW5jZW1lbnREZWxpdmVyeRIlCiFBTk5PVU5DRU1FTlRfREVMSVZFUllfVU5TUEVDSUZJRUQQABIjCh9BTk5PVU5DRU1FTlRfREVMSVZFUllfUFJFRkVSUkVEEAESIgoeQU5OT1VOQ0VNRU5UX0RFTElWRVJZX0VWRVJZT05FEAIqdAoRU3Vic2NyaXB0aW9uU3RhdGUSIgoeU1VCU0NSSVBUSU9OX1NUQVRFX1VOU1BFQ0lGSUVEEAASHQoZU1VCU0NSSVBUSU9OX1NUQVRFX0FDVElWRRABEhwKGFNVQlNDUklQVElPTl9TVEFURV9FTkRFRBACMu0CChhBZG1pbkFubm91bmNlbWVudFNlcnZpY2USbgoRTGlzdEFubm91bmNlbWVudHMSKi5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFubm91bmNlbWVudHNSZXNwb25zZSIAEnEKEkNyZWF0ZUFubm91bmNlbWVudBIrLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQW5ub3VuY2VtZW50UmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2UiABJuChFVbnBpbkFubm91bmNlbWVudBIqLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5VbnBpbkFubm91bmNlbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * One locale's title and body of an announcement.
@@ -44,8 +44,260 @@ export const AnnouncementTranslationSchema: GenMessage<AnnouncementTranslation> 
   messageDesc(file_publira_admin_v1_announcement, 0);
 
 /**
- * An announcement is addressed to everyone who opens the tenant's site; a
- * message to one person is a notification.
+ * The readers a targeted announcement is delivered to: those who meet every
+ * condition at the moment it is delivered, so a reader who comes to meet them
+ * later is not sent it. Each condition type appears at most once.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudience
+ */
+export type AnnouncementAudience = Message<"publira.admin.v1.AnnouncementAudience"> & {
+  /**
+   * @generated from field: repeated publira.admin.v1.AnnouncementAudienceCondition conditions = 1;
+   */
+  conditions: AnnouncementAudienceCondition[];
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudience.
+ * Use `create(AnnouncementAudienceSchema)` to create a new message.
+ */
+export const AnnouncementAudienceSchema: GenMessage<AnnouncementAudience> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 1);
+
+/**
+ * One condition of an audience.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition
+ */
+export type AnnouncementAudienceCondition = Message<"publira.admin.v1.AnnouncementAudienceCondition"> & {
+  /**
+   * @generated from oneof publira.admin.v1.AnnouncementAudienceCondition.condition
+   */
+  condition: {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries follows_series = 1;
+     */
+    value: AnnouncementAudienceCondition_FollowsSeries;
+    case: "followsSeries";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode bought_series_episode = 2;
+     */
+    value: AnnouncementAudienceCondition_BoughtSeriesEpisode;
+    case: "boughtSeriesEpisode";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.Subscription subscription = 3;
+     */
+    value: AnnouncementAudienceCondition_Subscription;
+    case: "subscription";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased never_purchased = 4;
+     */
+    value: AnnouncementAudienceCondition_NeverPurchased;
+    case: "neverPurchased";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo last_read_days_ago = 5;
+     */
+    value: AnnouncementAudienceCondition_LastReadDaysAgo;
+    case: "lastReadDaysAgo";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays signed_up_within_days = 6;
+     */
+    value: AnnouncementAudienceCondition_SignedUpWithinDays;
+    case: "signedUpWithinDays";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.Locale locale = 7;
+     */
+    value: AnnouncementAudienceCondition_Locale;
+    case: "locale";
+  } | {
+    /**
+     * @generated from field: publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice has_mobile_push_device = 8;
+     */
+    value: AnnouncementAudienceCondition_HasMobilePushDevice;
+    case: "hasMobilePushDevice";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.
+ * Use `create(AnnouncementAudienceConditionSchema)` to create a new message.
+ */
+export const AnnouncementAudienceConditionSchema: GenMessage<AnnouncementAudienceCondition> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2);
+
+/**
+ * The reader follows the series.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries
+ */
+export type AnnouncementAudienceCondition_FollowsSeries = Message<"publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries"> & {
+  /**
+   * @generated from field: string series_public_id = 1;
+   */
+  seriesPublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries.
+ * Use `create(AnnouncementAudienceCondition_FollowsSeriesSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_FollowsSeriesSchema: GenMessage<AnnouncementAudienceCondition_FollowsSeries> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 0);
+
+/**
+ * The reader holds a purchase of an episode of the series, bought alone, in
+ * a volume, or in a bundle, that has not been revoked.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode
+ */
+export type AnnouncementAudienceCondition_BoughtSeriesEpisode = Message<"publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode"> & {
+  /**
+   * @generated from field: string series_public_id = 1;
+   */
+  seriesPublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode.
+ * Use `create(AnnouncementAudienceCondition_BoughtSeriesEpisodeSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_BoughtSeriesEpisodeSchema: GenMessage<AnnouncementAudienceCondition_BoughtSeriesEpisode> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 1);
+
+/**
+ * The reader's subscription is in the state asked for.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.Subscription
+ */
+export type AnnouncementAudienceCondition_Subscription = Message<"publira.admin.v1.AnnouncementAudienceCondition.Subscription"> & {
+  /**
+   * The plan the subscription is to. Empty means any plan.
+   *
+   * @generated from field: string plan_public_id = 1;
+   */
+  planPublicId: string;
+
+  /**
+   * Required.
+   *
+   * @generated from field: publira.admin.v1.SubscriptionState state = 2;
+   */
+  state: SubscriptionState;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.Subscription.
+ * Use `create(AnnouncementAudienceCondition_SubscriptionSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_SubscriptionSchema: GenMessage<AnnouncementAudienceCondition_Subscription> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 2);
+
+/**
+ * The reader has never bought anything from the tenant.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased
+ */
+export type AnnouncementAudienceCondition_NeverPurchased = Message<"publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased.
+ * Use `create(AnnouncementAudienceCondition_NeverPurchasedSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_NeverPurchasedSchema: GenMessage<AnnouncementAudienceCondition_NeverPurchased> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 3);
+
+/**
+ * The reader has read nothing for at least this many days, or never read
+ * anything.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo
+ */
+export type AnnouncementAudienceCondition_LastReadDaysAgo = Message<"publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo"> & {
+  /**
+   * 1 to 3650.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days: number;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo.
+ * Use `create(AnnouncementAudienceCondition_LastReadDaysAgoSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_LastReadDaysAgoSchema: GenMessage<AnnouncementAudienceCondition_LastReadDaysAgo> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 4);
+
+/**
+ * The reader signed up no more than this many days ago.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays
+ */
+export type AnnouncementAudienceCondition_SignedUpWithinDays = Message<"publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays"> & {
+  /**
+   * 1 to 3650.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days: number;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays.
+ * Use `create(AnnouncementAudienceCondition_SignedUpWithinDaysSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_SignedUpWithinDaysSchema: GenMessage<AnnouncementAudienceCondition_SignedUpWithinDays> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 5);
+
+/**
+ * The reader reads the site in the locale: the one their last signed-in
+ * request named, or the tenant's default locale for a reader who never named
+ * one.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.Locale
+ */
+export type AnnouncementAudienceCondition_Locale = Message<"publira.admin.v1.AnnouncementAudienceCondition.Locale"> & {
+  /**
+   * A locale the tenant offers.
+   *
+   * @generated from field: string locale = 1;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.Locale.
+ * Use `create(AnnouncementAudienceCondition_LocaleSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_LocaleSchema: GenMessage<AnnouncementAudienceCondition_Locale> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 6);
+
+/**
+ * The reader has registered a phone running the tenant's app for push
+ * notifications.
+ *
+ * @generated from message publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice
+ */
+export type AnnouncementAudienceCondition_HasMobilePushDevice = Message<"publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice.
+ * Use `create(AnnouncementAudienceCondition_HasMobilePushDeviceSchema)` to create a new message.
+ */
+export const AnnouncementAudienceCondition_HasMobilePushDeviceSchema: GenMessage<AnnouncementAudienceCondition_HasMobilePushDevice> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 2, 7);
+
+/**
+ * An announcement is addressed to everyone who opens the tenant's site, or to
+ * the readers its audience selects; a message to one person is a notification.
  *
  * @generated from message publira.admin.v1.AdminAnnouncement
  */
@@ -106,6 +358,13 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
    * @generated from field: publira.admin.v1.AnnouncementDelivery delivery = 12;
    */
   delivery: AnnouncementDelivery;
+
+  /**
+   * The readers it was addressed to. Unset is everyone who opens the site.
+   *
+   * @generated from field: publira.admin.v1.AnnouncementAudience audience = 13;
+   */
+  audience?: AnnouncementAudience | undefined;
 };
 
 /**
@@ -113,7 +372,7 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
  * Use `create(AdminAnnouncementSchema)` to create a new message.
  */
 export const AdminAnnouncementSchema: GenMessage<AdminAnnouncement> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 1);
+  messageDesc(file_publira_admin_v1_announcement, 3);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -146,7 +405,7 @@ export type ListAnnouncementsRequest = Message<"publira.admin.v1.ListAnnouncemen
  * Use `create(ListAnnouncementsRequestSchema)` to create a new message.
  */
 export const ListAnnouncementsRequestSchema: GenMessage<ListAnnouncementsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 2);
+  messageDesc(file_publira_admin_v1_announcement, 4);
 
 /**
  * @generated from message publira.admin.v1.ListAnnouncementsResponse
@@ -177,7 +436,7 @@ export type ListAnnouncementsResponse = Message<"publira.admin.v1.ListAnnounceme
  * Use `create(ListAnnouncementsResponseSchema)` to create a new message.
  */
 export const ListAnnouncementsResponseSchema: GenMessage<ListAnnouncementsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 3);
+  messageDesc(file_publira_admin_v1_announcement, 5);
 
 /**
  * @generated from message publira.admin.v1.CreateAnnouncementRequest
@@ -226,6 +485,17 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
    * @generated from field: publira.admin.v1.AnnouncementDelivery delivery = 10;
    */
   delivery: AnnouncementDelivery;
+
+  /**
+   * The readers the announcement is addressed to, at least one condition. Unset
+   * addresses everyone who opens the site. A targeted announcement is listed
+   * only to the readers it was delivered to and is never shown to a visitor
+   * with no session, so pinning it or delivering it to everyone is
+   * invalid_argument.
+   *
+   * @generated from field: publira.admin.v1.AnnouncementAudience audience = 11;
+   */
+  audience?: AnnouncementAudience | undefined;
 };
 
 /**
@@ -233,7 +503,7 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
  * Use `create(CreateAnnouncementRequestSchema)` to create a new message.
  */
 export const CreateAnnouncementRequestSchema: GenMessage<CreateAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 4);
+  messageDesc(file_publira_admin_v1_announcement, 6);
 
 /**
  * @generated from message publira.admin.v1.CreateAnnouncementResponse
@@ -250,7 +520,7 @@ export type CreateAnnouncementResponse = Message<"publira.admin.v1.CreateAnnounc
  * Use `create(CreateAnnouncementResponseSchema)` to create a new message.
  */
 export const CreateAnnouncementResponseSchema: GenMessage<CreateAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 5);
+  messageDesc(file_publira_admin_v1_announcement, 7);
 
 /**
  * Takes the banner down without deleting the announcement, which stays in the
@@ -275,7 +545,7 @@ export type UnpinAnnouncementRequest = Message<"publira.admin.v1.UnpinAnnounceme
  * Use `create(UnpinAnnouncementRequestSchema)` to create a new message.
  */
 export const UnpinAnnouncementRequestSchema: GenMessage<UnpinAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 6);
+  messageDesc(file_publira_admin_v1_announcement, 8);
 
 /**
  * @generated from message publira.admin.v1.UnpinAnnouncementResponse
@@ -288,7 +558,7 @@ export type UnpinAnnouncementResponse = Message<"publira.admin.v1.UnpinAnnouncem
  * Use `create(UnpinAnnouncementResponseSchema)` to create a new message.
  */
 export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 7);
+  messageDesc(file_publira_admin_v1_announcement, 9);
 
 /**
  * Which readers an announcement's notification reaches.
@@ -326,6 +596,40 @@ export enum AnnouncementDelivery {
  */
 export const AnnouncementDeliverySchema: GenEnum<AnnouncementDelivery> = /*@__PURE__*/
   enumDesc(file_publira_admin_v1_announcement, 0);
+
+/**
+ * Whether an audience condition asks for a live subscription or one that has
+ * ended.
+ *
+ * @generated from enum publira.admin.v1.SubscriptionState
+ */
+export enum SubscriptionState {
+  /**
+   * @generated from enum value: SUBSCRIPTION_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A subscription that opens its plan's episodes now: trialing, active, or
+   * past due.
+   *
+   * @generated from enum value: SUBSCRIPTION_STATE_ACTIVE = 1;
+   */
+  ACTIVE = 1,
+
+  /**
+   * A reader who has had a subscription and holds no live one.
+   *
+   * @generated from enum value: SUBSCRIPTION_STATE_ENDED = 2;
+   */
+  ENDED = 2,
+}
+
+/**
+ * Describes the enum publira.admin.v1.SubscriptionState.
+ */
+export const SubscriptionStateSchema: GenEnum<SubscriptionState> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_announcement, 1);
 
 /**
  * @generated from service publira.admin.v1.AdminAnnouncementService

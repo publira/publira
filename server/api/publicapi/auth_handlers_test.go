@@ -67,7 +67,7 @@ func expectLegalPagesAgreed(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID) {
 
 func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "locale", "title", "body", "is_read", "read_at",
+		"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience", "locale", "title", "body", "is_read", "read_at",
 	})
 }
 
@@ -87,6 +87,7 @@ func addAnnouncementRow(
 		false,
 		sql.NullTime{},
 		"preferred",
+		nil,
 		"ja",
 		title,
 		"The latest episode is out",

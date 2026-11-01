@@ -100,3 +100,59 @@ func TestAnnouncementNotificationReachesEachReaderInTheirLocaleInTheDatabase(t *
 		}
 	}
 }
+
+// A reader an earlier attempt wrote a row for, who no longer meets the audience
+// when the event is retried, is still mailed: the retry finds nobody to write a
+// row for, and queues the mail for the row that is there.
+func TestTargetedAnnouncementRetryQueuesTheMailOfAnEarlierAttemptInTheDatabase(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "ANNRETRY0001", "announcement-retry.example.com", "Announcement Retry Tenant")
+	reader := pg.SeedEndUser(t, tenant.ID, "READERRET001", "reader@announcement-retry.example.com", "Reader")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RETRYSERIES1", Title: "Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "RETRYEPISOD1", Title: "Episode", Price: 100, Status: testutil.EpisodeStatusPublished})
+
+	announcementID := uuid.Must(uuid.NewV7())
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO announcements (id, tenant_id, announcement_type, audience)
+		VALUES ($1, $2, 'announcement', '{"version": 1, "conditions": [{"type": "never_purchased"}]}')
+	`, announcementID, tenant.ID); err != nil {
+		t.Fatalf("insert announcement: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+		SELECT uuidv7(), $1, t.id, t.default_locale, 'For readers yet to buy', 'Body'
+		FROM tenants t
+		WHERE t.id = $2
+	`, announcementID, tenant.ID); err != nil {
+		t.Fatalf("insert announcement translation: %v", err)
+	}
+	// The row the earlier attempt wrote before it failed short of the mail.
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, payload, category)
+		VALUES (uuidv7(), $1, $2, $3, $4, '{}', 'announcements')
+	`, tenant.ID, reader.ID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID)); err != nil {
+		t.Fatalf("insert notification: %v", err)
+	}
+	pg.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 100)
+
+	handler := NewAnnouncementNotificationHandler(AnnouncementNotificationHandlerConfig{DB: pg.DB})
+	if err := handler(ctx, announcementEvent(t, tenant.ID, announcementID)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	var queued int
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM outbox_events WHERE event_type = $1 AND idempotency_key = $2",
+		EventTypeNotificationEmail, NotificationEmailIdempotencyKey(tenant.ID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID)),
+	).Scan(&queued); err != nil {
+		t.Fatalf("count queued mail: %v", err)
+	}
+	if queued != 1 {
+		t.Fatalf("queued notification_email events = %d, want 1", queued)
+	}
+}

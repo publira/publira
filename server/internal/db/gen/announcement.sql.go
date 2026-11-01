@@ -15,6 +15,31 @@ import (
 	"github.com/lib/pq"
 )
 
+const AnnouncementHasNotifications = `-- name: AnnouncementHasNotifications :one
+SELECT EXISTS (
+        SELECT 1
+        FROM notifications
+        WHERE tenant_id = $1
+            AND notification_type = 'announcement_posted'
+            AND subject_key = $2
+    ) AS has_notifications
+`
+
+type AnnouncementHasNotificationsParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SubjectKey string    `json:"subject_key"`
+}
+
+// Worker fan-out: whether an earlier attempt at the announcement's event
+// already wrote a notification row for someone, whose mail is still owed when
+// the audience selects nobody by the time the event is retried.
+func (q *Queries) AnnouncementHasNotifications(ctx context.Context, arg AnnouncementHasNotificationsParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, AnnouncementHasNotifications, arg.TenantID, arg.SubjectKey)
+	var has_notifications bool
+	err := row.Scan(&has_notifications)
+	return has_notifications, err
+}
+
 const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
 UPDATE announcements
 SET pinned = false
@@ -37,21 +62,23 @@ INSERT INTO announcements (
     metadata,
     pinned,
     pinned_until,
-    delivery
+    delivery,
+    audience
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery, audience
 `
 
 type CreateAnnouncementParams struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
 }
 
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
@@ -64,6 +91,7 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		arg.Pinned,
 		arg.PinnedUntil,
 		arg.Delivery,
+		arg.Audience,
 	)
 	var i Announcement
 	err := row.Scan(
@@ -76,6 +104,7 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		&i.Pinned,
 		&i.PinnedUntil,
 		&i.Delivery,
+		&i.Audience,
 	)
 	return i, err
 }
@@ -126,7 +155,8 @@ func (q *Queries) CreateAnnouncementTranslation(ctx context.Context, arg CreateA
 }
 
 const GetAnnouncementDelivery = `-- name: GetAnnouncementDelivery :one
-SELECT delivery
+SELECT delivery,
+    audience
 FROM announcements
 WHERE tenant_id = $1
     AND id = $2
@@ -137,18 +167,25 @@ type GetAnnouncementDeliveryParams struct {
 	AnnouncementID uuid.UUID `json:"announcement_id"`
 }
 
+type GetAnnouncementDeliveryRow struct {
+	Delivery string           `json:"delivery"`
+	Audience *json.RawMessage `json:"audience"`
+}
+
 // Worker fan-out: whether the announcement answers to its readers'
-// announcements cell ('preferred') or reaches every one of them ('everyone').
-func (q *Queries) GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (string, error) {
+// announcements cell ('preferred') or reaches every one of them ('everyone'),
+// and the audience it is addressed to, which the worker validates before it
+// writes a row for anyone.
+func (q *Queries) GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (GetAnnouncementDeliveryRow, error) {
 	row := q.db.QueryRowContext(ctx, GetAnnouncementDelivery, arg.TenantID, arg.AnnouncementID)
-	var delivery string
-	err := row.Scan(&delivery)
-	return delivery, err
+	var i GetAnnouncementDeliveryRow
+	err := row.Scan(&i.Delivery, &i.Audience)
+	return i, err
 }
 
 const GetAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
     tr.locale,
     tr.title,
     tr.body,
@@ -160,6 +197,17 @@ FROM announcements n
     AND nr.user_id = $2
 WHERE n.id = $3
     AND n.tenant_id = $4
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $2
+        )
+    )
 `
 
 type GetAnnouncementForUserParams struct {
@@ -170,25 +218,27 @@ type GetAnnouncementForUserParams struct {
 }
 
 type GetAnnouncementForUserRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
-	Locale           string          `json:"locale"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
-	IsRead           interface{}     `json:"is_read"`
-	ReadAt           sql.NullTime    `json:"read_at"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
+	Locale           string           `json:"locale"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	IsRead           interface{}      `json:"is_read"`
+	ReadAt           sql.NullTime     `json:"read_at"`
 }
 
 // Returns the announcement with the caller's read state, in its translation
-// for the locale asked for. A row owned by another tenant comes back as no
-// rows, so its existence is not disclosed.
+// for the locale asked for. A row owned by another tenant, and a targeted one
+// the caller was not sent, come back as no rows, so its existence is not
+// disclosed.
 func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
 	row := q.db.QueryRowContext(ctx, GetAnnouncementForUser,
 		arg.Locale,
@@ -207,6 +257,7 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 		&i.Pinned,
 		&i.PinnedUntil,
 		&i.Delivery,
+		&i.Audience,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
@@ -217,7 +268,7 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 }
 
 const GetPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
-SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
+SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
     tr.locale,
     tr.title,
     tr.body
@@ -236,18 +287,19 @@ type GetPinnedAnnouncementForTenantParams struct {
 }
 
 type GetPinnedAnnouncementForTenantRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
-	Locale           string          `json:"locale"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
+	Locale           string           `json:"locale"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
 }
 
 // What the site shows as a banner: the newest announcement still inside its
@@ -267,11 +319,106 @@ func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPin
 		&i.Pinned,
 		&i.PinnedUntil,
 		&i.Delivery,
+		&i.Audience,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
 	)
 	return i, err
+}
+
+const ListAnnouncementAudiencePlans = `-- name: ListAnnouncementAudiencePlans :many
+SELECT id,
+    public_id
+FROM subscription_plans
+WHERE tenant_id = $1
+    AND (
+        public_id = ANY($2::text [])
+        OR id = ANY($3::uuid [])
+    )
+`
+
+type ListAnnouncementAudiencePlansParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	PublicIds []string    `json:"public_ids"`
+	Ids       []uuid.UUID `json:"ids"`
+}
+
+type ListAnnouncementAudiencePlansRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// The tenant's subscription plans an audience names, the same way.
+func (q *Queries) ListAnnouncementAudiencePlans(ctx context.Context, arg ListAnnouncementAudiencePlansParams) ([]ListAnnouncementAudiencePlansRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementAudiencePlans, arg.TenantID, pq.Array(arg.PublicIds), pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnnouncementAudiencePlansRow
+	for rows.Next() {
+		var i ListAnnouncementAudiencePlansRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListAnnouncementAudienceSeries = `-- name: ListAnnouncementAudienceSeries :many
+SELECT id,
+    public_id
+FROM series
+WHERE tenant_id = $1
+    AND (
+        public_id = ANY($2::text [])
+        OR id = ANY($3::uuid [])
+    )
+`
+
+type ListAnnouncementAudienceSeriesParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	PublicIds []string    `json:"public_ids"`
+	Ids       []uuid.UUID `json:"ids"`
+}
+
+type ListAnnouncementAudienceSeriesRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// The tenant's series an audience names, by public id as the console sends
+// them or by id as the audience stores them, so one query turns either into
+// the other.
+func (q *Queries) ListAnnouncementAudienceSeries(ctx context.Context, arg ListAnnouncementAudienceSeriesParams) ([]ListAnnouncementAudienceSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementAudienceSeries, arg.TenantID, pq.Array(arg.PublicIds), pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnnouncementAudienceSeriesRow
+	for rows.Next() {
+		var i ListAnnouncementAudienceSeriesRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListAnnouncementRecipients = `-- name: ListAnnouncementRecipients :many
@@ -280,6 +427,13 @@ SELECT u.id AS user_id,
 FROM users u
     CROSS JOIN LATERAL announcement_translation_for($1::uuid, COALESCE(u.last_locale, '')) tr
 WHERE u.tenant_id = $2
+    AND u.id IN (
+        SELECT m.user_id
+        FROM announcements n
+            CROSS JOIN LATERAL announcement_audience_members(n.tenant_id, n.audience) m(user_id)
+        WHERE n.tenant_id = u.tenant_id
+            AND n.id = $1::uuid
+    )
     AND u.id > $3
 ORDER BY u.id
 LIMIT $4
@@ -297,12 +451,14 @@ type ListAnnouncementRecipientsRow struct {
 	Title  string    `json:"title"`
 }
 
-// Worker fan-out: everyone an announcement addressed to the whole tenant
-// reaches, each with the title of the translation they are told about. It is
-// the audience `ListAnnouncementsForUser*` already serves such a row to —
-// every user the tenant owns — so the bell counts what the announcements inbox
-// lists rather than a subset of it. The translation is the one the reader's
-// last locale picks, and the tenant default locale's for a reader who has none.
+// Worker fan-out: everyone the announcement's audience selects at the moment
+// it is delivered, each with the title of the translation they are told about.
+// An announcement for everyone reaches every user the tenant owns, the
+// audience `ListAnnouncementsForUser*` serves such a row to, so the bell counts
+// what the announcements inbox lists rather than a subset of it; a targeted one
+// is listed only to the readers this writes a row for. The translation is the
+// one the reader's last locale picks, and the tenant default locale's for a
+// reader who has none.
 //
 // Keyset paging on user_id, because the result grows with the tenant's
 // readership and the caller writes one row per recipient. The pair is
@@ -433,7 +589,8 @@ SELECT
     n.created_at,
     n.pinned,
     n.pinned_until,
-    n.delivery
+    n.delivery,
+    n.audience
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -461,17 +618,18 @@ type ListAnnouncementsForTenantAscParams struct {
 }
 
 type ListAnnouncementsForTenantAscRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
 }
 
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
@@ -501,6 +659,7 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 			&i.Pinned,
 			&i.PinnedUntil,
 			&i.Delivery,
+			&i.Audience,
 		); err != nil {
 			return nil, err
 		}
@@ -527,7 +686,8 @@ SELECT
     n.created_at,
     n.pinned,
     n.pinned_until,
-    n.delivery
+    n.delivery,
+    n.audience
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -555,17 +715,18 @@ type ListAnnouncementsForTenantDescParams struct {
 }
 
 type ListAnnouncementsForTenantDescRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
 }
 
 // Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -602,6 +763,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 			&i.Pinned,
 			&i.PinnedUntil,
 			&i.Delivery,
+			&i.Audience,
 		); err != nil {
 			return nil, err
 		}
@@ -618,7 +780,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 
 const ListAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
     tr.locale,
     tr.title,
     tr.body,
@@ -629,6 +791,17 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = $2
 WHERE n.tenant_id = $3
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $2
+        )
+    )
     AND (
         $4::uuid IS NULL
         OR (
@@ -655,20 +828,21 @@ type ListAnnouncementsForUserAscParams struct {
 }
 
 type ListAnnouncementsForUserAscRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
-	Locale           string          `json:"locale"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
-	IsRead           interface{}     `json:"is_read"`
-	ReadAt           sql.NullTime    `json:"read_at"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
+	Locale           string           `json:"locale"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	IsRead           interface{}      `json:"is_read"`
+	ReadAt           sql.NullTime     `json:"read_at"`
 }
 
 func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error) {
@@ -698,6 +872,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 			&i.Pinned,
 			&i.PinnedUntil,
 			&i.Delivery,
+			&i.Audience,
 			&i.Locale,
 			&i.Title,
 			&i.Body,
@@ -719,7 +894,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 
 const ListAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
     tr.locale,
     tr.title,
     tr.body,
@@ -730,6 +905,17 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = $2
 WHERE n.tenant_id = $3
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $2
+        )
+    )
     AND (
         $4::uuid IS NULL
         OR (
@@ -756,20 +942,21 @@ type ListAnnouncementsForUserDescParams struct {
 }
 
 type ListAnnouncementsForUserDescRow struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	AnnouncementType string          `json:"announcement_type"`
-	LinkUrl          sql.NullString  `json:"link_url"`
-	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Pinned           bool            `json:"pinned"`
-	PinnedUntil      sql.NullTime    `json:"pinned_until"`
-	Delivery         string          `json:"delivery"`
-	Locale           string          `json:"locale"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
-	IsRead           interface{}     `json:"is_read"`
-	ReadAt           sql.NullTime    `json:"read_at"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	AnnouncementType string           `json:"announcement_type"`
+	LinkUrl          sql.NullString   `json:"link_url"`
+	Metadata         json.RawMessage  `json:"metadata"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Pinned           bool             `json:"pinned"`
+	PinnedUntil      sql.NullTime     `json:"pinned_until"`
+	Delivery         string           `json:"delivery"`
+	Audience         *json.RawMessage `json:"audience"`
+	Locale           string           `json:"locale"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	IsRead           interface{}      `json:"is_read"`
+	ReadAt           sql.NullTime     `json:"read_at"`
 }
 
 // The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
@@ -807,6 +994,7 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 			&i.Pinned,
 			&i.PinnedUntil,
 			&i.Delivery,
+			&i.Audience,
 			&i.Locale,
 			&i.Title,
 			&i.Body,
@@ -870,6 +1058,17 @@ INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $2
+        )
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM announcement_reads nr
@@ -884,7 +1083,7 @@ type MarkAllAnnouncementsAsReadParams struct {
 	UserID   uuid.UUID `json:"user_id"`
 }
 
-// Inserts a read row for every announcement of the caller's tenant that lacks
+// Inserts a read row for every announcement listed to the caller that lacks
 // one.
 func (q *Queries) MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, MarkAllAnnouncementsAsRead, arg.TenantID, arg.UserID)
@@ -900,6 +1099,17 @@ SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
+    AND (
+        n.audience IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = n.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || n.id::text
+                AND nt.user_id = $3
+        )
+    )
 ON CONFLICT (announcement_id, user_id) DO UPDATE
 SET read_at = EXCLUDED.read_at
 RETURNING announcement_id, user_id, read_at, tenant_id
@@ -912,7 +1122,8 @@ type MarkAnnouncementAsReadParams struct {
 }
 
 // Upserts, so marking an already-read announcement refreshes read_at instead
-// of failing. The SELECT confines the insert to the caller's own tenant.
+// of failing. The SELECT confines the insert to the caller's own tenant and to
+// an announcement listed to the caller.
 func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error) {
 	row := q.db.QueryRowContext(ctx, MarkAnnouncementAsRead, arg.ID, arg.TenantID, arg.UserID)
 	var i AnnouncementRead

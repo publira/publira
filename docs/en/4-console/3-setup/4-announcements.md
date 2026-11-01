@@ -1,11 +1,11 @@
 ---
 title: Announcements
-description: Tell every reader of the site something at once, and keep the most important announcement in a banner above every page.
+description: Tell every reader of the site, or the readers a set of conditions selects, something at once, and keep the most important announcement in a banner above every page.
 published: 2026-10-07
-updated: 2026-10-22
+updated: 2026-11-01
 ---
 
-**Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. One of them at a time can also be shown as a banner above every page of the site and the app.
+**Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. An announcement can also be addressed only to the readers a set of conditions selects, such as the followers of one series; see [Choosing who receives it](#choosing-who-receives-it). One of them at a time can also be shown as a banner above every page of the site and the app.
 
 A Tenant admin and an Editor can create announcements and take banners down. An Auditor sees the list only.
 
@@ -39,10 +39,33 @@ An announcement reaches a reader's notifications and their email only while thei
 
 The **Notification** column of the list says how each announcement was sent: **Sent to everyone**, or **As each reader allows** for one sent without the option.
 
+## Choosing who receives it
+
+An announcement can be addressed to the readers who meet a set of conditions instead of to everyone. The conditions are:
+
+- The reader follows a given series.
+- The reader holds a purchase of an episode of a given series, bought on its own, in a volume, or in a bundle. A purchase that was refunded or revoked does not count.
+- The reader's subscription, to a given plan or to any plan, is live: in its trial, active, or with a renewal payment past due. Or the reverse: the reader has had one that ended and holds no live one.
+- The reader has never bought anything from the site. A purchase made in the payment provider's test mode does not count.
+- The reader has opened no episode for at least a given number of days, or has never opened one.
+- The reader signed up no more than a given number of days ago.
+- The reader uses the site in a given language: the one they last browsed the site or used the app in, or the site's default language for a reader who has never chosen one.
+- The reader has registered a phone running the site's app for push notifications.
+
+A number of days is from 1 to 3650. Each condition can be used once, and they combine: a reader receives the announcement only when they meet every condition it names.
+
+The conditions are evaluated once, at the moment the announcement is delivered. A reader who comes to meet them afterwards, by following the series a day later for instance, does not receive it, and a reader who stops meeting them keeps the one they received.
+
+An announcement with conditions reaches each reader it selects as their notification settings allow, and it is never:
+
+- shown as a site banner, which every visitor sees;
+- sent with **Send to everyone**, since a notice every reader must see is not one a condition may keep from some of them;
+- listed on the **Announcements** page, or in the app, to a visitor who is not signed in or to a signed-in reader it was not delivered to.
+
 ## What readers see
 
-- **On the site**, the **Announcements** page in the header lists every announcement, newest first, and anyone can read it. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
-- **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**.
+- **On the site**, the **Announcements** page in the header lists every announcement addressed to everyone, newest first, and anyone can read it. A signed-in reader also sees there the announcements with conditions that were delivered to them. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
+- **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**. An announcement with conditions reaches only the readers it selects.
 - **By email**, every reader with a confirmed address whose notification settings take announcements by email gets a mail with the announcement's title and a link to the **Announcements** page, and every reader with a confirmed address gets it for an announcement sent with **Send to everyone**. Announcements are not sent as push notifications.
 - **In the app**, the **Announcements** screen lists the same announcements, with the same read marks.
 

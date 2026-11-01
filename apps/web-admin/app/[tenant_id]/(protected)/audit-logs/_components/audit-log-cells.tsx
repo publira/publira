@@ -1175,6 +1175,10 @@ const announcementDeliveryLabel = (reason: string, t: AdminMessageAccessor) => {
       return t("admin.audit.reasons.announcement_delivery.everyone");
     }
 
+    case "delivery=preferred;audience=targeted": {
+      return t("admin.audit.reasons.announcement_delivery.targeted");
+    }
+
     default: {
       return reason;
     }
