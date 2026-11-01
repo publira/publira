@@ -164,6 +164,23 @@ void main() {
       expect(purchases.confirmed, isEmpty);
     });
 
+    test('asks again what a product is when the store could not say', () async {
+      // A transaction that does not say whether it is of a subscription, as
+      // Google Play's does not.
+      final purchase = FakeInAppPurchasePlatform.orderWithoutTransaction(
+        productId,
+        PurchaseStatus.purchased,
+      );
+      platform.failingProductQueries = 1;
+
+      expect(await subscriber.isSubscription(purchase), isFalse);
+      expect(await subscriber.isSubscription(purchase), isTrue);
+      final queries = platform.productQueries;
+      expect(await subscriber.isSubscription(purchase), isTrue);
+      // The answer the store gave is kept.
+      expect(platform.productQueries, queries);
+    });
+
     test('restores what the store holds without finishing it again', () async {
       platform.entitlements = [
         FakeInAppPurchasePlatform.subscriptionTransaction(

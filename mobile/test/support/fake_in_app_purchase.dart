@@ -42,6 +42,10 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   /// How many times the store was asked for its products.
   var productQueries = 0;
 
+  /// How many of the next product queries fail, answered as Google Play
+  /// answers one: no products, and the error beside them.
+  var failingProductQueries = 0;
+
   /// What the payment sheet reports once it is opened for a purchase.
   List<PurchaseDetails> Function(PurchaseParam param) sheet;
 
@@ -148,6 +152,18 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
     Set<String> identifiers,
   ) async {
     productQueries++;
+    if (failingProductQueries > 0) {
+      failingProductQueries--;
+      return ProductDetailsResponse(
+        productDetails: const [],
+        notFoundIDs: identifiers.toList(),
+        error: IAPError(
+          source: 'google_play',
+          code: 'service_unavailable',
+          message: '',
+        ),
+      );
+    }
     return ProductDetailsResponse(
       productDetails: [
         for (final id in identifiers)

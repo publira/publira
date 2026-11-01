@@ -130,9 +130,9 @@ class StoreSubscriber {
   /// opens reads it again on hearing of one.
   Stream<String> get recorded => _recorded.stream;
 
-  /// Whether each product the store was asked about is a subscription, keyed
-  /// by product ID.
-  final _kinds = <String, Future<bool>>{};
+  /// Whether each product the store has answered for is a subscription,
+  /// keyed by product ID.
+  final _kinds = <String, bool>{};
 
   /// Transactions the server has not recorded yet, keyed by what is sent to
   /// it, and the confirmation of each one under way, so a transaction
@@ -244,8 +244,10 @@ class StoreSubscriber {
   ///
   /// A StoreKit 2 transaction says so itself, by the expiry only a
   /// subscription has. Google Play's does not, so the store is asked what the
-  /// product is, once per product; one it does not answer is not taken as a
-  /// subscription.
+  /// product is. Its answer is kept for the product, and a query that answers
+  /// nothing for it is asked again next time: Google Play reports a failure
+  /// as an empty answer, which says nothing about what the product is. Until
+  /// then the transaction is not taken as a subscription.
   Future<bool> isSubscription(PurchaseDetails purchase) async {
     if (purchase case SK2PurchaseDetails(
       sk2Transaction: _?,
@@ -257,20 +259,21 @@ class StoreSubscriber {
     if (productId.isEmpty) {
       return false;
     }
-    return _kinds[productId] ??= _askKind(productId);
-  }
-
-  Future<bool> _askKind(String productId) async {
+    if (_kinds[productId] case final known?) {
+      return known;
+    }
+    final ProductDetailsResponse response;
     try {
-      final response = await platform.queryProductDetails({productId});
-      return response.productDetails.any(
-        (product) => product.id == productId && _sellsSubscription(product),
-      );
+      response = await platform.queryProductDetails({productId});
     } on PlatformException {
-      // Asked again next time rather than taken as an answer.
-      unawaited(Future.microtask(() => _kinds.remove(productId)));
       return false;
     }
+    for (final product in response.productDetails) {
+      if (product.id == productId) {
+        return _kinds[productId] = _sellsSubscription(product);
+      }
+    }
+    return false;
   }
 
   static bool _sellsSubscription(ProductDetails product) => switch (product) {
@@ -307,7 +310,7 @@ class StoreSubscriber {
       if (product == null) {
         continue;
       }
-      _kinds[product.id] = Future.value(true);
+      _kinds[product.id] = true;
       offers.add(
         StorePlanOffer(
           plan: plan,
@@ -427,7 +430,7 @@ class StoreSubscriber {
         message: 'the store has no product $productId',
       );
     }
-    _kinds[productId] = Future.value(true);
+    _kinds[productId] = true;
     return product;
   }
 
