@@ -72,12 +72,29 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUserInTheirLocale(t *testi
 			t.Fatalf("notification %d payload = %v, want exactly announcement_title %q", i, body, want)
 		}
 	}
-	if len(queries.queued) != 1 {
-		t.Fatalf("outbox events = %d, want the mail", len(queries.queued))
+	if len(queries.queued) != 2 {
+		t.Fatalf("outbox events = %d, want the push and the mail", len(queries.queued))
 	}
-	mail := queries.queued[0]
+	push := queries.queued[0]
+	if push.EventType != EventTypeAnnouncementPushNotification {
+		t.Fatalf("first outbox event type = %q, want %q", push.EventType, EventTypeAnnouncementPushNotification)
+	}
+	if want := AnnouncementPushIdempotencyKey(announcementID); push.IdempotencyKey != want {
+		t.Fatalf("push idempotency_key = %q, want %q", push.IdempotencyKey, want)
+	}
+	var pushPayload MemberPushNotificationPayload
+	if err := json.Unmarshal(push.Payload, &pushPayload); err != nil {
+		t.Fatalf("decode push payload: %v", err)
+	}
+	if pushPayload.AnnouncementID != announcementID.String() || pushPayload.NotificationType != NotificationTypeAnnouncementPosted {
+		t.Fatalf("push payload = %+v, want the announcement and its type", pushPayload)
+	}
+	if pushPayload.SeriesTitle != "" || pushPayload.EpisodeTitle != "" {
+		t.Fatalf("push payload carries an event-wide title %q / %q", pushPayload.SeriesTitle, pushPayload.EpisodeTitle)
+	}
+	mail := queries.queued[1]
 	if mail.EventType != EventTypeNotificationEmail {
-		t.Fatalf("outbox event type = %q, want %q", mail.EventType, EventTypeNotificationEmail)
+		t.Fatalf("second outbox event type = %q, want %q", mail.EventType, EventTypeNotificationEmail)
 	}
 	if want := NotificationEmailIdempotencyKey(tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID)); mail.IdempotencyKey != want {
 		t.Fatalf("mail idempotency_key = %q, want %q", mail.IdempotencyKey, want)
@@ -218,8 +235,10 @@ func TestAnnouncementNotificationQueuesTheMailOfAnEarlierAttemptsRows(t *testing
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if len(queries.queued) != 1 || queries.queued[0].EventType != EventTypeNotificationEmail {
-		t.Fatalf("outbox events = %v, want the one notification_email", queries.queued)
+	if len(queries.queued) != 2 ||
+		queries.queued[0].EventType != EventTypeAnnouncementPushNotification ||
+		queries.queued[1].EventType != EventTypeNotificationEmail {
+		t.Fatalf("outbox events = %v, want the push and the notification_email", queries.queued)
 	}
 }
 

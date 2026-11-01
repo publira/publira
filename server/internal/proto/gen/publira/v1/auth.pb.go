@@ -3434,6 +3434,8 @@ type UpdateNotificationSettingsRequest struct {
 	FollowedCreatorsEmailEnabled      *bool `protobuf:"varint,12,opt,name=followed_creators_email_enabled,json=followedCreatorsEmailEnabled,proto3,oneof" json:"followed_creators_email_enabled,omitempty"`
 	CommentsEmailEnabled              *bool `protobuf:"varint,13,opt,name=comments_email_enabled,json=commentsEmailEnabled,proto3,oneof" json:"comments_email_enabled,omitempty"`
 	AnnouncementsEmailEnabled         *bool `protobuf:"varint,14,opt,name=announcements_email_enabled,json=announcementsEmailEnabled,proto3,oneof" json:"announcements_email_enabled,omitempty"`
+	AnnouncementsWebPushEnabled       *bool `protobuf:"varint,15,opt,name=announcements_web_push_enabled,json=announcementsWebPushEnabled,proto3,oneof" json:"announcements_web_push_enabled,omitempty"`
+	AnnouncementsMobilePushEnabled    *bool `protobuf:"varint,16,opt,name=announcements_mobile_push_enabled,json=announcementsMobilePushEnabled,proto3,oneof" json:"announcements_mobile_push_enabled,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -3566,6 +3568,20 @@ func (x *UpdateNotificationSettingsRequest) GetAnnouncementsEmailEnabled() bool 
 	return false
 }
 
+func (x *UpdateNotificationSettingsRequest) GetAnnouncementsWebPushEnabled() bool {
+	if x != nil && x.AnnouncementsWebPushEnabled != nil {
+		return *x.AnnouncementsWebPushEnabled
+	}
+	return false
+}
+
+func (x *UpdateNotificationSettingsRequest) GetAnnouncementsMobilePushEnabled() bool {
+	if x != nil && x.AnnouncementsMobilePushEnabled != nil {
+		return *x.AnnouncementsMobilePushEnabled
+	}
+	return false
+}
+
 type UpdateNotificationSettingsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether any email cell of preferences is on, as on
@@ -3622,23 +3638,23 @@ func (x *UpdateNotificationSettingsResponse) GetPreferences() *NotificationPrefe
 
 // Which notifications reach a reader on each channel, one cell per category
 // and channel the server delivers, named <category>_<channel>_enabled. Every
-// field carries a value: a reader who has saved nothing reads every cell on
-// rather than an absent message, so a client never has to tell "unset" from
-// "off".
+// field carries a value: a reader who has saved nothing reads every cell on,
+// except the announcement push cells, which start off, rather than an absent
+// message, so a client never has to tell "unset" from "off".
 //
 // A category is why a notification reached the reader. An episode the reader
 // is told about takes the most direct follow that earned it: the episode or
 // its series before a creator credited on it, so turning the creators off
 // still lets an episode of a followed series through. A combination the server
-// does not deliver — a push of a comment or an announcement — has no cell
-// until it does, and the next cell is a field here and a column behind it,
-// not a second pair of RPCs.
+// does not deliver — a push of a comment — has no cell until it does, and the
+// next cell is a field here and a column behind it, not a second pair of RPCs.
 //
 // An inbox cell that is off keeps the notification out of the inbox and its
 // unread count without stopping its push or its mail, a push cell that is off
 // stops the push to that kind of device alone, and an email cell that is off
 // stops the mail to the reader's confirmed address. An announcement the tenant
-// sends to everyone reaches every channel whatever its cells say.
+// sends to everyone reaches the inbox and the mail whatever those cells say.
+// Its push still answers to the announcement push cells.
 type NotificationPreferences struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An episode the reader follows, or one of a series they follow.
@@ -3654,11 +3670,13 @@ type NotificationPreferences struct {
 	// The reader's own comment approved.
 	CommentsInboxEnabled bool `protobuf:"varint,7,opt,name=comments_inbox_enabled,json=commentsInboxEnabled,proto3" json:"comments_inbox_enabled,omitempty"`
 	CommentsEmailEnabled bool `protobuf:"varint,11,opt,name=comments_email_enabled,json=commentsEmailEnabled,proto3" json:"comments_email_enabled,omitempty"`
-	// An announcement the tenant posted.
-	AnnouncementsInboxEnabled bool `protobuf:"varint,8,opt,name=announcements_inbox_enabled,json=announcementsInboxEnabled,proto3" json:"announcements_inbox_enabled,omitempty"`
-	AnnouncementsEmailEnabled bool `protobuf:"varint,12,opt,name=announcements_email_enabled,json=announcementsEmailEnabled,proto3" json:"announcements_email_enabled,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// An announcement the tenant posted. The push cells start off.
+	AnnouncementsInboxEnabled      bool `protobuf:"varint,8,opt,name=announcements_inbox_enabled,json=announcementsInboxEnabled,proto3" json:"announcements_inbox_enabled,omitempty"`
+	AnnouncementsWebPushEnabled    bool `protobuf:"varint,13,opt,name=announcements_web_push_enabled,json=announcementsWebPushEnabled,proto3" json:"announcements_web_push_enabled,omitempty"`
+	AnnouncementsMobilePushEnabled bool `protobuf:"varint,14,opt,name=announcements_mobile_push_enabled,json=announcementsMobilePushEnabled,proto3" json:"announcements_mobile_push_enabled,omitempty"`
+	AnnouncementsEmailEnabled      bool `protobuf:"varint,12,opt,name=announcements_email_enabled,json=announcementsEmailEnabled,proto3" json:"announcements_email_enabled,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *NotificationPreferences) Reset() {
@@ -3764,6 +3782,20 @@ func (x *NotificationPreferences) GetCommentsEmailEnabled() bool {
 func (x *NotificationPreferences) GetAnnouncementsInboxEnabled() bool {
 	if x != nil {
 		return x.AnnouncementsInboxEnabled
+	}
+	return false
+}
+
+func (x *NotificationPreferences) GetAnnouncementsWebPushEnabled() bool {
+	if x != nil {
+		return x.AnnouncementsWebPushEnabled
+	}
+	return false
+}
+
+func (x *NotificationPreferences) GetAnnouncementsMobilePushEnabled() bool {
+	if x != nil {
+		return x.AnnouncementsMobilePushEnabled
 	}
 	return false
 }
@@ -5116,7 +5148,7 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xa8\x01\n" +
 	"\x1fGetNotificationSettingsResponse\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\x12E\n" +
-	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xc4\v\n" +
+	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xa7\r\n" +
 	"!UpdateNotificationSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x02 \x01(\bR\x19emailNotificationsEnabled\x12J\n" +
@@ -5133,7 +5165,9 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x1ffollowed_creators_email_enabled\x18\f \x01(\bH\tR\x1cfollowedCreatorsEmailEnabled\x88\x01\x01\x129\n" +
 	"\x16comments_email_enabled\x18\r \x01(\bH\n" +
 	"R\x14commentsEmailEnabled\x88\x01\x01\x12C\n" +
-	"\x1bannouncements_email_enabled\x18\x0e \x01(\bH\vR\x19announcementsEmailEnabled\x88\x01\x01B\"\n" +
+	"\x1bannouncements_email_enabled\x18\x0e \x01(\bH\vR\x19announcementsEmailEnabled\x88\x01\x01\x12H\n" +
+	"\x1eannouncements_web_push_enabled\x18\x0f \x01(\bH\fR\x1bannouncementsWebPushEnabled\x88\x01\x01\x12N\n" +
+	"!announcements_mobile_push_enabled\x18\x10 \x01(\bH\rR\x1eannouncementsMobilePushEnabled\x88\x01\x01B\"\n" +
 	" _followed_episodes_inbox_enabledB%\n" +
 	"#_followed_episodes_web_push_enabledB(\n" +
 	"&_followed_episodes_mobile_push_enabledB\"\n" +
@@ -5145,10 +5179,12 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	" _followed_episodes_email_enabledB\"\n" +
 	" _followed_creators_email_enabledB\x19\n" +
 	"\x17_comments_email_enabledB\x1e\n" +
-	"\x1c_announcements_email_enabled\"\xab\x01\n" +
+	"\x1c_announcements_email_enabledB!\n" +
+	"\x1f_announcements_web_push_enabledB$\n" +
+	"\"_announcements_mobile_push_enabled\"\xab\x01\n" +
 	"\"UpdateNotificationSettingsResponse\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\x12E\n" +
-	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xdd\x06\n" +
+	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xed\a\n" +
 	"\x17NotificationPreferences\x12E\n" +
 	"\x1ffollowed_episodes_inbox_enabled\x18\x01 \x01(\bR\x1cfollowedEpisodesInboxEnabled\x12J\n" +
 	"\"followed_episodes_web_push_enabled\x18\x02 \x01(\bR\x1efollowedEpisodesWebPushEnabled\x12P\n" +
@@ -5161,7 +5197,9 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	" \x01(\bR\x1cfollowedCreatorsEmailEnabled\x124\n" +
 	"\x16comments_inbox_enabled\x18\a \x01(\bR\x14commentsInboxEnabled\x124\n" +
 	"\x16comments_email_enabled\x18\v \x01(\bR\x14commentsEmailEnabled\x12>\n" +
-	"\x1bannouncements_inbox_enabled\x18\b \x01(\bR\x19announcementsInboxEnabled\x12>\n" +
+	"\x1bannouncements_inbox_enabled\x18\b \x01(\bR\x19announcementsInboxEnabled\x12C\n" +
+	"\x1eannouncements_web_push_enabled\x18\r \x01(\bR\x1bannouncementsWebPushEnabled\x12I\n" +
+	"!announcements_mobile_push_enabled\x18\x0e \x01(\bR\x1eannouncementsMobilePushEnabled\x12>\n" +
 	"\x1bannouncements_email_enabled\x18\f \x01(\bR\x19announcementsEmailEnabled\"C\n" +
 	"\x11ViewerPreferences\x12.\n" +
 	"\x13wide_viewer_enabled\x18\x01 \x01(\bR\x11wideViewerEnabled\"V\n" +

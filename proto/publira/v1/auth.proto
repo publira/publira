@@ -525,6 +525,8 @@ message UpdateNotificationSettingsRequest {
   optional bool followed_creators_email_enabled = 12;
   optional bool comments_email_enabled = 13;
   optional bool announcements_email_enabled = 14;
+  optional bool announcements_web_push_enabled = 15;
+  optional bool announcements_mobile_push_enabled = 16;
 }
 
 message UpdateNotificationSettingsResponse {
@@ -536,23 +538,23 @@ message UpdateNotificationSettingsResponse {
 
 // Which notifications reach a reader on each channel, one cell per category
 // and channel the server delivers, named <category>_<channel>_enabled. Every
-// field carries a value: a reader who has saved nothing reads every cell on
-// rather than an absent message, so a client never has to tell "unset" from
-// "off".
+// field carries a value: a reader who has saved nothing reads every cell on,
+// except the announcement push cells, which start off, rather than an absent
+// message, so a client never has to tell "unset" from "off".
 //
 // A category is why a notification reached the reader. An episode the reader
 // is told about takes the most direct follow that earned it: the episode or
 // its series before a creator credited on it, so turning the creators off
 // still lets an episode of a followed series through. A combination the server
-// does not deliver — a push of a comment or an announcement — has no cell
-// until it does, and the next cell is a field here and a column behind it,
-// not a second pair of RPCs.
+// does not deliver — a push of a comment — has no cell until it does, and the
+// next cell is a field here and a column behind it, not a second pair of RPCs.
 //
 // An inbox cell that is off keeps the notification out of the inbox and its
 // unread count without stopping its push or its mail, a push cell that is off
 // stops the push to that kind of device alone, and an email cell that is off
 // stops the mail to the reader's confirmed address. An announcement the tenant
-// sends to everyone reaches every channel whatever its cells say.
+// sends to everyone reaches the inbox and the mail whatever those cells say.
+// Its push still answers to the announcement push cells.
 message NotificationPreferences {
   // An episode the reader follows, or one of a series they follow.
   bool followed_episodes_inbox_enabled = 1;
@@ -567,8 +569,10 @@ message NotificationPreferences {
   // The reader's own comment approved.
   bool comments_inbox_enabled = 7;
   bool comments_email_enabled = 11;
-  // An announcement the tenant posted.
+  // An announcement the tenant posted. The push cells start off.
   bool announcements_inbox_enabled = 8;
+  bool announcements_web_push_enabled = 13;
+  bool announcements_mobile_push_enabled = 14;
   bool announcements_email_enabled = 12;
 }
 

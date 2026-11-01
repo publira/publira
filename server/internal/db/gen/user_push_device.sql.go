@@ -8,6 +8,7 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -53,6 +54,7 @@ func (q *Queries) DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUse
 const ListPushDevicesForNotification = `-- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
+    n.payload,
     d.user_id,
     d.token,
     d.platform,
@@ -81,11 +83,15 @@ WHERE n.tenant_id = $1
                 CASE n.category
                     WHEN 'followed_episodes' THEN s.followed_episodes_web_push_enabled
                     WHEN 'followed_creators' THEN s.followed_creators_web_push_enabled
+                    WHEN 'announcements' THEN COALESCE(s.announcements_web_push_enabled, false)
+                    WHEN 'everyone' THEN COALESCE(s.announcements_web_push_enabled, false)
                 END
             ELSE
                 CASE n.category
                     WHEN 'followed_episodes' THEN s.followed_episodes_mobile_push_enabled
                     WHEN 'followed_creators' THEN s.followed_creators_mobile_push_enabled
+                    WHEN 'announcements' THEN COALESCE(s.announcements_mobile_push_enabled, false)
+                    WHEN 'everyone' THEN COALESCE(s.announcements_mobile_push_enabled, false)
                 END
         END,
         true
@@ -104,13 +110,14 @@ type ListPushDevicesForNotificationParams struct {
 }
 
 type ListPushDevicesForNotificationRow struct {
-	NotificationID uuid.UUID      `json:"notification_id"`
-	UserID         uuid.UUID      `json:"user_id"`
-	Token          string         `json:"token"`
-	Platform       string         `json:"platform"`
-	Endpoint       sql.NullString `json:"endpoint"`
-	P256dh         sql.NullString `json:"p256dh"`
-	Auth           sql.NullString `json:"auth"`
+	NotificationID uuid.UUID       `json:"notification_id"`
+	Payload        json.RawMessage `json:"payload"`
+	UserID         uuid.UUID       `json:"user_id"`
+	Token          string          `json:"token"`
+	Platform       string          `json:"platform"`
+	Endpoint       sql.NullString  `json:"endpoint"`
+	P256dh         sql.NullString  `json:"p256dh"`
+	Auth           sql.NullString  `json:"auth"`
 }
 
 // One page of the devices to push one notification to, ordered by recipient
@@ -126,9 +133,11 @@ type ListPushDevicesForNotificationRow struct {
 //
 // It is also left out where its recipient turned the push off for the row's
 // category: the Web Push cell decides for a browser, and the mobile push cell
-// for a phone. A recipient who saved nothing holds every cell on, and a
-// category with no push cell — one the push allowlist does not admit, or the
-// staff one no preference governs — keeps the device.
+// for a phone. A recipient who saved nothing holds every cell on, except the
+// announcement push cells, which start off, so an announcement reaches no
+// device of theirs. A category with no push cell — one the push allowlist does
+// not admit, or the staff one no preference governs — keeps the device. An
+// announcement sent to everyone takes the same announcement push cells.
 func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification,
 		arg.TenantID,
@@ -147,6 +156,7 @@ func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPu
 		var i ListPushDevicesForNotificationRow
 		if err := rows.Scan(
 			&i.NotificationID,
+			&i.Payload,
 			&i.UserID,
 			&i.Token,
 			&i.Platform,
