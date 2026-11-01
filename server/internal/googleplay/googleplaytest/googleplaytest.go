@@ -36,6 +36,12 @@ const (
 	SubscriptionTestPurchase = "subscription_test_purchase"
 	SubscriptionPending      = "subscription_pending"
 	SubscriptionCanceled     = "subscription_canceled"
+	SubscriptionGracePeriod  = "subscription_in_grace_period"
+	SubscriptionOnHold       = "subscription_on_hold"
+	SubscriptionExpired      = "subscription_expired"
+	// SubscriptionPendingCanceled is a purchase canceled before it was paid
+	// for.
+	SubscriptionPendingCanceled = "subscription_pending_purchase_canceled"
 )
 
 // Server is a Google Play Developer API holding the purchases a test put.
@@ -100,6 +106,14 @@ func (s *Server) PutSubscription(t testing.TB, packageName, token, fixture, prod
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.subscriptions[packageName+"/"+token] = subscription
+}
+
+// LinkSubscription marks the subscription token as the one that replaced
+// linkedToken, as Google Play does when the reader changes plans.
+func (s *Server) LinkSubscription(packageName, token, linkedToken string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subscriptions[packageName+"/"+token]["linkedPurchaseToken"] = linkedToken
 }
 
 // Acknowledgments counts the acknowledge requests the subscription token

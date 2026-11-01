@@ -198,6 +198,11 @@ const SettingsStorePaymentForm = async () => {
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
+      googlePlayNotificationUrl={
+        tenantResult.ok
+          ? tenantWebhookUrl(tenantResult.tenant.domain, "google-play")
+          : undefined
+      }
       initialSettings={
         storeSettingsResult.ok ? storeSettingsResult.settings : undefined
       }

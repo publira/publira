@@ -50,6 +50,7 @@ type storeClients struct {
 	appStoreVerifier *appstore.Verifier
 	appStore         appStoreTransactions
 	googlePlay       googlePlayPurchases
+	googlePlayPush   googlePlayPushVerifier
 }
 
 func defaultStoreClients() storeClients {
@@ -57,6 +58,7 @@ func defaultStoreClients() storeClients {
 		appStoreVerifier: appstore.NewVerifier(),
 		appStore:         appstore.NewClient(appstore.Config{}),
 		googlePlay:       googleplay.NewClient(googleplay.Config{}),
+		googlePlayPush:   googleplay.NewPushVerifier(googleplay.PushConfig{}),
 	}
 }
 

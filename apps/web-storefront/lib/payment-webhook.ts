@@ -63,3 +63,30 @@ export const forwardAppStoreNotification = async (
     })
   );
 };
+
+/**
+ * Forward a Google Play real-time developer notification, which Cloud Pub/Sub
+ * pushes, to the API server without inspecting it. The raw body and every
+ * header go through: the API server verifies the OIDC token Google signed the
+ * push with, which arrives in the `Authorization` header.
+ */
+export const forwardGooglePlayNotification = async (
+  request: Request,
+  { tenantId }: { tenantId: string }
+): Promise<NextResponse> => {
+  const tenant = tenantIdSchema.safeParse(tenantId);
+
+  if (!tenant.success) {
+    return invalidTenantPath();
+  }
+
+  const payload = new Uint8Array(await request.arrayBuffer());
+
+  return answerWebhook("payment", () =>
+    apiClient.purchase.processGooglePlayNotification({
+      headers: Object.fromEntries(request.headers),
+      payload,
+      tenant: { tenantId: tenant.data },
+    })
+  );
+};

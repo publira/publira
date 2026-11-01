@@ -3463,7 +3463,7 @@
           "bundle_identifier": "Bundle ID",
           "bundle_identifier_description": "The iOS app named under App links. Change it there.",
           "notification_url": "App Store Server Notifications URL",
-          "notification_url_description": "Enter this URL as both the Production and the Sandbox Server URL for App Store Server Notifications (Version 2) in App Store Connect, under App Information. A refund Apple reports there takes the purchase back."
+          "notification_url_description": "Enter this URL as both the Production and the Sandbox Server URL for App Store Server Notifications (Version 2) in App Store Connect, under App Information. Renewals, cancellations, and refunds Apple reports there keep subscriptions and purchases in step."
         },
         "google_play": {
           "title": "Google Play",
@@ -3473,7 +3473,9 @@
           "service_account_email": "Service account",
           "service_account_email_description": "Invite this account to your app under Users and permissions in the Play Console.",
           "package_name": "Package name",
-          "package_name_description": "The Android application ID named under App links. Change it there."
+          "package_name_description": "The Android application ID named under App links. Change it there.",
+          "notification_url": "Google Play real-time developer notifications URL",
+          "notification_url_description": "In Google Cloud, add a push subscription to the Pub/Sub topic named under Monetization setup in the Play Console: push to this URL, with authentication, as the service account above. Renewals, cancellations, and refunds Google Play reports there keep subscriptions and purchases in step."
         },
         "app_identity_unset": "Not set",
         "key_file": "Key file",

@@ -2,8 +2,8 @@
 title: リバースプロキシの設定
 description: Publiraの前に置くロードバランサー、リバースプロキシ、CDNが満たすべき要件を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-01
+source_updated: 2026-11-01
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -184,7 +184,7 @@ Webアプリはどこから届いたリクエストでもこれらのヘッダ�
 
 外部のサービスは、テナントのサイトの`/api/v1/webhook/`の下のURLにPOSTします。
 
-- 決済プロバイダーは、`/api/v1/webhook/payment/`の下に決済を通知します。たとえば`https://comics.example.com/api/v1/webhook/payment/stripe`です。各プロバイダーに登録する正確なURLは、テナント管理画面の**決済設定**の**Webhook URL**と、**アプリ内課金**の**App Store Server NotificationsのURL**に表示されます。
+- 決済プロバイダーは、`/api/v1/webhook/payment/`の下に決済を通知します。たとえば`https://comics.example.com/api/v1/webhook/payment/stripe`です。各プロバイダーに登録する正確なURLは、テナント管理画面の**決済設定**の**Webhook URL**と、**アプリ内課金**の**App Store Server NotificationsのURL**と**Google Playリアルタイムデベロッパー通知のURL**に表示されます。
 - メール受信のプロバイダーは、お問い合わせへの読者のメールでの返信を`/api/v1/webhook/email/`の下にPOSTします。パスはプロバイダーごとに次のとおりです。
 
 | 送信元 | パス |

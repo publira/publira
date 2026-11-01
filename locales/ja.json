@@ -3463,7 +3463,7 @@
           "bundle_identifier": "Bundle ID",
           "bundle_identifier_description": "「アプリリンク」で設定したiOSアプリです。変更はそちらで行います。",
           "notification_url": "App Store Server NotificationsのURL",
-          "notification_url_description": "App Store Connectの「App情報」で、App Store Server Notifications(バージョン2)の本番環境とサンドボックス環境の両方のサーバーURLにこのURLを入力してください。Appleが通知した返金は、ここで購入の取り消しに反映されます。"
+          "notification_url_description": "App Store Connectの「App情報」で、App Store Server Notifications(バージョン2)の本番環境とサンドボックス環境の両方のサーバーURLにこのURLを入力してください。Appleが通知した更新、解約、返金が、ここでサブスクリプションと購入に反映されます。"
         },
         "google_play": {
           "title": "Google Play",
@@ -3473,7 +3473,9 @@
           "service_account_email": "サービスアカウント",
           "service_account_email_description": "Play Consoleの「ユーザーと権限」で、このアカウントをアプリに招待してください。",
           "package_name": "パッケージ名",
-          "package_name_description": "「アプリリンク」で設定したAndroidのアプリケーションIDです。変更はそちらで行います。"
+          "package_name_description": "「アプリリンク」で設定したAndroidのアプリケーションIDです。変更はそちらで行います。",
+          "notification_url": "Google Playリアルタイムデベロッパー通知のURL",
+          "notification_url_description": "Google Cloudで、Play Consoleの「収益化のセットアップ」に指定したPub/Subトピックにpushサブスクリプションを追加してください。エンドポイントはこのURLにし、認証を有効にして上のサービスアカウントを指定します。Google Playが通知した更新、解約、返金が、ここでサブスクリプションと購入に反映されます。"
         },
         "app_identity_unset": "未設定",
         "key_file": "キーファイル",

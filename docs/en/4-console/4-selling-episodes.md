@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -179,7 +179,7 @@ The **In-app purchase** section decides how the tenant's app sells an episode it
 - **Web checkout** opens the site's checkout in the phone's browser, through the provider above, and brings the reader back to the episode once paid.
 - **In-app purchase** sells with the App Store's and Google Play's own payment sheet. The store charges the reader and keeps its commission, and the payment provider above is not involved.
 
-![The In-app purchase section: How the app sells episodes, then the App Store and Google Play, each with its status, its switch, its key, and the app named under App links, and Save the in-app purchase settings.](./selling-episodes-in-app-purchase.png)
+![The In-app purchase section: How the app sells episodes, then the App Store and Google Play, each with its status, its switch, its key, the app named under App links, and the URL its notifications are sent to, and Save the in-app purchase settings.](./selling-episodes-in-app-purchase.png)
 
 With **In-app purchase**, the app needs no payment provider from [Choosing a payment provider](#choosing-a-payment-provider): it buys through the store and the install verifies the purchase with the store.
 
@@ -208,7 +208,7 @@ Each refund reaches the install the way its purchase did:
 
 - **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`. A refund the provider accepted can still fail later, for example when the reader's card has been closed; the provider reports that too, through `refund.updated` on Stripe, and the episode opens to the reader again unless what stays refunded still adds up to what the reader paid.
 - **The App Store** reports it to the **App Store Server Notifications URL** the console shows in the **App Store** section, which is registered in App Store Connect as both the Production and the Sandbox Server URL.
-- **Google Play** does not send refunds. The install reads Google Play's voided purchases once an hour, for the last 30 days, so a refunded purchase can keep its episode open for up to an hour. This runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes; without it, Google Play refunds are not applied.
+- **Google Play** reports it to the **Google Play real-time developer notifications URL** the console shows in the **Google Play** section, through the Pub/Sub push subscription [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#what-each-store-needs-for-in-app-purchase) describes. The install also reads Google Play's voided purchases once an hour, for the last 30 days, which applies a refund whose notification never arrived; without the notifications, a refunded purchase can keep its episode open for up to an hour. That reading runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes.
 
 A refund that arrives before the purchase it reverses is kept, and applied when the purchase is recorded.
 

@@ -159,6 +159,9 @@ const (
 	// PurchaseServiceProcessAppStoreNotificationProcedure is the procedure name of the
 	// PurchaseService's ProcessAppStoreNotification RPC.
 	PurchaseServiceProcessAppStoreNotificationProcedure = "/publira.v1.PurchaseService/ProcessAppStoreNotification"
+	// PurchaseServiceProcessGooglePlayNotificationProcedure is the procedure name of the
+	// PurchaseService's ProcessGooglePlayNotification RPC.
+	PurchaseServiceProcessGooglePlayNotificationProcedure = "/publira.v1.PurchaseService/ProcessGooglePlayNotification"
 	// WaitFreeServiceGetMyTicketStateProcedure is the procedure name of the WaitFreeService's
 	// GetMyTicketState RPC.
 	WaitFreeServiceGetMyTicketStateProcedure = "/publira.v1.WaitFreeService/GetMyTicketState"
@@ -1931,6 +1934,13 @@ var (
 			Procedure:  PurchaseServiceProcessAppStoreNotificationProcedure,
 		}
 	})
+	purchaseServiceProcessGooglePlayNotificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("ProcessGooglePlayNotification"),
+			Procedure:  PurchaseServiceProcessGooglePlayNotificationProcedure,
+		}
+	})
 )
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.
@@ -1944,6 +1954,7 @@ type PurchaseServiceClient interface {
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
+	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
 }
 
 // NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. Multiple
@@ -1963,6 +1974,7 @@ type PurchaseServiceHandler interface {
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
+	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
 }
 
 // RegisterPurchaseServiceHandler registers svc as the publira.v1.PurchaseService implementation on
@@ -1978,6 +1990,7 @@ func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceH
 		connect.Method{Spec: purchaseServiceStartStorePurchaseSpec(), Handler: adapter.startStorePurchase},
 		connect.Method{Spec: purchaseServiceConfirmStorePurchaseSpec(), Handler: adapter.confirmStorePurchase},
 		connect.Method{Spec: purchaseServiceProcessAppStoreNotificationSpec(), Handler: adapter.processAppStoreNotification},
+		connect.Method{Spec: purchaseServiceProcessGooglePlayNotificationSpec(), Handler: adapter.processGooglePlayNotification},
 	)
 }
 
@@ -2014,6 +2027,10 @@ func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context,
 
 func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessAppStoreNotification is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessGooglePlayNotification is not implemented")
 }
 
 type purchaseServiceClient struct {
@@ -2079,6 +2096,14 @@ func (c *purchaseServiceClient) ConfirmStorePurchase(ctx context.Context, req *v
 func (c *purchaseServiceClient) ProcessAppStoreNotification(ctx context.Context, req *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error) {
 	var res v1.ProcessAppStoreNotificationResponse
 	if err := c.client.CallUnary(ctx, purchaseServiceProcessAppStoreNotificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) ProcessGooglePlayNotification(ctx context.Context, req *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error) {
+	var res v1.ProcessGooglePlayNotificationResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceProcessGooglePlayNotificationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2176,6 +2201,18 @@ func (h purchaseServiceHandler) processAppStoreNotification(ctx context.Context,
 		return err
 	}
 	res, err := h.svc.ProcessAppStoreNotification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) processGooglePlayNotification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ProcessGooglePlayNotificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ProcessGooglePlayNotification(ctx, &req)
 	if err != nil {
 		return err
 	}

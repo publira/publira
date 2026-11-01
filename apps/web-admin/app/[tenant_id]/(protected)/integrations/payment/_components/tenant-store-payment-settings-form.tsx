@@ -114,6 +114,11 @@ interface TenantStorePaymentSettingsFormProps {
   initialSettings?: TenantStorePaymentSettings;
   loadErrorMessage?: string;
   /**
+   * Where Google Play real-time developer notifications reach this tenant,
+   * absent while the tenant has no domain.
+   */
+  googlePlayNotificationUrl?: string;
+  /**
    * Where App Store Server Notifications reach this tenant, absent while the
    * tenant has no domain.
    */
@@ -123,6 +128,7 @@ interface TenantStorePaymentSettingsFormProps {
 
 export const TenantStorePaymentSettingsForm = ({
   canEdit,
+  googlePlayNotificationUrl,
   initialSettings: settings,
   loadErrorMessage,
   notificationUrl,
@@ -646,6 +652,27 @@ export const TenantStorePaymentSettingsForm = ({
                     </Field.Description>
                   </Field.Content>
                 </Field.Root>
+                {googlePlayNotificationUrl ? (
+                  <Field.Root>
+                    <Field.Label>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-56" />}
+                      >
+                        <Message message="admin.settings.store_payment.google_play.notification_url" />
+                      </Suspense>
+                    </Field.Label>
+                    <Field.Content>
+                      <ReadOnlyValue value={googlePlayNotificationUrl} />
+                      <Field.Description>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-3/4" />}
+                        >
+                          <Message message="admin.settings.store_payment.google_play.notification_url_description" />
+                        </Suspense>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                ) : null}
               </fieldset>
             </CredentialsEnabled.Root>
           </ActionForm.Fieldset>

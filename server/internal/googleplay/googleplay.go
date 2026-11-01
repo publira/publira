@@ -205,6 +205,9 @@ type SubscriptionPurchase struct {
 	ExternalAccountIdentifiers struct {
 		ObfuscatedExternalAccountID string `json:"obfuscatedExternalAccountId"`
 	} `json:"externalAccountIdentifiers"`
+	// LinkedPurchaseToken is the token of the subscription this one replaced,
+	// as a change of plan does; empty for a subscription bought afresh.
+	LinkedPurchaseToken string `json:"linkedPurchaseToken"`
 }
 
 // SubscriptionLineItem is one product of a subscription purchase.

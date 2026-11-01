@@ -31,6 +31,15 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
 FOR UPDATE;
 
+-- name: GetStoreSubscriptionIntentOwner :one
+-- The reader an intent was opened by, read without its lock: a store's
+-- notification learns from it whose subscriptions to lock before it takes the
+-- intent's, the order an account deletion takes them in.
+SELECT user_id
+FROM store_subscription_intents
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
 -- name: ConsumeStoreSubscriptionIntent :exec
 UPDATE store_subscription_intents
 SET consumed_at = NOW()
@@ -61,6 +70,16 @@ FROM subscriptions
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')::text
     AND store_subscription_id = sqlc.arg('store_subscription_id')::text;
+
+-- name: MoveStoreSubscriptionToToken :exec
+-- Moves a recorded subscription to the store ID of the subscription that
+-- replaced it, as Google Play gives a change of plan a purchase token of its
+-- own, so the reader keeps one subscription rather than gaining a second.
+UPDATE subscriptions
+SET store_subscription_id = sqlc.arg('store_subscription_id')::text,
+    updated_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
 
 -- name: GetSubscriptionPlanForStoreProductForTenant :one
 -- The plan a store product is sold as, published or not: a subscription the

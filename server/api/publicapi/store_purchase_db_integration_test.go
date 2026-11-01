@@ -117,9 +117,12 @@ type storePurchaseEnv struct {
 	signer   *appstoretest.Signer
 	appStore *fakeAppStore
 	play     *googleplaytest.Server
-	client   publirav1connect.PurchaseServiceClient
-	tenants  publirav1connect.TenantServiceClient
-	coins    publirav1connect.CoinServiceClient
+	// playIssuer signs the tokens Cloud Pub/Sub pushes Google Play's
+	// notifications with.
+	playIssuer *googleplaytest.Issuer
+	client     publirav1connect.PurchaseServiceClient
+	tenants    publirav1connect.TenantServiceClient
+	coins      publirav1connect.CoinServiceClient
 	// subscriptions and catalog are the services a store subscription is
 	// bought through and read through.
 	subscriptions publirav1connect.SubscriptionServiceClient
@@ -178,26 +181,28 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 	signer := appstoretest.NewSigner(t)
 	fake := &fakeAppStore{t: t, signer: signer, transactions: map[string]appstoretest.Transaction{}, subscriptions: map[string]fakeAppStoreSubscription{}}
 	play := googleplaytest.NewServer(t)
+	playIssuer := googleplaytest.NewIssuer(t)
 
 	db := pg.OpenPublicDB(t)
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard(), nil)
-	server.stores = storeClients{appStoreVerifier: signer.Verifier(), appStore: fake, googlePlay: play.Client()}
+	server.stores = storeClients{appStoreVerifier: signer.Verifier(), appStore: fake, googlePlay: play.Client(), googlePlayPush: playIssuer.Verifier()}
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 
 	return &storePurchaseEnv{
-		pg:       pg,
-		server:   server,
-		tenant:   tenant,
-		reader:   reader,
-		token:    tokenFor(t, tenant, reader),
-		episode:  episode,
-		signer:   signer,
-		appStore: fake,
-		play:     play,
-		client:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
-		tenants:  publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
-		coins:    publirav1connect.NewCoinServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		pg:         pg,
+		server:     server,
+		tenant:     tenant,
+		reader:     reader,
+		token:      tokenFor(t, tenant, reader),
+		episode:    episode,
+		signer:     signer,
+		appStore:   fake,
+		play:       play,
+		playIssuer: playIssuer,
+		client:     publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		tenants:    publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		coins:      publirav1connect.NewCoinServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 
 		subscriptions: publirav1connect.NewSubscriptionServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		catalog:       publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),

@@ -1212,6 +1212,10 @@ type Querier interface {
 	// The subscription a store's own ID is recorded as, whose it is, and the plan
 	// it is recorded on.
 	GetStoreSubscription(ctx context.Context, arg GetStoreSubscriptionParams) (GetStoreSubscriptionRow, error)
+	// The reader an intent was opened by, read without its lock: a store's
+	// notification learns from it whose subscriptions to lock before it takes the
+	// intent's, the order an account deletion takes them in.
+	GetStoreSubscriptionIntentOwner(ctx context.Context, arg GetStoreSubscriptionIntentOwnerParams) (uuid.UUID, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
 	// The plan a store product is sold as, published or not: a subscription the
@@ -3454,6 +3458,10 @@ type Querier interface {
 	// scheduled by hand it was waiting behind has been deleted. The start it moves
 	// to is a new boundary, so it is owed again.
 	MoveSeriesFreeAfterWindowStart(ctx context.Context, arg MoveSeriesFreeAfterWindowStartParams) (MoveSeriesFreeAfterWindowStartRow, error)
+	// Moves a recorded subscription to the store ID of the subscription that
+	// replaced it, as Google Play gives a change of plan a purchase token of its
+	// own, so the reader keeps one subscription rather than gaining a second.
+	MoveStoreSubscriptionToToken(ctx context.Context, arg MoveStoreSubscriptionToTokenParams) error
 	// Opens the reader's intent to buy a pack as a store product, or answers the
 	// one already open for the same pack and product, as
 	// OpenStorePurchaseIntent does for an episode, with the terms it was first
