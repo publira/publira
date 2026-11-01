@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"time"
 
@@ -593,12 +594,17 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 // subscription to none of them — a
 // checkout started for a plan deleted before it completed — is logged and
 // acknowledged, since no delivery of the same notification would find one.
+//
+// record runs in the same transaction once the subscription is written, with
+// the row as it now stands, so whatever it writes commits or rolls back with
+// it; nil records nothing more.
 func (s *apiServer) recordSubscription(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	provider paymentprovider.Provider,
 	credentials paymentprovider.Credentials,
 	event paymentprovider.SubscriptionChanged,
+	record func(ctx context.Context, queries *dbmodels.Queries, subscription dbmodels.RecordSubscriptionFromStripeRow) error,
 ) error {
 	subscriptions, ok := provider.(paymentprovider.Subscriptions)
 	if !ok {
@@ -676,6 +682,11 @@ func (s *apiServer) recordSubscription(
 			return s.internalError(ctx, "failed to queue the cancellation of a subscription", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", subscription.ID)
 		}
 	}
+	if record != nil {
+		if err := record(ctx, queries, recorded); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return s.internalDBError(ctx, "failed to commit a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)
 	}
@@ -696,4 +707,97 @@ func recordIDStrings(ids []uuid.UUID) []string {
 		out = append(out, id.String())
 	}
 	return out
+}
+
+// recordSubscriptionPayment records an invoice of a subscription the provider
+// was paid, on the subscription and the plan it is recorded on, after writing
+// the subscription as the provider holds it now: the notification of the
+// payment can arrive before the one that starts the subscription, and a paid
+// renewal moves its period on. A redelivered notification records nothing
+// twice. A refund whose notification overtook the payment's is applied and
+// released in the same transaction, under the lock a refund takes to match or
+// hold itself, so a payment is never committed without the refund held for
+// it.
+func (s *apiServer) recordSubscriptionPayment(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	event paymentprovider.SubscriptionPaid,
+) error {
+	logAttrs := []any{"tenant_id", tenantID, "event_id", event.ID, "invoice_id", event.InvoiceID}
+	if event.Amount > math.MaxInt32 {
+		s.logger.ErrorContext(ctx, "a subscription payment is larger than a payment is recorded in, and is not recorded", append(logAttrs, "amount", event.Amount)...)
+		return nil
+	}
+	var paymentID sql.NullString
+	if event.PaymentID != "" {
+		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
+	}
+	return s.recordSubscription(ctx, tenantID, provider, credentials, paymentprovider.SubscriptionChanged{ID: event.ID, SubscriptionID: event.SubscriptionID},
+		func(ctx context.Context, queries *dbmodels.Queries, subscription dbmodels.RecordSubscriptionFromStripeRow) error {
+			if paymentID.Valid {
+				if err := queries.LockProviderPayment(ctx, dbmodels.LockProviderPaymentParams{
+					TenantID:          tenantID,
+					Provider:          provider.Declaration().ID,
+					ProviderPaymentID: paymentID.String,
+				}); err != nil {
+					return s.internalDBError(ctx, "failed to lock a payment", err, logAttrs...)
+				}
+			}
+			payment, err := queries.RecordSubscriptionPayment(ctx, dbmodels.RecordSubscriptionPaymentParams{
+				ID:                    uuid.Must(uuid.NewV7()),
+				TenantID:              tenantID,
+				SubscriptionID:        subscription.ID,
+				PlanID:                subscription.PlanID,
+				StripeInvoiceID:       event.InvoiceID,
+				StripePaymentIntentID: paymentID,
+				Amount:                int32(event.Amount),
+				Currency:              event.Currency,
+				PeriodStart:           event.PeriodStart,
+				PeriodEnd:             event.PeriodEnd,
+				PaidAt:                event.PaidAt,
+				IsTest:                event.Test,
+			})
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			if err != nil {
+				return s.internalDBError(ctx, "failed to record a subscription payment", err, logAttrs...)
+			}
+			if paymentID.Valid {
+				if err := s.applyHeldRefundToSubscriptionPayment(ctx, queries, tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
+					return s.internalDBError(ctx, "failed to apply a held refund to a subscription payment", err, logAttrs...)
+				}
+			}
+			s.logger.InfoContext(ctx, "recorded a subscription payment", append(logAttrs,
+				"subscription_payment_id", payment.ID,
+				"subscription_id", subscription.ID,
+				"amount", payment.Amount,
+				"currency", payment.Currency,
+			)...)
+			return nil
+		})
+}
+
+// applyHeldRefundToSubscriptionPayment writes the refund held for paymentID
+// onto the subscription payment paid through it, and releases the hold.
+func (s *apiServer) applyHeldRefundToSubscriptionPayment(ctx context.Context, queries Querier, tenantID uuid.UUID, providerID, paymentID string) error {
+	if _, err := queries.ApplyUnappliedRefundToSubscriptionPayment(ctx, dbmodels.ApplyUnappliedRefundToSubscriptionPaymentParams{
+		TenantID:              tenantID,
+		Provider:              providerID,
+		StripePaymentIntentID: paymentID,
+	}); errors.Is(err, sql.ErrNoRows) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("apply held refund: %w", err)
+	}
+	if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
+	}); err != nil {
+		return fmt.Errorf("release held refund: %w", err)
+	}
+	return nil
 }

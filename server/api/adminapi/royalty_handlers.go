@@ -52,6 +52,13 @@ func royaltyCloseModeToProto(mode string) publiraadminv1.RoyaltyCloseMode {
 	return publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL
 }
 
+func royaltyLineSourceToProto(source royalties.Source) publiraadminv1.RoyaltyLineSource {
+	if source == royalties.SourceSubscription {
+		return publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SUBSCRIPTION
+	}
+	return publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SALE
+}
+
 func royaltyCloseModeFromProto(mode publiraadminv1.RoyaltyCloseMode) (string, error) {
 	switch mode {
 	case publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL:
@@ -187,10 +194,10 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			"tenant_id", tenant.ID.String(), "period", req.Period)
 	}
 
-	lines := make([]*publiraadminv1.RoyaltyStatementLine, 0, len(computation.Lines)+len(computation.Adjustments))
-	for i, row := range computation.Lines {
+	lines := make([]*publiraadminv1.RoyaltyStatementLine, 0, len(computation.Lines)+len(computation.SubscriptionLines)+len(computation.Adjustments))
+	for _, row := range computation.Lines {
 		lines = append(lines, &publiraadminv1.RoyaltyStatementLine{
-			LineNumber:      int32(i + 1),
+			LineNumber:      int32(len(lines) + 1),
 			CreatorPublicId: row.CreatorPublicID,
 			CreatorName:     row.CreatorName,
 			SeriesPublicId:  row.SeriesPublicID,
@@ -204,6 +211,26 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			RefundedAmount:  row.RefundedAmount,
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
+			Source:          publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SALE,
+		})
+	}
+	for _, row := range computation.SubscriptionLines {
+		lines = append(lines, &publiraadminv1.RoyaltyStatementLine{
+			LineNumber:      int32(len(lines) + 1),
+			CreatorPublicId: row.CreatorPublicID,
+			CreatorName:     row.CreatorName,
+			SeriesPublicId:  row.SeriesPublicID,
+			SeriesTitle:     row.SeriesTitle,
+			EpisodePublicId: row.EpisodePublicID,
+			EpisodeTitle:    row.EpisodeTitle,
+			RolePublicId:    row.RolePublicID.String,
+			RoleName:        row.RoleName.String,
+			SaleCount:       row.SaleCount,
+			GrossAmount:     row.GrossAmount,
+			RefundedAmount:  row.RefundedAmount,
+			ShareBps:        row.ShareBps,
+			PayoutAmount:    row.PayoutAmount,
+			Source:          publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SUBSCRIPTION,
 		})
 	}
 	for _, row := range computation.Adjustments {
@@ -223,6 +250,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
 			AdjustedPeriod:  royalties.FormatPeriod(row.AdjustedPeriod),
+			Source:          royaltyLineSourceToProto(royalties.Source(row.Source)),
 		})
 	}
 
@@ -464,6 +492,7 @@ func (s *adminServer) GetRoyaltyStatement(
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
 			AdjustedPeriod:  nullPeriodString(row.AdjustedPeriod),
+			Source:          royaltyLineSourceToProto(royalties.LineSource(row.Source)),
 		})
 	}
 
@@ -542,6 +571,7 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltySt
 		"sale_count", "gross_amount", "refunded_amount", "share_percent", "payout_amount",
 		"currency",
 		"adjusted_period",
+		"source",
 	)
 	for _, line := range lines {
 		w.Row(
@@ -557,6 +587,7 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltySt
 			strconv.FormatInt(line.PayoutAmount, 10),
 			currency,
 			nullPeriodString(line.AdjustedPeriod),
+			string(royalties.LineSource(line.Source)),
 		)
 	}
 	return w.Bytes()

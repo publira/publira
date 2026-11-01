@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-11-01
 ---
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -130,20 +130,20 @@ The file is named after the report, the tenant, and the period, such as `revenue
 
 | Report | Columns |
 | --- | --- |
-| Revenue by day | `date`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
+| Revenue by day | `date`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `subscription_amount`, `subscription_refunded_amount`, `currency` |
 | Revenue by series | `start_date`, `end_date`, `series_id`, `series_title`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
 | Revenue by episode | `start_date`, `end_date`, `series_id`, `series_title`, `episode_id`, `episode_title`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
 | Audience by day | `date`, `follower_count`, `followed_count`, `unfollowed_count`, `view_count`, `complete_count`, `reaction_count`, `reaction_points` |
 | Audience by series | `start_date`, `end_date`, `series_id`, `series_title`, `follower_count`, `followed_count`, `unfollowed_count`, `view_count`, `complete_count`, `reaction_count`, `reaction_points`, `rating_average`, `rating_count` |
 | Drop-off | `start_date`, `end_date`, `episode_id`, `page_index`, `reader_count` |
 
-`date`, `start_date`, and `end_date` are the tenant's days, `YYYY-MM-DD`; the last two are the period of the download, the same on every row. Amounts are in the smallest unit of the currency, yen for JPY and cents for USD, and `currency` is the tenant's. `rating_average` has one decimal, and is `0.0` for a series no reader has rated. `page_index` counts from `0` for the first page, and `reader_count` is the readers who reached it. Titles are in the tenant's default language, and the IDs keep a row tied to its series or episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text.
+`date`, `start_date`, and `end_date` are the tenant's days, `YYYY-MM-DD`; the last two are the period of the download, the same on every row. `subscription_amount` is what subscribers paid for the tenant's [subscription plans](./5-subscription-plans.md) on the day, apart from the purchases, and `subscription_refunded_amount` what went back on those payments, taken off the day they were paid as a purchase's refund is; a payment made with Stripe's test keys is in neither. A payment belongs to no series, so the reports by series and by episode carry none. Amounts are in the smallest unit of the currency, yen for JPY and cents for USD, and `currency` is the tenant's. `rating_average` has one decimal, and is `0.0` for a series no reader has rated. `page_index` counts from `0` for the first page, and `reader_count` is the readers who reached it. Titles are in the tenant's default language, and the IDs keep a row tied to its series or episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text.
 
 A report is read when it is downloaded, so a period that includes today can download different figures later. Each download is recorded in **Audit logs** as **Analytics CSV downloaded**.
 
 ## Royalties
 
-**Royalties** works out, month by month, what each Author is owed on the sales of the episodes they are credited on. A month stays open, its figures following every sale, refund, and change of a share, until it is closed. Closing it writes a statement that never changes again. The statement is what the tenant pays its Authors from: Publira pays no one, and the statement is the record of what is owed.
+**Royalties** works out, month by month, what each Author is owed on the sales of the episodes they are credited on, and on the subscription payments shared to those episodes. A month stays open, its figures following every sale, refund, and change of a share, until it is closed. Closing it writes a statement that never changes again. The statement is what the tenant pays its Authors from: Publira pays no one, and the statement is the record of what is owed.
 
 ### What an Author is owed
 
@@ -177,6 +177,18 @@ A Stripe payment whose [dispute](./4-selling-episodes.md#disputes) the reader's 
 
 A pack of coins refunded in full or disputed refunds, on each purchase its spent coins paid for, what those coins were worth. The reader keeps the episodes they opened, so each purchase stays a sale, with that amount under **Refunded**: all of its price when every coin it spent came from the pack, and the pack's part of it when some came from another. Like any refund, it counts against the month of the purchase while that month is open, and after its close is taken off the next statement.
 
+### Subscription payments
+
+A payment Stripe takes for one of the tenant's [subscription plans](./5-subscription-plans.md) is shared among the Authors of what its subscriber read, in the month the period it paid for ends in. The payment is divided evenly among the episodes of its plan that the subscriber finished during that period, and each episode's part is paid to the episode's Authors at their shares, as a sale of the episode is. The parts are rounded down so that they add up to the payment exactly, and an episode the rounding leaves nothing to takes no part.
+
+- An episode counts once per subscriber, in the period they first finish it. An episode read again in a later period takes no part of that period's payment.
+- A payment whose subscriber finished no episode of the plan in its period is shared with no one: it is not on the statement, and all of it is the publisher's. So is a payment whose subscriber has since deleted their account.
+- The episodes a payment is shared among are fixed when the month is closed. An episode the subscriber finishes after the close, within the period, does not move a closed month.
+- The finishes are read from the content events, which are kept for the period set under [Settings › Limits and retention](./3-setup/1-settings.md#limits-and-retention). Keep them longer than the plans' billing period and the time until the month is closed, or the finishes deleted before the close are not counted. A yearly plan needs more than a year.
+- A partial refund of the payment is divided over the episodes in the same proportion, each part rounded down, and a payment refunded in full drops out, as a purchase does. A payment made with Stripe's test keys, or in a currency other than the tenant's current one, is left out.
+
+A payment's parts are lines of their own, apart from the episode's lines of sales, under the same Author, series, episode, and role. **Sales** on such a line is the number of payments shared to the episode, and **Gross** the parts of them it was given.
+
 ### A refund after the close
 
 A refund recorded after the month of the purchase was closed cannot change that statement. It is taken off the next statement closed after it instead, as an adjustment line: a line under the same Author, series, episode, and role as the closed line that counted the sale, naming the closed month it adjusts. An adjustment comes after the month's own lines, and its figures are changes, so they are negative where a line of sales has them positive:
@@ -184,6 +196,8 @@ A refund recorded after the month of the purchase was closed cannot change that 
 - **Sales** is minus the purchases refunded in full, and **Gross** minus their price.
 - **Refunded** is the change in the refunds of the purchases that are still sales. It is negative when a purchase that was partly refunded at the close has since been refunded in full, since that purchase now leaves through **Gross** instead.
 - **Payout** is what the refund takes off the closed line's payout: the line's payout worked out again, at the share the closed month applied and rounded down as before, over what is left of its sales, less what it was. A share changed since the close, or an Author credited since, changes nothing about it. The closed line and its adjustments together pay what the line would have paid had the refunds come before the close, so nothing once every sale on it is refunded.
+
+A refund of a subscription payment after the close is taken off in the same way, from the subscription lines of the episodes the closed month shared it among, each by its part of the refund.
 
 Each part of a refund is taken off once. A purchase refunded in part after one close and in full after the next is taken off in two adjustments, the second for what the first did not cover, and the statements together pay nothing for it.
 
@@ -197,12 +211,12 @@ An adjustment is carried only into a month later than the one it adjusts. A mont
 
 | Total | What it is |
 | --- | --- |
-| **Sales** | Every sale of the month, at its price, including sales of episodes that credit no Author |
-| **Refunds** | The refunds on those sales |
-| **Refund adjustments** | What the month takes back of the sales of closed months refunded since their close, as [A refund after the close](#a-refund-after-the-close) describes, each sale counted once: zero, or a negative amount |
+| **Sales** | Every sale of the month, at its price, including sales of episodes that credit no Author, and every [subscription payment](#subscription-payments) the month shares |
+| **Refunds** | The refunds on those sales and payments |
+| **Refund adjustments** | What the month takes back of the sales and the subscription payments of closed months refunded since their close, as [A refund after the close](#a-refund-after-the-close) describes, each counted once: zero, or a negative amount |
 | **Payout to authors** | What the month owes its Authors, the sum of the lines below, adjustments included. The rest of **Sales** after **Refunds** and **Refund adjustments** is the publisher's |
 
-**Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each. An adjustment comes after the month's own lines in its Author's group, says **Refund adjustment for** the closed month under its episode, and counts in the Author's **Subtotal**.
+**Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each, and an episode the month shared subscription payments to has a line for those beside its line of sales. An adjustment comes after the month's own lines in its Author's group, says **Refund adjustment for** the closed month under its episode, and counts in the Author's **Subtotal**.
 
 Above the totals the screen says where the month stands:
 
@@ -260,6 +274,7 @@ The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte o
 | `payout_amount` | The payout, in the same unit |
 | `currency` | The statement's currency, such as `USD`: the tenant's when the month was closed, and the only one whose sales it counts |
 | `adjusted_period` | Empty for a line of the month's own sales. On an adjustment, the closed month it takes a refund back from, `YYYY-MM`, and its amounts are the negative changes [A refund after the close](#a-refund-after-the-close) describes |
+| `source` | `sale` for a line of sales, `subscription` for a line of [subscription payments](#subscription-payments). An adjustment has the source of the line it adjusts |
 
 Names are as they were at the close, and the IDs keep a line tied to its Author and episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text. A statement downloads the same file every time, and each download is recorded in **Audit logs** as **Royalty statement CSV downloaded**.
 

@@ -92,6 +92,8 @@ func (s *adminServer) revenueByDay(ctx context.Context, report revenueReport) ([
 	for _, day := range days {
 		row := revenueStatsRow(day.PurchaseCount, day.GrossAmount, day.RefundedAmount)
 		row.Date = day.SaleDate.Format(time.DateOnly)
+		row.SubscriptionAmount = day.SubscriptionAmount
+		row.SubscriptionRefundedAmount = day.SubscriptionRefundedAmount
 		rows = append(rows, row)
 	}
 	return rows, nil
@@ -289,6 +291,9 @@ func (s *adminServer) GetRevenueStats(
 			GrossAmount:    totals.GrossAmount,
 			RefundedAmount: totals.RefundedAmount,
 			NetAmount:      totals.GrossAmount - totals.RefundedAmount,
+
+			SubscriptionAmount:         totals.SubscriptionAmount,
+			SubscriptionRefundedAmount: totals.SubscriptionRefundedAmount,
 		},
 	}
 

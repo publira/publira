@@ -45,11 +45,11 @@ func TestDBAdminExportStatsWritesTheRevenueReports(t *testing.T) {
 	}
 
 	if got, want := export(publiraadminv1.StatsExportKind_STATS_EXPORT_KIND_REVENUE_BY_DAY), csvFile(
-		"date,purchase_count,gross_amount,refunded_amount,net_amount,currency",
-		"2026-01-10,1,500,0,500,"+currency,
-		"2026-01-11,2,800,300,500,"+currency,
-		"2026-01-12,1,500,500,0,"+currency,
-		"2026-01-13,0,0,0,0,"+currency,
+		"date,purchase_count,gross_amount,refunded_amount,net_amount,subscription_amount,subscription_refunded_amount,currency",
+		"2026-01-10,1,500,0,500,0,0,"+currency,
+		"2026-01-11,2,800,300,500,0,0,"+currency,
+		"2026-01-12,1,500,500,0,0,0,"+currency,
+		"2026-01-13,0,0,0,0,0,0,"+currency,
 	); got != want {
 		t.Fatalf("by day csv =\n%q\nwant\n%q", got, want)
 	}

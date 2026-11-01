@@ -15,12 +15,22 @@ import (
 )
 
 const GetRoyaltyAdjustmentTotalForPeriod = `-- name: GetRoyaltyAdjustmentTotalForPeriod :one
-SELECT
-    COALESCE(sum(u.gross_amount - u.refunded_amount), 0)::bigint AS total_adjustment
-FROM royalty_uncarried_refunds u
-WHERE u.tenant_id = $1
-    AND u.currency = $2::text
-    AND u.period < $3::date
+SELECT (
+    COALESCE((
+        SELECT sum(u.gross_amount - u.refunded_amount)
+        FROM royalty_uncarried_refunds u
+        WHERE u.tenant_id = $1
+            AND u.currency = $2::text
+            AND u.period < $3::date
+    ), 0)
+    + COALESCE((
+        SELECT sum(u.gross_amount - u.refunded_amount)
+        FROM royalty_uncarried_subscription_refunds u
+        WHERE u.tenant_id = $1
+            AND u.currency = $2::text
+            AND u.period < $3::date
+    ), 0)
+)::bigint AS total_adjustment
 `
 
 type GetRoyaltyAdjustmentTotalForPeriodParams struct {
@@ -30,7 +40,8 @@ type GetRoyaltyAdjustmentTotalForPeriodParams struct {
 }
 
 // Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
-// sale counted once however many episodes and creators it is credited to.
+// sale and subscription payment counted once however many episodes and
+// creators it is credited to.
 func (q *Queries) GetRoyaltyAdjustmentTotalForPeriod(ctx context.Context, arg GetRoyaltyAdjustmentTotalForPeriodParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, GetRoyaltyAdjustmentTotalForPeriod, arg.TenantID, arg.Currency, arg.Period)
 	var total_adjustment int64
@@ -285,7 +296,8 @@ INSERT INTO royalty_statement_lines (
     share_bps,
     payout_amount,
     adjusted_statement_id,
-    adjusted_line_number
+    adjusted_line_number,
+    source
 )
 SELECT
     $1,
@@ -305,7 +317,8 @@ SELECT
     line.share_bps,
     line.payout_amount,
     line.adjusted_statement_id,
-    line.adjusted_line_number
+    line.adjusted_line_number,
+    line.source
 FROM jsonb_to_recordset($3::jsonb) AS line(
     line_number integer,
     creator_id uuid,
@@ -322,7 +335,8 @@ FROM jsonb_to_recordset($3::jsonb) AS line(
     share_bps integer,
     payout_amount bigint,
     adjusted_statement_id uuid,
-    adjusted_line_number integer
+    adjusted_line_number integer,
+    source text
 )
 `
 
@@ -409,6 +423,7 @@ func (q *Queries) InsertRoyaltyStatementPurchases(ctx context.Context, arg Inser
 const ListRoyaltyAdjustmentLinesForPeriod = `-- name: ListRoyaltyAdjustmentLinesForPeriod :many
 WITH carried AS (
     SELECT
+        'sale'::text AS source,
         u.tenant_id,
         u.statement_id,
         u.period,
@@ -421,8 +436,24 @@ WITH carried AS (
         AND u.currency = $2::text
         AND u.period < $3::date
     GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    UNION ALL
+    SELECT
+        'subscription'::text AS source,
+        u.tenant_id,
+        u.statement_id,
+        u.period,
+        u.episode_id,
+        sum(u.sale_count)::integer AS sale_count,
+        sum(u.gross_amount)::bigint AS gross_amount,
+        sum(u.refunded_amount)::bigint AS refunded_amount
+    FROM royalty_uncarried_subscription_episode_refunds u
+    WHERE u.tenant_id = $1
+        AND u.currency = $2::text
+        AND u.period < $3::date
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
 )
 SELECT
+    carried.source,
     l.creator_id,
     c.public_id AS creator_public_id,
     l.creator_name,
@@ -451,6 +482,7 @@ JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
     AND l.statement_id = carried.statement_id
     AND l.episode_id = carried.episode_id
     AND l.adjusted_statement_id IS NULL
+    AND COALESCE(l.source, 'sale') = carried.source
 CROSS JOIN LATERAL (
     SELECT (
         l.gross_amount - l.refunded_amount
@@ -475,6 +507,7 @@ type ListRoyaltyAdjustmentLinesForPeriodParams struct {
 }
 
 type ListRoyaltyAdjustmentLinesForPeriodRow struct {
+	Source              string         `json:"source"`
 	CreatorID           uuid.NullUUID  `json:"creator_id"`
 	CreatorPublicID     sql.NullString `json:"creator_public_id"`
 	CreatorName         string         `json:"creator_name"`
@@ -511,6 +544,12 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 // lines, oldest adjusted month first. A refund of a volume or of the rest of
 // a series is carried to the line of each episode in it, by the part
 // royalty_uncarried_episode_refunds gives that episode.
+//
+// A refund of a subscription payment is carried the same way, to the
+// subscription line of each episode the payment was shared to, by the part
+// royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
+// reaches the episode's line of sales alone. A line closed before lines had
+// a source is one of sales.
 func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRoyaltyAdjustmentLinesForPeriod, arg.TenantID, arg.Currency, arg.Period)
 	if err != nil {
@@ -521,6 +560,7 @@ func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg L
 	for rows.Next() {
 		var i ListRoyaltyAdjustmentLinesForPeriodRow
 		if err := rows.Scan(
+			&i.Source,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,
@@ -704,7 +744,7 @@ func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyalty
 
 const ListRoyaltyStatementLinesAsc = `-- name: ListRoyaltyStatementLinesAsc :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
@@ -749,6 +789,7 @@ type ListRoyaltyStatementLinesAscRow struct {
 	PayoutAmount        int64          `json:"payout_amount"`
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
+	Source              sql.NullString `json:"source"`
 	CreatorPublicID     sql.NullString `json:"creator_public_id"`
 	SeriesPublicID      sql.NullString `json:"series_public_id"`
 	EpisodePublicID     sql.NullString `json:"episode_public_id"`
@@ -792,6 +833,7 @@ func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoya
 			&i.PayoutAmount,
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
+			&i.Source,
 			&i.CreatorPublicID,
 			&i.SeriesPublicID,
 			&i.EpisodePublicID,
@@ -813,7 +855,7 @@ func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoya
 
 const ListRoyaltyStatementLinesDesc = `-- name: ListRoyaltyStatementLinesDesc :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
@@ -858,6 +900,7 @@ type ListRoyaltyStatementLinesDescRow struct {
 	PayoutAmount        int64          `json:"payout_amount"`
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
+	Source              sql.NullString `json:"source"`
 	CreatorPublicID     sql.NullString `json:"creator_public_id"`
 	SeriesPublicID      sql.NullString `json:"series_public_id"`
 	EpisodePublicID     sql.NullString `json:"episode_public_id"`
@@ -899,6 +942,7 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 			&i.PayoutAmount,
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
+			&i.Source,
 			&i.CreatorPublicID,
 			&i.SeriesPublicID,
 			&i.EpisodePublicID,
@@ -920,7 +964,7 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 
 const ListRoyaltyStatementLinesForExport = `-- name: ListRoyaltyStatementLinesForExport :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
     adjusted.period AS adjusted_period
 FROM royalty_statement_lines l
 LEFT JOIN royalty_statements adjusted ON adjusted.tenant_id = l.tenant_id AND adjusted.id = l.adjusted_statement_id
@@ -953,6 +997,7 @@ type ListRoyaltyStatementLinesForExportRow struct {
 	PayoutAmount        int64          `json:"payout_amount"`
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
+	Source              sql.NullString `json:"source"`
 	AdjustedPeriod      sql.NullTime   `json:"adjusted_period"`
 }
 
@@ -987,6 +1032,7 @@ func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg Li
 			&i.PayoutAmount,
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
+			&i.Source,
 			&i.AdjustedPeriod,
 		); err != nil {
 			return nil, err

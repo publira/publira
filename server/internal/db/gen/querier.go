@@ -34,6 +34,12 @@ type Querier interface {
 	// crash in between costs a repeat of an update that is idempotent, whereas
 	// deleting here would lose the refund if the update never landed.
 	ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (Purchase, error)
+	// Writes a refund held because its notification overtook the payment's onto
+	// the payment, by the rules RecordRefundOnSubscriptionPayment uses. Nothing
+	// matches when no refund is held for the PaymentIntent, which is the ordinary
+	// case. The held row is left for the caller to release once this has
+	// committed, as ApplyUnappliedRefundToPurchase leaves it.
+	ApplyUnappliedRefundToSubscriptionPayment(ctx context.Context, arg ApplyUnappliedRefundToSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// Writes a held refund onto the purchase that has since been recorded. Nothing
 	// matches when no refund is held for the transaction, which is the ordinary
 	// case. The held row is deleted by the caller in the same transaction.
@@ -1149,6 +1155,12 @@ type Querier interface {
 	// coins are spent, on the purchase each spend paid for, at what the coins
 	// spent were paid for, and a refund of the pack is taken off those purchases.
 	//
+	// A subscription payment is counted on the day it was paid, beside the
+	// purchases rather than among them, under the same terms: paid in currency
+	// and not in Stripe's test mode. What went back on it is its refunded_amount,
+	// taken off the day it was paid. A payment belongs to no series, so only the
+	// totals and the days count it.
+	//
 	// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 	// which carries every column GetRevenueTotals and ListRevenueByDay read, so
 	// those two answer from the index alone. The series and episode reports join
@@ -1157,7 +1169,8 @@ type Querier interface {
 	// purchase the tenant ever made.
 	GetRevenueTotals(ctx context.Context, arg GetRevenueTotalsParams) (GetRevenueTotalsRow, error)
 	// Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
-	// sale counted once however many episodes and creators it is credited to.
+	// sale and subscription payment counted once however many episodes and
+	// creators it is credited to.
 	GetRoyaltyAdjustmentTotalForPeriod(ctx context.Context, arg GetRoyaltyAdjustmentTotalForPeriodParams) (int64, error)
 	// The instants a tenant month runs between. A month starts where the statement
 	// of the month before it ended, and ends where the statement of the month
@@ -1173,6 +1186,9 @@ type Querier interface {
 	// are counted here.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
+	// Totals the month's shared payments once each, however many episodes and
+	// creators a payment is shared to.
+	GetRoyaltySubscriptionTotalsForPeriod(ctx context.Context, arg GetRoyaltySubscriptionTotalsForPeriodParams) (GetRoyaltySubscriptionTotalsForPeriodRow, error)
 	GetSeriesBundleIDByIdempotencyKey(ctx context.Context, arg GetSeriesBundleIDByIdempotencyKeyParams) (uuid.UUID, error)
 	GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
@@ -1577,6 +1593,17 @@ type Querier interface {
 	// snapshot the lines were computed in. A purchase of a pack of coins is no
 	// sale, and nothing of it is written down.
 	InsertRoyaltyStatementPurchases(ctx context.Context, arg InsertRoyaltyStatementPurchasesParams) error
+	// Writes down the parts the month's payments were shared by, as the lines
+	// were computed from them in the same snapshot, so a refund carried later is
+	// divided the way the close divided the payment.
+	InsertRoyaltyStatementSubscriptionParts(ctx context.Context, arg InsertRoyaltyStatementSubscriptionPartsParams) error
+	// Writes down what a statement counted of each subscription payment, as
+	// InsertRoyaltyStatementPurchases does of each purchase: every payment of its
+	// own month it shared, and the change it carries of each payment
+	// ListRoyaltyAdjustmentLinesForPeriod adjusts. Both halves read the payments
+	// as they stood before this statement, which is the snapshot the lines were
+	// computed in.
+	InsertRoyaltyStatementSubscriptionPayments(ctx context.Context, arg InsertRoyaltyStatementSubscriptionPaymentsParams) error
 	InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	// The entries arrive validated, lowercased, and without duplicates.
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
@@ -2734,6 +2761,12 @@ type Querier interface {
 	// lines, oldest adjusted month first. A refund of a volume or of the rest of
 	// a series is carried to the line of each episode in it, by the part
 	// royalty_uncarried_episode_refunds gives that episode.
+	//
+	// A refund of a subscription payment is carried the same way, to the
+	// subscription line of each episode the payment was shared to, by the part
+	// royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
+	// reaches the episode's line of sales alone. A line closed before lines had
+	// a source is one of sales.
 	ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error)
 	// Computes the lines of one tenant month: every credit on an episode sold in
 	// the month, with the month's sales of that episode. It is what a close
@@ -2778,6 +2811,24 @@ type Querier interface {
 	// Newest month first. The period is unique per tenant, so it alone is the
 	// keyset.
 	ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyaltyStatementsDescParams) ([]ListRoyaltyStatementsDescRow, error)
+	// The subscription lines of a royalty statement: the payments of plans whose
+	// period ends in a tenant month, each shared among the episodes of its plan
+	// its subscriber finished in that period, as subscription_payment_episode_parts
+	// divides it.
+	//
+	// Every query here counts the same payments: those whose period ends within
+	// the bounds GetRoyaltyMonthBounds answers for the month, paid in currency,
+	// the tenant's, not made in Stripe's test mode, which paid the tenant nothing,
+	// and not refunded in full. A partial refund stays shared and is carried as
+	// refunded_amount, divided over the parts by episode_part_of_purchase_amount
+	// as a purchase's is. A payment no part of which falls on anyone is in no
+	// line and in no total: it is the tenant's revenue alone.
+	// Computes the subscription lines of one tenant month: every credit on an
+	// episode a payment of the month was shared to, with the parts of the
+	// month's payments that fall on it. sale_count is how many payments did. It
+	// is what a close writes and what a preview shows, so the two cannot
+	// disagree, and its columns and order are those of ListRoyaltyLinesForPeriod.
+	ListRoyaltySubscriptionLinesForPeriod(ctx context.Context, arg ListRoyaltySubscriptionLinesForPeriodParams) ([]ListRoyaltySubscriptionLinesForPeriodRow, error)
 	// ListSeriesAudienceDesc walked the other way, to build a previous page. The
 	// order it describes is the same one.
 	ListSeriesAudienceAsc(ctx context.Context, arg ListSeriesAudienceAscParams) ([]ListSeriesAudienceAscRow, error)
@@ -3141,6 +3192,12 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// Serializes the writes about one payment of a provider for the rest of the
+	// transaction: recording a subscription payment and applying the refund held
+	// for it, against matching a refund to it or holding the refund. Without it,
+	// a refund matched while the payment's insert is uncommitted finds nothing and
+	// is held, and the insert finds nothing held, so the refund is never applied.
+	LockProviderPayment(ctx context.Context, arg LockProviderPaymentParams) error
 	// Locks a preset before it is deleted. An account electing it takes a key
 	// share on the row through its foreign key, so the lock waits for an election
 	// in flight to commit, and the clear that follows sees it; an election that
@@ -3646,6 +3703,12 @@ type Querier interface {
 	// another provider, no purchase here, or a total in a currency other than the
 	// purchase's, which says nothing comparable to its price.
 	RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error)
+	// Records that a refund of a subscription payment failed after Stripe
+	// accepted it, taking the total that stays refunded from Stripe as it now
+	// stands, the one place a recorded amount goes down. Nothing matches a
+	// PaymentIntent no payment here was paid through, or a total in a currency
+	// other than the payment's.
+	RecordFailedRefundOnSubscriptionPayment(ctx context.Context, arg RecordFailedRefundOnSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// Records that the dispute of the payment was lost: the reader's bank has
 	// returned the money to them for good, so royalty statements no longer count
 	// the purchase as a sale. The purchase is revoked as a dispute too, unless
@@ -3684,6 +3747,13 @@ type Querier interface {
 	// dashboard among them, so only SettleStaffRefundInPart, once the provider
 	// answers that the refund made under its key is on the payment, ends it.
 	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error)
+	// Records what Stripe has refunded against one subscription payment, matched
+	// by the PaymentIntent the refund notification names, by the rules
+	// RecordRefundOnPurchase applies to a purchase: the total only grows, and one
+	// reported with no amount or in another currency than the payment's is a
+	// refund of all of it. Nothing matches a PaymentIntent no payment here was
+	// paid through.
+	RecordRefundOnSubscriptionPayment(ctx context.Context, arg RecordRefundOnSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// Records a store's refund on the purchase of the transaction it names. A
 	// store refunds a consumable in full, so the purchase is refunded its whole
 	// price and revoked, unless something revoked it first; a
@@ -3703,6 +3773,11 @@ type Querier interface {
 	// whoever the metadata says. A reader whose account no longer exists is
 	// recorded as NULL too.
 	RecordSubscriptionFromStripe(ctx context.Context, arg RecordSubscriptionFromStripeParams) (RecordSubscriptionFromStripeRow, error)
+	// Records an invoice Stripe reports paid, on the subscription and the plan it
+	// is recorded on. A redelivered notification of the same invoice matches the
+	// row already here and records nothing, which the caller reads as an empty
+	// result.
+	RecordSubscriptionPayment(ctx context.Context, arg RecordSubscriptionPaymentParams) (SubscriptionPayment, error)
 	// One refused code or assertion, whichever second factor it was for.
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.

@@ -291,7 +291,8 @@ type RefundRequest struct {
 
 // Event is what a notification means to the purchase flow: one of
 // [PurchaseCompleted], [Refunded], [RefundFailed], [Disputed],
-// [DisputeLost], [CheckoutExpired], [SubscriptionChanged], or [Ignored].
+// [DisputeLost], [CheckoutExpired], [SubscriptionChanged],
+// [SubscriptionPaid], or [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
 	NotificationID() string

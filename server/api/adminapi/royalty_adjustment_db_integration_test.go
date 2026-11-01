@@ -216,7 +216,7 @@ func TestDBAdminRefundAfterCloseKeepsTheShareTheClosedMonthApplied(t *testing.T)
 
 	export := env.exportRoyalties(t, f.admin, "2026-02")
 	wantRow := "2026-02," + artist.ID.String() + ",Artist Person,"
-	wantTail := ",-1,-500,0,50.00,-250," + env.PG.TenantCurrency(t, f.admin.Tenant.ID) + ",2026-01\r\n"
+	wantTail := ",-1,-500,0,50.00,-250," + env.PG.TenantCurrency(t, f.admin.Tenant.ID) + ",2026-01,sale\r\n"
 	if !containsRow(export, wantRow, wantTail) {
 		t.Fatalf("csv =\n%q\nwant a row starting %q and ending %q", export, wantRow, wantTail)
 	}

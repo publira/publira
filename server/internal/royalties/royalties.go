@@ -9,6 +9,12 @@
 // the refunds take off their net. Each close writes down what it counted of
 // every purchase, so a later close carries only the part of a refund that no
 // statement has counted yet.
+//
+// A month also shares the subscription payments whose period ends in it,
+// each among the episodes of its plan the subscriber finished in that period,
+// as subscription lines beside the lines of sales. The close writes down the
+// parts it shared each payment by, so a refund of one recorded later is
+// carried back from the same episodes.
 package royalties
 
 import (
@@ -89,8 +95,9 @@ type TxBeginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-// Totals are the month's own sales, the net sales of earlier months it takes
-// back, and what its lines pay out, its adjustment lines included.
+// Totals are the month's own sales and the subscription payments it shares,
+// the net of earlier months it takes back, and what its lines pay out, its
+// adjustment lines included.
 type Totals struct {
 	Gross      int64
 	Refunded   int64
@@ -106,9 +113,12 @@ type Computation struct {
 	Currency string
 	Totals   Totals
 	Lines    []dbmodels.ListRoyaltyLinesForPeriodRow
+	// SubscriptionLines share the month's subscription payments. A statement
+	// lists them after Lines.
+	SubscriptionLines []dbmodels.ListRoyaltySubscriptionLinesForPeriodRow
 	// Adjustments carry the refunds recorded since an earlier month was
-	// closed on the sales its lines counted. A statement lists them after
-	// Lines.
+	// closed on the sales and the payments its lines counted. A statement
+	// lists them after SubscriptionLines.
 	Adjustments []dbmodels.ListRoyaltyAdjustmentLinesForPeriodRow
 }
 
@@ -235,8 +245,8 @@ func closeStatementOnce(
 		return dbmodels.RoyaltyStatement{}, fmt.Errorf("insert statement: %w", err)
 	}
 
-	if len(computation.Lines)+len(computation.Adjustments) > 0 {
-		lines, err := statementLinesJSON(computation.Lines, computation.Adjustments)
+	if len(computation.Lines)+len(computation.SubscriptionLines)+len(computation.Adjustments) > 0 {
+		lines, err := statementLinesJSON(computation)
 		if err != nil {
 			return dbmodels.RoyaltyStatement{}, err
 		}
@@ -259,6 +269,25 @@ func closeStatementOnce(
 		Period:      month.Period,
 	}); err != nil {
 		return dbmodels.RoyaltyStatement{}, fmt.Errorf("record counted purchases: %w", err)
+	}
+	if err := queries.InsertRoyaltyStatementSubscriptionParts(ctx, dbmodels.InsertRoyaltyStatementSubscriptionPartsParams{
+		StatementID: statement.ID,
+		TenantID:    month.TenantID,
+		Currency:    computation.Currency,
+		StartsAt:    bounds.Start,
+		EndsAt:      bounds.End,
+	}); err != nil {
+		return dbmodels.RoyaltyStatement{}, fmt.Errorf("record shared subscription parts: %w", err)
+	}
+	if err := queries.InsertRoyaltyStatementSubscriptionPayments(ctx, dbmodels.InsertRoyaltyStatementSubscriptionPaymentsParams{
+		StatementID: statement.ID,
+		TenantID:    month.TenantID,
+		Currency:    computation.Currency,
+		StartsAt:    bounds.Start,
+		EndsAt:      bounds.End,
+		Period:      month.Period,
+	}); err != nil {
+		return dbmodels.RoyaltyStatement{}, fmt.Errorf("record counted subscription payments: %w", err)
 	}
 
 	if record != nil {
@@ -298,6 +327,24 @@ func compute(ctx context.Context, queries *dbmodels.Queries, month Month, bounds
 	if err != nil {
 		return Computation{}, fmt.Errorf("total sales: %w", err)
 	}
+	subscriptionLines, err := queries.ListRoyaltySubscriptionLinesForPeriod(ctx, dbmodels.ListRoyaltySubscriptionLinesForPeriodParams{
+		TenantID: tenantID,
+		Currency: currency,
+		StartsAt: bounds.Start,
+		EndsAt:   bounds.End,
+	})
+	if err != nil {
+		return Computation{}, fmt.Errorf("compute subscription lines: %w", err)
+	}
+	subscriptions, err := queries.GetRoyaltySubscriptionTotalsForPeriod(ctx, dbmodels.GetRoyaltySubscriptionTotalsForPeriodParams{
+		TenantID: tenantID,
+		Currency: currency,
+		StartsAt: bounds.Start,
+		EndsAt:   bounds.End,
+	})
+	if err != nil {
+		return Computation{}, fmt.Errorf("total subscription payments: %w", err)
+	}
 	// Only a statement of an earlier month carries its refunds forward, so a
 	// month closed out of order leaves a later month's refunds to the next
 	// close after that one.
@@ -318,14 +365,50 @@ func compute(ctx context.Context, queries *dbmodels.Queries, month Month, bounds
 		return Computation{}, fmt.Errorf("total adjustment: %w", err)
 	}
 
-	totals := Totals{Gross: sales.TotalGross, Refunded: sales.TotalRefunded, Adjustment: adjustment}
+	totals := Totals{
+		Gross:      sales.TotalGross + subscriptions.TotalGross,
+		Refunded:   sales.TotalRefunded + subscriptions.TotalRefunded,
+		Adjustment: adjustment,
+	}
 	for _, line := range lines {
+		totals.Payout += line.PayoutAmount
+	}
+	for _, line := range subscriptionLines {
 		totals.Payout += line.PayoutAmount
 	}
 	for _, line := range adjustments {
 		totals.Payout += line.PayoutAmount
 	}
-	return Computation{Bounds: bounds, Currency: currency, Totals: totals, Lines: lines, Adjustments: adjustments}, nil
+	return Computation{
+		Bounds:            bounds,
+		Currency:          currency,
+		Totals:            totals,
+		Lines:             lines,
+		SubscriptionLines: subscriptionLines,
+		Adjustments:       adjustments,
+	}, nil
+}
+
+// Source is what a statement line credits, spelled as
+// royalty_statement_lines.source stores it.
+type Source string
+
+const (
+	// SourceSale is the sales of an episode, and what a line closed before
+	// lines had a source credits.
+	SourceSale Source = "sale"
+	// SourceSubscription is the parts of subscription payments shared to an
+	// episode.
+	SourceSubscription Source = "subscription"
+)
+
+// LineSource reads the source a stored line records, which is empty on a line
+// closed before lines had one.
+func LineSource(stored sql.NullString) Source {
+	if !stored.Valid {
+		return SourceSale
+	}
+	return Source(stored.String)
 }
 
 // statementLine is one element of the JSON array InsertRoyaltyStatementLines
@@ -349,15 +432,16 @@ type statementLine struct {
 	// adjusts, and are set on an adjustment line alone.
 	AdjustedStatementID uuid.NullUUID `json:"adjusted_statement_id"`
 	AdjustedLineNumber  *int32        `json:"adjusted_line_number"`
+	Source              Source        `json:"source"`
 }
 
-// statementLinesJSON numbers the month's own lines first and its adjustment
-// lines after them.
-func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow, adjustments []dbmodels.ListRoyaltyAdjustmentLinesForPeriodRow) (json.RawMessage, error) {
-	lines := make([]statementLine, 0, len(rows)+len(adjustments))
-	for i, row := range rows {
+// statementLinesJSON numbers the month's own lines of sales first, its
+// subscription lines after them, and its adjustment lines last.
+func statementLinesJSON(computation Computation) (json.RawMessage, error) {
+	lines := make([]statementLine, 0, len(computation.Lines)+len(computation.SubscriptionLines)+len(computation.Adjustments))
+	for _, row := range computation.Lines {
 		line := statementLine{
-			LineNumber:     int32(i + 1),
+			LineNumber:     int32(len(lines) + 1),
 			CreatorID:      uuid.NullUUID{UUID: row.CreatorID, Valid: true},
 			CreatorName:    row.CreatorName,
 			SeriesID:       uuid.NullUUID{UUID: row.SeriesID, Valid: true},
@@ -370,13 +454,36 @@ func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow, adjustment
 			RefundedAmount: row.RefundedAmount,
 			ShareBps:       row.ShareBps,
 			PayoutAmount:   row.PayoutAmount,
+			Source:         SourceSale,
 		}
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String
 		}
 		lines = append(lines, line)
 	}
-	for _, row := range adjustments {
+	for _, row := range computation.SubscriptionLines {
+		line := statementLine{
+			LineNumber:     int32(len(lines) + 1),
+			CreatorID:      uuid.NullUUID{UUID: row.CreatorID, Valid: true},
+			CreatorName:    row.CreatorName,
+			SeriesID:       uuid.NullUUID{UUID: row.SeriesID, Valid: true},
+			SeriesTitle:    row.SeriesTitle,
+			EpisodeID:      uuid.NullUUID{UUID: row.EpisodeID, Valid: true},
+			EpisodeTitle:   row.EpisodeTitle,
+			RoleID:         row.RoleID,
+			SaleCount:      row.SaleCount,
+			GrossAmount:    row.GrossAmount,
+			RefundedAmount: row.RefundedAmount,
+			ShareBps:       row.ShareBps,
+			PayoutAmount:   row.PayoutAmount,
+			Source:         SourceSubscription,
+		}
+		if row.RoleName.Valid {
+			line.RoleName = &row.RoleName.String
+		}
+		lines = append(lines, line)
+	}
+	for _, row := range computation.Adjustments {
 		line := statementLine{
 			LineNumber:          int32(len(lines) + 1),
 			CreatorID:           row.CreatorID,
@@ -393,6 +500,7 @@ func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow, adjustment
 			PayoutAmount:        row.PayoutAmount,
 			AdjustedStatementID: uuid.NullUUID{UUID: row.AdjustedStatementID, Valid: true},
 			AdjustedLineNumber:  &row.AdjustedLineNumber,
+			Source:              Source(row.Source),
 		}
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String

@@ -383,6 +383,8 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 		return subscriptionUpdatedEvent(&event)
 	case stripego.EventTypeInvoicePaymentFailed:
 		return invoicePaymentFailedEvent(&event)
+	case stripego.EventTypeInvoicePaid:
+		return p.invoicePaidEvent(ctx, credentials, &event)
 	default:
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}

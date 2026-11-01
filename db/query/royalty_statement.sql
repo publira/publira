@@ -132,8 +132,15 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- lines, oldest adjusted month first. A refund of a volume or of the rest of
 -- a series is carried to the line of each episode in it, by the part
 -- royalty_uncarried_episode_refunds gives that episode.
+--
+-- A refund of a subscription payment is carried the same way, to the
+-- subscription line of each episode the payment was shared to, by the part
+-- royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
+-- reaches the episode's line of sales alone. A line closed before lines had
+-- a source is one of sales.
 WITH carried AS (
     SELECT
+        'sale'::text AS source,
         u.tenant_id,
         u.statement_id,
         u.period,
@@ -146,8 +153,24 @@ WITH carried AS (
         AND u.currency = sqlc.arg('currency')::text
         AND u.period < sqlc.arg('period')::date
     GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    UNION ALL
+    SELECT
+        'subscription'::text AS source,
+        u.tenant_id,
+        u.statement_id,
+        u.period,
+        u.episode_id,
+        sum(u.sale_count)::integer AS sale_count,
+        sum(u.gross_amount)::bigint AS gross_amount,
+        sum(u.refunded_amount)::bigint AS refunded_amount
+    FROM royalty_uncarried_subscription_episode_refunds u
+    WHERE u.tenant_id = sqlc.arg('tenant_id')
+        AND u.currency = sqlc.arg('currency')::text
+        AND u.period < sqlc.arg('period')::date
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
 )
 SELECT
+    carried.source,
     l.creator_id,
     c.public_id AS creator_public_id,
     l.creator_name,
@@ -176,6 +199,7 @@ JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
     AND l.statement_id = carried.statement_id
     AND l.episode_id = carried.episode_id
     AND l.adjusted_statement_id IS NULL
+    AND COALESCE(l.source, 'sale') = carried.source
 CROSS JOIN LATERAL (
     SELECT (
         l.gross_amount - l.refunded_amount
@@ -194,13 +218,24 @@ ORDER BY carried.period, l.line_number;
 
 -- name: GetRoyaltyAdjustmentTotalForPeriod :one
 -- Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
--- sale counted once however many episodes and creators it is credited to.
-SELECT
-    COALESCE(sum(u.gross_amount - u.refunded_amount), 0)::bigint AS total_adjustment
-FROM royalty_uncarried_refunds u
-WHERE u.tenant_id = sqlc.arg('tenant_id')
-    AND u.currency = sqlc.arg('currency')::text
-    AND u.period < sqlc.arg('period')::date;
+-- sale and subscription payment counted once however many episodes and
+-- creators it is credited to.
+SELECT (
+    COALESCE((
+        SELECT sum(u.gross_amount - u.refunded_amount)
+        FROM royalty_uncarried_refunds u
+        WHERE u.tenant_id = sqlc.arg('tenant_id')
+            AND u.currency = sqlc.arg('currency')::text
+            AND u.period < sqlc.arg('period')::date
+    ), 0)
+    + COALESCE((
+        SELECT sum(u.gross_amount - u.refunded_amount)
+        FROM royalty_uncarried_subscription_refunds u
+        WHERE u.tenant_id = sqlc.arg('tenant_id')
+            AND u.currency = sqlc.arg('currency')::text
+            AND u.period < sqlc.arg('period')::date
+    ), 0)
+)::bigint AS total_adjustment;
 
 -- name: InsertRoyaltyStatement :one
 -- A second close of the same month fails on royalty_statements_tenant_id_period_key.
@@ -255,7 +290,8 @@ INSERT INTO royalty_statement_lines (
     share_bps,
     payout_amount,
     adjusted_statement_id,
-    adjusted_line_number
+    adjusted_line_number,
+    source
 )
 SELECT
     sqlc.arg('tenant_id'),
@@ -275,7 +311,8 @@ SELECT
     line.share_bps,
     line.payout_amount,
     line.adjusted_statement_id,
-    line.adjusted_line_number
+    line.adjusted_line_number,
+    line.source
 FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     line_number integer,
     creator_id uuid,
@@ -292,7 +329,8 @@ FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     share_bps integer,
     payout_amount bigint,
     adjusted_statement_id uuid,
-    adjusted_line_number integer
+    adjusted_line_number integer,
+    source text
 );
 
 -- name: InsertRoyaltyStatementPurchases :exec

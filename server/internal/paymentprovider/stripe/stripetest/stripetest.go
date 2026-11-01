@@ -114,6 +114,9 @@ type API struct {
 	// sessionStates holds where each Checkout Session the fake made stands,
 	// by its id, and the subscription a completed one started.
 	sessionStates map[string]sessionState
+	// invoicePayments holds the PaymentIntent each paid invoice was paid
+	// through, by secret key and invoice id.
+	invoicePayments map[string]map[string]string
 }
 
 type sessionState struct {
@@ -207,6 +210,8 @@ func NewAPI(t testing.TB) *API {
 		failCancel:    map[string]map[string]bool{},
 		revoked:       map[string]bool{},
 		sessionStates: map[string]sessionState{},
+
+		invoicePayments: map[string]map[string]string{},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
@@ -220,6 +225,7 @@ func NewAPI(t testing.TB) *API {
 	mux.HandleFunc("GET /v1/subscriptions/{id}", api.getSubscription)
 	mux.HandleFunc("DELETE /v1/subscriptions/{id}", api.cancelSubscription)
 	mux.HandleFunc("POST /v1/billing_portal/sessions", api.createBillingPortalSession)
+	mux.HandleFunc("GET /v1/invoice_payments", api.listInvoicePayments)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
 	return api
@@ -680,6 +686,48 @@ func (a *API) refuseRevoked(w http.ResponseWriter, secretKey string) bool {
 	return revoked
 }
 
+// SetInvoicePayment makes the invoice invoiceID on the account of secretKey
+// one paid through the PaymentIntent paymentIntentID.
+func (a *API) SetInvoicePayment(secretKey, invoiceID, paymentIntentID string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.invoicePayments[secretKey] == nil {
+		a.invoicePayments[secretKey] = map[string]string{}
+	}
+	a.invoicePayments[secretKey][invoiceID] = paymentIntentID
+}
+
+// listInvoicePayments answers the paid payment of the invoice a request
+// names, or none for an invoice the fake was told of no payment of.
+func (a *API) listInvoicePayments(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	invoiceID := r.URL.Query().Get("invoice")
+	a.mu.Lock()
+	paymentIntentID, ok := a.invoicePayments[secretKey][invoiceID]
+	a.mu.Unlock()
+	data := []any{}
+	if ok && r.URL.Query().Get("status") == "paid" {
+		data = append(data, map[string]any{
+			"id":         "inpay_" + invoiceID,
+			"object":     "invoice_payment",
+			"invoice":    invoiceID,
+			"is_default": true,
+			"status":     "paid",
+			"payment": map[string]any{
+				"type":           "payment_intent",
+				"payment_intent": paymentIntentID,
+			},
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"object":   "list",
+		"data":     data,
+		"has_more": false,
+		"url":      "/v1/invoice_payments",
+	})
+}
+
 // SubscriptionCancellations answers every subscription the fake canceled.
 func (a *API) SubscriptionCancellations() []SubscriptionCancellation {
 	a.mu.Lock()
@@ -839,7 +887,7 @@ type Fixture struct {
 	API *API
 }
 
-var _ paymentprovidertest.Fixture = (*Fixture)(nil)
+var _ paymentprovidertest.SubscriptionFixture = (*Fixture)(nil)
 
 // NewFixture answers a fixture whose fake API serves until t ends.
 func NewFixture(t testing.TB) *Fixture {
@@ -1012,6 +1060,58 @@ func (f *Fixture) InvoicePaymentFailed(t testing.TB, credentials paymentprovider
 				"metadata":     subscription.Metadata,
 				"subscription": subscription.ID,
 			},
+		},
+	})
+}
+
+// SubscriptionPaid answers Stripe's notification that an invoice of a plan's
+// subscription was paid, and makes the fake report the invoice as paid through
+// payment.PaymentID, or through nothing when that is empty, as an invoice
+// marked paid outside Stripe is.
+func (f *Fixture) SubscriptionPaid(t testing.TB, credentials paymentprovider.Credentials, payment paymentprovidertest.SubscriptionPayment) ([]byte, http.Header) {
+	t.Helper()
+	if payment.PaymentID != "" {
+		f.API.SetInvoicePayment(credentials[stripe.FieldSecretKey], payment.InvoiceID, payment.PaymentID)
+		f.API.SetPaymentIntent(credentials[stripe.FieldSecretKey], payment.PaymentID, payment.Amount, payment.Currency)
+	}
+	return recorded(t, credentials, "invoice.paid.json", map[string]any{
+		"id":          payment.InvoiceID,
+		"amount_due":  payment.Amount,
+		"amount_paid": payment.Amount,
+		"currency":    strings.ToLower(payment.Currency),
+		"livemode":    !payment.Test,
+		"lines": map[string]any{
+			"object": "list",
+			"data": []any{map[string]any{
+				"id":       "il_" + payment.InvoiceID,
+				"object":   "line_item",
+				"amount":   payment.Amount,
+				"currency": strings.ToLower(payment.Currency),
+				"parent": map[string]any{
+					"type": "subscription_item_details",
+					"subscription_item_details": map[string]any{
+						"subscription":      payment.SubscriptionID,
+						"subscription_item": "si_" + payment.SubscriptionID,
+					},
+				},
+				"period": map[string]any{
+					"start": payment.PeriodStart.Unix(),
+					"end":   payment.PeriodEnd.Unix(),
+				},
+				"quantity": 1,
+			}},
+			"has_more": false,
+		},
+		"parent": map[string]any{
+			"type": "subscription_details",
+			"subscription_details": map[string]any{
+				"metadata":     SubscriptionMetadata(payment.TenantID, payment.ReaderID, payment.PlanID, "price_"+payment.SubscriptionID),
+				"subscription": payment.SubscriptionID,
+			},
+		},
+		"status_transitions": map[string]any{
+			"finalized_at": payment.PeriodStart.Unix(),
+			"paid_at":      payment.PeriodStart.Unix() + 55,
 		},
 	})
 }

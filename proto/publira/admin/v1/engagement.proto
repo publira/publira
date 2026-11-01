@@ -84,6 +84,11 @@ enum RevenueGroupBy {
 // is divided over its episodes in the same proportion, each part rounded
 // down, so the episode rows' refunded_amount can fall short of the totals by
 // less than one minor unit per episode.
+//
+// A subscription payment is counted apart from the purchases, on the day
+// Stripe was paid it, and what went back on it is taken off that day too. A
+// payment belongs to no series, so it is counted on a day row and in the
+// totals only.
 message RevenueStatsRow {
   // The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
   // otherwise.
@@ -103,15 +108,23 @@ message RevenueStatsRow {
   int64 refunded_amount = 8;
   // gross_amount less refunded_amount: what the tenant kept.
   int64 net_amount = 9;
+  // What subscribers paid for the tenant's subscription plans on a day row,
+  // and zero on a series or an episode row. A payment made in Stripe's test
+  // mode is not counted.
+  int64 subscription_amount = 10;
+  // What went back to the subscribers of those payments.
+  int64 subscription_refunded_amount = 11;
 }
 
-// The same four figures over the whole period, each purchase counted once
+// The same figures over the whole period, each purchase counted once
 // whatever its episodes.
 message RevenueStatsTotals {
   int64 purchase_count = 1;
   int64 gross_amount = 2;
   int64 refunded_amount = 3;
   int64 net_amount = 4;
+  int64 subscription_amount = 5;
+  int64 subscription_refunded_amount = 6;
 }
 
 message GetRevenueStatsRequest {
@@ -450,7 +463,9 @@ message ExportStatsResponse {
   // and a title is in the tenant's default locale. Columns, by kind:
   //
   //   REVENUE_BY_DAY        date, purchase_count, gross_amount,
-  //                         refunded_amount, net_amount, currency
+  //                         refunded_amount, net_amount,
+  //                         subscription_amount,
+  //                         subscription_refunded_amount, currency
   //   REVENUE_BY_SERIES     start_date, end_date, series_id, series_title,
   //                         purchase_count, gross_amount, refunded_amount,
   //                         net_amount, currency

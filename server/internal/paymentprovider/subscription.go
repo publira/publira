@@ -208,3 +208,33 @@ type SubscriptionChanged struct {
 func (e SubscriptionChanged) NotificationID() string { return e.ID }
 
 func (SubscriptionChanged) isEvent() {}
+
+// SubscriptionPaid reports an invoice of a subscription a plan's checkout
+// started that the provider was paid. A payment is recorded once per invoice
+// however many times the notification is delivered.
+type SubscriptionPaid struct {
+	ID             string
+	SubscriptionID string
+	// InvoiceID is the provider's id of the invoice.
+	InvoiceID string
+	// PaymentID is the provider's id of the payment the invoice was paid
+	// through, which its refunds name, as [PurchaseCompleted.PaymentID] is,
+	// and empty for an invoice marked paid outside the provider.
+	PaymentID string
+	// Amount is what the subscriber paid, in the minor unit of Currency.
+	Amount int64
+	// Currency is the ISO 4217 code of Amount, in capitals.
+	Currency string
+	// PeriodStart and PeriodEnd bound the half-open period of the plan the
+	// invoice paid for.
+	PeriodStart time.Time
+	PeriodEnd   time.Time
+	PaidAt      time.Time
+	// Test reports a payment made in the provider's test mode, as
+	// [PurchaseCompleted.Test] does.
+	Test bool
+}
+
+func (e SubscriptionPaid) NotificationID() string { return e.ID }
+
+func (SubscriptionPaid) isEvent() {}

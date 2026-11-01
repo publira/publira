@@ -753,7 +753,11 @@ func (s *apiServer) ProcessPaymentWebhook(
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	case paymentprovider.SubscriptionChanged:
-		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event); err != nil {
+		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event, nil); err != nil {
+			return nil, err
+		}
+	case paymentprovider.SubscriptionPaid:
+		if err := s.recordSubscriptionPayment(ctx, tenant.ID, provider, credentials, event); err != nil {
 			return nil, err
 		}
 	}
@@ -839,26 +843,51 @@ func (s *apiServer) recordRefund(
 		Currency:          currency,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// The purchase may simply not exist yet: a provider need order neither
-		// its notifications nor its retries, so a refund can overtake the one
-		// that creates the sale. Holding it lets that notification apply it,
-		// and a refund that belongs to no purchase of ours costs one row
-		// instead of days of retries.
-		if err := queries.HoldUnappliedRefund(ctx, dbmodels.HoldUnappliedRefundParams{
-			TenantID:          tenantID,
-			Provider:          providerID,
-			ProviderPaymentID: event.PaymentID,
-			RefundedAmount:    refundedAmount,
-			Currency:          currency,
-		}); err != nil {
-			return s.internalDBError(ctx, "failed to hold an unmatched refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
-		}
-		s.logger.WarnContext(ctx, "refund matches no purchase yet and is held",
-			"tenant_id", tenantID,
-			"event_id", event.ID,
-			"payment_id", event.PaymentID,
-		)
-		return nil
+		// Matched against a subscription payment, or held, under the lock
+		// recordSubscriptionPayment takes, so a payment being recorded at the
+		// same moment either is seen here or sees what is held.
+		return s.withProviderPaymentLock(ctx, tenantID, providerID, event.PaymentID, func(queries Querier) error {
+			// A payment of a subscription plan is refunded through the same
+			// notification as a purchase is.
+			payment, err := queries.RecordRefundOnSubscriptionPayment(ctx, dbmodels.RecordRefundOnSubscriptionPaymentParams{
+				TenantID:              tenantID,
+				StripePaymentIntentID: event.PaymentID,
+				RefundedAmount:        refundedAmount,
+				Currency:              currency,
+			})
+			if err == nil {
+				s.logger.InfoContext(ctx, "recorded a refund on a subscription payment",
+					"tenant_id", tenantID,
+					"event_id", event.ID,
+					"subscription_payment_id", payment.ID,
+					"refunded_amount", payment.RefundedAmount.Int32,
+				)
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return s.internalDBError(ctx, "failed to record a refund on a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			// The sale may simply not exist yet: a provider need order
+			// neither its notifications nor its retries, so a refund can
+			// overtake the one that creates the sale. Holding it lets that
+			// notification apply it, and a refund that belongs to no sale of
+			// ours costs one row instead of days of retries.
+			if err := queries.HoldUnappliedRefund(ctx, dbmodels.HoldUnappliedRefundParams{
+				TenantID:          tenantID,
+				Provider:          providerID,
+				ProviderPaymentID: event.PaymentID,
+				RefundedAmount:    refundedAmount,
+				Currency:          currency,
+			}); err != nil {
+				return s.internalDBError(ctx, "failed to hold an unmatched refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			s.logger.WarnContext(ctx, "refund matches no purchase yet and is held",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"payment_id", event.PaymentID,
+			)
+			return nil
+		})
 	}
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
@@ -923,6 +952,33 @@ func (s *apiServer) settleStaffRefundInPart(
 	return nil
 }
 
+// withProviderPaymentLock runs fn in a transaction that holds the lock on
+// one payment of the provider, which every write that matches a refund to a
+// subscription payment or holds it for one takes, so the two cannot miss each
+// other.
+func (s *apiServer) withProviderPaymentLock(ctx context.Context, tenantID uuid.UUID, providerID, paymentID string, fn func(queries Querier) error) error {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin the refund transaction", err, "payment_id", paymentID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	if err := queries.LockProviderPayment(ctx, dbmodels.LockProviderPaymentParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
+	}); err != nil {
+		return s.internalDBError(ctx, "failed to lock a payment", err, "payment_id", paymentID)
+	}
+	if err := fn(queries); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit the refund transaction", err, "payment_id", paymentID)
+	}
+	return nil
+}
+
 // recordFailedRefund writes down that a refund of a payment failed, which can
 // reopen the purchase a refund closed.
 func (s *apiServer) recordFailedRefund(
@@ -951,34 +1007,56 @@ func (s *apiServer) recordFailedRefund(
 		RefundKey:         event.RefundKey,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// A refund held for a purchase that is not here yet is all that
-		// remains to correct: it is set to what stays refunded, or released
-		// when that is nothing, so the purchase it is applied to later is not
-		// refunded by the failed one.
-		if event.AmountRefunded == 0 {
-			if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
+		// Under the lock recordSubscriptionPayment takes, as a refund that
+		// matches no purchase is.
+		return s.withProviderPaymentLock(ctx, tenantID, providerID, event.PaymentID, func(queries Querier) error {
+			payment, err := queries.RecordFailedRefundOnSubscriptionPayment(ctx, dbmodels.RecordFailedRefundOnSubscriptionPaymentParams{
+				TenantID:              tenantID,
+				StripePaymentIntentID: event.PaymentID,
+				RefundedAmount:        int32(event.AmountRefunded),
+				Currency:              event.Currency,
+			})
+			if err == nil {
+				s.logger.InfoContext(ctx, "recorded a failed refund on a subscription payment",
+					"tenant_id", tenantID,
+					"event_id", event.ID,
+					"subscription_payment_id", payment.ID,
+					"refunded_amount", payment.RefundedAmount.Int32,
+				)
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return s.internalDBError(ctx, "failed to record a failed refund on a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			// A refund held for a purchase that is not here yet is all that
+			// remains to correct: it is set to what stays refunded, or released
+			// when that is nothing, so the purchase it is applied to later is not
+			// refunded by the failed one.
+			if event.AmountRefunded == 0 {
+				if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
+					TenantID:          tenantID,
+					Provider:          providerID,
+					ProviderPaymentID: event.PaymentID,
+				}); err != nil {
+					return s.internalDBError(ctx, "failed to release a held refund that failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
+				}
+			} else if err := queries.ReplaceUnappliedRefund(ctx, dbmodels.ReplaceUnappliedRefundParams{
 				TenantID:          tenantID,
 				Provider:          providerID,
 				ProviderPaymentID: event.PaymentID,
+				RefundedAmount:    int32(event.AmountRefunded),
+				Currency:          event.Currency,
 			}); err != nil {
-				return s.internalDBError(ctx, "failed to release a held refund that failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
+				return s.internalDBError(ctx, "failed to correct a held refund one of whose refunds failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
 			}
-		} else if err := queries.ReplaceUnappliedRefund(ctx, dbmodels.ReplaceUnappliedRefundParams{
-			TenantID:          tenantID,
-			Provider:          providerID,
-			ProviderPaymentID: event.PaymentID,
-			RefundedAmount:    int32(event.AmountRefunded),
-			Currency:          event.Currency,
-		}); err != nil {
-			return s.internalDBError(ctx, "failed to correct a held refund one of whose refunds failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
-		}
-		s.logger.WarnContext(ctx, "a failed refund matches no purchase",
-			"tenant_id", tenantID,
-			"event_id", event.ID,
-			"payment_id", event.PaymentID,
-			"currency", event.Currency,
-		)
-		return nil
+			s.logger.WarnContext(ctx, "a failed refund matches no purchase",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"payment_id", event.PaymentID,
+				"currency", event.Currency,
+			)
+			return nil
+		})
 	}
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record a failed refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
