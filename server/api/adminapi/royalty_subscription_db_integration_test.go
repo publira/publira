@@ -266,9 +266,9 @@ func TestDBAdminLostSubscriptionDisputeIsNoSale(t *testing.T) {
 	second := env.PG.SeedEpisode(t, tenantID, f.series.ID, testutil.EpisodeSeed{
 		PublicID: "RDLEPISODE2", Title: "Episode 2", Price: 300, Status: testutil.EpisodeStatusPublished,
 	})
-	author := env.PG.SeedCreator(t, tenantID, testutil.CreatorSeed{PublicID: "RDLCREATOR01", Name: "Author"})
-	env.creditEpisode(t, tenantID, f.episode.ID, author.ID, "Original Author", "episode", 10000)
-	env.creditEpisode(t, tenantID, second.ID, author.ID, "Original Author", "episode", 10000)
+	creator := env.PG.SeedCreator(t, tenantID, testutil.CreatorSeed{PublicID: "RDLCREATOR01", Name: "Author"})
+	env.creditEpisode(t, tenantID, f.episode.ID, creator.ID, "Original Author", "episode", 10000)
+	env.creditEpisode(t, tenantID, second.ID, creator.ID, "Original Author", "episode", 10000)
 	firstCredit := [3]string{"Author", "Original Author", "Episode 1"}
 	secondCredit := [3]string{"Author", "Original Author", "Episode 2"}
 
