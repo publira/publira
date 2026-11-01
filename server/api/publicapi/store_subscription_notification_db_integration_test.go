@@ -486,6 +486,68 @@ func TestDBGooglePlayPlanChangeMovesTheSubscriptionToTheNewToken(t *testing.T) {
 	}
 }
 
+// A replacement that was never paid for replaces nothing: the subscription it
+// would have replaced is read and kept as Google Play reports it.
+func TestDBGooglePlayPendingReplacementLeavesTheSubscriptionItWouldReplace(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	env.pg.SeedSubscriptionPlan(t, env.tenant.ID, testutil.SubscriptionPlanSeed{Published: true, GooglePlayProductID: "plan_yearly"})
+	const oldToken, newToken = "play-subscription-kept.AO-J1Oy", "play-subscription-never-paid.AO-J1Oy"
+	expiry := time.Now().Add(30 * 24 * time.Hour).Truncate(time.Millisecond).UTC()
+	env.mustConfirmGooglePlaySubscription(t, oldToken, expiry)
+	before := env.recordedSubscription(t)
+	intent := env.recordedIntent(t)
+
+	for _, fixture := range []string{googleplaytest.SubscriptionPending, googleplaytest.SubscriptionPendingCanceled} {
+		env.play.PutSubscription(t, storeTestPackageName, newToken, fixture, "plan_yearly", intent, time.Now().Add(365*24*time.Hour))
+		env.play.LinkSubscription(storeTestPackageName, newToken, oldToken)
+		if err := env.notifyGooglePlay(t, env.pushAuthorization(t), playSubscriptionNotification(playPurchased, newToken)); err != nil {
+			t.Fatalf("ProcessGooglePlayNotification of a %s replacement: %v", fixture, err)
+		}
+		if got := env.recordedSubscription(t); got.id != before.id || got.storeID != oldToken || got.planID != env.plan.ID || got.status != "active" || !got.periodEnd.Equal(expiry) {
+			t.Fatalf("after a %s replacement recorded %+v, want %s still active on %s until %s", fixture, got, before.id, oldToken, expiry)
+		}
+	}
+	env.requireEntitlement(t, publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION, "after a replacement that was never paid for")
+	if got := env.subscriptionRows(t); got != 1 {
+		t.Fatalf("subscriptions recorded = %d, want the one", got)
+	}
+}
+
+// Two changes of plan whose notifications arrive newest first still reach the
+// subscription they continue: the newest takes the recorded row over through
+// the replacement between them, and the older one, arriving last, changes
+// nothing.
+func TestDBGooglePlayReplacementsArrivingOutOfOrderFindTheRecordedSubscription(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	yearly := env.pg.SeedSubscriptionPlan(t, env.tenant.ID, testutil.SubscriptionPlanSeed{Published: true, GooglePlayProductID: "plan_yearly"})
+	const first, second, third = "play-subscription-first.AO-J1Oy", "play-subscription-second.AO-J1Oy", "play-subscription-third.AO-J1Oy"
+	env.mustConfirmGooglePlaySubscription(t, first, time.Now().Add(time.Hour))
+	before := env.recordedSubscription(t)
+	intent := env.recordedIntent(t)
+
+	env.play.PutSubscription(t, storeTestPackageName, second, googleplaytest.SubscriptionExpired, storeSubscriptionGooglePlayProduct, intent, time.Now())
+	env.play.LinkSubscription(storeTestPackageName, second, first)
+	expiry := time.Now().Add(365 * 24 * time.Hour).Truncate(time.Millisecond).UTC()
+	env.play.PutSubscription(t, storeTestPackageName, third, googleplaytest.SubscriptionActive, "plan_yearly", intent, expiry)
+	env.play.LinkSubscription(storeTestPackageName, third, second)
+
+	for _, token := range []string{third, second} {
+		if err := env.notifyGooglePlay(t, env.pushAuthorization(t), playSubscriptionNotification(playPurchased, token)); err != nil {
+			t.Fatalf("ProcessGooglePlayNotification of %s: %v", token, err)
+		}
+		if got := env.recordedSubscription(t); got.id != before.id || got.storeID != third || got.planID != yearly.ID || got.status != "active" || !got.periodEnd.Equal(expiry) {
+			t.Fatalf("after the notification of %s recorded %+v, want %s on %s, the yearly plan until %s", token, got, before.id, third, expiry)
+		}
+	}
+	if got := env.subscriptionRows(t); got != 1 {
+		t.Fatalf("subscriptions recorded = %d, want the one", got)
+	}
+}
+
 // A voided purchase of a one-time product takes the purchase back, as the
 // hourly sync of voided purchases does; one of a subscription closes it.
 func TestDBGooglePlayVoidedPurchaseNotificationTakesThePurchaseBack(t *testing.T) {

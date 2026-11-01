@@ -77,7 +77,7 @@ func (s *apiServer) ProcessAppStoreNotification(
 		}
 		err := s.followStoreSubscription(ctx, tenant.ID, storesubscription.ProviderAppStore, transaction.OriginalTransactionID, func() (storeSubscription, error) {
 			return s.verifyAppStoreSubscription(ctx, tenant.ID, transaction)
-		}, "notification_uuid", notification.NotificationUUID, "notification_type", notification.NotificationType, "subtype", notification.Subtype)
+		}, nil, "notification_uuid", notification.NotificationUUID, "notification_type", notification.NotificationType, "subtype", notification.Subtype)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +190,7 @@ func (s *apiServer) ProcessGooglePlayNotification(
 	follow := func(token string, attrs ...any) error {
 		return s.followStoreSubscription(ctx, tenant.ID, storesubscription.ProviderGooglePlay, token, func() (storeSubscription, error) {
 			return s.verifyGooglePlaySubscription(ctx, tenant.ID, "", token)
-		}, append([]any{"message_id", push.MessageID}, attrs...)...)
+		}, s.googlePlaySubscriptionReader(ctx, tenant.ID), append([]any{"message_id", push.MessageID}, attrs...)...)
 	}
 	switch {
 	case notification.SubscriptionNotification != nil && notification.SubscriptionNotification.PurchaseToken != "":
@@ -236,8 +236,8 @@ func (s *apiServer) recordGooglePlayRefund(ctx context.Context, tenantID uuid.UU
 // followStoreSubscription records a subscription a store notified about as the
 // store reports it now. A subscription nobody has claimed is logged and left
 // unrecorded.
-func (s *apiServer) followStoreSubscription(ctx context.Context, tenantID uuid.UUID, provider, subscriptionID string, verify func() (storeSubscription, error), attrs ...any) error {
-	_, err := s.recordStoreSubscription(ctx, tenantID, uuid.NullUUID{}, provider, subscriptionID, verify)
+func (s *apiServer) followStoreSubscription(ctx context.Context, tenantID uuid.UUID, provider, subscriptionID string, verify func() (storeSubscription, error), predecessor storeSubscriptionReader, attrs ...any) error {
+	_, err := s.recordStoreSubscription(ctx, tenantID, uuid.NullUUID{}, provider, subscriptionID, verify, predecessor)
 	if errors.Is(err, errStoreSubscriptionUnclaimed) {
 		s.logger.WarnContext(ctx, "a store notified about a subscription no reader has claimed",
 			append([]any{"tenant_id", tenantID, "store", provider}, attrs...)...)

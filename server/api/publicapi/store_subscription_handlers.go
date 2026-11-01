@@ -147,7 +147,15 @@ type storeSubscription struct {
 	// replaces is the store ID of the subscription this one replaced, as a
 	// Google Play change of plan names it; empty otherwise.
 	replaces string
+	// pending is a Google Play purchase nobody has paid for yet, or whose
+	// payment never went through.
+	pending bool
 }
+
+// storeSubscriptionReader asks the store for the subscription it knows as
+// subscriptionID, which is how the subscriptions a Google Play purchase
+// replaced are followed back to the one recorded.
+type storeSubscriptionReader func(subscriptionID string) (storeSubscription, error)
 
 func (s *apiServer) ConfirmStoreSubscription(
 	ctx context.Context,
@@ -170,6 +178,7 @@ func (s *apiServer) ConfirmStoreSubscription(
 	var (
 		provider, subscriptionID string
 		verify                   func() (storeSubscription, error)
+		predecessor              storeSubscriptionReader
 	)
 	switch req.Store {
 	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE:
@@ -194,6 +203,7 @@ func (s *apiServer) ConfirmStoreSubscription(
 		verify = func() (storeSubscription, error) {
 			return s.verifyGooglePlaySubscription(ctx, tenant.ID, productID, signed)
 		}
+		predecessor = s.googlePlaySubscriptionReader(ctx, tenant.ID)
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
 	}
@@ -201,7 +211,7 @@ func (s *apiServer) ConfirmStoreSubscription(
 		return nil, err
 	}
 
-	row, err := s.recordStoreSubscription(ctx, tenant.ID, uuid.NullUUID{UUID: user.ID, Valid: true}, provider, subscriptionID, verify)
+	row, err := s.recordStoreSubscription(ctx, tenant.ID, uuid.NullUUID{UUID: user.ID, Valid: true}, provider, subscriptionID, verify, predecessor)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +368,16 @@ func (s *apiServer) verifyGooglePlaySubscription(ctx context.Context, tenantID u
 		state:          state,
 		acknowledge:    paid && purchase.AcknowledgementState != googleplay.AcknowledgementStateAcknowledged,
 		replaces:       purchase.LinkedPurchaseToken,
+		pending:        !paid,
 	}, nil
+}
+
+// googlePlaySubscriptionReader reads a Google Play subscription by its token
+// alone, for the product it bills.
+func (s *apiServer) googlePlaySubscriptionReader(ctx context.Context, tenantID uuid.UUID) storeSubscriptionReader {
+	return func(token string) (storeSubscription, error) {
+		return s.verifyGooglePlaySubscription(ctx, tenantID, "", token)
+	}
 }
 
 // errStoreSubscriptionUnclaimed reports a subscription a store notified about
@@ -377,9 +396,14 @@ var errStoreSubscriptionUnclaimed = errors.New("the store subscription is not cl
 // intent its account token names, which has to be the caller's when there is
 // one; a later one, as an app restoring its purchases or a notification of a
 // renewal sends, updates the subscription already recorded, which has to be
-// the caller's too, and keeps the reader it was recorded for. A Google Play
-// subscription that replaced one already recorded, as a change of plan does,
-// takes that one's place rather than looking for an intent.
+// the caller's too, and keeps the reader it was recorded for.
+//
+// A Google Play subscription that replaced one already recorded, as a change
+// of plan does, takes that one's place rather than looking for an intent,
+// however many replacements lie between the two: predecessor, nil for a store
+// that names no replacement, reads each of them. A replacement still pending
+// replaces nothing yet, so the recorded subscription is read and written as it
+// stands instead.
 //
 // The read from the store, the read of the recorded row, and the write all
 // happen under the subscription's lock, as recordSubscription does for a
@@ -393,6 +417,7 @@ func (s *apiServer) recordStoreSubscription(
 	caller uuid.NullUUID,
 	provider, subscriptionID string,
 	verify func() (storeSubscription, error),
+	predecessor storeSubscriptionReader,
 ) (dbmodels.RecordStoreSubscriptionRow, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -416,21 +441,21 @@ func (s *apiServer) recordStoreSubscription(
 	if err != nil {
 		return dbmodels.RecordStoreSubscriptionRow{}, err
 	}
-	// The subscription a change of plan replaced is taken under its own lock,
-	// after this one's; nothing takes the two in the other order.
 	replaced := false
-	if !recorded && subscription.replaces != "" {
-		if err := txq.LockStoreSubscription(ctx, dbmodels.LockStoreSubscriptionParams{
-			TenantID:            tenantID,
-			Provider:            subscription.provider,
-			StoreSubscriptionID: subscription.replaces,
-		}); err != nil {
-			return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
-		}
-		if existing, replaced, err = s.lookUpStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.replaces); err != nil {
+	if !recorded && subscription.replaces != "" && predecessor != nil {
+		row, token, found, err := s.findReplacedStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.replaces, predecessor)
+		if err != nil {
 			return dbmodels.RecordStoreSubscriptionRow{}, err
 		}
-		recorded = replaced
+		switch {
+		case found && subscription.pending:
+			if subscription, err = predecessor(token); err != nil {
+				return dbmodels.RecordStoreSubscriptionRow{}, err
+			}
+			existing, recorded = row, true
+		case found:
+			existing, recorded, replaced = row, true, true
+		}
 	}
 	if recorded && caller.Valid && existing.UserID != caller {
 		return dbmodels.RecordStoreSubscriptionRow{}, connect.NewError(connect.CodePermissionDenied, "subscription belongs to another reader")
@@ -539,6 +564,52 @@ func (s *apiServer) recordStoreSubscription(
 		"replaced", replaced,
 	)
 	return row, nil
+}
+
+// maxStoreSubscriptionReplacements bounds how many replacements are followed
+// back from a subscription, so tokens that name one another in a loop end the
+// search rather than holding the transaction.
+const maxStoreSubscriptionReplacements = 8
+
+// findReplacedStoreSubscription follows a subscription's replacements back,
+// from the one it names, to the one recorded, and answers that row and its
+// store ID. A replacement whose notification arrives before the one it
+// replaced has been recorded under its own token still finds the subscription
+// they both continue. Each token is locked before it is looked up, newest
+// first, the order every caller takes them in.
+func (s *apiServer) findReplacedStoreSubscription(
+	ctx context.Context,
+	txq *dbmodels.Queries,
+	tenantID uuid.UUID,
+	provider, replaces string,
+	predecessor storeSubscriptionReader,
+) (dbmodels.GetStoreSubscriptionRow, string, bool, error) {
+	token := replaces
+	for range maxStoreSubscriptionReplacements {
+		if err := txq.LockStoreSubscription(ctx, dbmodels.LockStoreSubscriptionParams{
+			TenantID:            tenantID,
+			Provider:            provider,
+			StoreSubscriptionID: token,
+		}); err != nil {
+			return dbmodels.GetStoreSubscriptionRow{}, "", false, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
+		}
+		row, found, err := s.lookUpStoreSubscription(ctx, txq, tenantID, provider, token)
+		if err != nil || found {
+			return row, token, found, err
+		}
+		earlier, err := predecessor(token)
+		if connect.CodeOf(err) == connect.CodeInvalidArgument {
+			return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
+		}
+		if err != nil {
+			return dbmodels.GetStoreSubscriptionRow{}, "", false, err
+		}
+		if earlier.replaces == "" {
+			return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
+		}
+		token = earlier.replaces
+	}
+	return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
 }
 
 func (s *apiServer) lookUpStoreSubscription(ctx context.Context, txq *dbmodels.Queries, tenantID uuid.UUID, provider, subscriptionID string) (dbmodels.GetStoreSubscriptionRow, bool, error) {

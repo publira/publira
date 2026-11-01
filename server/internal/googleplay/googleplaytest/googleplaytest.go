@@ -39,6 +39,9 @@ const (
 	SubscriptionGracePeriod  = "subscription_in_grace_period"
 	SubscriptionOnHold       = "subscription_on_hold"
 	SubscriptionExpired      = "subscription_expired"
+	// SubscriptionPendingCanceled is a purchase canceled before it was paid
+	// for.
+	SubscriptionPendingCanceled = "subscription_pending_purchase_canceled"
 )
 
 // Server is a Google Play Developer API holding the purchases a test put.
