@@ -228,7 +228,7 @@ Above the totals the screen says where the month stands:
 - **This month is over and ready to close.** **Close month** closes it.
 - **This month closes automatically on** a date. The month is closed by `publira worker` on that date, and the console offers no way to close it by hand.
 
-![Royalties showing January 2026: Closed statements and Closing settings at the top, the Month field with Show, the open month's Sales, Refunds, Refund adjustments, and Payout to authors, This month is over and ready to close with Close month, and Lines by author, with each Author's lines and subtotal.](./reports-and-royalties-open-month.png)
+![Royalties showing January 2026: Closed statements and Closing settings at the top, the Month field with Show, the open month's Sales, Refunds, Refund adjustments, and Payout to authors, This month is over and ready to close with Close month, and Lines by author, with each Author's line of sales and line marked Subscription share, followed by their Sales subtotal, Subscription subtotal, and Subtotal.](./reports-and-royalties-open-month.png)
 
 ### Before you close a month
 
