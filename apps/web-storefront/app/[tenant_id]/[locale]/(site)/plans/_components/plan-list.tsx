@@ -17,7 +17,10 @@ import {
   holdsSubscription,
   listSubscriptionPlans,
 } from "#lib/subscriptions";
-import type { SubscriptionPlanItem } from "#lib/subscriptions";
+import type {
+  SubscriptionItem,
+  SubscriptionPlanItem,
+} from "#lib/subscriptions";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -134,13 +137,51 @@ const PlanScope = ({
 };
 
 /**
+ * Which plan the reader already holds, and which store bills it when one
+ * does. Each branch writes its own key out.
+ */
+const HeldPlan = ({
+  planName,
+  store,
+}: {
+  planName: string;
+  store: SubscriptionItem["store"];
+}) => {
+  if (store === "app_store") {
+    return (
+      <Message
+        message="storefront.plans.already_subscribed_app_store"
+        values={{ plan: planName }}
+      />
+    );
+  }
+
+  if (store === "google_play") {
+    return (
+      <Message
+        message="storefront.plans.already_subscribed_google_play"
+        values={{ plan: planName }}
+      />
+    );
+  }
+
+  return (
+    <Message
+      message="storefront.plans.already_subscribed"
+      values={{ plan: planName }}
+    />
+  );
+};
+
+/**
  * The plans with the one control each offers this reader: a subscribe button,
  * the way to sign in first, or nothing while they already hold a plan or the
  * site cannot sell one.
  *
  * One reader holds one subscription, so a reader who already holds one is
- * told which, and sent to My Page where it is changed, instead of being
- * offered a checkout the API would refuse.
+ * told which, and which store bills it when one does, and sent to My Page
+ * where it is changed, instead of being offered a checkout the API would
+ * refuse.
  */
 export const PlanList = async () => {
   const [tenantId, locale, sessionId] = await Promise.all([
@@ -198,10 +239,7 @@ export const PlanList = async () => {
       {held ? (
         <p className="rounded-control border border-border px-4 py-3 text-sm">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message
-              message="storefront.plans.already_subscribed"
-              values={{ plan: held.plan.name }}
-            />
+            <HeldPlan planName={held.plan.name} store={held.store} />
           </Suspense>{" "}
           <LocaleLink
             className="text-primary underline underline-offset-4"

@@ -245,4 +245,86 @@ test.describe("web-storefront subscriptions", () => {
       planSection(page).getByText(STOREFRONT_SUBSCRIPTIONS_PLAN.name)
     ).toBeVisible();
   });
+
+  test("a reader who subscribed in the App Store manages it there, not in Stripe", async ({
+    page,
+  }) => {
+    // The row is this test's own. The scenario leaves the plan with no
+    // subscriber, which is what the screenshots of the plan list show.
+    runSql(`
+      DELETE FROM subscriptions
+      WHERE id = '018f11a0-000c-7000-8000-000000000001';
+      DELETE FROM users WHERE public_id = 'SbsfMMBRAAA2';
+      WITH reader AS (
+        INSERT INTO users (
+          id, tenant_id, public_id, email, password_hash, name, status, email_verified_at
+        )
+        SELECT
+          '018f11a0-0002-7000-8000-000000000003'::uuid,
+          t.id,
+          'SbsfMMBRAAA2',
+          'subs-store-reader@example.com',
+          '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+          'Store Plan Reader',
+          'active',
+          NOW()
+        FROM tenants t
+        WHERE t.public_id = 'SbsfTNNTAAA1'
+        RETURNING id, tenant_id
+      )
+      INSERT INTO subscriptions (
+        id, tenant_id, user_id, plan_id, provider,
+        store_subscription_id, store_product_id, status, current_period_end
+      )
+      SELECT
+        '018f11a0-000c-7000-8000-000000000001'::uuid,
+        reader.tenant_id,
+        reader.id,
+        p.id,
+        'app_store',
+        '2000000500000001',
+        'night_pass_monthly',
+        'active',
+        NOW() + INTERVAL '20 days'
+      FROM reader
+      JOIN subscription_plans p
+        ON p.tenant_id = reader.tenant_id
+        AND p.public_id = '${STOREFRONT_SUBSCRIPTIONS_PLAN.publicId}';
+    `);
+
+    await signInAsMember(
+      page,
+      {
+        email: "subs-store-reader@example.com",
+        password: "memberpass",
+      },
+      "/my",
+      WEB_STOREFRONT_SUBSCRIPTIONS_BASE_URL
+    );
+
+    const section = planSection(page);
+    await expect(
+      section.getByText(STOREFRONT_SUBSCRIPTIONS_PLAN.name)
+    ).toBeVisible();
+    await expect(section.getByText(/^Renews on /u)).toBeVisible();
+    await expect(
+      section.getByText("Billed through the App Store.")
+    ).toBeVisible();
+    await expect(
+      section.getByRole("link", { name: "Manage in the App Store" })
+    ).toHaveAttribute("href", "https://apps.apple.com/account/subscriptions");
+    await expect(
+      section.getByRole("button", { name: "Manage billing" })
+    ).toHaveCount(0);
+
+    await page.goto(storefrontUrl("/plans"));
+    await expect(
+      page.getByText(
+        `You are subscribed to ${STOREFRONT_SUBSCRIPTIONS_PLAN.name} through the App Store.`
+      )
+    ).toBeVisible();
+    await expect(
+      planCard(page).getByRole("button", { name: "Subscribe" })
+    ).toHaveCount(0);
+  });
 });

@@ -6,6 +6,7 @@ import {
 } from "@publira/api-client/errors";
 import {
   ClientSurface,
+  InAppPurchaseStore,
   SubscriptionInterval,
   SubscriptionPlanScope,
   SubscriptionStatus,
@@ -78,6 +79,11 @@ export interface SubscriptionItem {
   currentPeriodEnd: string;
   /** Whether the reader canceled it, which ends it at `currentPeriodEnd`. */
   cancelAtPeriodEnd: boolean;
+  /**
+   * The store the reader subscribed through, which is where they change or
+   * cancel it. Null when Stripe bills the subscription.
+   */
+  store: "app_store" | "google_play" | null;
 }
 
 export type GetMySubscriptionResult =
@@ -246,8 +252,16 @@ export const listSubscriptionPlans = async (
  */
 type RawSubscription = Pick<
   Subscription,
-  "cancelAtPeriodEnd" | "currentPeriodEnd" | "plan" | "status"
+  "cancelAtPeriodEnd" | "currentPeriodEnd" | "plan" | "status" | "store"
 >;
+
+/** A store this build names. One it does not reads as Stripe's, which is null. */
+const subscriptionStores: Partial<
+  Record<InAppPurchaseStore, SubscriptionItem["store"]>
+> = {
+  [InAppPurchaseStore.APP_STORE]: "app_store",
+  [InAppPurchaseStore.GOOGLE_PLAY]: "google_play",
+};
 
 /**
  * A subscription in a state this build has no name for reads as none: the
@@ -267,13 +281,15 @@ const toSubscriptionItem = (
     currentPeriodEnd: subscription.currentPeriodEnd ?? "",
     plan: { name: subscription.plan?.name ?? "" },
     status,
+    store: subscriptionStores[subscription.store] ?? null,
   };
 };
 
 /**
  * Whether the reader holds a subscription a new checkout would be refused
- * for: one that is still billing, or one Stripe has stopped retrying but not
- * ended. Changing it is what the billing portal is for.
+ * for: one that is still billing, or one the provider has stopped retrying
+ * but not ended. Changing it is what the billing portal, or the store that
+ * bills it, is for. Which of the two bills it does not change the answer.
  */
 export const holdsSubscription = (subscription: SubscriptionItem): boolean =>
   subscription.status === "active" ||
@@ -287,10 +303,10 @@ export const holdsSubscription = (subscription: SubscriptionItem): boolean =>
  * failing that the latest one that is, and `null` for a reader who has never
  * subscribed.
  *
- * Uncached, because it is one reader's own answer and it changes when Stripe's
- * notification reaches the API, which tells this app nothing — a reader coming
- * back from the checkout or the billing portal has to see the state as it now
- * stands.
+ * Uncached, because it is one reader's own answer and it changes when the
+ * provider's notification reaches the API, which tells this app nothing — a
+ * reader coming back from the checkout, the billing portal, or the store has
+ * to see the state as it now stands.
  *
  * A session the API rejects is reported as `requiresSignIn` rather than as no
  * subscription, so a subscriber is never told they hold none.

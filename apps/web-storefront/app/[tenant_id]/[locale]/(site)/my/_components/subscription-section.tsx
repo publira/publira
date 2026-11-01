@@ -28,6 +28,16 @@ import { openBillingPortalAction } from "../_lib/actions";
  */
 const PLAN_HEADING_ID = "plan-heading";
 
+/**
+ * The stores' own pages for the subscriptions on the reader's account. A
+ * store subscription is changed and canceled there, outside this site.
+ */
+const APP_STORE_SUBSCRIPTIONS_URL =
+  "https://apps.apple.com/account/subscriptions";
+
+const GOOGLE_PLAY_SUBSCRIPTIONS_URL =
+  "https://play.google.com/store/account/subscriptions";
+
 const PlanSection = ({ children }: { children: ReactNode }) => (
   <section
     aria-labelledby={PLAN_HEADING_ID}
@@ -89,11 +99,27 @@ const PlanState = ({
     }
 
     case "past_due": {
+      if (subscription.store === "app_store") {
+        return <Message message="storefront.my.plan_past_due_app_store" />;
+      }
+
+      if (subscription.store === "google_play") {
+        return <Message message="storefront.my.plan_past_due_google_play" />;
+      }
+
       return <Message message="storefront.my.plan_past_due" />;
     }
 
     case "paused":
     case "unpaid": {
+      if (subscription.store === "app_store") {
+        return <Message message="storefront.my.plan_on_hold_app_store" />;
+      }
+
+      if (subscription.store === "google_play") {
+        return <Message message="storefront.my.plan_on_hold_google_play" />;
+      }
+
       return <Message message="storefront.my.plan_on_hold" />;
     }
 
@@ -108,9 +134,92 @@ const PlanState = ({
 };
 
 /**
- * The reader's plan: which one, where it stands, and the way into Stripe's
- * billing portal, where it is changed or canceled. A reader whose plan is over
- * is offered the plans again.
+ * The store the subscription is billed through. Stripe's has no such line.
+ */
+const StoreBilling = ({ store }: { store: SubscriptionItem["store"] }) => {
+  if (store === "app_store") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <Message message="storefront.my.billed_through_app_store" />
+        </Suspense>
+      </p>
+    );
+  }
+
+  if (store === "google_play") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          <Message message="storefront.my.billed_through_google_play" />
+        </Suspense>
+      </p>
+    );
+  }
+
+  return null;
+};
+
+/**
+ * The way to change or cancel the subscription. A store bills it on its own
+ * page, which is outside this site, so that way is a plain link. Stripe's is
+ * the billing portal.
+ */
+const ManageSubscription = ({
+  store,
+  tenantId,
+}: {
+  store: SubscriptionItem["store"];
+  tenantId: string;
+}) => {
+  if (store === "app_store") {
+    return (
+      <LinkButton
+        href={APP_STORE_SUBSCRIPTIONS_URL}
+        rel="noopener noreferrer"
+        target="_blank"
+        variant="outline"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <Message message="storefront.my.manage_in_app_store" />
+        </Suspense>
+      </LinkButton>
+    );
+  }
+
+  if (store === "google_play") {
+    return (
+      <LinkButton
+        href={GOOGLE_PLAY_SUBSCRIPTIONS_URL}
+        rel="noopener noreferrer"
+        target="_blank"
+        variant="outline"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <Message message="storefront.my.manage_in_google_play" />
+        </Suspense>
+      </LinkButton>
+    );
+  }
+
+  return (
+    <form action={openBillingPortalAction}>
+      <LocaleField />
+      <input name="tenantId" type="hidden" value={tenantId} />
+      {/* Changing a card or reading an invoice is occasional, so the
+        portal stays outlined rather than taking the page's Shu. */}
+      <Button type="submit" variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="storefront.my.manage_billing" />
+        </Suspense>
+      </Button>
+    </form>
+  );
+};
+
+/**
+ * The reader's plan: which one, where it stands, and the way to change or
+ * cancel it. A reader whose plan is over is offered the plans again.
  *
  * A reader who has never subscribed sees the section only where the site sells
  * a plan, as the way to the plan page; on a site that sells none it would be a
@@ -190,19 +299,10 @@ export const SubscriptionSection = async () => {
               />
             </Suspense>
           </p>
+          <StoreBilling store={subscription.store} />
         </div>
         <div className="flex flex-wrap gap-3">
-          <form action={openBillingPortalAction}>
-            <LocaleField />
-            <input name="tenantId" type="hidden" value={tenantId} />
-            {/* Changing a card or reading an invoice is occasional, so the
-              portal stays outlined rather than taking the page's Shu. */}
-            <Button type="submit" variant="outline">
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="storefront.my.manage_billing" />
-              </Suspense>
-            </Button>
-          </form>
+          <ManageSubscription store={subscription.store} tenantId={tenantId} />
           {over ? <SeePlansLink /> : null}
         </div>
       </div>
