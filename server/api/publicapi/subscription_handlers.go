@@ -714,8 +714,9 @@ func recordIDStrings(ids []uuid.UUID) []string {
 // the subscription as the provider holds it now: the notification of the
 // payment can arrive before the one that starts the subscription, and a paid
 // renewal moves its period on. A redelivered notification records nothing
-// twice. A refund whose notification overtook the payment's is applied once
-// the payment commits.
+// twice. A refund whose notification overtook the payment's is applied and
+// released in the same transaction, so a payment is never committed without
+// the refund held for it.
 func (s *apiServer) recordSubscriptionPayment(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -732,8 +733,7 @@ func (s *apiServer) recordSubscriptionPayment(
 	if event.PaymentID != "" {
 		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
 	}
-	var recorded bool
-	err := s.recordSubscription(ctx, tenantID, provider, credentials, paymentprovider.SubscriptionChanged{ID: event.ID, SubscriptionID: event.SubscriptionID},
+	return s.recordSubscription(ctx, tenantID, provider, credentials, paymentprovider.SubscriptionChanged{ID: event.ID, SubscriptionID: event.SubscriptionID},
 		func(ctx context.Context, queries *dbmodels.Queries, subscription dbmodels.RecordSubscriptionFromStripeRow) error {
 			payment, err := queries.RecordSubscriptionPayment(ctx, dbmodels.RecordSubscriptionPaymentParams{
 				ID:                    uuid.Must(uuid.NewV7()),
@@ -755,7 +755,11 @@ func (s *apiServer) recordSubscriptionPayment(
 			if err != nil {
 				return s.internalDBError(ctx, "failed to record a subscription payment", err, logAttrs...)
 			}
-			recorded = true
+			if paymentID.Valid {
+				if err := s.applyHeldRefundToSubscriptionPayment(ctx, queries, tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
+					return s.internalDBError(ctx, "failed to apply a held refund to a subscription payment", err, logAttrs...)
+				}
+			}
 			s.logger.InfoContext(ctx, "recorded a subscription payment", append(logAttrs,
 				"subscription_payment_id", payment.ID,
 				"subscription_id", subscription.ID,
@@ -764,13 +768,6 @@ func (s *apiServer) recordSubscriptionPayment(
 			)...)
 			return nil
 		})
-	if err != nil || !recorded || !paymentID.Valid {
-		return err
-	}
-	if err := s.applyHeldRefundToSubscriptionPayment(ctx, s.queriesFor(ctx), tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
-		return s.internalDBError(ctx, "failed to apply a held refund to a subscription payment", err, logAttrs...)
-	}
-	return nil
 }
 
 // applyHeldRefundToSubscriptionPayment writes the refund held for paymentID
