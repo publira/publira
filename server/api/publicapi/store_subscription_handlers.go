@@ -402,8 +402,9 @@ var errStoreSubscriptionUnclaimed = errors.New("the store subscription is not cl
 // of plan does, takes that one's place rather than looking for an intent,
 // however many replacements lie between the two: predecessor, nil for a store
 // that names no replacement, reads each of them. A replacement still pending
-// replaces nothing yet, so the recorded subscription is read and written as it
-// stands instead.
+// replaces nothing yet, so the newest paid replacement between it and the
+// recorded subscription takes that place instead, or, when there is none, the
+// recorded subscription is read and written as it stands.
 //
 // The read from the store, the read of the recorded row, and the write all
 // happen under the subscription's lock, as recordSubscription does for a
@@ -443,11 +444,14 @@ func (s *apiServer) recordStoreSubscription(
 	}
 	replaced := false
 	if !recorded && subscription.replaces != "" && predecessor != nil {
-		row, token, found, err := s.findReplacedStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.replaces, predecessor)
+		row, token, paid, found, err := s.findReplacedStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.replaces, predecessor)
 		if err != nil {
 			return dbmodels.RecordStoreSubscriptionRow{}, err
 		}
 		switch {
+		case found && subscription.pending && paid != nil:
+			subscription = *paid
+			existing, recorded, replaced = row, true, true
 		case found && subscription.pending:
 			if subscription, err = predecessor(token); err != nil {
 				return dbmodels.RecordStoreSubscriptionRow{}, err
@@ -573,17 +577,19 @@ const maxStoreSubscriptionReplacements = 8
 
 // findReplacedStoreSubscription follows a subscription's replacements back,
 // from the one it names, to the one recorded, and answers that row and its
-// store ID. A replacement whose notification arrives before the one it
-// replaced has been recorded under its own token still finds the subscription
-// they both continue. Each token is locked before it is looked up, newest
-// first, the order every caller takes them in.
+// store ID, with the newest paid replacement it passed on the way, if any. A
+// replacement whose notification arrives before the one it replaced has been
+// recorded under its own token still finds the subscription they both
+// continue. Each token is locked before it is looked up, newest first, the
+// order every caller takes them in.
 func (s *apiServer) findReplacedStoreSubscription(
 	ctx context.Context,
 	txq *dbmodels.Queries,
 	tenantID uuid.UUID,
 	provider, replaces string,
 	predecessor storeSubscriptionReader,
-) (dbmodels.GetStoreSubscriptionRow, string, bool, error) {
+) (dbmodels.GetStoreSubscriptionRow, string, *storeSubscription, bool, error) {
+	var paid *storeSubscription
 	token := replaces
 	for range maxStoreSubscriptionReplacements {
 		if err := txq.LockStoreSubscription(ctx, dbmodels.LockStoreSubscriptionParams{
@@ -591,25 +597,28 @@ func (s *apiServer) findReplacedStoreSubscription(
 			Provider:            provider,
 			StoreSubscriptionID: token,
 		}); err != nil {
-			return dbmodels.GetStoreSubscriptionRow{}, "", false, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
+			return dbmodels.GetStoreSubscriptionRow{}, "", nil, false, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
 		}
 		row, found, err := s.lookUpStoreSubscription(ctx, txq, tenantID, provider, token)
 		if err != nil || found {
-			return row, token, found, err
+			return row, token, paid, found, err
 		}
 		earlier, err := predecessor(token)
 		if connect.CodeOf(err) == connect.CodeInvalidArgument {
-			return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
+			return dbmodels.GetStoreSubscriptionRow{}, "", nil, false, nil
 		}
 		if err != nil {
-			return dbmodels.GetStoreSubscriptionRow{}, "", false, err
+			return dbmodels.GetStoreSubscriptionRow{}, "", nil, false, err
+		}
+		if paid == nil && !earlier.pending {
+			paid = &earlier
 		}
 		if earlier.replaces == "" {
-			return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
+			return dbmodels.GetStoreSubscriptionRow{}, "", nil, false, nil
 		}
 		token = earlier.replaces
 	}
-	return dbmodels.GetStoreSubscriptionRow{}, "", false, nil
+	return dbmodels.GetStoreSubscriptionRow{}, "", nil, false, nil
 }
 
 func (s *apiServer) lookUpStoreSubscription(ctx context.Context, txq *dbmodels.Queries, tenantID uuid.UUID, provider, subscriptionID string) (dbmodels.GetStoreSubscriptionRow, bool, error) {

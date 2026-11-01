@@ -515,6 +515,39 @@ func TestDBGooglePlayPendingReplacementLeavesTheSubscriptionItWouldReplace(t *te
 	}
 }
 
+// A replacement that was never paid for, of a paid replacement not recorded
+// yet, leaves the reader on the paid one: the recorded row moves to it rather
+// than being read again as the subscription it replaced, which has expired.
+func TestDBGooglePlayPendingReplacementOfAnUnrecordedPaidOneMovesToThePaidOne(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	yearly := env.pg.SeedSubscriptionPlan(t, env.tenant.ID, testutil.SubscriptionPlanSeed{Published: true, GooglePlayProductID: "plan_yearly"})
+	env.pg.SeedSubscriptionPlan(t, env.tenant.ID, testutil.SubscriptionPlanSeed{Published: true, GooglePlayProductID: "plan_weekly"})
+	const first, paid, pending = "play-subscription-replaced.AO-J1Oy", "play-subscription-paid.AO-J1Oy", "play-subscription-unpaid.AO-J1Oy"
+	env.mustConfirmGooglePlaySubscription(t, first, time.Now().Add(time.Hour))
+	before := env.recordedSubscription(t)
+	intent := env.recordedIntent(t)
+
+	env.play.PutSubscription(t, storeTestPackageName, first, googleplaytest.SubscriptionExpired, storeSubscriptionGooglePlayProduct, intent, time.Now())
+	expiry := time.Now().Add(365 * 24 * time.Hour).Truncate(time.Millisecond).UTC()
+	env.play.PutSubscription(t, storeTestPackageName, paid, googleplaytest.SubscriptionActive, "plan_yearly", intent, expiry)
+	env.play.LinkSubscription(storeTestPackageName, paid, first)
+	env.play.PutSubscription(t, storeTestPackageName, pending, googleplaytest.SubscriptionPendingCanceled, "plan_weekly", intent, time.Now().Add(7*24*time.Hour))
+	env.play.LinkSubscription(storeTestPackageName, pending, paid)
+
+	if err := env.notifyGooglePlay(t, env.pushAuthorization(t), playSubscriptionNotification(playPurchased, pending)); err != nil {
+		t.Fatalf("ProcessGooglePlayNotification of the unpaid replacement: %v", err)
+	}
+	if got := env.recordedSubscription(t); got.id != before.id || got.storeID != paid || got.planID != yearly.ID || got.status != "active" || !got.periodEnd.Equal(expiry) {
+		t.Fatalf("after the unpaid replacement recorded %+v, want %s on %s, the yearly plan until %s", got, before.id, paid, expiry)
+	}
+	env.requireEntitlement(t, publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION, "after the unpaid replacement")
+	if got := env.subscriptionRows(t); got != 1 {
+		t.Fatalf("subscriptions recorded = %d, want the one", got)
+	}
+}
+
 // Two changes of plan whose notifications arrive newest first still reach the
 // subscription they continue: the newest takes the recorded row over through
 // the replacement between them, and the older one, arriving last, changes
