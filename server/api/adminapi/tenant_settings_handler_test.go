@@ -468,7 +468,7 @@ func TestUpdateTenantDefaultLocaleRequiresSession(t *testing.T) {
 }
 
 func tenantConfigColumns() []string {
-	return []string{"tenant_id", "created_at", "updated_at", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode", "age_verification", "purchase_availability", "app_store_url", "google_play_url", "terms_page_id", "privacy_page_id", "android_application_id", "android_sha256_cert_fingerprints", "ios_team_id", "ios_bundle_identifier", "app_purchase_route", "reader_icon_policy"}
+	return []string{"tenant_id", "created_at", "updated_at", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode", "age_verification", "purchase_availability", "app_store_url", "google_play_url", "terms_page_id", "privacy_page_id", "android_application_id", "android_sha256_cert_fingerprints", "ios_team_id", "ios_bundle_identifier", "app_purchase_route", "reader_icon_policy", "creator_pages_enabled", "creator_pages_show_sales"}
 }
 
 func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold int32) *sqlmock.Rows {
@@ -477,7 +477,7 @@ func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold i
 
 func tenantConfigRowWithAgeVerification(tenantID uuid.UUID, now time.Time, mode string, threshold int32, rule string) *sqlmock.Rows {
 	return sqlmock.NewRows(tenantConfigColumns()).
-		AddRow(tenantID, now, now, mode, threshold, "single", rule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload")
+		AddRow(tenantID, now, now, mode, threshold, "single", rule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload", false, false)
 }
 
 // expectTenantConfigLockedAs expects a settings save to lock the tenant's

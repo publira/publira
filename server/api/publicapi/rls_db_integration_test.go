@@ -238,6 +238,11 @@ var publicDataTables = []struct {
 	// creator's own episode, so it names a tenant's creators' accounts on
 	// this connection.
 	{name: "creator_accounts", count: "SELECT count(*) FROM creator_accounts"},
+	// What a linked reader's Author page reads of their creator: its
+	// followers, and its lines of the tenant's closed royalty statements.
+	{name: "creator_follower_counts", count: "SELECT count(*) FROM creator_follower_counts"},
+	{name: "royalty_statements", count: "SELECT count(*) FROM royalty_statements"},
+	{name: "royalty_statement_lines", count: "SELECT count(*) FROM royalty_statement_lines"},
 	{name: "episode_comment_reports", count: "SELECT count(*) FROM episode_comment_reports"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	// Written by the Stripe webhook rather than read by a page, and on the same
@@ -504,7 +509,14 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("push device", "INSERT INTO user_push_devices (tenant_id, user_id, token, platform) VALUES ($1, $2, 'fcm-token-a', 'android')", first.ID, member.ID)
 	seed("series follow", "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", first.ID, member.ID, series.ID)
 	seed("episode follow", "INSERT INTO episode_follows (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", first.ID, member.ID, episode.ID)
+	// The follow carries its tally: the trigger on creator_follows writes
+	// creator_follower_counts.
 	seed("creator follow", "INSERT INTO creator_follows (tenant_id, user_id, creator_id) VALUES ($1, $2, $3)", first.ID, member.ID, creator.ID)
+	statementID := uuid.Must(uuid.NewV7())
+	seed("royalty statement", `INSERT INTO royalty_statements (id, tenant_id, period, time_zone, total_gross, total_refunded, total_adjustment, total_payout, starts_at, ends_at, currency)
+		VALUES ($1, $2, '2026-01-01', 'UTC', 500, 0, 0, 50, '2026-01-01T00:00:00Z', '2026-02-01T00:00:00Z', 'JPY')`, statementID, first.ID)
+	seed("royalty statement line", `INSERT INTO royalty_statement_lines (tenant_id, statement_id, line_number, creator_id, creator_name, series_title, episode_title, sale_count, gross_amount, refunded_amount, share_bps, payout_amount)
+		VALUES ($1, $2, 1, $3, 'Creator', 'Series', 'Episode', 1, 500, 0, 1000, 50)`, first.ID, statementID, creator.ID)
 	commentID := uuid.Must(uuid.NewV7())
 	seed("comment", "INSERT INTO episode_comments (id, tenant_id, public_id, episode_id, user_id, body, status, published_at) VALUES ($1, $2, 'COMMENTA0001', $3, $4, 'A comment about this episode.', 'published', NOW())", commentID, first.ID, episode.ID, member.ID)
 	seed("comment report", "INSERT INTO episode_comment_reports (id, tenant_id, comment_id, reporter_user_id, reason) VALUES ($1, $2, $3, $4, 'spam')", uuid.Must(uuid.NewV7()), first.ID, commentID, member.ID)

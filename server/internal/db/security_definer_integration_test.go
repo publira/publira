@@ -266,6 +266,23 @@ func TestATemporaryTableDoesNotStandInForWhatASecurityDefinerFunctionTouches(t *
 		assertFollowChanges(t, "series follow changes", seriesFollowChanges(t, ctx, pg.DB, tenantID, seriesID), 1, -1)
 	})
 
+	t.Run("creator follower tally", func(t *testing.T) {
+		creatorID := mustInsertFollowCreator(t, ctx, pg.DB, tenantID, "SDFCREATOR01")
+		tables := []string{"creator_follower_counts"}
+		conn := scopedConn(t, ctx, pg.OpenPublicDB(t), tenantID, readerID)
+		shadow(t, ctx, conn, tables...)
+		if _, err := conn.ExecContext(ctx, `
+			INSERT INTO public.creator_follows (tenant_id, user_id, creator_id)
+			VALUES ($1, $2, $3)
+		`, tenantID, readerID, creatorID); err != nil {
+			t.Fatalf("follow a creator as publira_public: %v", err)
+		}
+		assertShadowsUntouched(t, ctx, conn, tables...)
+		if got := creatorFollowerCount(t, ctx, pg.DB, tenantID, creatorID); got != 1 {
+			t.Errorf("creator follower count = %d, want 1", got)
+		}
+	})
+
 	// Runs last: it deletes the episode the other cases rate.
 	t.Run("ratings of a deleted episode", func(t *testing.T) {
 		conn := scopedConn(t, ctx, pg.OpenAdminDB(t), tenantID, uuid.Nil)

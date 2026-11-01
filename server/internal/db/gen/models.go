@@ -278,6 +278,12 @@ type CreatorFollow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type CreatorFollowerCount struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	Count     int64     `json:"count"`
+}
+
 type CreatorImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
@@ -1627,6 +1633,8 @@ type TenantConfig struct {
 	IosBundleIdentifier            sql.NullString `json:"ios_bundle_identifier"`
 	AppPurchaseRoute               string         `json:"app_purchase_route"`
 	ReaderIconPolicy               string         `json:"reader_icon_policy"`
+	CreatorPagesEnabled            bool           `json:"creator_pages_enabled"`
+	CreatorPagesShowSales          bool           `json:"creator_pages_show_sales"`
 }
 
 type TenantConfigTranslation struct {

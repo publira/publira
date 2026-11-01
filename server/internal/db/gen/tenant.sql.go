@@ -106,7 +106,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const CreateTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id)
 VALUES ($1)
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
@@ -131,6 +131,8 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (T
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -326,7 +328,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const GetTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -354,7 +356,31 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
+	return i, err
+}
+
+const GetTenantCreatorPages = `-- name: GetTenantCreatorPages :one
+SELECT creator_pages_enabled,
+    creator_pages_show_sales
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1
+`
+
+type GetTenantCreatorPagesRow struct {
+	CreatorPagesEnabled   bool `json:"creator_pages_enabled"`
+	CreatorPagesShowSales bool `json:"creator_pages_show_sales"`
+}
+
+// A tenant with no config row has no row here either, and shows its creators
+// nothing, which is what the columns' defaults say.
+func (q *Queries) GetTenantCreatorPages(ctx context.Context, tenantID uuid.UUID) (GetTenantCreatorPagesRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantCreatorPages, tenantID)
+	var i GetTenantCreatorPagesRow
+	err := row.Scan(&i.CreatorPagesEnabled, &i.CreatorPagesShowSales)
 	return i, err
 }
 
@@ -633,7 +659,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 }
 
 const LockTenantConfigByTenantID = `-- name: LockTenantConfigByTenantID :one
-SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 FROM tenant_config
 WHERE tenant_id = $1
 FOR UPDATE
@@ -664,6 +690,8 @@ func (q *Queries) LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -862,7 +890,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 type UpsertTenantAgeVerificationParams struct {
@@ -893,6 +921,8 @@ func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTen
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -926,7 +956,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -965,6 +995,8 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -980,7 +1012,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET terms_page_id = EXCLUDED.terms_page_id,
     privacy_page_id = EXCLUDED.privacy_page_id,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 type UpsertTenantLegalPagesParams struct {
@@ -1013,6 +1045,8 @@ func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLe
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -1038,7 +1072,7 @@ SET android_application_id = EXCLUDED.android_application_id,
     ios_team_id = EXCLUDED.ios_team_id,
     ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 type UpsertTenantMobileAppAssociationParams struct {
@@ -1080,6 +1114,8 @@ func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg Upse
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }
@@ -1097,7 +1133,7 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     app_store_url = EXCLUDED.app_store_url,
     google_play_url = EXCLUDED.google_play_url,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
 `
 
 type UpsertTenantPurchaseSettingsParams struct {
@@ -1137,6 +1173,8 @@ func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTe
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
 		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
 	)
 	return i, err
 }

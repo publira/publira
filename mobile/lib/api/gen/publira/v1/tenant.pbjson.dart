@@ -223,6 +223,13 @@ const GetTenantResponse$json = {
       '6': '.publira.types.v1.TenantThemePalette',
       '10': 'darkTheme'
     },
+    {
+      '1': 'creator_pages_enabled',
+      '3': 29,
+      '4': 1,
+      '5': 8,
+      '10': 'creatorPagesEnabled'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -256,8 +263,9 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'DHNpZ25fdXBfb3BlbhgZIAEoCFIKc2lnblVwT3BlbhIzChZzaWduX3VwX2Nsb3NlZF9tZXNzYW'
     'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlEkIKC2JyYW5kX21hcmtzGBsgAygLMiEucHVi'
     'bGlyYS50eXBlcy52MS5UZW5hbnRCcmFuZE1hcmtSCmJyYW5kTWFya3MSQwoKZGFya190aGVtZR'
-    'gcIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlUglkYXJrVGhlbWVK'
-    'BAgQEBFKBAgREBJSCnRlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
+    'gcIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlUglkYXJrVGhlbWUS'
+    'MgoVY3JlYXRvcl9wYWdlc19lbmFibGVkGB0gASgIUhNjcmVhdG9yUGFnZXNFbmFibGVkSgQIEB'
+    'ARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2U=');
 
 @$core.Deprecated('Use tenantAppleSignInDescriptor instead')
 const TenantAppleSignIn$json = {

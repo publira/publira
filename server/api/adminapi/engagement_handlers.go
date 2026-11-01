@@ -12,19 +12,13 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/readthrough"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const (
 	defaultEpisodeReadThroughPageSize = int32(20)
 	maxEpisodeReadThroughPageSize     = int32(100)
-
-	// readThroughWindowDays is how many of the tenant's days the report covers,
-	// counted back from the last day the daily aggregate can have finished.
-	// Four whole weeks so every weekday contributes equally: a window of 30
-	// days weights two of them twice and makes the number move when the month
-	// does.
-	readThroughWindowDays = 28
 )
 
 // episodeReadThroughRow is one aggregated episode, from whichever sort
@@ -71,36 +65,10 @@ func mapEpisodeReadThroughAscRows(rows []dbmodels.ListEpisodeReadThroughAscRow) 
 	return mapped
 }
 
-// readThroughPeriod is the closed range of stat dates the report covers. The
-// dates are the tenant's calendar days, which is what content_daily_stats
-// stores, so the range is compared against stat_date as written.
-type readThroughPeriod struct {
-	start time.Time
-	end   time.Time
-}
-
-// resolveReadThroughPeriod ends the window on the last day the tenant has
-// finished, read in the tenant's own zone. Today is still accumulating, and
-// its stats row does not exist until the batch runs after that tenant's
-// midnight, so including it would put a partial day beside whole ones and make
-// the rate look like it fell.
-//
-// The dates come back at midnight UTC because they name calendar days rather
-// than instants: the queries bind them to a date column, and UTC keeps the day
-// arithmetic on them exact.
-func resolveReadThroughPeriod(now time.Time, location *time.Location) readThroughPeriod {
-	year, month, day := now.In(location).AddDate(0, 0, -1).Date()
-	end := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-	return readThroughPeriod{
-		start: end.AddDate(0, 0, -(readThroughWindowDays - 1)),
-		end:   end,
-	}
-}
-
 func (s *adminServer) episodeReadThroughPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	period readThroughPeriod,
+	period readthrough.Period,
 	keys pagination.CountUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -109,8 +77,8 @@ func (s *adminServer) episodeReadThroughPage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListEpisodeReadThroughAsc(ctx, dbmodels.ListEpisodeReadThroughAscParams{
 			TenantID:            tenantID,
-			PeriodStart:         period.start,
-			PeriodEnd:           period.end,
+			PeriodStart:         period.Start,
+			PeriodEnd:           period.End,
 			CursorEntityID:      uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorCompleteCount: sql.NullInt64{Int64: keys.Count, Valid: keys.Valid},
 			CursorInclusive:     keys.Inclusive,
@@ -124,8 +92,8 @@ func (s *adminServer) episodeReadThroughPage(
 
 	rows, err := queries.ListEpisodeReadThroughDesc(ctx, dbmodels.ListEpisodeReadThroughDescParams{
 		TenantID:            tenantID,
-		PeriodStart:         period.start,
-		PeriodEnd:           period.end,
+		PeriodStart:         period.Start,
+		PeriodEnd:           period.End,
 		CursorEntityID:      uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorCompleteCount: sql.NullInt64{Int64: keys.Count, Valid: keys.Valid},
 		CursorInclusive:     keys.Inclusive,
@@ -179,12 +147,12 @@ func (s *adminServer) ListEpisodeReadThrough(
 		return nil, s.internalError(ctx, "failed to load the tenant time zone", err,
 			"tenant_id", tenant.ID.String(), "time_zone", timeZone)
 	}
-	period := resolveReadThroughPeriod(time.Now(), location)
+	period := readthrough.Resolve(time.Now(), location)
 
 	totals, err := s.queriesFor(ctx).GetEpisodeReadThroughTotals(ctx, dbmodels.GetEpisodeReadThroughTotalsParams{
 		TenantID:    tenant.ID,
-		PeriodStart: period.start,
-		PeriodEnd:   period.end,
+		PeriodStart: period.Start,
+		PeriodEnd:   period.End,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to total episode read-through", err, "tenant_id", tenant.ID.String())
@@ -210,8 +178,8 @@ func (s *adminServer) ListEpisodeReadThrough(
 
 	res := &publiraadminv1.ListEpisodeReadThroughResponse{
 		Episodes:             episodes,
-		PeriodStart:          period.start.Format(time.DateOnly),
-		PeriodEnd:            period.end.Format(time.DateOnly),
+		PeriodStart:          period.Start.Format(time.DateOnly),
+		PeriodEnd:            period.End.Format(time.DateOnly),
 		TotalCompleteCount:   totals.CompleteCount,
 		TotalMemberViewCount: totals.MemberViewCount,
 		TimeZone:             timeZone,

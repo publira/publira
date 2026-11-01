@@ -937,6 +937,18 @@ type Querier interface {
 	GetMaxPageVersionNumberByTranslationID(ctx context.Context, translationID uuid.UUID) (int32, error)
 	// Where a newly created volume goes: after every volume the series has.
 	GetMaxVolumeOrderIndexForSeries(ctx context.Context, arg GetMaxVolumeOrderIndexForSeriesParams) (int32, error)
+	// What every episode crediting the creator that the surface shows now was read
+	// over the window, as ListMyCreatorEpisodeStatsDesc counts each. The episodes
+	// are those episode_creators credits, the rule the creator grant follows,
+	// rather than the series credit.
+	GetMyCreatorEpisodeStatsTotals(ctx context.Context, arg GetMyCreatorEpisodeStatsTotalsParams) (GetMyCreatorEpisodeStatsTotalsRow, error)
+	// The readers following one of the account's creators now. No row means the
+	// account is not linked to the creator; a linked creator nobody has followed
+	// has no tally row and counts 0.
+	GetMyCreatorFollowerCount(ctx context.Context, arg GetMyCreatorFollowerCountParams) (int64, error)
+	// One closed month with the sum of the creator's own lines of it, as
+	// ListMyCreatorStatementsDesc sums them. No row means the month is not closed.
+	GetMyCreatorStatement(ctx context.Context, arg GetMyCreatorStatementParams) (GetMyCreatorStatementRow, error)
 	// The score this reader has given the episode, or no row when they have not
 	// rated it.
 	GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRatingParams) (int16, error)
@@ -1291,6 +1303,9 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as nothing
 	// excluded.
 	GetTenantCrawlerSettings(ctx context.Context, tenantID uuid.UUID) (TenantCrawlerSetting, error)
+	// A tenant with no config row has no row here either, and shows its creators
+	// nothing, which is what the columns' defaults say.
+	GetTenantCreatorPages(ctx context.Context, tenantID uuid.UUID) (GetTenantCreatorPagesRow, error)
 	// No row is a tenant without a dark palette, which the caller answers as an
 	// absent one rather than as the light palette's defaults.
 	GetTenantDarkThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantThemeDark, error)
@@ -2153,6 +2168,40 @@ type Querier interface {
 	// DISTINCT FROM, which no btree index serves; the planner drops the branch the
 	// bound value rules out.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
+	// What the named episodes sold in the window, counted as ListEpisodeRevenueDesc
+	// counts an episode: each purchase that paid for it, at the part of its price
+	// the episode accounts for, less that part of what went back. An episode that
+	// sold nothing has no row.
+	ListMyCreatorEpisodeSales(ctx context.Context, arg ListMyCreatorEpisodeSalesParams) ([]ListMyCreatorEpisodeSalesRow, error)
+	// ListMyCreatorEpisodeStatsDesc walked the other way, to build a previous
+	// page. The order it describes is the same one.
+	ListMyCreatorEpisodeStatsAsc(ctx context.Context, arg ListMyCreatorEpisodeStatsAscParams) ([]ListMyCreatorEpisodeStatsAscRow, error)
+	// Each episode crediting the creator that the surface shows now, with what it
+	// was read over the window, zeros included, most completions first. The order
+	// is the console's read-through report's.
+	ListMyCreatorEpisodeStatsDesc(ctx context.Context, arg ListMyCreatorEpisodeStatsDescParams) ([]ListMyCreatorEpisodeStatsDescRow, error)
+	// The creator's own lines of a statement in the order they were closed in,
+	// read through the account's link to the creator as the sums are, with the
+	// public IDs of the catalog rows that still exist and the month an adjustment
+	// line adjusts.
+	ListMyCreatorStatementLinesAsc(ctx context.Context, arg ListMyCreatorStatementLinesAscParams) ([]ListMyCreatorStatementLinesAscRow, error)
+	// ListMyCreatorStatementLinesAsc walked backwards, for a previous-page token.
+	ListMyCreatorStatementLinesDesc(ctx context.Context, arg ListMyCreatorStatementLinesDescParams) ([]ListMyCreatorStatementLinesDescRow, error)
+	// ListMyCreatorStatementsDesc walked backwards, for a previous-page token.
+	ListMyCreatorStatementsAsc(ctx context.Context, arg ListMyCreatorStatementsAscParams) ([]ListMyCreatorStatementsAscRow, error)
+	// Every closed month, newest first, with the sum of the creator's own lines
+	// of it. The lines are read through the account's link to the creator, so no
+	// other creator's line is ever summed; a month that credited the creator
+	// nothing sums to zero. The period is unique per tenant, so it alone is the
+	// keyset.
+	ListMyCreatorStatementsDesc(ctx context.Context, arg ListMyCreatorStatementsDescParams) ([]ListMyCreatorStatementsDescRow, error)
+	// The Author pages: what a reader linked to a creator reads of that creator.
+	// Every query starts from the reader's own row of creator_accounts, the link
+	// the creator grant and the comment badge read too, so a page answers about
+	// no creator the reader is not linked to whatever ID the request names.
+	// The creators the account is linked to, oldest link first. The series count
+	// is the one PublishedCreator carries, on the calling surface.
+	ListMyCreators(ctx context.Context, arg ListMyCreatorsParams) ([]ListMyCreatorsRow, error)
 	// The backward direction of ListMyEpisodeReadsDesc.
 	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
 	// The episodes this reader has finished, most recently finished first.

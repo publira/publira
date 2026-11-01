@@ -190,7 +190,8 @@ $$;
 -- storefront connection could set the numbers its own tenant's readers see:
 -- their policies are tenant isolation, which does not stop that. The rating
 -- tallies are moved only by the SECURITY DEFINER triggers on episode_ratings,
--- and the follower tally and its changes only by the one on series_follows;
+-- the series follower tally and its changes only by the one on series_follows,
+-- and the creator follower tally only by the one on creator_follows;
 -- the daily stats, the tenant rating totals, the page reach of episodes, the
 -- readers' active days, the ranking snapshots, and the recommendation features
 -- are rebuilt by the maintenance batches as publira_content_stats, which keeps
@@ -229,6 +230,7 @@ BEGIN
         'series_rating_counts',
         'series_follower_counts',
         'series_follow_changes',
+        'creator_follower_counts',
         'content_daily_stats',
         'tenant_rating_totals',
         'episode_page_reach_stats',
@@ -328,6 +330,7 @@ REVOKE EXECUTE ON FUNCTION
     public.series_rating_counts_follow_ratings(),
     public.episode_ratings_follow_episode_deletes(),
     public.series_follows_record_change(),
+    public.creator_follows_record_change(),
     public.tenant_image_shown_by_brand_mark(uuid, uuid)
 FROM PUBLIC;
 

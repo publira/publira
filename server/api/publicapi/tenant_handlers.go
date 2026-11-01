@@ -62,8 +62,12 @@ func (s *apiServer) GetTenant(
 	googlePlayURL := ""
 	// The column's default: the app sells through the external checkout.
 	appPurchaseRoute := publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT
+	// The column's default too: a tenant shows its creators no pages until it
+	// turns them on.
+	creatorPagesEnabled := false
 
 	if err == nil {
+		creatorPagesEnabled = config.CreatorPagesEnabled
 		appStoreURL = config.AppStoreUrl.String
 		googlePlayURL = config.GooglePlayUrl.String
 		appPurchaseRoute, err = protomapper.AppPurchaseRouteFromStored(config.AppPurchaseRoute)
@@ -198,6 +202,7 @@ func (s *apiServer) GetTenant(
 		SignUpOpen:                signUp.Open,
 		SignUpClosedMessage:       signUpClosedMessage,
 		BrandMarks:                brandMarks,
+		CreatorPagesEnabled:       creatorPagesEnabled,
 	}, nil
 }
 

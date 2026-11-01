@@ -353,9 +353,13 @@ type GetTenantResponse struct {
 	// The colors the storefront and the app read in while the reader reads in
 	// dark. Absent where the tenant has saved no dark palette, and a client then
 	// derives one of its own or stays on theme's.
-	DarkTheme     *v1.TenantThemePalette `protobuf:"bytes,28,opt,name=dark_theme,json=darkTheme,proto3" json:"dark_theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DarkTheme *v1.TenantThemePalette `protobuf:"bytes,28,opt,name=dark_theme,json=darkTheme,proto3" json:"dark_theme,omitempty"`
+	// Whether the tenant shows a reader linked to a creator that creator's
+	// pages. While it is false every CreatorService RPC is refused, so a client
+	// offers no Author page and calls none of them.
+	CreatorPagesEnabled bool `protobuf:"varint,29,opt,name=creator_pages_enabled,json=creatorPagesEnabled,proto3" json:"creator_pages_enabled,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -568,6 +572,13 @@ func (x *GetTenantResponse) GetDarkTheme() *v1.TenantThemePalette {
 		return x.DarkTheme
 	}
 	return nil
+}
+
+func (x *GetTenantResponse) GetCreatorPagesEnabled() bool {
+	if x != nil {
+		return x.CreatorPagesEnabled
+	}
+	return false
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
@@ -1362,8 +1373,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xd9\n" +
-	"\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\x8d\v\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -1395,7 +1405,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\vbrand_marks\x18\x1b \x03(\v2!.publira.types.v1.TenantBrandMarkR\n" +
 	"brandMarks\x12C\n" +
 	"\n" +
-	"dark_theme\x18\x1c \x01(\v2$.publira.types.v1.TenantThemePaletteR\tdarkThemeJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"dark_theme\x18\x1c \x01(\v2$.publira.types.v1.TenantThemePaletteR\tdarkTheme\x122\n" +
+	"\x15creator_pages_enabled\x18\x1d \x01(\bR\x13creatorPagesEnabledJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"4\n" +
 	"\x11TenantAppleSignIn\x12\x1f\n" +
 	"\vservices_id\x18\x01 \x01(\tR\n" +

@@ -247,6 +247,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			nil,
 			"external_checkout",
 			"upload",
+			false,
+			false,
 		))
 	expectSiteCopy(mock, tenantID, "ja", "ja", "© Publira", "Site description", "Tagline")
 	expectPaymentsUnavailable(mock, tenantID)
@@ -994,6 +996,8 @@ func expectTenantConfigWithCommentMode(
 			nil,
 			"external_checkout",
 			"upload",
+			false,
+			false,
 		))
 }
 
@@ -1155,5 +1159,5 @@ func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload"))
+			AddRow(tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload", false, false))
 }

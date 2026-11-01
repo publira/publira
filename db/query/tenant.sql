@@ -263,6 +263,15 @@ FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1;
 
+-- name: GetTenantCreatorPages :one
+-- A tenant with no config row has no row here either, and shows its creators
+-- nothing, which is what the columns' defaults say.
+SELECT creator_pages_enabled,
+    creator_pages_show_sales
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1;
+
 -- name: UpsertTenantAppPurchaseRoute :one
 -- An upsert for the reason UpsertTenantCommentSettings gives.
 INSERT INTO tenant_config (tenant_id, app_purchase_route)
