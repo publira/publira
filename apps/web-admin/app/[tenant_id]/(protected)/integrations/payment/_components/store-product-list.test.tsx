@@ -7,6 +7,8 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { SubscriptionPlanItem } from "#lib/subscription-plan-shared";
+
 import { StoreProductList } from "./store-product-list";
 
 vi.mock("#lib/messages", () => ({
@@ -23,6 +25,25 @@ vi.mock("#components/message", () => ({
     values?: MessageValues;
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
+
+const plan: SubscriptionPlanItem = {
+  appStoreProductId: "monthly_pass",
+  currency: "JPY",
+  description: "",
+  googlePlayProductId: "monthly.pass",
+  id: "018f0e6a-7000-7000-8000-000000000001",
+  interval: "month",
+  intervalCount: 1,
+  labelIds: [],
+  name: "Monthly pass",
+  priceAmount: 980,
+  publicId: "PLAN0001",
+  published: true,
+  scope: "all",
+  seriesIds: [],
+  stripePriceId: "price_monthly",
+  subscriberCount: 0,
+};
 
 afterEach(() => {
   cleanup();
@@ -47,6 +68,7 @@ describe("StoreProductList", () => {
             productId: "episode_1200",
           },
         ],
+        subscriptionPlans: [],
       })
     );
 
@@ -80,6 +102,7 @@ describe("StoreProductList", () => {
             productId: "coins_0190a0a0000070008000000000000003",
           },
         ],
+        subscriptionPlans: [],
       })
     );
 
@@ -109,6 +132,7 @@ describe("StoreProductList", () => {
             productId: "episode_300",
           },
         ],
+        subscriptionPlans: [],
       })
     );
 
@@ -116,10 +140,95 @@ describe("StoreProductList", () => {
   });
 
   it("says no product is needed while the app sells no paid episode", async () => {
-    render(await StoreProductList({ locale: "en", products: [] }));
+    render(
+      await StoreProductList({
+        locale: "en",
+        products: [],
+        subscriptionPlans: [],
+      })
+    );
 
     expect(screen.getByText("No products needed yet")).toBeDefined();
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("lists the product each store sells a plan as, beside the plan's billing", async () => {
+    render(
+      await StoreProductList({
+        locale: "en",
+        products: [
+          {
+            currency: "JPY",
+            episodeCount: 1,
+            price: 300,
+            productId: "episode_300",
+          },
+        ],
+        subscriptionPlans: [
+          plan,
+          {
+            ...plan,
+            appStoreProductId: "yearly_pass",
+            googlePlayProductId: "",
+            id: "018f0e6a-7000-7000-8000-000000000002",
+            interval: "year",
+            name: "Yearly pass",
+            priceAmount: 9800,
+          },
+        ],
+      })
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Subscription plans" })
+    ).toBeDefined();
+    const [, plans] = screen.getAllByRole("table");
+    const [, monthly, yearly] = within(plans).getAllByRole("row");
+    expect(within(monthly).getByText("Monthly pass")).toBeDefined();
+    expect(within(monthly).getByText("¥980 a month")).toBeDefined();
+    expect(within(monthly).getByText("monthly_pass")).toBeDefined();
+    expect(within(monthly).getByText("monthly.pass")).toBeDefined();
+    expect(
+      within(monthly).getAllByRole("button", { name: "Copy the product ID" })
+    ).toHaveLength(2);
+    expect(within(yearly).getByText("yearly_pass")).toBeDefined();
+    expect(within(yearly).getByText("Not sold")).toBeDefined();
+  });
+
+  it("lists a plan's products while the app sells no paid episode", async () => {
+    render(
+      await StoreProductList({
+        locale: "en",
+        products: [],
+        subscriptionPlans: [plan],
+      })
+    );
+
+    expect(screen.queryByText("No products needed yet")).toBeNull();
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+    expect(screen.getByText("monthly_pass")).toBeDefined();
+  });
+
+  it("says nothing about plans while none names a store product", async () => {
+    render(
+      await StoreProductList({
+        locale: "en",
+        products: [
+          {
+            currency: "JPY",
+            episodeCount: 1,
+            price: 300,
+            productId: "episode_300",
+          },
+        ],
+        subscriptionPlans: [],
+      })
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: "Subscription plans" })
+    ).toBeNull();
+    expect(screen.getAllByRole("table")).toHaveLength(1);
   });
 
   it("shows why the list is missing instead of an empty list", async () => {
@@ -129,6 +238,7 @@ describe("StoreProductList", () => {
           "Could not load the store products. Please try again later.",
         locale: "en",
         products: [],
+        subscriptionPlans: [],
       })
     );
 

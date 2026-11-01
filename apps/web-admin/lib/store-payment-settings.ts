@@ -27,6 +27,8 @@ import type {
   AppPurchaseRouteValue,
   TenantStorePaymentSettings,
 } from "./store-payment-settings-shared";
+import { mapSubscriptionPlan } from "./subscription-plan";
+import type { SubscriptionPlanItem } from "./subscription-plan-shared";
 
 export type {
   AppPurchaseRouteValue,
@@ -93,7 +95,15 @@ export interface TenantStoreProduct {
 }
 
 export type TenantStoreProductsResult =
-  | { ok: true; products: TenantStoreProduct[] }
+  | {
+      ok: true;
+      products: TenantStoreProduct[];
+      /**
+       * The plans the app sells as a subscription in a store, in the order
+       * they were created: those naming a product in at least one.
+       */
+      subscriptionPlans: SubscriptionPlanItem[];
+    }
   | { ok: false; message: string; requiresSignIn?: boolean };
 
 /**
@@ -355,8 +365,9 @@ export const updateTenantStorePaymentSettings = async (
 };
 
 /**
- * The store products the catalog needs. Read uncached: it follows every price
- * change of every episode, and no episode write clears a tag for it.
+ * The store products the catalog and the subscription plans need. Read
+ * uncached: it follows every price change of every episode, and no episode
+ * write clears a tag for it.
  */
 export const listTenantStoreProducts = async (
   tenantId: string,
@@ -383,7 +394,15 @@ export const listTenantStoreProducts = async (
       withSessionHeaders(sessionId)
     );
 
-    return { ok: true, products: response.products.map(toTenantStoreProduct) };
+    return {
+      ok: true,
+      products: response.products.map(toTenantStoreProduct),
+      subscriptionPlans: response.subscriptionPlans.flatMap((plan) =>
+        plan.appStoreProductId || plan.googlePlayProductId
+          ? [mapSubscriptionPlan(plan)]
+          : []
+      ),
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
 

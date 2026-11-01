@@ -57,9 +57,14 @@ export type GetSubscriptionPlanResult =
       requiresSignIn: boolean;
     };
 
+/** The fields a refused save names, keyed as the form posts them. */
+export type SubscriptionPlanFieldErrors = Partial<
+  Record<"appStoreProductId" | "googlePlayProductId", string>
+>;
+
 export type SaveSubscriptionPlanResult =
   | { ok: true; plan: SubscriptionPlanItem }
-  | { ok: false; message: string };
+  | { ok: false; message: string; fieldErrors?: SubscriptionPlanFieldErrors };
 
 export type DeleteSubscriptionPlanResult =
   | { ok: true }
@@ -107,8 +112,10 @@ const toScopeValue = (
 /** The generated `AdminSubscriptionPlan` fields {@link mapSubscriptionPlan} reads. */
 type RawSubscriptionPlan = Pick<
   AdminSubscriptionPlan,
+  | "appStoreProductId"
   | "currency"
   | "description"
+  | "googlePlayProductId"
   | "id"
   | "interval"
   | "intervalCount"
@@ -123,11 +130,13 @@ type RawSubscriptionPlan = Pick<
   | "subscriberCount"
 >;
 
-const mapSubscriptionPlan = (
+export const mapSubscriptionPlan = (
   plan: RawSubscriptionPlan
 ): SubscriptionPlanItem => ({
+  appStoreProductId: plan.appStoreProductId ?? "",
   currency: plan.currency ?? "",
   description: plan.description ?? "",
+  googlePlayProductId: plan.googlePlayProductId ?? "",
   id: plan.id ?? "",
   interval: INTERVAL_VALUES.get(plan.interval) ?? "",
   intervalCount: plan.intervalCount ?? 0,
@@ -190,6 +199,64 @@ const saveOverrides = async (
     )
       ? t("admin.subscription_plans.limit_reached")
       : t("admin.subscription_plans.stripe_not_ready"),
+  };
+};
+
+/**
+ * A store product ID the API refused, as the error on the field that holds it:
+ * `invalid_argument` is a character the store does not take, and
+ * `already_exists` a product another plan of the tenant is already sold as.
+ * Undefined when the refusal names neither field.
+ */
+const refusedStoreProductFieldErrors = async (
+  cause: unknown,
+  locale: Locale
+): Promise<SubscriptionPlanFieldErrors | undefined> => {
+  const disposition = rpcErrorDisposition(cause);
+
+  if (disposition !== "conflict" && disposition !== "invalid-argument") {
+    return undefined;
+  }
+
+  const t = await getMessagesFor(locale);
+  const fieldErrors: SubscriptionPlanFieldErrors = {};
+  const inUse = disposition === "conflict";
+
+  if (rpcErrorHasFieldViolation(cause, "plan.app_store_product_id")) {
+    fieldErrors.appStoreProductId = inUse
+      ? t("admin.subscription_plans.validation.app_store_product_id_in_use")
+      : t("admin.subscription_plans.validation.app_store_product_id_invalid");
+  }
+
+  if (rpcErrorHasFieldViolation(cause, "plan.google_play_product_id")) {
+    fieldErrors.googlePlayProductId = inUse
+      ? t("admin.subscription_plans.validation.google_play_product_id_in_use")
+      : t("admin.subscription_plans.validation.google_play_product_id_invalid");
+  }
+
+  return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
+};
+
+/** What a refused create or update reports, on the form or on a field. */
+const saveFailure = async (
+  cause: unknown,
+  locale: Locale
+): Promise<Extract<SaveSubscriptionPlanResult, { ok: false }>> => {
+  const [t, fieldErrors] = await Promise.all([
+    getMessagesFor(locale),
+    refusedStoreProductFieldErrors(cause, locale),
+  ]);
+
+  if (fieldErrors) {
+    return { fieldErrors, message: t("errors.validation"), ok: false };
+  }
+
+  return {
+    message: rpcErrorMessage(cause, t("admin.subscription_plans.save_failed"), {
+      locale,
+      overrides: await saveOverrides(cause, locale),
+    }),
+    ok: false,
   };
 };
 
@@ -304,10 +371,16 @@ export interface SubscriptionPlanFields {
   /** Sent only for a plan of series; the API refuses them on any other. */
   seriesIds: string[];
   published: boolean;
+  /** Empty sells the plan in no App Store app, clearing what it was sold as. */
+  appStoreProductId: string;
+  /** Empty sells the plan in no Google Play app, clearing what it was sold as. */
+  googlePlayProductId: string;
 }
 
 const toPlanInput = (input: SubscriptionPlanFields) => ({
+  appStoreProductId: input.appStoreProductId,
   description: input.description,
+  googlePlayProductId: input.googlePlayProductId,
   labelIds: input.scope === "label" ? input.labelIds : [],
   name: input.name,
   published: input.published,
@@ -351,14 +424,7 @@ export const createSubscriptionPlan = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return {
-      message: rpcErrorMessage(
-        error,
-        t("admin.subscription_plans.save_failed"),
-        { locale, overrides: await saveOverrides(error, locale) }
-      ),
-      ok: false,
-    };
+    return saveFailure(error, locale);
   }
 };
 
@@ -401,14 +467,7 @@ export const updateSubscriptionPlan = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return {
-      message: rpcErrorMessage(
-        error,
-        t("admin.subscription_plans.save_failed"),
-        { locale, overrides: await saveOverrides(error, locale) }
-      ),
-      ok: false,
-    };
+    return saveFailure(error, locale);
   }
 };
 

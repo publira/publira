@@ -3505,7 +3505,7 @@
       },
       "store_products": {
         "title": "商店商品",
-        "description": "请在App Store Connect和Play Console中按各自的价格创建这些ID的消耗型商品。章节将作为其价格对应的商品购买，活动期间则作为活动价格对应的商品购买，因此应用中销售的付费章节的每个价格都需要一个商品，包括尚未开始的活动价格。",
+        "description": "请在App Store Connect和Play Console中按各自的价格创建这些ID的消耗型商品。章节将作为其价格对应的商品购买，活动期间则作为活动价格对应的商品购买，因此应用中销售的付费章节的每个价格都需要一个商品，包括尚未开始的活动价格。应用中销售的订阅方案则作为订阅创建，而非消耗型商品。",
         "section_error": "无法显示商店商品",
         "load_failed": "无法加载商店商品。请稍后重试。",
         "product_id": "商品ID",
@@ -3515,7 +3515,13 @@
         "empty_title": "暂时不需要商品",
         "empty": "应用中还没有销售的付费章节。",
         "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{代币包（{$count}代币）}}\n* {{代币包（{$count}代币，含赠送{$bonus}）}}",
-        "coin_pack_names": "在售的代币包也会各自作为一个商品，以代币包的价格销售。商店显示的商品名称并非由Publira发送，而是您在App Store Connect和Play Console中设置的名称，因此请在应用上架的每种语言中，用您为代币取的名称为各代币包的商品命名。"
+        "coin_pack_names": "在售的代币包也会各自作为一个商品，以代币包的价格销售。商店显示的商品名称并非由Publira发送，而是您在App Store Connect和Play Console中设置的名称，因此请在应用上架的每种语言中，用您为代币取的名称为各代币包的商品命名。",
+        "subscriptions_title": "订阅方案",
+        "subscriptions_description": "请在App Store Connect中以App Store ID在订阅群组内创建自动续期订阅，在Play Console中以Google Play ID创建带基础方案的订阅，均按方案的价格和扣费周期计费。仅当应用的销售方式为应用内购买时，应用才会在商店中销售方案。ID在“支付 › 订阅方案”中为各方案填写。",
+        "plan": "方案",
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "not_sold": "不销售"
       },
       "mobile_push": {
         "description": "推送通知通过构建该租户移动应用所用的Firebase项目送达，因此凭据必须是同一项目的服务账号密钥。密钥文件只能写入，保存后不会再次显示。",
@@ -4581,6 +4587,7 @@
         "name": "名称",
         "price": "价格",
         "scope": "可阅读范围",
+        "stores": "商店",
         "status": "状态",
         "subscribers": "订阅者",
         "actions": "操作"
@@ -4598,6 +4605,11 @@
         "series_description": "所选系列的全部章节。",
         "label_count": "{$count :integer}个品牌",
         "series_count": "{$count :integer}个系列"
+      },
+      "stores": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "none": "无"
       },
       "billing": {
         "day": ".input {$count :integer}\n.match $count\n1 {{每天{$price}}}\n* {{每{$count}天{$price}}}",
@@ -4619,6 +4631,10 @@
         "price": "Stripe Price ID",
         "price_placeholder": "price_...",
         "price_description": "租户Stripe账户中每期收取固定金额的定期Price的ID，可在Stripe控制台的产品页面中找到。价格和扣费周期在保存时从Stripe读取。",
+        "app_store_product_id": "App Store商品ID",
+        "app_store_product_id_description": "在App Store Connect中创建的自动续期订阅的商品ID，请按此方案的价格和扣费周期创建。应用的销售方式为应用内购买期间，iOS应用以此订阅销售该方案。iOS应用不销售该方案时请留空。",
+        "google_play_product_id": "Google Play商品ID",
+        "google_play_product_id_description": "在Play Console中创建的订阅的商品ID，请为其添加按此方案的价格和扣费周期计费的基础方案。应用的销售方式为应用内购买期间，Android应用以此订阅销售该方案。Android应用不销售该方案时请留空。",
         "scope": "可阅读范围",
         "labels": "品牌",
         "labels_description": "最多100个。之后归入这些品牌的系列也可阅读。",
@@ -4644,6 +4660,12 @@
         "description_too_long": "说明不能超过2000个字符。",
         "price_required": "请输入Stripe Price ID。",
         "price_invalid": "租户的Stripe账户中没有此ID的有效定期Price（每期固定金额）。请检查ID，以及该Price是否每期收取相同金额。",
+        "app_store_product_id_too_long": "App Store商品ID不能超过100个字符。",
+        "app_store_product_id_invalid": "App Store商品ID只能包含字母、数字、下划线和句点。",
+        "app_store_product_id_in_use": "此App Store商品已被其他方案使用。请在App Store Connect中为此方案创建一个订阅。",
+        "google_play_product_id_too_long": "Google Play商品ID不能超过100个字符。",
+        "google_play_product_id_invalid": "Google Play商品ID只能包含小写字母、数字、下划线和句点，且须以小写字母或数字开头。",
+        "google_play_product_id_in_use": "此Google Play商品已被其他方案使用。请在Play Console中为此方案创建一个订阅。",
         "scope_required": "请选择可阅读的范围。",
         "labels_required": "请至少选择一个品牌。",
         "series_required": "请至少选择一个系列。",

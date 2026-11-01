@@ -32,6 +32,7 @@ import {
   SUBSCRIPTION_PLAN_MAX_TARGETS,
   SUBSCRIPTION_PLAN_NAME_MAX_LENGTH,
   SUBSCRIPTION_PLAN_SCOPES,
+  SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH,
 } from "#lib/subscription-plan-shared";
 
 const tenantIdSchema = async (locale: Locale) => {
@@ -62,9 +63,17 @@ const planFieldsSchema = async (locale: Locale) => {
   );
 
   return z.object({
+    appStoreProductId: optionalTrimmedString(
+      SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH,
+      t("admin.subscription_plans.validation.app_store_product_id_too_long")
+    ),
     description: optionalTrimmedString(
       SUBSCRIPTION_PLAN_DESCRIPTION_MAX_LENGTH,
       t("admin.subscription_plans.validation.description_too_long")
+    ),
+    googlePlayProductId: optionalTrimmedString(
+      SUBSCRIPTION_PLAN_STORE_PRODUCT_ID_MAX_LENGTH,
+      t("admin.subscription_plans.validation.google_play_product_id_too_long")
     ),
     labelIds: targets,
     name: requiredTrimmedString(
@@ -113,7 +122,9 @@ const requireScopeTargets =
   };
 
 const planFormFields = {
+  appStoreProductId: { kind: "value", name: "app_store_product_id" },
   description: "value",
+  googlePlayProductId: { kind: "value", name: "google_play_product_id" },
   labelIds: { kind: "values", name: "label_ids" },
   name: "value",
   published: "value",
@@ -148,8 +159,9 @@ export const createSubscriptionPlanAction = async (
     createSubscriptionPlan(parsed.data, locale)
   );
 
+  // A refused store product ID comes back as the error on its field.
   if (!result.ok) {
-    return { message: result.message, ok: false };
+    return result;
   }
 
   updateTag(subscriptionPlansCacheTag(parsed.data.tenantId));
@@ -191,7 +203,7 @@ export const updateSubscriptionPlanAction = async (
   );
 
   if (!result.ok) {
-    return { message: result.message, ok: false };
+    return result;
   }
 
   updateTag(subscriptionPlansCacheTag(parsed.data.tenantId));

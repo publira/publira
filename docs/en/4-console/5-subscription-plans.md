@@ -2,11 +2,12 @@
 title: Subscription plans
 description: Sell readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, and see what a subscriber does on the site.
 published: 2026-10-25
+updated: 2026-11-01
 ---
 
 A subscription plan lets a reader pay every period, through Stripe, and read every episode the plan covers without buying each one. Selling one takes three things that have to agree, the same three a sale of an episode takes: a recurring Price in the tenant's Stripe account, a plan in the tenant console that names it, and the webhook through which Stripe tells the install that a reader subscribed, renewed, fell behind, or canceled. Stripe bills the reader, but only the webhook opens the plan's episodes to them and closes them again, so a setup with any of the three wrong takes the reader's money and leaves the episodes locked, or leaves them open to a reader who has stopped paying. This page walks through all three in that order, and ends with a test subscription that proves they agree.
 
-Plans are sold through Stripe alone, on the site. A tenant that takes payments through PAY.JP cannot create one. The tenant's app sends a reader who wants a plan to the site's plan page when it sells through **Web checkout**, as [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app) describes.
+Every plan is sold through Stripe on the site, and a tenant that takes payments through PAY.JP cannot create one. A plan can also name the subscription the tenant's app sells it as in the App Store and in Google Play, as [Creating a plan](#creating-a-plan) describes. The tenant's app sends a reader who wants a plan to the site's plan page when it sells through **Web checkout**, as [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app) describes.
 
 **Payments** › **Subscription plans** is for a **Tenant admin**; an Editor or an Auditor does not see that screen.
 
@@ -47,21 +48,22 @@ On **Payments** › **Subscription plans**, choose **New plan**, fill in the for
 - **Name** is what readers see the plan as on the site, up to 100 characters.
 - **Description** is plain text shown with the plan, up to 2000 characters.
 - **Stripe Price ID** is the `price_` ID copied above. What the plan costs and how often it bills are read from Stripe when the plan is saved, and the console shows them as Stripe states them.
+- **App Store product ID** and **Google Play product ID** name the subscription the tenant's app sells the plan as in each store, and either can be left empty. The app sells the plan through a store only while **How the app sells episodes** is **In-app purchase**, and only when the plan names a product of that store. Create the product in the store at the plan's price and billing period, as an auto-renewable subscription in App Store Connect and as a subscription with a base plan in Play Console, as [What each store needs for in-app purchase](../5-mobile-app/5-purchases-and-sign-in.md#what-each-store-needs-for-in-app-purchase) describes. The console does not check the ID with the store, so an ID with no product behind it fails at the first purchase, which the app reports as not sold.
 - **Opens** decides which episodes the plan opens:
   - **Whole catalog**: every episode of the site.
   - **Labels**: every episode of the series filed under the labels you choose, up to 100. A series filed under one of them later is opened too.
   - **Series**: every episode of the series you choose, up to 100.
 - **Publish** lists the plan on the site, where readers can subscribe to it. Leave it unchecked to prepare a plan before offering it.
 
-![The edit screen of Night pass, yearly: ¥9,800 a year, Unpublished, and 0 subscribers above the form, then Name, Description, Stripe Price ID, Opens with Labels chosen, the Labels picker holding Night Label, Publish unchecked, and Save changes.](./subscription-plans-form.png)
+![The edit screen of Night pass, yearly: ¥9,800 a year, Unpublished, 0 subscribers, and App Store and Google Play under Stores above the form, then Name, Description, Stripe Price ID, App Store product ID and Google Play product ID both holding night_pass_yearly, Opens with Labels chosen, the Labels picker holding Night Label, Publish unchecked, and Save changes.](./subscription-plans-form.png)
 
-The form says which field to correct when Stripe holds no Price of one fixed amount every period under that ID, and when another plan already bills it: each plan bills a Price of its own, so a second plan at the same amount needs a second Price in Stripe. It refuses any plan while Stripe is not the tenant's payment provider with payments enabled. A tenant holds at most 20 plans.
+The form says which field to correct when Stripe holds no Price of one fixed amount every period under that ID, and when another plan already bills it: each plan bills a Price of its own, so a second plan at the same amount needs a second Price in Stripe. A store product ID is likewise one plan's own, and the form marks the field of an ID another plan is already sold as, and of one holding a character the store does not take: an App Store product ID holds letters, digits, underscores, and periods, and a Google Play one lowercase letters, digits, underscores, and periods, starting with a letter or a digit. It refuses any plan while Stripe is not the tenant's payment provider with payments enabled. A tenant holds at most 20 plans.
 
 ## The list of plans
 
-**Payments** › **Subscription plans** lists every plan, in the order they were created, with what it costs every period, what it opens, whether it is **Published** or **Unpublished**, and how many **Subscribers** it has. A subscriber is a reader whose subscription to the plan is paid up, or whose renewal Stripe is still trying to collect. **Edit** opens a plan's form, with its price, its status, and its subscribers above it.
+**Payments** › **Subscription plans** lists every plan, in the order they were created, with what it costs every period, what it opens, the **Stores** whose app sells it, whether it is **Published** or **Unpublished**, and how many **Subscribers** it has. A subscriber is a reader whose subscription to the plan is paid up, or whose renewal Stripe is still trying to collect. **Edit** opens a plan's form, with its price, its status, its subscribers, and its stores above it.
 
-![The Subscription plans list: Night pass at ¥980 a month opening 1 label, published, with 0 subscribers; All-access pass at ¥1,500 a month opening the whole catalog, published, with 1 subscriber; and Night pass, yearly at ¥9,800 a year opening 1 label, unpublished, with 0 subscribers, each with Edit and Delete.](./subscription-plans-list.png)
+![The Subscription plans list: Night pass at ¥980 a month opening 1 label, sold in no store, published, with 0 subscribers; All-access pass at ¥1,500 a month opening the whole catalog, sold in the App Store and Google Play, published, with 1 subscriber; and Night pass, yearly at ¥9,800 a year opening 1 label, sold in the App Store and Google Play, unpublished, with 0 subscribers, each with Edit and Delete.](./subscription-plans-list.png)
 
 ## Changing, unpublishing, and deleting a plan
 

@@ -300,7 +300,7 @@ describe("store-payment-settings", () => {
     ).rejects.toThrow(/boom/u);
   });
 
-  it("lists the store products the catalog needs", async () => {
+  it("lists the store products the catalog and the plans the app sells need", async () => {
     mockListProductsApi.mockResolvedValueOnce({
       products: [
         {
@@ -314,6 +314,21 @@ describe("store-payment-settings", () => {
           episodeCount: 1,
           price: 500,
           productId: "episode_500",
+        },
+      ],
+      subscriptionPlans: [
+        {
+          appStoreProductId: "monthly_pass",
+          googlePlayProductId: "",
+          id: "018f0e6a-7000-7000-8000-000000000001",
+          name: "Monthly pass",
+        },
+        // A plan the app does not sell is no product to create.
+        {
+          appStoreProductId: "",
+          googlePlayProductId: "",
+          id: "018f0e6a-7000-7000-8000-000000000002",
+          name: "Web only",
         },
       ],
     });
@@ -338,6 +353,13 @@ describe("store-payment-settings", () => {
           price: 500,
           productId: "episode_500",
         },
+      ],
+      subscriptionPlans: [
+        expect.objectContaining({
+          appStoreProductId: "monthly_pass",
+          googlePlayProductId: "",
+          name: "Monthly pass",
+        }),
       ],
     });
     expect(mockListProductsApi).toHaveBeenCalledWith(

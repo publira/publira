@@ -191,6 +191,8 @@ The app buys each episode as the store product named after its price, such as `e
 
 Each pack of your coins on sale is listed there too, as `coins_` followed by the pack's ID, with the coins and bonus coins it grants, and is created the same way, as a consumable at the pack's price. The stores show a product under the name you give it in App Store Connect and Play Console rather than one Publira sends, so name each pack's product with your word for your coins, in every language your app is listed in.
 
+Below them, under **Subscription plans**, each [subscription plan](./5-subscription-plans.md#creating-a-plan) that names an **App Store product ID** or a **Google Play product ID** is listed with what it bills every period and the product ID of each store, or **Not sold** for a store it names none of. A plan is not a consumable: create it as an auto-renewable subscription in App Store Connect, inside a subscription group, and as a subscription with a base plan in Play Console, at the plan's price and billing period. The IDs are entered on the plan, and the list follows them.
+
 ![Store products: the product ID each price needs, such as episode_500 at ¥500, with a button to copy it and the number of episodes at that price.](./selling-episodes-store-products.png)
 
 What each store needs, from the key the install verifies purchases with to testing with the stores' test buyers, is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app), with the app's own setup. A purchase from the App Store sandbox or a Play license tester opens the episode but is recorded as a test, and left out of royalty statements and the content statistics.

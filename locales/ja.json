@@ -3505,7 +3505,7 @@
       },
       "store_products": {
         "title": "ストアの商品",
-        "description": "App Store ConnectとPlay Consoleに、これらのIDの消耗型商品をそれぞれの価格で作成してください。エピソードは価格に対応する商品として、キャンペーン中はキャンペーン価格に対応する商品として購入されるため、開始前のキャンペーンの価格も含め、アプリで販売する有料エピソードの価格ごとに1つ必要です。",
+        "description": "App Store ConnectとPlay Consoleに、これらのIDの消耗型商品をそれぞれの価格で作成してください。エピソードは価格に対応する商品として、キャンペーン中はキャンペーン価格に対応する商品として購入されるため、開始前のキャンペーンの価格も含め、アプリで販売する有料エピソードの価格ごとに1つ必要です。アプリで販売するサブスクリプションプランは、消耗型ではなくサブスクリプションとして作成します。",
         "section_error": "ストアの商品を表示できませんでした",
         "load_failed": "ストアの商品を読み込めませんでした。時間をおいて再度お試しください。",
         "product_id": "商品ID",
@@ -3515,7 +3515,13 @@
         "empty_title": "必要な商品はまだありません",
         "empty": "アプリで販売する有料エピソードはまだありません。",
         "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{コインパック({$count}コイン)}}\n* {{コインパック({$count}コイン、うちボーナス{$bonus})}}",
-        "coin_pack_names": "販売中のコインパックも、それぞれパックの価格で1つの商品として販売されます。ストアが表示する商品名はPubliraが送るものではなく、App Store ConnectとPlay Consoleで設定した名前です。各パックの商品には、アプリを掲載しているすべての言語で、コインに付けた独自の名前を設定してください。"
+        "coin_pack_names": "販売中のコインパックも、それぞれパックの価格で1つの商品として販売されます。ストアが表示する商品名はPubliraが送るものではなく、App Store ConnectとPlay Consoleで設定した名前です。各パックの商品には、アプリを掲載しているすべての言語で、コインに付けた独自の名前を設定してください。",
+        "subscriptions_title": "サブスクリプションプラン",
+        "subscriptions_description": "App Store ConnectではApp StoreのIDで自動更新サブスクリプションをサブスクリプショングループの中に、Play ConsoleではGoogle PlayのIDで定期購入を基本プラン付きで、それぞれプランの料金と請求の間隔で作成してください。アプリがストアでプランを販売するのは、アプリでの販売方法がアプリ内課金のあいだだけです。IDは「決済」›「サブスクリプションプラン」で各プランに入力します。",
+        "plan": "プラン",
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "not_sold": "販売しない"
       },
       "mobile_push": {
         "description": "プッシュ通知は、このテナントのモバイルアプリがビルドされたFirebaseプロジェクトを通じて届きます。認証情報には同じプロジェクトのサービスアカウントキーを使ってください。キーファイルは書き込み専用で、保存後は表示しません。",
@@ -4581,6 +4587,7 @@
         "name": "名前",
         "price": "料金",
         "scope": "読める範囲",
+        "stores": "ストア",
         "status": "状態",
         "subscribers": "購読者",
         "actions": "操作"
@@ -4598,6 +4605,11 @@
         "series_description": "選んだシリーズのすべてのエピソード。",
         "label_count": "{$count :integer}レーベル",
         "series_count": "{$count :integer}シリーズ"
+      },
+      "stores": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "none": "なし"
       },
       "billing": {
         "day": ".input {$count :integer}\n.match $count\n1 {{1日ごとに{$price}}}\n* {{{$count}日ごとに{$price}}}",
@@ -4619,6 +4631,10 @@
         "price": "StripeのPrice ID",
         "price_placeholder": "price_...",
         "price_description": "テナントのStripeアカウントにある、毎回同じ金額を請求する定期PriceのIDです。Stripeダッシュボードの商品ページで確認できます。料金と請求の間隔は保存時にStripeから読み取ります。",
+        "app_store_product_id": "App Storeの商品ID",
+        "app_store_product_id_description": "App Store Connectで作成した自動更新サブスクリプションの商品IDです。このプランの料金と請求の間隔で作成してください。アプリでの販売方法がアプリ内課金のあいだ、iOSアプリはこのサブスクリプションとしてプランを販売します。iOSアプリで販売しない場合は空欄にしてください。",
+        "google_play_product_id": "Google Playの商品ID",
+        "google_play_product_id_description": "Play Consoleで作成した定期購入の商品IDです。このプランの料金と請求の間隔の基本プランを付けてください。アプリでの販売方法がアプリ内課金のあいだ、Androidアプリはこの定期購入としてプランを販売します。Androidアプリで販売しない場合は空欄にしてください。",
         "scope": "読める範囲",
         "labels": "レーベル",
         "labels_description": "100件まで。あとからこのレーベルに入ったシリーズも読めるようになります。",
@@ -4644,6 +4660,12 @@
         "description_too_long": "説明は2000文字以内で入力してください。",
         "price_required": "StripeのPrice IDを入力してください。",
         "price_invalid": "テナントのStripeアカウントに、このIDの有効な定期Price(毎回同じ金額)が見つかりません。IDと、Priceが毎回同じ金額を請求する設定になっているかを確認してください。",
+        "app_store_product_id_too_long": "App Storeの商品IDは100文字以内で入力してください。",
+        "app_store_product_id_invalid": "App Storeの商品IDに使えるのは、英字、数字、アンダースコア、ピリオドだけです。",
+        "app_store_product_id_in_use": "このApp Storeの商品はほかのプランですでに使われています。App Store Connectでこのプラン用のサブスクリプションを作成してください。",
+        "google_play_product_id_too_long": "Google Playの商品IDは100文字以内で入力してください。",
+        "google_play_product_id_invalid": "Google Playの商品IDに使えるのは、英小文字、数字、アンダースコア、ピリオドだけで、先頭は英小文字か数字にしてください。",
+        "google_play_product_id_in_use": "このGoogle Playの商品はほかのプランですでに使われています。Play Consoleでこのプラン用の定期購入を作成してください。",
         "scope_required": "読める範囲を選んでください。",
         "labels_required": "レーベルを1つ以上選んでください。",
         "series_required": "シリーズを1つ以上選んでください。",

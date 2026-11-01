@@ -3505,7 +3505,7 @@
       },
       "store_products": {
         "title": "Store products",
-        "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, or of its campaign price while a campaign is on sale, so each price your paid episodes sell at in the app needs one, the prices of campaigns not yet started included.",
+        "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, or of its campaign price while a campaign is on sale, so each price your paid episodes sell at in the app needs one, the prices of campaigns not yet started included. A subscription plan the app sells is created as a subscription instead.",
         "section_error": "Could not display the store products",
         "load_failed": "Could not load the store products. Please try again later.",
         "product_id": "Product ID",
@@ -3515,7 +3515,13 @@
         "empty_title": "No products needed yet",
         "empty": "No paid episode is sold in the app yet.",
         "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Coin pack ({$count} coins)}}\n* {{Coin pack ({$count} coins, including {$bonus} bonus)}}",
-        "coin_pack_names": "Each coin pack on sale is sold as a product of its own too, at the pack's price. The stores show a product under the name you give it in App Store Connect and the Play Console, not one Publira sends, so name each pack's product with your own word for your coins, in every language your app is listed in."
+        "coin_pack_names": "Each coin pack on sale is sold as a product of its own too, at the pack's price. The stores show a product under the name you give it in App Store Connect and the Play Console, not one Publira sends, so name each pack's product with your own word for your coins, in every language your app is listed in.",
+        "subscriptions_title": "Subscription plans",
+        "subscriptions_description": "Create an auto-renewable subscription with each App Store ID in App Store Connect, in a subscription group, and a subscription with each Google Play ID in the Play Console, with a base plan, each billed at the plan's price and period. The app sells a plan in a store only while How the app sells episodes is In-app purchase. The IDs are entered on each plan under Payments › Subscription plans.",
+        "plan": "Plan",
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "not_sold": "Not sold"
       },
       "mobile_push": {
         "description": "Push notifications reach this tenant's mobile app through the Firebase project the app is built with, so the credentials must be a service account key from that same project. The key file is write-only: once saved, it is never shown again.",
@@ -4581,6 +4587,7 @@
         "name": "Name",
         "price": "Price",
         "scope": "Opens",
+        "stores": "Stores",
         "status": "Status",
         "subscribers": "Subscribers",
         "actions": "Actions"
@@ -4598,6 +4605,11 @@
         "series_description": "Every episode of the series you choose.",
         "label_count": ".input {$count :integer}\n.match $count\none {{{$count} label}}\n* {{{$count} labels}}",
         "series_count": "{$count :integer} series"
+      },
+      "stores": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "none": "None"
       },
       "billing": {
         "day": ".input {$count :integer}\n.match $count\n1 {{{$price} a day}}\n* {{{$price} every {$count} days}}",
@@ -4619,6 +4631,10 @@
         "price": "Stripe Price ID",
         "price_placeholder": "price_...",
         "price_description": "The ID of a recurring Price of one fixed amount on the tenant's Stripe account, from the product's page in the Stripe Dashboard. What it costs and how often it bills are read from Stripe when the plan is saved.",
+        "app_store_product_id": "App Store product ID",
+        "app_store_product_id_description": "The product ID of an auto-renewable subscription in App Store Connect, billed at this plan's price and period. While How the app sells episodes is In-app purchase, the iOS app sells the plan as this subscription. Leave it empty if the iOS app does not sell the plan.",
+        "google_play_product_id": "Google Play product ID",
+        "google_play_product_id_description": "The product ID of a subscription in the Play Console, with a base plan billed at this plan's price and period. While How the app sells episodes is In-app purchase, the Android app sells the plan as this subscription. Leave it empty if the Android app does not sell the plan.",
         "scope": "Opens",
         "labels": "Labels",
         "labels_description": "Up to 100. A series filed under one of them later is opened too.",
@@ -4644,6 +4660,12 @@
         "description_too_long": "Keep the description to 2000 characters or fewer.",
         "price_required": "Enter the Stripe Price ID.",
         "price_invalid": "Stripe has no active recurring Price of one fixed amount with this ID on the tenant's account. Check the ID, and that the Price bills the same amount every period.",
+        "app_store_product_id_too_long": "Keep the App Store product ID to 100 characters or fewer.",
+        "app_store_product_id_invalid": "An App Store product ID holds only letters, digits, underscores, and periods.",
+        "app_store_product_id_in_use": "Another plan is already sold as this App Store product. Create a subscription of its own for this plan in App Store Connect.",
+        "google_play_product_id_too_long": "Keep the Google Play product ID to 100 characters or fewer.",
+        "google_play_product_id_invalid": "A Google Play product ID holds only lowercase letters, digits, underscores, and periods, and starts with a letter or a digit.",
+        "google_play_product_id_in_use": "Another plan is already sold as this Google Play product. Create a subscription of its own for this plan in the Play Console.",
         "scope_required": "Choose what the plan opens.",
         "labels_required": "Choose at least one label.",
         "series_required": "Choose at least one series.",

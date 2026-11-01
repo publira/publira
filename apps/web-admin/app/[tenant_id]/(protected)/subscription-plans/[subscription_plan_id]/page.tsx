@@ -16,6 +16,7 @@ import { z } from "zod";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SubscriptionPlanBilling } from "#components/subscription-plan-billing";
 import {
   TenantAdminRoute,
   TenantRoleRouteSkeleton,
@@ -34,8 +35,8 @@ import {
   SubscriptionPlanFormSkeleton,
 } from "../_components/subscription-plan-form-data";
 import {
-  SubscriptionPlanBilling,
   SubscriptionPlanStatusChip,
+  SubscriptionPlanStores,
 } from "../_components/subscription-plan-summary";
 import { updateSubscriptionPlanAction } from "../_lib/actions";
 
@@ -120,7 +121,7 @@ const EditSubscriptionPlanContent = async ({
 
   return (
     <div className="grid gap-6">
-      <dl className="grid gap-4 border-y border-border py-4 text-sm sm:grid-cols-3">
+      <dl className="grid gap-4 border-y border-border py-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="grid gap-1">
           <dt className="text-muted-foreground">
             <Message message="admin.subscription_plans.columns.price" />
@@ -142,6 +143,14 @@ const EditSubscriptionPlanContent = async ({
             <Message message="admin.subscription_plans.columns.subscribers" />
           </dt>
           <dd className="tabular-nums">{plan.subscriberCount}</dd>
+        </div>
+        <div className="grid gap-1">
+          <dt className="text-muted-foreground">
+            <Message message="admin.subscription_plans.columns.stores" />
+          </dt>
+          <dd>
+            <SubscriptionPlanStores plan={plan} />
+          </dd>
         </div>
       </dl>
       <Suspense fallback={<SubscriptionPlanFormSkeleton />}>

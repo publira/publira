@@ -8,13 +8,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { SubscriptionPlanBilling } from "#components/subscription-plan-billing";
 import type { SubscriptionPlanItem } from "#lib/subscription-plan-shared";
 
 import { SubscriptionPlanDeleteButton } from "./subscription-plan-delete-button";
 import {
-  SubscriptionPlanBilling,
   SubscriptionPlanScopeSummary,
   SubscriptionPlanStatusChip,
+  SubscriptionPlanStores,
 } from "./subscription-plan-summary";
 
 interface SubscriptionPlanListProps {
@@ -26,7 +27,8 @@ interface SubscriptionPlanListProps {
 
 /**
  * The tenant's plans in the order they were created, each with what it costs,
- * what it opens, whether the site lists it, and how many readers hold it.
+ * what it opens, which stores the app sells it in, whether the site lists it,
+ * and how many readers hold it.
  * The API caps a tenant at 20 plans, so the list is never paged.
  */
 export const SubscriptionPlanList = ({
@@ -94,6 +96,11 @@ export const SubscriptionPlanList = ({
           </Table.Head>
           <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.subscription_plans.columns.stores" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.subscription_plans.columns.status" />
             </Suspense>
           </Table.Head>
@@ -118,6 +125,9 @@ export const SubscriptionPlanList = ({
             </Table.Cell>
             <Table.Cell>
               <SubscriptionPlanScopeSummary plan={plan} />
+            </Table.Cell>
+            <Table.Cell>
+              <SubscriptionPlanStores plan={plan} />
             </Table.Cell>
             <Table.Cell>
               <SubscriptionPlanStatusChip published={plan.published} />

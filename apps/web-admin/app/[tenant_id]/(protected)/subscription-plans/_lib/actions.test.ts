@@ -65,6 +65,8 @@ const createFormData = (
   formData.set("name", "  Monthly pass  ");
   formData.set("description", "Every episode of the label.");
   formData.set("stripe_price_id", " price_monthly ");
+  formData.set("app_store_product_id", " monthly_pass ");
+  formData.set("google_play_product_id", "");
   formData.set("scope", "label");
   formData.append("label_ids", LABEL_ID);
   formData.append("series_ids", SERIES_ID);
@@ -122,7 +124,10 @@ describe("createSubscriptionPlanAction", () => {
     ).rejects.toThrow("redirect:/subscription-plans/PLAN0001?created=1");
     expect(mockCreateSubscriptionPlan).toHaveBeenCalledWith(
       {
+        appStoreProductId: "monthly_pass",
         description: "Every episode of the label.",
+        // Empty sells the plan in no Android app.
+        googlePlayProductId: "",
         labelIds: [LABEL_ID],
         // Trimmed, as the API stores them.
         name: "Monthly pass",
@@ -162,6 +167,14 @@ describe("createSubscriptionPlanAction", () => {
       "Keep the description to 2000 characters or fewer.",
     ],
     [{ stripe_price_id: "" }, "Enter the Stripe Price ID."],
+    [
+      { app_store_product_id: "a".repeat(101) },
+      "Keep the App Store product ID to 100 characters or fewer.",
+    ],
+    [
+      { google_play_product_id: "a".repeat(101) },
+      "Keep the Google Play product ID to 100 characters or fewer.",
+    ],
     [{ scope: "everything" }, "Choose what the plan opens."],
     [{ label_ids: null }, "Choose at least one label."],
     [{ scope: "series", series_ids: null }, "Choose at least one series."],
@@ -216,6 +229,25 @@ describe("createSubscriptionPlanAction", () => {
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+
+  it("hands a refused store product ID back to its field", async () => {
+    const refused = {
+      fieldErrors: {
+        appStoreProductId:
+          "Another plan is already sold as this App Store product.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    };
+
+    mockCreateSubscriptionPlan.mockResolvedValueOnce(refused);
+
+    const { createSubscriptionPlanAction } = await import("./actions");
+
+    await expect(
+      createSubscriptionPlanAction(null, createFormData())
+    ).resolves.toEqual(refused);
+  });
 });
 
 describe("updateSubscriptionPlanAction", () => {
@@ -232,7 +264,9 @@ describe("updateSubscriptionPlanAction", () => {
     ).resolves.toEqual({ message: "Subscription plan updated.", ok: true });
     expect(mockUpdateSubscriptionPlan).toHaveBeenCalledWith(
       {
+        appStoreProductId: "monthly_pass",
         description: "Every episode of the label.",
+        googlePlayProductId: "",
         id: PLAN_ID,
         labelIds: [LABEL_ID],
         name: "Monthly pass",

@@ -70,8 +70,10 @@ const reasonError = (code: Code, reason: string) =>
   ]);
 
 const rawPlan = {
+  appStoreProductId: "monthly_pass",
   currency: "JPY",
   description: "Every episode of the label, every month.",
+  googlePlayProductId: "monthly_pass",
   id: "018f0e6a-7000-7000-8000-000000000001",
   interval: SubscriptionInterval.MONTH,
   intervalCount: 1,
@@ -93,7 +95,9 @@ const mappedPlan = {
 };
 
 const saveInput = {
+  appStoreProductId: "monthly_pass",
   description: "Every episode of the label, every month.",
+  googlePlayProductId: "",
   labelIds: [LABEL_ID],
   name: "Monthly pass",
   published: true,
@@ -235,7 +239,10 @@ describe("createSubscriptionPlan", () => {
     expect(mockCreateSubscriptionPlan).toHaveBeenCalledWith(
       {
         plan: {
+          appStoreProductId: "monthly_pass",
           description: "Every episode of the label, every month.",
+          // Empty clears the product, where unset would keep it.
+          googlePlayProductId: "",
           labelIds: [LABEL_ID],
           name: "Monthly pass",
           published: true,
@@ -306,6 +313,55 @@ describe("createSubscriptionPlan", () => {
 
     expect(result).toEqual({ message, ok: false });
   });
+
+  it.each([
+    [
+      "an App Store product another plan is sold as",
+      invalidField("plan.app_store_product_id", Code.AlreadyExists),
+      {
+        appStoreProductId:
+          "Another plan is already sold as this App Store product. Create a subscription of its own for this plan in App Store Connect.",
+      },
+    ],
+    [
+      "a Google Play product another plan is sold as",
+      invalidField("plan.google_play_product_id", Code.AlreadyExists),
+      {
+        googlePlayProductId:
+          "Another plan is already sold as this Google Play product. Create a subscription of its own for this plan in the Play Console.",
+      },
+    ],
+    [
+      "an App Store product ID the store does not take",
+      invalidField("plan.app_store_product_id"),
+      {
+        appStoreProductId:
+          "An App Store product ID holds only letters, digits, underscores, and periods.",
+      },
+    ],
+    [
+      "a Google Play product ID the store does not take",
+      invalidField("plan.google_play_product_id"),
+      {
+        googlePlayProductId:
+          "A Google Play product ID holds only lowercase letters, digits, underscores, and periods, and starts with a letter or a digit.",
+      },
+    ],
+  ])(
+    "marks %s on its field, not on the form",
+    async (_, error, fieldErrors) => {
+      mockCreateSubscriptionPlan.mockRejectedValue(error);
+
+      const { createSubscriptionPlan } = await import("./subscription-plan");
+      const result = await createSubscriptionPlan(saveInput, "en");
+
+      expect(result).toEqual({
+        fieldErrors,
+        message: "Please check the information you entered.",
+        ok: false,
+      });
+    }
+  );
 });
 
 describe("updateSubscriptionPlan", () => {
@@ -333,7 +389,9 @@ describe("updateSubscriptionPlan", () => {
     expect(mockUpdateSubscriptionPlan).toHaveBeenCalledWith(
       {
         plan: {
+          appStoreProductId: "monthly_pass",
           description: "Every episode of the label, every month.",
+          googlePlayProductId: "",
           labelIds: [],
           name: "Monthly pass",
           published: false,
