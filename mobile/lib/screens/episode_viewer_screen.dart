@@ -1046,13 +1046,29 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     if (!_paymentLock.acquire()) {
       return;
     }
-    final Object? result;
+    Future<StoreSubscriptionOutcome>? subscribing;
+    Object? result;
     try {
       result = await showSubscriptionPlansSheet(
         context,
         plans: plans,
         subscriber: subscriber,
+        subscribe: (planId) => subscribing = subscriber.subscribe(planId),
       );
+      // A sheet dismissed while a subscription was under way leaves it
+      // running: the lock stays held, and its outcome is the screen's to
+      // report, until it settles.
+      final pending = subscribing;
+      if (result == null && pending != null) {
+        try {
+          final outcome = await pending;
+          result = outcome == StoreSubscriptionOutcome.cancelled
+              ? null
+              : outcome;
+        } on PurchaseFailure catch (failure) {
+          result = failure;
+        }
+      }
     } finally {
       _paymentLock.release();
     }

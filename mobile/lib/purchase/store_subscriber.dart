@@ -303,7 +303,7 @@ class StoreSubscriber {
     }
     final offers = <StorePlanOffer>[];
     for (final plan in plans) {
-      final product = _basePlan(
+      final product = _planEntry(
         response.productDetails,
         plan.productIdIn(store),
       );
@@ -423,7 +423,7 @@ class StoreSubscriber {
         message: error.code,
       );
     }
-    final product = _basePlan(response.productDetails, productId);
+    final product = _planEntry(response.productDetails, productId);
     if (product == null) {
       throw PurchaseFailure(
         PurchaseFailureKind.notSold,
@@ -434,48 +434,70 @@ class StoreSubscriber {
     return product;
   }
 
-  /// The entry of [products] the plan [productId] names is sold as. Google
-  /// Play answers one entry per base plan and offer of a subscription, and a
-  /// plan is billed by its base plan; an offer the tenant set up there is the
-  /// store's to apply.
-  static ProductDetails? _basePlan(
+  /// The entry of [products] the plan [productId] names is sold as.
+  ///
+  /// Google Play answers one entry per base plan of a subscription and one per
+  /// offer on it, and lists only the offers this reader may take. A plan is
+  /// billed by its base plan, and an offer the tenant set up on it, such as a
+  /// free trial, has to be named in the purchase for Play to apply it, so the
+  /// offer whose first phase costs the reader least is taken where there is
+  /// one. StoreKit applies an introductory offer by itself and answers one
+  /// entry per product.
+  static ProductDetails? _planEntry(
     List<ProductDetails> products,
     String productId,
   ) {
-    ProductDetails? first;
-    for (final product in products) {
-      if (product.id != productId) {
+    final entries = [
+      for (final product in products)
+        if (product.id == productId) product,
+    ];
+    final basePlan =
+        entries
+            .where((entry) => _offerOf(entry)?.offerId == null)
+            .firstOrNull ??
+        entries.firstOrNull;
+    final base = basePlan == null ? null : _offerOf(basePlan);
+    if (base == null) {
+      return basePlan;
+    }
+    ProductDetails chosen = basePlan!;
+    var cheapest = _firstPhaseMicros(base);
+    for (final entry in entries) {
+      final offer = _offerOf(entry);
+      if (offer == null ||
+          offer.offerId == null ||
+          offer.basePlanId != base.basePlanId) {
         continue;
       }
-      first ??= product;
-      if (product
-          case GooglePlayProductDetails(
-            :final productDetails,
-            :final subscriptionIndex?,
-          )
-          when productDetails
-                  .subscriptionOfferDetails?[subscriptionIndex]
-                  .offerId ==
-              null) {
-        return product;
+      final micros = _firstPhaseMicros(offer);
+      if (micros < cheapest) {
+        chosen = entry;
+        cheapest = micros;
       }
     }
-    return first;
+    return chosen;
   }
 
-  /// The phase of a Google Play base plan that repeats, which is the last.
-  static PricingPhaseWrapper? _recurringPhase(ProductDetails product) {
+  /// The base plan or the offer a Google Play entry stands for, or `null` for
+  /// an entry of another store.
+  static SubscriptionOfferDetailsWrapper? _offerOf(ProductDetails product) {
     if (product case GooglePlayProductDetails(
       :final productDetails,
       :final subscriptionIndex?,
     )) {
-      return productDetails
-          .subscriptionOfferDetails?[subscriptionIndex]
-          .pricingPhases
-          .lastOrNull;
+      return productDetails.subscriptionOfferDetails?[subscriptionIndex];
     }
     return null;
   }
+
+  static int _firstPhaseMicros(SubscriptionOfferDetailsWrapper offer) =>
+      offer.pricingPhases.firstOrNull?.priceAmountMicros ?? 0;
+
+  /// The phase of a Google Play base plan or offer that repeats, which is
+  /// the last: the price and the period the plan bills once a trial or an
+  /// introductory price has run out.
+  static PricingPhaseWrapper? _recurringPhase(ProductDetails product) =>
+      _offerOf(product)?.pricingPhases.lastOrNull;
 
   static StoreBillingPeriod? _periodOf(ProductDetails product) {
     if (product case AppStoreProduct2Details(:final sk2Product)) {

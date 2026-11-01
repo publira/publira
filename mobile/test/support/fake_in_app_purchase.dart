@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
@@ -31,6 +33,11 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   /// displays and the period it bills, as StoreKit 2 reports them.
   Map<String, ({String price, SK2SubscriptionPeriod period})> subscriptions =
       {};
+
+  /// The subscriptions the store has as Google Play describes them: one
+  /// entry per base plan and per offer this reader may take, keyed by product
+  /// ID.
+  Map<String, List<SubscriptionOfferDetailsWrapper>> playSubscriptions = {};
 
   /// What the store reports when asked to restore: StoreKit's current
   /// entitlements.
@@ -167,6 +174,18 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
     return ProductDetailsResponse(
       productDetails: [
         for (final id in identifiers)
+          if (playSubscriptions[id] case final offers?)
+            ...GooglePlayProductDetails.fromProductDetails(
+              ProductDetailsWrapper(
+                description: '',
+                name: id,
+                productId: id,
+                productType: ProductType.subs,
+                subscriptionOfferDetails: offers,
+                title: id,
+              ),
+            ),
+        for (final id in identifiers)
           if (subscriptions[id] case final subscription?)
             AppStoreProduct2Details.fromSK2Product(
               SK2Product(
@@ -199,7 +218,10 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
       ],
       notFoundIDs: identifiers
           .where(
-            (id) => !products.contains(id) && !subscriptions.containsKey(id),
+            (id) =>
+                !products.contains(id) &&
+                !subscriptions.containsKey(id) &&
+                !playSubscriptions.containsKey(id),
           )
           .toList(),
     );

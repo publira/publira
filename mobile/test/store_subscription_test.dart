@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
 import 'package:publira/app.dart';
@@ -180,6 +184,64 @@ void main() {
       // The answer the store gave is kept.
       expect(platform.productQueries, queries);
     });
+
+    test(
+      'buys a Google Play plan with the offer the reader may take',
+      () async {
+        PricingPhaseWrapper phase(String price, int micros, String period) =>
+            PricingPhaseWrapper(
+              billingCycleCount: 0,
+              billingPeriod: period,
+              formattedPrice: price,
+              priceAmountMicros: micros,
+              priceCurrencyCode: 'JPY',
+              recurrenceMode: RecurrenceMode.infiniteRecurring,
+            );
+        platform.playSubscriptions = {
+          'plan_unlimited': [
+            SubscriptionOfferDetailsWrapper(
+              basePlanId: 'monthly',
+              offerTags: const [],
+              offerIdToken: 'base-token',
+              pricingPhases: [phase('¥980', 980000000, 'P1M')],
+            ),
+            SubscriptionOfferDetailsWrapper(
+              basePlanId: 'monthly',
+              offerId: 'free-week',
+              offerTags: const [],
+              offerIdToken: 'trial-token',
+              pricingPhases: [
+                phase('Free', 0, 'P1W'),
+                phase('¥980', 980000000, 'P1M'),
+              ],
+            ),
+          ],
+        };
+        final play = StoreSubscriber(
+          platform: platform,
+          store: InAppPurchaseStore.googlePlay,
+          repository: purchases,
+          applicationId: () async => 'com.example.reader',
+        );
+        addTearDown(play.dispose);
+        await play.start();
+
+        final offers = await play.offers(const [unlimited]);
+        // What the plan bills once the trial has run out.
+        expect(offers.single.price, '¥980');
+        expect(
+          offers.single.period,
+          const StoreBillingPeriod(StoreBillingUnit.month, 1),
+        );
+
+        expect(
+          await play.subscribe(planId),
+          StoreSubscriptionOutcome.subscribed,
+        );
+        final product = platform.bought.single.productDetails;
+        expect((product as GooglePlayProductDetails).offerToken, 'trial-token');
+      },
+    );
 
     test('restores what the store holds without finishing it again', () async {
       platform.entitlements = [
@@ -380,6 +442,30 @@ void main() {
 
       expect(sheet, findsOneWidget);
       expect(purchases.subscriptionsConfirmed, isEmpty);
+    });
+
+    testWidgets('holds the other payments until a subscription the reader '
+        'dismissed the plans in the middle of has settled', (tester) async {
+      final gate = purchases.subscriptionStartGate = Completer<void>();
+      final buy = find.byKey(ValueKey('episode-buy-$paidEpisodeId'));
+      await pumpLocked(tester);
+
+      await openPlans(tester);
+      await tester.tap(subscribe);
+      await pumpUntilTrue(
+        tester,
+        () => purchases.subscriptionIntents.isNotEmpty,
+      );
+      // The reader closes the plans while the server is still being asked.
+      await tester.tapAt(const Offset(200, 1000));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(sheet, findsNothing);
+      expect(tester.widget<ButtonStyleButton>(buy).onPressed, isNull);
+
+      gate.complete();
+      await pumpUntilFound(tester, pages);
+      expect(purchases.subscriptionsConfirmed, ['jws-3000000000000001']);
     });
 
     testWidgets('says a subscription is being confirmed while the store '

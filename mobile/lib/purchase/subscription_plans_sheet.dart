@@ -12,17 +12,25 @@ import 'package:publira/typography/autospaced_text.dart';
 /// answers how it was closed: the [StoreSubscriptionOutcome] of a plan the
 /// reader subscribed to, the [PurchaseFailure] that stopped one, or `null`
 /// for a sheet the reader dismissed.
+///
+/// **Subscribe** calls [subscribe], which the screen behind owns, so a
+/// subscription the reader dismissed the sheet in the middle of is still the
+/// screen's to wait for.
 Future<Object?> showSubscriptionPlansSheet(
   BuildContext context, {
   required List<SubscriptionPlan> plans,
   required StoreSubscriber subscriber,
+  required Future<StoreSubscriptionOutcome> Function(String planId) subscribe,
 }) => showModalBottomSheet<Object>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
   showDragHandle: true,
-  builder: (context) =>
-      SubscriptionPlansSheet(plans: plans, subscriber: subscriber),
+  builder: (context) => SubscriptionPlansSheet(
+    plans: plans,
+    subscriber: subscriber,
+    subscribe: subscribe,
+  ),
 );
 
 /// The plans that open a locked episode, each with the price and the period
@@ -39,10 +47,16 @@ class SubscriptionPlansSheet extends StatefulWidget {
     super.key,
     required this.plans,
     required this.subscriber,
+    required this.subscribe,
   });
 
   final List<SubscriptionPlan> plans;
+
+  /// Answers what [subscriber]'s store sells each plan at.
   final StoreSubscriber subscriber;
+
+  /// Opens the store's payment sheet for a plan.
+  final Future<StoreSubscriptionOutcome> Function(String planId) subscribe;
 
   @override
   State<SubscriptionPlansSheet> createState() => _SubscriptionPlansSheetState();
@@ -65,7 +79,7 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
     });
     final navigator = Navigator.of(context);
     try {
-      final outcome = await widget.subscriber.subscribe(plan.id);
+      final outcome = await widget.subscribe(plan.id);
       if (mounted && outcome != StoreSubscriptionOutcome.cancelled) {
         navigator.pop(outcome);
       }

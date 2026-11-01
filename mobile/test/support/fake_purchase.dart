@@ -333,6 +333,10 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// What [startStoreSubscription] throws, if anything.
   PurchaseFailure? subscriptionStartFailure;
 
+  /// Holds [startStoreSubscription] until completed, while the server is
+  /// still being asked.
+  Completer<void>? subscriptionStartGate;
+
   /// Transactions [confirmStoreSubscription] recorded, in order.
   final List<String> subscriptionsConfirmed = <String>[];
 
@@ -354,6 +358,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     InAppPurchaseStore store,
   ) async {
     subscriptionIntents.add(planId);
+    await subscriptionStartGate?.future;
     final failure = subscriptionStartFailure;
     if (failure != null) {
       throw failure;
