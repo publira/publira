@@ -1425,6 +1425,7 @@ type SubscriptionPayment struct {
 	RefundedAmount        sql.NullInt32  `json:"refunded_amount"`
 	IsTest                bool           `json:"is_test"`
 	CreatedAt             time.Time      `json:"created_at"`
+	DisputeLostAt         sql.NullTime   `json:"dispute_lost_at"`
 }
 
 type SubscriptionPaymentCompletion struct {

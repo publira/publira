@@ -6,10 +6,11 @@
 -- Every query here counts the same payments: those whose period ends within
 -- the bounds GetRoyaltyMonthBounds answers for the month, paid in currency,
 -- the tenant's, not made in Stripe's test mode, which paid the tenant nothing,
--- and not refunded in full. A partial refund stays shared and is carried as
--- refunded_amount, divided over the parts by episode_part_of_purchase_amount
--- as a purchase's is. A payment no part of which falls on anyone is in no
--- line and in no total: it is the tenant's revenue alone.
+-- not refunded in full, and not lost to a dispute. A partial refund stays
+-- shared and is carried as refunded_amount, divided over the parts by
+-- episode_part_of_purchase_amount as a purchase's is. A lost dispute is no
+-- sale, as a payment refunded in full is. A payment no part of which falls on
+-- anyone is in no line and in no total: it is the tenant's revenue alone.
 
 -- name: ListRoyaltySubscriptionLinesForPeriod :many
 -- Computes the subscription lines of one tenant month: every credit on an
@@ -52,6 +53,7 @@ JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = sqlc.arg('currency')::text
     AND sp.period_end >= sqlc.arg('starts_at')::timestamptz
@@ -73,6 +75,7 @@ SELECT
 FROM subscription_payments sp
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = sqlc.arg('currency')::text
     AND sp.period_end >= sqlc.arg('starts_at')::timestamptz
@@ -108,6 +111,7 @@ JOIN subscription_payment_episode_parts pp ON pp.tenant_id = sp.tenant_id
     AND pp.period_end < sqlc.arg('ends_at')::timestamptz
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = sqlc.arg('currency')::text
     AND sp.period_end >= sqlc.arg('starts_at')::timestamptz
@@ -138,6 +142,7 @@ SELECT
 FROM subscription_payments sp
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = sqlc.arg('currency')::text
     AND sp.period_end >= sqlc.arg('starts_at')::timestamptz

@@ -45,6 +45,18 @@ func (e *adminDBEnv) seedSubscriptionPayment(t *testing.T, tenantID, subscriptio
 	return id
 }
 
+// loseSubscriptionDispute stands in for the notification that a dispute of the
+// subscription payment was lost.
+func (e *adminDBEnv) loseSubscriptionDispute(t *testing.T, paymentID uuid.UUID) {
+	t.Helper()
+
+	if _, err := e.PG.DB.ExecContext(context.Background(),
+		"UPDATE subscription_payments SET dispute_lost_at = now() WHERE id = $1", paymentID,
+	); err != nil {
+		t.Fatalf("lose the dispute of subscription payment %s: %v", paymentID, err)
+	}
+}
+
 // refundSubscriptionPayment stands in for a refund notification recorded on a
 // subscription payment: the running total refunded.
 func (e *adminDBEnv) refundSubscriptionPayment(t *testing.T, paymentID uuid.UUID, refunded int32) {
@@ -241,6 +253,84 @@ func TestDBAdminRoyaltyStatementSharesAPaymentToTheLastMinorUnit(t *testing.T) {
 	assertRoyaltyTotals(t, "July's preview", preview.Totals, 1000, 0, 0, 1000)
 }
 
+// A subscription payment whose dispute was lost before its month is closed is
+// no sale of that month, a partial refund of it included. One lost after the
+// close is taken back from the next statement as a payment refunded in full,
+// net of the part already refunded. One not lost stays shared.
+func TestDBAdminLostSubscriptionDisputeIsNoSale(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RDL")
+	tenantID := f.admin.Tenant.ID
+	second := env.PG.SeedEpisode(t, tenantID, f.series.ID, testutil.EpisodeSeed{
+		PublicID: "RDLEPISODE2", Title: "Episode 2", Price: 300, Status: testutil.EpisodeStatusPublished,
+	})
+	creator := env.PG.SeedCreator(t, tenantID, testutil.CreatorSeed{PublicID: "RDLCREATOR01", Name: "Author"})
+	env.creditEpisode(t, tenantID, f.episode.ID, creator.ID, "Original Author", "episode", 10000)
+	env.creditEpisode(t, tenantID, second.ID, creator.ID, "Original Author", "episode", 10000)
+	firstCredit := [3]string{"Author", "Original Author", "Episode 1"}
+	secondCredit := [3]string{"Author", "Original Author", "Episode 2"}
+
+	plan := env.PG.SeedSubscriptionPlan(t, tenantID, testutil.SubscriptionPlanSeed{})
+	firstSubscription := env.PG.SeedSubscription(t, tenantID, f.reader.ID, plan.ID, testutil.SubscriptionSeed{})
+	other := env.PG.SeedEndUser(t, tenantID, "RDLREADER02", "other@rdl.example.com", "Other Reader")
+	secondSubscription := env.PG.SeedSubscription(t, tenantID, other.ID, plan.ID, testutil.SubscriptionSeed{})
+
+	periodStart := inRoyaltyZone(2026, time.July, 1, 12, 0, 0)
+	periodEnd := inRoyaltyZone(2026, time.July, 31, 12, 0, 0)
+	pay := func(subscription uuid.UUID, amount int32) uuid.UUID {
+		return env.seedSubscriptionPayment(t, tenantID, subscription, plan.ID, subscriptionPaymentSeed{
+			amount: amount, periodStart: periodStart, periodEnd: periodEnd,
+		})
+	}
+	// Refunded in part and then lost before the close: still no sale.
+	lostBefore := pay(firstSubscription, 1000)
+	env.refundSubscriptionPayment(t, lostBefore, 200)
+	env.loseSubscriptionDispute(t, lostBefore)
+	pay(firstSubscription, 800)
+	lostAfter := pay(firstSubscription, 1000)
+	partial := pay(secondSubscription, 1000)
+	env.refundSubscriptionPayment(t, partial, 400)
+	env.finishEpisode(t, tenantID, f.reader.ID, f.episode, f.series.ID, inRoyaltyZone(2026, time.July, 10, 12, 0, 0))
+	env.finishEpisode(t, tenantID, other.ID, second, f.series.ID, inRoyaltyZone(2026, time.July, 11, 12, 0, 0))
+
+	julyLines := []expectedRoyaltyLine{
+		{credit: firstCredit, figures: adjustedLineFigures{"", royaltyLineFigures{saleCount: 2, gross: 1800, shareBps: 10000, payout: 1800}}},
+		{credit: secondCredit, figures: adjustedLineFigures{"", royaltyLineFigures{saleCount: 1, gross: 1000, refunded: 400, shareBps: 10000, payout: 600}}},
+	}
+	preview := env.previewRoyalties(t, f.admin, "2026-07")
+	assertRoyaltyLines(t, "July's preview", preview.Lines, julyLines)
+	assertSources(t, "July's preview", preview.Lines, sourceSubscription, sourceSubscription)
+	assertRoyaltyTotals(t, "July's preview", preview.Totals, 2800, 400, 0, 2400)
+
+	july := env.closeRoyalties(t, f.admin, "2026-07")
+	assertRoyaltyTotals(t, "July", july.Totals, 2800, 400, 0, 2400)
+	closed := env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-07"})
+	assertRoyaltyLines(t, "July", closed.Lines, julyLines)
+	assertSources(t, "July", closed.Lines, sourceSubscription, sourceSubscription)
+
+	env.loseSubscriptionDispute(t, lostAfter)
+	env.loseSubscriptionDispute(t, partial)
+	augustLines := []expectedRoyaltyLine{
+		{credit: firstCredit, figures: adjustedLineFigures{"2026-07", royaltyLineFigures{saleCount: -1, gross: -1000, shareBps: 10000, payout: -1000}}},
+		{credit: secondCredit, figures: adjustedLineFigures{"2026-07", royaltyLineFigures{saleCount: -1, gross: -1000, refunded: -400, shareBps: 10000, payout: -600}}},
+	}
+	preview = env.previewRoyalties(t, f.admin, "2026-08")
+	assertRoyaltyLines(t, "August's preview", preview.Lines, augustLines)
+	assertSources(t, "August's preview", preview.Lines, sourceSubscription, sourceSubscription)
+	assertRoyaltyTotals(t, "August's preview", preview.Totals, 0, 0, -1600, -1600)
+
+	august := env.closeRoyalties(t, f.admin, "2026-08")
+	assertRoyaltyTotals(t, "August", august.Totals, 0, 0, -1600, -1600)
+	gotAugust := env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-08"})
+	assertRoyaltyLines(t, "August", gotAugust.Lines, augustLines)
+	assertSources(t, "August", gotAugust.Lines, sourceSubscription, sourceSubscription)
+
+	september := env.closeRoyalties(t, f.admin, "2026-09")
+	assertRoyaltyTotals(t, "September", september.Totals, 0, 0, 0, 0)
+}
+
 // A subscription payment is counted on the day it was paid, apart from the
 // purchases, and what went back on it is taken off that day.
 func TestDBAdminGetRevenueStatsCountsSubscriptionPaymentsOnTheDayTheyWerePaid(t *testing.T) {
@@ -313,6 +403,63 @@ func TestDBAdminGetRevenueStatsCountsSubscriptionPaymentsOnTheDayTheyWerePaid(t 
 		"2026-01-10,0,0,0,0,0,0,"+currency,
 		"2026-01-11,0,0,0,0,980,0,"+currency,
 		"2026-01-12,1,500,0,500,980,300,"+currency,
+	); got != want {
+		t.Fatalf("by day csv =\n%q\nwant\n%q", got, want)
+	}
+}
+
+// A subscription payment whose dispute was lost counts as refunded in full on
+// the day it was paid, a partial refund included, and one whose dispute was
+// not lost counts only what was refunded.
+func TestDBAdminGetRevenueStatsCountsALostSubscriptionDisputeAsRefundedInFull(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RVD")
+	tenantID := f.admin.Tenant.ID
+	plan := env.PG.SeedSubscriptionPlan(t, tenantID, testutil.SubscriptionPlanSeed{})
+	subscription := env.PG.SeedSubscription(t, tenantID, f.reader.ID, plan.ID, testutil.SubscriptionSeed{})
+	month := func(paidAt time.Time) subscriptionPaymentSeed {
+		return subscriptionPaymentSeed{amount: 980, periodStart: paidAt, periodEnd: paidAt.AddDate(0, 1, 0), paidAt: paidAt}
+	}
+	lost := env.seedSubscriptionPayment(t, tenantID, subscription, plan.ID, month(inRoyaltyZone(2026, time.January, 11, 12, 0, 0)))
+	env.loseSubscriptionDispute(t, lost)
+	partial := env.seedSubscriptionPayment(t, tenantID, subscription, plan.ID, month(inRoyaltyZone(2026, time.January, 12, 12, 0, 0)))
+	env.refundSubscriptionPayment(t, partial, 300)
+	env.loseSubscriptionDispute(t, partial)
+	kept := month(inRoyaltyZone(2026, time.January, 12, 15, 0, 0))
+	kept.amount = 500
+	env.seedSubscriptionPayment(t, tenantID, subscription, plan.ID, kept)
+
+	res := env.getRevenueStats(t, f.admin, &publiraadminv1.GetRevenueStatsRequest{
+		StartDate: "2026-01-10", EndDate: "2026-01-12", GroupBy: publiraadminv1.RevenueGroupBy_REVENUE_GROUP_BY_DAY,
+	})
+	type day struct {
+		date                 string
+		subscription         int64
+		subscriptionRefunded int64
+	}
+	want := []day{{"2026-01-10", 0, 0}, {"2026-01-11", 980, 980}, {"2026-01-12", 1480, 980}}
+	if len(res.Rows) != len(want) {
+		t.Fatalf("rows = %+v, want %d days", res.Rows, len(want))
+	}
+	for i, row := range res.Rows {
+		if got := (day{row.Date, row.SubscriptionAmount, row.SubscriptionRefundedAmount}); got != want[i] {
+			t.Fatalf("day %d = %+v, want %+v", i, got, want[i])
+		}
+	}
+	if res.Totals.SubscriptionAmount != 2460 || res.Totals.SubscriptionRefundedAmount != 1960 {
+		t.Fatalf("totals = %+v, want 2460 of subscriptions with 1960 refunded", res.Totals)
+	}
+
+	currency := env.PG.TenantCurrency(t, tenantID)
+	if got, want := env.exportStats(t, f.admin, &publiraadminv1.ExportStatsRequest{
+		Kind: publiraadminv1.StatsExportKind_STATS_EXPORT_KIND_REVENUE_BY_DAY, StartDate: "2026-01-10", EndDate: "2026-01-12",
+	}), csvFile(
+		"date,purchase_count,gross_amount,refunded_amount,net_amount,subscription_amount,subscription_refunded_amount,currency",
+		"2026-01-10,0,0,0,0,0,0,"+currency,
+		"2026-01-11,0,0,0,0,980,980,"+currency,
+		"2026-01-12,0,0,0,0,1480,980,"+currency,
 	); got != want {
 		t.Fatalf("by day csv =\n%q\nwant\n%q", got, want)
 	}

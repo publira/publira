@@ -15,9 +15,11 @@
 --
 -- A subscription payment is counted on the day it was paid, beside the
 -- purchases rather than among them, under the same terms: paid in currency
--- and not in Stripe's test mode. What went back on it is its refunded_amount,
--- taken off the day it was paid. A payment belongs to no series, so only the
--- totals and the days count it.
+-- and not in Stripe's test mode. What went back on it is
+-- purchase_returned_amount of its amount, the whole of it once a dispute of
+-- the payment was lost and otherwise its refunded_amount, taken off the day
+-- it was paid. A payment belongs to no series, so only the totals and the
+-- days count it.
 --
 -- The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 -- which carries every column GetRevenueTotals and ListRevenueByDay read, so
@@ -41,7 +43,7 @@ SELECT
             AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
     )::bigint AS subscription_amount,
     (
-        SELECT COALESCE(sum(COALESCE(sp.refunded_amount, 0)), 0)
+        SELECT COALESCE(sum(purchase_returned_amount(sp.amount, sp.refunded_amount, sp.dispute_lost_at)), 0)
         FROM subscription_payments sp
         WHERE sp.tenant_id = sqlc.arg('tenant_id')
             AND NOT sp.is_test
@@ -80,7 +82,7 @@ subscriptions AS (
     SELECT
         (sp.paid_at AT TIME ZONE sqlc.arg('time_zone')::text)::date AS paid_date,
         sum(sp.amount)::bigint AS subscription_amount,
-        sum(COALESCE(sp.refunded_amount, 0))::bigint AS subscription_refunded_amount
+        sum(purchase_returned_amount(sp.amount, sp.refunded_amount, sp.dispute_lost_at))::bigint AS subscription_refunded_amount
     FROM subscription_payments sp
     WHERE sp.tenant_id = sqlc.arg('tenant_id')
         AND NOT sp.is_test

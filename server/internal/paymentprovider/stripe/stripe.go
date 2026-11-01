@@ -484,7 +484,7 @@ func disputeClosedEvent(event *stripego.Event) (paymentprovider.Event, error) {
 }
 
 // readDispute reads the dispute an event is about and the payment intent it
-// disputes, which the purchase names as its payment.
+// disputes, which the purchase or the subscription payment names as its payment.
 func readDispute(event *stripego.Event) (stripego.Dispute, string, error) {
 	var dispute stripego.Dispute
 	if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {

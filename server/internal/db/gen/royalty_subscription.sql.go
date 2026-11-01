@@ -20,6 +20,7 @@ SELECT
 FROM subscription_payments sp
 WHERE sp.tenant_id = $1
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = $2::text
     AND sp.period_end >= $3::timestamptz
@@ -79,6 +80,7 @@ JOIN subscription_payment_episode_parts pp ON pp.tenant_id = sp.tenant_id
     AND pp.period_end < $3::timestamptz
 WHERE sp.tenant_id = $4
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = $5::text
     AND sp.period_end >= $2::timestamptz
@@ -126,6 +128,7 @@ SELECT
 FROM subscription_payments sp
 WHERE sp.tenant_id = $2
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = $3::text
     AND sp.period_end >= $4::timestamptz
@@ -214,6 +217,7 @@ JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE sp.tenant_id = $3
     AND COALESCE(sp.refunded_amount, 0) < sp.amount
+    AND sp.dispute_lost_at IS NULL
     AND NOT sp.is_test
     AND sp.currency = $4::text
     AND sp.period_end >= $1::timestamptz
@@ -262,10 +266,11 @@ type ListRoyaltySubscriptionLinesForPeriodRow struct {
 // Every query here counts the same payments: those whose period ends within
 // the bounds GetRoyaltyMonthBounds answers for the month, paid in currency,
 // the tenant's, not made in Stripe's test mode, which paid the tenant nothing,
-// and not refunded in full. A partial refund stays shared and is carried as
-// refunded_amount, divided over the parts by episode_part_of_purchase_amount
-// as a purchase's is. A payment no part of which falls on anyone is in no
-// line and in no total: it is the tenant's revenue alone.
+// not refunded in full, and not lost to a dispute. A partial refund stays
+// shared and is carried as refunded_amount, divided over the parts by
+// episode_part_of_purchase_amount as a purchase's is. A lost dispute is no
+// sale, as a payment refunded in full is. A payment no part of which falls on
+// anyone is in no line and in no total: it is the tenant's revenue alone.
 // Computes the subscription lines of one tenant month: every credit on an
 // episode a payment of the month was shared to, with the parts of the
 // month's payments that fall on it. sale_count is how many payments did. It

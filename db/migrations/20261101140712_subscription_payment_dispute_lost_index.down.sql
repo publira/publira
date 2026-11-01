@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_subscription_payments_tenant_dispute_lost;

@@ -1,9 +1,10 @@
 -- name: LockProviderPayment :exec
 -- Serializes the writes about one payment of a provider for the rest of the
--- transaction: recording a subscription payment and applying the refund held
--- for it, against matching a refund to it or holding the refund. Without it,
--- a refund matched while the payment's insert is uncommitted finds nothing and
--- is held, and the insert finds nothing held, so the refund is never applied.
+-- transaction: recording a subscription payment and applying the refund or the
+-- dispute held for it, against matching a refund or a dispute to it or holding
+-- one. Without it, one matched while the payment's insert is uncommitted finds
+-- nothing and is held, and the insert finds nothing held, so it is never
+-- applied.
 SELECT pg_advisory_xact_lock(hashtextextended(
     'provider-payment:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('provider')::text || ':' || sqlc.arg('provider_payment_id')::text,
     0
@@ -110,5 +111,43 @@ SET refunded_amount = LEAST(
     )
 FROM held
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
+    AND sp.stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
+RETURNING sp.*;
+
+-- name: GetSubscriptionPaymentIDByPaymentIntent :one
+-- The subscription payment paid through a PaymentIntent. No row is a
+-- PaymentIntent no payment here was paid through, which is an open dispute
+-- the caller holds until the payment is recorded.
+SELECT id
+FROM subscription_payments
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text;
+
+-- name: RecordLostDisputeOnSubscriptionPayment :one
+-- Records that the dispute of the subscription payment was lost: the reader's
+-- bank has returned the money, so the payment counts as refunded in full and
+-- is no longer a sale on a royalty statement. A repeated delivery leaves the
+-- instant already stored. Nothing matches a PaymentIntent no payment here was
+-- paid through. The subscription itself is left as Stripe holds it.
+UPDATE subscription_payments
+SET dispute_lost_at = COALESCE(dispute_lost_at, NOW())
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
+RETURNING *;
+
+-- name: ApplyUnappliedDisputeToSubscriptionPayment :one
+-- Writes a dispute held because its notification overtook the payment's onto
+-- the payment. Held as lost, it sets dispute_lost_at from that instant, by
+-- the rule RecordLostDisputeOnSubscriptionPayment uses; held open, it changes
+-- the payment not at all. Nothing matches when no dispute is held, which is
+-- the ordinary case. The held row is deleted by the caller in the same
+-- transaction.
+UPDATE subscription_payments sp
+SET dispute_lost_at = COALESCE(sp.dispute_lost_at, d.lost_at)
+FROM unapplied_disputes d
+WHERE d.tenant_id = sp.tenant_id
+    AND d.provider = sqlc.arg('provider')::text
+    AND d.provider_payment_id = sp.stripe_payment_intent_id
+    AND sp.tenant_id = sqlc.arg('tenant_id')
     AND sp.stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
 RETURNING sp.*;

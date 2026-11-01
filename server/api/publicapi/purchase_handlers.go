@@ -953,13 +953,13 @@ func (s *apiServer) settleStaffRefundInPart(
 }
 
 // withProviderPaymentLock runs fn in a transaction that holds the lock on
-// one payment of the provider, which every write that matches a refund to a
-// subscription payment or holds it for one takes, so the two cannot miss each
-// other.
+// one payment of the provider, which every write that matches a refund or a
+// dispute to a subscription payment or holds one for it takes, so the two
+// cannot miss each other.
 func (s *apiServer) withProviderPaymentLock(ctx context.Context, tenantID uuid.UUID, providerID, paymentID string, fn func(queries Querier) error) error {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return s.internalDBError(ctx, "failed to begin the refund transaction", err, "payment_id", paymentID)
+		return s.internalDBError(ctx, "failed to begin the payment transaction", err, "payment_id", paymentID)
 	}
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
@@ -974,7 +974,7 @@ func (s *apiServer) withProviderPaymentLock(ctx context.Context, tenantID uuid.U
 		return err
 	}
 	if err := tx.Commit(); err != nil {
-		return s.internalDBError(ctx, "failed to commit the refund transaction", err, "payment_id", paymentID)
+		return s.internalDBError(ctx, "failed to commit the payment transaction", err, "payment_id", paymentID)
 	}
 	return nil
 }
@@ -1095,21 +1095,49 @@ func (s *apiServer) recordDispute(
 		ProviderPaymentID: event.PaymentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// Held for the same reason a refund is: the notification that creates
-		// the purchase may still be on its way.
-		if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
-			TenantID:          tenantID,
-			Provider:          providerID,
-			ProviderPaymentID: event.PaymentID,
-		}); err != nil {
-			return s.internalDBError(ctx, "failed to hold an unmatched dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
-		}
-		s.logger.WarnContext(ctx, "dispute matches no purchase yet and is held",
-			"tenant_id", tenantID,
-			"event_id", event.ID,
-			"payment_id", event.PaymentID,
-		)
-		return nil
+		// Under the lock recordSubscriptionPayment takes, as a refund that
+		// matches no purchase is. An open dispute of a subscription payment
+		// changes the payment not at all: the subscription follows Stripe.
+		return s.withProviderPaymentLock(ctx, tenantID, providerID, event.PaymentID, func(queries Querier) error {
+			paymentID, err := queries.GetSubscriptionPaymentIDByPaymentIntent(ctx, dbmodels.GetSubscriptionPaymentIDByPaymentIntentParams{
+				TenantID:              tenantID,
+				StripePaymentIntentID: event.PaymentID,
+			})
+			if err == nil {
+				lost, err := s.applyHeldDisputeToSubscriptionPayment(ctx, queries, tenantID, providerID, event.PaymentID)
+				if err != nil {
+					return s.internalDBError(ctx, "failed to apply a held dispute to a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+				}
+				if !lost {
+					s.logger.InfoContext(ctx, "an open dispute of a subscription payment changes nothing",
+						"tenant_id", tenantID,
+						"event_id", event.ID,
+						"subscription_payment_id", paymentID,
+						"payment_id", event.PaymentID,
+					)
+				}
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return s.internalDBError(ctx, "failed to match a dispute to a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			// Held for the same reason a refund is: the notification that
+			// records the purchase or the subscription payment may still be on
+			// its way.
+			if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
+				TenantID:          tenantID,
+				Provider:          providerID,
+				ProviderPaymentID: event.PaymentID,
+			}); err != nil {
+				return s.internalDBError(ctx, "failed to hold an unmatched dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			s.logger.WarnContext(ctx, "dispute matches no payment yet and is held",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"payment_id", event.PaymentID,
+			)
+			return nil
+		})
 	}
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
@@ -1140,21 +1168,48 @@ func (s *apiServer) recordLostDispute(
 		ProviderPaymentID: event.PaymentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// Held as an open dispute is, and for the same reason.
-		if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
-			TenantID:          tenantID,
-			Provider:          providerID,
-			ProviderPaymentID: event.PaymentID,
-			Lost:              true,
-		}); err != nil {
-			return s.internalDBError(ctx, "failed to hold an unmatched lost dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
-		}
-		s.logger.WarnContext(ctx, "lost dispute matches no purchase yet and is held",
-			"tenant_id", tenantID,
-			"event_id", event.ID,
-			"payment_id", event.PaymentID,
-		)
-		return nil
+		// Under the lock recordSubscriptionPayment takes, as an open dispute
+		// that matches no purchase is.
+		return s.withProviderPaymentLock(ctx, tenantID, providerID, event.PaymentID, func(queries Querier) error {
+			payment, err := queries.RecordLostDisputeOnSubscriptionPayment(ctx, dbmodels.RecordLostDisputeOnSubscriptionPaymentParams{
+				TenantID:              tenantID,
+				StripePaymentIntentID: event.PaymentID,
+			})
+			if err == nil {
+				if err := queries.ReleaseUnappliedDispute(ctx, dbmodels.ReleaseUnappliedDisputeParams{
+					TenantID:          tenantID,
+					Provider:          providerID,
+					ProviderPaymentID: event.PaymentID,
+				}); err != nil {
+					return s.internalDBError(ctx, "failed to release a held dispute of a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+				}
+				s.logger.InfoContext(ctx, "recorded a lost dispute on a subscription payment",
+					"tenant_id", tenantID,
+					"event_id", event.ID,
+					"subscription_payment_id", payment.ID,
+					"payment_id", event.PaymentID,
+				)
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return s.internalDBError(ctx, "failed to record a lost dispute on a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			// Held as an open dispute is, and for the same reason.
+			if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
+				TenantID:          tenantID,
+				Provider:          providerID,
+				ProviderPaymentID: event.PaymentID,
+				Lost:              true,
+			}); err != nil {
+				return s.internalDBError(ctx, "failed to hold an unmatched lost dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+			s.logger.WarnContext(ctx, "lost dispute matches no payment yet and is held",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"payment_id", event.PaymentID,
+			)
+			return nil
+		})
 	}
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record a lost dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
