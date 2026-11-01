@@ -425,6 +425,10 @@ message UpdateEpisodePricingRequest {
   // episode is never rented.
   int32 rental_price = 6;
   int32 rental_period_hours = 7;
+  // How many of the body's opening pages anyone may read without buying the
+  // episode, as Episode.preview_page_count. A negative count is
+  // invalid_argument. Absent keeps the stored count.
+  optional int32 preview_page_count = 8;
 }
 
 message UpdateEpisodePricingResponse {
@@ -543,6 +547,9 @@ message CreateEpisodeRequest {
   // create an episode that is not rented.
   int32 rental_price = 13;
   int32 rental_period_hours = 14;
+  // How many of the body's opening pages anyone may read without buying the
+  // episode, validated as UpdateEpisodePricingRequest's is. 0 opens none.
+  int32 preview_page_count = 15;
 }
 
 message CreateEpisodeResponse {

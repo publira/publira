@@ -22,15 +22,17 @@
 //     the image routes read the reader's purchases and access tickets each
 //     time under the same rules as the API.
 //   - The media token of a free body — price 0, or a priced episode inside an
-//     open free window — whose reader may hold no credential at all and still
-//     needs key material for the encrypted body. It names
+//     open free window — and of the opening pages a priced episode opens as a
+//     preview, whose reader may hold no credential at all and still needs key
+//     material for the encrypted pages. It names
 //     [FreeEpisodeMediaSubject] rather than a reader, its iat is the start of
 //     the current [FreeEpisodeMediaTokenWindow], and it lives two windows, so
 //     a token in hand always has one whole window left and every reader of one
 //     free episode inside one window is handed the identical URL. There is no
 //     reader to revoke; rotation is what ends a copied URL. Access is still
-//     the public rule alone, so an unpublished episode and a paid one without
-//     a grant answer 403 whether the token is there or not.
+//     the public rule alone, so an unpublished episode and a page of a paid
+//     one past its preview answer 403 to a reader without a grant whether the
+//     token is there or not.
 //   - The admin-media token of a tenant member, which the console's episode
 //     image RPCs put on the previews they answer. It lives [MediaTokenTTL],
 //     unlocks nothing on a tenant site, and does not pass to the admin API. On

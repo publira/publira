@@ -2417,8 +2417,16 @@ type Episode struct {
 	CoinPrice       int32  `protobuf:"varint,24,opt,name=coin_price,json=coinPrice,proto3" json:"coin_price,omitempty"`
 	CoinRentalPrice int32  `protobuf:"varint,25,opt,name=coin_rental_price,json=coinRentalPrice,proto3" json:"coin_rental_price,omitempty"`
 	CoinName        string `protobuf:"bytes,26,opt,name=coin_name,json=coinName,proto3" json:"coin_name,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// How many of the body's opening pages anyone may read without buying the
+	// episode: GetEpisodeDetailResponse.preview_pages, on a reader's read. 0
+	// opens none. A free episode opens its whole body, so the count means
+	// nothing until the episode is priced.
+	//
+	// Set on GetEpisodeDetail and on the console's reads of one episode and of
+	// a series' episodes; 0 elsewhere.
+	PreviewPageCount int32 `protobuf:"varint,27,opt,name=preview_page_count,json=previewPageCount,proto3" json:"preview_page_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -2631,6 +2639,13 @@ func (x *Episode) GetCoinName() string {
 		return x.CoinName
 	}
 	return ""
+}
+
+func (x *Episode) GetPreviewPageCount() int32 {
+	if x != nil {
+		return x.PreviewPageCount
+	}
+	return 0
 }
 
 type EpisodeImage struct {
@@ -4304,7 +4319,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x16 \x01(\tR\x02id\x12.\n" +
 	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
 	"\x06locale\x18\x18 \x01(\tR\x06locale\x126\n" +
-	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xf4\b\n" +
+	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xa2\t\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -4335,7 +4350,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"coin_price\x18\x18 \x01(\x05R\tcoinPrice\x12*\n" +
 	"\x11coin_rental_price\x18\x19 \x01(\x05R\x0fcoinRentalPrice\x12\x1b\n" +
-	"\tcoin_name\x18\x1a \x01(\tR\bcoinName\"\xd9\x01\n" +
+	"\tcoin_name\x18\x1a \x01(\tR\bcoinName\x12,\n" +
+	"\x12preview_page_count\x18\x1b \x01(\x05R\x10previewPageCount\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

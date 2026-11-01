@@ -2057,6 +2057,11 @@ type Querier interface {
 	// counts pages the same way and in the same order, so the pages this lists
 	// are the pages that route serves.
 	ListEpisodePreviewImagesByEpisodeID(ctx context.Context, arg ListEpisodePreviewImagesByEpisodeIDParams) ([]ListEpisodePreviewImagesByEpisodeIDRow, error)
+	// The pages a priced episode's preview opens to every reader, in the shape and
+	// order ListEpisodeImagesByEpisodeID lists the whole body in. Which pages
+	// those are is episode_page_in_preview's to say, so this lists exactly the
+	// pages the image route serves without a grant.
+	ListEpisodePreviewPagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodePreviewPagesByEpisodeIDRow, error)
 	// The episodes whose public comment list shows this account as an author, which
 	// is every list a change to the account's icon leaves stale.
 	ListEpisodePublicIDsWithPublishedCommentsByUser(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUserParams) ([]string, error)
@@ -4171,7 +4176,8 @@ type Querier interface {
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
 	// A NULL reading period gives the permanent copy no expiry, and a NULL rental
-	// stops renting the episode.
+	// stops renting the episode. A NULL preview length keeps the stored one, so a
+	// console that does not send it leaves the preview as it was.
 	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
 	// Taking the episode off the site settles what it owed: no reader can open it,
 	// and the publication that puts it back owes its own announcement if its

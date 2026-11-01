@@ -483,6 +483,7 @@ type EpisodeListing struct {
 	AnnouncementOwed   bool          `json:"announcement_owed"`
 	RentalPrice        sql.NullInt32 `json:"rental_price"`
 	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
+	PreviewPageCount   int32         `json:"preview_page_count"`
 }
 
 type EpisodePageReachStat struct {

@@ -34,13 +34,13 @@ func wantEpisodePublicationRevalidateTags(tenantID uuid.UUID) []string {
 	}
 }
 
-var getEpisodeByIDColumns = []string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}
+var getEpisodeByIDColumns = []string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "rental_price", "rental_period_hours", "preview_page_count", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}
 
 func expectPublishedEpisodeLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, availability any) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
-			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, "published", nil, time.Now().UTC(), nil, nil, nil, nil, availability, nil, "all", testSeriesID))
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, int32(0), "published", nil, time.Now().UTC(), nil, nil, nil, nil, availability, nil, "all", testSeriesID))
 }
 
 // expectEpisodeLock expects the lookup that finds testEpisodeID and locks it.
@@ -260,7 +260,7 @@ func TestUpdateEpisodePublishScheduleRevalidatesTheSeriesDetailAndLists(t *testi
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
-			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, "scheduled", scheduledAt, nil, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, int32(0), "scheduled", scheduledAt, nil, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -384,7 +384,7 @@ func TestUpdateEpisodePricingRevalidatesTheSeriesDetailAndLists(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
-		WithArgs(int32(500), sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
+		WithArgs(int32(500), sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectPublishedEpisodeLookup(mock, tenantID, nil)
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
@@ -418,12 +418,12 @@ func TestUpdateEpisodePricingWritesTheRental(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
-		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true}, tenantID, testEpisodeID).
+		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{}, tenantID, testEpisodeID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
-			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(500), nil, int32(200), int32(48), "published", nil, now, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(500), nil, int32(200), int32(48), int32(0), "published", nil, now, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -495,7 +495,7 @@ func TestUpdateEpisodePricingOfNoEpisodeIsNotFound(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
-		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
+		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectRollback()
 
@@ -550,5 +550,27 @@ func TestDeleteEpisodeImageRevalidatesTheSeriesDetail(t *testing.T) {
 		t.Fatalf("answered pages = %v, want only %s", resp.Images, keptID)
 	}
 	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
+// A preview cannot open fewer than no pages, so a negative count is refused
+// before the listing is written, naming the field.
+func TestUpdateEpisodePricingRefusesANegativePreviewPageCount(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	negative := int32(-1)
+	_, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:        testEpisodeID.String(),
+		Price:            500,
+		PreviewPageCount: &negative,
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateEpisodePricing error = %v, want invalid_argument", err)
+	}
+	assertBadRequestField(t, err, "preview_page_count")
 	assertExpectations(t, mock)
 }
