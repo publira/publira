@@ -86,6 +86,12 @@ func (f *audienceFixture) read(userID, episodeID uuid.UUID, at time.Time) {
 		f.tenant.ID, userID, episodeID, at)
 }
 
+func (f *audienceFixture) position(userID, episodeID uuid.UUID, at time.Time) {
+	f.t.Helper()
+	f.exec("INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count, updated_at) VALUES ($1, $2, $3, 0, 1, $4)",
+		f.tenant.ID, userID, episodeID, at)
+}
+
 func (f *audienceFixture) subscribe(userID, planID uuid.UUID, status string) {
 	f.t.Helper()
 	f.pg.SeedSubscription(f.t, f.tenant.ID, userID, planID, testutil.SubscriptionSeed{Status: status})
@@ -210,9 +216,15 @@ func TestAnnouncementAudienceMembersSelectsTheReadersEachConditionNames(t *testi
 			setup: func(f *audienceFixture) (string, []uuid.UUID) {
 				episode := f.episode(f.series())
 				lapsed, never, recent := f.reader("Lapsed reader"), f.reader("Never read"), f.reader("Recent reader")
+				rereader, browsing, stalled := f.reader("Rereads an episode"), f.reader("Midway through an episode"), f.reader("Stopped midway")
 				f.read(lapsed, episode, time.Now().AddDate(0, 0, -40))
 				f.read(recent, episode, time.Now().AddDate(0, 0, -5))
-				return `{"version": 1, "conditions": [{"type": "last_read_days_ago", "days": 30}]}`, []uuid.UUID{lapsed, never}
+				// The first finish is old, and the page turned since is not.
+				f.read(rereader, episode, time.Now().AddDate(0, 0, -40))
+				f.position(rereader, episode, time.Now().AddDate(0, 0, -2))
+				f.position(browsing, episode, time.Now().AddDate(0, 0, -2))
+				f.position(stalled, episode, time.Now().AddDate(0, 0, -40))
+				return `{"version": 1, "conditions": [{"type": "last_read_days_ago", "days": 30}]}`, []uuid.UUID{lapsed, never, stalled}
 			},
 		},
 		{

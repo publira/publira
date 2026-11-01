@@ -115,12 +115,23 @@ AS $$
                                     AND p.user_id = u.id
                                     AND NOT p.is_test
                             )
+                            -- episode_reads keeps the first time an episode was
+                            -- finished, so a reread or a page turned in an episode
+                            -- not finished yet is read from the reading position,
+                            -- which moves whenever the reader's page does.
                             WHEN 'last_read_days_ago' THEN NOT EXISTS (
                                 SELECT 1
                                 FROM episode_reads er
                                 WHERE er.tenant_id = u.tenant_id
                                     AND er.user_id = u.id
                                     AND er.read_at > NOW() - make_interval(days => (c.condition ->> 'days')::int)
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM episode_reading_positions rp
+                                WHERE rp.tenant_id = u.tenant_id
+                                    AND rp.user_id = u.id
+                                    AND rp.updated_at > NOW() - make_interval(days => (c.condition ->> 'days')::int)
                             )
                             WHEN 'signed_up_within_days' THEN u.created_at > NOW() - make_interval(days => (c.condition ->> 'days')::int)
                             -- A reader who never named a locale is sent the
