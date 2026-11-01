@@ -18,16 +18,14 @@ export interface ChartScale {
   baseline: number;
 }
 
-/**
- * The scale of a set of values. Zero is always inside it, so a bar starts from
- * nothing and a fall to zero reaches the baseline, and a set with negative
- * values — a day on which more went back than sold — runs below it. A set
- * whose values are all the same is scaled as if the largest were one more, so
- * a run of zeros lies on the baseline instead of dividing by nothing.
- */
-export const chartScale = (values: readonly number[]): ChartScale => {
-  const low = Math.min(0, ...values);
-  const highest = Math.max(0, ...values);
+const sumOf = (values: readonly number[]): number =>
+  values.reduce((sum, value) => sum + value, 0);
+
+const scaleBetween = (
+  low: number,
+  highest: number,
+  slots: number
+): ChartScale => {
   const high = highest === low ? low + 1 : highest;
 
   const y = (value: number): number =>
@@ -35,9 +33,42 @@ export const chartScale = (values: readonly number[]): ChartScale => {
 
   return {
     baseline: y(0),
-    width: Math.max(values.length, 1) * SLOT_WIDTH,
+    width: Math.max(slots, 1) * SLOT_WIDTH,
     y,
   };
+};
+
+/**
+ * The scale of a set of values. Zero is always inside it, so a bar starts from
+ * nothing and a fall to zero reaches the baseline, and a set with negative
+ * values — a day on which more went back than sold — runs below it. A set
+ * whose values are all the same is scaled as if the largest were one more, so
+ * a run of zeros lies on the baseline instead of dividing by nothing.
+ */
+export const chartScale = (values: readonly number[]): ChartScale =>
+  scaleBetween(Math.min(0, ...values), Math.max(0, ...values), values.length);
+
+/**
+ * The scale of a stack of series, one slot per figure of the first: what the
+ * positive figures of a slot add up to stands above zero, and what its
+ * negative ones add up to hangs below, so the scale runs from the deepest
+ * slot to the tallest.
+ */
+export const stackedScale = (
+  series: readonly (readonly number[])[]
+): ChartScale => {
+  const slots = series[0]?.length ?? 0;
+  let low = 0;
+  let high = 0;
+
+  for (let index = 0; index < slots; index += 1) {
+    const figures = series.map((values) => values[index] ?? 0);
+
+    high = Math.max(high, sumOf(figures.filter((value) => value > 0)));
+    low = Math.min(low, sumOf(figures.filter((value) => value < 0)));
+  }
+
+  return scaleBetween(low, high, slots);
 };
 
 export interface BarGeometry {
@@ -65,6 +96,60 @@ export const barGeometry = (values: readonly number[]): BarGeometry[] => {
       y: top,
     };
   });
+};
+
+export interface StackedBarGeometry extends BarGeometry {
+  /** The index of the series the segment is a figure of. */
+  series: number;
+}
+
+/**
+ * A segment per figure that is not zero, stacked in the order of the series:
+ * each slot's positive figures stand one on another from the baseline up, and
+ * its negative ones hang one under another from it, so the top of a slot is
+ * what its positive figures add up to and the bottom what its negative ones do.
+ */
+export const stackedBarGeometry = (
+  series: readonly (readonly number[])[]
+): StackedBarGeometry[] => {
+  const scale = stackedScale(series);
+  const width = SLOT_WIDTH * (1 - BAR_GAP);
+  const slots = series[0]?.length ?? 0;
+  const segments: StackedBarGeometry[] = [];
+
+  for (let index = 0; index < slots; index += 1) {
+    let above = 0;
+    let below = 0;
+
+    for (const [seriesIndex, values] of series.entries()) {
+      const value = values[index] ?? 0;
+
+      if (value === 0) {
+        continue;
+      }
+
+      const from = value > 0 ? above : below;
+      const to = from + value;
+      const top = scale.y(Math.max(from, to));
+
+      segments.push({
+        height: scale.y(Math.min(from, to)) - top,
+        negative: value < 0,
+        series: seriesIndex,
+        width,
+        x: index * SLOT_WIDTH + (SLOT_WIDTH - width) / 2,
+        y: top,
+      });
+
+      if (value > 0) {
+        above = to;
+      } else {
+        below = to;
+      }
+    }
+  }
+
+  return segments;
 };
 
 /**

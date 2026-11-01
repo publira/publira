@@ -41,7 +41,7 @@ The props types, hooks, and helpers of a tree are in the same namespace (`Field.
 | --- | --- | --- | --- |
 | [`action-form`](./src/action-form) | `ActionForm` | `Root`, `Submit`, `Idle`, `Pending`, `Fieldset`, `FieldError`, `useState`, `useSettled` | a `<form>` around `useActionState`, for a Server Action |
 | [`card`](./src/card) | `Card` | `Root`, `Header`, `Title`, `Description`, `Content`, `Footer` | a card |
-| [`chart`](./src/chart) | `Chart` | `Root`, `Bars`, `Line`, `Steps`, `Axis`, `AxisLabel`, `Caption` | a small chart of one series of figures, drawn as inline SVG |
+| [`chart`](./src/chart) | `Chart` | `Root`, `Bars`, `StackedBars`, `Line`, `Steps`, `Legend`, `LegendItem`, `Axis`, `AxisLabel`, `Caption` | a small chart of one series of figures, or of two stacked, drawn as inline SVG |
 | [`combobox`](./src/combobox) | `Combobox` | `Root`, `Input`, `Popup`, `Empty`, `Items` | searchable single selection |
 | [`confirm-dialog`](./src/confirm-dialog) | `ConfirmDialog` | `Root`, `Trigger`, `Content`, `Header`, `Title`, `Description`, `Footer`, `Cancel`, `Action` | a dialog that confirms an action |
 | [`dialog`](./src/dialog) | `Dialog` | `Root`, `Trigger`, `Portal`, `Backdrop`, `Viewport`, `Popup`, `Header`, `Title`, `Description`, `Footer`, `Close` | a modal dialog |

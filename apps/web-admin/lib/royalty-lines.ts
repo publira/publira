@@ -1,7 +1,13 @@
 /**
- * One creator's credit on one episode for one role, with the month's sales, or
- * an adjustment that takes back the refunds recorded on the sales of a closed
- * month's line since that month was closed.
+ * What a line credits: the episode's sales, or the parts of subscription
+ * payments shared to it. An adjustment has the source of the line it adjusts.
+ */
+export type RoyaltyLineSource = "sale" | "subscription";
+
+/**
+ * One creator's credit on one episode for one role, with the month's sales or
+ * the parts of its subscription payments, or an adjustment that takes back the
+ * refunds recorded on a closed month's line since that month was closed.
  */
 export interface RoyaltyLine {
   lineNumber: number;
@@ -22,6 +28,7 @@ export interface RoyaltyLine {
   /** Basis points, 10000 being all of it. */
   shareBps: number;
   payoutAmount: number;
+  source: RoyaltyLineSource;
 }
 
 export interface RoyaltyCreatorGroup {
@@ -29,11 +36,26 @@ export interface RoyaltyCreatorGroup {
   creatorName: string;
   lines: RoyaltyLine[];
   payoutSubtotal: number;
+  /**
+   * What the lines of each source pay the creator, adjustments counted with
+   * the source of the line they adjust. `null` for a creator with no
+   * subscription line, whose one subtotal is the sales'.
+   */
+  sourceSubtotals: Record<RoyaltyLineSource, number> | null;
 }
+
+const sumPayouts = (
+  lines: readonly RoyaltyLine[],
+  source: RoyaltyLineSource
+): number =>
+  lines
+    .filter((line) => line.source === source)
+    .reduce((sum, line) => sum + line.payoutAmount, 0);
 
 /**
  * The lines regrouped by creator, in the order each creator first appears, with
- * what the given lines pay that creator, adjustments included. The API orders
+ * what the given lines pay that creator, adjustments included, and apart for
+ * sales and for subscription payments once a creator has a subscription line. The API orders
  * the month's own lines by series and episode and puts the adjustments after
  * them, so on a paged statement a subtotal covers only the page it came from.
  *
@@ -58,6 +80,7 @@ export const groupRoyaltyLinesByCreator = (
         key,
         lines: [],
         payoutSubtotal: 0,
+        sourceSubtotals: null,
       };
       groups.set(key, group);
     }
@@ -66,5 +89,15 @@ export const groupRoyaltyLinesByCreator = (
     group.payoutSubtotal += line.payoutAmount;
   }
 
-  return [...groups.values()];
+  return [...groups.values()].map((group) =>
+    group.lines.some((line) => line.source === "subscription")
+      ? {
+          ...group,
+          sourceSubtotals: {
+            sale: sumPayouts(group.lines, "sale"),
+            subscription: sumPayouts(group.lines, "subscription"),
+          },
+        }
+      : group
+  );
 };

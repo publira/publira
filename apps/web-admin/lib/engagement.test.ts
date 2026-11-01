@@ -237,6 +237,8 @@ describe("getRevenueStats", () => {
           refundedAmount: 300n,
           seriesPublicId: "",
           seriesTitle: "",
+          subscriptionAmount: 980n,
+          subscriptionRefundedAmount: 100n,
         },
       ],
       timeZone: "Asia/Tokyo",
@@ -245,6 +247,8 @@ describe("getRevenueStats", () => {
         netAmount: 900n,
         purchaseCount: 3n,
         refundedAmount: 300n,
+        subscriptionAmount: 980n,
+        subscriptionRefundedAmount: 100n,
       },
     });
 
@@ -275,6 +279,8 @@ describe("getRevenueStats", () => {
           refundedAmount: 300,
           seriesPublicId: "",
           seriesTitle: "",
+          subscriptionAmount: 980,
+          subscriptionRefundedAmount: 100,
         },
       ],
       totals: {
@@ -282,6 +288,8 @@ describe("getRevenueStats", () => {
         netAmount: 900,
         purchaseCount: 3,
         refundedAmount: 300,
+        subscriptionAmount: 980,
+        subscriptionRefundedAmount: 100,
       },
     });
     expect(mockGetRevenueStatsApi).toHaveBeenCalledWith(

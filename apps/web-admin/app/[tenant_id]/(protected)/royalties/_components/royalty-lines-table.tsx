@@ -29,7 +29,9 @@ const LEADING_COLUMN_COUNT = 7;
  * and what those lines pay them. Each group is its own `<tbody>`, so the author
  * row heads exactly the rows under it. An adjustment names the closed month it
  * takes refunds back from under its episode, which is what tells its negative
- * figures from a line of the month's own sales.
+ * figures from a line of the month's own sales. A line of subscription payments
+ * says so under its episode too, and an author who has one is given a subtotal
+ * for sales and one for subscription shares above their total.
  */
 export const RoyaltyLinesTable = ({
   currency,
@@ -100,6 +102,13 @@ export const RoyaltyLinesTable = ({
               <Table.Cell>{line.seriesTitle}</Table.Cell>
               <Table.Cell>
                 {line.episodeTitle}
+                {line.source === "subscription" ? (
+                  <span className="block text-xs text-muted-foreground">
+                    <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
+                      <Message message="admin.royalties.lines.subscription" />
+                    </Suspense>
+                  </span>
+                ) : null}
                 {line.adjustedPeriod ? (
                   <span className="block text-xs text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
@@ -135,6 +144,46 @@ export const RoyaltyLinesTable = ({
               </Table.Cell>
             </Table.Row>
           ))}
+          {group.sourceSubtotals ? (
+            <>
+              <Table.Row>
+                <Table.Cell
+                  className="text-right text-muted-foreground"
+                  colSpan={LEADING_COLUMN_COUNT}
+                >
+                  <Suspense
+                    fallback={<SkeletonLine className="ml-auto h-4 w-24" />}
+                  >
+                    <Message message="admin.royalties.lines.sale_subtotal" />
+                  </Suspense>
+                </Table.Cell>
+                <Table.Cell className="text-right">
+                  {formatTenantAmount(group.sourceSubtotals.sale, {
+                    currency,
+                    locale,
+                  })}
+                </Table.Cell>
+              </Table.Row>
+              <Table.Row>
+                <Table.Cell
+                  className="text-right text-muted-foreground"
+                  colSpan={LEADING_COLUMN_COUNT}
+                >
+                  <Suspense
+                    fallback={<SkeletonLine className="ml-auto h-4 w-32" />}
+                  >
+                    <Message message="admin.royalties.lines.subscription_subtotal" />
+                  </Suspense>
+                </Table.Cell>
+                <Table.Cell className="text-right">
+                  {formatTenantAmount(group.sourceSubtotals.subscription, {
+                    currency,
+                    locale,
+                  })}
+                </Table.Cell>
+              </Table.Row>
+            </>
+          ) : null}
           <Table.Row>
             <Table.Cell
               className="text-right text-muted-foreground"

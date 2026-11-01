@@ -9,13 +9,15 @@ import {
   ROYALTIES_ADMIN,
   ROYALTIES_SALES,
   ROYALTIES_SCENARIO,
+  ROYALTIES_SUBSCRIPTION,
   ROYALTIES_TENANT,
 } from "../src/scenarios/royalties";
 import { WEB_ADMIN_ROYALTIES_BASE_URL } from "../src/urls";
 
 /**
- * A publisher reviewing a month of creator royalties and closing it into a
- * statement, and a publisher whose months close on their own.
+ * A publisher reviewing a month of creator royalties, subscription payments
+ * included, and closing it into a statement, and a publisher whose months
+ * close on their own.
  */
 
 const openMonthPath = (period: string): string => `/royalties?period=${period}`;
@@ -43,6 +45,58 @@ test.afterAll(() => {
 });
 
 test.describe("royalties", () => {
+  test("counts a subscription payment on Revenue on the day it was paid", async ({
+    page,
+  }) => {
+    await signIn(
+      page,
+      `/analytics/revenue?from=${ROYALTIES_SUBSCRIPTION.paidOn}&to=${ROYALTIES_SUBSCRIPTION.periodEnd}`
+    );
+
+    const summary = (label: string) =>
+      page
+        .locator("dt")
+        .filter({ hasText: new RegExp(`^${label}$`, "u") })
+        .locator("xpath=following-sibling::dd[1]");
+
+    await expect(summary("Subscriptions")).toHaveText(
+      ROYALTIES_SUBSCRIPTION.amount
+    );
+    await expect(summary("Subscription refunds")).toHaveText("¥0");
+    // Net sales counts the payment beside the purchases.
+    await expect(summary("Net sales")).toHaveText(ROYALTIES_SALES.gross);
+    await expect(
+      page.getByRole("img", { name: "Net sales per day" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("listitem").filter({ hasText: /^Subscriptions$/u })
+    ).toBeVisible();
+
+    // The first day, on which the payment was made and nothing was bought:
+    // its Subscriptions cell and its Net are the payment.
+    await expect(
+      page.getByRole("columnheader", { name: "Subscriptions" })
+    ).toBeVisible();
+
+    const paidOn = page
+      .getByRole("main")
+      .locator("tbody tr")
+      .first()
+      .getByRole("cell");
+
+    await expect(paidOn.nth(1)).toHaveText("0");
+    await expect(paidOn.nth(4)).toHaveText(ROYALTIES_SUBSCRIPTION.amount);
+    await expect(paidOn.nth(6)).toHaveText(ROYALTIES_SUBSCRIPTION.amount);
+
+    // A payment belongs to no series, so the breakdown by series has no
+    // column for it.
+    await page.getByRole("link", { exact: true, name: "By series" }).click();
+    await expect(page).toHaveURL(/[?&]group=series/u);
+    await expect(
+      page.getByRole("columnheader", { name: "Subscriptions" })
+    ).toHaveCount(0);
+  });
+
   test("closes a month into a statement that holds the lines it previewed", async ({
     page,
   }) => {
@@ -64,6 +118,29 @@ test.describe("royalties", () => {
     const previewed = await lineRows(page);
     expect(previewed.join("\n")).toContain(ROYALTIES_SALES.artistPayout);
     expect(previewed.join("\n")).toContain(ROYALTIES_SALES.writerPayout);
+
+    // The payment is a line of its own under each author, marked as such,
+    // with the author's sales and subscription shares subtotalled apart.
+    const shares = previewed.filter((row) =>
+      row.includes("Subscription share")
+    );
+
+    expect(shares).toHaveLength(2);
+    expect(shares).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(ROYALTIES_SUBSCRIPTION.artistShare),
+        expect.stringContaining(ROYALTIES_SUBSCRIPTION.writerShare),
+      ])
+    );
+    expect(
+      previewed.filter((row) => row.startsWith("Subscription subtotal"))
+    ).toHaveLength(2);
+    expect(previewed.filter((row) => row.startsWith("Subtotal"))).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(ROYALTIES_SUBSCRIPTION.artistSubtotal),
+        expect.stringContaining(ROYALTIES_SUBSCRIPTION.writerSubtotal),
+      ])
+    );
 
     await page.getByRole("button", { name: "Close month" }).click();
     const dialog = page.getByRole("alertdialog");
@@ -99,9 +176,11 @@ test.describe("royalties", () => {
     const csv = await readFile(await download.path(), "utf-8");
     const [header, ...rows] = csv.split("\r\n").filter((row) => row !== "");
     expect(header).toMatch(/^\uFEFFperiod,creator_id,creator_name,/u);
-    expect(rows).toHaveLength(2);
+    expect(header).toMatch(/,source$/u);
+    expect(rows).toHaveLength(4);
     expect(rows.join("\n")).toContain(`${ROYALTIES_SALES.artist},`);
     expect(rows.join("\n")).toContain(`${ROYALTIES_SALES.writer},`);
+    expect(rows.filter((row) => row.endsWith(",subscription"))).toHaveLength(2);
 
     await page.goto(
       `${WEB_ADMIN_ROYALTIES_BASE_URL}${openMonthPath(ROYALTIES_SALES.period)}`

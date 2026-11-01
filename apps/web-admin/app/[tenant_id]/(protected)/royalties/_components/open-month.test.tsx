@@ -62,6 +62,7 @@ const line = (
   saleCount: 10,
   seriesTitle: "Series A",
   shareBps: 3000,
+  source: "sale",
   ...overrides,
 });
 
@@ -248,6 +249,49 @@ describe("OpenMonth", () => {
     ).toBeDefined();
     expect(within(rows[2]).getByText("-¥150")).toBeDefined();
     expect(aki.getByText("¥1,350")).toBeDefined();
+  });
+
+  it("marks a subscription line and subtotals an author's sales and subscription shares apart", () => {
+    render(
+      <OpenMonth
+        closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
+        lines={[
+          line(1, "ARTIST", "Aki"),
+          line(2, "WRITER", "Ben", { payoutAmount: 1000 }),
+          line(3, "ARTIST", "Aki", {
+            grossAmount: 980,
+            payoutAmount: 294,
+            saleCount: 1,
+            source: "subscription",
+          }),
+        ]}
+        currency="JPY"
+        locale="en"
+        period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
+        tenantId="TENANT001"
+        timeZone="UTC"
+        totals={{ adjustment: 0, gross: 5980, payout: 2794, refunded: 0 }}
+      />
+    );
+
+    const [aki, ben] = screen
+      .getAllByRole("rowgroup")
+      .slice(1)
+      .map((group) => within(group));
+
+    const rows = aki?.getAllByRole("row") ?? [];
+    expect(within(rows[1]).queryByText("Subscription share")).toBeNull();
+    expect(within(rows[2]).getByText("Subscription share")).toBeDefined();
+    expect(within(rows[3]).getByText("Sales subtotal")).toBeDefined();
+    expect(within(rows[3]).getByText("¥1,500")).toBeDefined();
+    expect(within(rows[4]).getByText("Subscription subtotal")).toBeDefined();
+    expect(within(rows[4]).getByText("¥294")).toBeDefined();
+    expect(within(rows[5]).getByText("Subtotal")).toBeDefined();
+    expect(within(rows[5]).getByText("¥1,794")).toBeDefined();
+    expect(ben?.queryByText("Sales subtotal")).toBeNull();
+    expect(ben?.getByText("Subtotal")).toBeDefined();
   });
 
   it("asks to confirm the period and total payout of a month ready to close", () => {
