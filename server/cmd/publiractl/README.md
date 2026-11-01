@@ -507,6 +507,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `sync-google-play-voided-purchases` | Takes back the purchases Google Play refunded in the last 30 days |
 | `build-search-index` | Builds the catalog index on the saved search engine, if one is due, and moves the search onto it |
+| `reconcile-payments` | Runs the payment reconciliations Tenant admins started and the worker has not finished |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -863,3 +864,20 @@ Environment variables:
 
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the search engine's password, when one is saved.
+
+## reconcile-payments
+
+Runs every payment reconciliation a Tenant admin started from the console and no worker has finished, oldest first: the job the worker runs every 10 seconds on a queue of its own. Each run reads the payments of its period from the tenant's payment provider or store, matches them to the tenant's purchases, and records what matched nothing on either side, as [Selling episodes](../../../docs/en/4-console/4-selling-episodes.md#reconciling-with-the-provider) describes. A run the worker is running is not taken up a second time, and one a stopped worker left claimed is taken over two hours after its claim. A run with none waiting does nothing.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl job reconcile-payments
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt each tenant's payment provider and store credentials.
+- `PUBLIRA_STRIPE_API_URL`: replaces the origin of Stripe's API, as in `publira server`. Unset in every deployment.
+
+A run the source refuses, or cannot be reached for, is recorded as failed on its row and logged with the tenant and the reason; the job goes on to the next and exits zero. It exits non-zero only when it cannot record the runs at all.

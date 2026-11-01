@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -108,6 +109,47 @@ func (c *Client) GetTransactionInfo(ctx context.Context, credentials Credentials
 		return "", fmt.Errorf("appstore: transaction info response carries no signed transaction")
 	}
 	return decoded.SignedTransactionInfo, nil
+}
+
+// historyProductTypeConsumable is the productType that narrows a transaction
+// history to the consumable products, which are the only ones a purchase is.
+const historyProductTypeConsumable = "CONSUMABLE"
+
+// GetTransactionHistory answers the signed transactions of consumable products
+// the customer who made transactionID bought in environment from from up to
+// to, oldest first, every page of them. Apple keeps one history per customer,
+// so any of a customer's transactions reads all of them.
+func (c *Client) GetTransactionHistory(ctx context.Context, credentials Credentials, environment, transactionID string, from, to time.Time) ([]string, error) {
+	var signed []string
+	revision := ""
+	for {
+		query := url.Values{
+			"startDate":   {strconv.FormatInt(from.UnixMilli(), 10)},
+			"endDate":     {strconv.FormatInt(to.UnixMilli(), 10)},
+			"productType": {historyProductTypeConsumable},
+			"sort":        {"ASCENDING"},
+		}
+		if revision != "" {
+			query.Set("revision", revision)
+		}
+		body, err := c.get(ctx, credentials, environment, "/inApps/v2/history/"+url.PathEscape(transactionID)+"?"+query.Encode(), "get transaction history")
+		if err != nil {
+			return nil, err
+		}
+		var page struct {
+			SignedTransactions []string `json:"signedTransactions"`
+			Revision           string   `json:"revision"`
+			HasMore            bool     `json:"hasMore"`
+		}
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, fmt.Errorf("appstore: decode transaction history: %w", err)
+		}
+		signed = append(signed, page.SignedTransactions...)
+		if !page.HasMore || page.Revision == "" || page.Revision == revision {
+			return signed, nil
+		}
+		revision = page.Revision
+	}
 }
 
 // Statuses of an auto-renewable subscription in Get All Subscription

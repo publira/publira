@@ -484,6 +484,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminCommentServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminContactServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminRoyaltyServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminPaymentReconciliationServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminTenantMemberServiceHandler(services, server)
 	connecthttp.Mount(mux, services, limits...)
 

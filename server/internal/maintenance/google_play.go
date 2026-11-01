@@ -11,15 +11,15 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/googleplay"
+	"github.com/publira/publira/server/internal/paymentreconciliation"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/storepurchase"
 )
 
-// VoidedPurchaseLister is the part of the Google Play Developer API the sync
-// calls.
-type VoidedPurchaseLister interface {
-	ListVoidedPurchases(ctx context.Context, serviceAccountKey []byte, packageName string, since, until time.Time) ([]googleplay.VoidedPurchase, error)
-}
+// GooglePlayReader is the part of the Google Play Developer API the jobs
+// call: the voided purchases the sync reads, and the purchases and orders a
+// payment reconciliation reads besides.
+type GooglePlayReader = paymentreconciliation.GooglePlayReader
 
 // voidedPurchaseWindowMargin keeps the start of the window inside the thirty
 // days the API reads, which it measures at the moment it answers rather than

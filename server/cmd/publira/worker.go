@@ -13,6 +13,7 @@ import (
 
 	"github.com/riverqueue/river"
 
+	"github.com/publira/publira/server/internal/appstore"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/fcmsettings"
@@ -48,8 +49,9 @@ const (
 
 // workerQueues is which River queues a worker process hosts. A queue is named
 // for the work on it: outbox is River's default queue, which the Outbox drain
-// has to itself, and ticker, maintenance, and search_index are the queues of
-// those names the job families bring. A queue brings the pool its jobs connect
+// has to itself, and ticker, maintenance, search_index, and
+// payment_reconciliation are the queues of those names the job families
+// bring. A queue brings the pool its jobs connect
 // as, and every queue brings publira_outbox, which the River client itself
 // connects as.
 type workerQueues struct {
@@ -57,16 +59,23 @@ type workerQueues struct {
 	ticker      bool
 	maintenance bool
 	searchIndex bool
+
+	paymentReconciliation bool
 }
 
 // allWorkerQueues is what a worker hosts unless --queue names some.
-var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true}
+var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true, paymentReconciliation: true}
 
-func (q workerQueues) any() bool { return q.outbox || q.ticker || q.maintenance || q.searchIndex }
+func (q workerQueues) any() bool {
+	return q.outbox || q.ticker || q.maintenance || q.searchIndex || q.paymentReconciliation
+}
 
 // contentStats reports whether the process opens the publira_content_stats
-// pool, which the maintenance jobs and the search index build both run on.
-func (q workerQueues) contentStats() bool { return q.maintenance || q.searchIndex }
+// pool, which the maintenance jobs, the search index build, and the payment
+// reconciliations all run on.
+func (q workerQueues) contentStats() bool {
+	return q.maintenance || q.searchIndex || q.paymentReconciliation
+}
 
 // workerQueueEntry is one queue as --queue names it and as River does.
 type workerQueueEntry struct {
@@ -81,6 +90,7 @@ var workerQueueTable = []workerQueueEntry{
 	{"ticker", tickerjobs.QueueName, func(q *workerQueues) *bool { return &q.ticker }},
 	{"maintenance", maintenancejobs.QueueName, func(q *workerQueues) *bool { return &q.maintenance }},
 	{"search_index", maintenancejobs.SearchIndexQueueName, func(q *workerQueues) *bool { return &q.searchIndex }},
+	{"payment_reconciliation", maintenancejobs.PaymentReconciliationQueueName, func(q *workerQueues) *bool { return &q.paymentReconciliation }},
 }
 
 // names answers the --queue names of the queues hosted or, with hosted false,
@@ -113,11 +123,11 @@ func (q *workerQueues) add(value string) error {
 	for name := range strings.SplitSeq(value, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, or search_index")
+			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, search_index, or payment_reconciliation")
 		}
 		i := slices.IndexFunc(workerQueueTable, func(queue workerQueueEntry) bool { return queue.name == name })
 		if i < 0 {
-			return fmt.Errorf("--queue must be outbox, ticker, maintenance, or search_index, not %q", name)
+			return fmt.Errorf("--queue must be outbox, ticker, maintenance, search_index, or payment_reconciliation, not %q", name)
 		}
 		hosted := workerQueueTable[i].field(q)
 		if *hosted {
@@ -148,11 +158,12 @@ func workerServiceNames() []string {
 func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	logger := deps.logger
 
-	// The Outbox drain cancels the subscriptions of deleted accounts, so it
-	// calls the payment providers where the server does. Read before a pool is
-	// opened, so a misconfiguration is refused without reaching the database.
+	// The Outbox drain cancels the subscriptions of deleted accounts, and the
+	// payment reconciliations list each provider's payments, so both call the
+	// payment providers where the server does. Read before a pool is opened,
+	// so a misconfiguration is refused without reaching the database.
 	var payments *paymentprovider.Registry
-	if queues.outbox {
+	if queues.outbox || queues.paymentReconciliation {
 		paymentsConfig, err := providers.ConfigFromEnv()
 		if err != nil {
 			return half{}, failed("failed to load config", err)
@@ -224,7 +235,11 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			Storage:    reclaimers,
 			Secrets:    encryptor,
 			GooglePlay: googleplay.NewClient(googleplay.Config{}),
+			Payments:   payments,
+			AppStore:   appstore.NewClient(appstore.Config{}),
 			Logger:     logger,
+
+			AppStoreVerifier: appstore.NewVerifier(),
 		})
 		if err != nil {
 			return half{}, failed("failed to initialize the maintenance jobs", err)
