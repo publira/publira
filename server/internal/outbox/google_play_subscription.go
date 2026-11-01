@@ -31,14 +31,16 @@ type GooglePlaySubscriptionAcknowledgePayload struct {
 
 // QueueGooglePlaySubscriptionAcknowledgement queues the acknowledgement of the
 // subscription token bought as productID, recorded as subscriptionID. Queuing
-// it again while it is queued, or after it was sent, does nothing.
+// it again while it is queued, or after it was sent, does nothing. The event is
+// keyed by the token as well as the row: a change of plan moves the row to a
+// purchase of its own, which needs an acknowledgement of its own.
 func QueueGooglePlaySubscriptionAcknowledgement(ctx context.Context, queries dbmodels.Querier, tenantID, subscriptionID uuid.UUID, productID, token string) error {
 	return insertTenantEvent(ctx, queries, tenantID, EventTypeGooglePlaySubscriptionAcknowledge, GooglePlaySubscriptionAcknowledgePayload{
 		TenantID:       tenantID.String(),
 		SubscriptionID: subscriptionID.String(),
 		ProductID:      productID,
 		PurchaseToken:  token,
-	}, EventTypeGooglePlaySubscriptionAcknowledge+":"+tenantID.String()+":"+subscriptionID.String())
+	}, EventTypeGooglePlaySubscriptionAcknowledge+":"+tenantID.String()+":"+subscriptionID.String()+":"+token)
 }
 
 // NewGooglePlaySubscriptionAcknowledgeHandler acknowledges the subscription an

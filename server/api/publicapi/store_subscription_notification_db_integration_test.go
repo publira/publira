@@ -14,6 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
+	"github.com/publira/publira/server/internal/outbox"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -472,6 +473,12 @@ func TestDBGooglePlayPlanChangeMovesTheSubscriptionToTheNewToken(t *testing.T) {
 	after := env.recordedSubscription(t)
 	if after.id != before.id || after.storeID != newToken || after.planID != yearly.ID || after.status != "active" || !after.periodEnd.Equal(expiry) {
 		t.Fatalf("after the change of plan recorded %+v, want %s on %s, the yearly plan until %s", after, before.id, newToken, expiry)
+	}
+	for _, token := range []string{oldToken, newToken} {
+		if got := env.count(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 AND payload->>'purchase_token' = $3",
+			env.tenant.ID, outbox.EventTypeGooglePlaySubscriptionAcknowledge, token); got != 1 {
+			t.Fatalf("acknowledgements queued for %s = %d, want 1", token, got)
+		}
 	}
 
 	env.play.PutSubscription(t, storeTestPackageName, oldToken, googleplaytest.SubscriptionExpired, storeSubscriptionGooglePlayProduct, intent, time.Now())
