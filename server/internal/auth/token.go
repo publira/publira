@@ -5,7 +5,8 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"log"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/publira/publira/server/internal/clientip"
+	"github.com/publira/publira/server/internal/logging"
 )
 
 // AccessTokenTTL is defined in jwt.go (24h).
@@ -72,7 +74,9 @@ func AuditEvent(ctx context.Context, action, outcome, tenantPublicID, userPublic
 	if info, ok := connect.CallInfoForServerContext(ctx); ok {
 		userAgent = info.RequestHeader().Get("User-Agent")
 	}
-	log.Printf(
+	// Logged without ctx, so the line carries no trace IDs: the sign-in it
+	// records is identified by its own fields.
+	logging.Audit(slog.Default()).Log(context.Background(), slog.LevelInfo, fmt.Sprintf(
 		"audit auth action=%s outcome=%s tenant_public_id=%s user_public_id=%s reason=%s client_ip=%s user_agent=%q",
 		action,
 		outcome,
@@ -81,7 +85,7 @@ func AuditEvent(ctx context.Context, action, outcome, tenantPublicID, userPublic
 		reason,
 		clientIP,
 		userAgent,
-	)
+	))
 }
 
 // FormatExpiresAt formats token expiry for API responses.

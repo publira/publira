@@ -24,6 +24,12 @@ x-secret-encryption: &secret-encryption
 x-tenant-url: &tenant-url
   PUBLIRA_TENANT_URL_SCHEME: ${PUBLIRA_TENANT_URL_SCHEME:-}
 
+# How the Go processes log. Empty unless `.env` sets it, which is read as unset:
+# key=value records from INFO up.
+x-logging: &logging
+  PUBLIRA_LOG_FORMAT: ${PUBLIRA_LOG_FORMAT:-}
+  PUBLIRA_LOG_LEVEL: ${PUBLIRA_LOG_LEVEL:-}
+
 # Tracing, on every process that traces. Each value is empty unless `.env`
 # sets it, and an empty one is read as unset, so tracing stays off and every
 # other value keeps its default.
@@ -163,7 +169,7 @@ services:
     command: ["server", "--with-worker"]
     restart: unless-stopped
     environment:
-      <<: [*secret-encryption, *tenant-url, *tracing]
+      <<: [*secret-encryption, *tenant-url, *logging, *tracing]
       PUBLIRA_AUTH_JWT_SECRET: ${PUBLIRA_AUTH_JWT_SECRET:?}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
       PUBLIRA_PUBLIC_DB_URL: postgres://publira_public:${PUBLIRA_PUBLIC_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
@@ -298,7 +304,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/publiractl:${PUBLIRA_IMAGE_TAG:?}
     profiles: [publiractl]
     environment:
-      <<: [*secret-encryption, *tenant-url]
+      <<: [*secret-encryption, *tenant-url, *logging]
       PUBLIRA_DB_URL: postgres://postgres:${PUBLIRA_POSTGRES_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_PLATFORM_DB_URL: postgres://publira_platform:${PUBLIRA_PLATFORM_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_CONTENT_STATS_DB_URL: postgres://publira_content_stats:${PUBLIRA_CONTENT_STATS_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable

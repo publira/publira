@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantconn"
 )
@@ -132,7 +133,7 @@ func (r *syncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 // logPlatformEntry emits the structured line every platform entry gets,
 // whether or not the row behind it lands.
 func logPlatformEntry(ctx context.Context, logger *slog.Logger, e PlatformEntry) {
-	logger.InfoContext(ctx, "audit",
+	logging.Audit(logger).InfoContext(ctx, "audit",
 		"actor_platform_user_id", e.ActorPlatformUserID,
 		"actor_role", e.ActorRole,
 		"tenant_id", e.TenantID,
@@ -184,7 +185,7 @@ func WritePlatform(ctx context.Context, queries Querier, logger *slog.Logger, e 
 // logTenantEntry emits the structured line every tenant entry gets, whether or
 // not the row behind it lands.
 func logTenantEntry(ctx context.Context, logger *slog.Logger, e TenantEntry) {
-	logger.InfoContext(ctx, "audit",
+	logging.Audit(logger).InfoContext(ctx, "audit",
 		"tenant_id", e.TenantID,
 		"actor_user_id", e.ActorUserID,
 		"actor_role", e.ActorRole,

@@ -163,10 +163,14 @@ func runCommand(g *commandGroup, c *command, args []string, con console, stdout 
 		return usageError(stderr, err.Error(), usage)
 	}
 
+	logger, err := logging.New(stderr, slog.LevelInfo)
+	if err != nil {
+		return commandError(stderr, err)
+	}
 	env := &commandEnv{
 		console: con,
 		stdout:  stdout,
-		logger:  logging.New(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
+		logger:  logger,
 	}
 	if err := run(context.Background(), env); err != nil {
 		if errors.Is(err, errLogged) {

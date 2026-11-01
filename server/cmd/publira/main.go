@@ -55,13 +55,13 @@ func run(args []string, stderr io.Writer) int {
 		if err != nil {
 			return usageError(stderr, err.Error())
 		}
-		return serve(command, h)
+		return serve(command, h, stderr)
 	case "worker":
 		queues, err := parseWorkerFlags(rest)
 		if err != nil {
 			return usageError(stderr, err.Error())
 		}
-		return serve(command, hosted{worker: queues})
+		return serve(command, hosted{worker: queues}, stderr)
 	default:
 		return usageError(stderr, fmt.Sprintf("unknown command %q", command))
 	}

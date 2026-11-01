@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -80,8 +81,15 @@ func failed(msg string, err error) error { return &startupError{msg: msg, err: e
 // them all on one deadline. Each half keeps its own pools, listeners, and
 // readiness checks whether it runs alone or beside the other: hosting both is
 // a choice of process boundary, not a merge of the two.
-func serve(command string, h hosted) int {
-	logger := logging.New(os.Stdout, nil)
+//
+// A logging variable it cannot read is reported on stderr, since there is no
+// log to report it in yet.
+func serve(command string, h hosted, stderr io.Writer) int {
+	logger, err := logging.New(os.Stdout, slog.LevelInfo)
+	if err != nil {
+		_, _ = io.WriteString(stderr, "publira: "+err.Error()+"\n")
+		return 1
+	}
 	slog.SetDefault(logger)
 
 	// The server's names come first when it is hosted: the first is the

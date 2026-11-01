@@ -2,8 +2,8 @@
 title: 監視
 description: /livezと/readyzによる各プロセスの監視、アラートを設定すべきログとメトリクス、OpenTelemetryのメトリクスとトレースの有効化を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-28
+updated: 2026-11-01
+source_updated: 2026-11-01
 ---
 
 Publiraは、次の4つの方法で稼働状況を知らせます。
@@ -82,19 +82,27 @@ ECSでは、サービスのタスクのヘルスチェックはすべてliveness
 
 ## ログ
 
-`publira server`、`publira worker`、`publiractl`は、ログを`key=value`の形式で、1行に1レコードずつ標準出力に書き出します。
+`publira server`、`publira worker`、`publiractl`は、ログを1行に1レコードずつ標準出力に書き出します。既定の形式は`key=value`です。
 
 ```text
 time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
 ```
 
-どのレコードにも`time`、`level`(`INFO`、`WARN`、`ERROR`のいずれか)、`msg`があります。トレース対象のリクエストやジョブの処理中に出力されたレコードには`trace_id`と`span_id`も付くので、トレースのバックエンドで該当のトレースをたどれます。それ以外の項目は出力元によって異なります。アウトボックスのレコードには対象のエントリー(`event_id`、`event_type`、`attempts`)が、メンテナンスジョブのレコードには実行(`job_kind`、`job_id`、`attempt`)が示され、失敗には`error`が付きます。ログレベルは`INFO`に固定されていて、出力を減らしたり詳しくしたりする変数はありません。
+`PUBLIRA_LOG_FORMAT=json`を設定すると、各レコードは同じ項目を持つ1つのJSONオブジェクトになります。ログの収集基盤は、解析のルールを用意しなくてもそのまま読み込めます。
+
+```jsonl
+{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+```
+
+どのレコードにも`time`、`level`(`DEBUG`、`INFO`、`WARN`、`ERROR`のいずれか)、`msg`があります。トレース対象のリクエストやジョブの処理中に出力されたレコードには`trace_id`と`span_id`も付くので、トレースのバックエンドで該当のトレースをたどれます。それ以外の項目は出力元によって異なります。アウトボックスのレコードには対象のエントリー(`event_id`、`event_type`、`attempts`)が、メンテナンスジョブのレコードには実行(`job_kind`、`job_id`、`attempt`)が示され、失敗には`error`が付きます。
+
+`PUBLIRA_LOG_LEVEL`は、書き出すレコードの最も低いレベルを`debug`、`info`(既定)、`warn`、`error`のいずれかで指定します。`warn`にすると、利用の多い環境で日常的に出る`INFO`のレコードが省かれ、問題を示すレコードはすべて残ります。監査ログの`audit`のレコードと、サインインの試行ごとの`audit auth`のレコードは、誰が何をしたかの記録でありプロセスの状態を示すものではないため、レベルの指定にかかわらず`INFO`で書き出されます。どちらの変数も、想定外の値を指定するとプロセスは起動せず、その変数の名前を示すメッセージを出力します。
 
 Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーンテキストの出力を使います。失敗は`[web-storefront] getTenantSiteInfo failed`のようにアプリ名で始まる行で出力され、準備状態のチェックの失敗は`health check api failed`と出力されます。
 
 ### アラートを設定するログ
 
-まずは`publira server`と`publira worker`の`level=ERROR`のレコードすべてにアラートを設定するとよいでしょう。APIが応答できなかったリクエストは、原因のエラーとともにこのレベルで出力されます。次のレコードは、どれも何かが失われたか止まっていることを表すので、個別にアラートを設定する価値があります。
+まずは`publira server`と`publira worker`の`ERROR`のレコードすべてにアラートを設定するとよいでしょう。APIが応答できなかったリクエストは、原因のエラーとともにこのレベルで出力されます。次のレコードは、どれも何かが失われたか止まっていることを表すので、個別にアラートを設定する価値があります。
 
 | レコード | プロセス | 意味 |
 | --- | --- | --- |

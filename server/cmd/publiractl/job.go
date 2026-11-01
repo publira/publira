@@ -42,7 +42,10 @@ func jobCommand(name, summary string, run func(ctx context.Context, logger *slog
 		summary: summary,
 		setup: func(*commandFlags) func(context.Context, *commandEnv) error {
 			return func(ctx context.Context, env *commandEnv) error {
-				logger := logging.New(env.stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+				logger, err := logging.New(env.stdout, slog.LevelInfo)
+				if err != nil {
+					return err
+				}
 				slog.SetDefault(logger)
 
 				shutdownTracing, err := tracing.Setup(ctx, "publira-"+name)

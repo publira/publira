@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-28
+updated: 2026-11-01
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -72,19 +72,27 @@ Nothing restarts a process on these results: Compose restarts a process that exi
 
 ## Logs
 
-`publira server`, `publira worker`, and `publiractl` write their log to standard output, one record per line, as `key=value` pairs:
+`publira server`, `publira worker`, and `publiractl` write their log to standard output, one record per line, by default as `key=value` pairs:
 
 ```text
 time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
 ```
 
-Every record has `time`, `level` (`INFO`, `WARN`, or `ERROR`), and `msg`. A record logged while handling a request or a job that is being traced also has `trace_id` and `span_id`, which lead to that trace in your tracing backend. The rest depends on what logged it: the outbox's records name the entry (`event_id`, `event_type`, `attempts`), a maintenance job's name the run (`job_kind`, `job_id`, `attempt`), and a failure carries `error`. The level is fixed at `INFO`: there is no variable to make the log quieter or more detailed.
+With `PUBLIRA_LOG_FORMAT=json`, each record is one JSON object with the same keys instead, which a log collector reads without a parsing rule of its own:
+
+```jsonl
+{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+```
+
+Every record has `time`, `level` (`DEBUG`, `INFO`, `WARN`, or `ERROR`), and `msg`. A record logged while handling a request or a job that is being traced also has `trace_id` and `span_id`, which lead to that trace in your tracing backend. The rest depends on what logged it: the outbox's records name the entry (`event_id`, `event_type`, `attempts`), a maintenance job's name the run (`job_kind`, `job_id`, `attempt`), and a failure carries `error`.
+
+`PUBLIRA_LOG_LEVEL` sets the lowest level written: `debug`, `info` (the default), `warn`, or `error`. `warn` leaves out the routine `INFO` records of a busy install and keeps every problem. The audit log's `audit` records and the `audit auth` record of every sign-in attempt are written at `INFO` whatever the level, because they record who did what rather than how the process is doing. A value either variable does not know stops the process at startup, with a message naming the variable.
 
 The web apps and `email-renderer` write Next.js's and Node.js's own plain-text output instead. Their failures are lines prefixed with the app's name, such as `[web-storefront] getTenantSiteInfo failed`, and a readiness check that failed is logged as `health check api failed`.
 
 ### What to alert on
 
-An alert on every `level=ERROR` record of `publira server` and `publira worker` is a reasonable start: a request the API could not answer is logged at that level, with the error behind it. These records are worth an alert of their own, because each one means something was lost or is stuck:
+An alert on every `ERROR` record of `publira server` and `publira worker` is a reasonable start: a request the API could not answer is logged at that level, with the error behind it. These records are worth an alert of their own, because each one means something was lost or is stuck:
 
 | Record | Process | What it means |
 | --- | --- | --- |

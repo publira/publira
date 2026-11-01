@@ -118,6 +118,23 @@ func TestRunGroupStopsBeforeWritingWithoutEncryptionKeys(t *testing.T) {
 	}
 }
 
+func TestRunGroupRefusesALoggingValueItDoesNotKnow(t *testing.T) {
+	t.Setenv("PUBLIRA_LOG_LEVEL", "verbose")
+	tg := &testGroup{}
+	var stdout, stderr bytes.Buffer
+
+	code := runGroup(tg.group(), []string{"save"}, pipedConsole("", &stderr), &stdout)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1\n%s", code, stderr.String())
+	}
+	if tg.wrote {
+		t.Fatal("the command ran with a log level it could not read")
+	}
+	if got, want := stderr.String(), "publiractl: PUBLIRA_LOG_LEVEL must be debug, info, warn, or error, not \"verbose\"\n"; got != want {
+		t.Fatalf("stderr = %q, want %q", got, want)
+	}
+}
+
 func TestRunGroupReportsACommandFailure(t *testing.T) {
 	tg := &testGroup{failWith: errors.New("the object store refused the credentials")}
 	var stdout, stderr bytes.Buffer
