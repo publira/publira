@@ -245,6 +245,108 @@ func invoicePaymentFailedEvent(event *stripego.Event) (paymentprovider.Event, er
 	return subscriptionChangedEvent(event, subscriptionID), nil
 }
 
+// invoicePaidEvent reads an invoice of a plan's subscription that Stripe was
+// paid. An invoice no plan's subscription raised is no concern of a plan, and
+// one that paid nothing, at the start of a trial or under a coupon that takes
+// off the whole price, leaves nothing to record.
+//
+// The period paid for is read from the invoice's lines, since a subscription
+// invoice's own period is the one before it. The PaymentIntent it was paid
+// through is read from Stripe, since a notification leaves the invoice's
+// payments out.
+func (p *Provider) invoicePaidEvent(ctx context.Context, credentials paymentprovider.Credentials, event *stripego.Event) (paymentprovider.Event, error) {
+	var invoice stripego.Invoice
+	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
+		return nil, fmt.Errorf("%w: invoice: %v", paymentprovider.ErrMalformedNotification, err)
+	}
+	if invoice.Parent == nil || invoice.Parent.SubscriptionDetails == nil || invoice.Parent.SubscriptionDetails.Subscription == nil {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
+	if _, ok := invoice.Parent.SubscriptionDetails.Metadata[MetadataPlanID]; !ok {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
+	if invoice.AmountPaid <= 0 {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
+	subscriptionID := strings.TrimSpace(invoice.Parent.SubscriptionDetails.Subscription.ID)
+	if subscriptionID == "" {
+		return nil, fmt.Errorf("%w: the invoice names no subscription", paymentprovider.ErrMalformedNotification)
+	}
+	if strings.TrimSpace(invoice.ID) == "" {
+		return nil, fmt.Errorf("%w: the invoice has no id", paymentprovider.ErrMalformedNotification)
+	}
+	periodStart, periodEnd, ok := invoicePeriod(&invoice)
+	if !ok {
+		return nil, fmt.Errorf("%w: the invoice has no line with a period", paymentprovider.ErrMalformedNotification)
+	}
+	paidAt := event.Created
+	if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
+		paidAt = invoice.StatusTransitions.PaidAt
+	}
+	paymentID, err := p.invoicePaymentIntent(ctx, credentials, invoice.ID)
+	if err != nil {
+		return nil, err
+	}
+	return paymentprovider.SubscriptionPaid{
+		ID:             event.ID,
+		SubscriptionID: subscriptionID,
+		InvoiceID:      invoice.ID,
+		PaymentID:      paymentID,
+		Amount:         invoice.AmountPaid,
+		Currency:       strings.ToUpper(string(invoice.Currency)),
+		PeriodStart:    time.Unix(periodStart, 0).UTC(),
+		PeriodEnd:      time.Unix(periodEnd, 0).UTC(),
+		PaidAt:         time.Unix(paidAt, 0).UTC(),
+		Test:           !invoice.Livemode,
+	}, nil
+}
+
+// invoicePeriod answers the period an invoice's subscription lines bill for,
+// from the earliest start to the latest end, which spans a proration billed
+// beside the period itself.
+func invoicePeriod(invoice *stripego.Invoice) (start, end int64, ok bool) {
+	if invoice.Lines == nil {
+		return 0, 0, false
+	}
+	for _, line := range invoice.Lines.Data {
+		if line == nil || line.Period == nil || line.Period.Start >= line.Period.End ||
+			line.Parent == nil || line.Parent.SubscriptionItemDetails == nil {
+			continue
+		}
+		if !ok || line.Period.Start < start {
+			start = line.Period.Start
+		}
+		if !ok || line.Period.End > end {
+			end = line.Period.End
+		}
+		ok = true
+	}
+	return start, end, ok
+}
+
+// invoicePaymentIntent answers the PaymentIntent a paid invoice was paid
+// through, or empty for one marked paid outside Stripe.
+func (p *Provider) invoicePaymentIntent(ctx context.Context, credentials paymentprovider.Credentials, invoiceID string) (string, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return "", err
+	}
+	params := &stripego.InvoicePaymentListParams{
+		Invoice: stripego.String(invoiceID),
+		Status:  stripego.String("paid"),
+	}
+	for payment, err := range client.V1InvoicePayments.List(ctx, params).All(ctx) {
+		if err != nil {
+			return "", fmt.Errorf("list invoice payments: %w", err)
+		}
+		if payment.Payment != nil && payment.Payment.Type == stripego.InvoicePaymentPaymentTypePaymentIntent &&
+			payment.Payment.PaymentIntent != nil && strings.TrimSpace(payment.Payment.PaymentIntent.ID) != "" {
+			return payment.Payment.PaymentIntent.ID, nil
+		}
+	}
+	return "", nil
+}
+
 // subscriptionChangedEvent names the subscription a notification is about.
 // The subscription itself is read by [Provider.RetrieveSubscription], which
 // the purchase flow calls while it holds the subscription's lock.

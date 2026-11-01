@@ -135,9 +135,21 @@ func (s *adminServer) revenueExport(
 		if err != nil {
 			return statsExport{}, s.internalDBError(ctx, "failed to list revenue by day", err, "tenant_id", tenant.ID.String())
 		}
-		w := csvexport.New(append([]string{"date"}, figureColumns...)...)
+		// A subscription payment belongs to no series, so only the day report
+		// carries its figures, before the currency they are in.
+		w := csvexport.New("date", "purchase_count", "gross_amount", "refunded_amount", "net_amount",
+			"subscription_amount", "subscription_refunded_amount", "currency")
 		for _, row := range rows {
-			w.Row(append([]string{row.Date}, figures(row)...)...)
+			w.Row(
+				row.Date,
+				strconv.FormatInt(row.PurchaseCount, 10),
+				strconv.FormatInt(row.GrossAmount, 10),
+				strconv.FormatInt(row.RefundedAmount, 10),
+				strconv.FormatInt(row.NetAmount, 10),
+				strconv.FormatInt(row.SubscriptionAmount, 10),
+				strconv.FormatInt(row.SubscriptionRefundedAmount, 10),
+				report.currency,
+			)
 		}
 		export.csv = w.Bytes()
 		return export, nil

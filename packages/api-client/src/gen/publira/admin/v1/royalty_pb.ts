@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/royalty.proto.
  */
 export const file_publira_admin_v1_royalty: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciXQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMSEgoKYWRqdXN0bWVudBgEIAEoAyLTAQoQUm95YWx0eVN0YXRlbWVudBIOCgZwZXJpb2QYASABKAkSEQoJdGltZV96b25lGAIgASgJEhEKCWNsb3NlZF9hdBgDIAEoCRIgChhjbG9zZWRfYnlfdXNlcl9wdWJsaWNfaWQYBCABKAkSGwoTY2xvc2VkX2J5X3VzZXJfbmFtZRgFIAEoCRI4CgZ0b3RhbHMYBiABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSEAoIY3VycmVuY3kYByABKAki7wIKFFJveWFsdHlTdGF0ZW1lbnRMaW5lEhMKC2xpbmVfbnVtYmVyGAEgASgFEhkKEWNyZWF0b3JfcHVibGljX2lkGAIgASgJEhQKDGNyZWF0b3JfbmFtZRgDIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAQgASgJEhQKDHNlcmllc190aXRsZRgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAcgASgJEhYKDnJvbGVfcHVibGljX2lkGAggASgJEhEKCXJvbGVfbmFtZRgJIAEoCRISCgpzYWxlX2NvdW50GAogASgFEhQKDGdyb3NzX2Ftb3VudBgLIAEoAxIXCg9yZWZ1bmRlZF9hbW91bnQYDCABKAMSEQoJc2hhcmVfYnBzGA0gASgFEhUKDXBheW91dF9hbW91bnQYDiABKAMSFwoPYWRqdXN0ZWRfcGVyaW9kGA8gASgJImEKHlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIusBCh9QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEg4KBnBlcmlvZBgBIAEoCRIRCgl0aW1lX3pvbmUYAiABKAkSOAoGdG90YWxzGAMgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEjUKBWxpbmVzGAQgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIRCglzdGFydHNfYXQYBSABKAkSDwoHZW5kc19hdBgGIAEoCRIQCghjdXJyZW5jeRgHIAEoCSJfChxDbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiVgodQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50Im0KHExpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJIoMBCh1MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZRI2CgpzdGF0ZW1lbnRzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiewoaR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSK3AQobR2V0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEjUKCXN0YXRlbWVudBgBIAEoCzIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudBI1CgVsaW5lcxgCIAMoCzImLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSJgCh1FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIi0KHkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRILCgNjc3YYASABKAwqdwoQUm95YWx0eUNsb3NlTW9kZRIiCh5ST1lBTFRZX0NMT1NFX01PREVfVU5TUEVDSUZJRUQQABIdChlST1lBTFRZX0NMT1NFX01PREVfTUFOVUFMEAESIAocUk9ZQUxUWV9DTE9TRV9NT0RFX0FVVE9NQVRJQxACMugGChNBZG1pblJveWFsdHlTZXJ2aWNlEmsKEEdldFJveWFsdHlDb25maWcSKS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABJ0ChNVcGRhdGVSb3lhbHR5Q29uZmlnEiwucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlUm95YWx0eUNvbmZpZ1Jlc3BvbnNlIgASgAEKF1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50EjAucHVibGlyYS5hZG1pbi52MS5QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVDbG9zZVJveWFsdHlTdGF0ZW1lbnQSLi5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgASegoVTGlzdFJveWFsdHlTdGF0ZW1lbnRzEi4ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXF1ZXN0Gi8ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZSIAEnQKE0dldFJveWFsdHlTdGF0ZW1lbnQSLC5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ9ChZFeHBvcnRSb3lhbHR5U3RhdGVtZW50Ei8ucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciXQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMSEgoKYWRqdXN0bWVudBgEIAEoAyLTAQoQUm95YWx0eVN0YXRlbWVudBIOCgZwZXJpb2QYASABKAkSEQoJdGltZV96b25lGAIgASgJEhEKCWNsb3NlZF9hdBgDIAEoCRIgChhjbG9zZWRfYnlfdXNlcl9wdWJsaWNfaWQYBCABKAkSGwoTY2xvc2VkX2J5X3VzZXJfbmFtZRgFIAEoCRI4CgZ0b3RhbHMYBiABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSEAoIY3VycmVuY3kYByABKAkipAMKFFJveWFsdHlTdGF0ZW1lbnRMaW5lEhMKC2xpbmVfbnVtYmVyGAEgASgFEhkKEWNyZWF0b3JfcHVibGljX2lkGAIgASgJEhQKDGNyZWF0b3JfbmFtZRgDIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAQgASgJEhQKDHNlcmllc190aXRsZRgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAcgASgJEhYKDnJvbGVfcHVibGljX2lkGAggASgJEhEKCXJvbGVfbmFtZRgJIAEoCRISCgpzYWxlX2NvdW50GAogASgFEhQKDGdyb3NzX2Ftb3VudBgLIAEoAxIXCg9yZWZ1bmRlZF9hbW91bnQYDCABKAMSEQoJc2hhcmVfYnBzGA0gASgFEhUKDXBheW91dF9hbW91bnQYDiABKAMSFwoPYWRqdXN0ZWRfcGVyaW9kGA8gASgJEjMKBnNvdXJjZRgQIAEoDjIjLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUxpbmVTb3VyY2UiYQoeUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAki6wEKH1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRI4CgZ0b3RhbHMYAyABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSNQoFbGluZXMYBCADKAsyJi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRMaW5lEhEKCXN0YXJ0c19hdBgFIAEoCRIPCgdlbmRzX2F0GAYgASgJEhAKCGN1cnJlbmN5GAcgASgJIl8KHENsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCSJWCh1DbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRI1CglzdGF0ZW1lbnQYASABKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQibQocTGlzdFJveWFsdHlTdGF0ZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkigwEKHUxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlEjYKCnN0YXRlbWVudHMYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ7ChpHZXRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIrcBChtHZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EjUKBWxpbmVzGAIgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIWCg5wcmV2aW91c190b2tlbhgDIAEoCRISCgpuZXh0X3Rva2VuGAQgASgJImAKHUV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiLQoeRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEgsKA2NzdhgBIAEoDCp3ChBSb3lhbHR5Q2xvc2VNb2RlEiIKHlJPWUFMVFlfQ0xPU0VfTU9ERV9VTlNQRUNJRklFRBAAEh0KGVJPWUFMVFlfQ0xPU0VfTU9ERV9NQU5VQUwQARIgChxST1lBTFRZX0NMT1NFX01PREVfQVVUT01BVElDEAIqfAoRUm95YWx0eUxpbmVTb3VyY2USIwofUk9ZQUxUWV9MSU5FX1NPVVJDRV9VTlNQRUNJRklFRBAAEhwKGFJPWUFMVFlfTElORV9TT1VSQ0VfU0FMRRABEiQKIFJPWUFMVFlfTElORV9TT1VSQ0VfU1VCU0NSSVBUSU9OEAIy6AYKE0FkbWluUm95YWx0eVNlcnZpY2USawoQR2V0Um95YWx0eUNvbmZpZxIpLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXNwb25zZSIAEnQKE1VwZGF0ZVJveWFsdHlDb25maWcSLC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABKAAQoXUHJldmlld1JveWFsdHlTdGF0ZW1lbnQSMC5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEnoKFUNsb3NlUm95YWx0eVN0YXRlbWVudBIuLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVMaXN0Um95YWx0eVN0YXRlbWVudHMSLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlIgASdAoTR2V0Um95YWx0eVN0YXRlbWVudBIsLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEn0KFkV4cG9ydFJveWFsdHlTdGF0ZW1lbnQSLy5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * The tenant's policy for closing completed royalty months.
@@ -127,8 +127,9 @@ export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigRe
   messageDesc(file_publira_admin_v1_royalty, 4);
 
 /**
- * The figures of one month: its own sales, the refunds it carries of earlier
- * months' sales, and what its lines pay out. Amounts are integers in the minor
+ * The figures of one month: its own sales and the subscription payments it
+ * shares, the refunds it carries of earlier months' sales and payments, and
+ * what its lines pay out. Amounts are integers in the minor
  * unit of the currency of the statement or preview they belong to, and count
  * only the sales paid in it.
  *
@@ -137,14 +138,16 @@ export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigRe
 export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementTotals"> & {
   /**
    * What the month sold, each sale counted once however many creators it is
-   * credited to. A fully refunded sale is not a sale.
+   * credited to, and the subscription payments it shares, each counted once
+   * in the same way. A fully refunded sale or payment is not counted, and
+   * neither is a payment shared to no one.
    *
    * @generated from field: int64 gross = 1;
    */
   gross: bigint;
 
   /**
-   * Partial refunds of the sales in gross.
+   * Partial refunds of the sales and payments in gross.
    *
    * @generated from field: int64 refunded = 2;
    */
@@ -160,9 +163,10 @@ export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementT
   payout: bigint;
 
   /**
-   * The net sales of earlier closed months that refunds recorded since their
-   * close take back, each sale counted once: zero, or a negative amount. The
-   * adjustment lines carry it to the creators.
+   * The net sales and shared payments of earlier closed months that refunds
+   * recorded since their close take back, each sale and payment counted once:
+   * zero, or a negative amount. The adjustment lines carry it to the
+   * creators.
    *
    * @generated from field: int64 adjustment = 4;
    */
@@ -237,7 +241,8 @@ export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*
 
 /**
  * One creator's credit on one episode for one role, with that episode's sales
- * in the month. Names are as they stood at close; a public ID is empty once the
+ * in the month, or the parts of the month's subscription payments shared to
+ * it. Names are as they stood at close; a public ID is empty once the
  * row it named has been deleted.
  *
  * A line with adjusted_period set is an adjustment instead: it carries the
@@ -248,6 +253,11 @@ export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*
  * sales counted, negative when a sale partly refunded at close was then
  * refunded in full. Adjustment lines follow the month's own lines, oldest
  * adjusted month first.
+ *
+ * On a subscription line, sale_count is the payments shared to the episode,
+ * gross_amount the parts of them it was given, and refunded_amount the same
+ * parts of their partial refunds. The month's own sales lines come first,
+ * then its subscription lines, then the adjustment lines.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementLine
  */
@@ -342,6 +352,14 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
    * @generated from field: string adjusted_period = 15;
    */
   adjustedPeriod: string;
+
+  /**
+   * What the line credits. An adjustment line has the source of the line it
+   * adjusts.
+   *
+   * @generated from field: publira.admin.v1.RoyaltyLineSource source = 16;
+   */
+  source: RoyaltyLineSource;
 };
 
 /**
@@ -667,6 +685,8 @@ export type ExportRoyaltyStatementResponse = Message<"publira.admin.v1.ExportRoy
    *                     adjusts; empty for a line of the month's own sales.
    *                     The amounts of an adjustment line are changes, zero
    *                     or negative, as RoyaltyStatementLine describes
+   *   source            sale or subscription, what the line credits, as
+   *                     RoyaltyLineSource describes
    *
    * The IDs are the rows' internal IDs, not their public IDs, and they stay
    * on the line after the row is deleted.
@@ -708,6 +728,41 @@ export enum RoyaltyCloseMode {
  */
 export const RoyaltyCloseModeSchema: GenEnum<RoyaltyCloseMode> = /*@__PURE__*/
   enumDesc(file_publira_admin_v1_royalty, 0);
+
+/**
+ * What one line of a royalty statement credits.
+ *
+ * @generated from enum publira.admin.v1.RoyaltyLineSource
+ */
+export enum RoyaltyLineSource {
+  /**
+   * @generated from enum value: ROYALTY_LINE_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The episode's sales.
+   *
+   * @generated from enum value: ROYALTY_LINE_SOURCE_SALE = 1;
+   */
+  SALE = 1,
+
+  /**
+   * The parts of subscription payments shared to the episode. A payment is
+   * counted in the month its period ends in, and shared evenly among the
+   * episodes of its plan its subscriber first finished in that period; one
+   * whose subscriber finished none is shared to no one.
+   *
+   * @generated from enum value: ROYALTY_LINE_SOURCE_SUBSCRIPTION = 2;
+   */
+  SUBSCRIPTION = 2,
+}
+
+/**
+ * Describes the enum publira.admin.v1.RoyaltyLineSource.
+ */
+export const RoyaltyLineSourceSchema: GenEnum<RoyaltyLineSource> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_royalty, 1);
 
 /**
  * Creator royalties. Every RPC here is limited to the tenant admin role.

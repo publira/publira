@@ -2,9 +2,10 @@
 title: Subscription plans
 description: Sell readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, and see what a subscriber does on the site.
 published: 2026-10-25
+updated: 2026-11-01
 ---
 
-A subscription plan lets a reader pay every period, through Stripe, and read every episode the plan covers without buying each one. Selling one takes three things that have to agree, the same three a sale of an episode takes: a recurring Price in the tenant's Stripe account, a plan in the tenant console that names it, and the webhook through which Stripe tells the install that a reader subscribed, renewed, fell behind, or canceled. Stripe bills the reader, but only the webhook opens the plan's episodes to them and closes them again, so a setup with any of the three wrong takes the reader's money and leaves the episodes locked, or leaves them open to a reader who has stopped paying. This page walks through all three in that order, and ends with a test subscription that proves they agree.
+A subscription plan lets a reader pay every period, through Stripe, and read every episode the plan covers without buying each one. Selling one takes three things that have to agree, the same three a sale of an episode takes: a recurring Price in the tenant's Stripe account, a plan in the tenant console that names it, and the webhook through which Stripe tells the install that a reader subscribed, paid, renewed, fell behind, or canceled. Stripe bills the reader, but only the webhook opens the plan's episodes to them and closes them again, so a setup with any of the three wrong takes the reader's money and leaves the episodes locked, or leaves them open to a reader who has stopped paying. This page walks through all three in that order, and ends with a test subscription that proves they agree.
 
 Plans are sold through Stripe alone, on the site. A tenant that takes payments through PAY.JP cannot create one. The tenant's app sends a reader who wants a plan to the site's plan page when it sells through **Web checkout**, as [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app) describes.
 
@@ -14,13 +15,14 @@ Plans are sold through Stripe alone, on the site. A tenant that takes payments t
 
 The tenant takes payments through Stripe, with **Payment settings** on **Payments** › **Payment methods** showing **Ready**, as [Selling episodes](./4-selling-episodes.md#stripe) describes. The console reads every plan's Price from the Stripe account of the secret key saved there, so a plan cannot be saved until it is.
 
-Stripe's webhook endpoint needs three events beside the seven a sale of an episode needs:
+Stripe's webhook endpoint needs four events beside the seven a sale of an episode needs:
 
 - `customer.subscription.updated`, sent when a subscription renews, falls behind on a payment, is set to cancel, or changes plan.
 - `customer.subscription.deleted`, sent when a subscription ends.
 - `invoice.payment_failed`, sent when Stripe fails to collect a renewal.
+- `invoice.paid`, sent when Stripe is paid a subscription's invoice, the first one and every renewal.
 
-Without them, a subscription is recorded when its checkout is paid and never follows Stripe afterwards: its episodes close when the period paid for ends, even for a reader whose renewal went through, and a reader who cancels keeps reading until that day. Add them to the endpoint in test mode, and again to the live-mode endpoint before going live.
+Without the first three, a subscription is recorded when its checkout is paid and never follows Stripe afterwards: its episodes close when the period paid for ends, even for a reader whose renewal went through, and a reader who cancels keeps reading until that day. Without `invoice.paid`, no payment is recorded, so the plans' income is in no revenue figure and on no royalty statement, as [What a payment pays the Authors](#what-a-payment-pays-the-authors) describes. A payment made before the event was added is not recorded afterwards. Add them to the endpoint in test mode, and again to the live-mode endpoint before going live.
 
 ## Creating the Price in Stripe
 
@@ -84,6 +86,12 @@ A subscription that is canceled, unpaid, paused, or whose first payment never we
 
 An episode a subscriber also bought is still listed as their purchase, and stays theirs for its reading period after the subscription ends. Readers can hold one subscription at a time.
 
+## What a payment pays the Authors
+
+Every payment Stripe takes for a plan, the first one and every renewal, is recorded when the `invoice.paid` notification reaches the install. It counts in the tenant's revenue on the day it was paid, apart from the purchases, and a refund made in the Stripe Dashboard is taken off that day.
+
+The royalty statement of the month the period it paid for ends in shares it among the episodes of the plan the subscriber finished during that period, and pays each episode's part to its Authors at their shares. A payment whose subscriber finished none of them is shared with no one, and stays the publisher's. The rule, and how a refund after the close is taken back, is in [Reports and royalties](./6-reports-and-royalties.md#subscription-payments).
+
 ## What a reader sees
 
 The site's plan page, `https://<tenant-domain>/plans`, lists the published plans with what each costs every period, its description, and the labels or the works it covers that the site shows. A reader reaches it from **Subscribe**, which a locked episode offers beside the purchase when a published plan covers it, and from **See plans** on **My Page**. Nothing else on the site links to it, so link to it yourself where you tell readers about a plan.
@@ -100,16 +108,17 @@ Deleting a reader's account cancels their subscription in Stripe at once, withou
 
 ## When a subscription does not follow Stripe
 
-The deliveries listed for the webhook endpoint in the Stripe Dashboard show the cause, as they do for a purchase, and the statuses mean what [When a payment does not open the episode](./4-selling-episodes.md#when-a-payment-does-not-open-the-episode) describes. Two causes are particular to subscriptions:
+The deliveries listed for the webhook endpoint in the Stripe Dashboard show the cause, as they do for a purchase, and the statuses mean what [When a payment does not open the episode](./4-selling-episodes.md#when-a-payment-does-not-open-the-episode) describes. Three causes are particular to subscriptions:
 
 - **A reader paid, and My Page shows no plan.** The `checkout.session.completed` delivery failed. Once it is fixed and the delivery is resent, the subscription is recorded and its episodes open.
 - **A renewal, a cancellation, or a failed payment does not show on My Page.** The endpoint does not send `customer.subscription.updated`, `customer.subscription.deleted`, or `invoice.payment_failed`. Add them. The install reads the whole subscription from Stripe whenever a notification about it arrives, so the next one brings each subscription up to date.
+- **A payment is in no revenue figure and on no royalty statement.** The endpoint does not send `invoice.paid`, or its delivery failed. Add the event, and resend the failed delivery: a payment is recorded once however often its notification arrives.
 
 ## Testing before going live
 
 Test the whole setup in Stripe's test mode before readers can subscribe. Only a subscription shows that the webhook works, and only a cancellation shows that it follows Stripe afterwards.
 
-1. Set up Stripe with its **test** secret key, and add all ten events to the test-mode endpoint, as above. Check that **Payment settings** shows **Ready**.
+1. Set up Stripe with its **test** secret key, and add all eleven events to the test-mode endpoint, as above. Check that **Payment settings** shows **Ready**.
 2. In test mode, create the recurring Price, and save the customer portal's settings.
 3. Create a series for the test, shown on **Web and app** or **Web only** and published now, with a paid episode in it, published now and sold on the web, as [Testing before going live](./4-selling-episodes.md#testing-before-going-live) describes for a sale.
 4. Create a plan with the test Price that opens that series, with **Publish** checked.
@@ -118,4 +127,4 @@ Test the whole setup in Stripe's test mode before readers can subscribe. Only a 
 7. Back on **My Page**, wait for **Your plan** to show the plan and when it renews, then open the episode: it reads without a purchase. If the plan does not appear within a minute, read the delivery in the Stripe Dashboard, as [When a subscription does not follow Stripe](#when-a-subscription-does-not-follow-stripe) describes.
 8. Choose **Manage billing**, and cancel the subscription in the portal. Back on **My Page**, **Your plan** shows the cancellation: the day it ends, or that it has ended if the portal cancels at once. Cancel the subscription in the Stripe Dashboard as well, if it is still running, and reload the episode: it is locked again.
 
-When the test passes, uncheck **Publish** on the test plan and set the test series' **Shown on** to **Not shown anywhere**. The test plan now has a subscriber in its history, so it cannot be deleted; it stays in the list unpublished. Then replace the test secret key with the live one, add the live-mode endpoint with all ten events, enter its signing secret, and save. Create the plan's Price again in live mode, save the customer portal's settings in live mode, and create the plans readers will subscribe to with the live Prices.
+When the test passes, uncheck **Publish** on the test plan and set the test series' **Shown on** to **Not shown anywhere**. The test plan now has a subscriber in its history, so it cannot be deleted; it stays in the list unpublished. Then replace the test secret key with the live one, add the live-mode endpoint with all eleven events, enter its signing secret, and save. Create the plan's Price again in live mode, save the customer portal's settings in live mode, and create the plans readers will subscribe to with the live Prices.

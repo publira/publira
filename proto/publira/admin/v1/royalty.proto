@@ -40,23 +40,27 @@ message UpdateRoyaltyConfigResponse {
   RoyaltyConfig config = 1;
 }
 
-// The figures of one month: its own sales, the refunds it carries of earlier
-// months' sales, and what its lines pay out. Amounts are integers in the minor
+// The figures of one month: its own sales and the subscription payments it
+// shares, the refunds it carries of earlier months' sales and payments, and
+// what its lines pay out. Amounts are integers in the minor
 // unit of the currency of the statement or preview they belong to, and count
 // only the sales paid in it.
 message RoyaltyStatementTotals {
   // What the month sold, each sale counted once however many creators it is
-  // credited to. A fully refunded sale is not a sale.
+  // credited to, and the subscription payments it shares, each counted once
+  // in the same way. A fully refunded sale or payment is not counted, and
+  // neither is a payment shared to no one.
   int64 gross = 1;
-  // Partial refunds of the sales in gross.
+  // Partial refunds of the sales and payments in gross.
   int64 refunded = 2;
   // The sum of the lines' payouts, the adjustment lines included, so negative
   // for a month whose refunds of earlier sales outweigh its own. The rest of
   // gross net of refunds and adjustment is the tenant's own.
   int64 payout = 3;
-  // The net sales of earlier closed months that refunds recorded since their
-  // close take back, each sale counted once: zero, or a negative amount. The
-  // adjustment lines carry it to the creators.
+  // The net sales and shared payments of earlier closed months that refunds
+  // recorded since their close take back, each sale and payment counted once:
+  // zero, or a negative amount. The adjustment lines carry it to the
+  // creators.
   int64 adjustment = 4;
 }
 
@@ -77,8 +81,21 @@ message RoyaltyStatement {
   string currency = 7;
 }
 
+// What one line of a royalty statement credits.
+enum RoyaltyLineSource {
+  ROYALTY_LINE_SOURCE_UNSPECIFIED = 0;
+  // The episode's sales.
+  ROYALTY_LINE_SOURCE_SALE = 1;
+  // The parts of subscription payments shared to the episode. A payment is
+  // counted in the month its period ends in, and shared evenly among the
+  // episodes of its plan its subscriber first finished in that period; one
+  // whose subscriber finished none is shared to no one.
+  ROYALTY_LINE_SOURCE_SUBSCRIPTION = 2;
+}
+
 // One creator's credit on one episode for one role, with that episode's sales
-// in the month. Names are as they stood at close; a public ID is empty once the
+// in the month, or the parts of the month's subscription payments shared to
+// it. Names are as they stood at close; a public ID is empty once the
 // row it named has been deleted.
 //
 // A line with adjusted_period set is an adjustment instead: it carries the
@@ -89,6 +106,11 @@ message RoyaltyStatement {
 // sales counted, negative when a sale partly refunded at close was then
 // refunded in full. Adjustment lines follow the month's own lines, oldest
 // adjusted month first.
+//
+// On a subscription line, sale_count is the payments shared to the episode,
+// gross_amount the parts of them it was given, and refunded_amount the same
+// parts of their partial refunds. The month's own sales lines come first,
+// then its subscription lines, then the adjustment lines.
 message RoyaltyStatementLine {
   // Position in the statement, from 1.
   int32 line_number = 1;
@@ -116,6 +138,9 @@ message RoyaltyStatementLine {
   // YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
   // of the month's own sales.
   string adjusted_period = 15;
+  // What the line credits. An adjustment line has the source of the line it
+  // adjusts.
+  RoyaltyLineSource source = 16;
 }
 
 message PreviewRoyaltyStatementRequest {
@@ -223,6 +248,8 @@ message ExportRoyaltyStatementResponse {
   //                     adjusts; empty for a line of the month's own sales.
   //                     The amounts of an adjustment line are changes, zero
   //                     or negative, as RoyaltyStatementLine describes
+  //   source            sale or subscription, what the line credits, as
+  //                     RoyaltyLineSource describes
   //
   // The IDs are the rows' internal IDs, not their public IDs, and they stay
   // on the line after the row is deleted.

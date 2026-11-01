@@ -13,6 +13,12 @@
 -- coins are spent, on the purchase each spend paid for, at what the coins
 -- spent were paid for, and a refund of the pack is taken off those purchases.
 --
+-- A subscription payment is counted on the day it was paid, beside the
+-- purchases rather than among them, under the same terms: paid in currency
+-- and not in Stripe's test mode. What went back on it is its refunded_amount,
+-- taken off the day it was paid. A payment belongs to no series, so only the
+-- totals and the days count it.
+--
 -- The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 -- which carries every column GetRevenueTotals and ListRevenueByDay read, so
 -- those two answer from the index alone. The series and episode reports join
@@ -24,7 +30,25 @@
 SELECT
     count(*)::bigint AS purchase_count,
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS gross_amount,
-    COALESCE(sum(purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at)), 0)::bigint AS refunded_amount
+    COALESCE(sum(purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at)), 0)::bigint AS refunded_amount,
+    (
+        SELECT COALESCE(sum(sp.amount), 0)
+        FROM subscription_payments sp
+        WHERE sp.tenant_id = sqlc.arg('tenant_id')
+            AND NOT sp.is_test
+            AND sp.currency = sqlc.arg('currency')::text
+            AND sp.paid_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+            AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    )::bigint AS subscription_amount,
+    (
+        SELECT COALESCE(sum(COALESCE(sp.refunded_amount, 0)), 0)
+        FROM subscription_payments sp
+        WHERE sp.tenant_id = sqlc.arg('tenant_id')
+            AND NOT sp.is_test
+            AND sp.currency = sqlc.arg('currency')::text
+            AND sp.paid_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+            AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    )::bigint AS subscription_refunded_amount
 FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND NOT p.is_test
@@ -51,18 +75,34 @@ WITH sales AS (
         AND p.purchased_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
         AND p.purchased_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
     GROUP BY 1
+),
+subscriptions AS (
+    SELECT
+        (sp.paid_at AT TIME ZONE sqlc.arg('time_zone')::text)::date AS paid_date,
+        sum(sp.amount)::bigint AS subscription_amount,
+        sum(COALESCE(sp.refunded_amount, 0))::bigint AS subscription_refunded_amount
+    FROM subscription_payments sp
+    WHERE sp.tenant_id = sqlc.arg('tenant_id')
+        AND NOT sp.is_test
+        AND sp.currency = sqlc.arg('currency')::text
+        AND sp.paid_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+        AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    GROUP BY 1
 )
 SELECT
     d.day::date AS sale_date,
     COALESCE(s.purchase_count, 0)::bigint AS purchase_count,
     COALESCE(s.gross_amount, 0)::bigint AS gross_amount,
-    COALESCE(s.refunded_amount, 0)::bigint AS refunded_amount
+    COALESCE(s.refunded_amount, 0)::bigint AS refunded_amount,
+    COALESCE(sub.subscription_amount, 0)::bigint AS subscription_amount,
+    COALESCE(sub.subscription_refunded_amount, 0)::bigint AS subscription_refunded_amount
 FROM generate_series(
     sqlc.arg('start_date')::date::timestamp,
     sqlc.arg('end_date')::date::timestamp,
     interval '1 day'
 ) AS d(day)
 LEFT JOIN sales s ON s.sale_date = d.day::date
+LEFT JOIN subscriptions sub ON sub.paid_date = d.day::date
 ORDER BY d.day;
 
 -- name: ListSeriesRevenueDesc :many

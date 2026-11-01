@@ -753,7 +753,11 @@ func (s *apiServer) ProcessPaymentWebhook(
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	case paymentprovider.SubscriptionChanged:
-		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event); err != nil {
+		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event, nil); err != nil {
+			return nil, err
+		}
+	case paymentprovider.SubscriptionPaid:
+		if err := s.recordSubscriptionPayment(ctx, tenant.ID, provider, credentials, event); err != nil {
 			return nil, err
 		}
 	}
@@ -838,6 +842,28 @@ func (s *apiServer) recordRefund(
 		RefundedAmount:    refundedAmount,
 		Currency:          currency,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// A payment of a subscription plan is refunded through the same
+		// notification as a purchase is.
+		payment, err := queries.RecordRefundOnSubscriptionPayment(ctx, dbmodels.RecordRefundOnSubscriptionPaymentParams{
+			TenantID:              tenantID,
+			StripePaymentIntentID: event.PaymentID,
+			RefundedAmount:        refundedAmount,
+			Currency:              currency,
+		})
+		if err == nil {
+			s.logger.InfoContext(ctx, "recorded a refund on a subscription payment",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"subscription_payment_id", payment.ID,
+				"refunded_amount", payment.RefundedAmount.Int32,
+			)
+			return nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return s.internalDBError(ctx, "failed to record a refund on a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+		}
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		// The purchase may simply not exist yet: a provider need order neither
 		// its notifications nor its retries, so a refund can overtake the one
@@ -950,6 +976,26 @@ func (s *apiServer) recordFailedRefund(
 		RefundedAmount:    int32(event.AmountRefunded),
 		RefundKey:         event.RefundKey,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		payment, err := queries.RecordFailedRefundOnSubscriptionPayment(ctx, dbmodels.RecordFailedRefundOnSubscriptionPaymentParams{
+			TenantID:              tenantID,
+			StripePaymentIntentID: event.PaymentID,
+			RefundedAmount:        int32(event.AmountRefunded),
+			Currency:              event.Currency,
+		})
+		if err == nil {
+			s.logger.InfoContext(ctx, "recorded a failed refund on a subscription payment",
+				"tenant_id", tenantID,
+				"event_id", event.ID,
+				"subscription_payment_id", payment.ID,
+				"refunded_amount", payment.RefundedAmount.Int32,
+			)
+			return nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return s.internalDBError(ctx, "failed to record a failed refund on a subscription payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+		}
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		// A refund held for a purchase that is not here yet is all that
 		// remains to correct: it is set to what stays refunded, or released

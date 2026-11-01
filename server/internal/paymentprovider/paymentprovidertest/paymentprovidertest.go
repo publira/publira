@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -39,6 +40,38 @@ type Refund struct {
 	// Key is the idempotency key the refund that fails was made under, when
 	// it was a refund of an amount.
 	Key string
+}
+
+// SubscriptionPayment is a paid invoice of a plan's subscription a fixture
+// signs a notification for.
+type SubscriptionPayment struct {
+	InvoiceID      string
+	SubscriptionID string
+	// PaymentID is the payment the invoice was paid through, which its refunds
+	// name.
+	PaymentID string
+	// TenantID, ReaderID, and PlanID are what the checkout that started the
+	// subscription named.
+	TenantID uuid.UUID
+	ReaderID uuid.UUID
+	PlanID   uuid.UUID
+	Amount   int64
+	Currency string
+	// PeriodStart and PeriodEnd bound the period the invoice paid for, to the
+	// second.
+	PeriodStart time.Time
+	PeriodEnd   time.Time
+	// Test makes it a payment made in the provider's test mode.
+	Test bool
+}
+
+// SubscriptionFixture is the fixture of a provider that sells subscription
+// plans, which also signs the notification of a plan's paid invoice.
+type SubscriptionFixture interface {
+	Fixture
+	// SubscriptionPaid answers the notification of a paid invoice, and makes
+	// the provider's API report payment.PaymentID as what paid it.
+	SubscriptionPaid(t testing.TB, credentials paymentprovider.Credentials, payment SubscriptionPayment) ([]byte, http.Header)
 }
 
 // Fixture is one provider's notifications, signed on demand so that a
@@ -394,6 +427,10 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	if subscriptions, ok := fixture.(SubscriptionFixture); ok {
+		runParseSubscriptionPayments(t, subscriptions, currency)
+	}
+
 	t.Run("an unrelated notification is ignored", func(t *testing.T) {
 		payload, headers := fixture.Unrelated(t, credentials)
 		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
@@ -626,6 +663,79 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		payload, _ := fixture.CheckoutCompleted(t, credentials, checkout)
 		if _, err := provider.ParseNotification(t.Context(), payload, http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
 			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
+		}
+	})
+}
+
+// runParseSubscriptionPayments checks that a provider that sells subscription
+// plans reads the notification of a plan's paid invoice.
+func runParseSubscriptionPayments(t *testing.T, fixture SubscriptionFixture, currency string) {
+	provider := fixture.Provider()
+	credentials := fixture.Credentials()
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	payment := SubscriptionPayment{
+		InvoiceID:      "invoice_contract_" + strings.ToLower(currency),
+		SubscriptionID: "subscription_contract",
+		PaymentID:      "payment_subscription_contract_" + strings.ToLower(currency),
+		TenantID:       uuid.New(),
+		ReaderID:       uuid.New(),
+		PlanID:         uuid.New(),
+		Amount:         980,
+		Currency:       currency,
+		PeriodStart:    start,
+		PeriodEnd:      start.AddDate(0, 1, 0),
+	}
+
+	t.Run("a paid subscription invoice names its subscription, payment, amount, and period", func(t *testing.T) {
+		payload, headers := fixture.SubscriptionPaid(t, credentials, payment)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		paid, ok := event.(paymentprovider.SubscriptionPaid)
+		if !ok {
+			t.Fatalf("event = %T, want SubscriptionPaid", event)
+		}
+		if paid.InvoiceID != payment.InvoiceID || paid.SubscriptionID != payment.SubscriptionID || paid.PaymentID != payment.PaymentID {
+			t.Fatalf("ids = (%q, %q, %q), want (%q, %q, %q)", paid.InvoiceID, paid.SubscriptionID, paid.PaymentID, payment.InvoiceID, payment.SubscriptionID, payment.PaymentID)
+		}
+		if paid.Amount != payment.Amount || paid.Currency != currency {
+			t.Fatalf("paid %d %s, want %d %s", paid.Amount, paid.Currency, payment.Amount, currency)
+		}
+		if !paid.PeriodStart.Equal(payment.PeriodStart) || !paid.PeriodEnd.Equal(payment.PeriodEnd) {
+			t.Fatalf("period = [%s, %s), want [%s, %s)", paid.PeriodStart, paid.PeriodEnd, payment.PeriodStart, payment.PeriodEnd)
+		}
+		if paid.PaidAt.IsZero() {
+			t.Fatal("the payment names no instant it was paid at")
+		}
+		if paid.Test {
+			t.Fatal("a live-mode payment is reported as a test")
+		}
+	})
+
+	t.Run("a test-mode subscription invoice is reported as a test", func(t *testing.T) {
+		test := payment
+		test.InvoiceID += "_test"
+		test.PaymentID += "_test"
+		test.Test = true
+		payload, headers := fixture.SubscriptionPaid(t, credentials, test)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		if paid, ok := event.(paymentprovider.SubscriptionPaid); !ok || !paid.Test {
+			t.Fatalf("event = %+v, want a SubscriptionPaid reported as a test", event)
+		}
+	})
+
+	t.Run("a refund of a subscription payment names the payment the invoice was paid through", func(t *testing.T) {
+		payload, headers := fixture.Refunded(t, credentials, Refund{PaymentID: payment.PaymentID, Currency: currency, AmountRefunded: 300})
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		if refunded, ok := event.(paymentprovider.Refunded); !ok || refunded.PaymentID != payment.PaymentID || refunded.AmountRefunded != 300 {
+			t.Fatalf("event = %+v, want a refund of 300 on %q", event, payment.PaymentID)
 		}
 	})
 }

@@ -412,3 +412,105 @@ func TestParseNotificationIgnoresAnExpiredSubscriptionCheckout(t *testing.T) {
 		t.Fatalf("event = %T, want Ignored", event)
 	}
 }
+
+// invoicePaid is a paid invoice of a plan's subscription in the shape Stripe
+// delivers it, with lines billing for the periods given.
+func invoicePaid(id string, amount int64, metadata map[string]string, periods ...[2]int64) map[string]any {
+	lines := make([]any, 0, len(periods))
+	for _, period := range periods {
+		lines = append(lines, map[string]any{
+			"object": "line_item",
+			"parent": map[string]any{
+				"type":                      "subscription_item_details",
+				"subscription_item_details": map[string]any{"subscription": "sub_paid"},
+			},
+			"period": map[string]any{"start": period[0], "end": period[1]},
+		})
+	}
+	return map[string]any{
+		"id":          id,
+		"object":      "invoice",
+		"amount_paid": amount,
+		"currency":    "jpy",
+		"livemode":    true,
+		"lines":       map[string]any{"object": "list", "data": lines},
+		"parent": map[string]any{
+			"type": "subscription_details",
+			"subscription_details": map[string]any{
+				"metadata":     metadata,
+				"subscription": "sub_paid",
+			},
+		},
+		"status_transitions": map[string]any{"paid_at": int64(1772409655)},
+	}
+}
+
+func TestParseNotificationReadsAPaidSubscriptionInvoice(t *testing.T) {
+	api := stripetest.NewAPI(t)
+	provider := stripe.New(stripe.WithAPIURL(api.URL()))
+	credentials := paymentprovider.Credentials{
+		stripe.FieldSecretKey:     "sk_test_invoices",
+		stripe.FieldWebhookSecret: testWebhookSecret,
+	}
+	metadata := stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly")
+	parse := func(t *testing.T, invoice map[string]any) paymentprovider.Event {
+		t.Helper()
+		payload, headers := stripetest.SignedEvent(t, testWebhookSecret, "invoice.paid", invoice)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		return event
+	}
+
+	t.Run("a proration billed beside the period widens the period paid for", func(t *testing.T) {
+		api.SetInvoicePayment(credentials[stripe.FieldSecretKey], "in_prorated", "pi_prorated")
+		event := parse(t, invoicePaid("in_prorated", 1500, metadata, [2]int64{1772409600, 1775088000}, [2]int64{1771804800, 1772409600}))
+		paid, ok := event.(paymentprovider.SubscriptionPaid)
+		if !ok {
+			t.Fatalf("event = %T, want SubscriptionPaid", event)
+		}
+		if got, want := paid.PeriodStart, time.Unix(1771804800, 0).UTC(); !got.Equal(want) {
+			t.Errorf("period start = %s, want %s", got, want)
+		}
+		if got, want := paid.PeriodEnd, time.Unix(1775088000, 0).UTC(); !got.Equal(want) {
+			t.Errorf("period end = %s, want %s", got, want)
+		}
+		if got, want := paid.PaidAt, time.Unix(1772409655, 0).UTC(); !got.Equal(want) {
+			t.Errorf("paid at = %s, want %s", got, want)
+		}
+		if paid.PaymentID != "pi_prorated" {
+			t.Errorf("payment = %q, want pi_prorated", paid.PaymentID)
+		}
+	})
+
+	t.Run("an invoice marked paid outside Stripe names no payment", func(t *testing.T) {
+		event := parse(t, invoicePaid("in_out_of_band", 980, metadata, [2]int64{1772409600, 1775088000}))
+		paid, ok := event.(paymentprovider.SubscriptionPaid)
+		if !ok {
+			t.Fatalf("event = %T, want SubscriptionPaid", event)
+		}
+		if paid.PaymentID != "" {
+			t.Errorf("payment = %q, want none", paid.PaymentID)
+		}
+	})
+
+	t.Run("an invoice that paid nothing is ignored", func(t *testing.T) {
+		if event := parse(t, invoicePaid("in_trial", 0, metadata, [2]int64{1772409600, 1775088000})); !isIgnored(event) {
+			t.Fatalf("event = %T, want Ignored", event)
+		}
+	})
+
+	t.Run("an invoice of a subscription another integration started is ignored", func(t *testing.T) {
+		if event := parse(t, invoicePaid("in_foreign", 980, map[string]string{}, [2]int64{1772409600, 1775088000})); !isIgnored(event) {
+			t.Fatalf("event = %T, want Ignored", event)
+		}
+	})
+
+	t.Run("an invoice with no line billing a period is malformed", func(t *testing.T) {
+		payload, headers := stripetest.SignedEvent(t, testWebhookSecret, "invoice.paid", invoicePaid("in_no_lines", 980, metadata))
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+}

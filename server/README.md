@@ -134,9 +134,10 @@ A store's refund takes the purchase back as a provider's refund does, for the wh
 | `charge.dispute.closed` | `DisputeLost` for a dispute closed as lost, or `Ignored` for one won or an inquiry closed without becoming a chargeback |
 | `customer.subscription.updated`, `customer.subscription.deleted` | `SubscriptionChanged`, or `Ignored` for a subscription that names no plan |
 | `invoice.payment_failed` | `SubscriptionChanged` naming the subscription the invoice bills, or `Ignored` for an invoice no plan's subscription raised |
+| `invoice.paid` | `SubscriptionPaid` with the amount, the period its subscription lines bill for, and the payment intent read from the invoice's payments, or `Ignored` for an invoice no plan's subscription raised or one that paid nothing |
 | Any other | `Ignored` |
 
-In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the events above. A tenant that sells no subscription plan may leave out `customer.subscription.updated`, `customer.subscription.deleted`, and `invoice.payment_failed`. For local development, forward with the Stripe CLI:
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the events above. A tenant that sells no subscription plan may leave out `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, and `invoice.paid`. For local development, forward with the Stripe CLI:
 
 ```bash
 stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe

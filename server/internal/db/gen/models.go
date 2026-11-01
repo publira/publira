@@ -1090,6 +1090,7 @@ type RoyaltyStatementLine struct {
 	PayoutAmount        int64          `json:"payout_amount"`
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
+	Source              sql.NullString `json:"source"`
 }
 
 type RoyaltyStatementPurchase struct {
@@ -1099,6 +1100,23 @@ type RoyaltyStatementPurchase struct {
 	SaleCount      int32     `json:"sale_count"`
 	GrossAmount    int32     `json:"gross_amount"`
 	RefundedAmount int32     `json:"refunded_amount"`
+}
+
+type RoyaltyStatementSubscriptionPart struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	StatementID           uuid.UUID `json:"statement_id"`
+	SubscriptionPaymentID uuid.UUID `json:"subscription_payment_id"`
+	EpisodeID             uuid.UUID `json:"episode_id"`
+	Price                 int32     `json:"price"`
+}
+
+type RoyaltyStatementSubscriptionPayment struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	SubscriptionPaymentID uuid.UUID `json:"subscription_payment_id"`
+	StatementID           uuid.UUID `json:"statement_id"`
+	SaleCount             int32     `json:"sale_count"`
+	GrossAmount           int32     `json:"gross_amount"`
+	RefundedAmount        int32     `json:"refunded_amount"`
 }
 
 type RoyaltyUncarriedEpisodeRefund struct {
@@ -1116,6 +1134,30 @@ type RoyaltyUncarriedEpisodeRefund struct {
 type RoyaltyUncarriedRefund struct {
 	TenantID              uuid.UUID `json:"tenant_id"`
 	PurchaseID            uuid.UUID `json:"purchase_id"`
+	Currency              string    `json:"currency"`
+	StatementID           uuid.UUID `json:"statement_id"`
+	Period                time.Time `json:"period"`
+	SaleCount             int32     `json:"sale_count"`
+	GrossAmount           int64     `json:"gross_amount"`
+	RefundedAmount        int64     `json:"refunded_amount"`
+	CountedRefundedAmount int64     `json:"counted_refunded_amount"`
+}
+
+type RoyaltyUncarriedSubscriptionEpisodeRefund struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	SubscriptionPaymentID uuid.UUID `json:"subscription_payment_id"`
+	EpisodeID             uuid.UUID `json:"episode_id"`
+	Currency              string    `json:"currency"`
+	StatementID           uuid.UUID `json:"statement_id"`
+	Period                time.Time `json:"period"`
+	SaleCount             int32     `json:"sale_count"`
+	GrossAmount           int64     `json:"gross_amount"`
+	RefundedAmount        int64     `json:"refunded_amount"`
+}
+
+type RoyaltyUncarriedSubscriptionRefund struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	SubscriptionPaymentID uuid.UUID `json:"subscription_payment_id"`
 	Currency              string    `json:"currency"`
 	StatementID           uuid.UUID `json:"statement_id"`
 	Period                time.Time `json:"period"`
@@ -1361,6 +1403,37 @@ type SubscriptionCheckout struct {
 	CreatedAt               time.Time `json:"created_at"`
 }
 
+type SubscriptionPayment struct {
+	ID                    uuid.UUID      `json:"id"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	SubscriptionID        uuid.UUID      `json:"subscription_id"`
+	PlanID                uuid.UUID      `json:"plan_id"`
+	StripeInvoiceID       string         `json:"stripe_invoice_id"`
+	StripePaymentIntentID sql.NullString `json:"stripe_payment_intent_id"`
+	Amount                int32          `json:"amount"`
+	Currency              string         `json:"currency"`
+	PeriodStart           time.Time      `json:"period_start"`
+	PeriodEnd             time.Time      `json:"period_end"`
+	PaidAt                time.Time      `json:"paid_at"`
+	RefundedAmount        sql.NullInt32  `json:"refunded_amount"`
+	IsTest                bool           `json:"is_test"`
+	CreatedAt             time.Time      `json:"created_at"`
+}
+
+type SubscriptionPaymentCompletion struct {
+	TenantID              uuid.UUID     `json:"tenant_id"`
+	SubscriptionPaymentID uuid.UUID     `json:"subscription_payment_id"`
+	EpisodeID             uuid.NullUUID `json:"episode_id"`
+}
+
+type SubscriptionPaymentEpisodePart struct {
+	TenantID              uuid.UUID     `json:"tenant_id"`
+	SubscriptionPaymentID uuid.UUID     `json:"subscription_payment_id"`
+	PeriodEnd             time.Time     `json:"period_end"`
+	EpisodeID             uuid.NullUUID `json:"episode_id"`
+	Price                 int32         `json:"price"`
+}
+
 type SubscriptionPlan struct {
 	ID                     uuid.UUID      `json:"id"`
 	TenantID               uuid.UUID      `json:"tenant_id"`
@@ -1378,6 +1451,12 @@ type SubscriptionPlan struct {
 	UpdatedAt              time.Time      `json:"updated_at"`
 	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
 	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+}
+
+type SubscriptionPlanEpisode struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	PlanID    uuid.UUID `json:"plan_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
 }
 
 type SubscriptionPlanTarget struct {

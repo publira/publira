@@ -18,7 +18,25 @@ const GetRevenueTotals = `-- name: GetRevenueTotals :one
 SELECT
     count(*)::bigint AS purchase_count,
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS gross_amount,
-    COALESCE(sum(purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at)), 0)::bigint AS refunded_amount
+    COALESCE(sum(purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at)), 0)::bigint AS refunded_amount,
+    (
+        SELECT COALESCE(sum(sp.amount), 0)
+        FROM subscription_payments sp
+        WHERE sp.tenant_id = $1
+            AND NOT sp.is_test
+            AND sp.currency = $2::text
+            AND sp.paid_at >= ($4::date::timestamp AT TIME ZONE $3::text)
+            AND sp.paid_at < (($5::date + 1)::timestamp AT TIME ZONE $3::text)
+    )::bigint AS subscription_amount,
+    (
+        SELECT COALESCE(sum(COALESCE(sp.refunded_amount, 0)), 0)
+        FROM subscription_payments sp
+        WHERE sp.tenant_id = $1
+            AND NOT sp.is_test
+            AND sp.currency = $2::text
+            AND sp.paid_at >= ($4::date::timestamp AT TIME ZONE $3::text)
+            AND sp.paid_at < (($5::date + 1)::timestamp AT TIME ZONE $3::text)
+    )::bigint AS subscription_refunded_amount
 FROM purchases p
 WHERE p.tenant_id = $1
     AND NOT p.is_test
@@ -37,9 +55,11 @@ type GetRevenueTotalsParams struct {
 }
 
 type GetRevenueTotalsRow struct {
-	PurchaseCount  int64 `json:"purchase_count"`
-	GrossAmount    int64 `json:"gross_amount"`
-	RefundedAmount int64 `json:"refunded_amount"`
+	PurchaseCount              int64 `json:"purchase_count"`
+	GrossAmount                int64 `json:"gross_amount"`
+	RefundedAmount             int64 `json:"refunded_amount"`
+	SubscriptionAmount         int64 `json:"subscription_amount"`
+	SubscriptionRefundedAmount int64 `json:"subscription_refunded_amount"`
 }
 
 // The console's revenue statistics: what a tenant's purchases earned over a
@@ -57,6 +77,12 @@ type GetRevenueTotalsRow struct {
 // coins are spent, on the purchase each spend paid for, at what the coins
 // spent were paid for, and a refund of the pack is taken off those purchases.
 //
+// A subscription payment is counted on the day it was paid, beside the
+// purchases rather than among them, under the same terms: paid in currency
+// and not in Stripe's test mode. What went back on it is its refunded_amount,
+// taken off the day it was paid. A payment belongs to no series, so only the
+// totals and the days count it.
+//
 // The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 // which carries every column GetRevenueTotals and ListRevenueByDay read, so
 // those two answer from the index alone. The series and episode reports join
@@ -72,7 +98,13 @@ func (q *Queries) GetRevenueTotals(ctx context.Context, arg GetRevenueTotalsPara
 		arg.EndDate,
 	)
 	var i GetRevenueTotalsRow
-	err := row.Scan(&i.PurchaseCount, &i.GrossAmount, &i.RefundedAmount)
+	err := row.Scan(
+		&i.PurchaseCount,
+		&i.GrossAmount,
+		&i.RefundedAmount,
+		&i.SubscriptionAmount,
+		&i.SubscriptionRefundedAmount,
+	)
 	return i, err
 }
 
@@ -351,18 +383,34 @@ WITH sales AS (
         AND p.purchased_at >= ($1::date::timestamp AT TIME ZONE $3::text)
         AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
     GROUP BY 1
+),
+subscriptions AS (
+    SELECT
+        (sp.paid_at AT TIME ZONE $3::text)::date AS paid_date,
+        sum(sp.amount)::bigint AS subscription_amount,
+        sum(COALESCE(sp.refunded_amount, 0))::bigint AS subscription_refunded_amount
+    FROM subscription_payments sp
+    WHERE sp.tenant_id = $4
+        AND NOT sp.is_test
+        AND sp.currency = $5::text
+        AND sp.paid_at >= ($1::date::timestamp AT TIME ZONE $3::text)
+        AND sp.paid_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+    GROUP BY 1
 )
 SELECT
     d.day::date AS sale_date,
     COALESCE(s.purchase_count, 0)::bigint AS purchase_count,
     COALESCE(s.gross_amount, 0)::bigint AS gross_amount,
-    COALESCE(s.refunded_amount, 0)::bigint AS refunded_amount
+    COALESCE(s.refunded_amount, 0)::bigint AS refunded_amount,
+    COALESCE(sub.subscription_amount, 0)::bigint AS subscription_amount,
+    COALESCE(sub.subscription_refunded_amount, 0)::bigint AS subscription_refunded_amount
 FROM generate_series(
     $1::date::timestamp,
     $2::date::timestamp,
     interval '1 day'
 ) AS d(day)
 LEFT JOIN sales s ON s.sale_date = d.day::date
+LEFT JOIN subscriptions sub ON sub.paid_date = d.day::date
 ORDER BY d.day
 `
 
@@ -375,10 +423,12 @@ type ListRevenueByDayParams struct {
 }
 
 type ListRevenueByDayRow struct {
-	SaleDate       time.Time `json:"sale_date"`
-	PurchaseCount  int64     `json:"purchase_count"`
-	GrossAmount    int64     `json:"gross_amount"`
-	RefundedAmount int64     `json:"refunded_amount"`
+	SaleDate                   time.Time `json:"sale_date"`
+	PurchaseCount              int64     `json:"purchase_count"`
+	GrossAmount                int64     `json:"gross_amount"`
+	RefundedAmount             int64     `json:"refunded_amount"`
+	SubscriptionAmount         int64     `json:"subscription_amount"`
+	SubscriptionRefundedAmount int64     `json:"subscription_refunded_amount"`
 }
 
 // Every day of the period in order, a day nothing sold on included, so a
@@ -404,6 +454,8 @@ func (q *Queries) ListRevenueByDay(ctx context.Context, arg ListRevenueByDayPara
 			&i.PurchaseCount,
 			&i.GrossAmount,
 			&i.RefundedAmount,
+			&i.SubscriptionAmount,
+			&i.SubscriptionRefundedAmount,
 		); err != nil {
 			return nil, err
 		}

@@ -485,6 +485,11 @@ func (x *ListEpisodeReadThroughResponse) GetTimeZone() string {
 // is divided over its episodes in the same proportion, each part rounded
 // down, so the episode rows' refunded_amount can fall short of the totals by
 // less than one minor unit per episode.
+//
+// A subscription payment is counted apart from the purchases, on the day
+// Stripe was paid it, and what went back on it is taken off that day too. A
+// payment belongs to no series, so it is counted on a day row and in the
+// totals only.
 type RevenueStatsRow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
@@ -504,9 +509,15 @@ type RevenueStatsRow struct {
 	// What went back to the readers of them.
 	RefundedAmount int64 `protobuf:"varint,8,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// gross_amount less refunded_amount: what the tenant kept.
-	NetAmount     int64 `protobuf:"varint,9,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NetAmount int64 `protobuf:"varint,9,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	// What subscribers paid for the tenant's subscription plans on a day row,
+	// and zero on a series or an episode row. A payment made in Stripe's test
+	// mode is not counted.
+	SubscriptionAmount int64 `protobuf:"varint,10,opt,name=subscription_amount,json=subscriptionAmount,proto3" json:"subscription_amount,omitempty"`
+	// What went back to the subscribers of those payments.
+	SubscriptionRefundedAmount int64 `protobuf:"varint,11,opt,name=subscription_refunded_amount,json=subscriptionRefundedAmount,proto3" json:"subscription_refunded_amount,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *RevenueStatsRow) Reset() {
@@ -602,16 +613,32 @@ func (x *RevenueStatsRow) GetNetAmount() int64 {
 	return 0
 }
 
-// The same four figures over the whole period, each purchase counted once
+func (x *RevenueStatsRow) GetSubscriptionAmount() int64 {
+	if x != nil {
+		return x.SubscriptionAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsRow) GetSubscriptionRefundedAmount() int64 {
+	if x != nil {
+		return x.SubscriptionRefundedAmount
+	}
+	return 0
+}
+
+// The same figures over the whole period, each purchase counted once
 // whatever its episodes.
 type RevenueStatsTotals struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	PurchaseCount  int64                  `protobuf:"varint,1,opt,name=purchase_count,json=purchaseCount,proto3" json:"purchase_count,omitempty"`
-	GrossAmount    int64                  `protobuf:"varint,2,opt,name=gross_amount,json=grossAmount,proto3" json:"gross_amount,omitempty"`
-	RefundedAmount int64                  `protobuf:"varint,3,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
-	NetAmount      int64                  `protobuf:"varint,4,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	PurchaseCount              int64                  `protobuf:"varint,1,opt,name=purchase_count,json=purchaseCount,proto3" json:"purchase_count,omitempty"`
+	GrossAmount                int64                  `protobuf:"varint,2,opt,name=gross_amount,json=grossAmount,proto3" json:"gross_amount,omitempty"`
+	RefundedAmount             int64                  `protobuf:"varint,3,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
+	NetAmount                  int64                  `protobuf:"varint,4,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	SubscriptionAmount         int64                  `protobuf:"varint,5,opt,name=subscription_amount,json=subscriptionAmount,proto3" json:"subscription_amount,omitempty"`
+	SubscriptionRefundedAmount int64                  `protobuf:"varint,6,opt,name=subscription_refunded_amount,json=subscriptionRefundedAmount,proto3" json:"subscription_refunded_amount,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *RevenueStatsTotals) Reset() {
@@ -668,6 +695,20 @@ func (x *RevenueStatsTotals) GetRefundedAmount() int64 {
 func (x *RevenueStatsTotals) GetNetAmount() int64 {
 	if x != nil {
 		return x.NetAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetSubscriptionAmount() int64 {
+	if x != nil {
+		return x.SubscriptionAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetSubscriptionRefundedAmount() int64 {
+	if x != nil {
+		return x.SubscriptionRefundedAmount
 	}
 	return 0
 }
@@ -2085,7 +2126,9 @@ type ExportStatsResponse struct {
 	// and a title is in the tenant's default locale. Columns, by kind:
 	//
 	//	REVENUE_BY_DAY        date, purchase_count, gross_amount,
-	//	                      refunded_amount, net_amount, currency
+	//	                      refunded_amount, net_amount,
+	//	                      subscription_amount,
+	//	                      subscription_refunded_amount, currency
 	//	REVENUE_BY_SERIES     start_date, end_date, series_id, series_title,
 	//	                      purchase_count, gross_amount, refunded_amount,
 	//	                      net_amount, currency
@@ -2175,7 +2218,7 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x0eprevious_token\x18\x06 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
 	"next_token\x18\a \x01(\tR\tnextToken\x12\x1b\n" +
-	"\ttime_zone\x18\b \x01(\tR\btimeZone\"\xd5\x02\n" +
+	"\ttime_zone\x18\b \x01(\tR\btimeZone\"\xc8\x03\n" +
 	"\x0fRevenueStatsRow\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12!\n" +
@@ -2186,13 +2229,18 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\fgross_amount\x18\a \x01(\x03R\vgrossAmount\x12'\n" +
 	"\x0frefunded_amount\x18\b \x01(\x03R\x0erefundedAmount\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\t \x01(\x03R\tnetAmount\"\xa6\x01\n" +
+	"net_amount\x18\t \x01(\x03R\tnetAmount\x12/\n" +
+	"\x13subscription_amount\x18\n" +
+	" \x01(\x03R\x12subscriptionAmount\x12@\n" +
+	"\x1csubscription_refunded_amount\x18\v \x01(\x03R\x1asubscriptionRefundedAmount\"\x99\x02\n" +
 	"\x12RevenueStatsTotals\x12%\n" +
 	"\x0epurchase_count\x18\x01 \x01(\x03R\rpurchaseCount\x12!\n" +
 	"\fgross_amount\x18\x02 \x01(\x03R\vgrossAmount\x12'\n" +
 	"\x0frefunded_amount\x18\x03 \x01(\x03R\x0erefundedAmount\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\x04 \x01(\x03R\tnetAmount\"\xf4\x01\n" +
+	"net_amount\x18\x04 \x01(\x03R\tnetAmount\x12/\n" +
+	"\x13subscription_amount\x18\x05 \x01(\x03R\x12subscriptionAmount\x12@\n" +
+	"\x1csubscription_refunded_amount\x18\x06 \x01(\x03R\x1asubscriptionRefundedAmount\"\xf4\x01\n" +
 	"\x16GetRevenueStatsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
