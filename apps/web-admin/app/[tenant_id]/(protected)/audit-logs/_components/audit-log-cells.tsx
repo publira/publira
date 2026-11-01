@@ -9,7 +9,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
-import type { AdminMessageAccessor } from "#lib/messages";
+import type { AdminMessageAccessor, AdminMessageKey } from "#lib/messages";
 import { formatTenantAmount } from "#lib/price";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
@@ -956,105 +956,45 @@ const catalogTargetName = (targetType: string) => {
   }
 };
 
+/** Catalog key for each tenant setting an audit row can name. */
+const settingTargetMessages = {
+  tenant_age_verification: "admin.audit.targets.tenant_age_verification",
+  tenant_analytics_settings: "admin.audit.targets.tenant_analytics_settings",
+  tenant_branding: "admin.audit.targets.tenant_branding",
+  tenant_comment_settings: "admin.audit.targets.tenant_comment_settings",
+  tenant_community_limits: "admin.audit.targets.tenant_community_limits",
+  tenant_crawler_settings: "admin.audit.targets.tenant_crawler_settings",
+  tenant_creator_page_settings:
+    "admin.audit.targets.tenant_creator_page_settings",
+  tenant_default_locale: "admin.audit.targets.tenant_default_locale",
+  tenant_email_rejection_settings:
+    "admin.audit.targets.tenant_email_rejection_settings",
+  tenant_legal_pages: "admin.audit.targets.tenant_legal_pages",
+  tenant_mobile_app_association:
+    "admin.audit.targets.tenant_mobile_app_association",
+  tenant_purchase_settings: "admin.audit.targets.tenant_purchase_settings",
+  tenant_reader_icon_policy: "admin.audit.targets.tenant_reader_icon_policy",
+  tenant_reader_icon_presets: "admin.audit.targets.tenant_reader_icon_presets",
+  tenant_retention: "admin.audit.targets.tenant_retention",
+  tenant_sign_in_settings: "admin.audit.targets.tenant_sign_in_settings",
+  tenant_sign_up_settings: "admin.audit.targets.tenant_sign_up_settings",
+  tenant_site_copy: "admin.audit.targets.tenant_site_copy",
+  tenant_site_verification: "admin.audit.targets.tenant_site_verification",
+  tenant_timezone: "admin.audit.targets.tenant_timezone",
+} as const satisfies Record<string, AdminMessageKey>;
+
+const isSettingTarget = (
+  targetType: string
+): targetType is keyof typeof settingTargetMessages =>
+  Object.hasOwn(settingTargetMessages, targetType);
+
 /** The name of a tenant setting target type. */
 const settingTargetName = (targetType: string) => {
-  switch (targetType) {
-    case "tenant_age_verification": {
-      return <Message message="admin.audit.targets.tenant_age_verification" />;
-    }
-
-    case "tenant_analytics_settings": {
-      return (
-        <Message message="admin.audit.targets.tenant_analytics_settings" />
-      );
-    }
-
-    case "tenant_branding": {
-      return <Message message="admin.audit.targets.tenant_branding" />;
-    }
-
-    case "tenant_comment_settings": {
-      return <Message message="admin.audit.targets.tenant_comment_settings" />;
-    }
-
-    case "tenant_community_limits": {
-      return <Message message="admin.audit.targets.tenant_community_limits" />;
-    }
-
-    case "tenant_crawler_settings": {
-      return <Message message="admin.audit.targets.tenant_crawler_settings" />;
-    }
-
-    case "tenant_creator_page_settings": {
-      return (
-        <Message message="admin.audit.targets.tenant_creator_page_settings" />
-      );
-    }
-
-    case "tenant_default_locale": {
-      return <Message message="admin.audit.targets.tenant_default_locale" />;
-    }
-
-    case "tenant_email_rejection_settings": {
-      return (
-        <Message message="admin.audit.targets.tenant_email_rejection_settings" />
-      );
-    }
-
-    case "tenant_legal_pages": {
-      return <Message message="admin.audit.targets.tenant_legal_pages" />;
-    }
-
-    case "tenant_mobile_app_association": {
-      return (
-        <Message message="admin.audit.targets.tenant_mobile_app_association" />
-      );
-    }
-
-    case "tenant_purchase_settings": {
-      return <Message message="admin.audit.targets.tenant_purchase_settings" />;
-    }
-
-    case "tenant_reader_icon_policy": {
-      return (
-        <Message message="admin.audit.targets.tenant_reader_icon_policy" />
-      );
-    }
-
-    case "tenant_reader_icon_presets": {
-      return (
-        <Message message="admin.audit.targets.tenant_reader_icon_presets" />
-      );
-    }
-
-    case "tenant_retention": {
-      return <Message message="admin.audit.targets.tenant_retention" />;
-    }
-
-    case "tenant_sign_in_settings": {
-      return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
-    }
-
-    case "tenant_sign_up_settings": {
-      return <Message message="admin.audit.targets.tenant_sign_up_settings" />;
-    }
-
-    case "tenant_site_copy": {
-      return <Message message="admin.audit.targets.tenant_site_copy" />;
-    }
-
-    case "tenant_site_verification": {
-      return <Message message="admin.audit.targets.tenant_site_verification" />;
-    }
-
-    case "tenant_timezone": {
-      return <Message message="admin.audit.targets.tenant_timezone" />;
-    }
-
-    default: {
-      return null;
-    }
+  if (!isSettingTarget(targetType)) {
+    return null;
   }
+
+  return <Message message={settingTargetMessages[targetType]} />;
 };
 
 /**
