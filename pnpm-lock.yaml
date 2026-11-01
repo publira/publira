@@ -234,8 +234,8 @@ catalogs:
       specifier: 1.0.6
       version: 1.0.6
     tsdown:
-      specifier: 0.23.3
-      version: 0.23.3
+      specifier: 0.23.4
+      version: 0.23.4
     typescript:
       specifier: 6.0.3
       version: 6.0.3
@@ -337,7 +337,7 @@ importers:
         version: 26.6.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -764,7 +764,7 @@ importers:
         version: 26.6.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -818,7 +818,7 @@ importers:
         version: 30.1.3
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -867,7 +867,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -892,7 +892,7 @@ importers:
         version: 26.6.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -935,7 +935,7 @@ importers:
         version: 30.1.3
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -990,7 +990,7 @@ importers:
         version: 16.4.3(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1036,7 +1036,7 @@ importers:
         version: 26.6.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1111,7 +1111,7 @@ importers:
         version: 16.4.3(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1154,7 +1154,7 @@ importers:
         version: 1.0.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1179,7 +1179,7 @@ importers:
         version: 26.6.6
       tsdown:
         specifier: 'catalog:'
-        version: 0.23.3(typescript@6.0.3)
+        version: 0.23.4(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -5490,6 +5490,9 @@ packages:
     resolution: {integrity: sha512-jBrmx4lYmaC9k/mgPbylxs7kBUxHtD8256up+HjLaDFfXScKJQyil+SWXSvhAtT7XHo+yTVlpB81PGmHP8oLSQ==}
     engines: {node: ^20.0.0 || >=22.0.0}
 
+  tinyps@0.5.1:
+    resolution: {integrity: sha512-B6Ykif5HflC3AdDkS4Zst/2muYVfeXoVMy+KorqH80s/1x4vunIORpNySH681X7fjj+dFM9MDKD6/Hsccjb87Q==}
+
   tldts-core@7.4.19:
     resolution: {integrity: sha512-goNXV6Ho9TIOfpJZanTd6CKG5DyYgYAL+k+22T0SLh8l6+KHIfBUPFuePuSZv05UttIaaLmI9tb7TmGIdK5AkQ==}
 
@@ -5508,10 +5511,6 @@ packages:
   tr46@7.0.0:
     resolution: {integrity: sha512-BcDSDW+SIGWVOns1Zm6Yg91q9AEj7eaID0QDY9oIqJD1A8dscNwMcl9Sms2DeuWCNov1X0/oXanHGYQBSLwZsg==}
     engines: {node: ^22.14.0 || >=24.0.0}
-
-  tree-kill@1.2.2:
-    resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
-    hasBin: true
 
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
@@ -5532,14 +5531,14 @@ packages:
     resolution: {integrity: sha512-NoZ4roiN7LnbKn9QqE1amc9DJfzvZXxF4xDavcOWt1BPkdx+m+0gJuPM+S0vCe7zTJMYUP0R8pO2XMr+Y8oLIg==}
     engines: {node: '>=6'}
 
-  tsdown@0.23.3:
-    resolution: {integrity: sha512-yAju1F5b7GDEPCLl4ewM3g54lq0NyyYpFnK2lh/ax7/uznmsn4wBOS9/49pI3cGvxtj2LoOjBUtzaT17UEQkhQ==}
+  tsdown@0.23.4:
+    resolution: {integrity: sha512-AQQ/2Y7KBnf15GL4Ynjdltc94PkbKRI+arStyrp7inSQkRmTWNiXgfv50ESsjhBEsoVtiSloCAO2VyrqojWIOQ==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
       '@arethetypeswrong/core': ^0.18.1
-      '@tsdown/css': 0.23.3
-      '@tsdown/exe': 0.23.3
+      '@tsdown/css': 0.23.4
+      '@tsdown/exe': 0.23.4
       '@vitejs/devtools': '*'
       publint: ^0.3.8
       tsx: '*'
@@ -10145,6 +10144,8 @@ snapshots:
 
   tinypool@2.2.0: {}
 
+  tinyps@0.5.1: {}
+
   tldts-core@7.4.19: {}
 
   tldts@7.4.19:
@@ -10162,8 +10163,6 @@ snapshots:
   tr46@7.0.0:
     dependencies:
       punycode: 2.3.1
-
-  tree-kill@1.2.2: {}
 
   trim-lines@3.0.1: {}
 
@@ -10186,7 +10185,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.23.3(typescript@6.0.3):
+  tsdown@0.23.4(typescript@6.0.3):
     dependencies:
       cac: 7.1.0
       defu: 6.1.7
@@ -10199,7 +10198,7 @@ snapshots:
       rolldown-plugin-dts: 0.28.8(rolldown@1.2.15)(typescript@6.0.3)
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      tree-kill: 1.2.2
+      tinyps: 0.5.1
       unconfig-core: 7.5.0
       verkit: 0.5.0
     optionalDependencies:
