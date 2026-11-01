@@ -9,8 +9,11 @@ import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_inte
 import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/pages/page_repository.dart';
+import 'package:publira/pages/published_page.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -20,6 +23,7 @@ import 'package:publira/router.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_in_app_purchase.dart';
+import 'support/fake_page_repository.dart';
 import 'support/fake_purchase.dart';
 import 'support/pump_until.dart';
 
@@ -359,6 +363,8 @@ void main() {
     WidgetTester tester, {
     String? initialLocation,
     AuthSession? session,
+    FakeAuthRepository? authRepository,
+    PageRepository? pages,
   }) async {
     tester.view
       ..physicalSize = const Size(400, 2400)
@@ -369,7 +375,8 @@ void main() {
       PubliraApp(
         router: router,
         catalog: catalog,
-        auth: fakeAuthController(session: session),
+        auth: fakeAuthController(session: session, repository: authRepository),
+        pages: pages,
         purchases: purchases,
         checkoutLauncher: launcher,
         storePurchaser: purchaser,
@@ -381,8 +388,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  Future<void> pumpLocked(WidgetTester tester) async {
-    await pumpApp(tester, session: fakeSession);
+  Future<void> pumpLocked(
+    WidgetTester tester, {
+    FakeAuthRepository? authRepository,
+    PageRepository? pages,
+  }) async {
+    await pumpApp(
+      tester,
+      session: fakeSession,
+      authRepository: authRepository,
+      pages: pages,
+    );
     await pumpUntilFound(tester, locked);
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -501,6 +517,93 @@ void main() {
       );
 
       expect(subscribe, findsNothing);
+    });
+
+    const terms = LegalPage(
+      slug: '/legal/terms',
+      title: 'Terms of service',
+      versionId: 'terms-v1',
+    );
+    const privacy = LegalPage(
+      slug: '/privacy',
+      title: 'Privacy policy',
+      versionId: 'privacy-v1',
+    );
+    const renewal =
+        'The subscription renews automatically until you cancel it in your '
+        'App Store account settings.';
+    final termsLink = find.byKey(const ValueKey('subscription-plans-terms'));
+    final privacyLink = find.byKey(
+      const ValueKey('subscription-plans-privacy'),
+    );
+    final legal = find.byKey(const ValueKey('subscription-plans-legal'));
+
+    FakePageRepository legalPages() => FakePageRepository(
+      pages: const [
+        PublishedPage(
+          slug: '/legal/terms',
+          title: 'Terms of service',
+          contentMarkdown: 'The terms you agree to.',
+          locale: 'en',
+        ),
+        PublishedPage(
+          slug: '/privacy',
+          title: 'Privacy policy',
+          contentMarkdown: 'How the tenant handles personal information.',
+          locale: 'en',
+        ),
+      ],
+    );
+
+    testWidgets('links to the terms of use and the privacy policy, and says '
+        'the plan renews until it is cancelled in the store', (tester) async {
+      final auth = FakeAuthRepository()
+        ..termsPage = terms
+        ..privacyPage = privacy;
+      await pumpLocked(tester, authRepository: auth, pages: legalPages());
+
+      await openPlans(tester);
+      await pumpUntilFound(tester, legal);
+      expect(find.text(renewal), findsOneWidget);
+
+      await tester.ensureVisible(termsLink);
+      await tester.tap(termsLink);
+      await pumpUntilFound(tester, find.text('The terms you agree to.'));
+
+      await tester.pageBack();
+      await pumpUntilFound(tester, sheet);
+
+      await tester.ensureVisible(privacyLink);
+      await tester.tap(privacyLink);
+      await pumpUntilFound(
+        tester,
+        find.text('How the tenant handles personal information.'),
+      );
+    });
+
+    testWidgets('leaves out a page the tenant has not set', (tester) async {
+      final auth = FakeAuthRepository()..termsPage = terms;
+      await pumpLocked(tester, authRepository: auth, pages: legalPages());
+
+      await openPlans(tester);
+      await pumpUntilFound(tester, legal);
+
+      expect(termsLink, findsOneWidget);
+      expect(privacyLink, findsNothing);
+      expect(find.text(renewal), findsOneWidget);
+    });
+
+    testWidgets('links to neither page when the tenant has set none', (
+      tester,
+    ) async {
+      await pumpLocked(tester, authRepository: FakeAuthRepository());
+
+      await openPlans(tester);
+      await pumpUntilFound(tester, legal);
+
+      expect(termsLink, findsNothing);
+      expect(privacyLink, findsNothing);
+      expect(find.text(renewal), findsOneWidget);
     });
 
     testWidgets('offers no plan the app does not sell in this store', (

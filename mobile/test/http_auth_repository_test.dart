@@ -572,6 +572,46 @@ void main() {
   });
 
   test(
+    'readTenantLegalPages reads the pages without the tenant record',
+    () async {
+      server
+        ..termsPage = pb.TenantLegalPage(
+          slug: '/legal/terms',
+          title: 'Terms of service',
+          versionId: 'terms-v2',
+        )
+        ..privacyPage = pb.TenantLegalPage(
+          slug: '/privacy',
+          title: 'Privacy policy',
+          versionId: 'privacy-v1',
+        );
+
+      final pages = await auth.readTenantLegalPages(locale: 'en');
+
+      expect(
+        pages,
+        const TenantLegalPages(
+          termsPage: LegalPage(
+            slug: '/legal/terms',
+            title: 'Terms of service',
+            versionId: 'terms-v2',
+          ),
+          privacyPage: LegalPage(
+            slug: '/privacy',
+            title: 'Privacy policy',
+            versionId: 'privacy-v1',
+          ),
+        ),
+      );
+      expect(server.requestsTo('GetTenant'), isEmpty);
+      expect(
+        server.requestsOf(pb.GetTenantLegalPagesRequest.new).single,
+        pb.GetTenantLegalPagesRequest(tenant: _defaultTenant(), locale: 'en'),
+      );
+    },
+  );
+
+  test(
     'readSignUpRequirements reports an unreachable tenant as a network failure',
     () async {
       // Resolved once while the API answers, so only the reads fail.

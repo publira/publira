@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:publira/auth/auth_failure.dart';
+import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_subscriber.dart';
+import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Opens the sheet listing [plans] as [subscriber]'s store sells them, and
@@ -38,6 +43,11 @@ Future<Object?> showSubscriptionPlansSheet(
 /// the store's payment sheet for it. A plan whose product the store does not
 /// sell is left out.
 ///
+/// Under the plans it says the subscription renews until the reader cancels
+/// it in the store, and links to the tenant's terms of use and privacy
+/// policy where the tenant has set them. Each link opens that page in the
+/// app.
+///
 /// A subscription the store took, settled or not, closes the sheet with its
 /// outcome, and so does a failure, which the screen behind reports. A payment
 /// sheet the reader closed leaves this one open, as a purchase leaves the
@@ -67,8 +77,29 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
     widget.plans,
   );
 
+  /// The tenant's terms and privacy pages, read once for the sheet.
+  Future<TenantLegalPages>? _legalPages;
+
   /// The plan whose payment sheet is open, or `null`.
   String? _subscribing;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _legalPages ??= _readLegalPages();
+  }
+
+  /// The tenant's terms and privacy pages, or none of them where the read
+  /// fails, so a sheet the reader can still subscribe from is not held up.
+  Future<TenantLegalPages> _readLegalPages() async {
+    final auth = AuthScope.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    try {
+      return await auth.readTenantLegalPages(locale: locale);
+    } on AuthFailure {
+      return const TenantLegalPages();
+    }
+  }
 
   Future<void> _subscribe(SubscriptionPlan plan) async {
     if (_subscribing != null) {
@@ -115,7 +146,11 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
         } else if (snapshot.data case final offers? when offers.isNotEmpty) {
           body = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [for (final offer in offers) _offer(messages, offer)],
+            children: [
+              for (final offer in offers) _offer(messages, offer),
+              _renewal(messages),
+              _legalLinks(messages),
+            ],
           );
         } else {
           body = Padding(
@@ -148,6 +183,72 @@ class _SubscriptionPlansSheetState extends State<SubscriptionPlansSheet> {
           ),
         );
       },
+    );
+  }
+
+  /// Where the reader cancels a plan this store bills.
+  Widget _renewal(AppMessages messages) {
+    final text = switch (widget.subscriber.store) {
+      InAppPurchaseStore.appStore => messages.purchasePlansRenewsAppStore,
+      InAppPurchaseStore.googlePlay => messages.purchasePlansRenewsGooglePlay,
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: AutospacedText(
+        text,
+        key: const ValueKey('subscription-plans-renewal'),
+      ),
+    );
+  }
+
+  /// Links to the pages the tenant has set. A role it names nothing for is
+  /// left out, and so is every link while the pages are still being read.
+  Widget _legalLinks(AppMessages messages) {
+    return FutureBuilder<TenantLegalPages>(
+      future: _legalPages,
+      builder: (context, snapshot) {
+        final pages = snapshot.data;
+        if (pages == null) {
+          return const SizedBox.shrink();
+        }
+        final links = <Widget>[
+          if (pages.termsPage case final terms?)
+            _legalLink(
+              key: const ValueKey('subscription-plans-terms'),
+              label: messages.purchasePlansTerms,
+              slug: terms.slug,
+            ),
+          if (pages.privacyPage case final privacy?)
+            _legalLink(
+              key: const ValueKey('subscription-plans-privacy'),
+              label: messages.purchasePlansPrivacy,
+              slug: privacy.slug,
+            ),
+        ];
+        if (links.isEmpty) {
+          return const SizedBox.shrink(
+            key: ValueKey('subscription-plans-legal'),
+          );
+        }
+        return Padding(
+          key: const ValueKey('subscription-plans-legal'),
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+          child: Wrap(spacing: 8, children: links),
+        );
+      },
+    );
+  }
+
+  Widget _legalLink({
+    required Key key,
+    required String label,
+    required String slug,
+  }) {
+    return TextButton(
+      key: key,
+      onPressed: () =>
+          unawaited(context.pushInTab<void>(AppRoutes.publishedPagePath(slug))),
+      child: AutospacedText(label),
     );
   }
 

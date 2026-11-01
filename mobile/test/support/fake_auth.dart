@@ -84,6 +84,13 @@ class FakeAuthRepository implements AuthRepository {
   /// The locales [readSignUpRequirements] has been asked for, in order.
   final signUpRequirementsLocales = <String>[];
 
+  /// The locales [readTenantLegalPages] has been asked for, in order.
+  final tenantLegalPagesLocales = <String>[];
+
+  /// Thrown by [readTenantLegalPages], standing in for an API that cannot
+  /// be reached.
+  AuthFailure? tenantLegalPagesFailure;
+
   /// The pages the reader owes an agreement to, none by default, which
   /// [agreeToLegalPages] settles for each version it is sent.
   List<LegalPage> owedLegalPages = const [];
@@ -617,6 +624,18 @@ class FakeAuthRepository implements AuthRepository {
       termsPage: termsPage,
       privacyPage: privacyPage,
     );
+  }
+
+  @override
+  Future<TenantLegalPages> readTenantLegalPages({
+    required String locale,
+  }) async {
+    tenantLegalPagesLocales.add(locale);
+    final failure = tenantLegalPagesFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return TenantLegalPages(termsPage: termsPage, privacyPage: privacyPage);
   }
 
   @override

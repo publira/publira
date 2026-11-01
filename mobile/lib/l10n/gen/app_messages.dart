@@ -2859,6 +2859,26 @@ final class AppMessages {
     return _format('mobile.purchase.plans_open_failed');
   }
 
+  /// `mobile.purchase.plans_privacy`
+  String get purchasePlansPrivacy {
+    return _format('mobile.purchase.plans_privacy');
+  }
+
+  /// `mobile.purchase.plans_renews_app_store`
+  String get purchasePlansRenewsAppStore {
+    return _format('mobile.purchase.plans_renews_app_store');
+  }
+
+  /// `mobile.purchase.plans_renews_google_play`
+  String get purchasePlansRenewsGooglePlay {
+    return _format('mobile.purchase.plans_renews_google_play');
+  }
+
+  /// `mobile.purchase.plans_terms`
+  String get purchasePlansTerms {
+    return _format('mobile.purchase.plans_terms');
+  }
+
   /// `mobile.purchase.plans_title`
   String get purchasePlansTitle {
     return _format('mobile.purchase.plans_title');
@@ -4610,6 +4630,12 @@ const _jaSources = <String, String>{
       'プランの対象のエピソードを1話ずつ購入せずに読めます。解約するまでストアから請求されます。',
   'mobile.purchase.plans_empty': '現在アプリで購読できるプランはありません。時間をおいて再試行してください。',
   'mobile.purchase.plans_open_failed': 'プランを開けませんでした。時間をおいて再試行してください。',
+  'mobile.purchase.plans_privacy': 'プライバシーポリシー',
+  'mobile.purchase.plans_renews_app_store':
+      'サブスクリプションは、App Storeのアカウント設定で解約するまで自動的に更新されます。',
+  'mobile.purchase.plans_renews_google_play':
+      'サブスクリプションは、Google Playの定期購入で解約するまで自動的に更新されます。',
+  'mobile.purchase.plans_terms': '利用規約',
   'mobile.purchase.plans_title': 'サブスクリプションプラン',
   'mobile.purchase.rent_for': '{\$period}レンタル({\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}時間',
@@ -5578,6 +5604,12 @@ const _enSources = <String, String>{
       'None of these plans can be subscribed to in the app right now. Try again later.',
   'mobile.purchase.plans_open_failed':
       'Could not open the plans. Try again later.',
+  'mobile.purchase.plans_privacy': 'Privacy policy',
+  'mobile.purchase.plans_renews_app_store':
+      'The subscription renews automatically until you cancel it in your App Store account settings.',
+  'mobile.purchase.plans_renews_google_play':
+      'The subscription renews automatically until you cancel it in your Google Play subscriptions.',
+  'mobile.purchase.plans_terms': 'Terms of use',
   'mobile.purchase.plans_title': 'Subscription plans',
   'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
   'mobile.purchase.rental_period':
@@ -6477,6 +6509,12 @@ const _koSources = <String, String>{
       '플랜에 포함된 에피소드를 하나씩 구매하지 않고 읽을 수 있습니다. 해지할 때까지 스토어에서 요금이 청구됩니다.',
   'mobile.purchase.plans_empty': '현재 앱에서 구독할 수 있는 플랜이 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.plans_open_failed': '플랜을 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.plans_privacy': '개인정보 처리방침',
+  'mobile.purchase.plans_renews_app_store':
+      '구독은 App Store 계정 설정에서 해지할 때까지 자동으로 갱신됩니다.',
+  'mobile.purchase.plans_renews_google_play':
+      '구독은 Google Play 정기 결제에서 해지할 때까지 자동으로 갱신됩니다.',
+  'mobile.purchase.plans_terms': '이용약관',
   'mobile.purchase.plans_title': '구독 플랜',
   'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}시간',
@@ -7282,6 +7320,10 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.plans_description': '无需逐话购买，即可阅读方案涵盖的所有章节。在您取消之前，商店会持续扣款。',
   'mobile.purchase.plans_empty': '目前没有可在应用内订阅的方案。请稍后再试。',
   'mobile.purchase.plans_open_failed': '无法打开方案。请稍后再试。',
+  'mobile.purchase.plans_privacy': '隐私政策',
+  'mobile.purchase.plans_renews_app_store': '订阅会自动续期，直到您在App Store的账户设置中取消。',
+  'mobile.purchase.plans_renews_google_play': '订阅会自动续期，直到您在Google Play的订阅中取消。',
+  'mobile.purchase.plans_terms': '使用条款',
   'mobile.purchase.plans_title': '订阅方案',
   'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小时',
@@ -8063,6 +8105,10 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.plans_description': '無需逐話購買，即可閱讀方案涵蓋的所有章節。在您取消之前，商店會持續扣款。',
   'mobile.purchase.plans_empty': '目前沒有可在應用程式內訂閱的方案。請稍後再試。',
   'mobile.purchase.plans_open_failed': '無法開啟方案。請稍後再試。',
+  'mobile.purchase.plans_privacy': '隱私權政策',
+  'mobile.purchase.plans_renews_app_store': '訂閱會自動續期，直到您在App Store的帳戶設定中取消。',
+  'mobile.purchase.plans_renews_google_play': '訂閱會自動續期，直到您在Google Play的訂閱中取消。',
+  'mobile.purchase.plans_terms': '使用條款',
   'mobile.purchase.plans_title': '訂閱方案',
   'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小時',

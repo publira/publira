@@ -314,6 +314,12 @@ class AuthController extends ChangeNotifier {
   Future<SignUpRequirements> readSignUpRequirements({required String locale}) =>
       _repository.readSignUpRequirements(locale: locale);
 
+  /// The tenant's terms of service and privacy policy, read in [locale].
+  ///
+  /// Throws [AuthFailure].
+  Future<TenantLegalPages> readTenantLegalPages({required String locale}) =>
+      _repository.readTenantLegalPages(locale: locale);
+
   /// The pages the signed-in reader has still to agree to, read in [locale];
   /// empty when nobody is signed in.
   ///
