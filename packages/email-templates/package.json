@@ -22,7 +22,7 @@
     "@publira/utils": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-email": "6.11.5",
+    "react-email": "6.11.6",
     "temporal-polyfill": "catalog:",
     "zod": "catalog:"
   },
