@@ -2,8 +2,8 @@
 title: 監視
 description: /livezと/readyzによる各プロセスの監視、アラートを設定すべきログとメトリクス、OpenTelemetryのメトリクスとトレースの有効化を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-01
+source_updated: 2026-11-01
 ---
 
 Publiraは、次の4つの方法で稼働状況を知らせます。
@@ -39,8 +39,15 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 
 正常な場合のレスポンスは次のとおりです。
 
-```jsonl
-{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+```json
+{
+  "status": "ok",
+  "checks": {
+    "db.outbox": { "status": "ok" },
+    "db.ticker": { "status": "ok" },
+    "db.content_stats": { "status": "ok" }
+  }
+}
 ```
 
 `status`は、すべてのチェックに通れば`ok`、1つでも失敗すれば`unavailable`、ワーカーのジョブキューがまだ動き出していない間は`starting`になります。失敗したチェックには`error`が付きます。`error`が示すのは失敗の種類(`timeout`、`dependency_failed`、`not configured`)だけで、ホスト名や接続文字列は含まないので、このレスポンスは誰に見せても問題ありません。失敗の理由そのものは、チェック名を含む`readiness check failed`という行としてプロセスのログに出力されます。

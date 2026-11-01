@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -29,8 +29,15 @@ None of them checks the object store, the SMTP server, or the search engine. A f
 
 A healthy answer looks like this:
 
-```jsonl
-{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+```json
+{
+  "status": "ok",
+  "checks": {
+    "db.outbox": { "status": "ok" },
+    "db.ticker": { "status": "ok" },
+    "db.content_stats": { "status": "ok" }
+  }
+}
 ```
 
 `status` is `ok` when every check passed, `unavailable` when one failed, and `starting` while the worker's job queue has not started yet. A failed check carries an `error` that says only which kind of failure it was — `timeout`, `dependency_failed`, or `not configured` — and never a host name or a connection string, so the answer is safe to show anyone. The reason itself goes to the process's log, as a `readiness check failed` line naming the check.
