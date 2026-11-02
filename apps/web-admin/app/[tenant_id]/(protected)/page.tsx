@@ -59,7 +59,10 @@ const QueueStatusMessage = ({ status }: { status: "draft" | "scheduled" }) => {
   return <Message message="admin.dashboard.status_draft" />;
 };
 
-/** What a scheduled episode in the queue waits on in review, if anything. */
+/**
+ * What a scheduled episode in the queue waits on in review, if anything, set
+ * inline after the status so a row with no review state keeps its height.
+ */
 const QueueReviewBadge = ({
   state,
 }: {
@@ -67,7 +70,7 @@ const QueueReviewBadge = ({
 }) => {
   if (state === "in_review") {
     return (
-      <Badge tone="info" variant="outline">
+      <Badge className="ml-2" tone="info" variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="admin.dashboard.review_in_review" />
         </Suspense>
@@ -77,7 +80,7 @@ const QueueReviewBadge = ({
 
   if (state === "returned") {
     return (
-      <Badge tone="warning" variant="outline">
+      <Badge className="ml-2" tone="warning" variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="admin.dashboard.review_returned" />
         </Suspense>
@@ -285,24 +288,19 @@ const DashboardContent = async () => {
                     </Table.Cell>
                     <Table.Cell>{item.episodeTitle}</Table.Cell>
                     <Table.Cell>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          tone={getQueueStatusTone(item.status)}
-                          variant="outline"
+                      <Badge
+                        tone={getQueueStatusTone(item.status)}
+                        variant="outline"
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-16" />}
                         >
-                          <Suspense
-                            fallback={<SkeletonLine className="h-4 w-16" />}
-                          >
-                            <QueueStatusMessage status={item.status} />
-                          </Suspense>
-                        </Badge>
-                        <QueueReviewBadge
-                          state={pendingEpisodeReviewState(
-                            item,
-                            reviewRequired
-                          )}
-                        />
-                      </div>
+                          <QueueStatusMessage status={item.status} />
+                        </Suspense>
+                      </Badge>
+                      <QueueReviewBadge
+                        state={pendingEpisodeReviewState(item, reviewRequired)}
+                      />
                     </Table.Cell>
                     <Table.Cell>
                       {scheduledAt || (
