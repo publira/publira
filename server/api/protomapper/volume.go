@@ -39,3 +39,16 @@ func VolumeEpisodeIDs(rows []dbmodels.ListVolumeEpisodesByVolumeIDsRow) map[uuid
 	}
 	return episodes
 }
+
+// VolumeBookstoreLinks groups the rows ListVolumeBookstoreLinksByVolumeIDs
+// read by volume, each volume's links in its own order.
+func VolumeBookstoreLinks(rows []dbmodels.ListVolumeBookstoreLinksByVolumeIDsRow) map[uuid.UUID][]*publirattypesv1.BookstoreLink {
+	links := make(map[uuid.UUID][]*publirattypesv1.BookstoreLink)
+	for _, row := range rows {
+		links[row.VolumeID] = append(links[row.VolumeID], &publirattypesv1.BookstoreLink{
+			Label: row.Label,
+			Url:   row.Url,
+		})
+	}
+	return links
+}

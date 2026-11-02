@@ -660,6 +660,7 @@ type Querier interface {
 	// dormant rather than gone, and moving the console back would let it sign in
 	// again.
 	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, arg DeleteUserWebauthnCredentialsByUserIDParams) (int64, error)
+	DeleteVolumeBookstoreLinks(ctx context.Context, arg DeleteVolumeBookstoreLinksParams) error
 	DeleteVolumeEpisodes(ctx context.Context, arg DeleteVolumeEpisodesParams) error
 	DrawCoinGrant(ctx context.Context, arg DrawCoinGrantParams) error
 	// last_verified_step is left alone: the code that confirmed the enrollment
@@ -1644,6 +1645,9 @@ type Querier interface {
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
+	// Writes the volume's links in the order given, the first at position 0. The
+	// two arrays are read pairwise: the n-th label goes with the n-th URL.
+	InsertVolumeBookstoreLinks(ctx context.Context, arg InsertVolumeBookstoreLinksParams) error
 	// Writes the volume's episodes in the order given, the first at position 0.
 	InsertVolumeEpisodes(ctx context.Context, arg InsertVolumeEpisodesParams) error
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
@@ -3137,6 +3141,8 @@ type Querier interface {
 	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
 	ListUserWebauthnCredentialsForRPID(ctx context.Context, arg ListUserWebauthnCredentialsForRPIDParams) ([]UserWebauthnCredential, error)
+	// The bookstore links of each listed volume, in each volume's own order.
+	ListVolumeBookstoreLinksByVolumeIDs(ctx context.Context, arg ListVolumeBookstoreLinksByVolumeIDsParams) ([]ListVolumeBookstoreLinksByVolumeIDsRow, error)
 	ListVolumeCoverImageVariantsByImageIDs(ctx context.Context, arg ListVolumeCoverImageVariantsByImageIDsParams) ([]ListVolumeCoverImageVariantsByImageIDsRow, error)
 	// The episodes of each listed volume, in each volume's own order.
 	ListVolumeEpisodesByVolumeIDs(ctx context.Context, arg ListVolumeEpisodesByVolumeIDsParams) ([]ListVolumeEpisodesByVolumeIDsRow, error)

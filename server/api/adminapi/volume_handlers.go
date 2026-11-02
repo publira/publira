@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -38,6 +40,17 @@ const (
 
 	// maxVolumeTitleRunes is what volumes_title_check holds the column to.
 	maxVolumeTitleRunes = 255
+
+	// maxVolumeBookstoreLinks is how many bookstore links one volume carries:
+	// enough for every store a printed book is commonly sold at, and few
+	// enough that the series page shows them as buttons beside the volume.
+	maxVolumeBookstoreLinks = 10
+
+	// maxBookstoreLinkLabelRunes and maxBookstoreLinkURLRunes are what
+	// volume_bookstore_links_label_check and volume_bookstore_links_url_check
+	// hold the columns to.
+	maxBookstoreLinkLabelRunes = 50
+	maxBookstoreLinkURLRunes   = 2048
 )
 
 // normalizeVolumeTitle reads a volume's title, which is required and bounded
@@ -114,8 +127,8 @@ func volumeRowFromList(row dbmodels.ListVolumesForSeriesRow) volumeRow {
 }
 
 // volumeMessages builds the answer for a list of volumes, reading the
-// episodes of all of them in one query and the covers of all of them in
-// another.
+// episodes of all of them in one query, their bookstore links in another, and
+// their covers in a third.
 func (s *adminServer) volumeMessages(ctx context.Context, tenantID uuid.UUID, rows []volumeRow) ([]*publiraadminv1.AdminVolume, error) {
 	volumes := make([]*publiraadminv1.AdminVolume, 0, len(rows))
 	if len(rows) == 0 {
@@ -137,27 +150,36 @@ func (s *adminServer) volumeMessages(ctx context.Context, tenantID uuid.UUID, ro
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list volume episodes", err, "tenant_id", tenantID.String())
 	}
+	linkRows, err := queries.ListVolumeBookstoreLinksByVolumeIDs(ctx, dbmodels.ListVolumeBookstoreLinksByVolumeIDsParams{
+		TenantID:  tenantID,
+		VolumeIds: volumeIDs,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list volume bookstore links", err, "tenant_id", tenantID.String())
+	}
 	covers, err := s.ownerImageVariants(ctx, volumeCoverImages, tenantID, coverIDs)
 	if err != nil {
 		return nil, err
 	}
 	episodesByVolume := protomapper.VolumeEpisodeIDs(episodeRows)
+	linksByVolume := protomapper.VolumeBookstoreLinks(linkRows)
 	for _, row := range rows {
 		episodeIDs := make([]string, 0, len(episodesByVolume[row.id]))
 		for _, episodeID := range episodesByVolume[row.id] {
 			episodeIDs = append(episodeIDs, episodeID.String())
 		}
 		volume := &publiraadminv1.AdminVolume{
-			Id:         row.id.String(),
-			PublicId:   row.publicID,
-			SeriesId:   row.seriesID.String(),
-			Title:      row.title,
-			OrderIndex: row.orderIndex,
-			Price:      row.price,
-			EpisodeIds: episodeIDs,
-			Published:  row.published,
-			CreatedAt:  row.createdAt.UTC().Format(time.RFC3339),
-			UpdatedAt:  row.updatedAt.UTC().Format(time.RFC3339),
+			Id:             row.id.String(),
+			PublicId:       row.publicID,
+			SeriesId:       row.seriesID.String(),
+			Title:          row.title,
+			OrderIndex:     row.orderIndex,
+			Price:          row.price,
+			EpisodeIds:     episodeIDs,
+			Published:      row.published,
+			CreatedAt:      row.createdAt.UTC().Format(time.RFC3339),
+			UpdatedAt:      row.updatedAt.UTC().Format(time.RFC3339),
+			BookstoreLinks: linksByVolume[row.id],
 		}
 		if row.publishedAt.Valid {
 			volume.PublishedAt = row.publishedAt.Time.UTC().Format(time.RFC3339)
@@ -628,6 +650,100 @@ func (s *adminServer) SetVolumeEpisodes(
 		return nil, err
 	}
 	return &publiraadminv1.SetVolumeEpisodesResponse{Volume: volume}, nil
+}
+
+// volumeBookstoreLinks reads the links a SetVolumeBookstoreLinks request
+// names, each held to what its column is, into the labels and the URLs the
+// insert takes pairwise. A violation names the link by its place in the list,
+// so the console can point at the field that is wrong.
+func volumeBookstoreLinks(links []*publirattypesv1.BookstoreLink) (labels, urls []string, err error) {
+	if len(links) > maxVolumeBookstoreLinks {
+		return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("a volume carries at most %d bookstore links", maxVolumeBookstoreLinks), "bookstore_links")
+	}
+	labels = make([]string, 0, len(links))
+	urls = make([]string, 0, len(links))
+	for index, link := range links {
+		label := strings.TrimSpace(link.GetLabel())
+		labelField := fmt.Sprintf("bookstore_links[%d].label", index)
+		if label == "" {
+			return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("label is required"), labelField)
+		}
+		if utf8.RuneCountInString(label) > maxBookstoreLinkLabelRunes {
+			return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("label must be at most %d characters", maxBookstoreLinkLabelRunes), labelField)
+		}
+		raw := strings.TrimSpace(link.GetUrl())
+		urlField := fmt.Sprintf("bookstore_links[%d].url", index)
+		if utf8.RuneCountInString(raw) > maxBookstoreLinkURLRunes {
+			return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("url must be at most %d characters", maxBookstoreLinkURLRunes), urlField)
+		}
+		// The prefix is checked as written, since the column's CHECK is: a
+		// parser would also accept HTTPS:// in capitals.
+		parsed, err := url.Parse(raw)
+		if err != nil || !strings.HasPrefix(raw, "https://") || parsed.Hostname() == "" || parsed.User != nil {
+			return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("url must be an absolute https URL"), urlField)
+		}
+		labels = append(labels, label)
+		urls = append(urls, raw)
+	}
+	return labels, urls, nil
+}
+
+func (s *adminServer) SetVolumeBookstoreLinks(
+	ctx context.Context,
+	req *publiraadminv1.SetVolumeBookstoreLinksRequest,
+) (*publiraadminv1.SetVolumeBookstoreLinksResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	id, err := parseRecordID(req.VolumeId, "volume_id")
+	if err != nil {
+		return nil, err
+	}
+	labels, urls, err := volumeBookstoreLinks(req.BookstoreLinks)
+	if err != nil {
+		return nil, err
+	}
+
+	var publicID string
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		queries := s.queriesFor(txCtx)
+		current, err := s.lockVolume(txCtx, tenant.ID, id)
+		if err != nil {
+			return nil, err
+		}
+		publicID = current.PublicID
+		if err := queries.DeleteVolumeBookstoreLinks(txCtx, dbmodels.DeleteVolumeBookstoreLinksParams{
+			TenantID: tenant.ID,
+			VolumeID: current.ID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to clear volume bookstore links", err, "tenant_id", tenant.ID.String(), "volume_id", current.ID.String())
+		}
+		if len(labels) > 0 {
+			if err := queries.InsertVolumeBookstoreLinks(txCtx, dbmodels.InsertVolumeBookstoreLinksParams{
+				TenantID: tenant.ID,
+				VolumeID: current.ID,
+				Labels:   labels,
+				Urls:     urls,
+			}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to write volume bookstore links", err, "tenant_id", tenant.ID.String(), "volume_id", current.ID.String())
+			}
+		}
+		return volumeRevalidateTags(tenant.ID, current.IsPublished, current.IsPublished), nil
+	}); err != nil {
+		return nil, err
+	}
+
+	s.recordVolumeChange(ctx, tenant.ID, "volume_bookstore_links_updated", "volume", publicID)
+
+	volume, err := s.volumeMessageByID(ctx, tenant.ID, id)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.SetVolumeBookstoreLinksResponse{Volume: volume}, nil
 }
 
 func (s *adminServer) ReorderVolumes(

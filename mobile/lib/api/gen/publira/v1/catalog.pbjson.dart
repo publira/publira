@@ -3772,6 +3772,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Episode': $0.Episode$json,
   '.publira.v1.WaitFreeRule': WaitFreeRule$json,
   '.publira.types.v1.Volume': $0.Volume$json,
+  '.publira.types.v1.BookstoreLink': $0.BookstoreLink$json,
   '.publira.v1.GetSeriesEpisodeAccessRequest':
       GetSeriesEpisodeAccessRequest$json,
   '.publira.v1.GetSeriesEpisodeAccessResponse':
@@ -4167,6 +4168,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Volume': $0.Volume$json,
+  '.publira.types.v1.BookstoreLink': $0.BookstoreLink$json,
   '.publira.types.v1.SeriesBundle': $0.SeriesBundle$json,
   '.publira.types.v1.PurchasedCoinPack': $0.PurchasedCoinPack$json,
   '.publira.v1.ProcessPaymentWebhookRequest': ProcessPaymentWebhookRequest$json,

@@ -405,6 +405,7 @@
         "volume_updated": "巻の更新",
         "volume_published": "巻の公開",
         "volume_unpublished": "巻の公開取り下げ",
+        "volume_bookstore_links_updated": "巻の書店リンクの更新",
         "volumes_reordered": "巻の並べ替え",
         "creator_role_created": "著者の役割作成",
         "creator_role_updated": "著者の役割更新",

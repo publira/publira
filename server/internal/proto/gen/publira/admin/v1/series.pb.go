@@ -7009,8 +7009,11 @@ type AdminVolume struct {
 	CoverImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,11,rep,name=cover_image_variants,json=coverImageVariants,proto3" json:"cover_image_variants,omitempty"`
 	CreatedAt           string                      `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt           string                      `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Where the volume's printed edition is sold, in the volume's own order,
+	// which SetVolumeBookstoreLinks writes.
+	BookstoreLinks []*v1.BookstoreLink `protobuf:"bytes,14,rep,name=bookstore_links,json=bookstoreLinks,proto3" json:"bookstore_links,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AdminVolume) Reset() {
@@ -7132,6 +7135,13 @@ func (x *AdminVolume) GetUpdatedAt() string {
 		return x.UpdatedAt
 	}
 	return ""
+}
+
+func (x *AdminVolume) GetBookstoreLinks() []*v1.BookstoreLink {
+	if x != nil {
+		return x.BookstoreLinks
+	}
+	return nil
 }
 
 type ListVolumesRequest struct {
@@ -7700,6 +7710,114 @@ func (x *SetVolumeEpisodesResponse) GetVolume() *AdminVolume {
 	return nil
 }
 
+// Replaces the volume's bookstore links, in the order given; an empty list
+// leaves it with none. At most 10, each held to what
+// publira.types.v1.BookstoreLink says of its fields, or the call is
+// invalid_argument. UpdateVolume leaves the links as they are.
+type SetVolumeBookstoreLinksRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	VolumeId       string                 `protobuf:"bytes,2,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	BookstoreLinks []*v1.BookstoreLink    `protobuf:"bytes,3,rep,name=bookstore_links,json=bookstoreLinks,proto3" json:"bookstore_links,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SetVolumeBookstoreLinksRequest) Reset() {
+	*x = SetVolumeBookstoreLinksRequest{}
+	mi := &file_publira_admin_v1_series_proto_msgTypes[109]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetVolumeBookstoreLinksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetVolumeBookstoreLinksRequest) ProtoMessage() {}
+
+func (x *SetVolumeBookstoreLinksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_series_proto_msgTypes[109]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetVolumeBookstoreLinksRequest.ProtoReflect.Descriptor instead.
+func (*SetVolumeBookstoreLinksRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{109}
+}
+
+func (x *SetVolumeBookstoreLinksRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *SetVolumeBookstoreLinksRequest) GetVolumeId() string {
+	if x != nil {
+		return x.VolumeId
+	}
+	return ""
+}
+
+func (x *SetVolumeBookstoreLinksRequest) GetBookstoreLinks() []*v1.BookstoreLink {
+	if x != nil {
+		return x.BookstoreLinks
+	}
+	return nil
+}
+
+type SetVolumeBookstoreLinksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Volume        *AdminVolume           `protobuf:"bytes,1,opt,name=volume,proto3" json:"volume,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetVolumeBookstoreLinksResponse) Reset() {
+	*x = SetVolumeBookstoreLinksResponse{}
+	mi := &file_publira_admin_v1_series_proto_msgTypes[110]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetVolumeBookstoreLinksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetVolumeBookstoreLinksResponse) ProtoMessage() {}
+
+func (x *SetVolumeBookstoreLinksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_series_proto_msgTypes[110]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetVolumeBookstoreLinksResponse.ProtoReflect.Descriptor instead.
+func (*SetVolumeBookstoreLinksResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *SetVolumeBookstoreLinksResponse) GetVolume() *AdminVolume {
+	if x != nil {
+		return x.Volume
+	}
+	return nil
+}
+
 type ReorderVolumesRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -7717,7 +7835,7 @@ type ReorderVolumesRequest struct {
 
 func (x *ReorderVolumesRequest) Reset() {
 	*x = ReorderVolumesRequest{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[109]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7729,7 +7847,7 @@ func (x *ReorderVolumesRequest) String() string {
 func (*ReorderVolumesRequest) ProtoMessage() {}
 
 func (x *ReorderVolumesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[109]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7742,7 +7860,7 @@ func (x *ReorderVolumesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReorderVolumesRequest.ProtoReflect.Descriptor instead.
 func (*ReorderVolumesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{109}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *ReorderVolumesRequest) GetTenant() *v1.TenantContext {
@@ -7782,7 +7900,7 @@ type ReorderVolumesResponse struct {
 
 func (x *ReorderVolumesResponse) Reset() {
 	*x = ReorderVolumesResponse{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[110]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7794,7 +7912,7 @@ func (x *ReorderVolumesResponse) String() string {
 func (*ReorderVolumesResponse) ProtoMessage() {}
 
 func (x *ReorderVolumesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[110]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7807,7 +7925,7 @@ func (x *ReorderVolumesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReorderVolumesResponse.ProtoReflect.Descriptor instead.
 func (*ReorderVolumesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{110}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *ReorderVolumesResponse) GetVolumes() []*AdminVolume {
@@ -7833,7 +7951,7 @@ type UploadVolumeCoverImageRequest struct {
 
 func (x *UploadVolumeCoverImageRequest) Reset() {
 	*x = UploadVolumeCoverImageRequest{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[111]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7845,7 +7963,7 @@ func (x *UploadVolumeCoverImageRequest) String() string {
 func (*UploadVolumeCoverImageRequest) ProtoMessage() {}
 
 func (x *UploadVolumeCoverImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[111]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7858,7 +7976,7 @@ func (x *UploadVolumeCoverImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadVolumeCoverImageRequest.ProtoReflect.Descriptor instead.
 func (*UploadVolumeCoverImageRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{111}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *UploadVolumeCoverImageRequest) GetTenant() *v1.TenantContext {
@@ -7898,7 +8016,7 @@ type UploadVolumeCoverImageResponse struct {
 
 func (x *UploadVolumeCoverImageResponse) Reset() {
 	*x = UploadVolumeCoverImageResponse{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[112]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7910,7 +8028,7 @@ func (x *UploadVolumeCoverImageResponse) String() string {
 func (*UploadVolumeCoverImageResponse) ProtoMessage() {}
 
 func (x *UploadVolumeCoverImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[112]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7923,7 +8041,7 @@ func (x *UploadVolumeCoverImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadVolumeCoverImageResponse.ProtoReflect.Descriptor instead.
 func (*UploadVolumeCoverImageResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{112}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *UploadVolumeCoverImageResponse) GetVolume() *AdminVolume {
@@ -7945,7 +8063,7 @@ type DeleteVolumeCoverImageRequest struct {
 
 func (x *DeleteVolumeCoverImageRequest) Reset() {
 	*x = DeleteVolumeCoverImageRequest{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[113]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7957,7 +8075,7 @@ func (x *DeleteVolumeCoverImageRequest) String() string {
 func (*DeleteVolumeCoverImageRequest) ProtoMessage() {}
 
 func (x *DeleteVolumeCoverImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[113]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7970,7 +8088,7 @@ func (x *DeleteVolumeCoverImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteVolumeCoverImageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteVolumeCoverImageRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{113}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *DeleteVolumeCoverImageRequest) GetTenant() *v1.TenantContext {
@@ -7996,7 +8114,7 @@ type DeleteVolumeCoverImageResponse struct {
 
 func (x *DeleteVolumeCoverImageResponse) Reset() {
 	*x = DeleteVolumeCoverImageResponse{}
-	mi := &file_publira_admin_v1_series_proto_msgTypes[114]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8008,7 +8126,7 @@ func (x *DeleteVolumeCoverImageResponse) String() string {
 func (*DeleteVolumeCoverImageResponse) ProtoMessage() {}
 
 func (x *DeleteVolumeCoverImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_series_proto_msgTypes[114]
+	mi := &file_publira_admin_v1_series_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8021,7 +8139,7 @@ func (x *DeleteVolumeCoverImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteVolumeCoverImageResponse.ProtoReflect.Descriptor instead.
 func (*DeleteVolumeCoverImageResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{114}
+	return file_publira_admin_v1_series_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *DeleteVolumeCoverImageResponse) GetVolume() *AdminVolume {
@@ -8561,7 +8679,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12\x16\n" +
 	"\x06locale\x18\x03 \x01(\tR\x06locale\"l\n" +
 	" DeleteEpisodeTranslationResponse\x12H\n" +
-	"\ftranslations\x18\x01 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\xd4\x03\n" +
+	"\ftranslations\x18\x01 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\x9e\x04\n" +
 	"\vAdminVolume\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1b\n" +
@@ -8580,7 +8698,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\f \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\r \x01(\tR\tupdatedAt\"j\n" +
+	"updated_at\x18\r \x01(\tR\tupdatedAt\x12H\n" +
+	"\x0fbookstore_links\x18\x0e \x03(\v2\x1f.publira.types.v1.BookstoreLinkR\x0ebookstoreLinks\"j\n" +
 	"\x12ListVolumesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tseries_id\x18\x02 \x01(\tR\bseriesId\"N\n" +
@@ -8614,6 +8733,12 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\vepisode_ids\x18\x03 \x03(\tR\n" +
 	"episodeIds\"R\n" +
 	"\x19SetVolumeEpisodesResponse\x125\n" +
+	"\x06volume\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminVolumeR\x06volume\"\xc0\x01\n" +
+	"\x1eSetVolumeBookstoreLinksRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tvolume_id\x18\x02 \x01(\tR\bvolumeId\x12H\n" +
+	"\x0fbookstore_links\x18\x03 \x03(\v2\x1f.publira.types.v1.BookstoreLinkR\x0ebookstoreLinks\"X\n" +
+	"\x1fSetVolumeBookstoreLinksResponse\x125\n" +
 	"\x06volume\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminVolumeR\x06volume\"\xbc\x01\n" +
 	"\x15ReorderVolumesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
@@ -8640,7 +8765,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"+EPISODE_CREDIT_UNCHANGED_REASON_UNSPECIFIED\x10\x00\x124\n" +
 	"0EPISODE_CREDIT_UNCHANGED_REASON_ALREADY_CREDITED\x10\x01\x120\n" +
 	",EPISODE_CREDIT_UNCHANGED_REASON_NOT_CREDITED\x10\x02\x12;\n" +
-	"7EPISODE_CREDIT_UNCHANGED_REASON_CREDITED_ON_THE_EPISODE\x10\x032\xa0/\n" +
+	"7EPISODE_CREDIT_UNCHANGED_REASON_CREDITED_ON_THE_EPISODE\x10\x032\xa30\n" +
 	"\x12AdminSeriesService\x12_\n" +
 	"\fCreateSeries\x12%.publira.admin.v1.CreateSeriesRequest\x1a&.publira.admin.v1.CreateSeriesResponse\"\x00\x12_\n" +
 	"\fUpdateSeries\x12%.publira.admin.v1.UpdateSeriesRequest\x1a&.publira.admin.v1.UpdateSeriesResponse\"\x00\x12Y\n" +
@@ -8689,7 +8814,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\fCreateVolume\x12%.publira.admin.v1.CreateVolumeRequest\x1a&.publira.admin.v1.CreateVolumeResponse\"\x00\x12_\n" +
 	"\fUpdateVolume\x12%.publira.admin.v1.UpdateVolumeRequest\x1a&.publira.admin.v1.UpdateVolumeResponse\"\x00\x12b\n" +
 	"\rPublishVolume\x12&.publira.admin.v1.PublishVolumeRequest\x1a'.publira.admin.v1.PublishVolumeResponse\"\x00\x12n\n" +
-	"\x11SetVolumeEpisodes\x12*.publira.admin.v1.SetVolumeEpisodesRequest\x1a+.publira.admin.v1.SetVolumeEpisodesResponse\"\x00\x12e\n" +
+	"\x11SetVolumeEpisodes\x12*.publira.admin.v1.SetVolumeEpisodesRequest\x1a+.publira.admin.v1.SetVolumeEpisodesResponse\"\x00\x12\x80\x01\n" +
+	"\x17SetVolumeBookstoreLinks\x120.publira.admin.v1.SetVolumeBookstoreLinksRequest\x1a1.publira.admin.v1.SetVolumeBookstoreLinksResponse\"\x00\x12e\n" +
 	"\x0eReorderVolumes\x12'.publira.admin.v1.ReorderVolumesRequest\x1a(.publira.admin.v1.ReorderVolumesResponse\"\x00\x12}\n" +
 	"\x16UploadVolumeCoverImage\x12/.publira.admin.v1.UploadVolumeCoverImageRequest\x1a0.publira.admin.v1.UploadVolumeCoverImageResponse\"\x00\x12}\n" +
 	"\x16DeleteVolumeCoverImage\x12/.publira.admin.v1.DeleteVolumeCoverImageRequest\x1a0.publira.admin.v1.DeleteVolumeCoverImageResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
@@ -8707,7 +8833,7 @@ func file_publira_admin_v1_series_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_series_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_admin_v1_series_proto_msgTypes = make([]protoimpl.MessageInfo, 115)
+var file_publira_admin_v1_series_proto_msgTypes = make([]protoimpl.MessageInfo, 117)
 var file_publira_admin_v1_series_proto_goTypes = []any{
 	(EpisodeCreditUnchangedReason)(0),                 // 0: publira.admin.v1.EpisodeCreditUnchangedReason
 	(*SeriesCreatorCredit)(nil),                       // 1: publira.admin.v1.SeriesCreatorCredit
@@ -8819,288 +8945,297 @@ var file_publira_admin_v1_series_proto_goTypes = []any{
 	(*PublishVolumeResponse)(nil),                     // 107: publira.admin.v1.PublishVolumeResponse
 	(*SetVolumeEpisodesRequest)(nil),                  // 108: publira.admin.v1.SetVolumeEpisodesRequest
 	(*SetVolumeEpisodesResponse)(nil),                 // 109: publira.admin.v1.SetVolumeEpisodesResponse
-	(*ReorderVolumesRequest)(nil),                     // 110: publira.admin.v1.ReorderVolumesRequest
-	(*ReorderVolumesResponse)(nil),                    // 111: publira.admin.v1.ReorderVolumesResponse
-	(*UploadVolumeCoverImageRequest)(nil),             // 112: publira.admin.v1.UploadVolumeCoverImageRequest
-	(*UploadVolumeCoverImageResponse)(nil),            // 113: publira.admin.v1.UploadVolumeCoverImageResponse
-	(*DeleteVolumeCoverImageRequest)(nil),             // 114: publira.admin.v1.DeleteVolumeCoverImageRequest
-	(*DeleteVolumeCoverImageResponse)(nil),            // 115: publira.admin.v1.DeleteVolumeCoverImageResponse
-	(*v1.TenantContext)(nil),                          // 116: publira.types.v1.TenantContext
-	(v1.SeriesStatus)(0),                              // 117: publira.types.v1.SeriesStatus
-	(v1.SeriesAgeRating)(0),                           // 118: publira.types.v1.SeriesAgeRating
-	(v1.CommentMode)(0),                               // 119: publira.types.v1.CommentMode
-	(v1.ReadingDirection)(0),                          // 120: publira.types.v1.ReadingDirection
-	(v1.SurfaceAvailability)(0),                       // 121: publira.types.v1.SurfaceAvailability
-	(*v1.Series)(nil),                                 // 122: publira.types.v1.Series
-	(*v1.Episode)(nil),                                // 123: publira.types.v1.Episode
-	(*v1.EpisodeImage)(nil),                           // 124: publira.types.v1.EpisodeImage
-	(*v1.Creator)(nil),                                // 125: publira.types.v1.Creator
-	(*v1.ImageCropRect)(nil),                          // 126: publira.types.v1.ImageCropRect
-	(*v1.SeriesEyeCatchVariant)(nil),                  // 127: publira.types.v1.SeriesEyeCatchVariant
+	(*SetVolumeBookstoreLinksRequest)(nil),            // 110: publira.admin.v1.SetVolumeBookstoreLinksRequest
+	(*SetVolumeBookstoreLinksResponse)(nil),           // 111: publira.admin.v1.SetVolumeBookstoreLinksResponse
+	(*ReorderVolumesRequest)(nil),                     // 112: publira.admin.v1.ReorderVolumesRequest
+	(*ReorderVolumesResponse)(nil),                    // 113: publira.admin.v1.ReorderVolumesResponse
+	(*UploadVolumeCoverImageRequest)(nil),             // 114: publira.admin.v1.UploadVolumeCoverImageRequest
+	(*UploadVolumeCoverImageResponse)(nil),            // 115: publira.admin.v1.UploadVolumeCoverImageResponse
+	(*DeleteVolumeCoverImageRequest)(nil),             // 116: publira.admin.v1.DeleteVolumeCoverImageRequest
+	(*DeleteVolumeCoverImageResponse)(nil),            // 117: publira.admin.v1.DeleteVolumeCoverImageResponse
+	(*v1.TenantContext)(nil),                          // 118: publira.types.v1.TenantContext
+	(v1.SeriesStatus)(0),                              // 119: publira.types.v1.SeriesStatus
+	(v1.SeriesAgeRating)(0),                           // 120: publira.types.v1.SeriesAgeRating
+	(v1.CommentMode)(0),                               // 121: publira.types.v1.CommentMode
+	(v1.ReadingDirection)(0),                          // 122: publira.types.v1.ReadingDirection
+	(v1.SurfaceAvailability)(0),                       // 123: publira.types.v1.SurfaceAvailability
+	(*v1.Series)(nil),                                 // 124: publira.types.v1.Series
+	(*v1.Episode)(nil),                                // 125: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),                           // 126: publira.types.v1.EpisodeImage
+	(*v1.Creator)(nil),                                // 127: publira.types.v1.Creator
+	(*v1.ImageCropRect)(nil),                          // 128: publira.types.v1.ImageCropRect
+	(*v1.SeriesEyeCatchVariant)(nil),                  // 129: publira.types.v1.SeriesEyeCatchVariant
+	(*v1.BookstoreLink)(nil),                          // 130: publira.types.v1.BookstoreLink
 }
 var file_publira_admin_v1_series_proto_depIdxs = []int32{
-	116, // 0: publira.admin.v1.CreateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	117, // 1: publira.admin.v1.CreateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	118, // 2: publira.admin.v1.CreateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	118, // 0: publira.admin.v1.CreateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	119, // 1: publira.admin.v1.CreateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	120, // 2: publira.admin.v1.CreateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	1,   // 3: publira.admin.v1.CreateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	119, // 4: publira.admin.v1.CreateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	120, // 5: publira.admin.v1.CreateSeriesRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	121, // 6: publira.admin.v1.CreateSeriesRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
-	121, // 7: publira.admin.v1.CreateSeriesRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	122, // 8: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
-	119, // 9: publira.admin.v1.CreateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	120, // 10: publira.admin.v1.CreateSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	121, // 4: publira.admin.v1.CreateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	122, // 5: publira.admin.v1.CreateSeriesRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	123, // 6: publira.admin.v1.CreateSeriesRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 7: publira.admin.v1.CreateSeriesRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	124, // 8: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
+	121, // 9: publira.admin.v1.CreateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	122, // 10: publira.admin.v1.CreateSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	1,   // 11: publira.admin.v1.CreateSeriesResponse.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	121, // 12: publira.admin.v1.CreateSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 12: publira.admin.v1.CreateSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	2,   // 13: publira.admin.v1.CreateSeriesResponse.translations:type_name -> publira.admin.v1.SeriesTranslation
-	116, // 14: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	117, // 15: publira.admin.v1.UpdateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	118, // 14: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	119, // 15: publira.admin.v1.UpdateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
 	6,   // 16: publira.admin.v1.UpdateSeriesRequest.weekly_schedule:type_name -> publira.admin.v1.SeriesScheduleWeekdays
-	118, // 17: publira.admin.v1.UpdateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	120, // 17: publira.admin.v1.UpdateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	1,   // 18: publira.admin.v1.UpdateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	119, // 19: publira.admin.v1.UpdateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	120, // 20: publira.admin.v1.UpdateSeriesRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	121, // 21: publira.admin.v1.UpdateSeriesRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
-	121, // 22: publira.admin.v1.UpdateSeriesRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	122, // 23: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
-	119, // 24: publira.admin.v1.UpdateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	120, // 25: publira.admin.v1.UpdateSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	121, // 19: publira.admin.v1.UpdateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	122, // 20: publira.admin.v1.UpdateSeriesRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	123, // 21: publira.admin.v1.UpdateSeriesRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 22: publira.admin.v1.UpdateSeriesRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	124, // 23: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
+	121, // 24: publira.admin.v1.UpdateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	122, // 25: publira.admin.v1.UpdateSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	1,   // 26: publira.admin.v1.UpdateSeriesResponse.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	121, // 27: publira.admin.v1.UpdateSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 27: publira.admin.v1.UpdateSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	2,   // 28: publira.admin.v1.UpdateSeriesResponse.translations:type_name -> publira.admin.v1.SeriesTranslation
-	116, // 29: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	117, // 30: publira.admin.v1.ListSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	118, // 31: publira.admin.v1.ListSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	122, // 32: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
-	116, // 33: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	122, // 34: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
-	119, // 35: publira.admin.v1.GetSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	120, // 36: publira.admin.v1.GetSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	118, // 29: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	119, // 30: publira.admin.v1.ListSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	120, // 31: publira.admin.v1.ListSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	124, // 32: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
+	118, // 33: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	124, // 34: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
+	121, // 35: publira.admin.v1.GetSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	122, // 36: publira.admin.v1.GetSeriesResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	1,   // 37: publira.admin.v1.GetSeriesResponse.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	121, // 38: publira.admin.v1.GetSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 38: publira.admin.v1.GetSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	2,   // 39: publira.admin.v1.GetSeriesResponse.translations:type_name -> publira.admin.v1.SeriesTranslation
-	116, // 40: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 41: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	116, // 42: publira.admin.v1.ListEpisodesByPublicationDateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 40: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 41: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	118, // 42: publira.admin.v1.ListEpisodesByPublicationDateRequest.tenant:type_name -> publira.types.v1.TenantContext
 	16,  // 43: publira.admin.v1.ListEpisodesByPublicationDateResponse.episodes:type_name -> publira.admin.v1.EpisodePublication
-	116, // 44: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 45: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	120, // 46: publira.admin.v1.GetEpisodeResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	121, // 47: publira.admin.v1.GetEpisodeResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	118, // 44: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 45: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	122, // 46: publira.admin.v1.GetEpisodeResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	123, // 47: publira.admin.v1.GetEpisodeResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	3,   // 48: publira.admin.v1.GetEpisodeResponse.translations:type_name -> publira.admin.v1.EpisodeTranslation
-	116, // 49: publira.admin.v1.UpdateEpisodeTitleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 50: publira.admin.v1.UpdateEpisodeTitleResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 49: publira.admin.v1.UpdateEpisodeTitleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 50: publira.admin.v1.UpdateEpisodeTitleResponse.episode:type_name -> publira.types.v1.Episode
 	3,   // 51: publira.admin.v1.UpdateEpisodeTitleResponse.translations:type_name -> publira.admin.v1.EpisodeTranslation
-	116, // 52: publira.admin.v1.UpdateEpisodePricingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 53: publira.admin.v1.UpdateEpisodePricingResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 54: publira.admin.v1.UpdateEpisodeLayoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 55: publira.admin.v1.UpdateEpisodeLayoutRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	123, // 56: publira.admin.v1.UpdateEpisodeLayoutResponse.episode:type_name -> publira.types.v1.Episode
-	120, // 57: publira.admin.v1.UpdateEpisodeLayoutResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	116, // 58: publira.admin.v1.UpdateEpisodeAvailabilityRequest.tenant:type_name -> publira.types.v1.TenantContext
-	121, // 59: publira.admin.v1.UpdateEpisodeAvailabilityRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
-	123, // 60: publira.admin.v1.UpdateEpisodeAvailabilityResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 61: publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest.tenant:type_name -> publira.types.v1.TenantContext
-	121, // 62: publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	123, // 63: publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse.episode:type_name -> publira.types.v1.Episode
-	121, // 64: publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	116, // 65: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 66: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	116, // 67: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	121, // 68: publira.admin.v1.CreateEpisodeRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
-	121, // 69: publira.admin.v1.CreateEpisodeRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	123, // 70: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	121, // 71: publira.admin.v1.CreateEpisodeResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	118, // 52: publira.admin.v1.UpdateEpisodePricingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 53: publira.admin.v1.UpdateEpisodePricingResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 54: publira.admin.v1.UpdateEpisodeLayoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	122, // 55: publira.admin.v1.UpdateEpisodeLayoutRequest.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	125, // 56: publira.admin.v1.UpdateEpisodeLayoutResponse.episode:type_name -> publira.types.v1.Episode
+	122, // 57: publira.admin.v1.UpdateEpisodeLayoutResponse.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	118, // 58: publira.admin.v1.UpdateEpisodeAvailabilityRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 59: publira.admin.v1.UpdateEpisodeAvailabilityRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
+	125, // 60: publira.admin.v1.UpdateEpisodeAvailabilityResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 61: publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 62: publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	125, // 63: publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse.episode:type_name -> publira.types.v1.Episode
+	123, // 64: publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	118, // 65: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 66: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	118, // 67: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 68: publira.admin.v1.CreateEpisodeRequest.availability:type_name -> publira.types.v1.SurfaceAvailability
+	123, // 69: publira.admin.v1.CreateEpisodeRequest.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	125, // 70: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	123, // 71: publira.admin.v1.CreateEpisodeResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	3,   // 72: publira.admin.v1.CreateEpisodeResponse.translations:type_name -> publira.admin.v1.EpisodeTranslation
-	116, // 73: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 73: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	34,  // 74: publira.admin.v1.UploadEpisodeImagesRequest.images:type_name -> publira.admin.v1.EpisodeImageUpload
-	124, // 75: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	116, // 76: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	124, // 77: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	116, // 78: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	124, // 79: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	116, // 80: publira.admin.v1.DeleteEpisodeImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	124, // 81: publira.admin.v1.DeleteEpisodeImageResponse.images:type_name -> publira.types.v1.EpisodeImage
-	116, // 82: publira.admin.v1.ReplaceEpisodeImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	124, // 83: publira.admin.v1.ReplaceEpisodeImageResponse.images:type_name -> publira.types.v1.EpisodeImage
-	116, // 84: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 85: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 86: publira.admin.v1.ListEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	125, // 87: publira.admin.v1.ListEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
+	126, // 75: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	118, // 76: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	126, // 77: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	118, // 78: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	126, // 79: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	118, // 80: publira.admin.v1.DeleteEpisodeImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	126, // 81: publira.admin.v1.DeleteEpisodeImageResponse.images:type_name -> publira.types.v1.EpisodeImage
+	118, // 82: publira.admin.v1.ReplaceEpisodeImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	126, // 83: publira.admin.v1.ReplaceEpisodeImageResponse.images:type_name -> publira.types.v1.EpisodeImage
+	118, // 84: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 85: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 86: publira.admin.v1.ListEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	127, // 87: publira.admin.v1.ListEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
 	47,  // 88: publira.admin.v1.ListEpisodeCreditsResponse.creator_credits:type_name -> publira.admin.v1.EpisodeCreatorCredit
-	116, // 89: publira.admin.v1.ReplaceEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 89: publira.admin.v1.ReplaceEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	47,  // 90: publira.admin.v1.ReplaceEpisodeCreditsRequest.creator_credits:type_name -> publira.admin.v1.EpisodeCreatorCredit
-	125, // 91: publira.admin.v1.ReplaceEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
+	127, // 91: publira.admin.v1.ReplaceEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
 	47,  // 92: publira.admin.v1.AddEpisodeCreditOperation.credit:type_name -> publira.admin.v1.EpisodeCreatorCredit
 	47,  // 93: publira.admin.v1.ReplaceEpisodeCreditOperation.from:type_name -> publira.admin.v1.EpisodeCreatorCredit
 	47,  // 94: publira.admin.v1.ReplaceEpisodeCreditOperation.to:type_name -> publira.admin.v1.EpisodeCreatorCredit
 	47,  // 95: publira.admin.v1.RemoveEpisodeCreditOperation.credit:type_name -> publira.admin.v1.EpisodeCreatorCredit
 	47,  // 96: publira.admin.v1.SetEpisodeCreditShareOperation.credit:type_name -> publira.admin.v1.EpisodeCreatorCredit
-	116, // 97: publira.admin.v1.BulkEditEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 97: publira.admin.v1.BulkEditEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	52,  // 98: publira.admin.v1.BulkEditEpisodeCreditsRequest.add:type_name -> publira.admin.v1.AddEpisodeCreditOperation
 	53,  // 99: publira.admin.v1.BulkEditEpisodeCreditsRequest.replace:type_name -> publira.admin.v1.ReplaceEpisodeCreditOperation
 	54,  // 100: publira.admin.v1.BulkEditEpisodeCreditsRequest.remove:type_name -> publira.admin.v1.RemoveEpisodeCreditOperation
 	55,  // 101: publira.admin.v1.BulkEditEpisodeCreditsRequest.set_share:type_name -> publira.admin.v1.SetEpisodeCreditShareOperation
 	0,   // 102: publira.admin.v1.UnchangedEpisodeCredit.reason:type_name -> publira.admin.v1.EpisodeCreditUnchangedReason
 	57,  // 103: publira.admin.v1.BulkEditEpisodeCreditsResponse.unchanged_episodes:type_name -> publira.admin.v1.UnchangedEpisodeCredit
-	116, // 104: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	126, // 105: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
-	122, // 106: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse.series:type_name -> publira.types.v1.Series
-	116, // 107: publira.admin.v1.UploadEpisodeEyeCatchImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 108: publira.admin.v1.UploadEpisodeEyeCatchImageResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 109: publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	126, // 110: publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
-	123, // 111: publira.admin.v1.UploadEpisodeEyeCatchAspectImageResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 112: publira.admin.v1.DeleteEpisodeEyeCatchImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	123, // 113: publira.admin.v1.DeleteEpisodeEyeCatchImageResponse.episode:type_name -> publira.types.v1.Episode
-	116, // 114: publira.admin.v1.CreateEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 104: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	128, // 105: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
+	124, // 106: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse.series:type_name -> publira.types.v1.Series
+	118, // 107: publira.admin.v1.UploadEpisodeEyeCatchImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 108: publira.admin.v1.UploadEpisodeEyeCatchImageResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 109: publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	128, // 110: publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
+	125, // 111: publira.admin.v1.UploadEpisodeEyeCatchAspectImageResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 112: publira.admin.v1.DeleteEpisodeEyeCatchImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	125, // 113: publira.admin.v1.DeleteEpisodeEyeCatchImageResponse.episode:type_name -> publira.types.v1.Episode
+	118, // 114: publira.admin.v1.CreateEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
 	67,  // 115: publira.admin.v1.CreateEpisodeFreeWindowResponse.free_window:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
-	116, // 116: publira.admin.v1.CreateSeriesFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 116: publira.admin.v1.CreateSeriesFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	67,  // 117: publira.admin.v1.CreateSeriesFreeWindowsResponse.free_windows:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
-	116, // 118: publira.admin.v1.ListEpisodeFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 118: publira.admin.v1.ListEpisodeFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	67,  // 119: publira.admin.v1.ListEpisodeFreeWindowsResponse.free_windows:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
-	116, // 120: publira.admin.v1.DeleteEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	116, // 121: publira.admin.v1.CreateEpisodeCampaignPriceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 120: publira.admin.v1.DeleteEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 121: publira.admin.v1.CreateEpisodeCampaignPriceRequest.tenant:type_name -> publira.types.v1.TenantContext
 	76,  // 122: publira.admin.v1.CreateEpisodeCampaignPriceResponse.campaign_price:type_name -> publira.admin.v1.AdminEpisodeCampaignPrice
-	116, // 123: publira.admin.v1.CreateSeriesCampaignPricesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 123: publira.admin.v1.CreateSeriesCampaignPricesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	76,  // 124: publira.admin.v1.CreateSeriesCampaignPricesResponse.campaign_prices:type_name -> publira.admin.v1.AdminEpisodeCampaignPrice
-	116, // 125: publira.admin.v1.ListEpisodeCampaignPricesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 125: publira.admin.v1.ListEpisodeCampaignPricesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	76,  // 126: publira.admin.v1.ListEpisodeCampaignPricesResponse.campaign_prices:type_name -> publira.admin.v1.AdminEpisodeCampaignPrice
-	116, // 127: publira.admin.v1.DeleteEpisodeCampaignPriceRequest.tenant:type_name -> publira.types.v1.TenantContext
-	116, // 128: publira.admin.v1.GetSeriesWaitFreeSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 127: publira.admin.v1.DeleteEpisodeCampaignPriceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 128: publira.admin.v1.GetSeriesWaitFreeSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	85,  // 129: publira.admin.v1.GetSeriesWaitFreeSettingsResponse.settings:type_name -> publira.admin.v1.SeriesWaitFreeSettings
-	116, // 130: publira.admin.v1.UpdateSeriesWaitFreeSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 130: publira.admin.v1.UpdateSeriesWaitFreeSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	85,  // 131: publira.admin.v1.UpdateSeriesWaitFreeSettingsRequest.settings:type_name -> publira.admin.v1.SeriesWaitFreeSettings
 	85,  // 132: publira.admin.v1.UpdateSeriesWaitFreeSettingsResponse.settings:type_name -> publira.admin.v1.SeriesWaitFreeSettings
-	116, // 133: publira.admin.v1.GetSeriesFreeAfterSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 133: publira.admin.v1.GetSeriesFreeAfterSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	90,  // 134: publira.admin.v1.GetSeriesFreeAfterSettingsResponse.settings:type_name -> publira.admin.v1.SeriesFreeAfterSettings
-	116, // 135: publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 135: publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	90,  // 136: publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest.settings:type_name -> publira.admin.v1.SeriesFreeAfterSettings
 	90,  // 137: publira.admin.v1.UpdateSeriesFreeAfterSettingsResponse.settings:type_name -> publira.admin.v1.SeriesFreeAfterSettings
-	116, // 138: publira.admin.v1.DeleteSeriesTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 138: publira.admin.v1.DeleteSeriesTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,   // 139: publira.admin.v1.DeleteSeriesTranslationResponse.translations:type_name -> publira.admin.v1.SeriesTranslation
-	116, // 140: publira.admin.v1.DeleteEpisodeTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	118, // 140: publira.admin.v1.DeleteEpisodeTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,   // 141: publira.admin.v1.DeleteEpisodeTranslationResponse.translations:type_name -> publira.admin.v1.EpisodeTranslation
-	127, // 142: publira.admin.v1.AdminVolume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	116, // 143: publira.admin.v1.ListVolumesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 144: publira.admin.v1.ListVolumesResponse.volumes:type_name -> publira.admin.v1.AdminVolume
-	116, // 145: publira.admin.v1.CreateVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 146: publira.admin.v1.CreateVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	116, // 147: publira.admin.v1.UpdateVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 148: publira.admin.v1.UpdateVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	116, // 149: publira.admin.v1.PublishVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 150: publira.admin.v1.PublishVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	116, // 151: publira.admin.v1.SetVolumeEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 152: publira.admin.v1.SetVolumeEpisodesResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	116, // 153: publira.admin.v1.ReorderVolumesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 154: publira.admin.v1.ReorderVolumesResponse.volumes:type_name -> publira.admin.v1.AdminVolume
-	116, // 155: publira.admin.v1.UploadVolumeCoverImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 156: publira.admin.v1.UploadVolumeCoverImageResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	116, // 157: publira.admin.v1.DeleteVolumeCoverImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	99,  // 158: publira.admin.v1.DeleteVolumeCoverImageResponse.volume:type_name -> publira.admin.v1.AdminVolume
-	4,   // 159: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
-	7,   // 160: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
-	9,   // 161: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
-	11,  // 162: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
-	13,  // 163: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
-	15,  // 164: publira.admin.v1.AdminSeriesService.ListEpisodesByPublicationDate:input_type -> publira.admin.v1.ListEpisodesByPublicationDateRequest
-	18,  // 165: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
-	30,  // 166: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
-	32,  // 167: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
-	35,  // 168: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
-	37,  // 169: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
-	39,  // 170: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
-	41,  // 171: publira.admin.v1.AdminSeriesService.DeleteEpisodeImage:input_type -> publira.admin.v1.DeleteEpisodeImageRequest
-	43,  // 172: publira.admin.v1.AdminSeriesService.ReplaceEpisodeImage:input_type -> publira.admin.v1.ReplaceEpisodeImageRequest
-	45,  // 173: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
-	20,  // 174: publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle:input_type -> publira.admin.v1.UpdateEpisodeTitleRequest
-	22,  // 175: publira.admin.v1.AdminSeriesService.UpdateEpisodePricing:input_type -> publira.admin.v1.UpdateEpisodePricingRequest
-	24,  // 176: publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout:input_type -> publira.admin.v1.UpdateEpisodeLayoutRequest
-	26,  // 177: publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability:input_type -> publira.admin.v1.UpdateEpisodeAvailabilityRequest
-	28,  // 178: publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability:input_type -> publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest
-	48,  // 179: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:input_type -> publira.admin.v1.ListEpisodeCreditsRequest
-	50,  // 180: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:input_type -> publira.admin.v1.ReplaceEpisodeCreditsRequest
-	56,  // 181: publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits:input_type -> publira.admin.v1.BulkEditEpisodeCreditsRequest
-	59,  // 182: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:input_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
-	61,  // 183: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchImage:input_type -> publira.admin.v1.UploadEpisodeEyeCatchImageRequest
-	63,  // 184: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchAspectImage:input_type -> publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest
-	65,  // 185: publira.admin.v1.AdminSeriesService.DeleteEpisodeEyeCatchImage:input_type -> publira.admin.v1.DeleteEpisodeEyeCatchImageRequest
-	68,  // 186: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:input_type -> publira.admin.v1.CreateEpisodeFreeWindowRequest
-	70,  // 187: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:input_type -> publira.admin.v1.CreateSeriesFreeWindowsRequest
-	72,  // 188: publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows:input_type -> publira.admin.v1.ListEpisodeFreeWindowsRequest
-	74,  // 189: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:input_type -> publira.admin.v1.DeleteEpisodeFreeWindowRequest
-	77,  // 190: publira.admin.v1.AdminSeriesService.CreateEpisodeCampaignPrice:input_type -> publira.admin.v1.CreateEpisodeCampaignPriceRequest
-	79,  // 191: publira.admin.v1.AdminSeriesService.CreateSeriesCampaignPrices:input_type -> publira.admin.v1.CreateSeriesCampaignPricesRequest
-	81,  // 192: publira.admin.v1.AdminSeriesService.ListEpisodeCampaignPrices:input_type -> publira.admin.v1.ListEpisodeCampaignPricesRequest
-	83,  // 193: publira.admin.v1.AdminSeriesService.DeleteEpisodeCampaignPrice:input_type -> publira.admin.v1.DeleteEpisodeCampaignPriceRequest
-	86,  // 194: publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings:input_type -> publira.admin.v1.GetSeriesWaitFreeSettingsRequest
-	88,  // 195: publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings:input_type -> publira.admin.v1.UpdateSeriesWaitFreeSettingsRequest
-	91,  // 196: publira.admin.v1.AdminSeriesService.GetSeriesFreeAfterSettings:input_type -> publira.admin.v1.GetSeriesFreeAfterSettingsRequest
-	93,  // 197: publira.admin.v1.AdminSeriesService.UpdateSeriesFreeAfterSettings:input_type -> publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest
-	95,  // 198: publira.admin.v1.AdminSeriesService.DeleteSeriesTranslation:input_type -> publira.admin.v1.DeleteSeriesTranslationRequest
-	97,  // 199: publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation:input_type -> publira.admin.v1.DeleteEpisodeTranslationRequest
-	100, // 200: publira.admin.v1.AdminSeriesService.ListVolumes:input_type -> publira.admin.v1.ListVolumesRequest
-	102, // 201: publira.admin.v1.AdminSeriesService.CreateVolume:input_type -> publira.admin.v1.CreateVolumeRequest
-	104, // 202: publira.admin.v1.AdminSeriesService.UpdateVolume:input_type -> publira.admin.v1.UpdateVolumeRequest
-	106, // 203: publira.admin.v1.AdminSeriesService.PublishVolume:input_type -> publira.admin.v1.PublishVolumeRequest
-	108, // 204: publira.admin.v1.AdminSeriesService.SetVolumeEpisodes:input_type -> publira.admin.v1.SetVolumeEpisodesRequest
-	110, // 205: publira.admin.v1.AdminSeriesService.ReorderVolumes:input_type -> publira.admin.v1.ReorderVolumesRequest
-	112, // 206: publira.admin.v1.AdminSeriesService.UploadVolumeCoverImage:input_type -> publira.admin.v1.UploadVolumeCoverImageRequest
-	114, // 207: publira.admin.v1.AdminSeriesService.DeleteVolumeCoverImage:input_type -> publira.admin.v1.DeleteVolumeCoverImageRequest
-	5,   // 208: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
-	8,   // 209: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
-	10,  // 210: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
-	12,  // 211: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
-	14,  // 212: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
-	17,  // 213: publira.admin.v1.AdminSeriesService.ListEpisodesByPublicationDate:output_type -> publira.admin.v1.ListEpisodesByPublicationDateResponse
-	19,  // 214: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
-	31,  // 215: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
-	33,  // 216: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
-	36,  // 217: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
-	38,  // 218: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
-	40,  // 219: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
-	42,  // 220: publira.admin.v1.AdminSeriesService.DeleteEpisodeImage:output_type -> publira.admin.v1.DeleteEpisodeImageResponse
-	44,  // 221: publira.admin.v1.AdminSeriesService.ReplaceEpisodeImage:output_type -> publira.admin.v1.ReplaceEpisodeImageResponse
-	46,  // 222: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
-	21,  // 223: publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle:output_type -> publira.admin.v1.UpdateEpisodeTitleResponse
-	23,  // 224: publira.admin.v1.AdminSeriesService.UpdateEpisodePricing:output_type -> publira.admin.v1.UpdateEpisodePricingResponse
-	25,  // 225: publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout:output_type -> publira.admin.v1.UpdateEpisodeLayoutResponse
-	27,  // 226: publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability:output_type -> publira.admin.v1.UpdateEpisodeAvailabilityResponse
-	29,  // 227: publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability:output_type -> publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse
-	49,  // 228: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:output_type -> publira.admin.v1.ListEpisodeCreditsResponse
-	51,  // 229: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:output_type -> publira.admin.v1.ReplaceEpisodeCreditsResponse
-	58,  // 230: publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits:output_type -> publira.admin.v1.BulkEditEpisodeCreditsResponse
-	60,  // 231: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:output_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
-	62,  // 232: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchImage:output_type -> publira.admin.v1.UploadEpisodeEyeCatchImageResponse
-	64,  // 233: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchAspectImage:output_type -> publira.admin.v1.UploadEpisodeEyeCatchAspectImageResponse
-	66,  // 234: publira.admin.v1.AdminSeriesService.DeleteEpisodeEyeCatchImage:output_type -> publira.admin.v1.DeleteEpisodeEyeCatchImageResponse
-	69,  // 235: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:output_type -> publira.admin.v1.CreateEpisodeFreeWindowResponse
-	71,  // 236: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:output_type -> publira.admin.v1.CreateSeriesFreeWindowsResponse
-	73,  // 237: publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows:output_type -> publira.admin.v1.ListEpisodeFreeWindowsResponse
-	75,  // 238: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:output_type -> publira.admin.v1.DeleteEpisodeFreeWindowResponse
-	78,  // 239: publira.admin.v1.AdminSeriesService.CreateEpisodeCampaignPrice:output_type -> publira.admin.v1.CreateEpisodeCampaignPriceResponse
-	80,  // 240: publira.admin.v1.AdminSeriesService.CreateSeriesCampaignPrices:output_type -> publira.admin.v1.CreateSeriesCampaignPricesResponse
-	82,  // 241: publira.admin.v1.AdminSeriesService.ListEpisodeCampaignPrices:output_type -> publira.admin.v1.ListEpisodeCampaignPricesResponse
-	84,  // 242: publira.admin.v1.AdminSeriesService.DeleteEpisodeCampaignPrice:output_type -> publira.admin.v1.DeleteEpisodeCampaignPriceResponse
-	87,  // 243: publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings:output_type -> publira.admin.v1.GetSeriesWaitFreeSettingsResponse
-	89,  // 244: publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings:output_type -> publira.admin.v1.UpdateSeriesWaitFreeSettingsResponse
-	92,  // 245: publira.admin.v1.AdminSeriesService.GetSeriesFreeAfterSettings:output_type -> publira.admin.v1.GetSeriesFreeAfterSettingsResponse
-	94,  // 246: publira.admin.v1.AdminSeriesService.UpdateSeriesFreeAfterSettings:output_type -> publira.admin.v1.UpdateSeriesFreeAfterSettingsResponse
-	96,  // 247: publira.admin.v1.AdminSeriesService.DeleteSeriesTranslation:output_type -> publira.admin.v1.DeleteSeriesTranslationResponse
-	98,  // 248: publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation:output_type -> publira.admin.v1.DeleteEpisodeTranslationResponse
-	101, // 249: publira.admin.v1.AdminSeriesService.ListVolumes:output_type -> publira.admin.v1.ListVolumesResponse
-	103, // 250: publira.admin.v1.AdminSeriesService.CreateVolume:output_type -> publira.admin.v1.CreateVolumeResponse
-	105, // 251: publira.admin.v1.AdminSeriesService.UpdateVolume:output_type -> publira.admin.v1.UpdateVolumeResponse
-	107, // 252: publira.admin.v1.AdminSeriesService.PublishVolume:output_type -> publira.admin.v1.PublishVolumeResponse
-	109, // 253: publira.admin.v1.AdminSeriesService.SetVolumeEpisodes:output_type -> publira.admin.v1.SetVolumeEpisodesResponse
-	111, // 254: publira.admin.v1.AdminSeriesService.ReorderVolumes:output_type -> publira.admin.v1.ReorderVolumesResponse
-	113, // 255: publira.admin.v1.AdminSeriesService.UploadVolumeCoverImage:output_type -> publira.admin.v1.UploadVolumeCoverImageResponse
-	115, // 256: publira.admin.v1.AdminSeriesService.DeleteVolumeCoverImage:output_type -> publira.admin.v1.DeleteVolumeCoverImageResponse
-	208, // [208:257] is the sub-list for method output_type
-	159, // [159:208] is the sub-list for method input_type
-	159, // [159:159] is the sub-list for extension type_name
-	159, // [159:159] is the sub-list for extension extendee
-	0,   // [0:159] is the sub-list for field type_name
+	129, // 142: publira.admin.v1.AdminVolume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	130, // 143: publira.admin.v1.AdminVolume.bookstore_links:type_name -> publira.types.v1.BookstoreLink
+	118, // 144: publira.admin.v1.ListVolumesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 145: publira.admin.v1.ListVolumesResponse.volumes:type_name -> publira.admin.v1.AdminVolume
+	118, // 146: publira.admin.v1.CreateVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 147: publira.admin.v1.CreateVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 148: publira.admin.v1.UpdateVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 149: publira.admin.v1.UpdateVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 150: publira.admin.v1.PublishVolumeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 151: publira.admin.v1.PublishVolumeResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 152: publira.admin.v1.SetVolumeEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 153: publira.admin.v1.SetVolumeEpisodesResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 154: publira.admin.v1.SetVolumeBookstoreLinksRequest.tenant:type_name -> publira.types.v1.TenantContext
+	130, // 155: publira.admin.v1.SetVolumeBookstoreLinksRequest.bookstore_links:type_name -> publira.types.v1.BookstoreLink
+	99,  // 156: publira.admin.v1.SetVolumeBookstoreLinksResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 157: publira.admin.v1.ReorderVolumesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 158: publira.admin.v1.ReorderVolumesResponse.volumes:type_name -> publira.admin.v1.AdminVolume
+	118, // 159: publira.admin.v1.UploadVolumeCoverImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 160: publira.admin.v1.UploadVolumeCoverImageResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	118, // 161: publira.admin.v1.DeleteVolumeCoverImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	99,  // 162: publira.admin.v1.DeleteVolumeCoverImageResponse.volume:type_name -> publira.admin.v1.AdminVolume
+	4,   // 163: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
+	7,   // 164: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
+	9,   // 165: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
+	11,  // 166: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
+	13,  // 167: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
+	15,  // 168: publira.admin.v1.AdminSeriesService.ListEpisodesByPublicationDate:input_type -> publira.admin.v1.ListEpisodesByPublicationDateRequest
+	18,  // 169: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
+	30,  // 170: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
+	32,  // 171: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
+	35,  // 172: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
+	37,  // 173: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
+	39,  // 174: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
+	41,  // 175: publira.admin.v1.AdminSeriesService.DeleteEpisodeImage:input_type -> publira.admin.v1.DeleteEpisodeImageRequest
+	43,  // 176: publira.admin.v1.AdminSeriesService.ReplaceEpisodeImage:input_type -> publira.admin.v1.ReplaceEpisodeImageRequest
+	45,  // 177: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
+	20,  // 178: publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle:input_type -> publira.admin.v1.UpdateEpisodeTitleRequest
+	22,  // 179: publira.admin.v1.AdminSeriesService.UpdateEpisodePricing:input_type -> publira.admin.v1.UpdateEpisodePricingRequest
+	24,  // 180: publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout:input_type -> publira.admin.v1.UpdateEpisodeLayoutRequest
+	26,  // 181: publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability:input_type -> publira.admin.v1.UpdateEpisodeAvailabilityRequest
+	28,  // 182: publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability:input_type -> publira.admin.v1.UpdateEpisodePurchaseAvailabilityRequest
+	48,  // 183: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:input_type -> publira.admin.v1.ListEpisodeCreditsRequest
+	50,  // 184: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:input_type -> publira.admin.v1.ReplaceEpisodeCreditsRequest
+	56,  // 185: publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits:input_type -> publira.admin.v1.BulkEditEpisodeCreditsRequest
+	59,  // 186: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:input_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
+	61,  // 187: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchImage:input_type -> publira.admin.v1.UploadEpisodeEyeCatchImageRequest
+	63,  // 188: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchAspectImage:input_type -> publira.admin.v1.UploadEpisodeEyeCatchAspectImageRequest
+	65,  // 189: publira.admin.v1.AdminSeriesService.DeleteEpisodeEyeCatchImage:input_type -> publira.admin.v1.DeleteEpisodeEyeCatchImageRequest
+	68,  // 190: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:input_type -> publira.admin.v1.CreateEpisodeFreeWindowRequest
+	70,  // 191: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:input_type -> publira.admin.v1.CreateSeriesFreeWindowsRequest
+	72,  // 192: publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows:input_type -> publira.admin.v1.ListEpisodeFreeWindowsRequest
+	74,  // 193: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:input_type -> publira.admin.v1.DeleteEpisodeFreeWindowRequest
+	77,  // 194: publira.admin.v1.AdminSeriesService.CreateEpisodeCampaignPrice:input_type -> publira.admin.v1.CreateEpisodeCampaignPriceRequest
+	79,  // 195: publira.admin.v1.AdminSeriesService.CreateSeriesCampaignPrices:input_type -> publira.admin.v1.CreateSeriesCampaignPricesRequest
+	81,  // 196: publira.admin.v1.AdminSeriesService.ListEpisodeCampaignPrices:input_type -> publira.admin.v1.ListEpisodeCampaignPricesRequest
+	83,  // 197: publira.admin.v1.AdminSeriesService.DeleteEpisodeCampaignPrice:input_type -> publira.admin.v1.DeleteEpisodeCampaignPriceRequest
+	86,  // 198: publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings:input_type -> publira.admin.v1.GetSeriesWaitFreeSettingsRequest
+	88,  // 199: publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings:input_type -> publira.admin.v1.UpdateSeriesWaitFreeSettingsRequest
+	91,  // 200: publira.admin.v1.AdminSeriesService.GetSeriesFreeAfterSettings:input_type -> publira.admin.v1.GetSeriesFreeAfterSettingsRequest
+	93,  // 201: publira.admin.v1.AdminSeriesService.UpdateSeriesFreeAfterSettings:input_type -> publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest
+	95,  // 202: publira.admin.v1.AdminSeriesService.DeleteSeriesTranslation:input_type -> publira.admin.v1.DeleteSeriesTranslationRequest
+	97,  // 203: publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation:input_type -> publira.admin.v1.DeleteEpisodeTranslationRequest
+	100, // 204: publira.admin.v1.AdminSeriesService.ListVolumes:input_type -> publira.admin.v1.ListVolumesRequest
+	102, // 205: publira.admin.v1.AdminSeriesService.CreateVolume:input_type -> publira.admin.v1.CreateVolumeRequest
+	104, // 206: publira.admin.v1.AdminSeriesService.UpdateVolume:input_type -> publira.admin.v1.UpdateVolumeRequest
+	106, // 207: publira.admin.v1.AdminSeriesService.PublishVolume:input_type -> publira.admin.v1.PublishVolumeRequest
+	108, // 208: publira.admin.v1.AdminSeriesService.SetVolumeEpisodes:input_type -> publira.admin.v1.SetVolumeEpisodesRequest
+	110, // 209: publira.admin.v1.AdminSeriesService.SetVolumeBookstoreLinks:input_type -> publira.admin.v1.SetVolumeBookstoreLinksRequest
+	112, // 210: publira.admin.v1.AdminSeriesService.ReorderVolumes:input_type -> publira.admin.v1.ReorderVolumesRequest
+	114, // 211: publira.admin.v1.AdminSeriesService.UploadVolumeCoverImage:input_type -> publira.admin.v1.UploadVolumeCoverImageRequest
+	116, // 212: publira.admin.v1.AdminSeriesService.DeleteVolumeCoverImage:input_type -> publira.admin.v1.DeleteVolumeCoverImageRequest
+	5,   // 213: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
+	8,   // 214: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
+	10,  // 215: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
+	12,  // 216: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
+	14,  // 217: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
+	17,  // 218: publira.admin.v1.AdminSeriesService.ListEpisodesByPublicationDate:output_type -> publira.admin.v1.ListEpisodesByPublicationDateResponse
+	19,  // 219: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
+	31,  // 220: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
+	33,  // 221: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
+	36,  // 222: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
+	38,  // 223: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
+	40,  // 224: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
+	42,  // 225: publira.admin.v1.AdminSeriesService.DeleteEpisodeImage:output_type -> publira.admin.v1.DeleteEpisodeImageResponse
+	44,  // 226: publira.admin.v1.AdminSeriesService.ReplaceEpisodeImage:output_type -> publira.admin.v1.ReplaceEpisodeImageResponse
+	46,  // 227: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
+	21,  // 228: publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle:output_type -> publira.admin.v1.UpdateEpisodeTitleResponse
+	23,  // 229: publira.admin.v1.AdminSeriesService.UpdateEpisodePricing:output_type -> publira.admin.v1.UpdateEpisodePricingResponse
+	25,  // 230: publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout:output_type -> publira.admin.v1.UpdateEpisodeLayoutResponse
+	27,  // 231: publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability:output_type -> publira.admin.v1.UpdateEpisodeAvailabilityResponse
+	29,  // 232: publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability:output_type -> publira.admin.v1.UpdateEpisodePurchaseAvailabilityResponse
+	49,  // 233: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:output_type -> publira.admin.v1.ListEpisodeCreditsResponse
+	51,  // 234: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:output_type -> publira.admin.v1.ReplaceEpisodeCreditsResponse
+	58,  // 235: publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits:output_type -> publira.admin.v1.BulkEditEpisodeCreditsResponse
+	60,  // 236: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:output_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
+	62,  // 237: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchImage:output_type -> publira.admin.v1.UploadEpisodeEyeCatchImageResponse
+	64,  // 238: publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchAspectImage:output_type -> publira.admin.v1.UploadEpisodeEyeCatchAspectImageResponse
+	66,  // 239: publira.admin.v1.AdminSeriesService.DeleteEpisodeEyeCatchImage:output_type -> publira.admin.v1.DeleteEpisodeEyeCatchImageResponse
+	69,  // 240: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:output_type -> publira.admin.v1.CreateEpisodeFreeWindowResponse
+	71,  // 241: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:output_type -> publira.admin.v1.CreateSeriesFreeWindowsResponse
+	73,  // 242: publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows:output_type -> publira.admin.v1.ListEpisodeFreeWindowsResponse
+	75,  // 243: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:output_type -> publira.admin.v1.DeleteEpisodeFreeWindowResponse
+	78,  // 244: publira.admin.v1.AdminSeriesService.CreateEpisodeCampaignPrice:output_type -> publira.admin.v1.CreateEpisodeCampaignPriceResponse
+	80,  // 245: publira.admin.v1.AdminSeriesService.CreateSeriesCampaignPrices:output_type -> publira.admin.v1.CreateSeriesCampaignPricesResponse
+	82,  // 246: publira.admin.v1.AdminSeriesService.ListEpisodeCampaignPrices:output_type -> publira.admin.v1.ListEpisodeCampaignPricesResponse
+	84,  // 247: publira.admin.v1.AdminSeriesService.DeleteEpisodeCampaignPrice:output_type -> publira.admin.v1.DeleteEpisodeCampaignPriceResponse
+	87,  // 248: publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings:output_type -> publira.admin.v1.GetSeriesWaitFreeSettingsResponse
+	89,  // 249: publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings:output_type -> publira.admin.v1.UpdateSeriesWaitFreeSettingsResponse
+	92,  // 250: publira.admin.v1.AdminSeriesService.GetSeriesFreeAfterSettings:output_type -> publira.admin.v1.GetSeriesFreeAfterSettingsResponse
+	94,  // 251: publira.admin.v1.AdminSeriesService.UpdateSeriesFreeAfterSettings:output_type -> publira.admin.v1.UpdateSeriesFreeAfterSettingsResponse
+	96,  // 252: publira.admin.v1.AdminSeriesService.DeleteSeriesTranslation:output_type -> publira.admin.v1.DeleteSeriesTranslationResponse
+	98,  // 253: publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation:output_type -> publira.admin.v1.DeleteEpisodeTranslationResponse
+	101, // 254: publira.admin.v1.AdminSeriesService.ListVolumes:output_type -> publira.admin.v1.ListVolumesResponse
+	103, // 255: publira.admin.v1.AdminSeriesService.CreateVolume:output_type -> publira.admin.v1.CreateVolumeResponse
+	105, // 256: publira.admin.v1.AdminSeriesService.UpdateVolume:output_type -> publira.admin.v1.UpdateVolumeResponse
+	107, // 257: publira.admin.v1.AdminSeriesService.PublishVolume:output_type -> publira.admin.v1.PublishVolumeResponse
+	109, // 258: publira.admin.v1.AdminSeriesService.SetVolumeEpisodes:output_type -> publira.admin.v1.SetVolumeEpisodesResponse
+	111, // 259: publira.admin.v1.AdminSeriesService.SetVolumeBookstoreLinks:output_type -> publira.admin.v1.SetVolumeBookstoreLinksResponse
+	113, // 260: publira.admin.v1.AdminSeriesService.ReorderVolumes:output_type -> publira.admin.v1.ReorderVolumesResponse
+	115, // 261: publira.admin.v1.AdminSeriesService.UploadVolumeCoverImage:output_type -> publira.admin.v1.UploadVolumeCoverImageResponse
+	117, // 262: publira.admin.v1.AdminSeriesService.DeleteVolumeCoverImage:output_type -> publira.admin.v1.DeleteVolumeCoverImageResponse
+	213, // [213:263] is the sub-list for method output_type
+	163, // [163:213] is the sub-list for method input_type
+	163, // [163:163] is the sub-list for extension type_name
+	163, // [163:163] is the sub-list for extension extendee
+	0,   // [0:163] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_series_proto_init() }
@@ -9133,7 +9268,7 @@ func file_publira_admin_v1_series_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_series_proto_rawDesc), len(file_publira_admin_v1_series_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   115,
+			NumMessages:   117,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

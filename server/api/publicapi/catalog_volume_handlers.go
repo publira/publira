@@ -52,6 +52,13 @@ func (s *apiServer) seriesVolumes(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the episodes of the series' volumes", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 	}
+	linkRows, err := queries.ListVolumeBookstoreLinksByVolumeIDs(ctx, dbmodels.ListVolumeBookstoreLinksByVolumeIDsParams{
+		TenantID:  tenantID,
+		VolumeIds: volumeIDs,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the bookstore links of the series' volumes", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
+	}
 	covers := map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}
 	if len(coverIDs) > 0 {
 		coverRows, err := queries.ListVolumeCoverImageVariantsByImageIDs(ctx, dbmodels.ListVolumeCoverImageVariantsByImageIDsParams{
@@ -69,6 +76,7 @@ func (s *apiServer) seriesVolumes(
 		listed[episode.GetId()] = struct{}{}
 	}
 	episodesByVolume := protomapper.VolumeEpisodeIDs(episodeRows)
+	linksByVolume := protomapper.VolumeBookstoreLinks(linkRows)
 	volumes := make([]*publirattypesv1.Volume, 0, len(rows))
 	for _, row := range rows {
 		episodeIDs := make([]string, 0, len(episodesByVolume[row.ID]))
@@ -81,12 +89,13 @@ func (s *apiServer) seriesVolumes(
 			continue
 		}
 		volume := &publirattypesv1.Volume{
-			Id:         row.ID.String(),
-			PublicId:   row.PublicID,
-			Title:      row.Title,
-			OrderIndex: row.OrderIndex,
-			Price:      row.Price,
-			EpisodeIds: episodeIDs,
+			Id:             row.ID.String(),
+			PublicId:       row.PublicID,
+			Title:          row.Title,
+			OrderIndex:     row.OrderIndex,
+			Price:          row.Price,
+			EpisodeIds:     episodeIDs,
+			BookstoreLinks: linksByVolume[row.ID],
 		}
 		if row.CoverImageID.Valid && row.CoverImageUpdatedAt.Valid {
 			volume.CoverImageUpdatedAt = row.CoverImageUpdatedAt.Time.UTC().Format(time.RFC3339)

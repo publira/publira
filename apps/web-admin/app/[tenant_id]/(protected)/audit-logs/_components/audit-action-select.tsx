@@ -119,6 +119,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "volume_unpublished",
             },
             {
+              label: t("admin.audit.actions.volume_bookstore_links_updated"),
+              value: "volume_bookstore_links_updated",
+            },
+            {
               label: t("admin.audit.actions.volumes_reordered"),
               value: "volumes_reordered",
             },
