@@ -298,6 +298,23 @@ func TestATemporaryTableDoesNotStandInForWhatASecurityDefinerFunctionTouches(t *
 		}
 	})
 
+	// The count calls announcement_audience_members, whose body names its
+	// tables without a schema, so it is the pinned search_path alone that keeps
+	// a temporary table out of the count.
+	t.Run("announcement audience count", func(t *testing.T) {
+		conn := scopedConn(t, ctx, pg.OpenAdminDB(t), tenantID, uuid.Nil)
+		shadow(t, ctx, conn, "users", "tenants", "purchases")
+		var count int64
+		if err := conn.QueryRowContext(ctx,
+			`SELECT count_announcement_audience('{"version": 1, "conditions": [{"type": "never_purchased"}]}')`,
+		).Scan(&count); err != nil {
+			t.Fatalf("count an audience as publira_admin: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("audience count = %d, want the 1 reader of public.users", count)
+		}
+	})
+
 	t.Run("brand mark image policy", func(t *testing.T) {
 		imageID := uuid.Must(uuid.NewV7())
 		mustExec(t, ctx, pg.DB, "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", imageID, tenantID)

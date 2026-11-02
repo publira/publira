@@ -199,6 +199,21 @@ message UnpinAnnouncementRequest {
 
 message UnpinAnnouncementResponse {}
 
+// How many readers an audience would reach, for the announcement form to show
+// while its conditions are composed.
+message CountAnnouncementAudienceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // At least one condition, as CreateAnnouncement takes it. Unset or empty is
+  // invalid_argument.
+  AnnouncementAudience audience = 2;
+}
+
+message CountAnnouncementAudienceResponse {
+  // The readers who meet every condition now: those a delivery at this moment
+  // would reach.
+  int64 reader_count = 1;
+}
+
 service AdminAnnouncementService {
   // Minimum role: tenant_auditor.
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
@@ -206,4 +221,7 @@ service AdminAnnouncementService {
   rpc CreateAnnouncement(CreateAnnouncementRequest) returns (CreateAnnouncementResponse) {}
   // Minimum role: tenant_editor.
   rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
+  // Counts the readers an audience selects, and names none of them.
+  // Minimum role: tenant_editor.
+  rpc CountAnnouncementAudience(CountAnnouncementAudienceRequest) returns (CountAnnouncementAudienceResponse) {}
 }

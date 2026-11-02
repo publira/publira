@@ -53,6 +53,19 @@ func (q *Queries) ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
+const CountAnnouncementAudience = `-- name: CountAnnouncementAudience :one
+SELECT count_announcement_audience($1::jsonb)::bigint AS reader_count
+`
+
+// How many readers of the connection's tenant a stored audience selects now:
+// the readers ListAnnouncementRecipients would page over if it were delivered.
+func (q *Queries) CountAnnouncementAudience(ctx context.Context, audience json.RawMessage) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CountAnnouncementAudience, audience)
+	var reader_count int64
+	err := row.Scan(&reader_count)
+	return reader_count, err
+}
+
 const CreateAnnouncement = `-- name: CreateAnnouncement :one
 INSERT INTO announcements (
     id,
