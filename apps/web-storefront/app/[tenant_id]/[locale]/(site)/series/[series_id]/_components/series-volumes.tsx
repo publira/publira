@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import { Button } from "@publira/ui-components/button";
+import { ExternalLinkIcon } from "@publira/icons";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPrice } from "@publira/utils";
@@ -9,7 +10,11 @@ import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
 import type { TenantSales } from "#lib/app-payments";
-import type { EyeCatchImageVariant, VolumeItem } from "#lib/catalog";
+import type {
+  EyeCatchImageVariant,
+  VolumeBookstoreLink,
+  VolumeItem,
+} from "#lib/catalog";
 import { getMySeriesPurchaseState } from "#lib/series-purchases";
 
 import { startVolumeCheckoutAction } from "../_lib/actions";
@@ -132,8 +137,51 @@ export const VolumePurchaseControl = async ({
 };
 
 /**
+ * Where the volume's printed book is sold, as a row of buttons that open each
+ * bookstore in a new tab; nothing at all for a volume with no links.
+ *
+ * The links come with the shared series read, so the row stays in the cached
+ * card rather than in {@link VolumePurchaseControl}.
+ */
+export const VolumeBookstoreLinks = ({
+  links,
+}: {
+  links: VolumeBookstoreLink[];
+}) =>
+  links.length > 0 ? (
+    <div className="grid gap-2">
+      <h4 className="text-sm font-medium">
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="storefront.series.volume_bookstore_links_heading" />
+        </Suspense>
+      </h4>
+      <ul className="flex flex-wrap gap-2">
+        {links.map((link) => (
+          <li className="max-w-full" key={`${link.label} ${link.url}`}>
+            <LinkButton
+              className="max-w-full"
+              href={link.url}
+              rel="noopener noreferrer"
+              size="sm"
+              target="_blank"
+              variant="outline"
+            >
+              <span className="truncate">{link.label}</span>
+              <ExternalLinkIcon
+                aria-hidden="true"
+                className="size-4 shrink-0"
+              />
+            </LinkButton>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
+/**
  * The volumes the site sells of the series, each a card with its cover, its
- * size, and its price, and the control that buys it.
+ * size, and its price, the control that buys it, and the bookstores that sell
+ * its printed book.
  *
  * A volume is sold only where the site takes payments, so without them the
  * cards say what each volume holds and costs and offer nothing to press, the
@@ -222,6 +270,7 @@ export const SeriesVolumes = ({
                     volume={volume}
                   />
                 </Suspense>
+                <VolumeBookstoreLinks links={volume.bookstoreLinks} />
               </div>
             </article>
           </li>

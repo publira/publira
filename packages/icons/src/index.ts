@@ -40,6 +40,8 @@ export { CreditCardIcon } from "./credit-card-icon";
 
 export { DashboardIcon } from "./dashboard-icon";
 
+export { ExternalLinkIcon } from "./external-link-icon";
+
 export { EyeIcon } from "./eye-icon";
 
 export { EyeOffIcon } from "./eye-off-icon";

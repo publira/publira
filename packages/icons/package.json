@@ -95,6 +95,10 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./external-link-icon": {
+      "types": "./dist/external-link-icon.d.mts",
+      "default": "./dist/external-link-icon.mjs"
+    },
     "./eye-icon": {
       "types": "./dist/eye-icon.d.mts",
       "default": "./dist/eye-icon.mjs"

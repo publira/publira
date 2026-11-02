@@ -5681,6 +5681,7 @@
       "remainder_error": "Could not show the price of the remaining episodes",
       "volume_buy": "Buy volume",
       "volume_owned": "You own every episode in this volume",
+      "volume_bookstore_links_heading": "Buy the book",
       "volumes_error": "Could not show the volumes",
       "volumes_heading": "Volumes",
       "volume_ownership_error": "Could not check which volumes you own"

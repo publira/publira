@@ -463,6 +463,14 @@
       "tests": ["a volume bought in the browser opens every episode in it"]
     },
     {
+      "name": "Where a volume's printed book is sold, under the volume on the series page",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": ["GetSeriesDetail"]
+      },
+      "exception": "Not in the app yet: #4916."
+    },
+    {
       "name": "Subscription plans: finding the plans that open an episode, and subscribing",
       "web": {
         "routes": ["[locale]/(site)/plans"],

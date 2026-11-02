@@ -195,7 +195,7 @@ Under **Bookstore links**, **Add a link** adds a row at the end of the list. Giv
 
 Nothing is saved until **Save bookstore links**, which saves the list as it stands, in its order: saving with every row taken out leaves the volume with none. When a row cannot be saved, the message under its field names the row, and nothing in the list is saved. Whether a URL answers is not checked.
 
-While the volume is on sale, the links are shown under it on the series page, on the site and in the app, in the list's order.
+While the volume is on sale, the site's series page lists its links under the volume, beneath **Buy the book**, in the list's order. Each is a button carrying its label, which opens the bookstore in a new tab. The app does not show them yet.
 
 ![The Bookstore links section of a volume: two links, each with its handle, its Label and URL, and the button that takes it out, then Add a link and Save bookstore links.](./series-volume-bookstore-links.png)
 
@@ -206,5 +206,3 @@ Under **Sale**, **Put on sale** offers the volume to readers, and **Take off sal
 A volume is sold only where every one of its episodes can be bought, since buying it buys each of them: if one of its episodes is sold on the site alone under **Sold on**, so is the volume. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) describes where episodes are sold.
 
 ![The Sale section of a volume on sale, with the On sale status and Take off sale.](./series-volume-sale.png)
-
-The site and the app do not offer volumes or their bookstore links to readers yet, and royalty statements do not yet credit the sale of a volume to the Authors of its episodes.
