@@ -429,6 +429,8 @@
         "page_translation_created": "페이지 번역 추가",
         "page_translation_deleted": "페이지 번역 삭제",
         "announcement_created": "공지사항 생성",
+        "announcement_updated": "공지사항 변경",
+        "announcement_deleted": "공지사항 삭제",
         "announcement_unpinned": "공지사항 배너 게시 해제",
         "campaign_banner_created": "캠페인 배너 생성",
         "campaign_banner_updated": "캠페인 배너 변경",

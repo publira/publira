@@ -235,6 +235,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "announcement_created",
             },
             {
+              label: t("admin.audit.actions.announcement_updated"),
+              value: "announcement_updated",
+            },
+            {
+              label: t("admin.audit.actions.announcement_deleted"),
+              value: "announcement_deleted",
+            },
+            {
               label: t("admin.audit.actions.announcement_unpinned"),
               value: "announcement_unpinned",
             },

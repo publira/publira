@@ -429,6 +429,8 @@
         "page_translation_created": "新增了頁面翻譯",
         "page_translation_deleted": "刪除了頁面翻譯",
         "announcement_created": "建立了公告",
+        "announcement_updated": "更新了公告",
+        "announcement_deleted": "刪除了公告",
         "announcement_unpinned": "取消了公告的橫幅展示",
         "campaign_banner_created": "建立了活動橫幅",
         "campaign_banner_updated": "更新了活動橫幅",

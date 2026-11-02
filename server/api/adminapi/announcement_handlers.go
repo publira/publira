@@ -58,6 +58,26 @@ func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
 	return sql.NullTime{Time: parsed, Valid: true}, nil
 }
 
+// parseDeliverAt reads the instant an announcement is asked to go out at, and
+// whether that is a scheduled time rather than now. Empty is now. An instant
+// already behind us is refused rather than delivered at once, because the
+// operator asked for a time that has passed and should say whether they still
+// mean it.
+func parseDeliverAt(raw string, now time.Time) (time.Time, bool, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return now, false, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return time.Time{}, false, errors.New("deliver_at must be an RFC 3339 instant")
+	}
+	if !parsed.After(now) {
+		return time.Time{}, false, errors.New("deliver_at must be in the future")
+	}
+	return parsed, true, nil
+}
+
 // announcementDeliveryFromProto reads the delivery CreateAnnouncement was asked
 // for. Unspecified is the preferred delivery, so a console that predates the
 // field posts what it always posted.
@@ -117,6 +137,8 @@ func mapAdminAnnouncement(
 		Translations: items,
 		Delivery:     announcementDeliveryToProto(row.Delivery),
 		Audience:     audience,
+		DeliverAt:    formatAnnouncementInstant(row.DeliverAt),
+		DeliveredAt:  formatAnnouncementInstant(row.DeliveredAt),
 	}
 }
 
@@ -163,10 +185,14 @@ func (s *adminServer) announcementAudiencesOf(
 // formatPinnedUntil renders the instant a banner stops at. An empty answer is
 // a banner with no end rather than one that has already ended.
 func formatPinnedUntil(pinnedUntil sql.NullTime) string {
-	if !pinnedUntil.Valid {
+	return formatAnnouncementInstant(pinnedUntil)
+}
+
+func formatAnnouncementInstant(instant sql.NullTime) string {
+	if !instant.Valid {
 		return ""
 	}
-	return pinnedUntil.Time.UTC().Format(time.RFC3339)
+	return instant.Time.UTC().Format(time.RFC3339)
 }
 
 // announcementPage loads one over-fetched page. Admin ListAnnouncements is
@@ -322,42 +348,20 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, err
 	}
 
-	translations, err := announcementTranslationsFrom(req.Translations, tenant)
-	if err != nil {
-		return nil, err
-	}
-	linkURL := strings.TrimSpace(req.LinkUrl)
-	if !isValidAnnouncementLinkURL(linkURL) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "link_url must start with / or http(s)://")
-	}
-
-	delivery, err := announcementDeliveryFromProto(req.Delivery)
-	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "delivery")
-	}
-
-	pinned := req.Pinned
-	pinnedUntil := sql.NullTime{}
-	if pinned {
-		pinnedUntil, err = parsePinnedUntil(req.PinnedUntil, time.Now())
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
-		}
-	}
-
-	audience, err := s.announcementAudienceFrom(ctx, tenant, req, delivery)
-	if err != nil {
-		return nil, err
-	}
-
-	created, owed, err := s.storeAnnouncement(ctx, tenant, announcementContent{
-		translations: translations,
-		linkURL:      linkURL,
-		pinned:       pinned,
-		pinnedUntil:  pinnedUntil,
-		delivery:     delivery,
-		audience:     audience,
+	content, err := s.announcementContentFrom(ctx, tenant, announcementRequest{
+		translations: req.Translations,
+		linkURL:      req.LinkUrl,
+		pinned:       req.Pinned,
+		pinnedUntil:  req.PinnedUntil,
+		delivery:     req.Delivery,
+		audience:     req.Audience,
+		deliverAt:    req.DeliverAt,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	created, owed, err := s.storeAnnouncement(ctx, tenant, content)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
 	}
@@ -371,7 +375,7 @@ func (s *adminServer) CreateAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
-		Reason:      announcementCreatedReason(delivery, audience != nil),
+		Reason:      announcementCreatedReason(content.delivery, content.audience != nil),
 		ClientIP:    clientip.FromContext(ctx),
 	})
 
@@ -380,7 +384,76 @@ func (s *adminServer) CreateAnnouncement(
 	}, nil
 }
 
-// announcementAudienceFrom reads the audience CreateAnnouncement was sent, nil
+// announcementRequest is what CreateAnnouncement and UpdateAnnouncement are
+// both sent, as the request carries it.
+type announcementRequest struct {
+	translations []*publiraadminv1.AnnouncementTranslation
+	linkURL      string
+	pinned       bool
+	pinnedUntil  string
+	delivery     publiraadminv1.AnnouncementDelivery
+	audience     *publiraadminv1.AnnouncementAudience
+	deliverAt    string
+}
+
+// announcementContentFrom checks what CreateAnnouncement or
+// UpdateAnnouncement was sent and resolves it into what is written. A banner
+// has to stay up past the instant the announcement goes out, or it would never
+// be shown.
+func (s *adminServer) announcementContentFrom(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	req announcementRequest,
+) (announcementContent, error) {
+	translations, err := announcementTranslationsFrom(req.translations, tenant)
+	if err != nil {
+		return announcementContent{}, err
+	}
+	linkURL := strings.TrimSpace(req.linkURL)
+	if !isValidAnnouncementLinkURL(linkURL) {
+		return announcementContent{}, connect.NewError(connect.CodeInvalidArgument, "link_url must start with / or http(s)://")
+	}
+
+	delivery, err := announcementDeliveryFromProto(req.delivery)
+	if err != nil {
+		return announcementContent{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "delivery")
+	}
+
+	now := time.Now()
+	deliverAt, scheduled, err := parseDeliverAt(req.deliverAt, now)
+	if err != nil {
+		return announcementContent{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "deliver_at")
+	}
+
+	pinnedUntil := sql.NullTime{}
+	if req.pinned {
+		pinnedUntil, err = parsePinnedUntil(req.pinnedUntil, now)
+		if err != nil {
+			return announcementContent{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		}
+		if pinnedUntil.Valid && !pinnedUntil.Time.After(deliverAt) {
+			return announcementContent{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("pinned_until must be after deliver_at"), "pinned_until")
+		}
+	}
+
+	audience, err := s.announcementAudienceFrom(ctx, tenant, req.audience, req.pinned, delivery)
+	if err != nil {
+		return announcementContent{}, err
+	}
+
+	return announcementContent{
+		translations: translations,
+		linkURL:      linkURL,
+		pinned:       req.pinned,
+		pinnedUntil:  pinnedUntil,
+		delivery:     delivery,
+		audience:     audience,
+		deliverAt:    deliverAt,
+		scheduled:    scheduled,
+	}, nil
+}
+
+// announcementAudienceFrom reads the audience an announcement was sent, nil
 // for an announcement addressed to everyone. A targeted announcement is never
 // pinned, since a banner is shown to every visitor, and never delivered to
 // everyone, since a notice no reader may miss is not one a condition may keep
@@ -388,19 +461,20 @@ func (s *adminServer) CreateAnnouncement(
 func (s *adminServer) announcementAudienceFrom(
 	ctx context.Context,
 	tenant dbmodels.Tenant,
-	req *publiraadminv1.CreateAnnouncementRequest,
+	raw *publiraadminv1.AnnouncementAudience,
+	pinned bool,
 	delivery string,
 ) (*announcementaudience.Audience, error) {
-	if req.Audience == nil {
+	if raw == nil {
 		return nil, nil
 	}
-	if req.Pinned {
+	if pinned {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("an announcement with an audience cannot be pinned"), "pinned")
 	}
 	if delivery == outbox.AnnouncementDeliveryEveryone {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("an announcement with an audience cannot be delivered to everyone"), "delivery")
 	}
-	audience, err := announcementaudience.FromProto(ctx, s.queriesFor(ctx), tenant, req.Audience)
+	audience, err := announcementaudience.FromProto(ctx, s.queriesFor(ctx), tenant, raw)
 	if err != nil {
 		if fieldErr := rpcerrors.FromFieldError(err); fieldErr != nil {
 			return nil, fieldErr
@@ -448,15 +522,15 @@ func (s *adminServer) CountAnnouncementAudience(
 	return &publiraadminv1.CountAnnouncementAudienceResponse{ReaderCount: count}, nil
 }
 
-// announcementTranslationInput is one locale's copy CreateAnnouncement was
-// asked to write, with its locale resolved.
+// announcementTranslationInput is one locale's copy an announcement was asked
+// to carry, with its locale resolved.
 type announcementTranslationInput struct {
 	locale string
 	title  string
 	body   string
 }
 
-// announcementTranslationsFrom checks the copy CreateAnnouncement was sent: a
+// announcementTranslationsFrom checks the copy an announcement was sent: a
 // title and a body in each locale, each locale once and offered by the tenant,
 // and the tenant default locale among them, since that is the copy a reader in
 // any other locale is shown.
@@ -491,7 +565,8 @@ func announcementTranslationsFrom(
 	return translations, nil
 }
 
-// announcementContent is what one CreateAnnouncement call writes.
+// announcementContent is what one CreateAnnouncement or UpdateAnnouncement
+// call writes.
 type announcementContent struct {
 	translations []announcementTranslationInput
 	linkURL      string
@@ -500,13 +575,40 @@ type announcementContent struct {
 	delivery     string
 	// audience is nil for an announcement addressed to everyone.
 	audience *announcementaudience.Audience
+	// deliverAt is the instant the announcement goes out at, and scheduled
+	// whether that is later rather than now. A scheduled one is written
+	// undelivered, for the deliver-announcements job to queue its event.
+	deliverAt time.Time
+	scheduled bool
+}
+
+// deliveredAt is what the row records as delivered: now for an announcement
+// that goes out at once, nothing for a scheduled one.
+func (c announcementContent) deliveredAt() sql.NullTime {
+	if c.scheduled {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: c.deliverAt, Valid: true}
+}
+
+// encodedAudience is the audience as the row stores it, nil for everyone.
+func (c announcementContent) encodedAudience() (*json.RawMessage, error) {
+	if c.audience == nil {
+		return nil, nil
+	}
+	encoded, err := c.audience.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("encode announcement audience: %w", err)
+	}
+	return &encoded, nil
 }
 
 // storeAnnouncement writes the announcement row and its translations and, in
 // the same transaction, the event that puts it in its readers' notification
 // inboxes, so a delivery nobody is ever told about cannot outlive the request
-// that made it. A pinned one also owes the banner's cache drop, which the
-// caller sends.
+// that made it. A scheduled one is written without the event, which the
+// deliver-announcements job queues once its time has passed. A pinned one that
+// goes out now also owes the banner's cache drop, which the caller sends.
 func (s *adminServer) storeAnnouncement(
 	ctx context.Context,
 	tenant dbmodels.Tenant,
@@ -523,16 +625,52 @@ func (s *adminServer) storeAnnouncement(
 	if err != nil {
 		return nil, revalidate.Owed{}, err
 	}
-	var owed revalidate.Owed
-	if content.pinned {
-		if owed, err = s.reval.Record(ctx, txq, tenant.ID, pinnedannouncements.RevalidateTags(tenant.ID)); err != nil {
-			return nil, revalidate.Owed{}, err
-		}
+	owed, err := s.deliverAnnouncementNow(ctx, txq, tenant.ID, row, content)
+	if err != nil {
+		return nil, revalidate.Owed{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, revalidate.Owed{}, err
 	}
 
+	answer, err := s.announcementAnswer(ctx, tenant, row, translations, content.audience)
+	if err != nil {
+		return nil, revalidate.Owed{}, err
+	}
+	return answer, owed, nil
+}
+
+// deliverAnnouncementNow queues the event of an announcement that goes out at
+// once, and records the banner's drop when it is pinned. A scheduled one owes
+// neither yet: nobody is shown it until the deliver-announcements job does
+// both.
+func (s *adminServer) deliverAnnouncementNow(
+	ctx context.Context,
+	txq *dbmodels.Queries,
+	tenantID uuid.UUID,
+	row dbmodels.Announcement,
+	content announcementContent,
+) (revalidate.Owed, error) {
+	if content.scheduled {
+		return revalidate.Owed{}, nil
+	}
+	if err := outbox.QueueAnnouncementNotification(ctx, txq, tenantID, row.ID, row.Audience != nil); err != nil {
+		return revalidate.Owed{}, err
+	}
+	if !content.pinned {
+		return revalidate.Owed{}, nil
+	}
+	return s.reval.Record(ctx, txq, tenantID, pinnedannouncements.RevalidateTags(tenantID))
+}
+
+// announcementAnswer answers a row just written as the console lists it.
+func (s *adminServer) announcementAnswer(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	row dbmodels.Announcement,
+	translations []dbmodels.AnnouncementTranslation,
+	stored *announcementaudience.Audience,
+) (*publiraadminv1.AdminAnnouncement, error) {
 	listed := dbmodels.ListAnnouncementsForTenantDescRow{
 		ID:               row.ID,
 		TenantID:         row.TenantID,
@@ -543,6 +681,8 @@ func (s *adminServer) storeAnnouncement(
 		Pinned:           row.Pinned,
 		PinnedUntil:      row.PinnedUntil,
 		Delivery:         row.Delivery,
+		DeliverAt:        row.DeliverAt,
+		DeliveredAt:      row.DeliveredAt,
 	}
 	for _, translation := range translations {
 		if translation.Locale == tenant.DefaultLocale {
@@ -551,18 +691,17 @@ func (s *adminServer) storeAnnouncement(
 		}
 	}
 	var audience *publiraadminv1.AnnouncementAudience
-	if content.audience != nil {
-		names, err := announcementaudience.LookUpPublicIDs(ctx, s.queriesFor(ctx), tenant.ID, *content.audience)
+	if stored != nil {
+		names, err := announcementaudience.LookUpPublicIDs(ctx, s.queriesFor(ctx), tenant.ID, *stored)
 		if err != nil {
-			return nil, revalidate.Owed{}, err
+			return nil, err
 		}
-		audience = announcementaudience.ToProto(*content.audience, names)
+		audience = announcementaudience.ToProto(*stored, names)
 	}
-	return mapAdminAnnouncement(listed, translations, audience), owed, nil
+	return mapAdminAnnouncement(listed, translations, audience), nil
 }
 
-// createAnnouncementRow writes one announcement with its translations and
-// queues the notification event for the readers it addresses.
+// createAnnouncementRow writes one announcement with its translations.
 func createAnnouncementRow(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -573,13 +712,9 @@ func createAnnouncementRow(
 	if err != nil {
 		return dbmodels.Announcement{}, nil, fmt.Errorf("allocate announcement id: %w", err)
 	}
-	var audience *json.RawMessage
-	if content.audience != nil {
-		encoded, err := content.audience.Encode()
-		if err != nil {
-			return dbmodels.Announcement{}, nil, fmt.Errorf("encode announcement audience: %w", err)
-		}
-		audience = &encoded
+	audience, err := content.encodedAudience()
+	if err != nil {
+		return dbmodels.Announcement{}, nil, err
 	}
 	row, err := queries.CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
 		ID:               announcementID,
@@ -591,62 +726,257 @@ func createAnnouncementRow(
 		PinnedUntil:      content.pinnedUntil,
 		Delivery:         content.delivery,
 		Audience:         audience,
+		DeliverAt:        sql.NullTime{Time: content.deliverAt, Valid: true},
+		DeliveredAt:      content.deliveredAt(),
 	})
 	if err != nil {
 		return dbmodels.Announcement{}, nil, err
 	}
-	translations := make([]dbmodels.AnnouncementTranslation, 0, len(content.translations))
-	for _, input := range content.translations {
+	translations, err := createAnnouncementTranslations(ctx, queries, tenantID, row.ID, content.translations)
+	if err != nil {
+		return dbmodels.Announcement{}, nil, err
+	}
+	return row, translations, nil
+}
+
+// createAnnouncementTranslations writes the copy of one announcement, a row
+// per locale.
+func createAnnouncementTranslations(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, announcementID uuid.UUID,
+	inputs []announcementTranslationInput,
+) ([]dbmodels.AnnouncementTranslation, error) {
+	translations := make([]dbmodels.AnnouncementTranslation, 0, len(inputs))
+	for _, input := range inputs {
 		translationID, err := uuid.NewV7()
 		if err != nil {
-			return dbmodels.Announcement{}, nil, fmt.Errorf("allocate announcement translation id: %w", err)
+			return nil, fmt.Errorf("allocate announcement translation id: %w", err)
 		}
 		translation, err := queries.CreateAnnouncementTranslation(ctx, dbmodels.CreateAnnouncementTranslationParams{
 			ID:             translationID,
-			AnnouncementID: row.ID,
+			AnnouncementID: announcementID,
 			TenantID:       tenantID,
 			Locale:         input.locale,
 			Title:          input.title,
 			Body:           input.body,
 		})
 		if err != nil {
-			return dbmodels.Announcement{}, nil, err
+			return nil, err
 		}
 		translations = append(translations, translation)
 	}
-	if err := enqueueAnnouncementNotification(ctx, queries, tenantID, row); err != nil {
-		return dbmodels.Announcement{}, nil, err
-	}
-	return row, translations, nil
+	return translations, nil
 }
 
-// enqueueAnnouncementNotification queues the bell delivery of one announcement.
-//
-// The worker owns the fan-out: an announcement addresses every user the tenant
-// has, or every one its audience selects, and an operator submitting the
-// console form must not wait on an insert per person. The idempotency key is
-// the announcement's own identity, so a redelivered event notifies nobody a
-// second time. One with an audience is queued as an event of its own type, so
-// that a worker that would deliver it to everyone never claims it.
-func enqueueAnnouncementNotification(
+// errAnnouncementDelivered refuses an edit or a deletion of an announcement
+// that has gone out: readers were shown it and notified of it, so it is not
+// rewritten or taken away under them.
+func errAnnouncementDelivered() error {
+	return connect.NewError(connect.CodeFailedPrecondition, "announcement has been delivered")
+}
+
+// lockScheduledAnnouncement reads the announcement UpdateAnnouncement or
+// DeleteAnnouncement is about, locked for the rest of the transaction, and
+// refuses one that is missing or has been delivered. The lock is what keeps
+// the deliver-announcements job from delivering it between this check and the
+// write: the job waits, then delivers what the write left, or nothing.
+func (s *adminServer) lockScheduledAnnouncement(
 	ctx context.Context,
-	queries *dbmodels.Queries,
-	tenantID uuid.UUID,
-	row dbmodels.Announcement,
+	txq *dbmodels.Queries,
+	tenantID, announcementID uuid.UUID,
 ) error {
-	payload, err := json.Marshal(outbox.AnnouncementNotificationPayload{
-		TenantID:       tenantID.String(),
-		AnnouncementID: row.ID.String(),
+	row, err := txq.GetAnnouncementForUpdate(ctx, dbmodels.GetAnnouncementForUpdateParams{
+		ID:       announcementID,
+		TenantID: tenantID,
 	})
 	if err != nil {
-		return fmt.Errorf("marshal announcement notification event: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewError(connect.CodeNotFound, "announcement not found")
+		}
+		return s.internalDBError(ctx, "failed to read announcement", err, "tenant_id", tenantID.String(), "announcement_id", announcementID.String())
 	}
-	if row.Audience != nil {
-		return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeTargetedAnnouncementNotification, payload,
-			outbox.TargetedAnnouncementIdempotencyKey(row.ID))
+	if row.DeliveredAt.Valid {
+		return errAnnouncementDelivered()
 	}
-	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAnnouncementNotification, payload,
-		outbox.AnnouncementIdempotencyKey(row.ID))
+	return nil
+}
+
+// UpdateAnnouncement replaces the whole of a scheduled announcement, so a
+// scheduled one is a draft with a clock rather than a second kind of record.
+// An empty deliver_at delivers it now, in the same transaction, as
+// CreateAnnouncement does.
+func (s *adminServer) UpdateAnnouncement(
+	ctx context.Context,
+	req *publiraadminv1.UpdateAnnouncementRequest,
+) (*publiraadminv1.UpdateAnnouncementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
+	}
+	content, err := s.announcementContentFrom(ctx, tenant, announcementRequest{
+		translations: req.Translations,
+		linkURL:      req.LinkUrl,
+		pinned:       req.Pinned,
+		pinnedUntil:  req.PinnedUntil,
+		delivery:     req.Delivery,
+		audience:     req.Audience,
+		deliverAt:    req.DeliverAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updated, owed, err := s.replaceAnnouncement(ctx, tenant, announcementID, content)
+	if err != nil {
+		return nil, err
+	}
+	s.reval.Send(ctx, owed)
+
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "announcement_updated",
+		TargetType:  "announcement",
+		TargetID:    announcementID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      announcementCreatedReason(content.delivery, content.audience != nil),
+		ClientIP:    clientip.FromContext(ctx),
+	})
+
+	return &publiraadminv1.UpdateAnnouncementResponse{Announcement: updated}, nil
+}
+
+// replaceAnnouncement writes content over a scheduled announcement and its
+// translations, and delivers it when content asks for now.
+func (s *adminServer) replaceAnnouncement(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	announcementID uuid.UUID,
+	content announcementContent,
+) (*publiraadminv1.AdminAnnouncement, revalidate.Owed, error) {
+	internal := func(err error) error {
+		return s.internalDBError(ctx, "failed to update announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
+	}
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := s.lockScheduledAnnouncement(ctx, txq, tenant.ID, announcementID); err != nil {
+		return nil, revalidate.Owed{}, err
+	}
+	audience, err := content.encodedAudience()
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	row, err := txq.UpdateAnnouncement(ctx, dbmodels.UpdateAnnouncementParams{
+		ID:          announcementID,
+		TenantID:    tenant.ID,
+		LinkUrl:     sql.NullString{String: content.linkURL, Valid: content.linkURL != ""},
+		Pinned:      content.pinned,
+		PinnedUntil: content.pinnedUntil,
+		Delivery:    content.delivery,
+		Audience:    audience,
+		DeliverAt:   sql.NullTime{Time: content.deliverAt, Valid: true},
+		DeliveredAt: content.deliveredAt(),
+	})
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	if err := txq.DeleteAnnouncementTranslations(ctx, dbmodels.DeleteAnnouncementTranslationsParams{
+		TenantID:       tenant.ID,
+		AnnouncementID: announcementID,
+	}); err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	translations, err := createAnnouncementTranslations(ctx, txq, tenant.ID, announcementID, content.translations)
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	owed, err := s.deliverAnnouncementNow(ctx, txq, tenant.ID, row, content)
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+
+	answer, err := s.announcementAnswer(ctx, tenant, row, translations, content.audience)
+	if err != nil {
+		return nil, revalidate.Owed{}, internal(err)
+	}
+	return answer, owed, nil
+}
+
+// DeleteAnnouncement deletes a scheduled announcement with its translations.
+// Nobody has been shown it or notified of it, so there is nothing to drop from
+// a cache and nothing to take back from an inbox.
+func (s *adminServer) DeleteAnnouncement(
+	ctx context.Context,
+	req *publiraadminv1.DeleteAnnouncementRequest,
+) (*publiraadminv1.DeleteAnnouncementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
+	}
+
+	internal := func(err error) error {
+		return s.internalDBError(ctx, "failed to delete announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
+	}
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if err := s.lockScheduledAnnouncement(ctx, txq, tenant.ID, announcementID); err != nil {
+		return nil, err
+	}
+	if _, err := txq.DeleteAnnouncement(ctx, dbmodels.DeleteAnnouncementParams{
+		ID:       announcementID,
+		TenantID: tenant.ID,
+	}); err != nil {
+		return nil, internal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, internal(err)
+	}
+
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "announcement_deleted",
+		TargetType:  "announcement",
+		TargetID:    announcementID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    clientip.FromContext(ctx),
+	})
+
+	return &publiraadminv1.DeleteAnnouncementResponse{}, nil
 }
 
 // UnpinAnnouncement takes a banner down and leaves the announcement where it

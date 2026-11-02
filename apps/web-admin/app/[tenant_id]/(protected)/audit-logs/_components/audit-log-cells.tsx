@@ -281,6 +281,14 @@ const siteActionName = (action: string) => {
       return <Message message="admin.audit.actions.announcement_created" />;
     }
 
+    case "announcement_updated": {
+      return <Message message="admin.audit.actions.announcement_updated" />;
+    }
+
+    case "announcement_deleted": {
+      return <Message message="admin.audit.actions.announcement_deleted" />;
+    }
+
     case "announcement_unpinned": {
       return <Message message="admin.audit.actions.announcement_unpinned" />;
     }
@@ -1212,7 +1220,8 @@ const auditReasonLabel = (
       return smtpTestFailureMessage(reason, locale) ?? reason;
     }
 
-    case "announcement_created": {
+    case "announcement_created":
+    case "announcement_updated": {
       return announcementDeliveryLabel(reason, t);
     }
 

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -39,6 +40,8 @@ func announcementColumns() *sqlmock.Rows {
 		"pinned_until",
 		"delivery",
 		"audience",
+		"deliver_at",
+		"delivered_at",
 	})
 }
 
@@ -61,6 +64,8 @@ func addAnnouncementRow(
 		sql.NullTime{},
 		outbox.AnnouncementDeliveryPreferred,
 		nil,
+		sql.NullTime{},
+		sql.NullTime{Time: createdAt, Valid: true},
 	)
 }
 
@@ -125,9 +130,9 @@ func TestCreateAnnouncementWritesEveryTranslationAndQueuesOneNotificationEvent(t
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil).
+		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil, anInstant{}, anInstant{}).
 		WillReturnRows(announcementRowColumns().
-			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil))
+			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred, nil, now, now))
 	// The English copy is sent first, and the default locale's still answers
 	// the announcement's own title and body.
 	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "en", "Update", "Body", now)
@@ -209,9 +214,9 @@ func TestCreateAnnouncementStoresAndRecordsItsDelivery(t *testing.T) {
 
 			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-				WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, tc.stored, nil).
+				WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, tc.stored, nil, anInstant{}, anInstant{}).
 				WillReturnRows(announcementRowColumns().
-					AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, tc.stored, nil))
+					AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, tc.stored, nil, now, now))
 			expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Terms of use updated", "Body", now)
 			expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 			mock.ExpectCommit()
@@ -359,7 +364,17 @@ func expectAnnouncementTranslationsRead(
 // announcementRowColumns is what CreateAnnouncement returns: the announcements
 // row alone, without the translation the list queries join.
 func announcementRowColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience"})
+	return sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience", "deliver_at", "delivered_at"})
+}
+
+// anInstant matches a timestamptz argument that is set, whatever its value:
+// the deliver_at and delivered_at of an announcement posted for now are the
+// moment the handler ran.
+type anInstant struct{}
+
+func (anInstant) Match(v driver.Value) bool {
+	_, ok := v.(time.Time)
+	return ok
 }
 
 func announcementTranslationColumns() *sqlmock.Rows {

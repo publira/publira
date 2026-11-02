@@ -30,6 +30,12 @@ const (
 	// AdminAnnouncementServiceCreateAnnouncementProcedure is the procedure name of the
 	// AdminAnnouncementService's CreateAnnouncement RPC.
 	AdminAnnouncementServiceCreateAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/CreateAnnouncement"
+	// AdminAnnouncementServiceUpdateAnnouncementProcedure is the procedure name of the
+	// AdminAnnouncementService's UpdateAnnouncement RPC.
+	AdminAnnouncementServiceUpdateAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/UpdateAnnouncement"
+	// AdminAnnouncementServiceDeleteAnnouncementProcedure is the procedure name of the
+	// AdminAnnouncementService's DeleteAnnouncement RPC.
+	AdminAnnouncementServiceDeleteAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/DeleteAnnouncement"
 	// AdminAnnouncementServiceUnpinAnnouncementProcedure is the procedure name of the
 	// AdminAnnouncementService's UnpinAnnouncement RPC.
 	AdminAnnouncementServiceUnpinAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/UnpinAnnouncement"
@@ -51,6 +57,20 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_announcement_proto.Services().ByName("AdminAnnouncementService").Methods().ByName("CreateAnnouncement"),
 			Procedure:  AdminAnnouncementServiceCreateAnnouncementProcedure,
+		}
+	})
+	adminAnnouncementServiceUpdateAnnouncementSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_announcement_proto.Services().ByName("AdminAnnouncementService").Methods().ByName("UpdateAnnouncement"),
+			Procedure:  AdminAnnouncementServiceUpdateAnnouncementProcedure,
+		}
+	})
+	adminAnnouncementServiceDeleteAnnouncementSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_announcement_proto.Services().ByName("AdminAnnouncementService").Methods().ByName("DeleteAnnouncement"),
+			Procedure:  AdminAnnouncementServiceDeleteAnnouncementProcedure,
 		}
 	})
 	adminAnnouncementServiceUnpinAnnouncementSpec = sync.OnceValue(func() connect.Spec {
@@ -77,6 +97,10 @@ type AdminAnnouncementServiceClient interface {
 	// Minimum role: tenant_editor.
 	CreateAnnouncement(context.Context, *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error)
 	// Minimum role: tenant_editor.
+	UpdateAnnouncement(context.Context, *v1.UpdateAnnouncementRequest) (*v1.UpdateAnnouncementResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteAnnouncement(context.Context, *v1.DeleteAnnouncementRequest) (*v1.DeleteAnnouncementResponse, error)
+	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
 	// Counts the readers an audience selects, and names none of them.
 	// Minimum role: tenant_auditor.
@@ -98,6 +122,10 @@ type AdminAnnouncementServiceHandler interface {
 	// Minimum role: tenant_editor.
 	CreateAnnouncement(context.Context, *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error)
 	// Minimum role: tenant_editor.
+	UpdateAnnouncement(context.Context, *v1.UpdateAnnouncementRequest) (*v1.UpdateAnnouncementResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteAnnouncement(context.Context, *v1.DeleteAnnouncementRequest) (*v1.DeleteAnnouncementResponse, error)
+	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
 	// Counts the readers an audience selects, and names none of them.
 	// Minimum role: tenant_auditor.
@@ -111,6 +139,8 @@ func RegisterAdminAnnouncementServiceHandler(server *connect.Server, svc AdminAn
 	server.Register(
 		connect.Method{Spec: adminAnnouncementServiceListAnnouncementsSpec(), Handler: adapter.listAnnouncements},
 		connect.Method{Spec: adminAnnouncementServiceCreateAnnouncementSpec(), Handler: adapter.createAnnouncement},
+		connect.Method{Spec: adminAnnouncementServiceUpdateAnnouncementSpec(), Handler: adapter.updateAnnouncement},
+		connect.Method{Spec: adminAnnouncementServiceDeleteAnnouncementSpec(), Handler: adapter.deleteAnnouncement},
 		connect.Method{Spec: adminAnnouncementServiceUnpinAnnouncementSpec(), Handler: adapter.unpinAnnouncement},
 		connect.Method{Spec: adminAnnouncementServiceCountAnnouncementAudienceSpec(), Handler: adapter.countAnnouncementAudience},
 	)
@@ -125,6 +155,14 @@ func (UnimplementedAdminAnnouncementServiceHandler) ListAnnouncements(context.Co
 
 func (UnimplementedAdminAnnouncementServiceHandler) CreateAnnouncement(context.Context, *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAnnouncementService.CreateAnnouncement is not implemented")
+}
+
+func (UnimplementedAdminAnnouncementServiceHandler) UpdateAnnouncement(context.Context, *v1.UpdateAnnouncementRequest) (*v1.UpdateAnnouncementResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAnnouncementService.UpdateAnnouncement is not implemented")
+}
+
+func (UnimplementedAdminAnnouncementServiceHandler) DeleteAnnouncement(context.Context, *v1.DeleteAnnouncementRequest) (*v1.DeleteAnnouncementResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAnnouncementService.DeleteAnnouncement is not implemented")
 }
 
 func (UnimplementedAdminAnnouncementServiceHandler) UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error) {
@@ -150,6 +188,22 @@ func (c *adminAnnouncementServiceClient) ListAnnouncements(ctx context.Context, 
 func (c *adminAnnouncementServiceClient) CreateAnnouncement(ctx context.Context, req *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error) {
 	var res v1.CreateAnnouncementResponse
 	if err := c.client.CallUnary(ctx, adminAnnouncementServiceCreateAnnouncementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAnnouncementServiceClient) UpdateAnnouncement(ctx context.Context, req *v1.UpdateAnnouncementRequest) (*v1.UpdateAnnouncementResponse, error) {
+	var res v1.UpdateAnnouncementResponse
+	if err := c.client.CallUnary(ctx, adminAnnouncementServiceUpdateAnnouncementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAnnouncementServiceClient) DeleteAnnouncement(ctx context.Context, req *v1.DeleteAnnouncementRequest) (*v1.DeleteAnnouncementResponse, error) {
+	var res v1.DeleteAnnouncementResponse
+	if err := c.client.CallUnary(ctx, adminAnnouncementServiceDeleteAnnouncementSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -193,6 +247,30 @@ func (h adminAnnouncementServiceHandler) createAnnouncement(ctx context.Context,
 		return err
 	}
 	res, err := h.svc.CreateAnnouncement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAnnouncementServiceHandler) updateAnnouncement(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateAnnouncementRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateAnnouncement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAnnouncementServiceHandler) deleteAnnouncement(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteAnnouncementRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteAnnouncement(ctx, &req)
 	if err != nil {
 		return err
 	}

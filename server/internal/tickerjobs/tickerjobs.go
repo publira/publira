@@ -3,8 +3,9 @@
 // publication of scheduled series, turning over each tenant's calendar day,
 // taking down a banner whose pinned window has closed, applying the
 // boundaries of scheduled campaign banners and campaign prices, recording
-// the coins of each grant that expired, and opening the episodes a series'
-// free-after-publication rule has reached — as River periodic jobs.
+// the coins of each grant that expired, opening the episodes a series'
+// free-after-publication rule has reached, and delivering the announcements
+// scheduled for a time that has passed — as River periodic jobs.
 //
 // Each of them used to be a process of its own on a ticker, which meant a
 // deployment each to schedule, supervise, and keep from overlapping. River is
@@ -40,6 +41,7 @@ import (
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/scheduledannouncements"
 	"github.com/publira/publira/server/internal/seriespublications"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tracing"
@@ -59,6 +61,7 @@ const (
 	ServiceNameApplyCampaignPrices       = "publira-apply-campaign-prices"
 	ServiceNameExpireCoinGrants          = "publira-expire-coin-grants"
 	ServiceNameApplyFreeAfterRules       = "publira-apply-free-after-rules"
+	ServiceNameDeliverAnnouncements      = "publira-deliver-announcements"
 )
 
 // QueueName is the River queue they run on. They are kept off the default queue
@@ -70,7 +73,7 @@ const QueueName = "ticker"
 // queueMaxWorkers is one slot per job. Two runs of the same job are already
 // refused by the unique constraint below, and the jobs are independent of each
 // other, so nothing is gained by a wider queue.
-const queueMaxWorkers = 9
+const queueMaxWorkers = 10
 
 const (
 	kindPublishEpisodes  = "ticker.publish_episodes"
@@ -83,17 +86,19 @@ const (
 	kindApplyCampaignPrices       = "ticker.apply_campaign_prices"
 	kindExpireCoinGrants          = "ticker.expire_coin_grants"
 	kindApplyFreeAfterRules       = "ticker.apply_free_after_rules"
+	kindDeliverAnnouncements      = "ticker.deliver_announcements"
 
-	DefaultPublishInterval            = time.Minute
-	DefaultPublishMaxRetries          = 3
-	DefaultFreeWindowInterval         = time.Minute
-	DefaultTenantDayInterval          = time.Minute
-	DefaultPinnedAnnouncementInterval = time.Minute
-	DefaultSeriesPublicationInterval  = time.Minute
-	DefaultCampaignBannerInterval     = time.Minute
-	DefaultCampaignPriceInterval      = time.Minute
-	DefaultCoinExpiryInterval         = time.Minute
-	DefaultFreeAfterInterval          = time.Minute
+	DefaultPublishInterval               = time.Minute
+	DefaultPublishMaxRetries             = 3
+	DefaultFreeWindowInterval            = time.Minute
+	DefaultTenantDayInterval             = time.Minute
+	DefaultPinnedAnnouncementInterval    = time.Minute
+	DefaultSeriesPublicationInterval     = time.Minute
+	DefaultCampaignBannerInterval        = time.Minute
+	DefaultCampaignPriceInterval         = time.Minute
+	DefaultCoinExpiryInterval            = time.Minute
+	DefaultFreeAfterInterval             = time.Minute
+	DefaultScheduledAnnouncementInterval = time.Minute
 
 	// jobTimeout bounds one pass. It is well above any interval because a pass
 	// that has fallen behind is the one that must not be cut off half way: it
@@ -115,6 +120,7 @@ func ServiceNames() []string {
 		ServiceNameApplyCampaignPrices,
 		ServiceNameExpireCoinGrants,
 		ServiceNameApplyFreeAfterRules,
+		ServiceNameDeliverAnnouncements,
 	}
 }
 
@@ -145,6 +151,9 @@ type Config struct {
 	CampaignPriceInterval      time.Duration
 	CoinExpiryInterval         time.Duration
 	FreeAfterInterval          time.Duration
+	// ScheduledAnnouncementInterval is how often due announcements are looked
+	// for, which bounds how late after its time one goes out.
+	ScheduledAnnouncementInterval time.Duration
 }
 
 func (c Config) withDefaults() Config {
@@ -178,6 +187,9 @@ func (c Config) withDefaults() Config {
 	if c.FreeAfterInterval <= 0 {
 		c.FreeAfterInterval = DefaultFreeAfterInterval
 	}
+	if c.ScheduledAnnouncementInterval <= 0 {
+		c.ScheduledAnnouncementInterval = DefaultScheduledAnnouncementInterval
+	}
 	return c
 }
 
@@ -196,6 +208,7 @@ type Jobs struct {
 	prices     *campaignprices.Runner
 	coins      *coinexpiry.Runner
 	freeAfter  *freeafter.Runner
+	scheduled  *scheduledannouncements.Runner
 }
 
 // New constructs the runners over cfg.DB.
@@ -218,6 +231,7 @@ func New(cfg Config) (*Jobs, error) {
 		prices:    campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
 		coins:     coinexpiry.New(queries, cfg.Logger),
 		freeAfter: freeafter.New(cfg.DB, queries, cfg.Revalidate, cfg.Logger),
+		scheduled: scheduledannouncements.New(cfg.DB, cfg.Revalidate, cfg.Logger),
 	}, nil
 }
 
@@ -261,6 +275,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &applyFreeAfterRulesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("tickerjobs: register apply-free-after-rules worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &deliverAnnouncementsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("tickerjobs: register deliver-announcements worker: %w", err)
+	}
 	return nil
 }
 
@@ -287,6 +304,7 @@ func (j *Jobs) schedule() []scheduled {
 		{schedule: river.PeriodicInterval(j.cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CoinExpiryInterval), args: ExpireCoinGrantsArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.FreeAfterInterval), args: ApplyFreeAfterRulesArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.ScheduledAnnouncementInterval), args: DeliverAnnouncementsArgs{}},
 	}
 }
 
@@ -328,6 +346,7 @@ func (j *Jobs) Settings() []any {
 		"campaign_price_interval", j.cfg.CampaignPriceInterval,
 		"coin_expiry_interval", j.cfg.CoinExpiryInterval,
 		"free_after_interval", j.cfg.FreeAfterInterval,
+		"scheduled_announcement_interval", j.cfg.ScheduledAnnouncementInterval,
 	}
 }
 
@@ -400,6 +419,14 @@ type ApplyFreeAfterRulesArgs struct{}
 func (ApplyFreeAfterRulesArgs) Kind() string { return kindApplyFreeAfterRules }
 
 func (ApplyFreeAfterRulesArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
+
+// DeliverAnnouncementsArgs hands every announcement whose scheduled time has
+// passed to the outbox.
+type DeliverAnnouncementsArgs struct{}
+
+func (DeliverAnnouncementsArgs) Kind() string { return kindDeliverAnnouncements }
+
+func (DeliverAnnouncementsArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
 
 // tickerInsertOpts is what keeps one tenant from being written twice.
 //
@@ -571,6 +598,22 @@ func (w *applyFreeAfterRulesWorker) Work(ctx context.Context, _ *river.Job[Apply
 	ctx, end := startRun(ctx, ServiceNameApplyFreeAfterRules, kindApplyFreeAfterRules)
 	defer end()
 	w.jobs.freeAfter.RunOnce(ctx)
+	return nil
+}
+
+type deliverAnnouncementsWorker struct {
+	river.WorkerDefaults[DeliverAnnouncementsArgs]
+	jobs *Jobs
+}
+
+func (w *deliverAnnouncementsWorker) Timeout(*river.Job[DeliverAnnouncementsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *deliverAnnouncementsWorker) Work(ctx context.Context, _ *river.Job[DeliverAnnouncementsArgs]) error {
+	ctx, end := startRun(ctx, ServiceNameDeliverAnnouncements, kindDeliverAnnouncements)
+	defer end()
+	w.jobs.scheduled.RunOnce(ctx)
 	return nil
 }
 

@@ -28,8 +28,8 @@ func mustInsertPinnedAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, announcement_type, created_at, pinned, pinned_until
-		) VALUES ($1, $2, 'announcement', $3, true, $4)
+			id, tenant_id, announcement_type, created_at, delivered_at, pinned, pinned_until
+		) VALUES ($1, $2, 'announcement', $3, $3, true, $4)
 	`, id, tenantID, createdAt, pinnedUntil)
 	if err != nil {
 		t.Fatalf("insert pinned announcement: %v", err)

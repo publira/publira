@@ -37,6 +37,8 @@ type Announcement struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 }
 
 type AnnouncementRead struct {

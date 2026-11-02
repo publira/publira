@@ -51,6 +51,8 @@ export const auditActions = [
   "page_translation_created",
   "page_translation_deleted",
   "announcement_created",
+  "announcement_updated",
+  "announcement_deleted",
   "announcement_unpinned",
   "campaign_banner_created",
   "campaign_banner_updated",

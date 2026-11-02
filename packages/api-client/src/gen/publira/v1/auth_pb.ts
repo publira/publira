@@ -1981,6 +1981,10 @@ export type AnnouncementItem = Message<"publira.v1.AnnouncementItem"> & {
   readAt: string;
 
   /**
+   * RFC 3339 instant the announcement went out to readers, which the list is
+   * ordered by: the instant it was posted, or for a scheduled one the instant
+   * it was delivered.
+   *
    * @generated from field: string created_at = 8;
    */
   createdAt: string;

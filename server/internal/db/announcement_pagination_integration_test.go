@@ -42,12 +42,12 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	}
 
 	inclusiveNextPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
-		TenantID:        tenantID,
-		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
-		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
-		CursorInclusive: true,
-		Limit:           2,
+		TenantID:          tenantID,
+		UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+		CursorID:          uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
+		CursorDeliveredAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
+		CursorInclusive:   true,
+		Limit:             2,
 	})
 	if err != nil {
 		t.Fatalf("ListAnnouncementsForUserDesc inclusive page: %v", err)
@@ -57,11 +57,11 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	}
 
 	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
-		TenantID:        tenantID,
-		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
-		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
-		Limit:           2,
+		TenantID:          tenantID,
+		UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+		CursorID:          uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
+		CursorDeliveredAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
+		Limit:             2,
 	})
 	if err != nil {
 		t.Fatalf("ListAnnouncementsForUserDesc second page: %v", err)
@@ -71,11 +71,11 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	}
 
 	previousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
-		TenantID:        tenantID,
-		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
-		CursorCreatedAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
-		Limit:           2,
+		TenantID:          tenantID,
+		UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+		CursorID:          uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
+		CursorDeliveredAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
+		Limit:             2,
 	})
 	if err != nil {
 		t.Fatalf("ListAnnouncementsForUserAsc previous page: %v", err)
@@ -86,12 +86,12 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	}
 
 	inclusivePreviousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
-		TenantID:        tenantID,
-		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
-		CursorCreatedAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
-		CursorInclusive: true,
-		Limit:           2,
+		TenantID:          tenantID,
+		UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+		CursorID:          uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
+		CursorDeliveredAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
+		CursorInclusive:   true,
+		Limit:             2,
 	})
 	if err != nil {
 		t.Fatalf("ListAnnouncementsForUserAsc inclusive page: %v", err)
@@ -132,11 +132,11 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 		t.Fatalf("first page count = %d, want the page filled to the limit", len(firstPage))
 	}
 	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
-		TenantID:        tenantID,
-		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
-		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
-		Limit:           2,
+		TenantID:          tenantID,
+		UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+		CursorID:          uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
+		CursorDeliveredAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
+		Limit:             2,
 	})
 	if err != nil {
 		t.Fatalf("ListAnnouncementsForUserDesc second page: %v", err)
@@ -210,8 +210,8 @@ func mustInsertAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, announcement_type, created_at
-		) VALUES ($1, $2, 'member_episode_published', $3)
+			id, tenant_id, announcement_type, created_at, delivered_at
+		) VALUES ($1, $2, 'member_episode_published', $3, $3)
 	`, id, tenantID, createdAt)
 	if err != nil {
 		t.Fatalf("insert announcement: %v", err)
