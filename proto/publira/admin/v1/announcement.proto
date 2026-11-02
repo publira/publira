@@ -222,6 +222,6 @@ service AdminAnnouncementService {
   // Minimum role: tenant_editor.
   rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
   // Counts the readers an audience selects, and names none of them.
-  // Minimum role: tenant_editor.
+  // Minimum role: tenant_auditor.
   rpc CountAnnouncementAudience(CountAnnouncementAudienceRequest) returns (CountAnnouncementAudienceResponse) {}
 }

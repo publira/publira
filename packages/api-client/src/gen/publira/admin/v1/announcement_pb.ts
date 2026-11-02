@@ -715,7 +715,7 @@ export const AdminAnnouncementService: GenService<{
   },
   /**
    * Counts the readers an audience selects, and names none of them.
-   * Minimum role: tenant_editor.
+   * Minimum role: tenant_auditor.
    *
    * @generated from rpc publira.admin.v1.AdminAnnouncementService.CountAnnouncementAudience
    */

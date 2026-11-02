@@ -79,7 +79,7 @@ type AdminAnnouncementServiceClient interface {
 	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
 	// Counts the readers an audience selects, and names none of them.
-	// Minimum role: tenant_editor.
+	// Minimum role: tenant_auditor.
 	CountAnnouncementAudience(context.Context, *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error)
 }
 
@@ -100,7 +100,7 @@ type AdminAnnouncementServiceHandler interface {
 	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
 	// Counts the readers an audience selects, and names none of them.
-	// Minimum role: tenant_editor.
+	// Minimum role: tenant_auditor.
 	CountAnnouncementAudience(context.Context, *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error)
 }
 

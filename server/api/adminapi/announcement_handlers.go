@@ -423,7 +423,7 @@ func (s *adminServer) CountAnnouncementAudience(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantEditor(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
