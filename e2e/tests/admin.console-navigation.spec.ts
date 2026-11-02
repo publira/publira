@@ -30,6 +30,7 @@ const sidebarEntries = [
   "Cohorts",
   "Royalties",
   "Purchases",
+  "Reconciliation",
   "Subscription plans",
   "Payment methods",
   "Email",
