@@ -858,11 +858,25 @@ export interface VolumeItem {
   episodeIds: string[];
   /** Absent when the volume has no cover, and the series' stands in for it. */
   coverImageVariants?: EyeCatchImageVariant[];
+  /**
+   * Where the volume's printed book is sold, in the order the console put the
+   * links in. Empty for a volume with none.
+   */
+  bookstoreLinks: VolumeBookstoreLink[];
+}
+
+/** A link to where a volume's printed book is sold at an online bookstore. */
+export interface VolumeBookstoreLink {
+  /** What the link's button says, which the tenant writes itself. */
+  label: string;
+  /** An https URL. */
+  url: string;
 }
 
 /** The generated `Volume` fields {@link toVolumeItem} reads. */
 type RawVolume = Pick<
   Volume,
+  | "bookstoreLinks"
   | "coverImageVariants"
   | "episodeIds"
   | "id"
@@ -873,6 +887,10 @@ type RawVolume = Pick<
 >;
 
 const toVolumeItem = (volume: RawVolume): VolumeItem => ({
+  bookstoreLinks: (volume.bookstoreLinks ?? []).map((link) => ({
+    label: link.label ?? "",
+    url: link.url ?? "",
+  })),
   coverImageVariants: toEyeCatchImageVariants(volume.coverImageVariants),
   episodeIds: volume.episodeIds ?? [],
   id: volume.id ?? "",

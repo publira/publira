@@ -153,7 +153,7 @@ describe("catalog.getSeriesDetail", () => {
     });
   });
 
-  it("lists the volumes on sale in the tenant's order, each with the episodes it holds and its cover", async () => {
+  it("lists the volumes on sale in the tenant's order, each with the episodes it holds, its cover, and its bookstore links", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [],
       series: { publicId: "SERIES_001", title: "Night Train" },
@@ -167,6 +167,10 @@ describe("catalog.getSeriesDetail", () => {
           title: "Volume 2",
         },
         {
+          bookstoreLinks: [
+            { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+            { label: "Bookstore B", url: "https://shop.example.net/v1" },
+          ],
           coverImageVariants: [
             {
               contentType: "image/webp",
@@ -192,6 +196,10 @@ describe("catalog.getSeriesDetail", () => {
 
     expect(result.ok && result.value?.volumes).toEqual([
       {
+        bookstoreLinks: [
+          { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+          { label: "Bookstore B", url: "https://shop.example.net/v1" },
+        ],
         coverImageVariants: [
           {
             contentType: "image/webp",
@@ -211,6 +219,7 @@ describe("catalog.getSeriesDetail", () => {
         title: "Volume 1",
       },
       {
+        bookstoreLinks: [],
         coverImageVariants: undefined,
         episodeIds: ["EPISODE_ID_3"],
         id: "VOLUME_ID_2",

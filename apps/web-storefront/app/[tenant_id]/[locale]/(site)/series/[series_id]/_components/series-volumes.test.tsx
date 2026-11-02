@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VolumeItem } from "#lib/catalog";
 
 import {
+  VolumeBookstoreLinks,
   VolumeOwnershipFailure,
   VolumePurchaseControl,
 } from "./series-volumes";
@@ -46,6 +47,7 @@ vi.mock("../_lib/actions", () => ({
 afterEach(cleanup);
 
 const VOLUME: VolumeItem = {
+  bookstoreLinks: [],
   episodeIds: ["EPISODE_ID_2", "EPISODE_ID_3"],
   id: "VOLUME_ID",
   orderIndex: 1,
@@ -158,5 +160,49 @@ describe("VolumeOwnershipFailure", () => {
     const { container } = await renderOwnershipError();
 
     expect(container.textContent).toBe("");
+  });
+});
+
+describe("VolumeBookstoreLinks", () => {
+  it("lists each link as a button that opens the bookstore in a new tab", () => {
+    render(
+      <VolumeBookstoreLinks
+        links={[
+          { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+          { label: "Bookstore B", url: "https://shop.example.net/v1" },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Buy the book" })).toBeTruthy();
+    const links = screen.getAllByRole("link");
+    expect(
+      links.map((link) => [
+        link.textContent,
+        link.getAttribute("href"),
+        link.getAttribute("target"),
+        link.getAttribute("rel"),
+      ])
+    ).toEqual([
+      [
+        "Bookstore A",
+        "https://books.example.com/volume-1",
+        "_blank",
+        "noopener noreferrer",
+      ],
+      [
+        "Bookstore B",
+        "https://shop.example.net/v1",
+        "_blank",
+        "noopener noreferrer",
+      ],
+    ]);
+  });
+
+  it("shows no heading and no links for a volume with none", () => {
+    const { container } = render(<VolumeBookstoreLinks links={[]} />);
+
+    expect(container.textContent).toBe("");
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });
