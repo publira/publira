@@ -421,9 +421,11 @@ task mobile:e2e
 # When the API and device are already available
 task mobile:test-integration
 
-# The address and port forwarding each kind of device is given (no device)
+# The address and port forwarding each kind of device is given, and what a failing run collects from it (no device)
 task mobile:test-device-ports
 ```
+
+On failure, logcat and screenshots are left in `mobile/.run/artifacts/`.
 
 The app lays itself out for a tablet from a window 600 dp wide. To run the suite at a tablet's width, create a tablet AVD beside the phone one, under a name of its own, and boot it instead:
 
@@ -449,9 +451,7 @@ The build runs under Xvfb, inside a D-Bus session of its own whose keyring and a
 
 What it proves is the app's own logic: navigation, the reader, sign-in, the fixture and live groups' calls to the API and the image routes, offline reading, and a session surviving in a real Secret Service. It does not prove the Android build. The renderer and every plugin take their Linux implementation — the keychain is libsecret rather than the Android Keystore, and `path_provider`, `app_links`, and `url_launcher` are the desktop ones — while the suite already stands fakes in for incoming links, the browser, and the store. Push notifications and screenshot notices have no Linux implementation and stay off, as in a build with no Firebase project. Use the emulator whenever one can boot, and always for a change to `android/`, a plugin, or anything that depends on the platform rather than the app; CI's `Test / Mobile E2E` runs on the emulator only.
 
-On failure, the screenshots the tests take are left in `mobile/.run/artifacts/screenshots/`.
-
-On failure, logcat and screenshots are left in `mobile/.run/artifacts/`.
+On failure, the screenshots the tests take are left in `mobile/.run/artifacts/screenshots/`. The Linux desktop has no logcat, so that is all a failing run leaves of the device.
 
 CI runs the suite as two jobs, `Test / Mobile E2E (device)` and `Test / Mobile E2E (live)`, each on an emulator and a runner of its own:
 

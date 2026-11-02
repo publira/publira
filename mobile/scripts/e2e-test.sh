@@ -86,10 +86,14 @@ collect_failure_artifacts() {
     echo "=== adb devices ==="
     adb devices -l || true
   } > "${ART_DIR}/devices.txt" 2>&1 || true
-  adb -s "${device}" logcat -d > "${ART_DIR}/logcat.txt" 2> /dev/null || true
-  adb -s "${device}" exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
-  adb -s "${device}" pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
-    > /dev/null 2>&1 || true
+  local on_adb=false
+  if mobile_adb_device "${device}"; then
+    on_adb=true
+    adb -s "${device}" logcat -d > "${ART_DIR}/logcat.txt" 2> /dev/null || true
+    adb -s "${device}" exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
+    adb -s "${device}" pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
+      > /dev/null 2>&1 || true
+  fi
   if [[ -n "${linux_tmp}" ]]; then
     cp -r "${linux_tmp}/publira-integration" "${ART_DIR}/screenshots" 2> /dev/null || true
   fi
@@ -104,12 +108,14 @@ collect_failure_artifacts() {
       --data "{\"domains\":[\"${PUBLIRA_TENANT_HOST}\"]}" \
       "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/rpc/publira.v1.DomainService/GetTenantByDomain" || true
     echo
-    echo "=== ping ${host_address} from the device ==="
-    adb -s "${device}" shell ping -c 3 -W 2 "${host_address}" || true
-    echo "=== routes on the device ==="
-    adb -s "${device}" shell ip route show table all || true
-    echo "=== dumpsys connectivity ==="
-    adb -s "${device}" shell dumpsys connectivity || true
+    if [[ "${on_adb}" == true ]]; then
+      echo "=== ping ${host_address} from the device ==="
+      adb -s "${device}" shell ping -c 3 -W 2 "${host_address}" || true
+      echo "=== routes on the device ==="
+      adb -s "${device}" shell ip route show table all || true
+      echo "=== dumpsys connectivity ==="
+      adb -s "${device}" shell dumpsys connectivity || true
+    fi
   } > "${ART_DIR}/network.txt" 2>&1 || true
 }
 
