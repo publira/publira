@@ -1533,6 +1533,7 @@
       "payment_label": "Payment methods",
       "payments": "Payments",
       "purchases_label": "Purchases",
+      "reconciliation_label": "Reconciliation",
       "subscription_plans_label": "Subscription plans",
       "readers": "Readers",
       "readers_label": "Readers",
@@ -4449,6 +4450,11 @@
         "apply": "Apply",
         "reset": "Reset"
       },
+      "export": {
+        "button": "Download CSV",
+        "period_only": "The file holds every purchase and refund of the period. The other filters are not applied to it.",
+        "period_invalid": "Download CSV covers at most 366 days, with From on or before To. Narrow the period to download it."
+      },
       "expires_at": "Readable until",
       "expires_never": "No limit",
       "refunded_amount": "Refunded",
@@ -4498,6 +4504,92 @@
         "reason_too_long": "Keep the reason to 1,000 characters or fewer.",
         "amount_invalid": "Enter an amount above zero and no more than what is left to refund.",
         "amount_over_left": "The amount is more than is left to refund now. Open the purchase again to see what is left."
+      }
+    },
+    "reconciliation": {
+      "title": "Reconciliation",
+      "page_description": "Compare the purchases recorded here with what the payment provider and the stores charged over a period, and find every line that matches nothing on the other side.",
+      "reconcile": "Reconcile",
+      "reconciling": "Starting…",
+      "started": ".input {$count :integer}\n.match $count\none {{A reconciliation was started against {$count} source. The list below shows it once it finishes.}}\n* {{A reconciliation was started against {$count} sources. The list below shows each once it finishes.}}",
+      "start_failed": "Could not start the reconciliation. Please try again later.",
+      "no_source": "No payment provider or store is ready to reconcile with. Set one up under Payment methods first.",
+      "list_error": "Could not display the reconciliations",
+      "list_failed": "Could not load the reconciliations. Please try again later.",
+      "item_label": "reconciliations",
+      "empty_title": "No reconciliations yet.",
+      "empty_description": "Choose a period above and select Reconcile. A reconciliation runs against each payment provider and store that is ready.",
+      "pagination_aria": "Reconciliations pagination",
+      "pagination_description": "Shows up to {$count :integer} items per page, the one started last first.",
+      "period_range": "{$start} - {$end}",
+      "view_aria": "View the findings of {$source} for {$start} - {$end}",
+      "period": {
+        "description": "Choose the days to reconcile. They are calendar days in the tenant's time zone ({$time_zone}), and end today at the latest.",
+        "from": "From",
+        "to": "To",
+        "start_required": "Choose the first day of the period.",
+        "end_required": "Choose the last day of the period.",
+        "reversed": "The start of the period is after its end. Choose a start on or before the end.",
+        "too_long": "A period covers at most 366 days. Choose a shorter one.",
+        "future": "The period ends after today in the tenant's time zone. Choose an end on or before today."
+      },
+      "columns": {
+        "source": "Source",
+        "period": "Period",
+        "status": "Status",
+        "started_at": "Started",
+        "records": "Payments",
+        "purchases": "Purchases",
+        "matched": "Matched",
+        "findings": "Findings",
+        "actions": "Actions"
+      },
+      "source": {
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "pending": "Waiting",
+        "running": "Running",
+        "succeeded": "Finished",
+        "failed": "Failed"
+      },
+      "failure": {
+        "credentials": "The source's credentials are not saved, or it refused them. Check them under Payment methods, then reconcile again.",
+        "unavailable": "The source could not be read. Reconcile the period again later."
+      },
+      "kind": {
+        "record_unmatched": "Payment with no purchase",
+        "purchase_unmatched": "Purchase with no payment",
+        "amount_mismatch": "Amount differs",
+        "held_refund": "Held refund",
+        "held_dispute": "Held dispute",
+        "other": "Other"
+      },
+      "findings": {
+        "title": "Findings",
+        "close": "Close",
+        "summary": "Payments: {$records :integer} · Purchases: {$purchases :integer} · Matched: {$matched :integer} · Findings: {$findings :integer}",
+        "list_error": "Could not display the findings",
+        "list_failed": "Could not load the findings. Please try again later.",
+        "not_found": "This reconciliation was not found. A later reconciliation of the same period replaces it, so open that one from the list.",
+        "kind_aria": "Findings by kind",
+        "mode_aria": "Findings by mode",
+        "every_kind": "All",
+        "every_mode": "Live and test",
+        "live": "Live",
+        "test": "Test",
+        "payment_id": "Payment ID at the source",
+        "copy_payment_id": "Copy the payment ID",
+        "purchase_amount": "Purchase amount",
+        "record_amount": "Amount at the source",
+        "amount_refunded": "{$amount} ({$refunded} refunded)",
+        "purchase": "Purchase",
+        "open_purchase": "Open the purchase",
+        "empty": "Nothing to check.",
+        "unfinished": "This reconciliation has not finished yet. Its findings appear here once it does.",
+        "pagination_aria": "Findings pagination",
+        "pagination_description": "Shows up to {$count :integer} items per page, in the order they happened."
       }
     },
     "coins": {

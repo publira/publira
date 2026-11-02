@@ -96,6 +96,8 @@ export { ReceiptIcon } from "./receipt-icon";
 
 export { RepeatIcon } from "./repeat-icon";
 
+export { ScaleIcon } from "./scale-icon";
+
 export { ScrollTextIcon } from "./scroll-text-icon";
 
 export { SearchIcon } from "./search-icon";

@@ -23,6 +23,7 @@ const ADMIN_ONLY_ENTRIES = [
   "Revenue",
   "Royalties",
   "Purchases",
+  "Reconciliation",
   "Subscription plans",
   "Payment methods",
   "Email",
@@ -207,6 +208,13 @@ test.describe("tenant roles in the console", () => {
     await expectNotFound(page, "/integrations/sign-in");
     await expectNotFound(page, "/integrations/google-tag");
     await expectNotFound(page, "/purchases");
+
+    const purchasesCsv = await page.request.get(
+      adminUrl("/api/v1/purchases/csv?from=2026-01-01&to=2026-01-31")
+    );
+
+    expect(purchasesCsv.status()).toBe(404);
+    await expectNotFound(page, "/reconciliation");
     await expectNotFound(page, "/subscription-plans");
     await expectNotFound(page, "/analytics/revenue");
 

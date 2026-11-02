@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveAuditLogExportPeriod } from "./export-period";
+import { resolveExportPeriod } from "./export-period";
 
 const today = Temporal.PlainDate.from("2026-10-27");
 
-describe("resolveAuditLogExportPeriod", () => {
+describe("resolveExportPeriod", () => {
   it("covers the days the filters name", () => {
     expect(
-      resolveAuditLogExportPeriod(
+      resolveExportPeriod(
         { from: "2026-01-01", to: "2026-01-31" },
         "UTC",
         today
@@ -16,26 +16,28 @@ describe("resolveAuditLogExportPeriod", () => {
   });
 
   it("covers the longest period ending today when the list is not narrowed", () => {
-    expect(
-      resolveAuditLogExportPeriod({ from: "", to: "" }, "UTC", today)
-    ).toEqual({ end: "2026-10-27", ok: true, start: "2025-10-27" });
+    expect(resolveExportPeriod({ from: "", to: "" }, "UTC", today)).toEqual({
+      end: "2026-10-27",
+      ok: true,
+      start: "2025-10-27",
+    });
   });
 
   it("ends today when only the start is named", () => {
     expect(
-      resolveAuditLogExportPeriod({ from: "2026-04-01", to: "" }, "UTC", today)
+      resolveExportPeriod({ from: "2026-04-01", to: "" }, "UTC", today)
     ).toEqual({ end: "2026-10-27", ok: true, start: "2026-04-01" });
   });
 
   it("ends on a start named after today rather than before it", () => {
     expect(
-      resolveAuditLogExportPeriod({ from: "2026-11-02", to: "" }, "UTC", today)
+      resolveExportPeriod({ from: "2026-11-02", to: "" }, "UTC", today)
     ).toEqual({ end: "2026-11-02", ok: true, start: "2026-11-02" });
   });
 
   it("starts the longest period before an end named alone", () => {
     expect(
-      resolveAuditLogExportPeriod({ from: "", to: "2024-02-29" }, "UTC", today)
+      resolveExportPeriod({ from: "", to: "2024-02-29" }, "UTC", today)
     ).toEqual({ end: "2024-02-29", ok: true, start: "2023-03-01" });
   });
 
@@ -44,14 +46,14 @@ describe("resolveAuditLogExportPeriod", () => {
     ["a start before the longest period", { from: "2025-10-26", to: "" }],
     ["367 days", { from: "2025-01-01", to: "2026-01-02" }],
   ])("refuses %s", (_label, filters) => {
-    expect(resolveAuditLogExportPeriod(filters, "UTC", today)).toEqual({
+    expect(resolveExportPeriod(filters, "UTC", today)).toEqual({
       ok: false,
     });
   });
 
   it("allows 366 days across a leap day", () => {
     expect(
-      resolveAuditLogExportPeriod(
+      resolveExportPeriod(
         { from: "2024-01-01", to: "2024-12-31" },
         "UTC",
         today

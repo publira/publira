@@ -207,6 +207,10 @@
       "types": "./dist/repeat-icon.d.mts",
       "default": "./dist/repeat-icon.mjs"
     },
+    "./scale-icon": {
+      "types": "./dist/scale-icon.d.mts",
+      "default": "./dist/scale-icon.mjs"
+    },
     "./scroll-text-icon": {
       "types": "./dist/scroll-text-icon.d.mts",
       "default": "./dist/scroll-text-icon.mjs"

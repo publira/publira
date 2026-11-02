@@ -1533,6 +1533,7 @@
       "payment_label": "決済方法",
       "payments": "決済",
       "purchases_label": "購入",
+      "reconciliation_label": "照合",
       "subscription_plans_label": "サブスクリプションプラン",
       "readers": "読者",
       "readers_label": "読者",
@@ -4449,6 +4450,11 @@
         "apply": "適用",
         "reset": "リセット"
       },
+      "export": {
+        "button": "CSVをダウンロード",
+        "period_only": "ファイルには期間内のすべての購入と返金が入ります。ほかの絞り込み条件は適用されません。",
+        "period_invalid": "CSVでダウンロードできるのは、開始日が終了日以前の最長366日の期間です。期間を絞り込むとダウンロードできます。"
+      },
       "expires_at": "閲覧期限",
       "expires_never": "期限なし",
       "refunded_amount": "返金額",
@@ -4498,6 +4504,92 @@
         "reason_too_long": "理由は1,000文字以内で入力してください。",
         "amount_invalid": "返金する金額は、0より大きく返金できる残りの金額以下で入力してください。",
         "amount_over_left": "返金できる残りの金額を超えています。購入を開き直して、残りの金額を確認してください。"
+      }
+    },
+    "reconciliation": {
+      "title": "照合",
+      "page_description": "期間内にここで記録した購入と、決済プロバイダーやストアが実際に請求した内容を突き合わせ、相手側に対応するものがない明細を洗い出します。",
+      "reconcile": "照合する",
+      "reconciling": "開始しています…",
+      "started": ".input {$count :integer}\n.match $count\n* {{{$count}件の照合を開始しました。終わると下の一覧に結果が表示されます。}}",
+      "start_failed": "照合を開始できませんでした。しばらくしてからもう一度お試しください。",
+      "no_source": "照合できる決済プロバイダーやストアがありません。先に決済方法で設定してください。",
+      "list_error": "照合を表示できませんでした",
+      "list_failed": "照合を読み込めませんでした。しばらくしてからもう一度お試しください。",
+      "item_label": "照合",
+      "empty_title": "まだ照合はありません。",
+      "empty_description": "上で期間を選び、照合するを選んでください。準備が整った決済プロバイダーとストアごとに照合します。",
+      "pagination_aria": "照合一覧のページ送り",
+      "pagination_description": "開始が新しい順に、1ページあたり{$count :integer}件まで表示します。",
+      "period_range": "{$start}～{$end}",
+      "view_aria": "{$source}の{$start}～{$end}の照合結果を表示",
+      "period": {
+        "description": "照合する日を選びます。日付はテナントのタイムゾーン({$time_zone})の暦日で、終了日は今日以前です。",
+        "from": "開始日",
+        "to": "終了日",
+        "start_required": "期間の開始日を選んでください。",
+        "end_required": "期間の終了日を選んでください。",
+        "reversed": "期間の開始日が終了日より後になっています。終了日以前の開始日を選んでください。",
+        "too_long": "期間は最長366日です。短い期間を選んでください。",
+        "future": "期間の終了日がテナントのタイムゾーンで今日より後です。今日以前の終了日を選んでください。"
+      },
+      "columns": {
+        "source": "照合先",
+        "period": "期間",
+        "status": "状態",
+        "started_at": "開始日時",
+        "records": "支払い",
+        "purchases": "購入",
+        "matched": "一致",
+        "findings": "要確認",
+        "actions": "操作"
+      },
+      "source": {
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "pending": "待機中",
+        "running": "実行中",
+        "succeeded": "完了",
+        "failed": "失敗"
+      },
+      "failure": {
+        "credentials": "照合先の認証情報が保存されていないか、拒否されました。決済方法で確認してから、もう一度照合してください。",
+        "unavailable": "照合先を読み取れませんでした。しばらくしてから、この期間をもう一度照合してください。"
+      },
+      "kind": {
+        "record_unmatched": "購入のない支払い",
+        "purchase_unmatched": "支払いのない購入",
+        "amount_mismatch": "金額の食い違い",
+        "held_refund": "保留中の返金",
+        "held_dispute": "保留中の異議申し立て",
+        "other": "その他"
+      },
+      "findings": {
+        "title": "照合結果",
+        "close": "閉じる",
+        "summary": "支払い{$records :integer}件、購入{$purchases :integer}件、一致{$matched :integer}件、要確認{$findings :integer}件",
+        "list_error": "照合結果を表示できませんでした",
+        "list_failed": "照合結果を読み込めませんでした。しばらくしてからもう一度お試しください。",
+        "not_found": "この照合は見つかりませんでした。同じ期間をもう一度照合すると置き換わるため、一覧から新しいほうを開いてください。",
+        "kind_aria": "種類で絞り込む",
+        "mode_aria": "モードで絞り込む",
+        "every_kind": "すべて",
+        "every_mode": "本番とテスト",
+        "live": "本番",
+        "test": "テスト",
+        "payment_id": "照合先での支払いID",
+        "copy_payment_id": "支払いIDをコピー",
+        "purchase_amount": "購入の金額",
+        "record_amount": "照合先の金額",
+        "amount_refunded": "{$amount}(うち返金{$refunded})",
+        "purchase": "購入",
+        "open_purchase": "購入を開く",
+        "empty": "確認が必要な明細はありません。",
+        "unfinished": "この照合はまだ終わっていません。終わるとここに結果が表示されます。",
+        "pagination_aria": "照合結果のページ送り",
+        "pagination_description": "発生した順に、1ページあたり{$count :integer}件まで表示します。"
       }
     },
     "coins": {

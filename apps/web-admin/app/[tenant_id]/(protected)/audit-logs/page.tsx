@@ -25,6 +25,7 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
+import { resolveExportPeriod } from "#lib/export-period";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
@@ -40,7 +41,6 @@ import {
   AuditLogOutcomeCell,
 } from "./_components/audit-log-cells";
 import { auditActions } from "./_lib/audit-actions";
-import { resolveAuditLogExportPeriod } from "./_lib/export-period";
 import { parseAuditLogFilters } from "./_lib/search-params";
 
 const pageSize = 20;
@@ -127,7 +127,7 @@ const AuditLogsContent = async ({
 
   await redirectToLoginIfSessionRejected(result, actorCandidatesResult);
 
-  const exportPeriod = resolveAuditLogExportPeriod(filters, timeZone);
+  const exportPeriod = resolveExportPeriod(filters, timeZone);
 
   const previousHref = result.previousToken
     ? buildQueryString({

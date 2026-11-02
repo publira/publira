@@ -3,8 +3,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
- * The breakdowns a report can be read in — by day, by series — as links, so
- * the one chosen is in the URL beside the period and the sort.
+ * The ways a screen can be read — a report by day or by series, a list by the
+ * kind of its lines — as links, so the one chosen is in the URL beside the
+ * screen's other state.
  */
 const GroupNav = ({
   "aria-label": label,
