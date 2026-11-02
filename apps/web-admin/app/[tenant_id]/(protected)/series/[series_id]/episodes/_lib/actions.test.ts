@@ -218,6 +218,60 @@ describe("episode create actions", () => {
     );
   });
 
+  it("creates a priced episode with the pages it opens before a purchase", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "120");
+    formData.set("preview_page_count", "3");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ previewPageCount: 3, price: 120 }),
+      "en"
+    );
+  });
+
+  it("creates a free episode with no preview, whatever the form posted", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "0");
+    formData.set("preview_page_count", "3");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ previewPageCount: 0, price: 0 }),
+      "en"
+    );
+  });
+
+  it("refuses a negative preview page count in words that name the field", async () => {
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "120");
+    formData.set("preview_page_count", "-1");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Preview pages must be a whole number, 0 or more.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
+  });
+
   it("refuses a rental that does not undercut the price", async () => {
     const { createEpisodeAction } = await import("./actions");
     const formData = createEpisodeFormData();

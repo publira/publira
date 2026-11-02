@@ -382,6 +382,7 @@ export interface EpisodeFormFields {
   title: Locator;
   price: Locator;
   readingPeriodHours: Locator;
+  previewPageCount: Locator;
   rentalPrice: Locator;
   rentalPeriodHours: Locator;
   publishAt: Locator;
@@ -396,6 +397,7 @@ export interface EpisodeFormFields {
  * accessibility tree, which pins these to the page in front of the user.
  */
 export const episodeFormFields = (page: Page): EpisodeFormFields => ({
+  previewPageCount: page.getByRole("spinbutton", { name: /Preview pages/u }),
   price: page.getByRole("spinbutton", { name: /Price/u }),
   publishAt: page
     .getByLabel(/Publication date and time/u)

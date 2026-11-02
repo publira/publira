@@ -14,6 +14,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+
 import { EpisodePricingForm } from "./episode-pricing-form";
 
 vi.mock("#components/message", () => ({
@@ -28,6 +30,12 @@ vi.mock("#components/message", () => ({
 
 const NOT_RENTED = { initialRentalPeriodHours: 0, initialRentalPrice: 0 };
 
+interface RenderOptions {
+  initialPreviewPageCount?: number;
+  initialPrice?: number;
+  pageCount?: number;
+}
+
 const renderForm = (
   action: (
     prevState: ActionForm.State,
@@ -37,21 +45,30 @@ const renderForm = (
   rental: {
     initialRentalPrice: number;
     initialRentalPeriodHours: number;
-  } = NOT_RENTED
+  } = NOT_RENTED,
+  {
+    initialPreviewPageCount = 0,
+    initialPrice = 100,
+    pageCount = 8,
+  }: RenderOptions = {}
 ) =>
   render(
-    <EpisodePricingForm
-      action={action}
-      currency={currency}
-      episodeId="EP001-ID"
-      episodePublicId="EP001"
-      initialPrice={100}
-      initialReadingPeriodHours={72}
-      initialRentalPeriodHours={rental.initialRentalPeriodHours}
-      initialRentalPrice={rental.initialRentalPrice}
-      seriesPublicId="SERIES001"
-      tenantId="TENANT001"
-    />
+    <AdminLocaleTestProvider locale="en">
+      <EpisodePricingForm
+        action={action}
+        currency={currency}
+        episodeId="EP001-ID"
+        episodePublicId="EP001"
+        initialPreviewPageCount={initialPreviewPageCount}
+        initialPrice={initialPrice}
+        initialReadingPeriodHours={72}
+        initialRentalPeriodHours={rental.initialRentalPeriodHours}
+        initialRentalPrice={rental.initialRentalPrice}
+        pageCount={pageCount}
+        seriesPublicId="SERIES001"
+        tenantId="TENANT001"
+      />
+    </AdminLocaleTestProvider>
   );
 
 const priceInput = () =>
@@ -64,6 +81,9 @@ const readingPeriodInput = () =>
 
 const rentalPriceInput = () =>
   screen.getByRole<HTMLInputElement>("spinbutton", { name: /^Rental price/u });
+
+const previewPagesInput = () =>
+  screen.getByRole<HTMLInputElement>("spinbutton", { name: /^Preview pages/u });
 
 const rentalPeriodInput = () =>
   screen.getByRole<HTMLInputElement>("spinbutton", {
@@ -147,10 +167,94 @@ describe("EpisodePricingForm", () => {
     expect(formData?.get("reading_period_hours")).toBe("168");
     expect(formData?.get("rental_price")).toBe("50");
     expect(formData?.get("rental_period_hours")).toBe("24");
+    // A free episode opens its whole body, so it sends no preview.
+    expect(formData?.get("preview_page_count")).toBe("0");
     expect(formData?.get("episode_id")).toBe("EP001-ID");
     expect(formData?.get("episode_public_id")).toBe("EP001");
     expect(formData?.get("series_public_id")).toBe("SERIES001");
     expect(formData?.get("tenant_id")).toBe("TENANT001");
+  });
+
+  it("opens on the preview pages a priced episode is sold with", () => {
+    renderForm(undefined, "JPY", NOT_RENTED, { initialPreviewPageCount: 3 });
+
+    expect(previewPagesInput().value).toBe("3");
+    expect(previewPagesInput().min).toBe("0");
+  });
+
+  it("sends the preview pages a priced episode opens", async () => {
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
+      Promise.resolve(null)
+    );
+
+    renderForm(action);
+
+    fireEvent.change(previewPagesInput(), { target: { value: "3" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Update price and reading period" })
+    );
+
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledOnce();
+    });
+    expect(action.mock.calls[0]?.[1].get("preview_page_count")).toBe("3");
+  });
+
+  it("asks for no preview on a free episode", () => {
+    renderForm(undefined, "JPY", NOT_RENTED, {
+      initialPreviewPageCount: 3,
+      initialPrice: 0,
+    });
+
+    expect(
+      screen.queryByRole("spinbutton", { name: /^Preview pages/u })
+    ).toBeNull();
+    expect(
+      screen.getByText(
+        "A free episode opens all its pages, so it needs no preview pages."
+      )
+    ).toBeTruthy();
+  });
+
+  it("hides the preview pages once the price is lowered to 0, and offers them again once it is raised", () => {
+    renderForm(undefined, "JPY", NOT_RENTED, { initialPreviewPageCount: 3 });
+
+    fireEvent.change(priceInput(), { target: { value: "0" } });
+
+    expect(
+      screen.queryByRole("spinbutton", { name: /^Preview pages/u })
+    ).toBeNull();
+
+    fireEvent.change(priceInput(), { target: { value: "120" } });
+
+    expect(previewPagesInput().value).toBe("3");
+  });
+
+  it("notes that only the pages the episode has open when the count is past them", () => {
+    renderForm(undefined, "JPY", NOT_RENTED, { pageCount: 2 });
+
+    const note =
+      "The episode has 2 pages now, so only those open until more are added.";
+
+    expect(screen.queryByText(note)).toBeNull();
+
+    fireEvent.change(previewPagesInput(), { target: { value: "5" } });
+
+    expect(screen.getByText(note)).toBeTruthy();
+  });
+
+  it("refuses a negative count in words that name the field", () => {
+    renderForm();
+
+    fireEvent.change(previewPagesInput(), { target: { value: "-1" } });
+
+    expect(previewPagesInput().validationMessage).toBe(
+      "Preview pages must be a whole number, 0 or more."
+    );
+
+    fireEvent.change(previewPagesInput(), { target: { value: "2" } });
+
+    expect(previewPagesInput().validity.customError).toBe(false);
   });
 
   it("shows the refusal the Action returned", async () => {

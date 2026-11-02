@@ -72,6 +72,11 @@ export interface EpisodeItem {
    */
   rentalPrice: number;
   rentalPeriodHours: number;
+  /**
+   * How many of the body's opening pages anyone may read before buying the
+   * episode. It opens nothing on a free episode, whose whole body is open.
+   */
+  previewPageCount: number;
   status: string;
   scheduledAt: string;
   publishedAt: string;
@@ -332,6 +337,7 @@ type RawEpisode = Pick<
   | "eyeCatchImageVariants"
   | "id"
   | "orderIndex"
+  | "previewPageCount"
   | "price"
   | "publicId"
   | "publishedAt"
@@ -394,6 +400,7 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   ),
   id: episode.id,
   orderIndex: episode.orderIndex,
+  previewPageCount: episode.previewPageCount ?? 0,
   price: episode.price,
   publicId: episode.publicId,
   publishedAt: episode.publishedAt,
@@ -669,6 +676,7 @@ export const createEpisode = async (
     /** Both 0 create an episode that is not rented. */
     rentalPrice: number;
     rentalPeriodHours: number;
+    previewPageCount: number;
     publishAt: string;
     availability: EpisodeAvailabilityOverride;
     /** The empty value follows the series. */
@@ -696,6 +704,7 @@ export const createEpisode = async (
           : undefined,
         currency: input.currency,
         // Omitting orderIndex makes the server append to the end.
+        previewPageCount: input.previewPageCount,
         price: input.price,
         purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
           input.purchaseAvailability
@@ -1989,8 +1998,8 @@ export const deleteEpisodeTranslation = async (
 };
 
 /**
- * Sets the episode's price and reading period, and its rental, all on every
- * call. None reaches back: a purchase already made keeps the price it was paid
+ * Sets the episode's price and reading period, its rental, and its preview
+ * pages, all on every call. None reaches back: a purchase already made keeps the price it was paid
  * and the expiry it was given.
  */
 export const updateEpisodePricing = async (
@@ -2004,6 +2013,7 @@ export const updateEpisodePricing = async (
     /** Both 0 stop renting the episode. */
     rentalPrice: number;
     rentalPeriodHours: number;
+    previewPageCount: number;
   },
   locale: Locale
 ): Promise<UpdateEpisodePricingResult> => {
@@ -2024,6 +2034,7 @@ export const updateEpisodePricing = async (
       {
         currency: input.currency,
         episodeId: input.episodeId,
+        previewPageCount: input.previewPageCount,
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
         rentalPeriodHours: input.rentalPeriodHours,

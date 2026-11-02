@@ -16,7 +16,7 @@ const showing = (path: string) => new RegExp(`^${path}\\?`, "u");
 
 /**
  * What an editor changes on an episode after it was created: its title, its
- * price, reading period, and rental, and one page at a time. The replacing image is larger than a Server Action body
+ * price, reading period, rental, and preview pages, and one page at a time. The replacing image is larger than a Server Action body
  * is allowed to be, so it going through shows the page travels outside one.
  */
 test.describe("admin episode editing", () => {
@@ -205,5 +205,82 @@ test.describe("admin episode editing", () => {
     // The episode list prices the episode at what it was changed to.
     await page.goto(`${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes`);
     await expect(page.getByText("Status: Draft / Price: ¥120")).toBeVisible();
+  });
+
+  test("opens the first pages of a priced episode as a preview", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+
+    const seriesId = await createSeriesViaUi(page, {
+      synopsis: `E2E episode preview pages synopsis ${suffix}`,
+      title: `E2E Episode Preview Pages Series ${suffix}`,
+    });
+
+    createdSeriesIds.push(seriesId);
+
+    const episodeId = await createEpisodeViaUi(page, {
+      price: 100,
+      seriesPublicId: seriesId,
+      title: `E2E Episode Preview Pages ${suffix}`,
+    });
+
+    const fields = episodeFormFields(page);
+
+    const save = page.getByRole("button", {
+      name: "Update price and reading period",
+    });
+
+    await expect(fields.previewPageCount).toHaveValue("0");
+
+    // A negative count is refused on the field before anything is sent.
+    await fields.previewPageCount.fill("-1");
+    await expect(fields.previewPageCount).toHaveJSProperty(
+      "validationMessage",
+      "Preview pages must be a whole number, 0 or more."
+    );
+
+    // The episode has no pages yet, which the count is allowed to run ahead of.
+    await fields.previewPageCount.fill("3");
+    await expect(
+      page.getByText(
+        "The episode has no pages yet. Pages open as they are added, up to this number."
+      )
+    ).toBeVisible();
+    await save.click();
+    await expect(
+      page.getByText("Price and reading period updated.")
+    ).toBeVisible();
+    await expect(page).toHaveURL(
+      (url) => url.pathname === `/series/${seriesId}/episodes/${episodeId}`
+    );
+
+    // A reload reads the count back from GetEpisode.
+    await page.reload();
+    await expect(fields.previewPageCount).toHaveValue("3");
+
+    await page.goto(`${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes`);
+    await expect(page.getByText("Preview: 3")).toBeVisible();
+
+    // Making the episode free takes the field away and stores no preview.
+    await page.goto(
+      `${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes/${episodeId}`
+    );
+    await fields.price.fill("0");
+    await expect(fields.previewPageCount).toBeHidden();
+    await expect(
+      page.getByText(
+        "A free episode opens all its pages, so it needs no preview pages."
+      )
+    ).toBeVisible();
+    await save.click();
+    await expect(
+      page.getByText("Price and reading period updated.")
+    ).toBeVisible();
+
+    // The form starts again from what was stored, so pricing the episode once
+    // more offers the field at the count the free save left: none.
+    await fields.price.fill("100");
+    await expect(fields.previewPageCount).toHaveValue("0");
   });
 });

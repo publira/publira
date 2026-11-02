@@ -16,6 +16,7 @@ import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeAvailabilityField } from "./episode-availability-field";
+import * as EpisodePrice from "./episode-price-fields";
 import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availability-field";
 import { EpisodeRentalFields } from "./episode-rental-fields";
 import { PublishAtInput } from "./publish-at-input";
@@ -89,62 +90,70 @@ export const EpisodeForm = async ({
           </Field.Content>
         </Field.Root>
 
-        <Field.Root>
-          <Field.Label required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <Message message="admin.series.episodes.form.price" />
-            </Suspense>
-          </Field.Label>
-          <Field.Content>
-            <Input
-              defaultValue={toPriceInputValue(0, currency)}
-              max={maxPriceInputValue(currency)}
-              min={0}
-              name="price"
-              required
-              step={priceInputStep(currency)}
-              type="number"
-            />
-            <input name="price_currency" type="hidden" value={currency} />
-            <Field.Description>
-              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message
-                  message="admin.series.episodes.form.price_description"
-                  values={{ currency }}
-                />
+        <EpisodePrice.Root initialPrice={0}>
+          <Field.Root>
+            <Field.Label required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.series.episodes.form.price" />
               </Suspense>
-            </Field.Description>
-          </Field.Content>
-        </Field.Root>
+            </Field.Label>
+            <Field.Content>
+              <EpisodePrice.Input
+                defaultValue={toPriceInputValue(0, currency)}
+                max={maxPriceInputValue(currency)}
+                min={0}
+                name="price"
+                required
+                step={priceInputStep(currency)}
+                type="number"
+              />
+              <input name="price_currency" type="hidden" value={currency} />
+              <Field.Description>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message
+                    message="admin.series.episodes.form.price_description"
+                    values={{ currency }}
+                  />
+                </Suspense>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-        <Field.Root>
-          <Field.Label required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.form.reading_period" />
-            </Suspense>
-          </Field.Label>
-          <Field.Content>
-            <Input
-              defaultValue={seriesReadingPeriodHours}
-              max={MAX_INT32}
-              min={0}
-              name="reading_period_hours"
-              required
-              type="number"
-            />
-            <Field.Description>
-              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message message="admin.series.episodes.form.reading_period_description" />
+          <Field.Root>
+            <Field.Label required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.form.reading_period" />
               </Suspense>
-            </Field.Description>
-          </Field.Content>
-        </Field.Root>
+            </Field.Label>
+            <Field.Content>
+              <Input
+                defaultValue={seriesReadingPeriodHours}
+                max={MAX_INT32}
+                min={0}
+                name="reading_period_hours"
+                required
+                type="number"
+              />
+              <Field.Description>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.series.episodes.form.reading_period_description" />
+                </Suspense>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-        <EpisodeRentalFields
-          currency={currency}
-          initialRentalPeriodHours={seriesRentalPeriodHours}
-          initialRentalPrice={0}
-        />
+          <EpisodeRentalFields
+            currency={currency}
+            initialRentalPeriodHours={seriesRentalPeriodHours}
+            initialRentalPrice={0}
+          />
+
+          {/* A new episode has no pages yet: every page of a preview is to come. */}
+          <EpisodePrice.PreviewPagesField
+            initialPreviewPageCount={0}
+            pageCount={0}
+          />
+        </EpisodePrice.Root>
 
         <PublishAtInput timeZone={timeZone}>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>

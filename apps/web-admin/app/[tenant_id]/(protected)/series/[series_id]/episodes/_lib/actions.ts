@@ -32,6 +32,7 @@ import {
   createSeriesFreeWindows,
   episodeFreeWindowsCacheTag,
 } from "#lib/episode-free-window";
+import { previewPageCountFor } from "#lib/episode-preview";
 import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   boundedIntFormSchema,
@@ -75,6 +76,9 @@ const createEpisodeSchema = async (locale: Locale) => {
     availability: z.enum(EPISODE_AVAILABILITY_OVERRIDES, {
       error: t("admin.series.episodes.validation.availability_invalid"),
     }),
+    previewPageCount: nonNegativeIntFormSchema(
+      t("admin.series.episodes.validation.preview_page_count_invalid")
+    ),
     // Read once the tenant's currency is known.
     price: rawPriceFormSchema,
     // The currency the form showed the price in.
@@ -178,6 +182,7 @@ export const createEpisodeAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       availability: "value",
+      previewPageCount: { kind: "value", name: "preview_page_count" },
       price: "value",
       priceCurrency: { kind: "value", name: "price_currency" },
       publishAt: { kind: "value", name: "publish_at" },
@@ -239,6 +244,10 @@ export const createEpisodeAction = async (
       {
         availability: parsed.data.availability,
         currency: price.currency,
+        previewPageCount: previewPageCountFor(
+          price.value,
+          parsed.data.previewPageCount
+        ),
         price: price.value,
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,

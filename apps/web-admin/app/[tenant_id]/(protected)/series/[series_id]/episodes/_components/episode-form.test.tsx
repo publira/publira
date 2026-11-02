@@ -365,3 +365,38 @@ it("keeps what was entered when the Action refuses the submission", async () => 
     "App only"
   );
 });
+
+// A new episode starts free, which needs no preview.
+it("offers the preview pages once the new episode is priced", async () => {
+  await renderForm({
+    action,
+    currency: "JPY",
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
+    timeZone: "UTC",
+  });
+
+  expect(
+    screen.queryByRole("spinbutton", { name: /^Preview pages/u })
+  ).toBeNull();
+
+  fireEvent.change(screen.getByRole("spinbutton", { name: /^Price/u }), {
+    target: { value: "120" },
+  });
+
+  const previewPages = screen.getByRole<HTMLInputElement>("spinbutton", {
+    name: /^Preview pages/u,
+  });
+
+  fireEvent.change(previewPages, { target: { value: "3" } });
+
+  expect(previewPages.value).toBe("3");
+  // The episode has no pages until it is created.
+  expect(
+    screen.getByText(
+      "The episode has no pages yet. Pages open as they are added, up to this number."
+    )
+  ).toBeTruthy();
+});
