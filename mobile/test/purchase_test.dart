@@ -319,6 +319,87 @@ void main() {
     });
   });
 
+  group('an episode that opens a preview', () {
+    final status = find.byKey(const ValueKey('episode-page-status'));
+
+    setUp(() {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        pageCount: 8,
+        previewPageCount: 3,
+      );
+    });
+
+    Uri returnLink(String status) => Uri.parse(
+      'https://localhost/checkout/return'
+      '?episode=$paidEpisodeId&status=$status',
+    );
+
+    testWidgets('is bought from the gate after the preview and read whole', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, pages);
+      expect(find.text('1 / 3'), findsOneWidget);
+
+      for (final next in ['2 / 3', '3 / 3']) {
+        await tester.drag(pages, const Offset(300, 0));
+        await pumpUntilFound(tester, find.text(next));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      }
+      await tester.drag(pages, const Offset(300, 0));
+      await pumpUntilFound(tester, buy);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(find.text('The preview ends here'), findsOneWidget);
+
+      await tester.tap(buy);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+      expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
+
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        pageCount: 8,
+      );
+      incoming.deliver(returnLink('success'));
+      await pumpUntilFound(tester, find.text('1 / 8'));
+
+      expect(locked, findsNothing);
+      expect(status, findsOneWidget);
+    });
+
+    testWidgets('a cancelled checkout opens on the gate it left from', (
+      tester,
+    ) async {
+      incoming.initialUri = returnLink('cancelled');
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      expect(
+        find.text('The purchase was cancelled. You have not been charged.'),
+        findsOneWidget,
+      );
+      expect(find.text('3 / 3'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(locked, findsNothing);
+      expect(find.text('3 / 3'), findsOneWidget);
+    });
+
+    testWidgets('waits for the purchase on the gate rather than the preview', (
+      tester,
+    ) async {
+      incoming.initialUri = returnLink('success');
+      await pumpApp(tester, session: fakeSession);
+      for (final delay in checkoutConfirmationDelays) {
+        await tester.pump(delay);
+      }
+      await pumpUntilFound(tester, confirming);
+
+      expect(pages, findsNothing);
+    });
+  });
+
   group('an episode sold on the website alone', () {
     const soldOnWeb = 'Sold on the website';
 

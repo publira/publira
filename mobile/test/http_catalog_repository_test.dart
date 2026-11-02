@@ -2181,6 +2181,70 @@ void main() {
   );
 
   test(
+    'getEpisode hands a locked body the pages it opens as a preview',
+    () async {
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: 'EP',
+          title: 'Paid',
+          price: 300,
+          previewPageCount: 2,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+        previewPages: [
+          pb.EpisodeImage(
+            id: 'page-2',
+            imageUrl: '/images/episodes/page-2?t=token',
+            displayOrder: 2,
+            width: 800,
+            height: 1200,
+          ),
+          pb.EpisodeImage(
+            id: 'page-1',
+            imageUrl: '/images/episodes/page-1?t=token',
+            displayOrder: 1,
+            width: 800,
+            height: 1200,
+          ),
+        ],
+      );
+      final authenticated = HttpCatalogRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+
+      final detail = await authenticated.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
+      );
+
+      expect(detail!.images, isEmpty);
+      expect(detail.previewPages.map((image) => image.id), [
+        'page-1',
+        'page-2',
+      ]);
+      expect(
+        detail.previewPages.first.url.toString(),
+        '${server.baseUrl}/images/episodes/page-1?t=token',
+      );
+      expect(detail.previewPages.first.width, 800);
+      // The pages are fetched as a body's are, for the reader who read them.
+      expect(detail.imageRequestHeaders, {
+        'x-forwarded-host': 'localhost',
+        'authorization': 'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      });
+    },
+  );
+
+  test(
     'getEpisode hands the viewer the episode\'s resolved reading direction and spread start',
     () async {
       server.episodeResponse = pb.GetEpisodeDetailResponse(

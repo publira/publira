@@ -6579,6 +6579,7 @@
       "page_failed": "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "preview_ended_title": "The preview ends here",
       "previous_episode": "Previous episode",
       "previous_page": "Previous page",
       "progress": "Reading progress",

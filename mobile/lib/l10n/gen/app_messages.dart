@@ -4152,6 +4152,11 @@ final class AppMessages {
     });
   }
 
+  /// `mobile.viewer.preview_ended_title`
+  String get viewerPreviewEndedTitle {
+    return _format('mobile.viewer.preview_ended_title');
+  }
+
   /// `mobile.viewer.previous_episode`
   String get viewerPreviousEpisode {
     return _format('mobile.viewer.previous_episode');
@@ -5125,6 +5130,7 @@ const _jaSources = <String, String>{
       'ネットワークエラーか、サーバーの一時的な問題でこのページを読み込めませんでした。再読み込みしてください。',
   'mobile.viewer.page_status': '{\$page} / {\$total}',
   'mobile.viewer.page_status_range': '{\$first}–{\$last} / {\$total}',
+  'mobile.viewer.preview_ended_title': '試し読みはここまでです',
   'mobile.viewer.previous_episode': '前のエピソード',
   'mobile.viewer.previous_page': '前のページ',
   'mobile.viewer.progress': '読み進み',
@@ -6188,6 +6194,7 @@ const _enSources = <String, String>{
       'This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.',
   'mobile.viewer.page_status': '{\$page} / {\$total}',
   'mobile.viewer.page_status_range': '{\$first}–{\$last} / {\$total}',
+  'mobile.viewer.preview_ended_title': 'The preview ends here',
   'mobile.viewer.previous_episode': 'Previous episode',
   'mobile.viewer.previous_page': 'Previous page',
   'mobile.viewer.progress': 'Reading progress',
@@ -7108,6 +7115,7 @@ const _koSources = <String, String>{
       '네트워크 오류 또는 서버의 일시적인 문제로 이 페이지를 불러오지 못했습니다. 새로고침해 주세요.',
   'mobile.viewer.page_status': '{\$page} / {\$total}',
   'mobile.viewer.page_status_range': '{\$first}–{\$last} / {\$total}',
+  'mobile.viewer.preview_ended_title': '미리보기는 여기까지입니다',
   'mobile.viewer.previous_episode': '이전 에피소드',
   'mobile.viewer.previous_page': '이전 페이지',
   'mobile.viewer.progress': '읽은 분량',
@@ -7936,6 +7944,7 @@ const _zhHansSources = <String, String>{
   'mobile.viewer.page_failed': '网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。',
   'mobile.viewer.page_status': '{\$page} / {\$total}',
   'mobile.viewer.page_status_range': '{\$first}–{\$last} / {\$total}',
+  'mobile.viewer.preview_ended_title': '试读到此结束',
   'mobile.viewer.previous_episode': '上一章',
   'mobile.viewer.previous_page': '上一页',
   'mobile.viewer.progress': '阅读进度',
@@ -8763,6 +8772,7 @@ const _zhHantSources = <String, String>{
   'mobile.viewer.page_failed': '網路錯誤或伺服器暫時發生問題，導致本頁無法載入。請重新載入。',
   'mobile.viewer.page_status': '{\$page} / {\$total}',
   'mobile.viewer.page_status_range': '{\$first}–{\$last} / {\$total}',
+  'mobile.viewer.preview_ended_title': '試讀到此結束',
   'mobile.viewer.previous_episode': '上一章',
   'mobile.viewer.previous_page': '上一頁',
   'mobile.viewer.progress': '閱讀進度',

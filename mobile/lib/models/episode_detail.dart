@@ -178,6 +178,7 @@ class EpisodeDetail {
     required this.access,
     required this.images,
     this.previewImages = const [],
+    this.previewPages = const [],
     this.entitlementSource = EpisodeEntitlementSource.unspecified,
     this.previousEpisode,
     this.nextEpisode,
@@ -224,6 +225,13 @@ class EpisodeDetail {
   /// [EpisodeAccess.ageRestricted], where they stand in for [images].
   final List<EpisodeImageItem> previewImages;
 
+  /// The opening pages the episode opens to every reader as a preview, in
+  /// `displayOrder`: the pages themselves rather than renditions, fetched as
+  /// [images] are, which the reader turns before meeting the purchase. Set
+  /// only while [access] is [EpisodeAccess.locked], and empty on an episode
+  /// that opens none.
+  final List<EpisodeImageItem> previewPages;
+
   /// Why the reader may open the body, set only while [access] is
   /// [EpisodeAccess.entitled].
   final EpisodeEntitlementSource entitlementSource;
@@ -239,8 +247,9 @@ class EpisodeDetail {
   /// no later episode is free.
   final EpisodeNeighbor? nextFreeEpisode;
 
-  /// Headers [images] must be fetched with. They travel with the pages because
-  /// the same read decided both which pages exist and who is asking for them.
+  /// Headers [images] and [previewPages] must be fetched with. They travel
+  /// with the pages because the same read decided both which pages exist and
+  /// who is asking for them.
   final Map<String, String> imageRequestHeaders;
 
   /// Headers [previewImages] are fetched with. A preview is the same for every

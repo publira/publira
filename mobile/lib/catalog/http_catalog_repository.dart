@@ -1533,6 +1533,7 @@ class HttpCatalogRepository implements CatalogRepository {
       access: EpisodeAccess.fromWire(body.access),
       images: _parseEpisodeImages(body.images, 'images'),
       previewImages: _parseEpisodeImages(body.previewImages, 'previewImages'),
+      previewPages: _parseEpisodeImages(body.previewPages, 'previewPages'),
       entitlementSource: EpisodeEntitlementSource.fromWire(
         body.entitlementSource,
       ),

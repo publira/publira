@@ -22,6 +22,10 @@ const _turnDuration = Duration(milliseconds: 200);
 const _doubleTapScale = 2.5;
 const _maxScale = 4.0;
 
+/// How far up from the bottom edge the reader's controls reach, which an end
+/// screen keeps what the reader acts on above: they stay overlaid on it.
+const readerControlsClearance = 120.0;
+
 /// Paged body reader.
 ///
 /// Pages turn the way the episode is bound: right to left unless it says
@@ -38,6 +42,7 @@ class EpisodeReader extends StatefulWidget {
     required this.images,
     required this.imageHeaders,
     this.initialPageIndex = 0,
+    this.opensOnEndScreen = false,
     this.onPageChanged,
     this.onFinished,
     this.endScreen,
@@ -57,6 +62,11 @@ class EpisodeReader extends StatefulWidget {
   /// page they are looking at rather than being moved to the one the API
   /// answers for them.
   final int initialPageIndex;
+
+  /// Whether the reader opens on [endScreen] rather than on a page, with the
+  /// last page behind it. Read once, as [initialPageIndex] is, which it
+  /// stands in for.
+  final bool opensOnEndScreen;
 
   /// The reader moved to another page of the episode. It is not called for
   /// [initialPageIndex], which is the page they were already on.
@@ -127,7 +137,11 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   @override
   void initState() {
     super.initState();
-    _index = widget.initialPageIndex;
+    _atEnd =
+        widget.opensOnEndScreen &&
+        widget.endScreen != null &&
+        widget.images.isNotEmpty;
+    _index = _atEnd ? widget.images.length - 1 : widget.initialPageIndex;
     _ownsClient = widget.imageClient == null;
     _client = widget.imageClient ?? EpisodeImageClient(pages: widget.pageStore);
   }

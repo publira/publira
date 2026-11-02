@@ -1251,9 +1251,11 @@ List<RankedSeriesItem> fixtureRankedSeries() {
 ///
 /// Each names the next free episode after it, and one [access] withholds also
 /// carries the preview of its first two pages, the way the API answers then.
+/// A locked one opens its first [previewPageCount] pages as a preview.
 Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
+  int previewPageCount = 0,
   SeriesAgeRating? ageRating,
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   EpisodeEntitlementSource entitlementSource =
@@ -1317,6 +1319,23 @@ Map<String, EpisodeDetail> fixtureEpisodes({
               width: 800,
               height: 1200,
             ),
+        ],
+        previewPages: [
+          if (access == EpisodeAccess.locked)
+            for (
+              var page = 1;
+              page <= previewPageCount && page <= pageCount;
+              page++
+            )
+              EpisodeImageItem(
+                id: '${episode.id}-page-$page',
+                url: Uri.parse(
+                  'http://127.0.0.1:8200/images/episodes/${episode.id}-page-$page',
+                ),
+                displayOrder: page,
+                width: 800,
+                height: 1200,
+              ),
         ],
         ageRating: ageRating,
       );
