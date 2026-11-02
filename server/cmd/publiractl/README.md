@@ -887,7 +887,7 @@ A run the source refuses, or cannot be reached for, is recorded as failed on its
 
 ## build-data-exports
 
-Builds every archive a reader asked for of what the install keeps about them and no worker has built, oldest first: the job the worker runs every 10 seconds on a queue of its own. Each one reads every table that holds the reader's rows into a ZIP of JSON files with the purchase history CSV beside them, stores it in the bucket saved in the platform's settings under `tenants/<tenant>/data-exports/`, marks it ready for seven days, and queues the notice that tells the reader, as [Reader accounts](../../../docs/en/4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. A request the worker is building is not taken up a second time, and one a stopped worker left claimed is taken over 15 minutes after its claim. A run with none waiting does nothing.
+Builds every archive a reader asked for of what the install keeps about them and no worker has built, oldest first: the job the worker runs every 10 seconds on a queue of its own. Each one reads every table that holds the reader's rows into a ZIP of JSON files with the purchase history CSV beside them, stores it in the bucket saved in the platform's settings under `data-exports/<tenant>/`, outside the `tenants/` prefix `purge-orphan-images` sweeps, marks it ready for seven days, and queues the notice that tells the reader, as [Reader accounts](../../../docs/en/4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. A request the worker is building is not taken up a second time, and one a stopped worker left claimed is taken over 15 minutes after its claim. A run with none waiting does nothing.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -904,7 +904,7 @@ A request made while no object store is saved is recorded as failed, for the rea
 
 ## purge-data-exports
 
-Deletes, from the bucket and then from the database, every reader's archive whose seven days are up, every failed request seven days after it failed, and every request and archive of an account that was deleted, across every tenant. A row whose archive cannot be deleted is kept, so the next run tries again rather than forgetting an object.
+Deletes, from the bucket and then from the database, every reader's archive whose seven days are up, every failed request seven days after it failed, and every request and archive of an account that was deleted, across every tenant. A row whose archive cannot be deleted is kept, so the next run tries again rather than forgetting an object. It then walks `data-exports/` and deletes every archive a day old that no row names, as a build cut off between storing an archive and recording it leaves.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -916,6 +916,6 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store saved with one.
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
-- `PUBLIRA_DATA_EXPORT_PURGE_DRY_RUN`: `true` deletes nothing and reports the requests and archives the first chunk would remove.
+- `PUBLIRA_DATA_EXPORT_PURGE_DRY_RUN`: `true` deletes nothing and reports the requests and archives the first chunk would remove, and the unrecorded archives the walk would.
 
-The structured log records the requests and archives deleted, whether it was a dry run, and the elapsed time.
+The structured log records the requests, archives, and unrecorded archives deleted, whether it was a dry run, and the elapsed time.

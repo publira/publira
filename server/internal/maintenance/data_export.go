@@ -63,6 +63,7 @@ func (j DataExportPurge) Run(ctx context.Context, deps Deps) error {
 	attrs := []any{
 		"requests_deleted", result.Requests,
 		"archives_deleted", result.Archives,
+		"unrecorded_archives_deleted", result.Unrecorded,
 		"dry_run", j.DryRun,
 		"duration", time.Since(started),
 	}

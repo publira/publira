@@ -255,7 +255,7 @@ The rebuild, purge, royalty close, and search index work runs here as well, on t
 | `maintenance.purge_mfa_challenges` | Deletes the spent MFA challenges whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `maintenance.purge_withdrawn_comments` | Deletes the comments their authors withdrew past the retention window |
 | `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
-| `maintenance.purge_data_exports` | Deletes the readers' data downloads whose seven days are up, and those of deleted accounts, from the bucket and the database |
+| `maintenance.purge_data_exports` | Deletes the readers' data downloads whose seven days are up, and those of deleted accounts, from the bucket and the database, and the archives a day old under `data-exports/` that no row names |
 | `maintenance.close_royalty_statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `maintenance.sync_google_play_voided_purchases` | Takes back the purchases Google Play refunded |
 | `maintenance.build_search_index` | Builds the catalog index on the saved search engine, when the search does not answer from it yet, and moves the search onto it |

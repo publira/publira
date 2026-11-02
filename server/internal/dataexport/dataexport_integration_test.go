@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/dataexport"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/storage/storagetest"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -246,7 +247,7 @@ func TestRunPendingBuildsStoresAndNotifiesInOnePass(t *testing.T) {
 	if !row.ReadyAt.Valid || !row.ExpiresAt.Time.Equal(now.Add(7*24*time.Hour)) {
 		t.Fatalf("data export = %+v, want ready and kept for seven days", row)
 	}
-	if prefix := "tenants/" + f.tenant.PublicID + "/data-exports/" + id.String() + "/"; !strings.HasPrefix(row.ObjectKey.String, prefix) || !strings.HasSuffix(row.ObjectKey.String, ".zip") {
+	if prefix := dataexport.ObjectPrefix + f.tenant.PublicID + "/" + id.String() + "/"; !strings.HasPrefix(row.ObjectKey.String, prefix) || !strings.HasSuffix(row.ObjectKey.String, ".zip") {
 		t.Fatalf("object key = %q, want a ZIP under %q", row.ObjectKey.String, prefix)
 	}
 	stored, ok := bucket.Object(row.ObjectKey.String)
@@ -353,7 +354,7 @@ func TestPurgeTakesTheExpiredAndTheDeletedAccountsArchives(t *testing.T) {
 	}
 
 	purgeDeps := dataexport.Deps{DB: f.pg.OpenContentStatsDB(t), Reclaimers: bucket, Now: func() time.Time { return built }}
-	if counted, err := dataexport.Purge(context.Background(), purgeDeps, true); err != nil || counted != (dataexport.PurgeResult{Requests: 2, Archives: 1}) {
+	if counted, err := dataexport.Purge(context.Background(), purgeDeps, true); err != nil || counted.Requests != 2 || counted.Archives != 1 {
 		t.Fatalf("dry run = %+v, %v, want the two requests counted", counted, err)
 	}
 	if keys := bucket.Keys(); len(keys) != 2 {
@@ -363,7 +364,7 @@ func TestPurgeTakesTheExpiredAndTheDeletedAccountsArchives(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Purge: %v", err)
 	}
-	if result != (dataexport.PurgeResult{Requests: 2, Archives: 1}) {
+	if result.Requests != 2 || result.Archives != 1 {
 		t.Fatalf("Purge = %+v, want the expired request with its archive and the deleted account's", result)
 	}
 	if keys := bucket.Keys(); !slices.Equal(keys, []string{keptKey}) {
@@ -387,9 +388,10 @@ func TestPurgeTakesTheExpiredAndTheDeletedAccountsArchives(t *testing.T) {
 	}
 }
 
-// The orphan sweep deletes an object under a tenant's prefix that no row
-// names, so an archive a row names has to be one it keeps.
-func TestTheOrphanSweepKeepsAnArchiveARowNames(t *testing.T) {
+// An archive a build stored and never recorded, as one cut off between the
+// two leaves, is deleted once it is a day old; one a row names is kept, and
+// so is one too young to tell from a build still recording it.
+func TestPurgeSweepsAnArchiveNoRowNames(t *testing.T) {
 	t.Parallel()
 	f := newExportFixture(t)
 	bucket := storagetest.NewMemory()
@@ -397,13 +399,25 @@ func TestTheOrphanSweepKeepsAnArchiveARowNames(t *testing.T) {
 	if _, err := dataexport.RunPending(context.Background(), dataexport.Deps{DB: f.pg.OpenContentStatsDB(t), Storage: bucket}); err != nil {
 		t.Fatalf("RunPending: %v", err)
 	}
-	key := f.row(t, id).ObjectKey.String
-
-	referenced, err := dbmodels.New(f.pg.OpenContentStatsDB(t)).ListReferencedObjectKeys(context.Background(), []string{key, "tenants/" + f.tenant.PublicID + "/data-exports/gone.zip"})
-	if err != nil {
-		t.Fatalf("ListReferencedObjectKeys: %v", err)
+	recorded := f.row(t, id).ObjectKey.String
+	unrecorded := dataexport.ObjectKey(f.tenant.PublicID, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()))
+	if _, err := bucket.Upload(context.Background(), storage.UploadRequest{ObjectKey: unrecorded, Data: []byte("zip")}); err != nil {
+		t.Fatalf("store an unrecorded archive: %v", err)
 	}
-	if !slices.Equal(referenced, []string{key}) {
-		t.Fatalf("referenced = %v, want the archive the row names alone", referenced)
+	deps := func(at time.Time) dataexport.Deps {
+		return dataexport.Deps{DB: f.pg.OpenContentStatsDB(t), Reclaimers: bucket, Now: func() time.Time { return at }}
+	}
+
+	if result, err := dataexport.Purge(context.Background(), deps(time.Now()), false); err != nil || result.Unrecorded != 0 {
+		t.Fatalf("Purge of a young unrecorded archive = %+v, %v, want it kept", result, err)
+	}
+	if result, err := dataexport.Purge(context.Background(), deps(time.Now().Add(25*time.Hour)), true); err != nil || result.Unrecorded != 1 || len(bucket.Keys()) != 2 {
+		t.Fatalf("dry run = %+v, %v (bucket %v), want the unrecorded archive counted and kept", result, err, bucket.Keys())
+	}
+	if result, err := dataexport.Purge(context.Background(), deps(time.Now().Add(25*time.Hour)), false); err != nil || result.Unrecorded != 1 {
+		t.Fatalf("Purge a day later = %+v, %v, want the unrecorded archive deleted", result, err)
+	}
+	if keys := bucket.Keys(); !slices.Equal(keys, []string{recorded}) {
+		t.Fatalf("bucket = %v, want the archive the row names alone", keys)
 	}
 }

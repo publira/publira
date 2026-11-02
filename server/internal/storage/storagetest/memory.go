@@ -18,13 +18,14 @@ import (
 // storage.Opener, a storage.Reclaimer, and the storage.ReclaimerSource that
 // resolves to itself.
 type Memory struct {
-	mu      sync.Mutex
-	objects map[string][]byte
+	mu       sync.Mutex
+	objects  map[string][]byte
+	modified map[string]time.Time
 }
 
 // NewMemory is an empty bucket.
 func NewMemory() *Memory {
-	return &Memory{objects: map[string][]byte{}}
+	return &Memory{objects: map[string][]byte{}, modified: map[string]time.Time{}}
 }
 
 // Upload implements storage.Provider.
@@ -32,6 +33,7 @@ func (m *Memory) Upload(_ context.Context, req storage.UploadRequest) (storage.U
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.objects[req.ObjectKey] = slices.Clone(req.Data)
+	m.modified[req.ObjectKey] = time.Now()
 	return storage.UploadResult{Provider: "memory", ObjectKey: req.ObjectKey, SizeBytes: int64(len(req.Data))}, nil
 }
 
@@ -53,7 +55,7 @@ func (m *Memory) List(_ context.Context, req storage.ListRequest) (storage.ListR
 	var result storage.ListResult
 	for key, data := range m.objects {
 		if strings.HasPrefix(key, req.Prefix) {
-			result.Objects = append(result.Objects, storage.Object{ObjectKey: key, LastModified: time.Now(), SizeBytes: int64(len(data))})
+			result.Objects = append(result.Objects, storage.Object{ObjectKey: key, LastModified: m.modified[key], SizeBytes: int64(len(data))})
 		}
 	}
 	return result, nil
@@ -65,6 +67,7 @@ func (m *Memory) Delete(_ context.Context, objectKeys []string) error {
 	defer m.mu.Unlock()
 	for _, key := range objectKeys {
 		delete(m.objects, key)
+		delete(m.modified, key)
 	}
 	return nil
 }

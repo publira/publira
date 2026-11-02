@@ -33,14 +33,18 @@ const StaleClaim = 15 * time.Minute
 // ContentType is what an archive is stored and served as.
 const ContentType = "application/zip"
 
-// ObjectKey is where one build of a request's archive is stored. It sits
-// under the tenant's prefix, which the orphan sweep walks, so an archive whose
-// row was never written, as one a build stored and then could not record is,
-// is deleted by the sweep a day later. Each build has a key of its own: a
-// build that took over a stale claim and one still running under it both
-// store an archive, and the one whose record loses deletes its own alone.
+// ObjectPrefix is the part of the bucket the archives are stored under. It is
+// outside the tenants/ prefix the orphan image sweep walks, because the sweep
+// of the release before this one knows no row that names an archive and
+// would delete every one a day old. Purge sweeps this prefix itself instead.
+const ObjectPrefix = "data-exports/"
+
+// ObjectKey is where one build of a request's archive is stored. Each build
+// has a key of its own: a build that took over a stale claim and one still
+// running under it both store an archive, and the one whose record loses
+// deletes its own alone.
 func ObjectKey(tenantPublicID string, id, buildID uuid.UUID) string {
-	return "tenants/" + tenantPublicID + "/data-exports/" + id.String() + "/" + buildID.String() + ".zip"
+	return ObjectPrefix + tenantPublicID + "/" + id.String() + "/" + buildID.String() + ".zip"
 }
 
 // Deps is what a pass runs on.
@@ -265,8 +269,7 @@ func fail(ctx context.Context, deps Deps, queries *dbmodels.Queries, request dbm
 }
 
 // deleteUnrecorded removes an archive no row names. A delete that fails is
-// left to the orphan sweep, which reaches every object under the tenant's
-// prefix that no row names.
+// left to Purge, which sweeps every archive a day old that no row names.
 func deleteUnrecorded(ctx context.Context, deps Deps, logger *slog.Logger, key string) {
 	if deps.Reclaimers == nil {
 		return
@@ -276,6 +279,6 @@ func deleteUnrecorded(ctx context.Context, deps Deps, logger *slog.Logger, key s
 		err = reclaimer.Delete(ctx, []string{key})
 	}
 	if err != nil {
-		logger.WarnContext(ctx, "could not delete an unrecorded data export; the orphan sweep will", "object_key", key, "error", err)
+		logger.WarnContext(ctx, "could not delete an unrecorded data export; the purge will", "object_key", key, "error", err)
 	}
 }
