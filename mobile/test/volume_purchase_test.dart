@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
@@ -367,6 +368,17 @@ void main() {
       tester,
     ) async {
       browser.succeeds = false;
+      await pumpApp(tester);
+      await pumpUntilFound(tester, bookstoreA);
+
+      await tester.tap(bookstoreA);
+      await pumpUntilFound(tester, find.byType(SnackBar));
+
+      expect(browser.opened, [Uri.parse('https://books.example.com/volume-2')]);
+    });
+
+    testWidgets('say so when the device refuses to open them', (tester) async {
+      browser.error = PlatformException(code: 'ACTIVITY_NOT_FOUND');
       await pumpApp(tester);
       await pumpUntilFound(tester, bookstoreA);
 

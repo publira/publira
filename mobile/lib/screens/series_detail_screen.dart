@@ -22,8 +22,9 @@ import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
-import 'package:publira/links/external_browser.dart';
+import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/link_scope.dart';
+import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
@@ -1542,8 +1543,7 @@ class _BookstoreLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final browser = LinkScope.maybeOf(context)?.browser;
-    if (browser == null) {
+    if (LinkScope.maybeOf(context)?.browser == null) {
       return const SizedBox.shrink();
     }
     final theme = Theme.of(context);
@@ -1572,27 +1572,14 @@ class _BookstoreLinks extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.open_in_new),
                   label: AutospacedText(link.label),
-                  onPressed: () => unawaited(_open(context, browser, link.url)),
+                  onPressed: () =>
+                      followTenantLink(context, ExternalDestination(link.url)),
                 ),
             ],
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _open(
-    BuildContext context,
-    ExternalBrowser browser,
-    Uri url,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final messages = AppMessages.of(context);
-    if (!await browser.open(url)) {
-      messenger.showSnackBar(
-        SnackBar(content: AutospacedText(messages.commonOpenLinkFailed)),
-      );
-    }
   }
 }
 
