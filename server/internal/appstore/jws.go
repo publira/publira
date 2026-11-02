@@ -82,6 +82,14 @@ type Transaction struct {
 	// transaction pays for ends, in milliseconds since the epoch; zero for any
 	// other product.
 	ExpiresDate int64 `json:"expiresDate"`
+	// PurchaseDate is when the App Store charged the customer, in
+	// milliseconds since the epoch.
+	PurchaseDate int64 `json:"purchaseDate"`
+	// Price is what the customer was charged in milliunits of Currency, an ISO
+	// 4217 code: a thousandth of the currency's unit, whatever its minor unit
+	// is. Currency is empty on a transaction that predates them.
+	Price    int64  `json:"price"`
+	Currency string `json:"currency"`
 }
 
 // Verifier checks the JWS payloads the App Store signs.

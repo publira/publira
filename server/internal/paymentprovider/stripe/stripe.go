@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	stripego "github.com/stripe/stripe-go/v87"
@@ -343,6 +345,68 @@ func refundError(err error) (bool, error) {
 	default:
 		return false, err
 	}
+}
+
+// transactionTypes are the balance transactions a payment from a reader
+// leaves: `charge` for a card, and `payment` for the methods Stripe settles
+// another way. Each is listed on its own, since the list takes one type.
+var transactionTypes = []stripego.BalanceTransactionType{
+	stripego.BalanceTransactionTypeCharge,
+	stripego.BalanceTransactionTypePayment,
+}
+
+// ListTransactions reads the account's balance transactions of the period,
+// each with the charge it records expanded, which names the payment intent a
+// purchase stores and what has been refunded on it.
+func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time) ([]paymentprovider.Transaction, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return nil, err
+	}
+	var transactions []paymentprovider.Transaction
+	for _, transactionType := range transactionTypes {
+		params := &stripego.BalanceTransactionListParams{
+			CreatedRange: &stripego.RangeQueryParams{GreaterThanOrEqual: from.Unix(), LesserThan: to.Unix()},
+			Type:         stripego.String(string(transactionType)),
+		}
+		params.AddExpand("data.source")
+		for balance, err := range client.V1BalanceTransactions.List(ctx, params).All(ctx) {
+			if err != nil {
+				return nil, listError(err)
+			}
+			if balance.Source == nil || balance.Source.Charge == nil {
+				continue
+			}
+			charge := balance.Source.Charge
+			// A charge that failed took nothing, and one made outside a
+			// payment intent is no purchase's.
+			if charge.Status != stripego.ChargeStatusSucceeded || charge.PaymentIntent == nil || charge.PaymentIntent.ID == "" {
+				continue
+			}
+			transactions = append(transactions, paymentprovider.Transaction{
+				PaymentID:      charge.PaymentIntent.ID,
+				Amount:         charge.Amount,
+				AmountRefunded: charge.AmountRefunded,
+				Currency:       strings.ToUpper(string(charge.Currency)),
+				Test:           !charge.Livemode,
+				Created:        time.Unix(charge.Created, 0).UTC(),
+			})
+		}
+	}
+	slices.SortStableFunc(transactions, func(a, b paymentprovider.Transaction) int {
+		return a.Created.Compare(b.Created)
+	})
+	return transactions, nil
+}
+
+// listError reads an error Stripe answered a list with as what
+// ListTransactions reports.
+func listError(err error) error {
+	var stripeErr *stripego.Error
+	if errors.As(err, &stripeErr) && (stripeErr.HTTPStatusCode == http.StatusUnauthorized || stripeErr.HTTPStatusCode == http.StatusForbidden) {
+		return fmt.Errorf("%w: %s", paymentprovider.ErrCredentialsRefused, stripeErr.Msg)
+	}
+	return fmt.Errorf("list balance transactions: %w", err)
 }
 
 func (p *Provider) ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {

@@ -28,6 +28,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/maintenance"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentreconciliation"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/storage"
@@ -54,6 +56,8 @@ const (
 	ServiceNameSyncGooglePlayVoidedPurchases = "publira-sync-google-play-voided-purchases"
 
 	ServiceNameBuildSearchIndex = "publira-build-search-index"
+
+	ServiceNameReconcilePayments = "publira-reconcile-payments"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -87,6 +91,13 @@ const passTurnWait = 10 * time.Second
 // builds would fill and swap the same alias.
 const SearchIndexQueueName = "search_index"
 
+// PaymentReconciliationQueueName is the queue the payment reconciliations run
+// on. A Tenant admin who started one is waiting on it, so it is kept off the
+// maintenance queue for the reason the search index build is, and one run
+// paging a provider's API for a long period does not hold the rebuilds back.
+// One worker, so one install pages each provider once at a time.
+const PaymentReconciliationQueueName = "payment_reconciliation"
+
 const (
 	kindProjectEpisodeReads    = "maintenance.project_episode_reads"
 	kindAggregateContentStats  = "maintenance.aggregate_content_stats"
@@ -104,6 +115,8 @@ const (
 	kindSyncGooglePlayVoidedPurchases = "maintenance.sync_google_play_voided_purchases"
 
 	kindBuildSearchIndex = "maintenance.build_search_index"
+
+	kindReconcilePayments = "maintenance.reconcile_payments"
 )
 
 const (
@@ -136,6 +149,11 @@ const (
 	// at for an index to build, the interval every process rereads the
 	// settings on.
 	searchIndexBuildInterval = platformsearch.RefreshInterval
+
+	// paymentReconciliationInterval is how often the worker looks for a
+	// reconciliation a Tenant admin started, which is at most how long one
+	// waits before it runs.
+	paymentReconciliationInterval = 10 * time.Second
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
@@ -167,6 +185,7 @@ func ServiceNames() []string {
 		ServiceNameCloseRoyaltyStatements,
 		ServiceNameSyncGooglePlayVoidedPurchases,
 		ServiceNameBuildSearchIndex,
+		ServiceNameReconcilePayments,
 	}
 }
 
@@ -186,8 +205,13 @@ type Config struct {
 	// tenant's Google Play refunds with. Secrets also decrypts the password
 	// the search index build connects to the engine with.
 	Secrets    paymentsettings.SecretManager
-	GooglePlay maintenance.VoidedPurchaseLister
-	Logger     *slog.Logger
+	GooglePlay maintenance.GooglePlayReader
+	// Payments, AppStore, and AppStoreVerifier are, with Secrets and
+	// GooglePlay, what the payment reconciliations read each source with.
+	Payments         *paymentprovider.Registry
+	AppStore         paymentreconciliation.AppStoreHistory
+	AppStoreVerifier paymentreconciliation.TransactionVerifier
+	Logger           *slog.Logger
 }
 
 // Jobs holds the settings each kind runs with for the life of the process.
@@ -217,6 +241,8 @@ type Jobs struct {
 
 	searchIndex maintenance.SearchIndexBuild
 
+	paymentReconciliation maintenance.PaymentReconciliation
+
 	// turnWait is passTurnWait, kept on the value so a test of two replicas
 	// does not wait it out.
 	turnWait time.Duration
@@ -237,7 +263,11 @@ func New(cfg Config) (*Jobs, error) {
 		Storage:    cfg.Storage,
 		Secrets:    cfg.Secrets,
 		GooglePlay: cfg.GooglePlay,
+		Payments:   cfg.Payments,
+		AppStore:   cfg.AppStore,
 		Logger:     cfg.Logger,
+
+		AppStoreVerifier: cfg.AppStoreVerifier,
 	}, turnWait: passTurnWait}
 
 	var err error
@@ -268,8 +298,8 @@ func New(cfg Config) (*Jobs, error) {
 	return jobs, nil
 }
 
-// Unhosted is the jobs as a worker replica that hosts neither QueueName nor
-// SearchIndexQueueName holds them: built without the pool New needs, so none
+// Unhosted is the jobs as a worker replica that hosts none of QueueName,
+// SearchIndexQueueName, and PaymentReconciliationQueueName holds them: built without the pool New needs, so none
 // of them can run, and no tunable is read. Whichever replica River elects
 // leader still needs every one of them, hosted or not: it enqueues each
 // periodic job, and it retries a pass left running by a replica that died only
@@ -317,6 +347,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &buildSearchIndexWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register build-search-index worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &reconcilePaymentsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register reconcile-payments worker: %w", err)
+	}
 	return nil
 }
 
@@ -343,6 +376,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{royaltyCloseInterval, CloseRoyaltyStatementsArgs{}},
 		{googlePlayVoidedPurchaseInterval, SyncGooglePlayVoidedPurchasesArgs{}},
 		{searchIndexBuildInterval, BuildSearchIndexArgs{}},
+		{paymentReconciliationInterval, ReconcilePaymentsArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {
@@ -359,8 +393,9 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 // Queues is the queues they are enqueued on, for the client that runs them.
 func (j *Jobs) Queues() map[string]river.QueueConfig {
 	return map[string]river.QueueConfig{
-		QueueName:            {MaxWorkers: queueMaxWorkers},
-		SearchIndexQueueName: {MaxWorkers: 1},
+		QueueName:                      {MaxWorkers: queueMaxWorkers},
+		SearchIndexQueueName:           {MaxWorkers: 1},
+		PaymentReconciliationQueueName: {MaxWorkers: 1},
 	}
 }
 

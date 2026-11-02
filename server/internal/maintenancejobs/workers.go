@@ -331,3 +331,30 @@ func (w *buildSearchIndexWorker) Work(ctx context.Context, job *river.Job[BuildS
 		return w.jobs.searchIndex.Run(ctx, deps)
 	})
 }
+
+// ReconcilePaymentsArgs runs the payment reconciliations Tenant admins
+// started.
+type ReconcilePaymentsArgs struct{}
+
+func (ReconcilePaymentsArgs) Kind() string { return kindReconcilePayments }
+
+func (ReconcilePaymentsArgs) InsertOpts() river.InsertOpts {
+	opts := insertOpts()
+	opts.Queue = PaymentReconciliationQueueName
+	return opts
+}
+
+type reconcilePaymentsWorker struct {
+	river.WorkerDefaults[ReconcilePaymentsArgs]
+	jobs *Jobs
+}
+
+func (w *reconcilePaymentsWorker) Timeout(*river.Job[ReconcilePaymentsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *reconcilePaymentsWorker) Work(ctx context.Context, job *river.Job[ReconcilePaymentsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameReconcilePayments, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.paymentReconciliation.Run(ctx, deps)
+	})
+}

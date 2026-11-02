@@ -5,18 +5,22 @@
 package stripetest
 
 import (
+	"cmp"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"maps"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	stripego "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
@@ -182,6 +186,12 @@ type paymentIntent struct {
 	amount   int64
 	currency string
 	refunded int64
+	// created is when the intent's charge was taken, in seconds since the
+	// epoch, and zero for an intent no balance transaction lists, as every
+	// intent is until SetCreated says otherwise. livemode is the mode it was
+	// taken in.
+	created  int64
+	livemode bool
 	// failNext makes the next refund created on the intent a failed one.
 	failNext bool
 }
@@ -221,6 +231,7 @@ func NewAPI(t testing.TB) *API {
 	mux.HandleFunc("GET /v1/checkout/sessions/{id}", api.getCheckoutSession)
 	mux.HandleFunc("POST /v1/checkout/sessions/{id}/expire", api.expireCheckoutSession)
 	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
+	mux.HandleFunc("GET /v1/balance_transactions", api.listBalanceTransactions)
 	mux.HandleFunc("GET /v1/prices/{id}", api.getPrice)
 	mux.HandleFunc("GET /v1/subscriptions/{id}", api.getSubscription)
 	mux.HandleFunc("DELETE /v1/subscriptions/{id}", api.cancelSubscription)
@@ -264,6 +275,17 @@ func (a *API) setCurrency(secretKey, id, currency string) {
 	if intent := a.intent(secretKey, id); intent.currency == "" {
 		intent.currency = strings.ToLower(currency)
 	}
+}
+
+// SetCreated makes the payment intent id under secretKey one whose charge was
+// taken at at in the mode livemode names, which the balance transactions list
+// as a charge.
+func (a *API) SetCreated(secretKey, id string, at time.Time, livemode bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	intent := a.intent(secretKey, id)
+	intent.created = at.Unix()
+	intent.livemode = livemode
 }
 
 // FailNextRefund makes the next refund created on the payment intent id under
@@ -579,6 +601,75 @@ func (a *API) listRefunds(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// listBalanceTransactions answers a charge's balance transaction for every
+// intent under the request's secret key that SetCreated dated within the
+// query's created[gte] and created[lt], newest first, with its charge
+// expanded as the source, in one page. Any type but charge lists nothing, and
+// a revoked key is refused.
+func (a *API) listBalanceTransactions(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if a.refuseRevoked(w, secretKey) {
+		return
+	}
+	query := r.URL.Query()
+	gte, _ := strconv.ParseInt(query.Get("created[gte]"), 10, 64)
+	lt, err := strconv.ParseInt(query.Get("created[lt]"), 10, 64)
+	if err != nil {
+		lt = math.MaxInt64
+	}
+	type listed struct {
+		id     string
+		intent paymentIntent
+	}
+	var intents []listed
+	if query.Get("type") == "" || query.Get("type") == "charge" {
+		a.mu.Lock()
+		for id, intent := range a.intents[secretKey] {
+			if intent.created != 0 && intent.created >= gte && intent.created < lt {
+				intents = append(intents, listed{id: id, intent: *intent})
+			}
+		}
+		a.mu.Unlock()
+	}
+	slices.SortFunc(intents, func(x, y listed) int {
+		if x.intent.created != y.intent.created {
+			return cmp.Compare(y.intent.created, x.intent.created)
+		}
+		return strings.Compare(y.id, x.id)
+	})
+	data := make([]map[string]any, 0, len(intents))
+	for _, l := range intents {
+		data = append(data, map[string]any{
+			"id":       "txn_" + l.id,
+			"object":   "balance_transaction",
+			"type":     "charge",
+			"amount":   l.intent.amount,
+			"currency": l.intent.currency,
+			"created":  l.intent.created,
+			"source": map[string]any{
+				"id":              "ch_" + l.id,
+				"object":          "charge",
+				"amount":          l.intent.amount,
+				"amount_refunded": l.intent.refunded,
+				"currency":        l.intent.currency,
+				"created":         l.intent.created,
+				"livemode":        l.intent.livemode,
+				"paid":            true,
+				"payment_intent":  l.id,
+				"refunded":        l.intent.refunded >= l.intent.amount,
+				"status":          "succeeded",
+			},
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"object":   "list",
+		"data":     data,
+		"has_more": false,
+		"url":      "/v1/balance_transactions",
+	})
+}
+
 // getPaymentIntent answers a payment intent with its charge expanded, which
 // carries what has been refunded on it.
 func (a *API) getPaymentIntent(w http.ResponseWriter, r *http.Request) {
@@ -659,9 +750,9 @@ func (a *API) FailNextSubscriptionCancel(secretKey, id string) {
 	a.failCancel[secretKey][id] = true
 }
 
-// RevokeSecretKey makes the fake refuse secretKey on its subscription routes,
-// as Stripe refuses a key that was rolled or revoked, and RestoreSecretKey
-// takes it back.
+// RevokeSecretKey makes the fake refuse secretKey on its subscription routes and
+// its balance transactions, as Stripe refuses a key that was rolled or revoked,
+// and RestoreSecretKey takes it back.
 func (a *API) RevokeSecretKey(secretKey string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -926,6 +1017,13 @@ func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Cr
 		"payment_intent":  checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
 	})
+}
+
+func (f *Fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {
+	t.Helper()
+	secretKey := credentials[stripe.FieldSecretKey]
+	f.API.SetPaymentIntent(secretKey, checkout.PaymentID, int64(checkout.Purchase.Price), checkout.Purchase.Currency)
+	f.API.SetCreated(secretKey, checkout.PaymentID, at, !checkout.Test)
 }
 
 func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {

@@ -89,6 +89,10 @@ type Fixture interface {
 	// makes its payment one the provider's API reports as paid, in the mode
 	// the checkout names.
 	CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout) ([]byte, http.Header)
+	// PaymentTaken makes the provider's API list the payment of checkout among
+	// the payments taken at at, in the mode the checkout names, as a checkout
+	// paid with no notification sent for it leaves it.
+	PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout, at time.Time)
 	// Refunded answers the notification of a refund, and makes the refund part
 	// of what the provider's API reports for the payment.
 	Refunded(t testing.TB, credentials paymentprovider.Credentials, refund Refund) ([]byte, http.Header)
@@ -145,8 +149,79 @@ func RunParse(t *testing.T, fixture Fixture) {
 	for _, currency := range Currencies(fixture.Provider().Declaration()) {
 		t.Run(currency, func(t *testing.T) {
 			runParse(t, fixture, currency)
+			runListTransactions(t, fixture, currency)
 		})
 	}
+}
+
+// runListTransactions checks that the provider lists the payments of a period
+// from its API, oldest first, with the refunds made on them, and none of
+// another account's.
+func runListTransactions(t *testing.T, fixture Fixture, currency string) {
+	provider := fixture.Provider()
+	credentials := fixture.Credentials()
+	// Real instants around now, since a provider's refunds are dated when
+	// they are made.
+	to := time.Now().Add(time.Hour).Truncate(time.Second)
+	from := to.Add(-3 * time.Hour)
+	taken := func(paymentID string, price int32, test bool, at time.Time) Checkout {
+		checkout := Checkout{
+			CheckoutID: "checkout_" + paymentID,
+			PaymentID:  paymentID,
+			Purchase: paymentprovider.Purchase{
+				TenantID:  uuid.New(),
+				ReaderID:  uuid.New(),
+				EpisodeID: uuid.New(),
+				Kind:      paymentprovider.KindPurchase,
+				Price:     price,
+				Currency:  currency,
+			},
+			Test: test,
+		}
+		fixture.PaymentTaken(t, credentials, checkout, at)
+		return checkout
+	}
+	live := taken("payment_list_live_"+currency, 500, false, from.Add(time.Hour))
+	test := taken("payment_list_test_"+currency, 300, true, from.Add(2*time.Hour))
+	taken("payment_list_before_"+currency, 700, false, from.Add(-time.Hour))
+	taken("payment_list_after_"+currency, 900, false, to.Add(time.Hour))
+	_, _ = fixture.Refunded(t, credentials, Refund{PaymentID: live.PaymentID, Currency: currency, AmountRefunded: 200})
+
+	t.Run("the payments of the period are listed oldest first with their refunds", func(t *testing.T) {
+		listed, err := provider.ListTransactions(t.Context(), credentials, from, to)
+		if err != nil {
+			t.Fatalf("ListTransactions: %v", err)
+		}
+		// The fixture's account is shared by the run of every currency.
+		var transactions []paymentprovider.Transaction
+		for _, transaction := range listed {
+			if transaction.Currency == currency {
+				transactions = append(transactions, transaction)
+			}
+		}
+		want := []paymentprovider.Transaction{
+			{PaymentID: live.PaymentID, Amount: 500, AmountRefunded: 200, Currency: currency, Test: false, Created: from.Add(time.Hour).UTC()},
+			{PaymentID: test.PaymentID, Amount: 300, Currency: currency, Test: true, Created: from.Add(2 * time.Hour).UTC()},
+		}
+		if len(transactions) != len(want) {
+			t.Fatalf("transactions = %+v, want %+v", transactions, want)
+		}
+		for i := range want {
+			if transactions[i] != want[i] {
+				t.Fatalf("transaction %d = %+v, want %+v", i, transactions[i], want[i])
+			}
+		}
+	})
+
+	t.Run("another account's payments are not listed", func(t *testing.T) {
+		transactions, err := provider.ListTransactions(t.Context(), fixture.OtherCredentials(), from, to)
+		if err != nil {
+			t.Fatalf("ListTransactions: %v", err)
+		}
+		if len(transactions) != 0 {
+			t.Fatalf("transactions = %+v, want none", transactions)
+		}
+	})
 }
 
 func runParse(t *testing.T, fixture Fixture, currency string) {

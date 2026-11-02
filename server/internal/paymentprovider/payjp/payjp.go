@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -518,6 +519,98 @@ func refundKeyFor(req paymentprovider.RefundRequest) string {
 // refundFailed reports a refund status that returns nothing to the reader.
 func refundFailed(status payjpv2.PaymentRefundStatus) bool {
 	return status == payjpv2.PaymentRefundStatusFailed || status == payjpv2.PaymentRefundStatusCanceled
+}
+
+// listPageSize is how many payment flows or refunds ListTransactions reads
+// at a time, the most the API answers.
+const listPageSize = 100
+
+// ListTransactions reads the account's payment flows of the period, and the
+// refunds made since it began, which are every refund those flows can have.
+// Both lists come newest first, so each is read until it reaches what was
+// made before the period.
+func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time) ([]paymentprovider.Transaction, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return nil, err
+	}
+	var transactions []paymentprovider.Transaction
+	flows := &payjpv2.GetAllPaymentFlowsParams{Limit: new(listPageSize)}
+	for {
+		res, err := payjpv2.Extract(client.GetAllPaymentFlowsWithResponse(ctx, flows))
+		if err != nil {
+			return nil, listError("payment flows", err)
+		}
+		if res.Result == nil {
+			return nil, errors.New("payjp returned no payment flow list")
+		}
+		older := false
+		for _, flow := range res.Result.Data {
+			if flow.CreatedAt.Before(from) {
+				older = true
+				continue
+			}
+			if !flow.CreatedAt.Before(to) || flow.Status != payjpv2.PaymentFlowStatusSucceeded || flow.AmountReceived == nil {
+				continue
+			}
+			transactions = append(transactions, paymentprovider.Transaction{
+				PaymentID: flow.Id,
+				Amount:    int64(*flow.AmountReceived),
+				Currency:  strings.ToUpper(string(flow.Currency)),
+				Test:      !flow.Livemode,
+				Created:   flow.CreatedAt.UTC(),
+			})
+		}
+		if older || !res.Result.HasMore || len(res.Result.Data) == 0 {
+			break
+		}
+		last := res.Result.Data[len(res.Result.Data)-1].Id
+		flows.StartingAfter = &last
+	}
+
+	refunded := map[string]int64{}
+	refunds := &payjpv2.GetAllPaymentRefundsParams{Limit: new(listPageSize)}
+	for {
+		res, err := payjpv2.Extract(client.GetAllPaymentRefundsWithResponse(ctx, refunds))
+		if err != nil {
+			return nil, listError("refunds", err)
+		}
+		if res.Result == nil {
+			return nil, errors.New("payjp returned no refund list")
+		}
+		older := false
+		for _, refund := range res.Result.Data {
+			if refund.CreatedAt.Before(from) {
+				older = true
+				continue
+			}
+			if refund.Status == payjpv2.PaymentRefundStatusSucceeded {
+				refunded[refund.PaymentFlowId] += int64(refund.Amount)
+			}
+		}
+		if older || !res.Result.HasMore || len(res.Result.Data) == 0 {
+			break
+		}
+		last := res.Result.Data[len(res.Result.Data)-1].Id
+		refunds.StartingAfter = &last
+	}
+	for i := range transactions {
+		transactions[i].AmountRefunded = refunded[transactions[i].PaymentID]
+	}
+	slices.SortStableFunc(transactions, func(a, b paymentprovider.Transaction) int {
+		return a.Created.Compare(b.Created)
+	})
+	return transactions, nil
+}
+
+// listError reads an error the API answered a list with as what
+// ListTransactions reports.
+func listError(object string, err error) error {
+	var apiErr *payjpv2.APIError
+	if errors.As(err, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
+		return fmt.Errorf("%w: %s: %v", paymentprovider.ErrCredentialsRefused, object, err)
+	}
+	return fmt.Errorf("list %s: %w", object, err)
 }
 
 // refundError reads an answer the API gives for a request it will not carry

@@ -12,10 +12,12 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
@@ -45,7 +47,10 @@ type paymentFlow struct {
 	status         string
 	amountReceived int
 	livemode       bool
-	refunds        []refund
+	// createdAt is when the flow was taken, and zero for a flow the fake
+	// lists among none, as every flow is until SetCreated says otherwise.
+	createdAt time.Time
+	refunds   []refund
 	// failNext makes the next refund created on the flow a failed one.
 	failNext bool
 }
@@ -54,6 +59,8 @@ type refund struct {
 	id     string
 	amount int
 	status string
+	// created is when the fake made the refund.
+	created time.Time
 	// metadata is the metadata the refund was created with.
 	metadata map[string]any
 }
@@ -80,7 +87,9 @@ func NewAPI(t testing.TB) *API {
 	api := &API{flows: map[string]map[string]*paymentFlow{}, idempotent: map[string]map[string]refund{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v2/checkout/sessions", api.createCheckoutSession)
+	mux.HandleFunc("GET /v2/payment_flows", api.listPaymentFlows)
 	mux.HandleFunc("GET /v2/payment_flows/{id}", api.getPaymentFlow)
+	mux.HandleFunc("GET /v2/payment_refunds", api.listAllRefunds)
 	mux.HandleFunc("GET /v2/payment_flows/{id}/refunds", api.listRefunds)
 	mux.HandleFunc("POST /v2/payment_refunds", api.createRefund)
 	mux.HandleFunc("GET /v2/payment_refunds/{id}", api.getRefund)
@@ -112,6 +121,14 @@ func (a *API) SetLivemode(secretKey, id string, livemode bool) {
 	a.flow(secretKey, id).livemode = livemode
 }
 
+// SetCreated makes the payment flow id, under secretKey, one taken at at,
+// which the list of payment flows answers among the account's flows.
+func (a *API) SetCreated(secretKey, id string, at time.Time) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.flow(secretKey, id).createdAt = at.UTC()
+}
+
 // AddRefund makes a refund of amount yen, in status, on the payment flow id
 // under secretKey, and answers its id.
 func (a *API) AddRefund(secretKey, id string, amount int, status string) string {
@@ -120,7 +137,7 @@ func (a *API) AddRefund(secretKey, id string, amount int, status string) string 
 	a.refunds++
 	refundID := fmt.Sprintf("re_fake%04d", a.refunds)
 	flow := a.flow(secretKey, id)
-	flow.refunds = append(flow.refunds, refund{id: refundID, amount: amount, status: status})
+	flow.refunds = append(flow.refunds, refund{id: refundID, amount: amount, status: status, created: time.Now().UTC()})
 	return refundID
 }
 
@@ -313,6 +330,112 @@ func (a *API) listRefunds(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// listPaymentFlows answers the flows under the request's secret key that
+// SetCreated dated, newest first, in pages of the limit the query names.
+func (a *API) listPaymentFlows(w http.ResponseWriter, r *http.Request) {
+	type listed struct {
+		id   string
+		flow paymentFlow
+	}
+	a.mu.Lock()
+	var flows []listed
+	for id, flow := range a.flows[secretKey(r)] {
+		if !flow.createdAt.IsZero() {
+			flows = append(flows, listed{id: id, flow: *flow})
+		}
+	}
+	a.mu.Unlock()
+	slices.SortFunc(flows, func(x, y listed) int {
+		if c := y.flow.createdAt.Compare(x.flow.createdAt); c != 0 {
+			return c
+		}
+		return strings.Compare(y.id, x.id)
+	})
+	page, hasMore := pageAfter(flows, r, func(f listed) string { return f.id })
+	data := make([]map[string]any, 0, len(page))
+	for _, f := range page {
+		created := f.flow.createdAt.Format(time.RFC3339)
+		data = append(data, map[string]any{
+			"object":               "payment_flow",
+			"id":                   f.id,
+			"amount":               f.flow.amountReceived,
+			"amount_received":      f.flow.amountReceived,
+			"capture_method":       "automatic",
+			"client_secret":        f.id + "_secret_fake",
+			"currency":             "jpy",
+			"livemode":             f.flow.livemode,
+			"metadata":             map[string]any{},
+			"payment_method_types": []string{"card"},
+			"status":               f.flow.status,
+			"created_at":           created,
+			"updated_at":           created,
+		})
+	}
+	writeJSON(w, map[string]any{"object": "list", "data": data, "has_more": hasMore, "url": "/v2/payment_flows"})
+}
+
+// listAllRefunds answers every refund under the request's secret key, newest
+// first, in pages of the limit the query names.
+func (a *API) listAllRefunds(w http.ResponseWriter, r *http.Request) {
+	type listed struct {
+		flowID string
+		refund refund
+	}
+	a.mu.Lock()
+	var refunds []listed
+	for flowID, flow := range a.flows[secretKey(r)] {
+		for _, refund := range flow.refunds {
+			refunds = append(refunds, listed{flowID: flowID, refund: refund})
+		}
+	}
+	a.mu.Unlock()
+	slices.SortFunc(refunds, func(x, y listed) int {
+		if c := y.refund.created.Compare(x.refund.created); c != 0 {
+			return c
+		}
+		return strings.Compare(y.refund.id, x.refund.id)
+	})
+	page, hasMore := pageAfter(refunds, r, func(l listed) string { return l.refund.id })
+	data := make([]map[string]any, 0, len(page))
+	for _, l := range page {
+		created := l.refund.created.Format(time.RFC3339Nano)
+		data = append(data, map[string]any{
+			"object":          "refund",
+			"id":              l.refund.id,
+			"amount":          l.refund.amount,
+			"payment_flow_id": l.flowID,
+			"reason":          "requested_by_customer",
+			"status":          l.refund.status,
+			"livemode":        false,
+			"metadata":        l.refund.metadataJSON(),
+			"created_at":      created,
+			"updated_at":      created,
+		})
+	}
+	writeJSON(w, map[string]any{"object": "list", "data": data, "has_more": hasMore, "url": "/v2/payment_refunds"})
+}
+
+// pageAfter answers the page of items that follows the one the query's
+// starting_after names, as long as its limit, and whether more follow.
+func pageAfter[T any](items []T, r *http.Request, id func(T) string) ([]T, bool) {
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+	if after := r.URL.Query().Get("starting_after"); after != "" {
+		for i, item := range items {
+			if id(item) == after {
+				items = items[i+1:]
+				break
+			}
+		}
+	}
+	if len(items) > limit {
+		return items[:limit], true
+	}
+	return items, false
+}
+
 // createRefund refunds part or all of what a payment flow has received and not
 // refunded yet. A request repeating an idempotency key answers the refund the
 // key first created and refunds nothing more.
@@ -352,7 +475,7 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 			flow.failNext = false
 			status = "failed"
 		}
-		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: status, metadata: body.Metadata}
+		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: status, metadata: body.Metadata, created: time.Now().UTC()}
 		flow.refunds = append(flow.refunds, created)
 		if idempotencyKey != "" {
 			if a.idempotent[key] == nil {
@@ -532,6 +655,14 @@ func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Cr
 		"payment_flow_id": checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
 	})
+}
+
+func (f *Fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {
+	t.Helper()
+	secretKey := credentials[payjp.FieldSecretKey]
+	f.API.SetPaymentFlow(secretKey, checkout.PaymentID, "succeeded", int(checkout.Purchase.Price))
+	f.API.SetLivemode(secretKey, checkout.PaymentID, !checkout.Test)
+	f.API.SetCreated(secretKey, checkout.PaymentID, at)
 }
 
 func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {
