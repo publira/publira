@@ -169,6 +169,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"purchase_receipt":                           purchaseReceiptCopy,
 	"reader_announcement_posted":                 readerAnnouncementPostedCopy,
 	"reader_comment_approved":                    readerCommentApprovedCopy,
+	"reader_data_export_ready":                   readerDataExportReadyCopy,
 	"reader_email_change_confirmation":           readerEmailChangeConfirmationCopy,
 	"reader_email_changed_notice":                readerEmailChangedNoticeCopy,
 	"reader_email_verification":                  readerEmailVerificationCopy,
@@ -281,6 +282,22 @@ func readerCommentApprovedCopy(c *emailComposer) {
 	c.linkLine("email.reader_comment_approved.action", nil, episodeURL)
 	c.linkLine("email.reader_comment_approved.fallback_link", nil, episodeURL)
 	c.linkLine("email.reader_comment_approved.preferences", nil, c.value("settings_url"))
+}
+
+// readerDataExportReadyCopy words the mail that tells a reader the archive
+// they asked for is ready, and until when it can be downloaded. It links no
+// notification settings: the reader asked for it, and none of them could have
+// kept it out.
+func readerDataExportReadyCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	settingsURL := c.value("settings_url")
+	c.setSubject("email.reader_data_export_ready.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.reader_data_export_ready.heading", nil)
+	c.line("email.reader_data_export_ready.body", map[string]any{"tenant_name": brand})
+	c.line("email.reader_data_export_ready.expires_at", map[string]any{"expires_at": c.instant("expires_at")})
+	c.linkLine("email.reader_data_export_ready.action", nil, settingsURL)
+	c.linkLine("email.reader_data_export_ready.fallback_link", nil, settingsURL)
 }
 
 // staffContactMessageNoticeCopy words the mail that tells a tenant's staff a

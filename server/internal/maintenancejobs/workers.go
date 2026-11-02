@@ -358,3 +358,61 @@ func (w *reconcilePaymentsWorker) Work(ctx context.Context, job *river.Job[Recon
 		return w.jobs.paymentReconciliation.Run(ctx, deps)
 	})
 }
+
+// BuildDataExportsArgs builds the archives readers asked for.
+type BuildDataExportsArgs struct{}
+
+func (BuildDataExportsArgs) Kind() string { return kindBuildDataExports }
+
+func (BuildDataExportsArgs) InsertOpts() river.InsertOpts {
+	opts := insertOpts()
+	opts.Queue = DataExportQueueName
+	return opts
+}
+
+type buildDataExportsWorker struct {
+	river.WorkerDefaults[BuildDataExportsArgs]
+	jobs *Jobs
+}
+
+func (w *buildDataExportsWorker) Timeout(*river.Job[BuildDataExportsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *buildDataExportsWorker) Work(ctx context.Context, job *river.Job[BuildDataExportsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameBuildDataExports, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.dataExports.Run(ctx, deps)
+	})
+}
+
+// PurgeDataExportsArgs deletes the readers' archives whose time is up, and
+// those of deleted accounts.
+type PurgeDataExportsArgs struct{}
+
+func (PurgeDataExportsArgs) Kind() string { return kindPurgeDataExports }
+
+func (PurgeDataExportsArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(dataExportPurgeInterval)
+}
+
+type purgeDataExportsWorker struct {
+	river.WorkerDefaults[PurgeDataExportsArgs]
+	jobs *Jobs
+}
+
+func (w *purgeDataExportsWorker) Timeout(*river.Job[PurgeDataExportsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *purgeDataExportsWorker) Work(ctx context.Context, job *river.Job[PurgeDataExportsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeDataExports, func(ctx context.Context, deps maintenance.Deps) error {
+		err := w.jobs.dataExportPurge.Run(ctx, deps)
+		// An archive is stored only while there is an object store, so a
+		// platform that has none left keeps its rows until one is saved again,
+		// and no retry before then deletes them.
+		if errors.Is(err, storage.ErrNotConfigured) {
+			return river.JobCancel(err)
+		}
+		return err
+	})
+}

@@ -892,6 +892,8 @@ type PlatformPolicyConfig struct {
 	AnonymousReadPublicApiLimitPer10Seconds int32     `json:"anonymous_read_public_api_limit_per_10_seconds"`
 	AnonymousReadSearchLimitPer10Seconds    int32     `json:"anonymous_read_search_limit_per_10_seconds"`
 	AnonymousReadImagesLimitPer10Seconds    int32     `json:"anonymous_read_images_limit_per_10_seconds"`
+	DataExportLimitPerHour                  int32     `json:"data_export_limit_per_hour"`
+	DataExportLimitPerDay                   int32     `json:"data_export_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1971,6 +1973,19 @@ type User struct {
 	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
 	IconPresetID       uuid.NullUUID  `json:"icon_preset_id"`
 	LastLocale         sql.NullString `json:"last_locale"`
+}
+
+type UserDataExport struct {
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	UserID      uuid.NullUUID  `json:"user_id"`
+	RequestedAt time.Time      `json:"requested_at"`
+	ClaimedAt   sql.NullTime   `json:"claimed_at"`
+	ReadyAt     sql.NullTime   `json:"ready_at"`
+	FailedAt    sql.NullTime   `json:"failed_at"`
+	ExpiresAt   sql.NullTime   `json:"expires_at"`
+	ObjectKey   sql.NullString `json:"object_key"`
+	SizeBytes   sql.NullInt64  `json:"size_bytes"`
 }
 
 type UserEmailChangeToken struct {

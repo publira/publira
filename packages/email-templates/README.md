@@ -37,6 +37,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `reader_episode_published` | to a reader whose email cell is on, for an episode of a series or by an author they follow | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
 | `reader_announcement_posted` | to a reader whose email cell is on, or to every reader, for an announcement the tenant posted | `tenant_name`, `announcement_title`, `announcements_url`, `sent_to_everyone`, `settings_url` |
 | `reader_comment_approved` | to a reader whose email cell is on, when staff approve their comment | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
+| `reader_data_export_ready` | to a reader, whatever their email cells say, when the archive of their data they asked for is ready | `tenant_name`, `expires_at`, `settings_url` |
 
 Template IDs and variable names are snake_case. The copy lives under `email.*` in the repo-root `locales/*.json`, and rendering takes the catalog, the locale, and the time zone as arguments — the package embeds no copy of its own and reads no environment. `timeZone` is an IANA name, and every `expires_at` (RFC3339) is displayed in that zone.
 

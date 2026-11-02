@@ -106,6 +106,7 @@ var notificationEmailTemplates = map[string]func(row dbmodels.ListNotificationEm
 	NotificationTypeEpisodePublished:   episodePublishedEmail,
 	NotificationTypeAnnouncementPosted: announcementPostedEmail,
 	NotificationTypeCommentApproved:    commentApprovedEmail,
+	NotificationTypeDataExportReady:    dataExportReadyEmail,
 }
 
 func episodePublishedEmail(row dbmodels.ListNotificationEmailRecipientsRow, links notificationEmailLinks) (string, map[string]any, error) {
@@ -162,6 +163,31 @@ func commentApprovedEmail(row dbmodels.ListNotificationEmailRecipientsRow, links
 		"episode_url":   episodeURL,
 		"series_title":  body.SeriesTitle,
 		"settings_url":  links.settings,
+	}, nil
+}
+
+// accountSettingsPath is the storefront page a reader asks for their archive
+// on and downloads it from.
+const accountSettingsPath = "/settings"
+
+// dataExportReadyEmail links the account settings, where the archive is
+// downloaded, and links no notification settings: none of them could have
+// kept it out.
+func dataExportReadyEmail(row dbmodels.ListNotificationEmailRecipientsRow, links notificationEmailLinks) (string, map[string]any, error) {
+	var body dataExportNotificationBody
+	if err := json.Unmarshal(row.Payload, &body); err != nil {
+		return "", nil, Permanent(fmt.Errorf("decode data export notification: %w", err))
+	}
+	if body.ExpiresAt == "" {
+		return "", nil, Permanent(errors.New("data export notification names no expiry"))
+	}
+	settingsURL, err := links.site(accountSettingsPath)
+	if err != nil {
+		return "", nil, err
+	}
+	return "reader_data_export_ready", map[string]any{
+		"expires_at":   body.ExpiresAt,
+		"settings_url": settingsURL,
 	}, nil
 }
 

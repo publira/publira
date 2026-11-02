@@ -28,6 +28,7 @@ export const RPC_ERROR_REASON = {
   creatorPagesDisabled: "CREATOR_PAGES_DISABLED",
   creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   creatorSalesHidden: "CREATOR_SALES_HIDDEN",
+  dataExportInProgress: "DATA_EXPORT_IN_PROGRESS",
   identityLinkedToAnotherAccount: "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT",
   invitationCanceled: "INVITATION_CANCELED",
   lastTenantAdmin: "LAST_TENANT_ADMIN",

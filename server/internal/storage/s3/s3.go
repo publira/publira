@@ -3,11 +3,14 @@ package s3
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -29,6 +32,7 @@ const (
 
 type apiClient interface {
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	ListObjectsV2(context.Context, *s3.ListObjectsV2Input, ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	DeleteObjects(context.Context, *s3.DeleteObjectsInput, ...func(*s3.Options)) (*s3.DeleteObjectsOutput, error)
 }
@@ -120,6 +124,28 @@ func (s *Storage) Upload(ctx context.Context, req storage.UploadRequest) (storag
 		URL:       url,
 		SizeBytes: int64(len(req.Data)),
 	}, nil
+}
+
+// Open reads the object stored under objectKey. The body is read for as long
+// as the caller takes, so no timeout of this package's bounds it: ctx does.
+func (s *Storage) Open(ctx context.Context, objectKey string) (io.ReadCloser, error) {
+	key := strings.TrimLeft(objectKey, "/")
+	if key == "" {
+		return nil, fmt.Errorf("object key is required")
+	}
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var noSuchKey *s3types.NoSuchKey
+		var respErr *awshttp.ResponseError
+		if errors.As(err, &noSuchKey) || (errors.As(err, &respErr) && respErr.HTTPStatusCode() == 404) {
+			return nil, storage.ErrObjectNotFound
+		}
+		return nil, fmt.Errorf("get object from s3: %w", err)
+	}
+	return out.Body, nil
 }
 
 // List returns one page of the objects stored under req.Prefix. The cursor is

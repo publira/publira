@@ -123,12 +123,12 @@ type CreateNotificationParams struct {
 // category is which of the recipient's notification preferences the row
 // answers to, and the row is listed in their inbox unless that preference's
 // inbox cell is off; a recipient who saved nothing holds every cell on, and
-// the staff and everyone categories have no cell. The cell is read here
-// rather than passed in, so no writer can file a row past it. Reading it needs
-// a connection that sees the recipient's settings, which the worker's do: the
-// settings are isolated to the reader they belong to, so a tenant-scoped API
-// connection reads no row and would list every notification it filed, which
-// is why the reader-facing types are filed by the worker.
+// the staff, everyone, and account categories have no cell. The cell is read
+// here rather than passed in, so no writer can file a row past it. Reading it
+// needs a connection that sees the recipient's settings, which the worker's
+// do: the settings are isolated to the reader they belong to, so a
+// tenant-scoped API connection reads no row and would list every notification
+// it filed, which is why the reader-facing types are filed by the worker.
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
 	_, err := q.db.ExecContext(ctx, CreateNotification,
 		arg.ID,
@@ -269,6 +269,7 @@ WHERE n.tenant_id = $1
     AND u.email_verified_at IS NOT NULL
     AND CASE n.category
         WHEN 'everyone' THEN true
+        WHEN 'account' THEN true
         WHEN 'followed_episodes' THEN COALESCE(s.followed_episodes_email_enabled, true)
         WHEN 'followed_creators' THEN COALESCE(s.followed_creators_email_enabled, true)
         WHEN 'comments' THEN COALESCE(s.comments_email_enabled, true)
@@ -300,9 +301,9 @@ type ListNotificationEmailRecipientsRow struct {
 // retry of the event finds only the readers no earlier run reached.
 //
 // The recipient's email cell for the row's category decides, every cell on
-// for a reader who saved nothing, and a row for everyone has no cell. A row
-// filed for staff for being staff is never mailed: they read the console's
-// bell. A notification shown on the app alone is not mailed either, because
+// for a reader who saved nothing, and a row for everyone or about the
+// reader's own account has no cell. A row filed for staff for being staff is
+// never mailed: they read the console's bell. A notification shown on the app alone is not mailed either, because
 // the mail links into the site. The address has to be one the reader
 // confirmed and the account active, which is what every mail to a reader
 // takes.

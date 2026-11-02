@@ -23,9 +23,10 @@ var errLegalPageAgreementRequired = errors.New("agree to the tenant's revised te
 // reader who owes an agreement may still call: what reads their account and
 // what they own, the writes that only record their reading of it, finishing a
 // store purchase the store has already charged for, signing out, deleting the
-// account and beginning the passkey assertion that confirms it, and agreeing. Everything else that requires a session is refused,
-// so an RPC added later is refused until it is listed here, rather than open to
-// a reader the tenant is waiting on.
+// account and beginning the passkey assertion that confirms it, taking a copy
+// of their data, and agreeing. Everything else that requires a session is
+// refused, so an RPC added later is refused until it is listed here, rather
+// than open to a reader the tenant is waiting on.
 //
 // The check is made where a session is required (currentUserFromSession) and
 // not where it is optional: those RPCs answer a guest too, and the catalog, an
@@ -36,8 +37,13 @@ var proceduresWithoutLegalPageAgreement = map[string]bool{
 	publirav1connect.AuthServiceGetMeProcedure:                    true,
 	publirav1connect.AuthServiceLogoutProcedure:                   true,
 	publirav1connect.AuthServiceDeleteMeProcedure:                 true,
-	publirav1connect.AuthServiceListMyIdentitiesProcedure:         true,
-	publirav1connect.AuthServiceListMyPasskeysProcedure:           true,
+	// A reader may take their data with them as they may delete their
+	// account, whether or not they agree to the tenant's revised terms.
+	publirav1connect.AuthServiceRequestMyDataExportProcedure:  true,
+	publirav1connect.AuthServiceGetMyDataExportProcedure:      true,
+	publirav1connect.AuthServiceDownloadMyDataExportProcedure: true,
+	publirav1connect.AuthServiceListMyIdentitiesProcedure:     true,
+	publirav1connect.AuthServiceListMyPasskeysProcedure:       true,
 	// An account with neither a password nor a linked provider confirms
 	// DeleteMe with a passkey alone, so refusing this would leave it unable to
 	// close itself until it agreed.

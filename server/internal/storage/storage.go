@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"io"
 	"time"
 )
 
@@ -26,6 +27,17 @@ type UploadResult struct {
 
 type Provider interface {
 	Upload(ctx context.Context, req UploadRequest) (UploadResult, error)
+}
+
+// ErrObjectNotFound is what Open answers for a key the bucket holds nothing
+// under.
+var ErrObjectNotFound = errors.New("stored object not found")
+
+// Opener reads a stored object back, for a caller that hands it on as it is
+// rather than through the image routes, which read and convert their own. It
+// is kept apart from Provider for the reason Reclaimer is.
+type Opener interface {
+	Open(ctx context.Context, objectKey string) (io.ReadCloser, error)
 }
 
 // Pinner is a Provider whose store can change between uploads. Pin answers

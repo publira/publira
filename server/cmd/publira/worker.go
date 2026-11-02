@@ -49,9 +49,9 @@ const (
 
 // workerQueues is which River queues a worker process hosts. A queue is named
 // for the work on it: outbox is River's default queue, which the Outbox drain
-// has to itself, and ticker, maintenance, search_index, and
-// payment_reconciliation are the queues of those names the job families
-// bring. A queue brings the pool its jobs connect
+// has to itself, and ticker, maintenance, search_index,
+// payment_reconciliation, and data_export are the queues of those names the
+// job families bring. A queue brings the pool its jobs connect
 // as, and every queue brings publira_outbox, which the River client itself
 // connects as.
 type workerQueues struct {
@@ -61,20 +61,21 @@ type workerQueues struct {
 	searchIndex bool
 
 	paymentReconciliation bool
+	dataExport            bool
 }
 
 // allWorkerQueues is what a worker hosts unless --queue names some.
-var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true, paymentReconciliation: true}
+var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true, paymentReconciliation: true, dataExport: true}
 
 func (q workerQueues) any() bool {
-	return q.outbox || q.ticker || q.maintenance || q.searchIndex || q.paymentReconciliation
+	return q.outbox || q.ticker || q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport
 }
 
 // contentStats reports whether the process opens the publira_content_stats
-// pool, which the maintenance jobs, the search index build, and the payment
-// reconciliations all run on.
+// pool, which the maintenance jobs, the search index build, the payment
+// reconciliations, and the readers' archives all run on.
 func (q workerQueues) contentStats() bool {
-	return q.maintenance || q.searchIndex || q.paymentReconciliation
+	return q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport
 }
 
 // workerQueueEntry is one queue as --queue names it and as River does.
@@ -91,6 +92,7 @@ var workerQueueTable = []workerQueueEntry{
 	{"maintenance", maintenancejobs.QueueName, func(q *workerQueues) *bool { return &q.maintenance }},
 	{"search_index", maintenancejobs.SearchIndexQueueName, func(q *workerQueues) *bool { return &q.searchIndex }},
 	{"payment_reconciliation", maintenancejobs.PaymentReconciliationQueueName, func(q *workerQueues) *bool { return &q.paymentReconciliation }},
+	{"data_export", maintenancejobs.DataExportQueueName, func(q *workerQueues) *bool { return &q.dataExport }},
 }
 
 // names answers the --queue names of the queues hosted or, with hosted false,
@@ -123,11 +125,11 @@ func (q *workerQueues) add(value string) error {
 	for name := range strings.SplitSeq(value, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, search_index, or payment_reconciliation")
+			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export")
 		}
 		i := slices.IndexFunc(workerQueueTable, func(queue workerQueueEntry) bool { return queue.name == name })
 		if i < 0 {
-			return fmt.Errorf("--queue must be outbox, ticker, maintenance, search_index, or payment_reconciliation, not %q", name)
+			return fmt.Errorf("--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export, not %q", name)
 		}
 		hosted := workerQueueTable[i].field(q)
 		if *hosted {
@@ -222,18 +224,20 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	}
 
 	if contentStatsDB := pools.contentStats; contentStatsDB != nil {
-		// The bucket the orphan image sweep reclaims is read from the
-		// platform's settings when a run starts, so the worker starts before
-		// one is saved.
-		reclaimers := platformstorage.Reclaimers{Resolver: platformstorage.New(platformstorage.Config{
+		// The bucket the orphan image sweep reclaims, and the readers'
+		// archives are kept in, is read from the platform's settings when a
+		// run starts, so the worker starts before one is saved.
+		bucket := platformstorage.New(platformstorage.Config{
 			Queries: dbmodels.New(contentStatsDB),
 			Secrets: encryptor,
 			Logger:  logger,
-		}, platformstorage.NewStorage)}
+		}, platformstorage.NewStorage)
+		reclaimers := platformstorage.Reclaimers{Resolver: bucket}
 		maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
 			DB:         contentStatsDB,
 			Replica:    pools.contentStatsReplica,
 			Storage:    reclaimers,
+			Uploads:    platformstorage.Provider{Resolver: bucket},
 			Secrets:    encryptor,
 			GooglePlay: googleplay.NewClient(googleplay.Config{}),
 			Payments:   payments,
@@ -315,6 +319,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.CommentApprovedNotificationHandlerConfig{DB: db},
+		outbox.DataExportReadyNotificationHandlerConfig{DB: db},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		outbox.SubscriptionCancelHandlerConfig{DB: db, Encryptor: encryptor, Providers: payments},
@@ -433,6 +438,7 @@ func workerConfig(
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
 	episodePublishedHandlers outbox.EpisodePublishedNotificationHandlerConfig,
 	commentApprovedHandlers outbox.CommentApprovedNotificationHandlerConfig,
+	dataExportHandlers outbox.DataExportReadyNotificationHandlerConfig,
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	appleSignInHandlers outbox.AppleSignInHandlerConfig,
 	subscriptionCancelHandlers outbox.SubscriptionCancelHandlerConfig,
@@ -472,6 +478,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeTargetedAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.RegisterMessage(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
 	handlers.RegisterMessage(outbox.EventTypeCommentApprovedNotification, outbox.NewCommentApprovedNotificationHandler(commentApprovedHandlers))
+	handlers.RegisterMessage(outbox.EventTypeDataExportReadyNotification, outbox.NewDataExportReadyNotificationHandler(dataExportHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer, searchCacheRecorder))
 	memberPush := outbox.NewMemberPushNotificationHandler(pushHandlers)

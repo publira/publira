@@ -36,6 +36,7 @@ describe("TEMPLATE_IDS", () => {
       "reader_episode_published",
       "reader_announcement_posted",
       "reader_comment_approved",
+      "reader_data_export_ready",
     ]);
     expect(isTemplateId("tenant_admin_invitation")).toBe(true);
     expect(isTemplateId("missing")).toBe(false);

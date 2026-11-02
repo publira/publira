@@ -62,6 +62,11 @@ import {
   readerCommentApprovedPreview,
 } from "./templates/reader-comment-approved";
 import {
+  ReaderDataExportReadyEmail,
+  readerDataExportReadyDataSchema,
+  readerDataExportReadyPreview,
+} from "./templates/reader-data-export-ready";
+import {
   ReaderEmailChangeConfirmationEmail,
   readerEmailChangeConfirmationDataSchema,
   readerEmailChangeConfirmationPreview,
@@ -140,6 +145,7 @@ export const TEMPLATE_IDS = [
   "reader_episode_published",
   "reader_announcement_posted",
   "reader_comment_approved",
+  "reader_data_export_ready",
 ] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
@@ -332,6 +338,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       createElement(ReaderCommentApprovedEmail, { data, locale, messages }),
     preview: readerCommentApprovedPreview,
     schema: readerCommentApprovedDataSchema,
+  }),
+  reader_data_export_ready: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(ReaderDataExportReadyEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: readerDataExportReadyPreview,
+    schema: readerDataExportReadyDataSchema,
   }),
   reader_email_change_confirmation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

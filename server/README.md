@@ -297,7 +297,7 @@ The **Email** page lists the provider under its `DisplayName` and labels each fi
 
 ## Image storage configuration
 
-The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService` or `publiractl storage set`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (the tenant console's uploads and images on the admin pool, the storefront's images and the readers' icon uploads on the public pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService` or `publiractl storage set`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (the tenant console's uploads and images on the admin pool, the storefront's images and the readers' icon uploads on the public pool), the worker's `maintenance.purge_orphan_images`, `maintenance.build_data_exports`, and `maintenance.purge_data_exports`, and the `publiractl job` commands of the same names each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
 
 Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, an image answers `503`, and the orphan sweep fails (the worker cancels the job).
 
@@ -712,6 +712,7 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | publiractl job close-royalty-statements | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job sync-google-play-voided-purchases | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job build-search-index | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job build-data-exports, purge-data-exports | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
 `publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID. The first four are members of `publira_rls_bypass`, and the baseline seed puts a policy of that name on every table under row-level security that lets its members read and write every row, and none of them carries the `BYPASSRLS` attribute. The grants still decide which tables each of them reaches.
 

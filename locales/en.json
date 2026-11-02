@@ -134,6 +134,15 @@
       "series": "Series: {$series_title}",
       "subject": "Your comment on {$tenant_name} is now public"
     },
+    "reader_data_export_ready": {
+      "action": "Open account settings",
+      "body": "The copy of your data on {$tenant_name} that you asked for is ready. Download it from your account settings.",
+      "expires_at": "You can download it until {$expires_at}. It is deleted after that.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your data is ready",
+      "preview": "The copy of your data you asked for is ready to download.",
+      "subject": "Your data from {$tenant_name} is ready to download"
+    },
     "reader_email_change_confirmation": {
       "action": "Confirm email address change",
       "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",

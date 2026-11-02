@@ -101,6 +101,12 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $2.GetMyLegalPageAgreementsRequest request);
   $async.Future<$2.AgreeToLegalPagesResponse> agreeToLegalPages(
       $pb.ServerContext ctx, $2.AgreeToLegalPagesRequest request);
+  $async.Future<$2.RequestMyDataExportResponse> requestMyDataExport(
+      $pb.ServerContext ctx, $2.RequestMyDataExportRequest request);
+  $async.Future<$2.GetMyDataExportResponse> getMyDataExport(
+      $pb.ServerContext ctx, $2.GetMyDataExportRequest request);
+  $async.Future<$2.DownloadMyDataExportResponse> downloadMyDataExport(
+      $pb.ServerContext ctx, $2.DownloadMyDataExportRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -182,6 +188,12 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return $2.GetMyLegalPageAgreementsRequest();
       case 'AgreeToLegalPages':
         return $2.AgreeToLegalPagesRequest();
+      case 'RequestMyDataExport':
+        return $2.RequestMyDataExportRequest();
+      case 'GetMyDataExport':
+        return $2.GetMyDataExportRequest();
+      case 'DownloadMyDataExport':
+        return $2.DownloadMyDataExportRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -282,6 +294,14 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
             ctx, request as $2.GetMyLegalPageAgreementsRequest);
       case 'AgreeToLegalPages':
         return agreeToLegalPages(ctx, request as $2.AgreeToLegalPagesRequest);
+      case 'RequestMyDataExport':
+        return requestMyDataExport(
+            ctx, request as $2.RequestMyDataExportRequest);
+      case 'GetMyDataExport':
+        return getMyDataExport(ctx, request as $2.GetMyDataExportRequest);
+      case 'DownloadMyDataExport':
+        return downloadMyDataExport(
+            ctx, request as $2.DownloadMyDataExportRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

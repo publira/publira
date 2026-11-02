@@ -134,6 +134,15 @@
       "series": "系列：{$series_title}",
       "subject": "您在{$tenant_name}的评论已公开"
     },
+    "reader_data_export_ready": {
+      "action": "打开账户设置",
+      "body": "您申请的{$tenant_name}数据已准备好。请在账户设置中下载。",
+      "expires_at": "您可以在{$expires_at}之前下载，之后将被删除。",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "您的数据已准备好",
+      "preview": "您申请的数据现在可以下载了。",
+      "subject": "您在{$tenant_name}的数据已可下载"
+    },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",
       "body_current_email": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",

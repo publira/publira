@@ -34,6 +34,23 @@ final $typed_data.Uint8List identityProviderDescriptor = $convert.base64Decode(
     'oXSURFTlRJVFlfUFJPVklERVJfQVBQTEUQARIcChhJREVOVElUWV9QUk9WSURFUl9HT09HTEUQ'
     'Ag==');
 
+@$core.Deprecated('Use dataExportStateDescriptor instead')
+const DataExportState$json = {
+  '1': 'DataExportState',
+  '2': [
+    {'1': 'DATA_EXPORT_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'DATA_EXPORT_STATE_PENDING', '2': 1},
+    {'1': 'DATA_EXPORT_STATE_READY', '2': 2},
+    {'1': 'DATA_EXPORT_STATE_FAILED', '2': 3},
+  ],
+};
+
+/// Descriptor for `DataExportState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List dataExportStateDescriptor = $convert.base64Decode(
+    'Cg9EYXRhRXhwb3J0U3RhdGUSIQodREFUQV9FWFBPUlRfU1RBVEVfVU5TUEVDSUZJRUQQABIdCh'
+    'lEQVRBX0VYUE9SVF9TVEFURV9QRU5ESU5HEAESGwoXREFUQV9FWFBPUlRfU1RBVEVfUkVBRFkQ'
+    'AhIcChhEQVRBX0VYUE9SVF9TVEFURV9GQUlMRUQQAw==');
+
 @$core.Deprecated('Use loginRequestDescriptor instead')
 const LoginRequest$json = {
   '1': 'LoginRequest',
@@ -2206,6 +2223,150 @@ final $typed_data.Uint8List agreeToLegalPagesResponseDescriptor = $convert.base6
     'JhLnYxLlRlbmFudExlZ2FsUGFnZVIJdGVybXNQYWdlEj4KDHByaXZhY3lfcGFnZRgCIAEoCzIb'
     'LnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlUgtwcml2YWN5UGFnZQ==');
 
+@$core.Deprecated('Use dataExportDescriptor instead')
+const DataExport$json = {
+  '1': 'DataExport',
+  '2': [
+    {
+      '1': 'state',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.DataExportState',
+      '10': 'state'
+    },
+    {'1': 'requested_at', '3': 2, '4': 1, '5': 9, '10': 'requestedAt'},
+    {'1': 'ready_at', '3': 3, '4': 1, '5': 9, '10': 'readyAt'},
+    {'1': 'expires_at', '3': 4, '4': 1, '5': 9, '10': 'expiresAt'},
+    {'1': 'size_bytes', '3': 5, '4': 1, '5': 3, '10': 'sizeBytes'},
+  ],
+};
+
+/// Descriptor for `DataExport`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List dataExportDescriptor = $convert.base64Decode(
+    'CgpEYXRhRXhwb3J0EjEKBXN0YXRlGAEgASgOMhsucHVibGlyYS52MS5EYXRhRXhwb3J0U3RhdG'
+    'VSBXN0YXRlEiEKDHJlcXVlc3RlZF9hdBgCIAEoCVILcmVxdWVzdGVkQXQSGQoIcmVhZHlfYXQY'
+    'AyABKAlSB3JlYWR5QXQSHQoKZXhwaXJlc19hdBgEIAEoCVIJZXhwaXJlc0F0Eh0KCnNpemVfYn'
+    'l0ZXMYBSABKANSCXNpemVCeXRlcw==');
+
+@$core.Deprecated('Use requestMyDataExportRequestDescriptor instead')
+const RequestMyDataExportRequest$json = {
+  '1': 'RequestMyDataExportRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `RequestMyDataExportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List requestMyDataExportRequestDescriptor =
+    $convert.base64Decode(
+        'ChpSZXF1ZXN0TXlEYXRhRXhwb3J0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
+        'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudA==');
+
+@$core.Deprecated('Use requestMyDataExportResponseDescriptor instead')
+const RequestMyDataExportResponse$json = {
+  '1': 'RequestMyDataExportResponse',
+  '2': [
+    {
+      '1': 'data_export',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.DataExport',
+      '10': 'dataExport'
+    },
+  ],
+};
+
+/// Descriptor for `RequestMyDataExportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List requestMyDataExportResponseDescriptor =
+    $convert.base64Decode(
+        'ChtSZXF1ZXN0TXlEYXRhRXhwb3J0UmVzcG9uc2USNwoLZGF0YV9leHBvcnQYASABKAsyFi5wdW'
+        'JsaXJhLnYxLkRhdGFFeHBvcnRSCmRhdGFFeHBvcnQ=');
+
+@$core.Deprecated('Use getMyDataExportRequestDescriptor instead')
+const GetMyDataExportRequest$json = {
+  '1': 'GetMyDataExportRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `GetMyDataExportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getMyDataExportRequestDescriptor =
+    $convert.base64Decode(
+        'ChZHZXRNeURhdGFFeHBvcnRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZX'
+        'MudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use getMyDataExportResponseDescriptor instead')
+const GetMyDataExportResponse$json = {
+  '1': 'GetMyDataExportResponse',
+  '2': [
+    {
+      '1': 'data_export',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.DataExport',
+      '10': 'dataExport'
+    },
+  ],
+};
+
+/// Descriptor for `GetMyDataExportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getMyDataExportResponseDescriptor =
+    $convert.base64Decode(
+        'ChdHZXRNeURhdGFFeHBvcnRSZXNwb25zZRI3CgtkYXRhX2V4cG9ydBgBIAEoCzIWLnB1Ymxpcm'
+        'EudjEuRGF0YUV4cG9ydFIKZGF0YUV4cG9ydA==');
+
+@$core.Deprecated('Use downloadMyDataExportRequestDescriptor instead')
+const DownloadMyDataExportRequest$json = {
+  '1': 'DownloadMyDataExportRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `DownloadMyDataExportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List downloadMyDataExportRequestDescriptor =
+    $convert.base64Decode(
+        'ChtEb3dubG9hZE15RGF0YUV4cG9ydFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
+        '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQ=');
+
+@$core.Deprecated('Use downloadMyDataExportResponseDescriptor instead')
+const DownloadMyDataExportResponse$json = {
+  '1': 'DownloadMyDataExportResponse',
+  '2': [
+    {'1': 'data', '3': 1, '4': 1, '5': 12, '10': 'data'},
+  ],
+};
+
+/// Descriptor for `DownloadMyDataExportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List downloadMyDataExportResponseDescriptor =
+    $convert.base64Decode(
+        'ChxEb3dubG9hZE15RGF0YUV4cG9ydFJlc3BvbnNlEhIKBGRhdGEYASABKAxSBGRhdGE=');
+
 const $core.Map<$core.String, $core.dynamic> AuthServiceBase$json = {
   '1': 'AuthService',
   '2': [
@@ -2404,6 +2565,22 @@ const $core.Map<$core.String, $core.dynamic> AuthServiceBase$json = {
       '2': '.publira.v1.AgreeToLegalPagesRequest',
       '3': '.publira.v1.AgreeToLegalPagesResponse'
     },
+    {
+      '1': 'RequestMyDataExport',
+      '2': '.publira.v1.RequestMyDataExportRequest',
+      '3': '.publira.v1.RequestMyDataExportResponse'
+    },
+    {
+      '1': 'GetMyDataExport',
+      '2': '.publira.v1.GetMyDataExportRequest',
+      '3': '.publira.v1.GetMyDataExportResponse'
+    },
+    {
+      '1': 'DownloadMyDataExport',
+      '2': '.publira.v1.DownloadMyDataExportRequest',
+      '3': '.publira.v1.DownloadMyDataExportResponse',
+      '6': true
+    },
   ],
 };
 
@@ -2520,6 +2697,13 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.TenantLegalPage': $1.TenantLegalPage$json,
   '.publira.v1.AgreeToLegalPagesRequest': AgreeToLegalPagesRequest$json,
   '.publira.v1.AgreeToLegalPagesResponse': AgreeToLegalPagesResponse$json,
+  '.publira.v1.RequestMyDataExportRequest': RequestMyDataExportRequest$json,
+  '.publira.v1.RequestMyDataExportResponse': RequestMyDataExportResponse$json,
+  '.publira.v1.DataExport': DataExport$json,
+  '.publira.v1.GetMyDataExportRequest': GetMyDataExportRequest$json,
+  '.publira.v1.GetMyDataExportResponse': GetMyDataExportResponse$json,
+  '.publira.v1.DownloadMyDataExportRequest': DownloadMyDataExportRequest$json,
+  '.publira.v1.DownloadMyDataExportResponse': DownloadMyDataExportResponse$json,
 };
 
 /// Descriptor for `AuthService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -2592,4 +2776,9 @@ final $typed_data.Uint8List authServiceDescriptor = $convert.base64Decode(
     'EudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1lbnRzUmVxdWVzdBosLnB1YmxpcmEudjEuR2V0TXlM'
     'ZWdhbFBhZ2VBZ3JlZW1lbnRzUmVzcG9uc2USYAoRQWdyZWVUb0xlZ2FsUGFnZXMSJC5wdWJsaX'
     'JhLnYxLkFncmVlVG9MZWdhbFBhZ2VzUmVxdWVzdBolLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2Fs'
-    'UGFnZXNSZXNwb25zZQ==');
+    'UGFnZXNSZXNwb25zZRJmChNSZXF1ZXN0TXlEYXRhRXhwb3J0EiYucHVibGlyYS52MS5SZXF1ZX'
+    'N0TXlEYXRhRXhwb3J0UmVxdWVzdBonLnB1YmxpcmEudjEuUmVxdWVzdE15RGF0YUV4cG9ydFJl'
+    'c3BvbnNlEloKD0dldE15RGF0YUV4cG9ydBIiLnB1YmxpcmEudjEuR2V0TXlEYXRhRXhwb3J0Um'
+    'VxdWVzdBojLnB1YmxpcmEudjEuR2V0TXlEYXRhRXhwb3J0UmVzcG9uc2USawoURG93bmxvYWRN'
+    'eURhdGFFeHBvcnQSJy5wdWJsaXJhLnYxLkRvd25sb2FkTXlEYXRhRXhwb3J0UmVxdWVzdBooLn'
+    'B1YmxpcmEudjEuRG93bmxvYWRNeURhdGFFeHBvcnRSZXNwb25zZTAB');

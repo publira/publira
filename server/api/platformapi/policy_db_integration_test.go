@@ -524,6 +524,48 @@ func TestDBUpdatePlatformPolicyKeepsOmittedAnonymousReadLimits(t *testing.T) {
 	}
 }
 
+// data_export reached the policy after the console screens that save it, in
+// the same way wait_free_ticket_use did, so an omitted one keeps what is
+// stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedDataExportLimit(t *testing.T) {
+	t.Parallel()
+
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.DataExport = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without data_export: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	want.DataExport = platformpolicy.HourDay{PerHour: 2, PerDay: 3}
+	first := saveWithout(t, want, 0)
+	want.DataExport = platformpolicy.Defaults().DataExport
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default data export limit", got, want)
+	}
+
+	want.DataExport = platformpolicy.HourDay{PerHour: 2, PerDay: 3}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with data_export: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored data export limit", got, want)
+	}
+}
+
 // purchase_checkout reached the policy after the console screens that save
 // it, in the same way wait_free_ticket_use did, so an omitted one keeps what
 // is stored too.

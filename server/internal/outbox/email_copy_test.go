@@ -466,6 +466,18 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "reader_data_export_ready",
+		subjects: map[string]string{"en": "Your data from Aoto Press is ready to download", "ja": "Aoto Pressのデータをダウンロードできるようになりました"},
+		request: emailrenderer.Request{
+			Template: "reader_data_export_ready",
+			Data: map[string]any{
+				"expires_at":   "2026-11-09T06:00:00Z",
+				"settings_url": "https://reader.example.test/settings",
+				"tenant_name":  "Aoto Press",
+			},
+		},
+	},
+	{
 		name:     "staff_contact_reply to a titled message",
 		subjects: map[string]string{"en": "Re: Wrong date of birth", "ja": "Re: Wrong date of birth"},
 		request: emailrenderer.Request{

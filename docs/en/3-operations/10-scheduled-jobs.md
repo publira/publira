@@ -32,6 +32,7 @@ Start from what you see, and look at the job that owns it:
 | An episode bought on Google Play stays open after a refund | The Google Play refund sync | [Other scheduled jobs](#other-scheduled-jobs) |
 | The search does not move to a newly saved engine | The search index build | [Search](./7-search.md#when-the-build-fails) |
 | A payment reconciliation a Tenant admin started never finishes | The payment reconciliations | [Other scheduled jobs](#other-scheduled-jobs) |
+| A reader's download of their data stays pending | The data downloads | [Other scheduled jobs](#other-scheduled-jobs) |
 | Old records are not deleted | The purges | [Other scheduled jobs](#other-scheduled-jobs) |
 
 Every one of them first needs `publira worker` to be running and ready: an install whose worker is stopped serves every page, but publishes nothing, sends nothing, and rebuilds nothing. `GET /readyz` on the worker names a check for each database login it signs in as, so a login that stopped answering is named there. On an install that splits the worker by queue, each job also needs a running worker that takes its queue, as [Workers that take some of the jobs](#workers-that-take-some-of-the-jobs) describes.
@@ -101,11 +102,12 @@ The worker remembers, per tenant, the last day each link finished, and starts fr
 | Google Play refund sync (`sync-google-play-voided-purchases`) | Every hour | Reads the purchases Google Play refunded in the last 30 days, for every tenant whose Google Play store is on, and takes them back, as [Selling episodes](../4-console/4-selling-episodes.md#refunds) describes |
 | Search index build (`build-search-index`) | Every 30 seconds | Builds the index on a newly saved search engine and moves the search onto it, as [Search](./7-search.md#moving-to-another-engine) describes |
 | Payment reconciliations (`reconcile-payments`) | Every 10 seconds | Runs each reconciliation a Tenant admin started, reading the payments of its period from the tenant's payment provider or store, as [Selling episodes](../4-console/4-selling-episodes.md#reconciling-with-the-provider) describes. A run the source refuses is recorded as failed for the Tenant admin to start again, rather than retried. A run a stopped worker was in the middle of is taken up again after two hours |
-| The purges (`purge-*`) | Every hour or every 24 hours | Delete withdrawn comments, analytics events, and ranking snapshots past their retention period, as [Platform defaults and policies](./9-platform-policies.md#retention) describes; the challenges a two-step sign-in has finished with; and the images nothing on any tenant uses any more, once they are a day old |
+| Data downloads (`build-data-exports`) | Every 10 seconds | Prepares each copy of their data a reader asked for, stores it in the bucket, and tells the reader it is ready, as [Reader accounts](../4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. A request made while no object storage is set up is recorded as failed for the reader to ask again, rather than retried. One a stopped worker was in the middle of is taken up again after 15 minutes |
+| The purges (`purge-*`) | Every hour or every 24 hours | Delete withdrawn comments, analytics events, and ranking snapshots past their retention period, as [Platform defaults and policies](./9-platform-policies.md#retention) describes; the challenges a two-step sign-in has finished with; the readers' data downloads seven days after they were ready, and those of deleted accounts; and the images nothing on any tenant uses any more, once they are a day old |
 
 ## Workers that take some of the jobs
 
-A worker started with `--queue` runs the jobs of the queues it names and leaves the others to the workers that name them, as [Splitting the worker by queue](../2-deployments/7-scaling-out.md#splitting-the-worker-by-queue) describes. The jobs on this page are on five queues, which `river_job` names the same way except `outbox`, which it names `default`:
+A worker started with `--queue` runs the jobs of the queues it names and leaves the others to the workers that name them, as [Splitting the worker by queue](../2-deployments/7-scaling-out.md#splitting-the-worker-by-queue) describes. The jobs on this page are on six queues, which `river_job` names the same way except `outbox`, which it names `default`:
 
 | Queue | Jobs |
 | --- | --- |
@@ -114,6 +116,7 @@ A worker started with `--queue` runs the jobs of the queues it names and leaves 
 | `maintenance` | The statistics and ranking chain, the royalty close, the Google Play refund sync, and the purges |
 | `search_index` | The search index build |
 | `payment_reconciliation` | The payment reconciliations |
+| `data_export` | The data downloads |
 
 Every queue needs at least one running worker that takes it. Whichever worker schedules the jobs schedules all of them, whatever queues it takes itself, so a job whose queue no running worker takes is not lost, but nothing runs it: it waits in `river_job` until a worker that takes its queue starts, and then runs as it would [after downtime](#after-downtime). Each worker logs the queues it leaves to others when it starts, as `worker leaves queues to other replicas` with `not_hosted` naming them. A queue whose jobs are waiting shows in `river_job`:
 
@@ -141,6 +144,7 @@ A worker that was stopped, or that ran without a working database, does nothing 
 | Royalty close | Closes every month that became owed |
 | Search index build | Builds a pending index |
 | Payment reconciliations | Runs every reconciliation started in the meantime |
+| Data downloads | Prepares every copy asked for in the meantime |
 | The purges | Run only when none has finished in its current hour or day, counted on the clock rather than from when the worker started; the first run then deletes everything that expired in the meantime |
 | Google Play refund sync | Runs, like a purge, only when none has finished in its current hour. A worker that was down longer than 30 days misses the refunds Google Play no longer lists |
 
@@ -192,7 +196,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   publira/publiractl:<tag> job purge-content-events
 ```
 
-On a [Docker Compose](../2-deployments/3-docker-compose.md) install, `docker compose run --rm publiractl job purge-content-events` has the connection already. The image purge, the Google Play refund sync, the payment reconciliations, and the search index build also need `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` when the credential they use is saved in the install, as the bucket's access key, a tenant's payment provider and store credentials, or the search engine's password is.
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, `docker compose run --rm publiractl job purge-content-events` has the connection already. The image purge, the data downloads and their purge, the Google Play refund sync, the payment reconciliations, and the search index build also need `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` when the credential they use is saved in the install, as the bucket's access key, a tenant's payment provider and store credentials, or the search engine's password is.
 
 A job logs to standard output, and exits `1` when the pass failed. A job that works through the tenants one at a time finishes the others before it exits, and its log names each tenant that failed.
 
@@ -243,7 +247,8 @@ Every job can be run again, and alongside the worker's own pass of it:
 | `sync-google-play-voided-purchases` | Takes back nothing a second time |
 | `build-search-index` | Does nothing when no build is due, or when the worker is already building |
 | `reconcile-payments` | Does nothing when no reconciliation is waiting. One the worker is running is not taken up a second time |
+| `build-data-exports` | Does nothing when no reader is waiting for a copy. One the worker is preparing is not taken up a second time |
 
-The one exception is timing: do not run `purge-orphan-images` while a backup of the bucket is being copied, as [Backup and restore](../2-deployments/9-backup-and-restore.md#1-stop-the-worker) describes.
+The one exception is timing: do not run `purge-orphan-images` or `purge-data-exports` while a backup of the bucket is being copied, as [Backup and restore](../2-deployments/9-backup-and-restore.md#1-stop-the-worker) describes.
 
 The publication, free reading period, day rollover, and pinned announcement jobs have no command of their own. To make them act, get the worker running.

@@ -85,6 +85,9 @@ type apiServer struct {
 	// storage stores the icons readers upload. A nil one refuses every upload
 	// as an object store not yet configured.
 	storage storage.Provider
+	// objects reads the readers' archives back out of the same bucket. A nil
+	// one refuses every download as an object store not yet configured.
+	objects storage.Opener
 }
 
 type webPushPublicKeySource interface {
@@ -121,10 +124,16 @@ func (s *apiServer) internalError(ctx context.Context, msg string, err error, ke
 // shared cache never serves one member's state to another. The member-scoped
 // public RPCs (follow, rating) return through here.
 func noStorePrivateResponse[T any](ctx context.Context, msg *T) *T {
+	markNoStorePrivate(ctx)
+	return msg
+}
+
+// markNoStorePrivate is noStorePrivateResponse for a streamed answer, whose
+// headers go out with its first message.
+func markNoStorePrivate(ctx context.Context) {
 	if info, ok := connect.CallInfoForServerContext(ctx); ok {
 		info.ResponseHeader().Set("Cache-Control", "private, no-store")
 	}
-	return msg
 }
 
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
@@ -196,8 +205,9 @@ type API struct {
 // nil one turns revalidation off. search answers the catalog searches; a nil
 // one is the SQL backend over queries. idTokens says where the ID tokens a
 // reader signs in with are checked against. storageProvider stores the icons
-// readers upload. payments are the providers a tenant's payment settings may
-// name; a nil one is [providers.Registry].
+// readers upload, and objects reads the readers' archives back. payments are
+// the providers a tenant's payment settings may name; a nil one is
+// [providers.Registry].
 //
 // login is the sign-in limit and mail the limit on the mail a form may cause,
 // which the process hands every namespace it serves: the storefront and the
@@ -207,7 +217,7 @@ type API struct {
 //
 // reads bounds how fast one client may call the public API, and is the guard
 // the process hands image delivery as well. A nil one counts on its own.
-func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard, reads *readguard.Guard) (*API, error) {
+func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider, objects storage.Opener, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard, reads *readguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -228,6 +238,7 @@ func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider,
 		server.paymentProviders = payments
 	}
 	server.storage = storageProvider
+	server.objects = objects
 	server.reads.Replica = replica
 	return &API{server: server}, nil
 }

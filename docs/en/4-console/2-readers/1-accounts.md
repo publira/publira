@@ -1,8 +1,8 @@
 ---
 title: Reader accounts
-description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
+description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, and know what a reader's download of their data holds.
 published: 2026-10-21
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -51,6 +51,32 @@ Whether readers may upload an icon, pick one of the tenant's own, or show none a
 
 **Lift suspension**, on the same page, returns the account to **Active**, or to **Inactive** if its email address was never confirmed. The reader signs in again; the sessions the suspension ended stay ended. To find a suspended reader, set **Status** to **Suspended**.
 
+## A reader's download of their data
+
+A reader can download a copy of everything the site keeps about them, from **Account settings** on the site or the account screen in the app, so a request to see the data the site holds about them, under the APPI or the GDPR, is answered without anyone on the staff collecting it by hand. The staff cannot ask for it on a reader's behalf: point a reader who writes in at their account settings.
+
+Once the reader asks, the copy is prepared within a minute or so. They are told it is ready in their notifications on the site and by email, whatever their notification settings say, and download it from the same place, as often as they like, for seven days. After that it is deleted, and they can ask again. A reader can ask once a day unless the operator allows more, as [Platform policies](../../3-operations/9-platform-policies.md) describes, and not while an earlier request is still being prepared. The copy is kept in the install's object storage, so a reader cannot ask for one while the operator has none set up.
+
+The copy is a ZIP file with one JSON file for each kind of record, and the purchase history CSV the reader can already download beside them:
+
+| File | What it holds |
+| --- | --- |
+| `account.json` | Their name, email address, status, date of birth, and when they signed up and confirmed their address |
+| `sign_in_methods.json` | Whether the account has a password and a second factor, the Apple and Google accounts linked to it, and its passkeys |
+| `follows.json` | The series, episodes, and Authors they follow |
+| `reading_positions.json`, `reading_history.json` | Where they stopped in each episode, and every episode they read |
+| `ratings.json` | The ratings they gave episodes |
+| `comments.json`, `comment_reports.json` | Every comment they wrote, in whatever state it is now, and the comments they reported |
+| `purchases.json`, `purchases.csv` | Everything they bought |
+| `coin_transactions.json` | The coins they were granted and spent |
+| `subscriptions.json` | Their subscriptions, on the site and in the app |
+| `preferences.json` | Their notification settings and viewer preferences, if they ever saved any |
+| `legal_page_consents.json` | Each version of the terms of service and the privacy policy they agreed to |
+| `access_tickets.json` | The access tickets the staff issued to them |
+| `contact_messages.json` | The contact messages they sent while signed in, with the replies on each |
+
+It leaves out what is the staff's rather than the reader's: the notes staff keep on an access ticket or a contact message, which member of the staff approved, hid, or handled something, and the IDs the payment providers and stores keep the tenant's records under. It holds no password or second-factor secret either, which the site does not keep in a form anyone could read.
+
 ## Deleting a reader
 
 **Delete** deletes the account exactly as if the reader had closed it themselves, and cannot be undone:
@@ -63,6 +89,7 @@ Whether readers may upload an icon, pick one of the tenant's own, or show none a
 | Access tickets, follows, reading history, ratings, notifications, and linked Apple and Google sign-ins | Deleted |
 | Contact messages | Kept, shown as from **Guest** |
 | Roles on the staff | Removed |
+| A copy of their data they asked for | Deleted within the hour |
 
 Suspend rather than delete when you may want to undo it.
 

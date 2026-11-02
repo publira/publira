@@ -126,6 +126,15 @@ const (
 	// AuthServiceAgreeToLegalPagesProcedure is the procedure name of the AuthService's
 	// AgreeToLegalPages RPC.
 	AuthServiceAgreeToLegalPagesProcedure = "/publira.v1.AuthService/AgreeToLegalPages"
+	// AuthServiceRequestMyDataExportProcedure is the procedure name of the AuthService's
+	// RequestMyDataExport RPC.
+	AuthServiceRequestMyDataExportProcedure = "/publira.v1.AuthService/RequestMyDataExport"
+	// AuthServiceGetMyDataExportProcedure is the procedure name of the AuthService's GetMyDataExport
+	// RPC.
+	AuthServiceGetMyDataExportProcedure = "/publira.v1.AuthService/GetMyDataExport"
+	// AuthServiceDownloadMyDataExportProcedure is the procedure name of the AuthService's
+	// DownloadMyDataExport RPC.
+	AuthServiceDownloadMyDataExportProcedure = "/publira.v1.AuthService/DownloadMyDataExport"
 )
 
 var (
@@ -402,6 +411,27 @@ var (
 			Procedure:  AuthServiceAgreeToLegalPagesProcedure,
 		}
 	})
+	authServiceRequestMyDataExportSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RequestMyDataExport"),
+			Procedure:  AuthServiceRequestMyDataExportProcedure,
+		}
+	})
+	authServiceGetMyDataExportSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetMyDataExport"),
+			Procedure:  AuthServiceGetMyDataExportProcedure,
+		}
+	})
+	authServiceDownloadMyDataExportSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeServer,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("DownloadMyDataExport"),
+			Procedure:  AuthServiceDownloadMyDataExportProcedure,
+		}
+	})
 )
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
@@ -466,12 +496,49 @@ type AuthServiceClient interface {
 	GetMyLegalPageAgreements(context.Context, *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error)
 	// Records the signed-in reader's agreement to the versions they were shown.
 	AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error)
+	// Asks for an archive of what the install keeps about the signed-in reader,
+	// which the worker builds, and then tells the reader of in their inbox and
+	// by mail. A reader may ask while they owe an agreement to the tenant's
+	// legal pages, as they may delete their account.
+	//
+	// failed_precondition, with the DATA_EXPORT_IN_PROGRESS reason, while a
+	// request of theirs is still pending, and with STORAGE_NOT_CONFIGURED while
+	// the platform has no object store to keep the archive in.
+	// resource_exhausted past the platform policy's data_export limit.
+	RequestMyDataExport(context.Context, *v1.RequestMyDataExportRequest) (*v1.RequestMyDataExportResponse, error)
+	// The signed-in reader's latest request for their archive.
+	GetMyDataExport(context.Context, *v1.GetMyDataExportRequest) (*v1.GetMyDataExportResponse, error)
+	// Streams the signed-in reader's latest ready archive, as a ZIP file in
+	// pieces, until it expires. Any number of times until then. not_found when
+	// there is none.
+	DownloadMyDataExport(context.Context, *v1.DownloadMyDataExportRequest) (AuthServiceDownloadMyDataExportClientStream, error)
 }
 
 // NewAuthServiceClient constructs a client for the publira.v1.AuthService service. Multiple service
 // clients may share a single connect.Client.
 func NewAuthServiceClient(client *connect.Client) AuthServiceClient {
 	return &authServiceClient{client: client}
+}
+
+// AuthServiceDownloadMyDataExportClientStream is the client stream for the AuthService's
+// DownloadMyDataExport RPC.
+type AuthServiceDownloadMyDataExportClientStream struct {
+	stream connect.ClientStream
+}
+
+// Receive returns the next response message from the server.
+func (s AuthServiceDownloadMyDataExportClientStream) Receive() (*v1.DownloadMyDataExportResponse, error) {
+	var res v1.DownloadMyDataExportResponse
+	if err := s.stream.Receive(&res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// Close releases the stream's resources. It is idempotent and is typically deferred to clean up a
+// stream abandoned before io.EOF.
+func (s AuthServiceDownloadMyDataExportClientStream) Close() error {
+	return s.stream.Close()
 }
 
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
@@ -536,6 +603,22 @@ type AuthServiceHandler interface {
 	GetMyLegalPageAgreements(context.Context, *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error)
 	// Records the signed-in reader's agreement to the versions they were shown.
 	AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error)
+	// Asks for an archive of what the install keeps about the signed-in reader,
+	// which the worker builds, and then tells the reader of in their inbox and
+	// by mail. A reader may ask while they owe an agreement to the tenant's
+	// legal pages, as they may delete their account.
+	//
+	// failed_precondition, with the DATA_EXPORT_IN_PROGRESS reason, while a
+	// request of theirs is still pending, and with STORAGE_NOT_CONFIGURED while
+	// the platform has no object store to keep the archive in.
+	// resource_exhausted past the platform policy's data_export limit.
+	RequestMyDataExport(context.Context, *v1.RequestMyDataExportRequest) (*v1.RequestMyDataExportResponse, error)
+	// The signed-in reader's latest request for their archive.
+	GetMyDataExport(context.Context, *v1.GetMyDataExportRequest) (*v1.GetMyDataExportResponse, error)
+	// Streams the signed-in reader's latest ready archive, as a ZIP file in
+	// pieces, until it expires. Any number of times until then. not_found when
+	// there is none.
+	DownloadMyDataExport(context.Context, *v1.DownloadMyDataExportRequest, AuthServiceDownloadMyDataExportServerStream) error
 }
 
 // RegisterAuthServiceHandler registers svc as the publira.v1.AuthService implementation on server.
@@ -581,7 +664,26 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceMarkAllAnnouncementsAsReadSpec(), Handler: adapter.markAllAnnouncementsAsRead},
 		connect.Method{Spec: authServiceGetMyLegalPageAgreementsSpec(), Handler: adapter.getMyLegalPageAgreements},
 		connect.Method{Spec: authServiceAgreeToLegalPagesSpec(), Handler: adapter.agreeToLegalPages},
+		connect.Method{Spec: authServiceRequestMyDataExportSpec(), Handler: adapter.requestMyDataExport},
+		connect.Method{Spec: authServiceGetMyDataExportSpec(), Handler: adapter.getMyDataExport},
+		connect.Method{Spec: authServiceDownloadMyDataExportSpec(), Handler: adapter.downloadMyDataExport},
 	)
+}
+
+// AuthServiceDownloadMyDataExportServerStream is the server stream for the AuthService's
+// DownloadMyDataExport RPC.
+type AuthServiceDownloadMyDataExportServerStream struct {
+	stream connect.ServerStream
+}
+
+// SendHeaders flushes the response headers without a message. The first Send does this implicitly.
+func (s AuthServiceDownloadMyDataExportServerStream) SendHeaders() error {
+	return s.stream.SendHeaders()
+}
+
+// Send sends a response message to the client.
+func (s AuthServiceDownloadMyDataExportServerStream) Send(res *v1.DownloadMyDataExportResponse) error {
+	return s.stream.Send(res)
 }
 
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
@@ -741,6 +843,18 @@ func (UnimplementedAuthServiceHandler) GetMyLegalPageAgreements(context.Context,
 
 func (UnimplementedAuthServiceHandler) AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.AgreeToLegalPages is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) RequestMyDataExport(context.Context, *v1.RequestMyDataExportRequest) (*v1.RequestMyDataExportResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RequestMyDataExport is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) GetMyDataExport(context.Context, *v1.GetMyDataExportRequest) (*v1.GetMyDataExportResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetMyDataExport is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) DownloadMyDataExport(context.Context, *v1.DownloadMyDataExportRequest, AuthServiceDownloadMyDataExportServerStream) error {
+	return connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.DownloadMyDataExport is not implemented")
 }
 
 type authServiceClient struct {
@@ -1057,6 +1171,30 @@ func (c *authServiceClient) AgreeToLegalPages(ctx context.Context, req *v1.Agree
 		return nil, err
 	}
 	return &res, nil
+}
+
+func (c *authServiceClient) RequestMyDataExport(ctx context.Context, req *v1.RequestMyDataExportRequest) (*v1.RequestMyDataExportResponse, error) {
+	var res v1.RequestMyDataExportResponse
+	if err := c.client.CallUnary(ctx, authServiceRequestMyDataExportSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetMyDataExport(ctx context.Context, req *v1.GetMyDataExportRequest) (*v1.GetMyDataExportResponse, error) {
+	var res v1.GetMyDataExportResponse
+	if err := c.client.CallUnary(ctx, authServiceGetMyDataExportSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) DownloadMyDataExport(ctx context.Context, req *v1.DownloadMyDataExportRequest) (AuthServiceDownloadMyDataExportClientStream, error) {
+	stream, err := c.client.CallServerStream(ctx, authServiceDownloadMyDataExportSpec(), req)
+	if err != nil {
+		return AuthServiceDownloadMyDataExportClientStream{}, err
+	}
+	return AuthServiceDownloadMyDataExportClientStream{stream: stream}, nil
 }
 
 type authServiceHandler struct{ svc AuthServiceHandler }
@@ -1527,4 +1665,36 @@ func (h authServiceHandler) agreeToLegalPages(ctx context.Context, _ connect.Spe
 		return err
 	}
 	return stream.Send(res)
+}
+
+func (h authServiceHandler) requestMyDataExport(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RequestMyDataExportRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RequestMyDataExport(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getMyDataExport(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyDataExportRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyDataExport(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) downloadMyDataExport(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DownloadMyDataExportRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	return h.svc.DownloadMyDataExport(ctx, &req, AuthServiceDownloadMyDataExportServerStream{stream: stream})
 }
