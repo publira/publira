@@ -47,3 +47,10 @@ export const creatorStatementHref = (
 
   return token ? `${pathname}?token=${encodeURIComponent(token)}` : pathname;
 };
+
+/** The comments on one Author's episodes, at the page `token` names. */
+export const creatorCommentsHref = (creatorId: string, token = ""): string => {
+  const pathname = `/my/creators/${creatorId}/comments`;
+
+  return token ? `${pathname}?token=${encodeURIComponent(token)}` : pathname;
+};

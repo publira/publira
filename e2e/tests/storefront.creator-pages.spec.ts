@@ -8,7 +8,9 @@ import { revalidateStorefrontTags, tenantSiteTag } from "../src/revalidate";
 import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import {
   CREATOR_PAGES_AUTHORS,
+  CREATOR_PAGES_COMMENTS,
   CREATOR_PAGES_DECEMBER,
+  CREATOR_PAGES_OTHER_AUTHORS_COMMENT,
   CREATOR_PAGES_OTHER_AUTHORS_SERIES,
   CREATOR_PAGES_SCENARIO,
 } from "../src/scenarios/creator-pages";
@@ -24,6 +26,8 @@ const AUTHOR_PAGES_LINK = "Your author pages";
 const authorPath = (id: string) => `/my/creators/${id}`;
 
 const statementPath = `${authorPath(FIRST_AUTHOR.id)}/statements/${CREATOR_PAGES_DECEMBER.period}`;
+
+const commentsPath = `${authorPath(FIRST_AUTHOR.id)}/comments`;
 
 /** Whether the tenant shows its Authors their sales, written straight to Postgres. */
 const showSales = (shown: boolean) => {
@@ -47,8 +51,8 @@ const lineRows = (page: Page) =>
 
 /**
  * What a reader linked to Authors reads of them from My Page: each Author's
- * figures, the closed months with the lines that name them, and the download
- * of those lines. The pages and the sales are tenant settings, so the suite
+ * figures, the closed months with the lines that name them, the download of
+ * those lines, and the comments on their episodes. The pages and the sales are tenant settings, so the suite
  * applies them itself and runs in order.
  */
 test.describe.configure({ mode: "serial" });
@@ -161,6 +165,48 @@ test.describe("web-storefront Author pages", () => {
     expect(body).toEqual(CREATOR_PAGES_DECEMBER.csvRows);
   });
 
+  test("the comments on the Author's episodes read newest first, the reader's own badged, and open their episode", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      CREATOR_READER,
+      authorPath(FIRST_AUTHOR.id),
+      WEB_STOREFRONT_BASE_URL
+    );
+
+    await page.getByRole("link", { exact: true, name: "Comments" }).click();
+    await page.waitForURL(`**${commentsPath}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Comments" })
+    ).toBeVisible();
+
+    const [own, members] = CREATOR_PAGES_COMMENTS;
+    const rows = page.getByRole("main").getByRole("listitem");
+    await expect(rows).toHaveCount(CREATOR_PAGES_COMMENTS.length);
+
+    await expect(rows.nth(0)).toContainText(own.body);
+    await expect(
+      rows.nth(0).getByRole("link", { name: own.author })
+    ).toBeVisible();
+    await expect(
+      rows.nth(0).getByText("Author", { exact: true })
+    ).toBeVisible();
+
+    await expect(rows.nth(1)).toContainText(members.body);
+    await expect(rows.nth(1)).toContainText(members.author);
+    await expect(rows.nth(1).getByText("Author", { exact: true })).toHaveCount(
+      0
+    );
+
+    await expect(page.getByRole("main")).not.toContainText(
+      CREATOR_PAGES_OTHER_AUTHORS_COMMENT
+    );
+
+    await rows.nth(1).getByRole("link", { name: members.episodeTitle }).click();
+    await page.waitForURL(`**${members.episodePath}`);
+  });
+
   test("with sales hidden, the pages show no amount and no statement", async ({
     page,
   }) => {
@@ -216,5 +262,10 @@ test.describe("web-storefront Author pages", () => {
 
     await page.goto(`${WEB_STOREFRONT_BASE_URL}/my/creators`);
     await page.waitForURL((url) => url.pathname.endsWith("/my"));
+
+    await page.goto(`${WEB_STOREFRONT_BASE_URL}${commentsPath}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
   });
 });

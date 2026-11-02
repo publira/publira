@@ -5443,7 +5443,18 @@
       "adjustment": "{$period}분 환불 조정",
       "subscription": "구독 배분",
       "download_csv": "CSV로 다운로드",
-      "back_to_creator": "{$name}(으)로 돌아가기"
+      "back_to_creator": "{$name}(으)로 돌아가기",
+      "comments": {
+        "link": "댓글",
+        "title": "댓글",
+        "description": "이 작가가 크레딧된 에피소드에 달린 댓글을 최신순으로 보여 줍니다.",
+        "reply_hint": "답글을 달려면 에피소드를 열고 댓글을 작성하세요. 작성한 댓글에는 작가 배지가 붙습니다.",
+        "empty": "이 작가의 에피소드에 아직 댓글이 없습니다.",
+        "page_empty": "이 페이지에는 댓글이 없습니다.",
+        "pagination_aria": "댓글 페이지 이동",
+        "load_failed": "댓글을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "load_error": "댓글을 표시할 수 없습니다"
+      }
     },
     "nav": {
       "account_menu": "계정 메뉴",

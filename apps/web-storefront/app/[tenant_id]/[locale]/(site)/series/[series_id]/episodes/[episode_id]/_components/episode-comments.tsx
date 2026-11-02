@@ -1,5 +1,3 @@
-import { UserIcon } from "@publira/icons";
-import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -7,7 +5,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import { AccountIcon } from "#components/account-icon";
+import * as EpisodeComment from "#components/episode-comment";
 import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -52,15 +50,8 @@ export interface EpisodeCommentsProps {
  * for everyone; the per-viewer one is keyed to a session, so no reader's
  * pending or removed comment can enter an entry another reader is served.
  *
- * A comment by one of the episode's credited creators is shown under the name
- * the episode credits them as, with a badge saying so in words: the badge is
- * the whole of the mark, so a reader who cannot tell its colour apart still
- * reads it. That name links to the creator's page, since it is the one name in
- * the list a reader may want to follow; a reader's name stays plain text.
- *
- * Every author is drawn with the icon their account shows now, and with a
- * person glyph when it shows none, so a list with and without icons keeps one
- * column of faces beside the names.
+ * Each comment is drawn by `EpisodeComment`, which says how a creator's comment
+ * is marked.
  *
  * Nothing here marks a comment as removed. A comment staff took down keeps
  * rendering to its author exactly as it did before — same place in the list,
@@ -244,89 +235,75 @@ export const EpisodeComments = async ({
         <ol className="divide-y divide-border">
           {comments.map((comment) => (
             <li className="py-4 first:pt-0" key={comment.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  {/* The name beside it says whose icon it is, so the image
-                      itself says nothing. */}
-                  <AccountIcon
-                    alt=""
-                    className="size-10 shrink-0 rounded-full border border-border object-cover"
-                    fallback={
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
-                        <UserIcon
-                          aria-hidden="true"
-                          className="size-5 text-muted-foreground"
-                        />
-                      </span>
-                    }
-                    icon={comment.authorIcon}
-                    size={40}
-                  />
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
-                      {comment.creatorPublicId ? (
-                        <LocaleLink
-                          className="text-primary underline underline-offset-4"
-                          href={`/creators/${comment.creatorPublicId}`}
-                        >
-                          {episodeCommentDisplayName(comment)}
-                        </LocaleLink>
-                      ) : (
-                        episodeCommentDisplayName(comment)
-                      )}
-                      {comment.creatorName ? (
-                        <Badge tone="info">
-                          <Suspense
-                            fallback={<SkeletonLine className="h-3 w-12" />}
+              <EpisodeComment.Root>
+                <EpisodeComment.Header>
+                  <EpisodeComment.Author>
+                    <EpisodeComment.Icon icon={comment.authorIcon} />
+                    <EpisodeComment.Byline>
+                      <EpisodeComment.Name>
+                        {comment.creatorPublicId ? (
+                          <EpisodeComment.CreatorLink
+                            href={`/creators/${comment.creatorPublicId}`}
                           >
-                            <Message message="storefront.episode.comments.creator_badge" />
-                          </Suspense>
-                        </Badge>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      <time dateTime={comment.createdAt}>
-                        {commentedAt(comment)}
-                      </time>
-                      {comment.awaitingApproval ? (
-                        <span className="ml-3 text-warning">
-                          <Suspense
-                            fallback={<SkeletonLine className="h-3 w-28" />}
-                          >
-                            <Message message="storefront.episode.comments.awaiting_approval" />
-                          </Suspense>
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                </div>
-                {viewer && comment.authorPublicId === viewer.publicId ? (
-                  <CommentDeleteButton
-                    aria-label={t("storefront.episode.comments.delete_aria", {
-                      date: commentedAt(comment),
-                    })}
-                    commentId={comment.id}
-                    episodePublicId={episodePublicId}
-                    returnTo={episodePath}
-                    tenantId={tenantId}
-                  />
-                ) : null}
-                {/* Reporting needs a session, and a reader reporting their own
-                    comment is the one case the API refuses outright — they can
-                    delete it instead. */}
-                {viewer && comment.authorPublicId !== viewer.publicId ? (
-                  <CommentReportButton
-                    aria-label={t("storefront.episode.comments.report_aria", {
-                      author: episodeCommentDisplayName(comment),
-                      date: commentedAt(comment),
-                    })}
-                    commentId={comment.id}
-                    returnTo={episodePath}
-                    tenantId={tenantId}
-                  />
-                ) : null}
-              </div>
-              <p className="mt-3 text-sm whitespace-pre-wrap">{comment.body}</p>
+                            {episodeCommentDisplayName(comment)}
+                          </EpisodeComment.CreatorLink>
+                        ) : (
+                          episodeCommentDisplayName(comment)
+                        )}
+                        {comment.creatorName ? (
+                          <EpisodeComment.CreatorBadge>
+                            <Suspense
+                              fallback={<SkeletonLine className="h-3 w-12" />}
+                            >
+                              <Message message="storefront.episode.comments.creator_badge" />
+                            </Suspense>
+                          </EpisodeComment.CreatorBadge>
+                        ) : null}
+                      </EpisodeComment.Name>
+                      <EpisodeComment.Meta>
+                        <time dateTime={comment.createdAt}>
+                          {commentedAt(comment)}
+                        </time>
+                        {comment.awaitingApproval ? (
+                          <span className="ml-3 text-warning">
+                            <Suspense
+                              fallback={<SkeletonLine className="h-3 w-28" />}
+                            >
+                              <Message message="storefront.episode.comments.awaiting_approval" />
+                            </Suspense>
+                          </span>
+                        ) : null}
+                      </EpisodeComment.Meta>
+                    </EpisodeComment.Byline>
+                  </EpisodeComment.Author>
+                  {viewer && comment.authorPublicId === viewer.publicId ? (
+                    <CommentDeleteButton
+                      aria-label={t("storefront.episode.comments.delete_aria", {
+                        date: commentedAt(comment),
+                      })}
+                      commentId={comment.id}
+                      episodePublicId={episodePublicId}
+                      returnTo={episodePath}
+                      tenantId={tenantId}
+                    />
+                  ) : null}
+                  {/* Reporting needs a session, and a reader reporting their
+                      own comment is the one case the API refuses outright —
+                      they can delete it instead. */}
+                  {viewer && comment.authorPublicId !== viewer.publicId ? (
+                    <CommentReportButton
+                      aria-label={t("storefront.episode.comments.report_aria", {
+                        author: episodeCommentDisplayName(comment),
+                        date: commentedAt(comment),
+                      })}
+                      commentId={comment.id}
+                      returnTo={episodePath}
+                      tenantId={tenantId}
+                    />
+                  ) : null}
+                </EpisodeComment.Header>
+                <EpisodeComment.Body>{comment.body}</EpisodeComment.Body>
+              </EpisodeComment.Root>
             </li>
           ))}
         </ol>

@@ -12,7 +12,10 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
-import { tenantEpisodeCommentsTag } from "#lib/cache-tags";
+import {
+  tenantCreatorCommentsTag,
+  tenantEpisodeCommentsTag,
+} from "#lib/cache-tags";
 import {
   EPISODE_COMMENT_REPORT_REASONS,
   postEpisodeComment,
@@ -168,6 +171,7 @@ export const postEpisodeCommentAction = async (
   }
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
+  updateTag(tenantCreatorCommentsTag(tenantId));
 
   return {
     message: result.awaitingApproval
@@ -222,6 +226,7 @@ export const withdrawEpisodeCommentAction = async (
   }
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
+  updateTag(tenantCreatorCommentsTag(tenantId));
   const t = await getMessagesFor(locale);
 
   return {

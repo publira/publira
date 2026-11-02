@@ -582,6 +582,14 @@
       "tests": ["the creator reader opens their author page"]
     },
     {
+      "name": "An Author's comment list",
+      "web": {
+        "routes": ["[locale]/(site)/my/creators/[creator_id]/comments"],
+        "rpcs": ["ListMyCreatorEpisodeComments"]
+      },
+      "exception": "Not in the app yet: #4899."
+    },
+    {
       "name": "Signing in",
       "web": {
         "routes": ["[locale]/(auth)/login"],

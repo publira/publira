@@ -13,6 +13,7 @@ import {
 } from "@publira/api-client/public/types";
 import type {
   MyCreator,
+  MyCreatorEpisodeComment,
   MyCreatorEpisodeStats,
   MyCreatorStatement,
   MyCreatorStatementLine,
@@ -25,7 +26,13 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { applyCacheTag, tenantCreatorPagesTag } from "./cache-tags";
+import {
+  applyCacheTag,
+  tenantCreatorCommentsTag,
+  tenantCreatorPagesTag,
+} from "./cache-tags";
+import { toPublicComment } from "./comments";
+import type { EpisodeCommentItem } from "./comments";
 import { getMessagesFor } from "./messages";
 import type { StorefrontMessageKey } from "./messages";
 
@@ -121,6 +128,22 @@ export interface MyCreatorStatementDetail {
   nextToken: string;
   previousToken: string;
   statement: MyCreatorStatementItem;
+}
+
+/** A published comment on one of the Author's episodes, with that episode. */
+export interface MyCreatorCommentItem {
+  comment: EpisodeCommentItem;
+  episodePublicId: string;
+  episodeTitle: string;
+  seriesPublicId: string;
+  seriesTitle: string;
+}
+
+export interface MyCreatorCommentPage {
+  /** Newest first. */
+  comments: MyCreatorCommentItem[];
+  nextToken: string;
+  previousToken: string;
 }
 
 /**
@@ -308,6 +331,32 @@ const toStatementLineItem = (
   shareBps: line.shareBps,
   source: toLineSource(line.source),
 });
+
+type RawCreatorComment = Pick<
+  MyCreatorEpisodeComment,
+  | "comment"
+  | "episodePublicId"
+  | "episodeTitle"
+  | "seriesPublicId"
+  | "seriesTitle"
+>;
+
+/**
+ * `null` for a row with no comment, which the server never answers and which
+ * leaves the page nothing to show.
+ */
+const toCreatorCommentItem = (
+  row: RawCreatorComment
+): MyCreatorCommentItem | null =>
+  row.comment
+    ? {
+        comment: toPublicComment(row.comment),
+        episodePublicId: row.episodePublicId,
+        episodeTitle: row.episodeTitle,
+        seriesPublicId: row.seriesPublicId,
+        seriesTitle: row.seriesTitle,
+      }
+    : null;
 
 const readMyCreators = async (
   tenantId: string,
@@ -518,6 +567,65 @@ export const getMyCreatorStatement = async (
   input: { creatorId: string; locale: Locale; period: string; token: string }
 ): Promise<CreatorPageRead<MyCreatorStatementDetail>> =>
   settle(readMyCreatorStatement(tenantId, input, await resolveAccessToken()));
+
+const readMyCreatorComments = async (
+  tenantId: string,
+  input: { creatorId: string; locale: Locale; token: string },
+  sessionId: string
+): Promise<CachedCreatorPageRead<MyCreatorCommentPage>> => {
+  "use cache: private";
+
+  applyCacheTag(tenantCreatorPagesTag(tenantId));
+  applyCacheTag(tenantCreatorCommentsTag(tenantId));
+
+  const { creatorId, locale, token } = input;
+
+  if (!sessionId) {
+    return signInRequired(locale);
+  }
+
+  try {
+    const response = await apiClient.creator.listMyCreatorEpisodeComments(
+      {
+        creatorId,
+        limit: defaultPageSize,
+        locale,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+        token,
+      },
+      buildSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      unexpected: false,
+      value: {
+        comments: response.comments
+          .map(toCreatorCommentItem)
+          .filter((item) => item !== null),
+        nextToken: response.nextToken,
+        previousToken: response.previousToken,
+      },
+    };
+  } catch (error) {
+    return readFailure(
+      error,
+      locale,
+      "storefront.my_creator.comments.load_failed"
+    );
+  }
+};
+
+/**
+ * One page of the published comments on the Author's episodes, newest first,
+ * each with its episode titled in `locale`.
+ */
+export const listMyCreatorComments = async (
+  tenantId: string,
+  input: { creatorId: string; locale: Locale; token: string }
+): Promise<CreatorPageRead<MyCreatorCommentPage>> =>
+  settle(readMyCreatorComments(tenantId, input, await resolveAccessToken()));
 
 /** The Author's part of one closed month, with every one of its lines. */
 export interface MyCreatorStatementExport {
