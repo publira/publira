@@ -33,6 +33,9 @@ const (
 	// AdminAnnouncementServiceUnpinAnnouncementProcedure is the procedure name of the
 	// AdminAnnouncementService's UnpinAnnouncement RPC.
 	AdminAnnouncementServiceUnpinAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/UnpinAnnouncement"
+	// AdminAnnouncementServiceCountAnnouncementAudienceProcedure is the procedure name of the
+	// AdminAnnouncementService's CountAnnouncementAudience RPC.
+	AdminAnnouncementServiceCountAnnouncementAudienceProcedure = "/publira.admin.v1.AdminAnnouncementService/CountAnnouncementAudience"
 )
 
 var (
@@ -57,6 +60,13 @@ var (
 			Procedure:  AdminAnnouncementServiceUnpinAnnouncementProcedure,
 		}
 	})
+	adminAnnouncementServiceCountAnnouncementAudienceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_announcement_proto.Services().ByName("AdminAnnouncementService").Methods().ByName("CountAnnouncementAudience"),
+			Procedure:  AdminAnnouncementServiceCountAnnouncementAudienceProcedure,
+		}
+	})
 )
 
 // AdminAnnouncementServiceClient is a client for the publira.admin.v1.AdminAnnouncementService
@@ -68,6 +78,9 @@ type AdminAnnouncementServiceClient interface {
 	CreateAnnouncement(context.Context, *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error)
 	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
+	// Counts the readers an audience selects, and names none of them.
+	// Minimum role: tenant_auditor.
+	CountAnnouncementAudience(context.Context, *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error)
 }
 
 // NewAdminAnnouncementServiceClient constructs a client for the
@@ -86,6 +99,9 @@ type AdminAnnouncementServiceHandler interface {
 	CreateAnnouncement(context.Context, *v1.CreateAnnouncementRequest) (*v1.CreateAnnouncementResponse, error)
 	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error)
+	// Counts the readers an audience selects, and names none of them.
+	// Minimum role: tenant_auditor.
+	CountAnnouncementAudience(context.Context, *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error)
 }
 
 // RegisterAdminAnnouncementServiceHandler registers svc as the
@@ -96,6 +112,7 @@ func RegisterAdminAnnouncementServiceHandler(server *connect.Server, svc AdminAn
 		connect.Method{Spec: adminAnnouncementServiceListAnnouncementsSpec(), Handler: adapter.listAnnouncements},
 		connect.Method{Spec: adminAnnouncementServiceCreateAnnouncementSpec(), Handler: adapter.createAnnouncement},
 		connect.Method{Spec: adminAnnouncementServiceUnpinAnnouncementSpec(), Handler: adapter.unpinAnnouncement},
+		connect.Method{Spec: adminAnnouncementServiceCountAnnouncementAudienceSpec(), Handler: adapter.countAnnouncementAudience},
 	)
 }
 
@@ -112,6 +129,10 @@ func (UnimplementedAdminAnnouncementServiceHandler) CreateAnnouncement(context.C
 
 func (UnimplementedAdminAnnouncementServiceHandler) UnpinAnnouncement(context.Context, *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement is not implemented")
+}
+
+func (UnimplementedAdminAnnouncementServiceHandler) CountAnnouncementAudience(context.Context, *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAnnouncementService.CountAnnouncementAudience is not implemented")
 }
 
 type adminAnnouncementServiceClient struct {
@@ -137,6 +158,14 @@ func (c *adminAnnouncementServiceClient) CreateAnnouncement(ctx context.Context,
 func (c *adminAnnouncementServiceClient) UnpinAnnouncement(ctx context.Context, req *v1.UnpinAnnouncementRequest) (*v1.UnpinAnnouncementResponse, error) {
 	var res v1.UnpinAnnouncementResponse
 	if err := c.client.CallUnary(ctx, adminAnnouncementServiceUnpinAnnouncementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAnnouncementServiceClient) CountAnnouncementAudience(ctx context.Context, req *v1.CountAnnouncementAudienceRequest) (*v1.CountAnnouncementAudienceResponse, error) {
+	var res v1.CountAnnouncementAudienceResponse
+	if err := c.client.CallUnary(ctx, adminAnnouncementServiceCountAnnouncementAudienceSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -176,6 +205,18 @@ func (h adminAnnouncementServiceHandler) unpinAnnouncement(ctx context.Context, 
 		return err
 	}
 	res, err := h.svc.UnpinAnnouncement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAnnouncementServiceHandler) countAnnouncementAudience(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CountAnnouncementAudienceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CountAnnouncementAudience(ctx, &req)
 	if err != nil {
 		return err
 	}

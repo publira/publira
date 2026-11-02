@@ -410,6 +410,44 @@ func (s *adminServer) announcementAudienceFrom(
 	return &audience, nil
 }
 
+// CountAnnouncementAudience answers how many readers an audience selects, by
+// the function delivery reads through, so the form shows the reach the worker
+// would then deliver to. It answers a number and nothing more: a list of the
+// readers would be the one the member policies keep out of the console. A
+// count changes nothing, so it is not audited.
+func (s *adminServer) CountAnnouncementAudience(
+	ctx context.Context,
+	req *publiraadminv1.CountAnnouncementAudienceRequest,
+) (*publiraadminv1.CountAnnouncementAudienceResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
+
+	if req.Audience == nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("audience must name at least one condition"), "audience")
+	}
+	audience, err := announcementaudience.FromProto(ctx, s.queriesFor(ctx), tenant, req.Audience)
+	if err != nil {
+		if fieldErr := rpcerrors.FromFieldError(err); fieldErr != nil {
+			return nil, fieldErr
+		}
+		return nil, s.internalDBError(ctx, "failed to resolve announcement audience", err, "tenant_id", tenant.ID.String())
+	}
+	encoded, err := audience.Encode()
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to encode announcement audience", err, "tenant_id", tenant.ID.String())
+	}
+	count, err := s.queriesFor(ctx).CountAnnouncementAudience(ctx, encoded)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count announcement audience", err, "tenant_id", tenant.ID.String())
+	}
+	return &publiraadminv1.CountAnnouncementAudienceResponse{ReaderCount: count}, nil
+}
+
 // announcementTranslationInput is one locale's copy CreateAnnouncement was
 // asked to write, with its locale resolved.
 type announcementTranslationInput struct {

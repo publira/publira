@@ -331,7 +331,8 @@ REVOKE EXECUTE ON FUNCTION
     public.episode_ratings_follow_episode_deletes(),
     public.series_follows_record_change(),
     public.creator_follows_record_change(),
-    public.tenant_image_shown_by_brand_mark(uuid, uuid)
+    public.tenant_image_shown_by_brand_mark(uuid, uuid),
+    public.count_announcement_audience(jsonb)
 FROM PUBLIC;
 
 -- tenant_image_shown_by_brand_mark is called from the restrictive policy on
@@ -340,6 +341,10 @@ FROM PUBLIC;
 -- the maintenance role the orphan image sweep runs as. A tenant's deletion
 -- reaches its images through foreign keys, which no policy filters.
 GRANT EXECUTE ON FUNCTION public.tenant_image_shown_by_brand_mark(uuid, uuid) TO publira_admin, publira_content_stats;
+
+-- count_announcement_audience is the console's: an editor sees how many readers
+-- an audience reaches before delivering to it.
+GRANT EXECUTE ON FUNCTION public.count_announcement_audience(jsonb) TO publira_admin;
 
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It

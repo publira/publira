@@ -915,6 +915,108 @@ func (*UnpinAnnouncementResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{9}
 }
 
+// How many readers an audience would reach, for the announcement form to show
+// while its conditions are composed.
+type CountAnnouncementAudienceRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// At least one condition, as CreateAnnouncement takes it. Unset or empty is
+	// invalid_argument.
+	Audience      *AnnouncementAudience `protobuf:"bytes,2,opt,name=audience,proto3" json:"audience,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountAnnouncementAudienceRequest) Reset() {
+	*x = CountAnnouncementAudienceRequest{}
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountAnnouncementAudienceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountAnnouncementAudienceRequest) ProtoMessage() {}
+
+func (x *CountAnnouncementAudienceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountAnnouncementAudienceRequest.ProtoReflect.Descriptor instead.
+func (*CountAnnouncementAudienceRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CountAnnouncementAudienceRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *CountAnnouncementAudienceRequest) GetAudience() *AnnouncementAudience {
+	if x != nil {
+		return x.Audience
+	}
+	return nil
+}
+
+type CountAnnouncementAudienceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The readers who meet every condition now: those a delivery at this moment
+	// would reach.
+	ReaderCount   int64 `protobuf:"varint,1,opt,name=reader_count,json=readerCount,proto3" json:"reader_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountAnnouncementAudienceResponse) Reset() {
+	*x = CountAnnouncementAudienceResponse{}
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountAnnouncementAudienceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountAnnouncementAudienceResponse) ProtoMessage() {}
+
+func (x *CountAnnouncementAudienceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountAnnouncementAudienceResponse.ProtoReflect.Descriptor instead.
+func (*CountAnnouncementAudienceResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CountAnnouncementAudienceResponse) GetReaderCount() int64 {
+	if x != nil {
+		return x.ReaderCount
+	}
+	return 0
+}
+
 // The reader follows the series.
 type AnnouncementAudienceCondition_FollowsSeries struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -925,7 +1027,7 @@ type AnnouncementAudienceCondition_FollowsSeries struct {
 
 func (x *AnnouncementAudienceCondition_FollowsSeries) Reset() {
 	*x = AnnouncementAudienceCondition_FollowsSeries{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -937,7 +1039,7 @@ func (x *AnnouncementAudienceCondition_FollowsSeries) String() string {
 func (*AnnouncementAudienceCondition_FollowsSeries) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_FollowsSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -971,7 +1073,7 @@ type AnnouncementAudienceCondition_BoughtSeriesEpisode struct {
 
 func (x *AnnouncementAudienceCondition_BoughtSeriesEpisode) Reset() {
 	*x = AnnouncementAudienceCondition_BoughtSeriesEpisode{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -983,7 +1085,7 @@ func (x *AnnouncementAudienceCondition_BoughtSeriesEpisode) String() string {
 func (*AnnouncementAudienceCondition_BoughtSeriesEpisode) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_BoughtSeriesEpisode) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1019,7 +1121,7 @@ type AnnouncementAudienceCondition_Subscription struct {
 
 func (x *AnnouncementAudienceCondition_Subscription) Reset() {
 	*x = AnnouncementAudienceCondition_Subscription{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +1133,7 @@ func (x *AnnouncementAudienceCondition_Subscription) String() string {
 func (*AnnouncementAudienceCondition_Subscription) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_Subscription) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,7 +1172,7 @@ type AnnouncementAudienceCondition_NeverPurchased struct {
 
 func (x *AnnouncementAudienceCondition_NeverPurchased) Reset() {
 	*x = AnnouncementAudienceCondition_NeverPurchased{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1082,7 +1184,7 @@ func (x *AnnouncementAudienceCondition_NeverPurchased) String() string {
 func (*AnnouncementAudienceCondition_NeverPurchased) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_NeverPurchased) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1212,7 @@ type AnnouncementAudienceCondition_LastReadDaysAgo struct {
 
 func (x *AnnouncementAudienceCondition_LastReadDaysAgo) Reset() {
 	*x = AnnouncementAudienceCondition_LastReadDaysAgo{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1122,7 +1224,7 @@ func (x *AnnouncementAudienceCondition_LastReadDaysAgo) String() string {
 func (*AnnouncementAudienceCondition_LastReadDaysAgo) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_LastReadDaysAgo) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1156,7 +1258,7 @@ type AnnouncementAudienceCondition_SignedUpWithinDays struct {
 
 func (x *AnnouncementAudienceCondition_SignedUpWithinDays) Reset() {
 	*x = AnnouncementAudienceCondition_SignedUpWithinDays{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1168,7 +1270,7 @@ func (x *AnnouncementAudienceCondition_SignedUpWithinDays) String() string {
 func (*AnnouncementAudienceCondition_SignedUpWithinDays) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_SignedUpWithinDays) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,7 +1306,7 @@ type AnnouncementAudienceCondition_Locale struct {
 
 func (x *AnnouncementAudienceCondition_Locale) Reset() {
 	*x = AnnouncementAudienceCondition_Locale{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1216,7 +1318,7 @@ func (x *AnnouncementAudienceCondition_Locale) String() string {
 func (*AnnouncementAudienceCondition_Locale) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_Locale) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1249,7 +1351,7 @@ type AnnouncementAudienceCondition_HasMobilePushDevice struct {
 
 func (x *AnnouncementAudienceCondition_HasMobilePushDevice) Reset() {
 	*x = AnnouncementAudienceCondition_HasMobilePushDevice{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1363,7 @@ func (x *AnnouncementAudienceCondition_HasMobilePushDevice) String() string {
 func (*AnnouncementAudienceCondition_HasMobilePushDevice) ProtoMessage() {}
 
 func (x *AnnouncementAudienceCondition_HasMobilePushDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1352,7 +1454,12 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\x18UnpinAnnouncementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
 	"\x0fannouncement_id\x18\x02 \x01(\tR\x0eannouncementId\"\x1b\n" +
-	"\x19UnpinAnnouncementResponse*\x86\x01\n" +
+	"\x19UnpinAnnouncementResponse\"\x9f\x01\n" +
+	" CountAnnouncementAudienceRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12B\n" +
+	"\baudience\x18\x02 \x01(\v2&.publira.admin.v1.AnnouncementAudienceR\baudience\"F\n" +
+	"!CountAnnouncementAudienceResponse\x12!\n" +
+	"\freader_count\x18\x01 \x01(\x03R\vreaderCount*\x86\x01\n" +
 	"\x14AnnouncementDelivery\x12%\n" +
 	"!ANNOUNCEMENT_DELIVERY_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fANNOUNCEMENT_DELIVERY_PREFERRED\x10\x01\x12\"\n" +
@@ -1360,11 +1467,12 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\x11SubscriptionState\x12\"\n" +
 	"\x1eSUBSCRIPTION_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19SUBSCRIPTION_STATE_ACTIVE\x10\x01\x12\x1c\n" +
-	"\x18SUBSCRIPTION_STATE_ENDED\x10\x022\xed\x02\n" +
+	"\x18SUBSCRIPTION_STATE_ENDED\x10\x022\xf6\x03\n" +
 	"\x18AdminAnnouncementService\x12n\n" +
 	"\x11ListAnnouncements\x12*.publira.admin.v1.ListAnnouncementsRequest\x1a+.publira.admin.v1.ListAnnouncementsResponse\"\x00\x12q\n" +
 	"\x12CreateAnnouncement\x12+.publira.admin.v1.CreateAnnouncementRequest\x1a,.publira.admin.v1.CreateAnnouncementResponse\"\x00\x12n\n" +
-	"\x11UnpinAnnouncement\x12*.publira.admin.v1.UnpinAnnouncementRequest\x1a+.publira.admin.v1.UnpinAnnouncementResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x11UnpinAnnouncement\x12*.publira.admin.v1.UnpinAnnouncementRequest\x1a+.publira.admin.v1.UnpinAnnouncementResponse\"\x00\x12\x86\x01\n" +
+	"\x19CountAnnouncementAudience\x122.publira.admin.v1.CountAnnouncementAudienceRequest\x1a3.publira.admin.v1.CountAnnouncementAudienceResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_announcement_proto_rawDescOnce sync.Once
@@ -1379,7 +1487,7 @@ func file_publira_admin_v1_announcement_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_announcement_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_publira_admin_v1_announcement_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_publira_admin_v1_announcement_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_publira_admin_v1_announcement_proto_goTypes = []any{
 	(AnnouncementDelivery)(0),                                 // 0: publira.admin.v1.AnnouncementDelivery
 	(SubscriptionState)(0),                                    // 1: publira.admin.v1.SubscriptionState
@@ -1393,49 +1501,55 @@ var file_publira_admin_v1_announcement_proto_goTypes = []any{
 	(*CreateAnnouncementResponse)(nil),                        // 9: publira.admin.v1.CreateAnnouncementResponse
 	(*UnpinAnnouncementRequest)(nil),                          // 10: publira.admin.v1.UnpinAnnouncementRequest
 	(*UnpinAnnouncementResponse)(nil),                         // 11: publira.admin.v1.UnpinAnnouncementResponse
-	(*AnnouncementAudienceCondition_FollowsSeries)(nil),       // 12: publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries
-	(*AnnouncementAudienceCondition_BoughtSeriesEpisode)(nil), // 13: publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode
-	(*AnnouncementAudienceCondition_Subscription)(nil),        // 14: publira.admin.v1.AnnouncementAudienceCondition.Subscription
-	(*AnnouncementAudienceCondition_NeverPurchased)(nil),      // 15: publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased
-	(*AnnouncementAudienceCondition_LastReadDaysAgo)(nil),     // 16: publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo
-	(*AnnouncementAudienceCondition_SignedUpWithinDays)(nil),  // 17: publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays
-	(*AnnouncementAudienceCondition_Locale)(nil),              // 18: publira.admin.v1.AnnouncementAudienceCondition.Locale
-	(*AnnouncementAudienceCondition_HasMobilePushDevice)(nil), // 19: publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice
-	(*v1.TenantContext)(nil),                                  // 20: publira.types.v1.TenantContext
+	(*CountAnnouncementAudienceRequest)(nil),                  // 12: publira.admin.v1.CountAnnouncementAudienceRequest
+	(*CountAnnouncementAudienceResponse)(nil),                 // 13: publira.admin.v1.CountAnnouncementAudienceResponse
+	(*AnnouncementAudienceCondition_FollowsSeries)(nil),       // 14: publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries
+	(*AnnouncementAudienceCondition_BoughtSeriesEpisode)(nil), // 15: publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode
+	(*AnnouncementAudienceCondition_Subscription)(nil),        // 16: publira.admin.v1.AnnouncementAudienceCondition.Subscription
+	(*AnnouncementAudienceCondition_NeverPurchased)(nil),      // 17: publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased
+	(*AnnouncementAudienceCondition_LastReadDaysAgo)(nil),     // 18: publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo
+	(*AnnouncementAudienceCondition_SignedUpWithinDays)(nil),  // 19: publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays
+	(*AnnouncementAudienceCondition_Locale)(nil),              // 20: publira.admin.v1.AnnouncementAudienceCondition.Locale
+	(*AnnouncementAudienceCondition_HasMobilePushDevice)(nil), // 21: publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice
+	(*v1.TenantContext)(nil),                                  // 22: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_announcement_proto_depIdxs = []int32{
 	4,  // 0: publira.admin.v1.AnnouncementAudience.conditions:type_name -> publira.admin.v1.AnnouncementAudienceCondition
-	12, // 1: publira.admin.v1.AnnouncementAudienceCondition.follows_series:type_name -> publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries
-	13, // 2: publira.admin.v1.AnnouncementAudienceCondition.bought_series_episode:type_name -> publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode
-	14, // 3: publira.admin.v1.AnnouncementAudienceCondition.subscription:type_name -> publira.admin.v1.AnnouncementAudienceCondition.Subscription
-	15, // 4: publira.admin.v1.AnnouncementAudienceCondition.never_purchased:type_name -> publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased
-	16, // 5: publira.admin.v1.AnnouncementAudienceCondition.last_read_days_ago:type_name -> publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo
-	17, // 6: publira.admin.v1.AnnouncementAudienceCondition.signed_up_within_days:type_name -> publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays
-	18, // 7: publira.admin.v1.AnnouncementAudienceCondition.locale:type_name -> publira.admin.v1.AnnouncementAudienceCondition.Locale
-	19, // 8: publira.admin.v1.AnnouncementAudienceCondition.has_mobile_push_device:type_name -> publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice
+	14, // 1: publira.admin.v1.AnnouncementAudienceCondition.follows_series:type_name -> publira.admin.v1.AnnouncementAudienceCondition.FollowsSeries
+	15, // 2: publira.admin.v1.AnnouncementAudienceCondition.bought_series_episode:type_name -> publira.admin.v1.AnnouncementAudienceCondition.BoughtSeriesEpisode
+	16, // 3: publira.admin.v1.AnnouncementAudienceCondition.subscription:type_name -> publira.admin.v1.AnnouncementAudienceCondition.Subscription
+	17, // 4: publira.admin.v1.AnnouncementAudienceCondition.never_purchased:type_name -> publira.admin.v1.AnnouncementAudienceCondition.NeverPurchased
+	18, // 5: publira.admin.v1.AnnouncementAudienceCondition.last_read_days_ago:type_name -> publira.admin.v1.AnnouncementAudienceCondition.LastReadDaysAgo
+	19, // 6: publira.admin.v1.AnnouncementAudienceCondition.signed_up_within_days:type_name -> publira.admin.v1.AnnouncementAudienceCondition.SignedUpWithinDays
+	20, // 7: publira.admin.v1.AnnouncementAudienceCondition.locale:type_name -> publira.admin.v1.AnnouncementAudienceCondition.Locale
+	21, // 8: publira.admin.v1.AnnouncementAudienceCondition.has_mobile_push_device:type_name -> publira.admin.v1.AnnouncementAudienceCondition.HasMobilePushDevice
 	2,  // 9: publira.admin.v1.AdminAnnouncement.translations:type_name -> publira.admin.v1.AnnouncementTranslation
 	0,  // 10: publira.admin.v1.AdminAnnouncement.delivery:type_name -> publira.admin.v1.AnnouncementDelivery
 	3,  // 11: publira.admin.v1.AdminAnnouncement.audience:type_name -> publira.admin.v1.AnnouncementAudience
-	20, // 12: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22, // 12: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	5,  // 13: publira.admin.v1.ListAnnouncementsResponse.announcements:type_name -> publira.admin.v1.AdminAnnouncement
-	20, // 14: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22, // 14: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 15: publira.admin.v1.CreateAnnouncementRequest.translations:type_name -> publira.admin.v1.AnnouncementTranslation
 	0,  // 16: publira.admin.v1.CreateAnnouncementRequest.delivery:type_name -> publira.admin.v1.AnnouncementDelivery
 	3,  // 17: publira.admin.v1.CreateAnnouncementRequest.audience:type_name -> publira.admin.v1.AnnouncementAudience
 	5,  // 18: publira.admin.v1.CreateAnnouncementResponse.announcement:type_name -> publira.admin.v1.AdminAnnouncement
-	20, // 19: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 20: publira.admin.v1.AnnouncementAudienceCondition.Subscription.state:type_name -> publira.admin.v1.SubscriptionState
-	6,  // 21: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
-	8,  // 22: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
-	10, // 23: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
-	7,  // 24: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
-	9,  // 25: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
-	11, // 26: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
-	24, // [24:27] is the sub-list for method output_type
-	21, // [21:24] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	22, // 19: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22, // 20: publira.admin.v1.CountAnnouncementAudienceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 21: publira.admin.v1.CountAnnouncementAudienceRequest.audience:type_name -> publira.admin.v1.AnnouncementAudience
+	1,  // 22: publira.admin.v1.AnnouncementAudienceCondition.Subscription.state:type_name -> publira.admin.v1.SubscriptionState
+	6,  // 23: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
+	8,  // 24: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
+	10, // 25: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
+	12, // 26: publira.admin.v1.AdminAnnouncementService.CountAnnouncementAudience:input_type -> publira.admin.v1.CountAnnouncementAudienceRequest
+	7,  // 27: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
+	9,  // 28: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
+	11, // 29: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
+	13, // 30: publira.admin.v1.AdminAnnouncementService.CountAnnouncementAudience:output_type -> publira.admin.v1.CountAnnouncementAudienceResponse
+	27, // [27:31] is the sub-list for method output_type
+	23, // [23:27] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_announcement_proto_init() }
@@ -1459,7 +1573,7 @@ func file_publira_admin_v1_announcement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_announcement_proto_rawDesc), len(file_publira_admin_v1_announcement_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -90,6 +90,11 @@ WHERE tenant_id = sqlc.arg('tenant_id')
         OR id = ANY(sqlc.arg('ids')::uuid [])
     );
 
+-- name: CountAnnouncementAudience :one
+-- How many readers of the connection's tenant a stored audience selects now:
+-- the readers ListAnnouncementRecipients would page over if it were delivered.
+SELECT count_announcement_audience(sqlc.arg('audience')::jsonb)::bigint AS reader_count;
+
 -- name: ListAnnouncementRecipients :many
 -- Worker fan-out: everyone the announcement's audience selects at the moment
 -- it is delivered, each with the title of the translation they are told about.

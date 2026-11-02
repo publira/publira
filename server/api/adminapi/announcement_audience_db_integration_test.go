@@ -192,6 +192,91 @@ func TestDBCreateAnnouncementRefusesAnAudienceItCannotDeliver(t *testing.T) {
 	}
 }
 
+// The count the form shows for an audience is the number of readers the worker
+// then writes a row for when an announcement with that audience is delivered,
+// though the console's own connection may not read the follows it counts.
+func TestDBCountAnnouncementAudienceAnswersTheReadersDeliveryReaches(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "AUDTENANT04", "count.example.com", "Counting Tenant", "AUDADMIN0004", "admin@count.example.com")
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "AUDSERIES002", Title: "Counted Series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "AUDEPISODE02", Title: "Episode", Price: 100, Status: testutil.EpisodeStatusPublished})
+	first := env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER004", "first@count.example.com", "First Follower")
+	second := env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER005", "second@count.example.com", "Second Follower")
+	buyer := env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER006", "buyer@count.example.com", "Follower Who Bought")
+	env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER007", "stranger@count.example.com", "Follows Nothing")
+	for _, reader := range []testutil.TenantUser{first, second, buyer} {
+		if _, err := env.PG.DB.ExecContext(t.Context(), "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", tenant.Tenant.ID, reader.ID, series.ID); err != nil {
+			t.Fatalf("follow: %v", err)
+		}
+	}
+	env.PG.SeedPurchase(t, tenant.Tenant.ID, buyer.ID, episode.ID, 100)
+
+	audience := &publiraadminv1.AnnouncementAudience{Conditions: []*publiraadminv1.AnnouncementAudienceCondition{
+		{Condition: &publiraadminv1.AnnouncementAudienceCondition_FollowsSeries_{
+			FollowsSeries: &publiraadminv1.AnnouncementAudienceCondition_FollowsSeries{SeriesPublicId: series.PublicID},
+		}},
+		{Condition: &publiraadminv1.AnnouncementAudienceCondition_NeverPurchased_{
+			NeverPurchased: &publiraadminv1.AnnouncementAudienceCondition_NeverPurchased{},
+		}},
+	}}
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+	counted, err := env.announcementClient().CountAnnouncementAudience(ctx, &publiraadminv1.CountAnnouncementAudienceRequest{
+		Tenant:   tenant.tenantContext(),
+		Audience: audience,
+	})
+	if err != nil {
+		t.Fatalf("CountAnnouncementAudience: %v", err)
+	}
+	if counted.ReaderCount != 2 {
+		t.Fatalf("reader_count = %d, want the 2 followers who never bought", counted.ReaderCount)
+	}
+
+	created, err := env.announcementClient().CreateAnnouncement(ctx, &publiraadminv1.CreateAnnouncementRequest{
+		Tenant:       tenant.tenantContext(),
+		Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "Volume 2 is out", Body: "Read it now."}},
+		Audience:     audience,
+	})
+	if err != nil {
+		t.Fatalf("CreateAnnouncement: %v", err)
+	}
+	env.PG.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
+		outbox.EventTypeTargetedAnnouncementNotification: outbox.NewAnnouncementNotificationHandler(outbox.AnnouncementNotificationHandlerConfig{DB: env.PG.OpenOutboxDB(t)}),
+	})
+	if got := announcementRecipients(t, env, uuid.MustParse(created.Announcement.Id)); int64(len(got)) != counted.ReaderCount {
+		t.Fatalf("delivered to %d readers %v, want the %d the count answered", len(got), got, counted.ReaderCount)
+	}
+}
+
+// The count of everyone is not what the form asks, and an audience that would
+// be refused on posting is refused on counting too.
+func TestDBCountAnnouncementAudienceRefusesAnAudienceWithNoCondition(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "AUDTENANT05", "nocount.example.com", "Refusing Tenant", "AUDADMIN0005", "admin@nocount.example.com")
+
+	for _, tc := range []struct {
+		name     string
+		audience *publiraadminv1.AnnouncementAudience
+	}{
+		{"unset", nil},
+		{"no conditions", &publiraadminv1.AnnouncementAudience{}},
+		{"a condition with nothing set", &publiraadminv1.AnnouncementAudience{Conditions: []*publiraadminv1.AnnouncementAudienceCondition{{}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := env.announcementClient().CountAnnouncementAudience(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CountAnnouncementAudienceRequest{
+				Tenant:   tenant.tenantContext(),
+				Audience: tc.audience,
+			})
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CountAnnouncementAudience code = %v (err=%v), want invalid_argument", connect.CodeOf(err), err)
+			}
+		})
+	}
+}
+
 // announcementRecipients reads who has the announcement's notification row, in
 // id order.
 func announcementRecipients(t *testing.T, env *adminDBEnv, announcementID uuid.UUID) []uuid.UUID {

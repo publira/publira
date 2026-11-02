@@ -6,6 +6,7 @@ package dbmodels
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -166,6 +167,9 @@ type Querier interface {
 	ConsumeStoreSubscriptionIntent(ctx context.Context, arg ConsumeStoreSubscriptionIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
+	// How many readers of the connection's tenant a stored audience selects now:
+	// the readers ListAnnouncementRecipients would page over if it were delivered.
+	CountAnnouncementAudience(ctx context.Context, audience json.RawMessage) (int64, error)
 	CountCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// The packs the tenant has not retired, which are what its cap counts.
 	CountCoinPacksForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)

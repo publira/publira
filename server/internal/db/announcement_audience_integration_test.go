@@ -3,12 +3,14 @@ package dbtest
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/testutil"
@@ -367,5 +369,71 @@ func TestTargetedAnnouncementIsHiddenFromThePublicRoleBeyondItsReaders(t *testin
 		if got := listed(tc.db, tc.userID); !slices.Equal(got, tc.want) {
 			t.Fatalf("%s reads %v, want %v", tc.name, got, tc.want)
 		}
+	}
+}
+
+// count_announcement_audience counts what announcement_audience_members selects
+// for the tenant the connection set, though the console's role cannot read the
+// follows it counts, and counts nobody for a connection that set no tenant, for
+// an audience that is not an object, or for another tenant.
+func TestCountAnnouncementAudienceCountsOnlyTheConnectionsTenant(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	f := newAudienceFixture(t, pg)
+	series := f.series()
+	for _, name := range []string{"First follower", "Second follower"} {
+		f.follow(f.reader(name), series)
+	}
+	f.reader("Follows nothing")
+	other := newAudienceFixture(t, pg)
+	other.follow(other.reader("Follower in another tenant"), other.series())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	admin := pg.OpenAdminDB(t)
+	audience := `{"version": 1, "conditions": [{"type": "follows_series", "series_id": "` + series.ID.String() + `"}]}`
+	count := func(conn *sql.Conn, audience *string) int64 {
+		t.Helper()
+		var n int64
+		if err := conn.QueryRowContext(ctx, "SELECT count_announcement_audience($1::jsonb)", audience).Scan(&n); err != nil {
+			t.Fatalf("count_announcement_audience: %v", err)
+		}
+		return n
+	}
+
+	scoped := scopedConn(t, ctx, admin, f.tenant.ID, uuid.Nil)
+	var visible int
+	if err := scoped.QueryRowContext(ctx, "SELECT count(*) FROM series_follows").Scan(&visible); err != nil {
+		t.Fatalf("read series_follows as publira_admin: %v", err)
+	}
+	if visible != 0 {
+		t.Fatalf("publira_admin reads %d follows, want none: the count would not need to run as the owner", visible)
+	}
+	if got, want := count(scoped, &audience), int64(len(f.members(&audience))); got != 2 || got != want {
+		t.Fatalf("count = %d, want 2, the %d announcement_audience_members selects", got, want)
+	}
+	for _, shape := range []*string{nil, new("null"), new("[]"), new(`"everyone"`)} {
+		if got := count(scoped, shape); got != 0 {
+			t.Fatalf("count of %v = %d, want 0", shape, got)
+		}
+	}
+	if got := count(scopedConn(t, ctx, admin, other.tenant.ID, uuid.Nil), &audience); got != 0 {
+		t.Fatalf("count from another tenant = %d, want 0", got)
+	}
+
+	unscoped, err := admin.Conn(ctx)
+	if err != nil {
+		t.Fatalf("open connection: %v", err)
+	}
+	defer unscoped.Close() //nolint:errcheck
+	if got := count(unscoped, &audience); got != 0 {
+		t.Fatalf("count with no tenant set = %d, want 0", got)
+	}
+
+	var n int64
+	err = scopedConn(t, ctx, pg.OpenPublicDB(t), f.tenant.ID, uuid.Nil).QueryRowContext(ctx, "SELECT count_announcement_audience($1::jsonb)", audience).Scan(&n)
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("count as publira_public: error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
 	}
 }
