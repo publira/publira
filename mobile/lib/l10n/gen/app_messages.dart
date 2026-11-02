@@ -1827,6 +1827,215 @@ final class AppMessages {
     return _format('mobile.creator.title');
   }
 
+  /// `mobile.creator_pages.account_description`
+  String get creatorPagesAccountDescription {
+    return _format('mobile.creator_pages.account_description');
+  }
+
+  /// `mobile.creator_pages.adjustment`
+  String creatorPagesAdjustment({required String period}) {
+    return _format('mobile.creator_pages.adjustment', {'period': period});
+  }
+
+  /// `mobile.creator_pages.completions`
+  String get creatorPagesCompletions {
+    return _format('mobile.creator_pages.completions');
+  }
+
+  /// `mobile.creator_pages.description`
+  String get creatorPagesDescription {
+    return _format('mobile.creator_pages.description');
+  }
+
+  /// `mobile.creator_pages.episodes_description`
+  String get creatorPagesEpisodesDescription {
+    return _format('mobile.creator_pages.episodes_description');
+  }
+
+  /// `mobile.creator_pages.episodes_empty`
+  String get creatorPagesEpisodesEmpty {
+    return _format('mobile.creator_pages.episodes_empty');
+  }
+
+  /// `mobile.creator_pages.episodes_heading`
+  String get creatorPagesEpisodesHeading {
+    return _format('mobile.creator_pages.episodes_heading');
+  }
+
+  /// `mobile.creator_pages.figures_definition`
+  String get creatorPagesFiguresDefinition {
+    return _format('mobile.creator_pages.figures_definition');
+  }
+
+  /// `mobile.creator_pages.followers`
+  String get creatorPagesFollowers {
+    return _format('mobile.creator_pages.followers');
+  }
+
+  /// `mobile.creator_pages.gross`
+  String get creatorPagesGross {
+    return _format('mobile.creator_pages.gross');
+  }
+
+  /// `mobile.creator_pages.lines_description`
+  String get creatorPagesLinesDescription {
+    return _format('mobile.creator_pages.lines_description');
+  }
+
+  /// `mobile.creator_pages.lines_empty`
+  String get creatorPagesLinesEmpty {
+    return _format('mobile.creator_pages.lines_empty');
+  }
+
+  /// `mobile.creator_pages.lines_heading`
+  String get creatorPagesLinesHeading {
+    return _format('mobile.creator_pages.lines_heading');
+  }
+
+  /// `mobile.creator_pages.load_failed`
+  String get creatorPagesLoadFailed {
+    return _format('mobile.creator_pages.load_failed');
+  }
+
+  /// `mobile.creator_pages.member_views`
+  String get creatorPagesMemberViews {
+    return _format('mobile.creator_pages.member_views');
+  }
+
+  /// `mobile.creator_pages.more_failed`
+  String get creatorPagesMoreFailed {
+    return _format('mobile.creator_pages.more_failed');
+  }
+
+  /// `mobile.creator_pages.net_amount`
+  String get creatorPagesNetAmount {
+    return _format('mobile.creator_pages.net_amount');
+  }
+
+  /// `mobile.creator_pages.not_found`
+  String get creatorPagesNotFound {
+    return _format('mobile.creator_pages.not_found');
+  }
+
+  /// `mobile.creator_pages.payout`
+  String get creatorPagesPayout {
+    return _format('mobile.creator_pages.payout');
+  }
+
+  /// `mobile.creator_pages.period`
+  String creatorPagesPeriod({
+    required String end,
+    required String start,
+    required String timeZone,
+  }) {
+    return _format('mobile.creator_pages.period', {
+      'end': end,
+      'start': start,
+      'time_zone': timeZone,
+    });
+  }
+
+  /// `mobile.creator_pages.rate_unavailable`
+  String get creatorPagesRateUnavailable {
+    return _format('mobile.creator_pages.rate_unavailable');
+  }
+
+  /// `mobile.creator_pages.read_through_rate`
+  String get creatorPagesReadThroughRate {
+    return _format('mobile.creator_pages.read_through_rate');
+  }
+
+  /// `mobile.creator_pages.refunded`
+  String get creatorPagesRefunded {
+    return _format('mobile.creator_pages.refunded');
+  }
+
+  /// `mobile.creator_pages.role`
+  String get creatorPagesRole {
+    return _format('mobile.creator_pages.role');
+  }
+
+  /// `mobile.creator_pages.sales`
+  String get creatorPagesSales {
+    return _format('mobile.creator_pages.sales');
+  }
+
+  /// `mobile.creator_pages.share`
+  String get creatorPagesShare {
+    return _format('mobile.creator_pages.share');
+  }
+
+  /// `mobile.creator_pages.share_csv`
+  String get creatorPagesShareCsv {
+    return _format('mobile.creator_pages.share_csv');
+  }
+
+  /// `mobile.creator_pages.share_csv_failed`
+  String get creatorPagesShareCsvFailed {
+    return _format('mobile.creator_pages.share_csv_failed');
+  }
+
+  /// `mobile.creator_pages.show_more`
+  String get creatorPagesShowMore {
+    return _format('mobile.creator_pages.show_more');
+  }
+
+  /// `mobile.creator_pages.statement_closed_at`
+  String creatorPagesStatementClosedAt({
+    required String currency,
+    required String date,
+  }) {
+    return _format('mobile.creator_pages.statement_closed_at', {
+      'currency': currency,
+      'date': date,
+    });
+  }
+
+  /// `mobile.creator_pages.statement_failed`
+  String get creatorPagesStatementFailed {
+    return _format('mobile.creator_pages.statement_failed');
+  }
+
+  /// `mobile.creator_pages.statement_title`
+  String creatorPagesStatementTitle({required String period}) {
+    return _format('mobile.creator_pages.statement_title', {'period': period});
+  }
+
+  /// `mobile.creator_pages.statements_description`
+  String get creatorPagesStatementsDescription {
+    return _format('mobile.creator_pages.statements_description');
+  }
+
+  /// `mobile.creator_pages.statements_empty`
+  String get creatorPagesStatementsEmpty {
+    return _format('mobile.creator_pages.statements_empty');
+  }
+
+  /// `mobile.creator_pages.statements_failed`
+  String get creatorPagesStatementsFailed {
+    return _format('mobile.creator_pages.statements_failed');
+  }
+
+  /// `mobile.creator_pages.statements_heading`
+  String get creatorPagesStatementsHeading {
+    return _format('mobile.creator_pages.statements_heading');
+  }
+
+  /// `mobile.creator_pages.stats_failed`
+  String get creatorPagesStatsFailed {
+    return _format('mobile.creator_pages.stats_failed');
+  }
+
+  /// `mobile.creator_pages.subscription`
+  String get creatorPagesSubscription {
+    return _format('mobile.creator_pages.subscription');
+  }
+
+  /// `mobile.creator_pages.title`
+  String get creatorPagesTitle {
+    return _format('mobile.creator_pages.title');
+  }
+
   /// `mobile.creators.empty`
   String get creatorsEmpty {
     return _format('mobile.creators.empty');
@@ -4402,6 +4611,51 @@ const _jaSources = <String, String>{
   'mobile.creator.series_empty': 'まだ公開中シリーズはありません。',
   'mobile.creator.series_heading': '関連シリーズ',
   'mobile.creator.title': '著者',
+  'mobile.creator_pages.account_description': '作品がどのように読まれ、いくら得ているかを確認できます。',
+  'mobile.creator_pages.adjustment': '{\$period}分の返金の調整',
+  'mobile.creator_pages.completions': '完読数',
+  'mobile.creator_pages.description':
+      'あなたの作品がどのように読まれ、いくら得ているかを、出版社の集計で確認できます。',
+  'mobile.creator_pages.episodes_description':
+      'この著者がクレジットされているすべてのエピソードを、完読数の多い順に並べています。',
+  'mobile.creator_pages.episodes_empty': 'この著者がクレジットされている公開中のエピソードはまだありません。',
+  'mobile.creator_pages.episodes_heading': 'エピソード',
+  'mobile.creator_pages.figures_definition':
+      '会員閲覧数と完読数は、期間中にログインしていた会員を数えます。読了率は完読数を会員閲覧数で割った値で、誰も開かなかったエピソードは — と表示します。',
+  'mobile.creator_pages.followers': 'フォロワー',
+  'mobile.creator_pages.gross': '売上',
+  'mobile.creator_pages.lines_description':
+      'あなたがクレジットされている明細行です。当月の販売、サブスクリプションの支払い、締め済みの月の返金による調整の順に並べています。',
+  'mobile.creator_pages.lines_empty': 'この月にこの著者がクレジットされている明細行はありません。',
+  'mobile.creator_pages.lines_heading': '明細行',
+  'mobile.creator_pages.load_failed': '著者ページを表示できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.member_views': '会員閲覧数',
+  'mobile.creator_pages.more_failed': '続きを表示できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.net_amount': '純売上',
+  'mobile.creator_pages.not_found': 'この著者ページは表示できません。',
+  'mobile.creator_pages.payout': '支払額',
+  'mobile.creator_pages.period': '{\$start}～{\$end}({\$time_zone}の暦日で集計)',
+  'mobile.creator_pages.rate_unavailable': '—',
+  'mobile.creator_pages.read_through_rate': '読了率',
+  'mobile.creator_pages.refunded': '返金',
+  'mobile.creator_pages.role': '役割',
+  'mobile.creator_pages.sales': '販売数',
+  'mobile.creator_pages.share': '分配率',
+  'mobile.creator_pages.share_csv': 'CSVを共有',
+  'mobile.creator_pages.share_csv_failed': '明細を共有できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.show_more': 'もっと見る',
+  'mobile.creator_pages.statement_closed_at':
+      '{\$date}に締めました。金額の通貨は{\$currency}です。',
+  'mobile.creator_pages.statement_failed': '明細を表示できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.statement_title': '{\$period}の明細',
+  'mobile.creator_pages.statements_description':
+      '締め済みの各月のうち、あなたがクレジットされている明細行の合計です。',
+  'mobile.creator_pages.statements_empty': '締め済みの月はまだありません。',
+  'mobile.creator_pages.statements_failed': '締め済みの明細を表示できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.statements_heading': '締め済みの明細',
+  'mobile.creator_pages.stats_failed': '数値を表示できませんでした。もう一度お試しください。',
+  'mobile.creator_pages.subscription': 'サブスクリプションの分配',
+  'mobile.creator_pages.title': '著者ページ',
   'mobile.creators.empty': '公開中シリーズに紐づく著者はまだいません。',
   'mobile.creators.load_failed': '著者一覧を表示できませんでした。もう一度お試しください。',
   'mobile.creators.title': '著者一覧',
@@ -5333,6 +5587,59 @@ const _enSources = <String, String>{
   'mobile.creator.series_empty': 'No published series yet.',
   'mobile.creator.series_heading': 'Related series',
   'mobile.creator.title': 'Author',
+  'mobile.creator_pages.account_description':
+      'How your works are read, and what they earn.',
+  'mobile.creator_pages.adjustment': 'Refund adjustment for {\$period}',
+  'mobile.creator_pages.completions': 'Completions',
+  'mobile.creator_pages.description':
+      'How your works are read, and what they earn, as the publisher reports them.',
+  'mobile.creator_pages.episodes_description':
+      'Every episode crediting this author, most completions first.',
+  'mobile.creator_pages.episodes_empty':
+      'No published episode credits this author yet.',
+  'mobile.creator_pages.episodes_heading': 'Episodes',
+  'mobile.creator_pages.figures_definition':
+      'Member views and completions count signed-in members over the period. The read-through rate is completions divided by member views, and is shown as — where nobody opened the episode.',
+  'mobile.creator_pages.followers': 'Followers',
+  'mobile.creator_pages.gross': 'Gross',
+  'mobile.creator_pages.lines_description':
+      'Each line that credits you: the month\'s sales, then its subscription payments, then the adjustments for refunds of closed months.',
+  'mobile.creator_pages.lines_empty':
+      'No line in this month credits this author.',
+  'mobile.creator_pages.lines_heading': 'Lines',
+  'mobile.creator_pages.load_failed':
+      'Could not show your author pages. Try again.',
+  'mobile.creator_pages.member_views': 'Member views',
+  'mobile.creator_pages.more_failed': 'Could not show more. Try again.',
+  'mobile.creator_pages.net_amount': 'Net amount',
+  'mobile.creator_pages.not_found': 'This author page is not available.',
+  'mobile.creator_pages.payout': 'Payout',
+  'mobile.creator_pages.period':
+      '{\$start} - {\$end}, counted in calendar days in {\$time_zone}.',
+  'mobile.creator_pages.rate_unavailable': '—',
+  'mobile.creator_pages.read_through_rate': 'Read-through rate',
+  'mobile.creator_pages.refunded': 'Refunded',
+  'mobile.creator_pages.role': 'Role',
+  'mobile.creator_pages.sales': 'Sales',
+  'mobile.creator_pages.share': 'Share',
+  'mobile.creator_pages.share_csv': 'Share CSV',
+  'mobile.creator_pages.share_csv_failed':
+      'Could not share the statement. Try again.',
+  'mobile.creator_pages.show_more': 'Show more',
+  'mobile.creator_pages.statement_closed_at':
+      'Closed on {\$date}. Amounts are in {\$currency}.',
+  'mobile.creator_pages.statement_failed':
+      'Could not show the statement. Try again.',
+  'mobile.creator_pages.statement_title': '{\$period} statement',
+  'mobile.creator_pages.statements_description':
+      'Your part of each closed month: the sum of the lines that credit you.',
+  'mobile.creator_pages.statements_empty': 'No month has been closed yet.',
+  'mobile.creator_pages.statements_failed':
+      'Could not show the closed statements. Try again.',
+  'mobile.creator_pages.statements_heading': 'Closed statements',
+  'mobile.creator_pages.stats_failed': 'Could not show the figures. Try again.',
+  'mobile.creator_pages.subscription': 'Subscription share',
+  'mobile.creator_pages.title': 'Your author pages',
   'mobile.creators.empty': 'No authors are credited on a published series yet.',
   'mobile.creators.load_failed': 'Could not show the authors. Try again.',
   'mobile.creators.title': 'Authors',
@@ -6271,6 +6578,53 @@ const _koSources = <String, String>{
   'mobile.creator.series_empty': '아직 공개 중인 시리즈가 없습니다.',
   'mobile.creator.series_heading': '관련 시리즈',
   'mobile.creator.title': '작가',
+  'mobile.creator_pages.account_description':
+      '작품이 어떻게 읽히고 얼마를 벌었는지 확인할 수 있습니다.',
+  'mobile.creator_pages.adjustment': '{\$period}분 환불 조정',
+  'mobile.creator_pages.completions': '완독 수',
+  'mobile.creator_pages.description':
+      '출판사가 집계한 기준으로 작품이 어떻게 읽히고 얼마를 벌었는지 확인할 수 있습니다.',
+  'mobile.creator_pages.episodes_description':
+      '이 작가가 크레딧된 모든 에피소드를 완독 수가 많은 순서로 보여 줍니다.',
+  'mobile.creator_pages.episodes_empty': '이 작가가 크레딧된 공개 에피소드가 아직 없습니다.',
+  'mobile.creator_pages.episodes_heading': '에피소드',
+  'mobile.creator_pages.figures_definition':
+      '회원 열람 수와 완독 수는 기간 중 로그인한 회원을 셉니다. 완독률은 완독 수를 회원 열람 수로 나눈 값이며, 아무도 열지 않은 에피소드는 —로 표시합니다.',
+  'mobile.creator_pages.followers': '팔로워',
+  'mobile.creator_pages.gross': '매출',
+  'mobile.creator_pages.lines_description':
+      '회원님이 크레딧된 명세 행입니다. 당월 판매, 구독 결제, 마감된 달의 환불 조정 순서로 보여 줍니다.',
+  'mobile.creator_pages.lines_empty': '이 달에 이 작가가 크레딧된 명세 행이 없습니다.',
+  'mobile.creator_pages.lines_heading': '명세 행',
+  'mobile.creator_pages.load_failed': '작가 페이지를 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.member_views': '회원 열람 수',
+  'mobile.creator_pages.more_failed': '더 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.net_amount': '순매출',
+  'mobile.creator_pages.not_found': '이 작가 페이지는 표시할 수 없습니다.',
+  'mobile.creator_pages.payout': '지급액',
+  'mobile.creator_pages.period':
+      '{\$start} - {\$end}, {\$time_zone}의 달력 날짜 기준으로 집계합니다.',
+  'mobile.creator_pages.rate_unavailable': '—',
+  'mobile.creator_pages.read_through_rate': '완독률',
+  'mobile.creator_pages.refunded': '환불',
+  'mobile.creator_pages.role': '역할',
+  'mobile.creator_pages.sales': '판매 수',
+  'mobile.creator_pages.share': '배분율',
+  'mobile.creator_pages.share_csv': 'CSV 공유',
+  'mobile.creator_pages.share_csv_failed': '명세를 공유할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.show_more': '더 보기',
+  'mobile.creator_pages.statement_closed_at':
+      '{\$date}에 마감했습니다. 금액의 통화는 {\$currency}입니다.',
+  'mobile.creator_pages.statement_failed': '명세를 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.statement_title': '{\$period} 명세',
+  'mobile.creator_pages.statements_description':
+      '마감된 각 달에서 회원님이 크레딧된 명세 행의 합계입니다.',
+  'mobile.creator_pages.statements_empty': '마감된 달이 아직 없습니다.',
+  'mobile.creator_pages.statements_failed': '마감된 명세를 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.statements_heading': '마감된 명세',
+  'mobile.creator_pages.stats_failed': '수치를 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_pages.subscription': '구독 배분',
+  'mobile.creator_pages.title': '작가 페이지',
   'mobile.creators.empty': '공개 중인 시리즈에 연결된 작가가 아직 없습니다.',
   'mobile.creators.load_failed': '작가 목록을 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.creators.title': '작가 목록',
@@ -7110,6 +7464,47 @@ const _zhHansSources = <String, String>{
   'mobile.creator.series_empty': '暂无已发布的系列。',
   'mobile.creator.series_heading': '相关系列',
   'mobile.creator.title': '作者',
+  'mobile.creator_pages.account_description': '查看您的作品如何被阅读以及收益多少。',
+  'mobile.creator_pages.adjustment': '{\$period}的退款调整',
+  'mobile.creator_pages.completions': '读完次数',
+  'mobile.creator_pages.description': '按出版方的统计，查看您的作品如何被阅读以及收益多少。',
+  'mobile.creator_pages.episodes_description': '列出署名此作者的所有章节，按读完次数从多到少排列。',
+  'mobile.creator_pages.episodes_empty': '目前还没有署名此作者的已发布章节。',
+  'mobile.creator_pages.episodes_heading': '章节',
+  'mobile.creator_pages.figures_definition':
+      '会员浏览次数和读完次数统计期间内已登录的会员。读完率为读完次数除以会员浏览次数，无人打开的章节显示为 —。',
+  'mobile.creator_pages.followers': '关注者',
+  'mobile.creator_pages.gross': '销售额',
+  'mobile.creator_pages.lines_description':
+      '署名您的明细行，依次为当月销售、订阅付款，以及已结算月份退款的调整。',
+  'mobile.creator_pages.lines_empty': '本月没有署名此作者的明细行。',
+  'mobile.creator_pages.lines_heading': '明细行',
+  'mobile.creator_pages.load_failed': '无法显示您的作者页面。请重试。',
+  'mobile.creator_pages.member_views': '会员浏览次数',
+  'mobile.creator_pages.more_failed': '无法显示更多内容。请重试。',
+  'mobile.creator_pages.net_amount': '净销售额',
+  'mobile.creator_pages.not_found': '无法显示此作者页面。',
+  'mobile.creator_pages.payout': '支付额',
+  'mobile.creator_pages.period': '{\$start} - {\$end}，按{\$time_zone}的日历日统计。',
+  'mobile.creator_pages.rate_unavailable': '—',
+  'mobile.creator_pages.read_through_rate': '读完率',
+  'mobile.creator_pages.refunded': '退款',
+  'mobile.creator_pages.role': '职责',
+  'mobile.creator_pages.sales': '销售数',
+  'mobile.creator_pages.share': '分成比例',
+  'mobile.creator_pages.share_csv': '分享CSV',
+  'mobile.creator_pages.share_csv_failed': '无法分享明细。请重试。',
+  'mobile.creator_pages.show_more': '显示更多',
+  'mobile.creator_pages.statement_closed_at': '于{\$date}结算。金额以{\$currency}计。',
+  'mobile.creator_pages.statement_failed': '无法显示明细。请重试。',
+  'mobile.creator_pages.statement_title': '{\$period}的明细',
+  'mobile.creator_pages.statements_description': '每个已结算月份中署名您的明细行合计。',
+  'mobile.creator_pages.statements_empty': '目前还没有已结算的月份。',
+  'mobile.creator_pages.statements_failed': '无法显示已结算的明细。请重试。',
+  'mobile.creator_pages.statements_heading': '已结算的明细',
+  'mobile.creator_pages.stats_failed': '无法显示数据。请重试。',
+  'mobile.creator_pages.subscription': '订阅分成',
+  'mobile.creator_pages.title': '作者页面',
   'mobile.creators.empty': '还没有作者署名于已发布的系列。',
   'mobile.creators.load_failed': '无法显示作者列表。请重试。',
   'mobile.creators.title': '作者',
@@ -7895,6 +8290,47 @@ const _zhHantSources = <String, String>{
   'mobile.creator.series_empty': '目前沒有已發布的系列。',
   'mobile.creator.series_heading': '相關系列',
   'mobile.creator.title': '作者',
+  'mobile.creator_pages.account_description': '查看您的作品如何被閱讀以及收益多少。',
+  'mobile.creator_pages.adjustment': '{\$period}的退款調整',
+  'mobile.creator_pages.completions': '讀完次數',
+  'mobile.creator_pages.description': '依出版方的統計，查看您的作品如何被閱讀以及收益多少。',
+  'mobile.creator_pages.episodes_description': '列出署名此作者的所有章節，依讀完次數由多到少排列。',
+  'mobile.creator_pages.episodes_empty': '目前還沒有署名此作者的已發布章節。',
+  'mobile.creator_pages.episodes_heading': '章節',
+  'mobile.creator_pages.figures_definition':
+      '會員瀏覽次數與讀完次數統計期間內已登入的會員。讀完率為讀完次數除以會員瀏覽次數，無人開啟的章節顯示為 —。',
+  'mobile.creator_pages.followers': '追蹤者',
+  'mobile.creator_pages.gross': '銷售額',
+  'mobile.creator_pages.lines_description':
+      '署名您的明細行，依序為當月銷售、訂閱付款，以及已結算月份退款的調整。',
+  'mobile.creator_pages.lines_empty': '本月沒有署名此作者的明細行。',
+  'mobile.creator_pages.lines_heading': '明細行',
+  'mobile.creator_pages.load_failed': '無法顯示您的作者頁面。請重試。',
+  'mobile.creator_pages.member_views': '會員瀏覽次數',
+  'mobile.creator_pages.more_failed': '無法顯示更多內容。請重試。',
+  'mobile.creator_pages.net_amount': '淨銷售額',
+  'mobile.creator_pages.not_found': '無法顯示此作者頁面。',
+  'mobile.creator_pages.payout': '支付額',
+  'mobile.creator_pages.period': '{\$start} - {\$end}，依{\$time_zone}的日曆日統計。',
+  'mobile.creator_pages.rate_unavailable': '—',
+  'mobile.creator_pages.read_through_rate': '讀完率',
+  'mobile.creator_pages.refunded': '退款',
+  'mobile.creator_pages.role': '職責',
+  'mobile.creator_pages.sales': '銷售數',
+  'mobile.creator_pages.share': '分潤比例',
+  'mobile.creator_pages.share_csv': '分享CSV',
+  'mobile.creator_pages.share_csv_failed': '無法分享明細。請重試。',
+  'mobile.creator_pages.show_more': '顯示更多',
+  'mobile.creator_pages.statement_closed_at': '於{\$date}結算。金額以{\$currency}計。',
+  'mobile.creator_pages.statement_failed': '無法顯示明細。請重試。',
+  'mobile.creator_pages.statement_title': '{\$period}的明細',
+  'mobile.creator_pages.statements_description': '每個已結算月份中署名您的明細行合計。',
+  'mobile.creator_pages.statements_empty': '目前還沒有已結算的月份。',
+  'mobile.creator_pages.statements_failed': '無法顯示已結算的明細。請重試。',
+  'mobile.creator_pages.statements_heading': '已結算的明細',
+  'mobile.creator_pages.stats_failed': '無法顯示數據。請重試。',
+  'mobile.creator_pages.subscription': '訂閱分潤',
+  'mobile.creator_pages.title': '作者頁面',
   'mobile.creators.empty': '還沒有作者署名於已發布的系列。',
   'mobile.creators.load_failed': '無法顯示作者列表。請重試。',
   'mobile.creators.title': '作者',

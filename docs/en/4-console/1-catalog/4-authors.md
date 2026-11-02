@@ -2,7 +2,7 @@
 title: Authors and Author roles
 description: Register the people credited on a work, choose what they are credited as, and link an Author to their own reader account.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 An Author is a person credited on a work: the writer, the artist, the original author of an adaptation. A series and each of its episodes credit their Authors, each in an Author role, and those credits are what readers see beside a title and what royalties are paid on.
@@ -51,7 +51,7 @@ A linked reader sees nothing more of the Author until a Tenant admin turns on **
 - Each episode credited to the Author that is published on the site, with its member views and completions over the last 28 days, counted as **Episodes** under **Analytics** counts them. The rate is worked out from the two, as there.
 - When **Show statements and sales figures** is on as well, each of those episodes' sales over the same 28 days and what they made after refunds, and the Author's part of every closed royalty statement, as [Reports and royalties](../6-reports-and-royalties.md#what-a-linked-author-reads-of-a-statement) describes.
 
-The reader opens these pages with **Your author pages** on **My Page**, which shows only while there is an Author to open. Each Author has a page of their own, and a reader linked to more than one switches between them with the tabs at the top.
+The reader opens these pages with **Your author pages** on **My Page** on the site, and with **Your author pages** under **Purchases** on the **Account** tab of the app. Either shows only while there is an Author to open. Each Author has a page of their own, and a reader linked to more than one switches between them with the tabs at the top.
 
 The reader sees only the Authors they are linked to, and never another Author's figures or lines, even an Author credited beside theirs. A staff account sees none, even one linked before it became staff.
 

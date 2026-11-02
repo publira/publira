@@ -29,6 +29,8 @@ import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/contact/http_contact_repository.dart';
+import 'package:publira/creator/creator_repository.dart';
+import 'package:publira/creator/http_creator_repository.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
@@ -103,6 +105,7 @@ class PubliraApp extends StatefulWidget {
     this.notifications,
     this.announcements,
     this.contact,
+    this.creators,
     this.pages,
     this.purchases,
     this.checkoutLauncher,
@@ -279,6 +282,11 @@ class PubliraApp extends StatefulWidget {
         dismissed: dismissedAnnouncements,
       ),
       contact: HttpContactRepository(client: client, tenants: tenants),
+      creators: HttpCreatorRepository(
+        config: resolved,
+        client: client,
+        tenants: tenants,
+      ),
       pages: HttpPageRepository(client: client, tenants: tenants),
       purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
@@ -409,6 +417,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// contact form, and no screen then leads to one.
   final ContactRepository? contact;
+
+  /// The pages of the Authors a reader's account is linked to.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app without
+  /// them, and no screen then leads to one.
+  final CreatorRepository? creators;
 
   /// The tenant's published pages.
   ///
@@ -1018,7 +1033,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                                             controller: _ageRating,
                                             child: ScreenCaptureScope(
                                               notices: widget.screenCaptures,
-                                              child: app,
+                                              child: CreatorScope(
+                                                repository: widget.creators,
+                                                child: app,
+                                              ),
                                             ),
                                           ),
                                         ),

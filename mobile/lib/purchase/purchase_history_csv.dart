@@ -1,40 +1,12 @@
 import 'dart:math';
 
 import 'package:intl/intl.dart';
+import 'package:publira/csv/csv.dart';
 import 'package:publira/models/my_purchase.dart';
 
 /// The name the purchase history is handed to the share sheet under, the one
 /// the site's download saves it as.
 const purchaseHistoryCsvName = 'purchases.csv';
-
-/// The UTF-8 byte order mark, which is what makes Excel read the text as UTF-8.
-const _bom = '﻿';
-
-final _needsQuotes = RegExp(r'[",\r\n]');
-final _formulaLead = RegExp(r'^[=+\-@\t\r]');
-
-/// `double.tryParse` skips surrounding whitespace, which a number field never
-/// has.
-bool _isNumber(String field) =>
-    field.trim() == field && (double.tryParse(field)?.isFinite ?? false);
-
-/// A field a spreadsheet would read as a formula is written with a leading
-/// apostrophe, since the titles are written by the tenant's staff rather than
-/// by the reader opening the file. A signed number is a value, not a formula,
-/// and is left as it is.
-String _neutralize(String field) =>
-    _formulaLead.hasMatch(field) && !_isNumber(field) ? "'$field" : field;
-
-/// RFC 4180 quoting, applied only where the field needs it.
-String _encodeField(String raw) {
-  final field = _neutralize(raw);
-  return _needsQuotes.hasMatch(field)
-      ? '"${field.replaceAll('"', '""')}"'
-      : field;
-}
-
-String _encodeRow(List<String> fields) =>
-    '${fields.map(_encodeField).join(',')}\r\n';
 
 /// An amount the API sends, an integer in the minor unit of [currency],
 /// written in the currency itself with no symbol and no grouping: `500` is
@@ -83,12 +55,12 @@ const _header = [
 /// empty for anything but a pack. The columns that came later are appended,
 /// so a sheet that reads the earlier ones by position keeps reading them.
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
-  final rows = StringBuffer(_bom)..write(_encodeRow(_header));
+  final rows = StringBuffer(csvBom)..write(encodeCsvRow(_header));
   for (final purchase in purchases) {
     final episode = purchase.item == PurchasedItem.episode;
     final coinPack = purchase.item == PurchasedItem.coinPack;
     rows.write(
-      _encodeRow([
+      encodeCsvRow([
         purchase.id,
         _formatInstant(purchase.purchasedAt),
         purchase.seriesTitle,

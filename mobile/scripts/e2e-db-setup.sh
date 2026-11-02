@@ -17,3 +17,11 @@ bash "${PUBLIRA_E2E_SCRIPTS_DIR}/db-setup.sh"
 mobile_records_sql="${REPO_ROOT}/db/seeds/scenarios/310_mobile_reader_records.sql"
 e2e_log "applying ${mobile_records_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${mobile_records_sql}"
+
+# A reader linked to Seed Authors 001 and 002, with the tenant showing them
+# their pages and two closed months. Applied here rather than by db-setup.sh,
+# because the Playwright suite applies it from the spec that reads it, which
+# turns the tenant's sales off and on again.
+creator_pages_sql="${REPO_ROOT}/db/seeds/scenarios/730_creator_pages.sql"
+e2e_log "applying ${creator_pages_sql}"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${creator_pages_sql}"

@@ -3001,12 +3001,12 @@ void main() {
       await tester.pump();
     }
 
-    /// The seed member signed in over the live API, with the client that
-    /// reads their own records.
+    /// The seed account [email] signed in over the live API with the seed
+    /// password, with the client that reads their own records.
     Future<
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
     >
-    signInSeedMember() async {
+    signInSeedAccount(String email) async {
       final httpClient = http.Client();
       addTearDown(httpClient.close);
       final client = ConnectClient(
@@ -3017,20 +3017,23 @@ void main() {
         client: client,
         tenantHost: liveTenantHost,
       );
-      final session =
-          await HttpAuthRepository(
-            config: const AppConfig(
-              baseUrl: liveBaseUrl,
-              tenantHost: liveTenantHost,
-            ),
-            client: client,
-            tenants: tenants,
-          ).signIn(
-            email: ConnectFixtureServer.memberEmail,
-            password: ConnectFixtureServer.memberPassword,
-          );
+      final session = await HttpAuthRepository(
+        config: const AppConfig(
+          baseUrl: liveBaseUrl,
+          tenantHost: liveTenantHost,
+        ),
+        client: client,
+        tenants: tenants,
+      ).signIn(email: email, password: ConnectFixtureServer.memberPassword);
       return (client: client, tenants: tenants, session: session);
     }
+
+    /// The seed member signed in over the live API, with the client that
+    /// reads their own records.
+    Future<
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+    >
+    signInSeedMember() => signInSeedAccount(ConnectFixtureServer.memberEmail);
 
     /// Opens the free seed episode for [session] one page before its end and
     /// turns to its last page.
@@ -3305,6 +3308,77 @@ void main() {
           find.text('Article 1 (Scope)'),
           timeout: const Duration(seconds: 20),
         );
+      });
+    });
+
+    testApp('the creator reader opens their author page', (tester) async {
+      await withFailureScreenshot(tester, 'live-creator-pages', () async {
+        // `db/seeds/scenarios/730_creator_pages.sql` turns the pages on with
+        // sales shown, links this account to Seed Authors 001 and 002, and
+        // closes November and December 2025.
+        final signedIn = await signInSeedAccount('creator-reader@example.com');
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.account,
+          session: signedIn.session,
+        );
+        final entry = find.byKey(const ValueKey('account-creator-pages'));
+        await pumpUntilFound(
+          tester,
+          entry,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapReachable(tester, entry);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('creator-pages-stats')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.byKey(const ValueKey('creator-pages-stats-error')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(
+            const ValueKey(
+              'creator-pages-tab-018f0e71-0002-7000-8000-000000000002',
+            ),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Seed Author 001'), findsWidgets);
+
+        // The closed months follow every episode, so the list is scrolled
+        // to them before they are read.
+        final page = find.descendant(
+          of: find.byKey(
+            const ValueKey(
+              'creator-pages-018f0e71-0001-7000-8000-000000000001',
+            ),
+          ),
+          matching: find.byType(Scrollable),
+        );
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('creator-pages-statements')),
+          600,
+          scrollable: page.first,
+        );
+        final december = find.byKey(
+          const ValueKey('creator-pages-statement-2025-12'),
+        );
+        await pumpUntilFound(
+          tester,
+          december,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, december, scrollable: page.first);
+        await pumpUntilRouteSettled(
+          tester,
+          find.text('Refund adjustment for November 2025'),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.text('December 2025 statement'), findsOneWidget);
+        expect(find.text('Seed Episode 001-10'), findsWidgets);
       });
     });
 

@@ -15,6 +15,8 @@ import 'package:publira/coins/coin_failure.dart';
 import 'package:publira/coins/coin_repository.dart';
 import 'package:publira/coins/coin_shop.dart';
 import 'package:publira/contact/contact_repository.dart';
+import 'package:publira/creator/creator_failure.dart';
+import 'package:publira/creator/creator_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -100,6 +102,12 @@ class AccountScreen extends StatelessWidget {
                     // its own plan rather than showing the last one's.
                     _PlanSection(key: ValueKey(('plan', session.userPublicId))),
                     const _PurchasesEntry(),
+                    // Keyed by the reader, so another account signing in is
+                    // asked about its own Authors rather than shown the last
+                    // one's.
+                    _CreatorPagesEntry(
+                      key: ValueKey(('creator-pages', session.userPublicId)),
+                    ),
                     // Keyed by the reader, so another account signing in reads
                     // its own balance rather than showing the last one's.
                     _CoinsEntry(key: ValueKey(('coins', session.userPublicId))),
@@ -748,6 +756,74 @@ class _PurchasesEntry extends StatelessWidget {
           subtitle: AutospacedText(messages.purchasesAccountDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountPurchases),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// The way to the pages of the Authors the reader's account is linked to,
+/// the app's counterpart of the site's My Page link to them.
+///
+/// Shown only where there is something behind it: the tenant shows its
+/// Authors their pages, and the account is linked to at least one. A tenant
+/// with the pages off is not asked for the reader's Authors at all, and a
+/// read that fails leaves the row out, as it would for a reader with none.
+/// Left out as well in a build carrying no [CreatorScope].
+class _CreatorPagesEntry extends StatefulWidget {
+  const _CreatorPagesEntry({super.key});
+
+  @override
+  State<_CreatorPagesEntry> createState() => _CreatorPagesEntryState();
+}
+
+class _CreatorPagesEntryState extends State<_CreatorPagesEntry> {
+  var _shown = false;
+  var _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) {
+      return;
+    }
+    _started = true;
+    final repository = CreatorScope.maybeOf(context);
+    if (repository != null) {
+      unawaited(_read(repository));
+    }
+  }
+
+  Future<void> _read(CreatorRepository repository) async {
+    var shown = false;
+    try {
+      shown =
+          await repository.pagesEnabled() &&
+          (await repository.listMyCreators()).creators.isNotEmpty;
+    } on CreatorFailure {
+      return;
+    }
+    if (mounted && shown) {
+      setState(() => _shown = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shown) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-creator-pages'),
+          title: AutospacedText(messages.creatorPagesTitle),
+          subtitle: AutospacedText(messages.creatorPagesAccountDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountCreatorPages),
         ),
         const Divider(height: 1),
       ],

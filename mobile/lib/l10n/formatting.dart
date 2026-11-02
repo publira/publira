@@ -115,6 +115,30 @@ extension AppMessagesFormatting on AppMessages {
   String formatCalendarDate(DateTime date) =>
       DateFormat.yMMMd(intlLocale).format(date);
 
+  /// A calendar month given as the API's `YYYY-MM`, written the way this
+  /// locale names a month of a year — `December 2025` under `en-US` — and
+  /// [period] itself when it is not one.
+  String formatCalendarMonth(String period) {
+    final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(period);
+    if (match == null) {
+      return period;
+    }
+    final month = DateTime(int.parse(match[1]!), int.parse(match[2]!));
+    return DateFormat.yMMMM(intlLocale).format(month);
+  }
+
+  /// [ratio] as a percentage with at most one decimal place — `33.3%` under
+  /// `en-US` — the way the site writes a rate.
+  String formatRatio(double ratio) => (NumberFormat.percentPattern(
+    intlLocale,
+  )..maximumFractionDigits = 1).format(ratio);
+
+  /// A share in basis points (10000 is all of it), with at most two decimal
+  /// places — `12.5%` under `en-US` — as the console's statement shows it.
+  String formatShareBps(int bps) => (NumberFormat.percentPattern(
+    intlLocale,
+  )..maximumFractionDigits = 2).format(bps / 10000);
+
   /// One weekday, given as the number Postgres `EXTRACT(DOW)` uses: 0 is
   /// Sunday and 6 is Saturday.
   ///
