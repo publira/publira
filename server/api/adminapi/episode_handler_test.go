@@ -586,6 +586,7 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 
 	// First image (1x1 PNG)
 	image1ID := uuid.Must(uuid.NewV7())
@@ -623,7 +624,6 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 		},
 	}
 
-	expectNoEpisodeReviewReopened(mock, tenantID)
 	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
@@ -832,6 +832,7 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 
 	variantSizes := []struct {
 		label  string
@@ -867,7 +868,6 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 		},
 	}
 
-	expectNoEpisodeReviewReopened(mock, tenantID)
 	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
@@ -897,6 +897,7 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 
 	image1ID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
@@ -933,7 +934,6 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 		ArchiveContentType: "application/zip",
 	}
 
-	expectNoEpisodeReviewReopened(mock, tenantID)
 	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
@@ -1935,6 +1935,7 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
@@ -1992,6 +1993,7 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 
 	createdImageID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
@@ -2018,7 +2020,6 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 		},
 	}
 
-	expectNoEpisodeReviewReopened(mock, tenantID)
 	if _, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}

@@ -890,6 +890,13 @@ func (s *adminServer) UploadEpisodeImages(
 		ArchiveData:     req.ArchiveData,
 		ArchiveFilename: req.ArchiveFilename,
 		ArchiveType:     req.ArchiveContentType,
+		// The new pages are no longer what was approved, so the approval is
+		// taken back before the first of them is stored: the scheduled
+		// publication job must not find the episode approved with pages
+		// nobody reviewed.
+		BeforeFirstPage: func(ctx context.Context, episodeID uuid.UUID) error {
+			return s.reopenEpisodeReview(ctx, tenant.ID, episodeID)
+		},
 	})
 	// The pages are stored one by one, each with its own statements and objects,
 	// so there is no transaction for the drop to ride: it is recorded once the
@@ -906,11 +913,6 @@ func (s *adminServer) UploadEpisodeImages(
 			)
 		}
 		s.reval.Send(ctx, owed)
-		// The pages stored are no longer what was approved, so the approval is
-		// taken back on the same terms, once the upload is over.
-		if reopenErr := s.reopenEpisodeReview(ctx, tenant.ID, episodeID); reopenErr != nil && err == nil {
-			return nil, reopenErr
-		}
 	}
 	if err != nil {
 		return nil, err

@@ -127,6 +127,7 @@ func TestUploadEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
@@ -146,7 +147,6 @@ func TestUploadEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
 		},
 	}
 
-	expectNoEpisodeReviewReopened(mock, tenantID)
 	if _, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
@@ -170,6 +170,7 @@ func TestUploadEpisodeImagesRevalidatesThePagesStoredBeforeAFailure(t *testing.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).

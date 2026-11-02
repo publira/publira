@@ -14,6 +14,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -367,5 +368,102 @@ func TestDBDraftWithdrawsTheOpenRoundAndAReturnOfOnesOwnSubmissionTellsNobody(t 
 	}
 	if events := env.pendingOutboxEvents(t, outbox.EventTypeEpisodeReviewReturnedNotification); len(events) != 0 {
 		t.Fatalf("returned notifications = %d, want none for one's own submission", len(events))
+	}
+}
+
+func refusingStore() storage.Provider {
+	store := &refusingStorageProvider{}
+	store.refuse.Store(true)
+	return store
+}
+
+// approveScheduledEpisode takes the fixture's episode through a round to its
+// approval, at a time a day ahead.
+func (e *adminDBEnv) approveScheduledEpisode(t *testing.T, f episodeReviewFixture) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := e.seriesClient().UpdateEpisodePublishSchedule(testutil.WithBearer(ctx, f.editor.token()), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+		Tenant: f.editor.tenantContext(), EpisodeId: f.episodeID, ScheduledAt: time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339),
+	}); err != nil {
+		t.Fatalf("schedule: %v", err)
+	}
+	if _, err := e.seriesClient().ApproveEpisode(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.ApproveEpisodeRequest{
+		Tenant: f.admin.tenantContext(), EpisodeId: f.episodeID,
+	}); err != nil {
+		t.Fatalf("ApproveEpisode: %v", err)
+	}
+}
+
+func (e *adminDBEnv) storedReviewState(t *testing.T, episodeID string) string {
+	t.Helper()
+	var state string
+	if err := e.PG.DB.QueryRowContext(context.Background(),
+		"SELECT coalesce(review_state, '') FROM episode_listings WHERE episode_id = $1", episodeID).Scan(&state); err != nil {
+		t.Fatalf("read the review state: %v", err)
+	}
+	return state
+}
+
+// Pages added to an approved episode send it back to review, and the approval
+// is taken back before the first of them is stored: an upload that fails part
+// way leaves the pages it stored waiting for review, never approved.
+func TestDBUploadingPagesTakesBackTheApprovalBeforeTheFirstPage(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		store    storage.Provider
+		wantCode connect.Code
+	}{
+		{name: "an upload that completes", store: &recordingStorageProvider{}},
+		// A store that refuses every object fails the upload once it has
+		// written the first page's row and comes to store its renditions.
+		{name: "an upload that fails after its first page row", store: refusingStore(), wantCode: connect.CodeInternal},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			env := newAdminDBEnvWithStorage(t, tc.store)
+			f := env.seedEpisodeReviewFixture(t, "REVUPL")
+			env.setEpisodeReviewRequired(t, f.admin, true)
+			env.approveScheduledEpisode(t, f)
+
+			_, err := env.seriesClient().UploadEpisodeImages(testutil.WithBearer(context.Background(), f.editor.token()), &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:    f.editor.tenantContext(),
+				EpisodeId: f.episodeID,
+				Images:    []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG}},
+			})
+			switch {
+			case tc.wantCode == 0 && err != nil:
+				t.Fatalf("UploadEpisodeImages: %v", err)
+			case tc.wantCode != 0 && connect.CodeOf(err) != tc.wantCode:
+				t.Fatalf("UploadEpisodeImages error = %v, want code %v", err, tc.wantCode)
+			}
+			if got := env.storedReviewState(t, f.episodeID); got != "in_review" {
+				t.Fatalf("review state = %q, want in_review", got)
+			}
+		})
+	}
+}
+
+// An upload refused before it stores anything leaves the approval standing:
+// nothing a reviewer would look at has changed.
+func TestDBAnUploadThatStoresNothingKeepsTheApproval(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnvWithStorage(t, &recordingStorageProvider{})
+	f := env.seedEpisodeReviewFixture(t, "REVNOP")
+	env.setEpisodeReviewRequired(t, f.admin, true)
+	env.approveScheduledEpisode(t, f)
+
+	if _, err := env.seriesClient().UploadEpisodeImages(testutil.WithBearer(context.Background(), f.editor.token()), &publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:    f.editor.tenantContext(),
+		EpisodeId: f.episodeID,
+		Images:    []*publiraadminv1.EpisodeImageUpload{{Filename: "001.txt", ContentType: "text/plain", Data: []byte("not an image")}},
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UploadEpisodeImages error = %v, want invalid_argument", err)
+	}
+	if got := env.storedReviewState(t, f.episodeID); got != "approved" {
+		t.Fatalf("review state = %q, want approved", got)
 	}
 }
