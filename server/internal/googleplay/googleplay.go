@@ -57,6 +57,9 @@ type ProductPurchase struct {
 	PurchaseState    int    `json:"purchaseState"`
 	ConsumptionState int    `json:"consumptionState"`
 	OrderID          string `json:"orderId"`
+	// PurchaseTimeMillis is when the purchase was made, in milliseconds since
+	// the epoch, as a decimal string.
+	PurchaseTimeMillis string `json:"purchaseTimeMillis"`
 	// PurchaseType is absent for a purchase someone paid for.
 	PurchaseType *int `json:"purchaseType"`
 	// ObfuscatedExternalAccountID is the value the app set on the purchase,
@@ -124,6 +127,9 @@ func (c *Client) ConsumeProductPurchase(ctx context.Context, serviceAccountKey [
 type VoidedPurchase struct {
 	PurchaseToken string `json:"purchaseToken"`
 	OrderID       string `json:"orderId"`
+	// PurchaseTimeMillis is when the purchase that was voided was made, in
+	// milliseconds since the epoch, as a decimal string.
+	PurchaseTimeMillis string `json:"purchaseTimeMillis"`
 	// VoidedTimeMillis is when the purchase was voided, in milliseconds since
 	// the epoch, as a decimal string.
 	VoidedTimeMillis string `json:"voidedTimeMillis"`
@@ -172,6 +178,79 @@ func (c *Client) ListVoidedPurchases(ctx context.Context, serviceAccountKey []by
 			return voided, nil
 		}
 	}
+}
+
+// The states of an Order that matter to what it charged.
+const (
+	OrderStateRefunded          = "REFUNDED"
+	OrderStatePartiallyRefunded = "PARTIALLY_REFUNDED"
+)
+
+// partialRefundProcessed is a partial refund Google Play has paid out.
+const partialRefundProcessed = "PROCESSED_SUCCESSFULLY"
+
+// Money is an amount of a currency, as google.type.Money spells one: Units
+// whole units and Nanos billionths of one, both of the same sign.
+type Money struct {
+	CurrencyCode string `json:"currencyCode"`
+	// Units is an int64, which the JSON encoding carries as a decimal string.
+	Units string `json:"units"`
+	Nanos int32  `json:"nanos"`
+}
+
+// Order is the part of an Order resource what a purchase charged is read
+// from.
+type Order struct {
+	OrderID       string `json:"orderId"`
+	PurchaseToken string `json:"purchaseToken"`
+	State         string `json:"state"`
+	// Total is what the buyer paid, tax included, in the buyer's currency.
+	Total        *Money `json:"total"`
+	OrderHistory struct {
+		RefundEvent *struct {
+			RefundDetails struct {
+				Total *Money `json:"total"`
+			} `json:"refundDetails"`
+		} `json:"refundEvent"`
+		PartialRefundEvents []struct {
+			State         string `json:"state"`
+			RefundDetails struct {
+				Total *Money `json:"total"`
+			} `json:"refundDetails"`
+		} `json:"partialRefundEvents"`
+	} `json:"orderHistory"`
+}
+
+// Refunds answers the refunds Google Play has paid out on the order: the
+// refund in full once there is one, and else every partial refund it has
+// processed.
+func (o Order) Refunds() []Money {
+	if refund := o.OrderHistory.RefundEvent; refund != nil && refund.RefundDetails.Total != nil {
+		return []Money{*refund.RefundDetails.Total}
+	}
+	var refunds []Money
+	for _, refund := range o.OrderHistory.PartialRefundEvents {
+		if refund.State == partialRefundProcessed && refund.RefundDetails.Total != nil {
+			refunds = append(refunds, *refund.RefundDetails.Total)
+		}
+	}
+	return refunds
+}
+
+// GetOrder answers the order orderID names in packageName, as
+// purchases.products.get names it, or [ErrPurchaseNotFound].
+func (c *Client) GetOrder(ctx context.Context, serviceAccountKey []byte, packageName, orderID string) (Order, error) {
+	target := fmt.Sprintf("%s/androidpublisher/v3/applications/%s/orders/%s",
+		c.endpoint, url.PathEscape(packageName), url.PathEscape(orderID))
+	body, err := c.do(ctx, serviceAccountKey, http.MethodGet, target)
+	if err != nil {
+		return Order{}, err
+	}
+	var order Order
+	if err := json.Unmarshal(body, &order); err != nil {
+		return Order{}, fmt.Errorf("googleplay: decode order: %w", err)
+	}
+	return order, nil
 }
 
 // Subscription states of a SubscriptionPurchaseV2.

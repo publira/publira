@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// Where a reconciliation stands. The worker runs one some seconds after it is
+// started, for as long as reading the source's records of the period takes.
+enum PaymentReconciliationStatus {
+  PAYMENT_RECONCILIATION_STATUS_UNSPECIFIED = 0;
+  // Started, and not taken up by the worker yet.
+  PAYMENT_RECONCILIATION_STATUS_PENDING = 1;
+  // The worker is reading the source.
+  PAYMENT_RECONCILIATION_STATUS_RUNNING = 2;
+  // Finished, with its counts and findings.
+  PAYMENT_RECONCILIATION_STATUS_SUCCEEDED = 3;
+  // Finished without findings, for the reason failure names.
+  PAYMENT_RECONCILIATION_STATUS_FAILED = 4;
+}
+
+// Why a reconciliation failed.
+enum PaymentReconciliationFailure {
+  // It has not failed.
+  PAYMENT_RECONCILIATION_FAILURE_UNSPECIFIED = 0;
+  // The source's credentials are not saved, or the source refused them.
+  PAYMENT_RECONCILIATION_FAILURE_CREDENTIALS = 1;
+  // The source could not be read. Starting the run again may succeed.
+  PAYMENT_RECONCILIATION_FAILURE_UNAVAILABLE = 2;
+}
+
+// What one line of a reconciliation is.
+enum PaymentReconciliationFindingKind {
+  PAYMENT_RECONCILIATION_FINDING_KIND_UNSPECIFIED = 0;
+  // A payment the source recorded in the period that no purchase names, as
+  // a payment whose notification never reached the install is.
+  // provider_payment_id names it, and purchase_id is empty.
+  PAYMENT_RECONCILIATION_FINDING_KIND_RECORD_UNMATCHED = 1;
+  // A purchase made in the period whose payment the source has no record of.
+  PAYMENT_RECONCILIATION_FINDING_KIND_PURCHASE_UNMATCHED = 2;
+  // A purchase and the source's record of its payment that disagree on the
+  // amount, the currency, or the amount refunded.
+  PAYMENT_RECONCILIATION_FINDING_KIND_AMOUNT_MISMATCH = 3;
+  // A refund of a payment no purchase named when it arrived, held since
+  // before the period began. provider_payment_id names the payment.
+  PAYMENT_RECONCILIATION_FINDING_KIND_HELD_REFUND = 4;
+  // A dispute held the same way.
+  PAYMENT_RECONCILIATION_FINDING_KIND_HELD_DISPUTE = 5;
+}
+
+// Which of a source's two modes to list.
+enum PaymentReconciliationMode {
+  // Both.
+  PAYMENT_RECONCILIATION_MODE_UNSPECIFIED = 0;
+  // The lines of payments that reached the tenant.
+  PAYMENT_RECONCILIATION_MODE_LIVE = 1;
+  // The lines of the source's test mode or sandbox.
+  PAYMENT_RECONCILIATION_MODE_TEST = 2;
+}
+
+// One reconciliation of one period against one source: the web payment
+// provider the tenant takes payments through, or one of the stores. Exactly
+// one of provider and store is set.
+message PaymentReconciliation {
+  // A UUID.
+  string id = 1;
+  // The payment provider, as its declaration names it ("stripe", "payjp").
+  string provider = 2;
+  // The store ("app_store", "google_play").
+  string store = 3;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone as it was when the run was started.
+  string start_date = 4;
+  string end_date = 5;
+  PaymentReconciliationStatus status = 6;
+  // Set on a failed run.
+  PaymentReconciliationFailure failure = 7;
+  // RFC3339: when the run was started, and when it finished, which is empty
+  // until it has.
+  string started_at = 8;
+  string finished_at = 9;
+  // Set on a run that succeeded: the payments the source recorded in the
+  // period, the purchases the install recorded in it, how many of the two
+  // matched each other, and the findings.
+  int64 record_count = 10;
+  int64 purchase_count = 11;
+  int64 matched_count = 12;
+  int64 finding_count = 13;
+}
+
+// One line of a reconciliation. The purchase_ fields are the install's side
+// and the record_ fields the source's, each in the minor unit of its own
+// currency, and each empty or zero where that side has nothing to say.
+message PaymentReconciliationFinding {
+  // A UUID.
+  string id = 1;
+  PaymentReconciliationFindingKind kind = 2;
+  // A line of the source's test mode or sandbox, matched only with the other
+  // side's test lines. A held refund or dispute names no mode, and is never
+  // a test line.
+  bool test = 3;
+  // The purchase the line is about, named by AdminPurchase.id, on a
+  // PURCHASE_UNMATCHED or an AMOUNT_MISMATCH line.
+  string purchase_id = 4;
+  // The source's own ID of the payment, which finds it in the source's
+  // dashboard: a PaymentIntent on Stripe, a payment flow on PAY.JP, a
+  // transaction on the App Store, and a purchase token on Google Play.
+  string provider_payment_id = 5;
+  int64 purchase_amount = 6;
+  int64 purchase_refunded_amount = 7;
+  string purchase_currency = 8;
+  int64 record_amount = 9;
+  int64 record_refunded_amount = 10;
+  string record_currency = 11;
+  // RFC3339: when the purchase was made, the source took the payment, or the
+  // hold arrived.
+  string occurred_at = 12;
+}
+
+message StartPaymentReconciliationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone. At most 366 days, ending no later than today.
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message StartPaymentReconciliationResponse {
+  // One run per source the tenant has ready, in the order provider, App
+  // Store, Google Play.
+  repeated PaymentReconciliation reconciliations = 1;
+}
+
+// Cursor pagination, the run started last first. Field shape and token rules:
+// proto/README.md.
+message ListPaymentReconciliationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListPaymentReconciliationsResponse {
+  repeated PaymentReconciliation reconciliations = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// Cursor pagination, in the order the lines happened. Field shape and token
+// rules: proto/README.md. Changing a filter starts again from the first page.
+message ListPaymentReconciliationFindingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required. The run, named by PaymentReconciliation.id.
+  string reconciliation_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+  // Only lines of this kind. UNSPECIFIED is every kind.
+  PaymentReconciliationFindingKind kind = 5;
+  // Only the live lines, or only the test lines.
+  PaymentReconciliationMode mode = 6;
+}
+
+message ListPaymentReconciliationFindingsResponse {
+  repeated PaymentReconciliationFinding findings = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message ExportPurchasesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone. At most 366 days.
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message ExportPurchasesResponse {
+  // The purchases and refunds of the period as CSV: UTF-8 with a byte order
+  // mark, CRLF line endings, RFC 4180 quoting. A header row, then one row per
+  // purchase made in the period and one per refund dated in it, in the order
+  // of the purchases they are about, with the columns
+  //
+  //   row_type, purchase_id, occurred_at, purchased_at, amount, currency,
+  //   kind, item_type, item_id, provider, provider_checkout_id,
+  //   provider_payment_id, store, store_transaction_id, test
+  //
+  // row_type is `purchase` or `refund`. occurred_at is when the row
+  // happened: the purchase, or the refund in full. A refund in part carries
+  // no date of its own, so its occurred_at is empty and it is listed in the
+  // period its purchase was made in. amount is what the reader paid, or what
+  // was refunded, as an integer in the minor unit of currency. kind is
+  // `purchase` or `rental`; item_type is `episode`, `volume`,
+  // `series_bundle`, or `coin_pack`, and item_id its UUID. The provider and
+  // store columns are the IDs the purchase carries, which find it in the
+  // provider's or the store's records. test is `true` for a payment of the
+  // source's test mode or sandbox. Times are RFC3339 in the tenant's time
+  // zone.
+  //
+  // A purchase paid with coins or granted without a payment charged the
+  // reader nothing, and is not in the file.
+  bytes csv = 1;
+}
+
+service AdminPaymentReconciliationService {
+  // Starts a reconciliation of the period against every source the tenant
+  // has ready: its enabled payment provider, and each store whose key and app
+  // are saved. A run of the same period and source that has finished is
+  // replaced, its findings with it; one the worker has not finished is
+  // answered as it is. No source ready is failed_precondition, and a period
+  // that does not parse, is reversed, runs past today, or covers more than
+  // 366 days is invalid_argument with a field violation on start_date or
+  // end_date.
+  //
+  // Minimum role: tenant_admin.
+  rpc StartPaymentReconciliation(StartPaymentReconciliationRequest) returns (StartPaymentReconciliationResponse) {}
+  // Minimum role: tenant_admin.
+  rpc ListPaymentReconciliations(ListPaymentReconciliationsRequest) returns (ListPaymentReconciliationsResponse) {}
+  // Lists the findings of one run. A run of another tenant, or none, is
+  // not_found, and a reconciliation_id that is not a UUID invalid_argument
+  // with a field violation on it.
+  //
+  // Minimum role: tenant_admin.
+  rpc ListPaymentReconciliationFindings(ListPaymentReconciliationFindingsRequest) returns (ListPaymentReconciliationFindingsResponse) {}
+  // Writes the purchases and refunds of a period as CSV, and records the
+  // download in the audit log.
+  //
+  // Minimum role: tenant_admin.
+  rpc ExportPurchases(ExportPurchasesRequest) returns (ExportPurchasesResponse) {}
+}

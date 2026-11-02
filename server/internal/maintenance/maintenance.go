@@ -18,6 +18,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentreconciliation"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/storage"
@@ -59,10 +61,17 @@ type Deps struct {
 	// dependency no other job takes.
 	Storage storage.ReclaimerSource
 	// Secrets decrypts the store credentials GooglePlayVoidedPurchaseSync
-	// calls Google Play with, and GooglePlay is the API it calls.
+	// calls Google Play with, and the credentials PaymentReconciliation reads
+	// each source with. GooglePlay is the API both call.
 	Secrets    paymentsettings.SecretManager
-	GooglePlay VoidedPurchaseLister
-	Logger     *slog.Logger
+	GooglePlay GooglePlayReader
+	// Payments, AppStore, and AppStoreVerifier are the rest of what
+	// PaymentReconciliation reads: the web payment providers, and the App
+	// Store's transaction histories.
+	Payments         *paymentprovider.Registry
+	AppStore         paymentreconciliation.AppStoreHistory
+	AppStoreVerifier paymentreconciliation.TransactionVerifier
+	Logger           *slog.Logger
 }
 
 // replicaCatchUpWait is how long a tenant's rebuild waits for Replica to

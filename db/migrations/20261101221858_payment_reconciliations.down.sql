@@ -1,0 +1,2 @@
+DROP TABLE payment_reconciliation_findings;
+DROP TABLE payment_reconciliations;

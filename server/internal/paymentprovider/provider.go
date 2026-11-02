@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -399,6 +400,24 @@ func (DisputeLost) isEvent()       {}
 func (CheckoutExpired) isEvent()   {}
 func (Ignored) isEvent()           {}
 
+// Transaction is one payment the provider took, as [Provider.ListTransactions]
+// reads it from the provider's own records.
+type Transaction struct {
+	// PaymentID is the provider's id of the payment, the one
+	// [PurchaseCompleted.PaymentID] names.
+	PaymentID string
+	// Amount is what the payment took, and AmountRefunded the total refunded
+	// on it so far, each in the minor unit of Currency.
+	Amount         int64
+	AmountRefunded int64
+	// Currency is the ISO 4217 code of the payment, in capitals.
+	Currency string
+	// Test reports a payment of the provider's test mode.
+	Test bool
+	// Created is when the provider took the payment.
+	Created time.Time
+}
+
 // Provider is one web payment provider.
 type Provider interface {
 	Declaration() Declaration
@@ -428,6 +447,12 @@ type Provider interface {
 	// notification reports the total of every refund of a payment, so this
 	// is what tells whether one of them is that refund.
 	RefundMade(ctx context.Context, credentials Credentials, paymentID, refundKey string) (bool, error)
+	// ListTransactions answers every payment the provider took under the
+	// credentials from from up to but not including to, oldest first, each
+	// with what has been refunded on it by now. It reads the provider's
+	// records and changes none of them. It answers [ErrCredentialsRefused] for
+	// credentials the provider will not answer.
+	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time) ([]Transaction, error)
 }
 
 // StaffRefundKey is the idempotency key every request of one attempt of

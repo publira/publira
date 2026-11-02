@@ -48,7 +48,7 @@ An install whose mail and push notifications have to keep going out while an hou
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
 | `publira worker --queue outbox` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue outbox` as the container argument | The Outbox drain — mail, push, cache revalidation — as `publira_outbox` alone | Nothing; it serves `/livez` and `/readyz` on `:8003` |
-| `publira worker --queue ticker,maintenance,search_index` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue ticker,maintenance,search_index` as the container argument | Every scheduled job, as `publira_outbox`, `publira_ticker`, and `publira_content_stats` | Nothing; it serves `/livez` and `/readyz` on `:8003` |
+| `publira worker --queue ticker,maintenance,search_index,payment_reconciliation` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue ticker,maintenance,search_index,payment_reconciliation` as the container argument | Every scheduled job, as `publira_outbox`, `publira_ticker`, and `publira_content_stats` | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Together they replace the one `publira worker` above, and each reads the `publira worker` rows below except where a row says otherwise. Every queue needs at least one running process that hosts it: the process River elects leader enqueues every scheduled job, whatever queues it hosts itself, and a job whose queue no process hosts waits until one does. [`--queue`](../../server/cmd/publira/README.md#hosting-some-queues---queue) has the details.
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -165,6 +166,10 @@ func (declaredProvider) Refund(context.Context, paymentprovider.Credentials, pay
 
 func (declaredProvider) RefundMade(context.Context, paymentprovider.Credentials, string, string) (bool, error) {
 	return false, nil
+}
+
+func (declaredProvider) ListTransactions(context.Context, paymentprovider.Credentials, time.Time, time.Time) ([]paymentprovider.Transaction, error) {
+	return nil, nil
 }
 
 func testRegistry() *paymentprovider.Registry {

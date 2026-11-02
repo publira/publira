@@ -242,6 +242,34 @@ How the bank decides changes only the royalty statement, which learns of the dec
 
 A reader who leaves the payment page without paying can start the purchase again at any time. Once Stripe reports the abandoned checkout expired, which is why its endpoint needs `checkout.session.expired`, the reader's next attempt opens a new payment page instead of the expired one.
 
+## Reconciling with the provider
+
+Royalty statements and **Revenue** count the purchases the install recorded, and nothing else. A notification that never arrived, a refund that matched no purchase, or a store purchase the app never confirmed leaves those figures apart from what the provider or the store actually charged. A reconciliation compares the two sides over a period of your days, and lists every line that matches nothing on the other side. It reads the provider's and the stores' records with the credentials saved under **Payments** › **Payment methods**, and changes nothing in them or in the purchases: what to do about a line is yours to decide, in the provider's dashboard or in the console.
+
+A reconciliation of a period runs against every source the tenant has **Ready**: its payment provider, the App Store, and Google Play, each as a run of its own. The worker takes a run up within seconds and finishes it once it has read the source's records of the period, which for a long period of a busy tenant takes a while. Running the same period again replaces the last run of it, unless that one has not finished yet.
+
+Each source is read where it keeps its records:
+
+- **Stripe**: the account's balance transactions, each matched by the payment intent the purchase records. A payment that paid a [subscription plan](./5-subscription-plans.md)'s invoice is not a purchase, and is left out.
+- **PAY.JP**: the account's payment flows, and the refunds made on them.
+- **The App Store**: the transaction history of every customer the tenant has an App Store purchase from in the period. Apple keeps a history per customer and none for the whole app, so a purchase by a customer whose every purchase the app failed to record is one the reconciliation cannot see.
+- **Google Play**: each of the tenant's Google Play purchases of the period, with its order, and Google Play's voided purchases. Google Play lists no other purchases, and keeps the voided ones for 30 days, so a purchase the app failed to record shows up only once it is refunded within that time.
+
+A run lists these lines:
+
+- **A payment with no purchase**: the source took the payment, and no purchase records it. This is what a payment whose notification never reached the install looks like. The line names the source's own ID of the payment, a payment intent on Stripe, a payment flow on PAY.JP, a transaction on the App Store, and a purchase token on Google Play, so it can be found in the source's dashboard.
+- **A purchase with no payment**: a purchase of the period that the source has no record of.
+- **An amount that differs**: a purchase and its payment that disagree on the amount, on the currency, or on what has been refunded. A store charges the reader in their own currency, so for a store the amounts are compared only when it charged in the tenant's currency, and otherwise only whether the payment was refunded.
+- **A held refund** or **a held dispute**: a refund or a dispute that arrived for a payment no purchase named, and has been waiting for its purchase since before the period began. One that finds its purchase is applied then, as [Refunds](#refunds) describes, so one still waiting points to a purchase that was never recorded.
+
+A purchase is dated when the install recorded it, which follows the payment by however long its notification took, so each source is read from a day before the period to a day after it. A payment taken late on the last day of the period still meets the purchase recorded the next morning, and neither side's lines outside the period are listed.
+
+Payments made in the provider's test mode or the stores' sandboxes are matched only with test purchases, and listed apart from the live ones. A held refund or dispute names no mode, and is listed with the live lines.
+
+### Downloading the purchases
+
+The purchases of a period can be downloaded as a CSV for your accounting: one row for each purchase made in the period, and one for each refund dated in it, each with the provider's and the store's IDs the purchase carries. A refund in full is dated when it reached the install; a refund in part carries no date of its own, so it is listed with the period its purchase was made in. A purchase paid with coins, or granted without a payment, charged the reader nothing, and is not in the file. Each download is recorded in **Audit logs**.
+
 ## Testing before going live
 
 Test the whole setup with the provider's test keys before readers can pay: the webhook is the part that most often goes wrong, and only a purchase shows that it works.

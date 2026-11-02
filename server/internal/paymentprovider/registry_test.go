@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 )
 
 type declaredProvider struct {
@@ -26,6 +27,10 @@ func (declaredProvider) Refund(context.Context, Credentials, RefundRequest) (boo
 
 func (declaredProvider) RefundMade(context.Context, Credentials, string, string) (bool, error) {
 	return false, nil
+}
+
+func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time, time.Time) ([]Transaction, error) {
+	return nil, nil
 }
 
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
