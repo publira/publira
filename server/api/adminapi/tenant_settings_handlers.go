@@ -482,3 +482,73 @@ func (s *adminServer) UpdateTenantAgeVerification(
 		AgeVerification: saved,
 	}, nil
 }
+
+func (s *adminServer) GetTenantEpisodeReviewSettings(
+	ctx context.Context,
+	req *publiraadminv1.GetTenantEpisodeReviewSettingsRequest,
+) (*publiraadminv1.GetTenantEpisodeReviewSettingsResponse, error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	required, err := s.episodeReviewRequired(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.GetTenantEpisodeReviewSettingsResponse{EpisodeReviewRequired: required}, nil
+}
+
+func (s *adminServer) UpdateTenantEpisodeReviewSettings(
+	ctx context.Context,
+	req *publiraadminv1.UpdateTenantEpisodeReviewSettingsRequest,
+) (*publiraadminv1.UpdateTenantEpisodeReviewSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// What a reader sees changes only once the scheduled publication job runs,
+	// and it drops the caches of whatever it publishes, so the save drops none.
+	var updated dbmodels.TenantConfig
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		current, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if current.EpisodeReviewRequired == req.EpisodeReviewRequired {
+			updated = current
+			return nil, nil
+		}
+		q := s.queriesFor(txCtx)
+		row, err := q.UpsertTenantEpisodeReviewRequired(txCtx, dbmodels.UpsertTenantEpisodeReviewRequiredParams{
+			TenantID:              tenant.ID,
+			EpisodeReviewRequired: req.EpisodeReviewRequired,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to update tenant episode review settings", err, "tenant_id", tenant.ID.String())
+		}
+		updated = row
+		if req.EpisodeReviewRequired {
+			if _, err := q.SubmitScheduledEpisodesForReview(txCtx, tenant.ID); err != nil {
+				return nil, s.internalDBError(ctx, "failed to submit the scheduled episodes for review", err, "tenant_id", tenant.ID.String())
+			}
+		}
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_episode_review_settings_updated", "tenant_episode_review_settings"); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return &publiraadminv1.UpdateTenantEpisodeReviewSettingsResponse{
+		EpisodeReviewRequired: updated.EpisodeReviewRequired,
+	}, nil
+}

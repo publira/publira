@@ -71,6 +71,9 @@ func (s *adminServer) UploadEpisodeEyeCatchImage(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to point the episode at its eye catch image", err, "tenant_id", tenant.ID.String(), "episode_id", current.ID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -144,6 +147,9 @@ func (s *adminServer) UploadEpisodeEyeCatchAspectImage(
 		if err := s.replaceOwnerImageType(txCtx, episodeEyeCatchImages, ownerImageRef(tenant, locked.ID, locked.PublicID), locked.EyeCatchImageID.UUID, aspect.VariantType, variants); err != nil {
 			return nil, err
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -193,6 +199,9 @@ func (s *adminServer) DeleteEpisodeEyeCatchImage(
 			return nil, s.internalDBError(ctx, "failed to clear the episode eye catch image", err, "tenant_id", tenant.ID.String(), "episode_id", current.ID.String())
 		}
 		removed = true
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -249,7 +258,7 @@ func (s *adminServer) episodeAfterEyeCatchWrite(ctx context.Context, tenantID, e
 	if _, err := episodePurchaseAvailability(episode, row.PurchaseAvailability, row.ResolvedPurchaseAvailability); err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenantID, episode); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenantID, episode); err != nil {
 		return nil, err
 	}
 	return episode, nil

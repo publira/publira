@@ -122,6 +122,12 @@ FROM episodes e
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND e.series_id = sqlc.arg('series_id')
+    -- NULL lists every episode; a state lists only the episodes whose latest
+    -- review decision it is.
+    AND (
+        sqlc.narg('review_state')::text IS NULL
+        OR el.review_state = sqlc.narg('review_state')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -158,6 +164,12 @@ FROM episodes e
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND e.series_id = sqlc.arg('series_id')
+    -- NULL lists every episode; a state lists only the episodes whose latest
+    -- review decision it is.
+    AND (
+        sqlc.narg('review_state')::text IS NULL
+        OR el.review_state = sqlc.narg('review_state')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -784,7 +796,8 @@ SELECT
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    el.scheduled_at
+    el.scheduled_at,
+    el.review_state
 FROM episodes e
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id

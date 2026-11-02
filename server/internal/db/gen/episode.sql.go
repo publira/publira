@@ -810,29 +810,36 @@ FROM episodes e
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
     AND e.series_id = $2
+    -- NULL lists every episode; a state lists only the episodes whose latest
+    -- review decision it is.
     AND (
-        $3::uuid IS NULL
+        $3::text IS NULL
+        OR el.review_state = $3::text
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (e.order_index, e.id) >= ($5::int4, $3::uuid)
+            $5::boolean
+            AND (e.order_index, e.id) >= ($6::int4, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (e.order_index, e.id) > ($5::int4, $3::uuid)
+            NOT $5::boolean
+            AND (e.order_index, e.id) > ($6::int4, $4::uuid)
         )
     )
 ORDER BY e.order_index ASC,
     e.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListEpisodesBySeriesForTenantAscParams struct {
-	TenantID         uuid.UUID     `json:"tenant_id"`
-	SeriesID         uuid.UUID     `json:"series_id"`
-	CursorID         uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive  bool          `json:"cursor_inclusive"`
-	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
-	Limit            int32         `json:"limit"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	SeriesID         uuid.UUID      `json:"series_id"`
+	ReviewState      sql.NullString `json:"review_state"`
+	CursorID         uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive  bool           `json:"cursor_inclusive"`
+	CursorOrderIndex sql.NullInt32  `json:"cursor_order_index"`
+	Limit            int32          `json:"limit"`
 }
 
 type ListEpisodesBySeriesForTenantAscRow struct {
@@ -860,6 +867,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg List
 	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantAsc,
 		arg.TenantID,
 		arg.SeriesID,
+		arg.ReviewState,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorOrderIndex,
@@ -921,29 +929,36 @@ FROM episodes e
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
     AND e.series_id = $2
+    -- NULL lists every episode; a state lists only the episodes whose latest
+    -- review decision it is.
     AND (
-        $3::uuid IS NULL
+        $3::text IS NULL
+        OR el.review_state = $3::text
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (e.order_index, e.id) <= ($5::int4, $3::uuid)
+            $5::boolean
+            AND (e.order_index, e.id) <= ($6::int4, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (e.order_index, e.id) < ($5::int4, $3::uuid)
+            NOT $5::boolean
+            AND (e.order_index, e.id) < ($6::int4, $4::uuid)
         )
     )
 ORDER BY e.order_index DESC,
     e.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListEpisodesBySeriesForTenantDescParams struct {
-	TenantID         uuid.UUID     `json:"tenant_id"`
-	SeriesID         uuid.UUID     `json:"series_id"`
-	CursorID         uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive  bool          `json:"cursor_inclusive"`
-	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
-	Limit            int32         `json:"limit"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	SeriesID         uuid.UUID      `json:"series_id"`
+	ReviewState      sql.NullString `json:"review_state"`
+	CursorID         uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive  bool           `json:"cursor_inclusive"`
+	CursorOrderIndex sql.NullInt32  `json:"cursor_order_index"`
+	Limit            int32          `json:"limit"`
 }
 
 type ListEpisodesBySeriesForTenantDescRow struct {
@@ -966,6 +981,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg Lis
 	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantDesc,
 		arg.TenantID,
 		arg.SeriesID,
+		arg.ReviewState,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorOrderIndex,
@@ -1556,7 +1572,8 @@ SELECT
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    el.scheduled_at
+    el.scheduled_at,
+    el.review_state
 FROM episodes e
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
@@ -1577,12 +1594,13 @@ type ListRecentEpisodesForDashboardParams struct {
 }
 
 type ListRecentEpisodesForDashboardRow struct {
-	EpisodePublicID string       `json:"episode_public_id"`
-	EpisodeTitle    string       `json:"episode_title"`
-	SeriesPublicID  string       `json:"series_public_id"`
-	SeriesTitle     string       `json:"series_title"`
-	Status          string       `json:"status"`
-	ScheduledAt     sql.NullTime `json:"scheduled_at"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	Status          string         `json:"status"`
+	ScheduledAt     sql.NullTime   `json:"scheduled_at"`
+	ReviewState     sql.NullString `json:"review_state"`
 }
 
 // The most recent draft and scheduled episodes, for the publish queue on the
@@ -1603,6 +1621,7 @@ func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRe
 			&i.SeriesTitle,
 			&i.Status,
 			&i.ScheduledAt,
+			&i.ReviewState,
 		); err != nil {
 			return nil, err
 		}
@@ -1925,7 +1944,7 @@ SET price = EXCLUDED.price,
     status = EXCLUDED.status,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at
-RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announcement_owed, rental_price, rental_period_hours, preview_page_count
+RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announcement_owed, rental_price, rental_period_hours, preview_page_count, review_state, review_approved_at
 `
 
 type UpsertEpisodeListingParams struct {
@@ -1967,6 +1986,8 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		&i.RentalPrice,
 		&i.RentalPeriodHours,
 		&i.PreviewPageCount,
+		&i.ReviewState,
+		&i.ReviewApprovedAt,
 	)
 	return i, err
 }

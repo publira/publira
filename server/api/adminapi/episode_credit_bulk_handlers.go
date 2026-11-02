@@ -123,6 +123,18 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
+	// Only the episodes whose credits changed are no longer what was approved.
+	if len(outcome.changed) > 0 {
+		changedIDs := make([]uuid.UUID, 0, len(outcome.changed))
+		for _, id := range lockedIDs {
+			if _, ok := outcome.changed[id]; ok {
+				changedIDs = append(changedIDs, id)
+			}
+		}
+		if err := s.reopenEpisodeReviews(txCtx, tenant.ID, changedIDs); err != nil {
+			return nil, err
+		}
+	}
 	var owed revalidate.Owed
 	if len(outcome.changed) > 0 {
 		owed, err = s.recordRevalidation(txCtx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))

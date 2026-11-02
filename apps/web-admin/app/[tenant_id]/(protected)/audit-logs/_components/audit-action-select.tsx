@@ -87,6 +87,18 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "episode_credits_bulk_edited",
             },
             {
+              label: t("admin.audit.actions.episode_review_submitted"),
+              value: "episode_review_submitted",
+            },
+            {
+              label: t("admin.audit.actions.episode_review_approved"),
+              value: "episode_review_approved",
+            },
+            {
+              label: t("admin.audit.actions.episode_review_returned"),
+              value: "episode_review_returned",
+            },
+            {
               label: t("admin.audit.actions.episode_free_window_created"),
               value: "episode_free_window_created",
             },
@@ -463,6 +475,12 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
             {
               label: t("admin.audit.actions.tenant_age_verification_updated"),
               value: "tenant_age_verification_updated",
+            },
+            {
+              label: t(
+                "admin.audit.actions.tenant_episode_review_settings_updated"
+              ),
+              value: "tenant_episode_review_settings_updated",
             },
             {
               label: t("admin.audit.actions.tenant_reader_icon_policy_updated"),

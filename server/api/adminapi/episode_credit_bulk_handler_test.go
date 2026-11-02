@@ -69,6 +69,7 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 		WillReturnRows(replacedEpisodes)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesCreditedOnTheEpisodeItself)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectCommit()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))

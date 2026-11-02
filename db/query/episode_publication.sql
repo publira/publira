@@ -1,9 +1,12 @@
 -- name: ListEpisodesReadyToPublish :many
+-- An episode its tenant's review has not cleared is not due, however long ago
+-- its time passed: it waits for a Tenant admin rather than failing.
 SELECT el.episode_id
 FROM episode_listings el
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
-    AND el.scheduled_at <= NOW();
+    AND el.scheduled_at <= NOW()
+    AND episode_review_cleared(el.tenant_id, el.review_approved_at);
 
 -- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
@@ -24,7 +27,8 @@ FROM episode_listings el
     JOIN tenants t ON t.id = el.tenant_id
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
-    AND el.scheduled_at <= NOW();
+    AND el.scheduled_at <= NOW()
+    AND episode_review_cleared(el.tenant_id, el.review_approved_at);
 
 -- name: GetPublishedEpisodeForFollowerNotification :one
 -- Worker read: what the episode_published notification of an episode the
@@ -47,19 +51,23 @@ WHERE e.tenant_id = $1
 -- name: MarkEpisodePublished :execrows
 -- The scheduled publication job's promotion of an episode it listed as due.
 -- The job lists before it publishes, so the listing is matched again here: one
--- the console published, took back to a draft, or moved later in between
--- counts no row and is left as the console saved it.
+-- the console published, took back to a draft, moved later, or sent back to
+-- review in between counts no row and is left as the console saved it.
 UPDATE episode_listings
 SET status = 'published',
     published_at = NOW()
 WHERE episode_id = $1
     AND status = 'scheduled'
-    AND scheduled_at <= NOW();
+    AND scheduled_at <= NOW()
+    AND episode_review_cleared(tenant_id, review_approved_at);
 
 -- name: UpdateEpisodePublishScheduleByIDForTenant :exec
 -- Taking the episode off the site settles what it owed: no reader can open it,
 -- and the publication that puts it back owes its own announcement if its
 -- series is still not public then.
+--
+-- A draft has no time to review, so taking an episode back to one clears its
+-- review state as well; the rounds already decided stay in episode_reviews.
 UPDATE episode_listings el
 SET status = CASE
         WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN 'draft'
@@ -70,7 +78,15 @@ SET status = CASE
         WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN NULL
         ELSE el.published_at
     END,
-    announcement_owed = false
+    announcement_owed = false,
+    review_state = CASE
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN NULL
+        ELSE el.review_state
+    END,
+    review_approved_at = CASE
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN NULL
+        ELSE el.review_approved_at
+    END
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id

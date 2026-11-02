@@ -240,6 +240,7 @@ func (s *adminServer) episodePage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	seriesID uuid.UUID,
+	reviewState sql.NullString,
 	keys episodeCursorKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -249,6 +250,7 @@ func (s *adminServer) episodePage(
 		rows, err := queries.ListEpisodesBySeriesForTenantDesc(ctx, dbmodels.ListEpisodesBySeriesForTenantDescParams{
 			TenantID:         tenantID,
 			SeriesID:         seriesID,
+			ReviewState:      reviewState,
 			CursorID:         keys.id,
 			CursorInclusive:  keys.inclusive,
 			CursorOrderIndex: keys.orderIndex,
@@ -263,6 +265,7 @@ func (s *adminServer) episodePage(
 	rows, err := queries.ListEpisodesBySeriesForTenantAsc(ctx, dbmodels.ListEpisodesBySeriesForTenantAscParams{
 		TenantID:         tenantID,
 		SeriesID:         seriesID,
+		ReviewState:      reviewState,
 		CursorID:         keys.id,
 		CursorInclusive:  keys.inclusive,
 		CursorOrderIndex: keys.orderIndex,
@@ -289,13 +292,19 @@ func (s *adminServer) ListEpisodes(
 	if err != nil {
 		return nil, err
 	}
+	reviewState, err := episodeReviewStateFilter(req.ReviewState)
+	if err != nil {
+		return nil, err
+	}
 
 	limit := pagination.NormalizeLimit(req.Limit, defaultEpisodePageSize, maxEpisodePageSize)
 	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	listKey := pagination.NewListKey("order_index_asc").Value("series_id", seriesID.String())
+	listKey := pagination.NewListKey("order_index_asc").
+		Value("series_id", seriesID.String()).
+		Value("review_state", reviewState)
 	var keys episodeCursorKeys
 	if !cursor.IsZero() {
 		inner, keyErr := listKey.Decode(cursor)
@@ -309,7 +318,7 @@ func (s *adminServer) ListEpisodes(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.episodePage(ctx, tenant.ID, seriesID, keys, cursor.Direction, limit+1)
+	rows, err := s.episodePage(ctx, tenant.ID, seriesID, sql.NullString{String: reviewState, Valid: reviewState != ""}, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episodes", err, "tenant_id", tenant.ID.String())
 	}
@@ -324,7 +333,7 @@ func (s *adminServer) ListEpisodes(
 		episodes = append(episodes, episode)
 	}
 
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, episodes...); err != nil {
 		return nil, err
 	}
 	res := &publiraadminv1.ListEpisodesResponse{Episodes: episodes}
@@ -403,7 +412,7 @@ func (s *adminServer) GetEpisode(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episode); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, episode); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.GetEpisodeResponse{
@@ -565,7 +574,7 @@ func (s *adminServer) ReorderEpisodes(
 		episodes = append(episodes, episode)
 	}
 
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, episodes...); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.ReorderEpisodesResponse{Episodes: episodes}, nil
@@ -666,6 +675,18 @@ func (s *adminServer) CreateEpisode(
 		}
 		return nil, s.internalDBError(ctx, "failed to lock series for create episode", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
+	// While the tenant requires review, a time saves the episode in review
+	// rather than scheduling it on its own or publishing it.
+	reviewing := false
+	if scheduledAt.Valid {
+		reviewing, err = s.episodeReviewRequired(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if reviewing {
+		publishNow = false
+	}
 
 	// An unset order_index means "append". Resolving it here keeps the client
 	// from having to read the whole series to find the end, which a paged
@@ -734,6 +755,11 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert episode listing", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
+	if reviewing {
+		if err := s.openEpisodeReview(txCtx, tenant.ID, dbmodels.LockEpisodeListingForReviewRow{EpisodeID: base.ID, EpisodePublicID: base.PublicID}); err != nil {
+			return nil, err
+		}
+	}
 	// The episode is credited to the team the series carries at this moment,
 	// in the same transaction that creates it, so an episode never exists
 	// without credits. Editing the series afterwards changes what the next
@@ -799,6 +825,9 @@ func (s *adminServer) CreateEpisode(
 	s.reval.Send(ctx, owed)
 	translations, err := s.episodeTranslations(ctx, tenant.ID, base.ID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.fillEpisodeReviews(ctx, tenant.ID, episode); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.CreateEpisodeResponse{Episode: episode, PurchaseAvailability: savedPurchaseAvailability, Translations: translations}, nil
@@ -877,6 +906,11 @@ func (s *adminServer) UploadEpisodeImages(
 			)
 		}
 		s.reval.Send(ctx, owed)
+		// The pages stored are no longer what was approved, so the approval is
+		// taken back on the same terms, once the upload is over.
+		if reopenErr := s.reopenEpisodeReview(ctx, tenant.ID, episodeID); reopenErr != nil && err == nil {
+			return nil, reopenErr
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -993,6 +1027,9 @@ func (s *adminServer) ReorderEpisodeImages(
 				return nil, s.internalDBError(ctx, "failed to update episode image order", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", parsedImageID.String())
 			}
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -1051,6 +1088,9 @@ func (s *adminServer) DeleteEpisodeImage(
 				return nil, connect.NewError(connect.CodeNotFound, "episode image not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to delete episode image", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
 		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
@@ -1125,6 +1165,9 @@ func (s *adminServer) ReplaceEpisodeImage(
 		}
 		if err := staged.Insert(txCtx, q, tenant.ID, episode.ID, displayOrder); err != nil {
 			return nil, s.internalDBError(ctx, "failed to insert the replacing episode image", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
 		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
@@ -1245,15 +1288,38 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	var ep dbmodels.GetEpisodeByIDForTenantRow
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
 		q := s.queriesFor(txCtx)
+		reviewing, listing, err := s.scheduleNeedsReview(txCtx, tenant.ID, episodeID, scheduledAt, publishNow)
+		if err != nil {
+			return nil, err
+		}
 		published := false
-		if publishNow {
+		switch {
+		case reviewing:
+			// The time is saved as it is, passed or not, and the episode waits
+			// for a Tenant admin's approval rather than being published.
+			if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			}
+			if err := s.openEpisodeReview(txCtx, tenant.ID, listing); err != nil {
+				return nil, err
+			}
+		case publishNow:
 			rows, err := q.PublishEpisodeNowByIDForTenant(txCtx, dbmodels.PublishEpisodeNowByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt.Time})
 			if err != nil {
 				return nil, s.internalDBError(ctx, "failed to publish episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 			}
 			published = rows > 0
-		} else if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		default:
+			if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			}
+			// A draft has no time to review, so a round still waiting on one
+			// is withdrawn with it.
+			if !scheduledAt.Valid {
+				if err := q.WithdrawEpisodeReview(txCtx, dbmodels.WithdrawEpisodeReviewParams{TenantID: tenant.ID, EpisodeID: episodeID}); err != nil {
+					return nil, s.internalDBError(ctx, "failed to withdraw the episode review", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+				}
+			}
 		}
 		row, err := q.GetEpisodeByIDForTenant(txCtx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 		if err != nil {
@@ -1268,7 +1334,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			if err := recordEpisodePublication(txCtx, q, tenant.ID, row.SeriesID, episodeID); err != nil {
 				return nil, s.internalDBError(ctx, "failed to record the publication of the episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 			}
-		case publishNow:
+		case publishNow && !reviewing:
 			// The episode was already published, and a time that has passed
 			// leaves it as it is: nothing a reader sees has changed.
 			return nil, nil
@@ -1302,10 +1368,48 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if _, err := episodePurchaseAvailability(mapped, ep.PurchaseAvailability, ep.ResolvedPurchaseAvailability); err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}, nil
+}
+
+// scheduleNeedsReview answers whether saving scheduledAt on the episode puts
+// it in review rather than scheduling or publishing it, with the listing the
+// review is opened on. It does while the tenant requires review and the save
+// gives the episode a time, except where the save changes nothing a review
+// would look at: a published episode given a time that has passed is left as
+// it is, and an approved one saved with the time it was approved at keeps its
+// approval.
+func (s *adminServer) scheduleNeedsReview(
+	txCtx context.Context,
+	tenantID uuid.UUID,
+	episodeID uuid.UUID,
+	scheduledAt sql.NullTime,
+	publishNow bool,
+) (bool, dbmodels.LockEpisodeListingForReviewRow, error) {
+	var listing dbmodels.LockEpisodeListingForReviewRow
+	if !scheduledAt.Valid {
+		return false, listing, nil
+	}
+	required, err := s.episodeReviewRequired(txCtx, tenantID)
+	if err != nil || !required {
+		return false, listing, err
+	}
+	listing, err = s.lockEpisodeListingForReview(txCtx, tenantID, episodeID)
+	if err != nil {
+		return false, listing, err
+	}
+	switch {
+	case listing.Status == "published" && publishNow:
+		return false, listing, nil
+	case listing.Status == "scheduled" &&
+		listing.ReviewState.String == episodeReviewApproved &&
+		listing.ScheduledAt.Valid &&
+		listing.ScheduledAt.Time.Equal(scheduledAt.Time):
+		return false, listing, nil
+	}
+	return true, listing, nil
 }
 
 func (s *adminServer) UpdateEpisodeTitle(
@@ -1346,6 +1450,9 @@ func (s *adminServer) UpdateEpisodeTitle(
 		if err := s.upsertEpisodeTranslation(txCtx, tenant.ID, episodeID, translationLocale, req.Title); err != nil {
 			return nil, err
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -1366,7 +1473,7 @@ func (s *adminServer) UpdateEpisodeTitle(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped, Translations: translations}, nil
@@ -1440,6 +1547,9 @@ func (s *adminServer) UpdateEpisodePricing(
 		if err := catalogindex.Queue(txCtx, q, tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {
 		return nil, err
@@ -1452,7 +1562,7 @@ func (s *adminServer) UpdateEpisodePricing(
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
 	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePricingResponse{Episode: mapped}, nil
@@ -1539,6 +1649,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -1576,7 +1689,7 @@ func (s *adminServer) UpdateEpisodeLayout(
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodeLayoutResponse{
@@ -1626,6 +1739,9 @@ func (s *adminServer) UpdateEpisodeAvailability(
 		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(episode.SeriesID)); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {
 		return nil, err
@@ -1654,7 +1770,7 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}, nil
@@ -1695,6 +1811,9 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -1724,7 +1843,7 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+	if err := s.fillEpisodeDetails(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse{

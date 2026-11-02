@@ -181,6 +181,7 @@ It also handles these non-mail events:
 | `targeted_announcement_notification` | The same, for an announcement with an audience: a row for each user the audience selects when the event is handled, and the same push |
 | `episode_published_notification` | The `notifications` rows, and the `member_push_notification` that mirrors them, for the followers of an episode the admin console published as it created it; an episode the scheduled publication job publishes has them written by that job |
 | `comment_approved_notification` | The `notifications` row telling a reader that staff approved their comment |
+| `episode_review_returned_notification` | The `notifications` row telling the member of staff who submitted an episode for review that a Tenant admin returned it, and the mail to them that quotes the comment |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
 | `catalog_index_sync` | The OpenSearch document of one series, creator, or label, rewritten from the row, or replaced with a tombstone no search finds when the row is published nowhere, and, once a search can find the write, a `next_cache_revalidation` for the storefront's searches of that kind. Nothing on the `sql` search backend |
 | `reader_signup_request` | A sign-up the storefront accepted: the inactive account, its consents, and a `reader_email_verification_email` for a free address, or a `reader_signup_attempt_notice_email` for a registered one |

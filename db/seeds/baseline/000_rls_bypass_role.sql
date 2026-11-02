@@ -518,7 +518,8 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- when someone puts it in this list, and a job that starts reading a table it
 -- was never granted fails in its integration test rather than in production.
 --
--- Reads: the due listings, series, windows, pinned and campaign banners,
+-- Reads: the due listings and whether their tenant requires review before
+-- one is published, series, windows, pinned and campaign banners,
 -- campaign prices, the free-after-publication rules, the catalog rows the log
 -- lines name, the recipients each notification fans out to and the
 -- preferences that decide whether it is
@@ -548,7 +549,8 @@ GRANT SELECT ON
     user_notification_settings,
     tenant_user_roles,
     platform_users,
-    platform_user_roles
+    platform_user_roles,
+    tenant_config
 TO publira_ticker;
 
 -- Writes: the listing a publish promotes, a series publication dates, or the

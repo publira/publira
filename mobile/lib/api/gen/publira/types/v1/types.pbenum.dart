@@ -106,6 +106,45 @@ class SeriesAgeRating extends $pb.ProtobufEnum {
   const SeriesAgeRating._(super.value, super.name);
 }
 
+/// Where an episode stands in review: the step a tenant may require between
+/// saving an episode's publication time and the episode being published.
+class EpisodeReviewState extends $pb.ProtobufEnum {
+  static const EpisodeReviewState EPISODE_REVIEW_STATE_UNSPECIFIED =
+      EpisodeReviewState._(
+          0, _omitEnumNames ? '' : 'EPISODE_REVIEW_STATE_UNSPECIFIED');
+
+  /// Submitted, and waiting for a Tenant admin's decision. The episode is not
+  /// published at its time while it waits.
+  static const EpisodeReviewState EPISODE_REVIEW_STATE_IN_REVIEW =
+      EpisodeReviewState._(
+          1, _omitEnumNames ? '' : 'EPISODE_REVIEW_STATE_IN_REVIEW');
+
+  /// A Tenant admin approved it, and it is published at its time.
+  static const EpisodeReviewState EPISODE_REVIEW_STATE_APPROVED =
+      EpisodeReviewState._(
+          2, _omitEnumNames ? '' : 'EPISODE_REVIEW_STATE_APPROVED');
+
+  /// A Tenant admin sent it back with a comment. It keeps its time and is not
+  /// published until it is submitted and approved again.
+  static const EpisodeReviewState EPISODE_REVIEW_STATE_RETURNED =
+      EpisodeReviewState._(
+          3, _omitEnumNames ? '' : 'EPISODE_REVIEW_STATE_RETURNED');
+
+  static const $core.List<EpisodeReviewState> values = <EpisodeReviewState>[
+    EPISODE_REVIEW_STATE_UNSPECIFIED,
+    EPISODE_REVIEW_STATE_IN_REVIEW,
+    EPISODE_REVIEW_STATE_APPROVED,
+    EPISODE_REVIEW_STATE_RETURNED,
+  ];
+
+  static final $core.List<EpisodeReviewState?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static EpisodeReviewState? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const EpisodeReviewState._(super.value, super.name);
+}
+
 /// Which way the pages of a work are turned. A series states it for every one
 /// of its episodes, and an episode may state its own.
 class ReadingDirection extends $pb.ProtobufEnum {

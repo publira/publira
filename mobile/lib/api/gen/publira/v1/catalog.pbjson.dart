@@ -3779,6 +3779,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetSeriesDetailRequest': GetSeriesDetailRequest$json,
   '.publira.v1.GetSeriesDetailResponse': GetSeriesDetailResponse$json,
   '.publira.types.v1.Episode': $0.Episode$json,
+  '.publira.types.v1.EpisodeReview': $0.EpisodeReview$json,
   '.publira.v1.WaitFreeRule': WaitFreeRule$json,
   '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.types.v1.BookstoreLink': $0.BookstoreLink$json,
@@ -3935,6 +3936,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Creator': $0.Creator$json,
   '.publira.types.v1.CreatorRole': $0.CreatorRole$json,
   '.publira.types.v1.SeriesEyeCatchVariant': $0.SeriesEyeCatchVariant$json,
+  '.publira.types.v1.EpisodeReview': $0.EpisodeReview$json,
   '.publira.v1.ListMyRecentSeriesRequest': ListMyRecentSeriesRequest$json,
   '.publira.v1.ListMyRecentSeriesResponse': ListMyRecentSeriesResponse$json,
   '.publira.v1.RecentSeries': RecentSeries$json,
@@ -4020,6 +4022,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Episode': $0.Episode$json,
+  '.publira.types.v1.EpisodeReview': $0.EpisodeReview$json,
 };
 
 /// Descriptor for `FollowService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -4171,6 +4174,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Creator': $0.Creator$json,
   '.publira.types.v1.CreatorRole': $0.CreatorRole$json,
   '.publira.types.v1.SeriesEyeCatchVariant': $0.SeriesEyeCatchVariant$json,
+  '.publira.types.v1.EpisodeReview': $0.EpisodeReview$json,
   '.publira.types.v1.Series': $0.Series$json,
   '.publira.types.v1.Label': $0.Label$json,
   '.publira.types.v1.Genre': $0.Genre$json,

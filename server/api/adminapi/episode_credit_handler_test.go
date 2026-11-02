@@ -66,6 +66,7 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 			roleName:     "Original Author",
 			source:       "episode",
 		}))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectCommit()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -135,6 +136,7 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 			roleName:     "Original Author",
 			source:       "episode",
 		}))
+	expectNoEpisodeReviewReopened(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(errors.New("outbox is unavailable"))
 	mock.ExpectRollback()

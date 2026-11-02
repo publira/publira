@@ -9,6 +9,9 @@ export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
   "episode_publish_failed";
 
+export const NOTIFICATION_TYPE_EPISODE_REVIEW_RETURNED =
+  "episode_review_returned";
+
 export const NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL =
   "comment_awaiting_approval";
 
@@ -196,6 +199,22 @@ export const notificationDisplay = async (
       }),
       href,
       title: t("admin.notifications.events.publish_failed_title"),
+    };
+  }
+
+  if (type === NOTIFICATION_TYPE_EPISODE_REVIEW_RETURNED) {
+    const subject = await episodeSubject(
+      locale,
+      payload,
+      t("admin.notifications.events.subject_unnamed")
+    );
+
+    return {
+      description: t("admin.notifications.events.review_returned_description", {
+        subject,
+      }),
+      href,
+      title: t("admin.notifications.events.review_returned_title"),
     };
   }
 

@@ -34,6 +34,11 @@ func (s *adminServer) GetDashboard(
 		return nil, s.internalDBError(ctx, "failed to count scheduled episodes for dashboard", err, "tenant_id", tenant.ID.String())
 	}
 
+	inReviewEpisodeCount, err := s.queriesFor(ctx).CountInReviewEpisodesForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count episodes in review for dashboard", err, "tenant_id", tenant.ID.String())
+	}
+
 	recentEpisodes, err := s.queriesFor(ctx).ListRecentEpisodesForDashboard(ctx, dbmodels.ListRecentEpisodesForDashboardParams{
 		TenantID: tenant.ID,
 		Limit:    10,
@@ -54,6 +59,12 @@ func (s *adminServer) GetDashboard(
 		if row.ScheduledAt.Valid {
 			item.ScheduledAt = row.ScheduledAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 		}
+		if row.ReviewState.Valid {
+			item.ReviewState, err = episodeReviewStateFromStored(row.ReviewState.String)
+			if err != nil {
+				return nil, s.internalError(ctx, "episode holds a review state this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.EpisodePublicID)
+			}
+		}
 		queue = append(queue, item)
 	}
 
@@ -62,6 +73,7 @@ func (s *adminServer) GetDashboard(
 			PublishedSeriesCount:  publishedSeriesCount,
 			DraftEpisodeCount:     draftEpisodeCount,
 			ScheduledEpisodeCount: scheduledEpisodeCount,
+			InReviewEpisodeCount:  inReviewEpisodeCount,
 		},
 		Queue: queue,
 	}, nil

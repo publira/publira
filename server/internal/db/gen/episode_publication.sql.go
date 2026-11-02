@@ -287,8 +287,11 @@ FROM episode_listings el
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW()
+    AND episode_review_cleared(el.tenant_id, el.review_approved_at)
 `
 
+// An episode its tenant's review has not cleared is not due, however long ago
+// its time passed: it waits for a Tenant admin rather than failing.
 func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, ListEpisodesReadyToPublish)
 	if err != nil {
@@ -332,6 +335,7 @@ FROM episode_listings el
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW()
+    AND episode_review_cleared(el.tenant_id, el.review_approved_at)
 `
 
 type ListEpisodesReadyToPublishWithTenantInfoRow struct {
@@ -388,12 +392,13 @@ SET status = 'published',
 WHERE episode_id = $1
     AND status = 'scheduled'
     AND scheduled_at <= NOW()
+    AND episode_review_cleared(tenant_id, review_approved_at)
 `
 
 // The scheduled publication job's promotion of an episode it listed as due.
 // The job lists before it publishes, so the listing is matched again here: one
-// the console published, took back to a draft, or moved later in between
-// counts no row and is left as the console saved it.
+// the console published, took back to a draft, moved later, or sent back to
+// review in between counts no row and is left as the console saved it.
 func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) (int64, error) {
 	result, err := q.db.ExecContext(ctx, MarkEpisodePublished, episodeID)
 	if err != nil {
@@ -548,7 +553,15 @@ SET status = CASE
         WHEN $1::timestamptz IS NULL THEN NULL
         ELSE el.published_at
     END,
-    announcement_owed = false
+    announcement_owed = false,
+    review_state = CASE
+        WHEN $1::timestamptz IS NULL THEN NULL
+        ELSE el.review_state
+    END,
+    review_approved_at = CASE
+        WHEN $1::timestamptz IS NULL THEN NULL
+        ELSE el.review_approved_at
+    END
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id
@@ -565,6 +578,9 @@ type UpdateEpisodePublishScheduleByIDForTenantParams struct {
 // Taking the episode off the site settles what it owed: no reader can open it,
 // and the publication that puts it back owes its own announcement if its
 // series is still not public then.
+//
+// A draft has no time to review, so taking an episode back to one clears its
+// review state as well; the rounds already decided stay in episode_reviews.
 func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
 	return err

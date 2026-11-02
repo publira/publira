@@ -31,6 +31,7 @@ describe("TEMPLATE_IDS", () => {
       "platform_console_password_reset",
       "staff_contact_message_notice",
       "staff_contact_reply",
+      "staff_episode_review_returned",
       "purchase_receipt",
       "reader_episode_published",
       "reader_announcement_posted",

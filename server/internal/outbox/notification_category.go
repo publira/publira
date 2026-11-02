@@ -50,6 +50,7 @@ var notificationCategories = map[string][]NotificationCategory{
 	},
 	NotificationTypeCommentAwaitingApproval: {NotificationCategoryStaff},
 	NotificationTypeCommentReported:         {NotificationCategoryStaff},
+	NotificationTypeEpisodeReviewReturned:   {NotificationCategoryStaff},
 }
 
 // NotificationCategoryFor answers the category a row of notificationType is

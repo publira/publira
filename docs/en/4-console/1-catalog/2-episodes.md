@@ -209,7 +209,7 @@ Until an episode is published, its page answers as if it did not exist, it is in
 
 **Publishing settings**, on the episode's edit screen, sets or changes the time of an episode that already exists. Enter a time in the tenant's time zone, or empty the field, and choose **Update publication date and time**:
 
-- **A time that has passed**, such as the current time, publishes a draft or a scheduled episode at once. It is announced to its followers and sent to the search index, just as a scheduled episode is when its time comes. A published episode stays as it is, so saving the section with the time it already shows changes nothing.
+- **A time that has passed**, such as the current time, publishes a draft or a scheduled episode at once, unless the tenant [requires review](#review-before-publishing). It is announced to its followers and sent to the search index, just as a scheduled episode is when its time comes. A published episode stays as it is, so saving the section with the time it already shows changes nothing.
 - **A time in the future** schedules the episode for that time.
 - **An empty field** makes the episode a draft.
 
@@ -238,6 +238,23 @@ An episode that is still **Scheduled** well after its time means the worker is n
 An episode published while its series is not public waits for the series, so that no notification leads to a page that is not found. It is announced when the series is published, whether from **Update series** or by the series' own **Publication date and time** arriving, and from then on it shows the moment the series became public as its publication date, since no reader could open it before. An episode its followers were already told about, while the series was public before, keeps its date and is not announced again.
 
 An episode published while it is **Not shown anywhere** is announced to nobody, and is not announced later when it is shown. An episode shown on only one of the site and the app is announced there alone: readers see its notification in that one's notifications, and its push notification reaches only their browsers or only their phones. Where an episode is announced is decided when `publira worker` sends its notifications, and changing its **Shown on** after that does not move a notification already sent. Set where an episode is shown before its time.
+
+### Review before publishing
+
+A tenant can require a Tenant admin to approve every episode before it is published, so that what an Editor schedules is read by a second person first. Review is off until a Tenant admin turns it on, and while it is off an episode is published on its time alone, as above.
+
+While review is required:
+
+- **Saving a time submits the episode for review.** A publication time saved when the episode is created, or under **Publishing settings**, makes it **Scheduled** and puts it in review instead of scheduling it on its own. A time that has passed does not publish it at once either: it waits for a decision like any other.
+- **A Tenant admin approves it or returns it.** An approved episode is published at its time by `publira worker`, as any scheduled one is, and one whose time has already passed is published the moment it is approved. A return comes with a comment saying what to fix.
+- **A returned episode keeps its time and stays unpublished.** The member of staff who submitted it gets a notification in the console titled "An episode was returned for changes", and an email quoting the comment. Once it is fixed, they submit it again. Every round of review is kept, with its comments, in the order it happened.
+- **A change after approval sends it back to review.** An approved episode whose pages, title, price, layout, cover image, credits, or **Shown on** and **Sold on** are changed, or that is given another time, needs approving again, since what was approved is no longer what would be published. A published episode is not reviewed again.
+- **An episode waiting for review is not a failure.** It stays **Scheduled** past its time, and nobody is notified that it could not be published.
+- **A draft is never in review.** Emptying the time under **Publishing settings** withdraws the episode from review along with its schedule.
+
+Turning review on submits every scheduled episode for review, including any approved while review was on before, so none of them goes out until a Tenant admin approves it. Turning it off lets every scheduled episode be published at its time, whether it was in review, returned, or approved.
+
+Each submission, approval, and return is recorded in **Audit logs**.
 
 ### What goes out when
 

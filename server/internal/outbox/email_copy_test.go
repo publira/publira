@@ -493,6 +493,20 @@ var emailCopyCases = []struct {
 			},
 		},
 	},
+	{
+		name:     "staff_episode_review_returned",
+		subjects: map[string]string{"en": "Returned for changes: The First Night", "ja": "差し戻し: The First Night"},
+		request: emailrenderer.Request{
+			Template: "staff_episode_review_returned",
+			Data: map[string]any{
+				"comment":       "The speech bubble on page 4 is cut off.",
+				"episode_title": "The First Night",
+				"episode_url":   "https://admin.example.test/series/SERIES000001/episodes/EPISODE00001",
+				"series_title":  "The Lighthouse Keeper",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
 }
 
 func TestEmailCopyWritesTheWholeMail(t *testing.T) {

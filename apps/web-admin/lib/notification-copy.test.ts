@@ -87,6 +87,24 @@ describe("notificationDisplay", () => {
       href: "/series/SR01/episodes/EP01",
       title: "An episode could not be published",
     });
+
+    await expect(
+      notificationDisplay(
+        "episode_review_returned",
+        {
+          episode_id: "EP01",
+          episode_title: "Episode 1",
+          series_id: "SR01",
+          series_title: "Series A",
+        },
+        en
+      )
+    ).resolves.toEqual({
+      description:
+        "“Episode 1” (Series A) was returned. Open the episode to read the comment and submit it again.",
+      href: "/series/SR01/episodes/EP01",
+      title: "An episode was returned for changes",
+    });
   });
 
   // The `ja` mirror of the case above. Without it a builder that ignored the

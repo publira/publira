@@ -1729,6 +1729,7 @@ class Episode extends $pb.GeneratedMessage {
     $core.int? coinRentalPrice,
     $core.String? coinName,
     $core.int? previewPageCount,
+    EpisodeReview? review,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1762,6 +1763,7 @@ class Episode extends $pb.GeneratedMessage {
     if (coinRentalPrice != null) result.coinRentalPrice = coinRentalPrice;
     if (coinName != null) result.coinName = coinName;
     if (previewPageCount != null) result.previewPageCount = previewPageCount;
+    if (review != null) result.review = review;
     return result;
   }
 
@@ -1812,6 +1814,8 @@ class Episode extends $pb.GeneratedMessage {
     ..aI(25, _omitFieldNames ? '' : 'coinRentalPrice')
     ..aOS(26, _omitFieldNames ? '' : 'coinName')
     ..aI(27, _omitFieldNames ? '' : 'previewPageCount')
+    ..aOM<EpisodeReview>(28, _omitFieldNames ? '' : 'review',
+        subBuilder: EpisodeReview.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2160,6 +2164,120 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasPreviewPageCount() => $_has(26);
   @$pb.TagNumber(27)
   void clearPreviewPageCount() => $_clearField(27);
+
+  /// Where the episode stands in its tenant's review, from the latest round of
+  /// it. Set on the console's reads and writes of an episode a round was ever
+  /// opened for, and absent on every other episode and on the public reads.
+  @$pb.TagNumber(28)
+  EpisodeReview get review => $_getN(27);
+  @$pb.TagNumber(28)
+  set review(EpisodeReview value) => $_setField(28, value);
+  @$pb.TagNumber(28)
+  $core.bool hasReview() => $_has(27);
+  @$pb.TagNumber(28)
+  void clearReview() => $_clearField(28);
+  @$pb.TagNumber(28)
+  EpisodeReview ensureReview() => $_ensure(27);
+}
+
+/// The latest round of an episode's review.
+class EpisodeReview extends $pb.GeneratedMessage {
+  factory EpisodeReview({
+    EpisodeReviewState? state,
+    $core.String? submittedAt,
+    $core.String? decidedAt,
+    $core.String? comment,
+  }) {
+    final result = EpisodeReview._();
+    if (state != null) result.state = state;
+    if (submittedAt != null) result.submittedAt = submittedAt;
+    if (decidedAt != null) result.decidedAt = decidedAt;
+    if (comment != null) result.comment = comment;
+    return result;
+  }
+
+  EpisodeReview._();
+
+  factory EpisodeReview.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EpisodeReview()..mergeFromBuffer(data, registry);
+  factory EpisodeReview.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EpisodeReview()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EpisodeReview',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: EpisodeReview.$_createMessage)
+    ..aE<EpisodeReviewState>(1, _omitFieldNames ? '' : 'state',
+        enumValues: EpisodeReviewState.values)
+    ..aOS(2, _omitFieldNames ? '' : 'submittedAt')
+    ..aOS(3, _omitFieldNames ? '' : 'decidedAt')
+    ..aOS(4, _omitFieldNames ? '' : 'comment')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EpisodeReview clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EpisodeReview copyWith(void Function(EpisodeReview) updates) =>
+      super.copyWith((message) => updates(message as EpisodeReview))
+          as EpisodeReview;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use EpisodeReview() / EpisodeReview.new instead')
+  static EpisodeReview create() => EpisodeReview._();
+  static $pb.GeneratedMessage $_createMessage() => EpisodeReview._();
+  @$core.override
+  EpisodeReview createEmptyInstance() => EpisodeReview._();
+  @$core.pragma('dart2js:noInline')
+  static EpisodeReview getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EpisodeReview>(
+          EpisodeReview.$_createMessage);
+  static EpisodeReview? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  EpisodeReviewState get state => $_getN(0);
+  @$pb.TagNumber(1)
+  set state(EpisodeReviewState value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasState() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearState() => $_clearField(1);
+
+  /// RFC3339 instant the round was submitted.
+  @$pb.TagNumber(2)
+  $core.String get submittedAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set submittedAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSubmittedAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSubmittedAt() => $_clearField(2);
+
+  /// RFC3339 instant the round was decided, and empty while it is in review.
+  @$pb.TagNumber(3)
+  $core.String get decidedAt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set decidedAt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDecidedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDecidedAt() => $_clearField(3);
+
+  /// What the Tenant admin wrote with the decision: what to fix, on a return,
+  /// which always carries one. Empty when the decision came without one.
+  @$pb.TagNumber(4)
+  $core.String get comment => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set comment($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasComment() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearComment() => $_clearField(4);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {
