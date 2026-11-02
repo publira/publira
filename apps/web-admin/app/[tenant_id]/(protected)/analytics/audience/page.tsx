@@ -13,6 +13,7 @@ import { searchParamEnum } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import * as GroupNav from "#components/group-nav";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantAdminOnly } from "#components/tenant-role-gate";
@@ -25,7 +26,6 @@ import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import * as GroupNav from "../_components/group-nav";
 import { PeriodForm } from "../_components/period-form";
 import { SortHead } from "../_components/sort-head";
 import { formatCount, formatRating } from "../_lib/format";

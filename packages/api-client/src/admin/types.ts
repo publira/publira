@@ -65,6 +65,11 @@ export type {
   TenantStoreProduct,
 } from "../gen/publira/admin/v1/payment_pb.js";
 
+export type {
+  PaymentReconciliation,
+  PaymentReconciliationFinding,
+} from "../gen/publira/admin/v1/payment_reconciliation_pb.js";
+
 export type { AdminPurchase } from "../gen/publira/admin/v1/purchase_pb.js";
 
 export type {

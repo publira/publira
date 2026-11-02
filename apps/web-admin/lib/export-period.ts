@@ -1,27 +1,30 @@
-/** The most days one download covers, as the API bounds an export. */
+/**
+ * The most days one download covers, as the API bounds the exports of a list
+ * that is filtered by day: the audit log and the purchases.
+ */
 export const MAX_EXPORT_DAYS = 366;
 
 /**
  * The days a download covers, or why the filters shown cannot be one. Both
  * ends are inclusive calendar days of the tenant.
  */
-export type AuditLogExportPeriod =
+export type ExportPeriod =
   | { ok: true; end: string; start: string }
   | { ok: false };
 
 /**
- * The period a download of the list covers, from its `from` and `to` filters.
+ * The period a download of a list covers, from its `from` and `to` filters.
  *
  * A missing end is today, which leaves out nothing the list shows, since no
  * entry is dated later; a missing start is the longest period the API exports
  * ending there, because the list then reaches back to the first entry and no
  * single file can.
  */
-export const resolveAuditLogExportPeriod = (
+export const resolveExportPeriod = (
   filters: { from: string; to: string },
   timeZone: string,
   today: Temporal.PlainDate = Temporal.Now.plainDateISO(timeZone)
-): AuditLogExportPeriod => {
+): ExportPeriod => {
   const from = filters.from ? Temporal.PlainDate.from(filters.from) : null;
   let end = filters.to ? Temporal.PlainDate.from(filters.to) : today;
 

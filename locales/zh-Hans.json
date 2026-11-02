@@ -1533,6 +1533,7 @@
       "payment_label": "支付方式",
       "payments": "支付",
       "purchases_label": "购买记录",
+      "reconciliation_label": "对账",
       "subscription_plans_label": "订阅方案",
       "readers": "读者",
       "readers_label": "读者",
@@ -4455,6 +4456,11 @@
         "apply": "应用",
         "reset": "重置"
       },
+      "export": {
+        "button": "下载CSV",
+        "period_only": "文件包含该期间内的所有购买和退款，不应用其他筛选条件。",
+        "period_invalid": "可下载为CSV的期间最长366天，且开始日期不晚于结束日期。缩小期间后即可下载。"
+      },
       "expires_at": "可阅读至",
       "expires_never": "无期限",
       "refunded_amount": "已退金额",
@@ -4504,6 +4510,92 @@
         "reason_too_long": "理由请控制在1,000个字符以内。",
         "amount_invalid": "退款金额须大于零且不超过剩余可退金额。",
         "amount_over_left": "金额超过了当前剩余可退金额。请重新打开这次购买，查看剩余金额。"
+      }
+    },
+    "reconciliation": {
+      "title": "对账",
+      "page_description": "将此处记录的购买与支付服务商及应用商店在某一期间内实际收取的款项进行核对，找出对方没有对应记录的每一条明细。",
+      "reconcile": "对账",
+      "reconciling": "正在开始…",
+      "started": "已开始对账。完成后结果会显示在下方列表中。",
+      "start_failed": "无法开始对账。请稍后重试。",
+      "no_source": "没有可用于对账的支付服务商或应用商店。请先在支付方式中进行设置。",
+      "list_error": "无法显示对账",
+      "list_failed": "无法加载对账。请稍后重试。",
+      "item_label": "对账",
+      "empty_title": "尚无对账。",
+      "empty_description": "请在上方选择期间，然后选择对账。系统会针对每个已就绪的支付服务商和应用商店进行对账。",
+      "pagination_aria": "对账分页",
+      "pagination_description": "每页最多显示{$count :integer}条，按开始时间从新到旧排列。",
+      "period_range": "{$start} - {$end}",
+      "view_aria": "查看{$source}在{$start} - {$end}的对账结果",
+      "period": {
+        "description": "选择要对账的日期。日期为租户时区（{$time_zone}）的日历日，结束日期最晚为今天。",
+        "from": "开始",
+        "to": "结束",
+        "start_required": "请选择期间的开始日期。",
+        "end_required": "请选择期间的结束日期。",
+        "reversed": "期间的开始日期晚于结束日期。请选择不晚于结束日期的开始日期。",
+        "too_long": "期间最长为366天。请选择更短的期间。",
+        "future": "按租户时区计算，期间的结束日期晚于今天。请选择不晚于今天的结束日期。"
+      },
+      "columns": {
+        "source": "对账对象",
+        "period": "期间",
+        "status": "状态",
+        "started_at": "开始时间",
+        "records": "付款",
+        "purchases": "购买",
+        "matched": "已匹配",
+        "findings": "待核查",
+        "actions": "操作"
+      },
+      "source": {
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "pending": "等待中",
+        "running": "进行中",
+        "succeeded": "已完成",
+        "failed": "失败"
+      },
+      "failure": {
+        "credentials": "未保存对账对象的凭据，或凭据被拒绝。请在支付方式中检查后重新对账。",
+        "unavailable": "无法读取对账对象。请稍后重新对该期间进行对账。"
+      },
+      "kind": {
+        "record_unmatched": "无购买记录的付款",
+        "purchase_unmatched": "无付款记录的购买",
+        "amount_mismatch": "金额不一致",
+        "held_refund": "暂挂的退款",
+        "held_dispute": "暂挂的争议",
+        "other": "其他"
+      },
+      "findings": {
+        "title": "对账结果",
+        "close": "关闭",
+        "summary": "付款{$records :integer}条，购买{$purchases :integer}条，已匹配{$matched :integer}条，待核查{$findings :integer}条",
+        "list_error": "无法显示对账结果",
+        "list_failed": "无法加载对账结果。请稍后重试。",
+        "not_found": "未找到此对账。对同一期间重新对账后会替换旧记录，请从列表中打开新的对账。",
+        "kind_aria": "按类型筛选",
+        "mode_aria": "按模式筛选",
+        "every_kind": "全部",
+        "every_mode": "正式和测试",
+        "live": "正式",
+        "test": "测试",
+        "payment_id": "对账对象的付款ID",
+        "copy_payment_id": "复制付款ID",
+        "purchase_amount": "购买金额",
+        "record_amount": "对账对象的金额",
+        "amount_refunded": "{$amount}（已退款{$refunded}）",
+        "purchase": "购买",
+        "open_purchase": "打开购买记录",
+        "empty": "没有需要核查的明细。",
+        "unfinished": "此对账尚未完成。完成后结果会显示在这里。",
+        "pagination_aria": "对账结果分页",
+        "pagination_description": "每页最多显示{$count :integer}条，按发生顺序排列。"
       }
     },
     "coins": {

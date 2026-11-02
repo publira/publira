@@ -6,11 +6,15 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import type { ExportPeriod } from "#lib/export-period";
 import { getMessagesFor } from "#lib/messages";
+import { purchasesCsvPath } from "#lib/payment-reconciliation";
 
 import type { PurchaseFilters } from "../_lib/search-params";
 
 interface PurchaseFilterFormProps {
+  /** The days **Download CSV** saves, from the period the filters name. */
+  exportPeriod: ExportPeriod;
   filters: PurchaseFilters;
   locale: Locale;
   timeZone: string;
@@ -20,24 +24,62 @@ interface PurchaseFilterFormProps {
  * Narrows the list through the query string. The open drawer and the page are
  * not fields, so applying a filter closes the one and starts from the first
  * of the other, as the API asks of a changed filter.
+ *
+ * **Download CSV** saves the period alone: the export is the publisher's
+ * accounting of every purchase and refund of those days, so the reader, the
+ * series, and the episode are not applied to it, and the form says so while
+ * any of them is set.
  */
 export const PurchaseFilterForm = async ({
+  exportPeriod,
   filters,
   locale,
   timeZone,
 }: PurchaseFilterFormProps) => {
   const t = await getMessagesFor(locale);
+  const narrowed = Boolean(filters.email || filters.series || filters.episode);
 
   return (
     <section className="grid gap-3">
-      <p className="max-w-3xl text-sm text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <Message
-            message="admin.purchases.filter.description"
-            values={{ time_zone: timeZone }}
-          />
-        </Suspense>
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message
+              message="admin.purchases.filter.description"
+              values={{ time_zone: timeZone }}
+            />
+          </Suspense>
+        </p>
+        {exportPeriod.ok ? (
+          <div className="grid max-w-xs justify-items-end gap-1">
+            <LinkButton
+              href={purchasesCsvPath({
+                endDate: exportPeriod.end,
+                startDate: exportPeriod.start,
+              })}
+              size="sm"
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.purchases.export.button" />
+              </Suspense>
+            </LinkButton>
+            {narrowed ? (
+              <p className="text-right text-xs text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <Message message="admin.purchases.export.period_only" />
+                </Suspense>
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="max-w-xs text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="admin.purchases.export.period_invalid" />
+            </Suspense>
+          </p>
+        )}
+      </div>
       <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Field.Root>
           <Field.Label>

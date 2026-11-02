@@ -43,10 +43,21 @@ export const registerStripeWebhook = async (
  * Make `id` a payment intent the account `secretKey` names was paid `amount`
  * on in `currency`, with nothing refunded of it, so that a refund the console
  * asks for the purchase a scenario seeded with that payment ID is made.
+ *
+ * `created`, an RFC 3339 instant and now when left out, dates the payment's
+ * balance transaction, which a reconciliation of a period reads. `livemode`
+ * stands the payment for a live one, as the purchase a scenario seeded is,
+ * which a reconciliation matches only with live purchases.
  */
 export const registerStripePaymentIntent = async (
   secretKey: string,
-  payment: { amount: number; currency: string; id: string }
+  payment: {
+    amount: number;
+    created?: string;
+    currency: string;
+    id: string;
+    livemode?: boolean;
+  }
 ): Promise<void> => {
   const response = await fetch(`${STRIPE_BASE_URL}/payment-intents`, {
     body: JSON.stringify(payment),

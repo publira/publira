@@ -34,7 +34,10 @@
  * left of a payment intent the secret key paid, or the amount it names,
  * `GET /v1/refunds` lists what has been refunded of one, and
  * `GET /v1/payment_intents/:id` answers one with its latest charge expanded.
- * The payment intents are those the checkout page paid, and those a spec
+ * `GET /v1/balance_transactions` lists the charge of every payment intent the
+ * secret key was paid on in a period, as a reconciliation reads them, and
+ * `GET /v1/invoice_payments` answers that none of them paid an invoice. The
+ * payment intents are those the checkout page paid, and those a spec
  * registered with `POST /payment-intents` for the payment ID a scenario seeds,
  * which Stripe's own API has no call for. A refund is reported only when a
  * spec asks with `POST /refund-events`, another call of the stand-in's own,
@@ -108,8 +111,17 @@ interface PaymentIntent {
    * reporting the refund carries, or `""` before any refund.
    */
   apiVersion: string;
+  /** Unix seconds; when it was paid, which dates its balance transaction. */
+  created: number;
   currency: string;
   id: string;
+  /**
+   * Whether it stands for a live payment. Every payment the stand-in takes is
+   * a test one, as a test key's are; a spec registers a live one for a
+   * purchase a scenario seeded live, so that the two meet in a
+   * reconciliation, which matches test payments with test purchases only.
+   */
+  livemode: boolean;
   refunded: number;
 }
 
@@ -599,21 +611,27 @@ const getPrice = (
   answerJSON(response, 200, priceObject(price));
 };
 
+/** The one charge a payment intent paid in full was settled by. */
+const chargeObject = (intent: PaymentIntent) => ({
+  amount: intent.amount,
+  amount_refunded: intent.refunded,
+  created: intent.created,
+  currency: intent.currency,
+  id: `ch_${intent.id}`,
+  livemode: intent.livemode,
+  object: "charge",
+  payment_intent: intent.id,
+  refunded: intent.refunded >= intent.amount,
+  status: "succeeded",
+});
+
 /** A payment intent with its latest charge expanded, as the provider asks. */
 const paymentIntentObject = (intent: PaymentIntent) => ({
   amount: intent.amount,
   currency: intent.currency,
   id: intent.id,
-  latest_charge: {
-    amount: intent.amount,
-    amount_refunded: intent.refunded,
-    currency: intent.currency,
-    id: `ch_${intent.id}`,
-    object: "charge",
-    payment_intent: intent.id,
-    refunded: intent.refunded >= intent.amount,
-  },
-  livemode: false,
+  latest_charge: chargeObject(intent),
+  livemode: intent.livemode,
   object: "payment_intent",
   status: "succeeded",
 });
@@ -621,8 +639,11 @@ const paymentIntentObject = (intent: PaymentIntent) => ({
 /** The body of `POST /payment-intents`, as `e2e/src/stripe.ts` sends it. */
 interface PaymentIntentRequest {
   amount: number;
+  /** An RFC 3339 instant; now when it is left out. */
+  created?: string;
   currency: string;
   id: string;
+  livemode?: boolean;
 }
 
 const isPaymentIntentRequest = (body: unknown): body is PaymentIntentRequest =>
@@ -637,12 +658,18 @@ const isPaymentIntentRequest = (body: unknown): body is PaymentIntentRequest =>
   body.amount > 0 &&
   "currency" in body &&
   typeof body.currency === "string" &&
-  body.currency !== "";
+  body.currency !== "" &&
+  (!("created" in body) || typeof body.created === "string") &&
+  (!("livemode" in body) || typeof body.livemode === "boolean");
+
+/** Now, in the Unix seconds Stripe dates its objects in. */
+const nowSeconds = (): number =>
+  Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
 
 /**
- * Make `id` a payment intent the secret key was paid `amount` on, with nothing
- * refunded of it, as the payment a scenario seeds for a purchase stands for.
- * It replaces whatever the secret key held under the id.
+ * Make `id` a payment intent the secret key was paid `amount` on at `created`,
+ * with nothing refunded of it, as the payment a scenario seeds for a purchase
+ * stands for. It replaces whatever the secret key held under the id.
  */
 const registerPaymentIntent = async (
   request: IncomingMessage,
@@ -660,13 +687,17 @@ const registerPaymentIntent = async (
     return;
   }
 
-  const { amount, currency, id } = body;
+  const { amount, created, currency, id, livemode } = body;
 
   const intent: PaymentIntent = {
     amount,
     apiVersion: "",
+    created: created
+      ? Math.floor(Temporal.Instant.from(created).epochMilliseconds / 1000)
+      : nowSeconds(),
     currency: currency.toLowerCase(),
     id,
+    livemode: livemode ?? false,
     refunded: 0,
   };
 
@@ -1050,6 +1081,70 @@ const listRefunds = (
   });
 };
 
+/**
+ * The balance transactions of `type` the secret key's payments left in the
+ * period `created[gte]` and `created[lt]` bound, each with its charge
+ * expanded, in one page. Every payment the stand-in holds was paid by card,
+ * so each left a `charge` and none a `payment`.
+ */
+const listBalanceTransactions = (
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const { searchParams } = new URL(request.url ?? "/", origin);
+  const prefix = `${secretKeyOf(request)}\n`;
+  const from = Number(searchParams.get("created[gte]") ?? "0");
+
+  const to = Number(
+    searchParams.get("created[lt]") ?? `${Number.MAX_SAFE_INTEGER}`
+  );
+
+  const data =
+    searchParams.get("type") === "charge"
+      ? [...paymentIntents].flatMap(([key, intent]) =>
+          key.startsWith(prefix) &&
+          intent.created >= from &&
+          intent.created < to
+            ? [
+                {
+                  amount: intent.amount,
+                  created: intent.created,
+                  currency: intent.currency,
+                  id: `txn_${intent.id}`,
+                  object: "balance_transaction",
+                  source: chargeObject(intent),
+                  type: "charge",
+                },
+              ]
+            : []
+        )
+      : [];
+
+  answerJSON(response, 200, {
+    data,
+    has_more: false,
+    object: "list",
+    url: "/v1/balance_transactions",
+  });
+};
+
+/**
+ * The invoices a payment intent paid, which a reconciliation asks about a
+ * payment no purchase names before it lists it: none, since a subscription
+ * checkout here starts its subscription without an invoice to pay.
+ */
+const listInvoicePayments = (
+  _request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  answerJSON(response, 200, {
+    data: [],
+    has_more: false,
+    object: "list",
+    url: "/v1/invoice_payments",
+  });
+};
+
 /** The body of `POST /refund-events`, as `e2e/src/stripe.ts` sends it. */
 interface RefundEventRequest {
   id: string;
@@ -1250,8 +1345,10 @@ const pay = async (
     paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
       amount: session.amount,
       apiVersion: session.apiVersion,
+      created: nowSeconds(),
       currency: session.currency,
       id: session.paymentIntent,
+      livemode: false,
       refunded: 0,
     });
   }
@@ -1322,6 +1419,8 @@ type Handler = (
 const apiRoutes = new Map<string, Handler>([
   ["POST /payment-intents", registerPaymentIntent],
   ["POST /refund-events", reportRefunds],
+  ["GET /v1/balance_transactions", listBalanceTransactions],
+  ["GET /v1/invoice_payments", listInvoicePayments],
   ["POST /v1/billing_portal/sessions", createBillingPortalSession],
   ["POST /v1/checkout/sessions", createCheckoutSession],
   ["POST /v1/coupons", createCoupon],

@@ -26,6 +26,7 @@ export default defineConfig({
     "src/admin/announcement.ts",
     "src/admin/coin.ts",
     "src/admin/engagement.ts",
+    "src/admin/payment-reconciliation.ts",
     "src/admin/purchase.ts",
     "src/admin/royalty.ts",
     "src/admin/series.ts",

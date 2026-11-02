@@ -1533,6 +1533,7 @@
       "payment_label": "付款方式",
       "payments": "付款",
       "purchases_label": "購買記錄",
+      "reconciliation_label": "對帳",
       "subscription_plans_label": "訂閱方案",
       "readers": "讀者",
       "readers_label": "讀者",
@@ -4455,6 +4456,11 @@
         "apply": "套用",
         "reset": "重設"
       },
+      "export": {
+        "button": "下載CSV",
+        "period_only": "檔案包含該期間內的所有購買與退款，不套用其他篩選條件。",
+        "period_invalid": "可下載為CSV的期間最長366天，且開始日期不晚於結束日期。縮小期間後即可下載。"
+      },
       "expires_at": "可閱讀至",
       "expires_never": "無期限",
       "refunded_amount": "已退金額",
@@ -4504,6 +4510,92 @@
         "reason_too_long": "理由請控制在1,000個字元以內。",
         "amount_invalid": "退款金額須大於零且不超過剩餘可退金額。",
         "amount_over_left": "金額超過了目前剩餘可退金額。請重新開啟這次購買，查看剩餘金額。"
+      }
+    },
+    "reconciliation": {
+      "title": "對帳",
+      "page_description": "將此處記錄的購買與付款服務商及應用程式商店在某一期間內實際收取的款項進行核對，找出對方沒有對應記錄的每一筆明細。",
+      "reconcile": "對帳",
+      "reconciling": "正在開始…",
+      "started": "已開始對帳。完成後結果會顯示在下方列表中。",
+      "start_failed": "無法開始對帳。請稍後再試。",
+      "no_source": "沒有可用於對帳的付款服務商或應用程式商店。請先在付款方式中進行設定。",
+      "list_error": "無法顯示對帳",
+      "list_failed": "無法載入對帳。請稍後再試。",
+      "item_label": "對帳",
+      "empty_title": "尚無對帳。",
+      "empty_description": "請在上方選擇期間，然後選擇對帳。系統會針對每個已就緒的付款服務商與應用程式商店進行對帳。",
+      "pagination_aria": "對帳分頁",
+      "pagination_description": "每頁最多顯示{$count :integer}筆，依開始時間由新到舊排列。",
+      "period_range": "{$start} - {$end}",
+      "view_aria": "檢視{$source}在{$start} - {$end}的對帳結果",
+      "period": {
+        "description": "選擇要對帳的日期。日期為租戶時區（{$time_zone}）的日曆日，結束日期最晚為今天。",
+        "from": "開始",
+        "to": "結束",
+        "start_required": "請選擇期間的開始日期。",
+        "end_required": "請選擇期間的結束日期。",
+        "reversed": "期間的開始日期晚於結束日期。請選擇不晚於結束日期的開始日期。",
+        "too_long": "期間最長為366天。請選擇較短的期間。",
+        "future": "依租戶時區計算，期間的結束日期晚於今天。請選擇不晚於今天的結束日期。"
+      },
+      "columns": {
+        "source": "對帳對象",
+        "period": "期間",
+        "status": "狀態",
+        "started_at": "開始時間",
+        "records": "付款",
+        "purchases": "購買",
+        "matched": "已比對",
+        "findings": "待核查",
+        "actions": "操作"
+      },
+      "source": {
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "pending": "等待中",
+        "running": "進行中",
+        "succeeded": "已完成",
+        "failed": "失敗"
+      },
+      "failure": {
+        "credentials": "未儲存對帳對象的憑證，或憑證遭拒。請在付款方式中檢查後重新對帳。",
+        "unavailable": "無法讀取對帳對象。請稍後重新對該期間進行對帳。"
+      },
+      "kind": {
+        "record_unmatched": "無購買記錄的付款",
+        "purchase_unmatched": "無付款記錄的購買",
+        "amount_mismatch": "金額不一致",
+        "held_refund": "暫掛的退款",
+        "held_dispute": "暫掛的爭議",
+        "other": "其他"
+      },
+      "findings": {
+        "title": "對帳結果",
+        "close": "關閉",
+        "summary": "付款{$records :integer}筆，購買{$purchases :integer}筆，已比對{$matched :integer}筆，待核查{$findings :integer}筆",
+        "list_error": "無法顯示對帳結果",
+        "list_failed": "無法載入對帳結果。請稍後再試。",
+        "not_found": "找不到此對帳。對同一期間重新對帳後會取代舊記錄，請從列表中開啟新的對帳。",
+        "kind_aria": "依類型篩選",
+        "mode_aria": "依模式篩選",
+        "every_kind": "全部",
+        "every_mode": "正式與測試",
+        "live": "正式",
+        "test": "測試",
+        "payment_id": "對帳對象的付款ID",
+        "copy_payment_id": "複製付款ID",
+        "purchase_amount": "購買金額",
+        "record_amount": "對帳對象的金額",
+        "amount_refunded": "{$amount}（已退款{$refunded}）",
+        "purchase": "購買",
+        "open_purchase": "開啟購買記錄",
+        "empty": "沒有需要核查的明細。",
+        "unfinished": "此對帳尚未完成。完成後結果會顯示在這裡。",
+        "pagination_aria": "對帳結果分頁",
+        "pagination_description": "每頁最多顯示{$count :integer}筆，依發生順序排列。"
       }
     },
     "coins": {

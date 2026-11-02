@@ -13,11 +13,13 @@ import {
   TenantAdminRoute,
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
+import { UrlDrawer } from "#components/url-drawer";
 import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
+import { resolveExportPeriod } from "#lib/export-period";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listPaymentProviders } from "#lib/payment-settings";
@@ -27,7 +29,6 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PurchaseDetail } from "./_components/purchase-detail";
-import { PurchaseDrawer } from "./_components/purchase-drawer";
 import { PurchaseFilterForm } from "./_components/purchase-filter-form";
 import { PurchaseList } from "./_components/purchase-list";
 import {
@@ -119,6 +120,7 @@ const PurchasesContent = async ({
   return (
     <div className="grid gap-6">
       <PurchaseFilterForm
+        exportPeriod={resolveExportPeriod(filters, timeZone)}
         filters={filters}
         locale={locale}
         timeZone={timeZone}
@@ -149,7 +151,7 @@ const PurchasesContent = async ({
         timeZone={timeZone}
       />
       {filters.purchase ? (
-        <PurchaseDrawer
+        <UrlDrawer
           closeHref={purchaseListQuery(filters, { token: filters.token })}
           key={filters.purchase}
         >
@@ -177,7 +179,7 @@ const PurchasesContent = async ({
               timeZone={timeZone}
             />
           </Suspense>
-        </PurchaseDrawer>
+        </UrlDrawer>
       ) : null}
     </div>
   );

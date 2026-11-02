@@ -99,6 +99,10 @@
       "types": "./dist/admin/engagement.d.mts",
       "default": "./dist/admin/engagement.mjs"
     },
+    "./admin/payment-reconciliation": {
+      "types": "./dist/admin/payment-reconciliation.d.mts",
+      "default": "./dist/admin/payment-reconciliation.mjs"
+    },
     "./admin/purchase": {
       "types": "./dist/admin/purchase.d.mts",
       "default": "./dist/admin/purchase.mjs"

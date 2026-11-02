@@ -58,3 +58,28 @@ export const PURCHASES = {
     purchasedOn: "2026-03-01",
   },
 } as const;
+
+/**
+ * What the stand-in for Stripe is told the tenant was paid on the day of the
+ * Stripe purchase, for a reconciliation of that day: the purchase's own
+ * payment, for less than the purchase recorded, and a payment no purchase
+ * records, as one whose notification never reached the install. Both stand
+ * for live payments, as the seeded purchase is one.
+ */
+export const PURCHASES_RECONCILIATION = {
+  day: "2026-03-01",
+  short: {
+    amount: 400,
+    created: "2026-03-01T11:59:00Z",
+    currency: "jpy",
+    id: PURCHASES.stripe.payment.id,
+    livemode: true,
+  },
+  unrecorded: {
+    amount: 300,
+    created: "2026-03-01T09:00:00Z",
+    currency: "jpy",
+    id: "pi_purchases_e2e_unrecorded",
+    livemode: true,
+  },
+} as const;
