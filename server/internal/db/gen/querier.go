@@ -139,7 +139,10 @@ type Querier interface {
 	// clears the presets accounts elected as well.
 	ClearAllReaderIcons(ctx context.Context, tenantID uuid.NullUUID) ([]uuid.UUID, error)
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
-	// that was down over one still catches up instead of collecting it.
+	// that was down over one still catches up instead of collecting it. The window
+	// is checked again here rather than trusted from the listing: the console may
+	// have saved a scheduled announcement with a later pinned_until in the
+	// meantime, and that banner is not to be taken down.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
 	// The episodes RedateEpisodesForSeriesPublication answered, once their
 	// announcements are queued: the outbox owns them from there.

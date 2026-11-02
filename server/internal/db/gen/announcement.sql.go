@@ -44,10 +44,16 @@ const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
 UPDATE announcements
 SET pinned = false
 WHERE id = $1
+    AND pinned
+    AND pinned_until IS NOT NULL
+    AND pinned_until <= NOW()
 `
 
 // The ticker job's write. It is what makes a boundary stop being due, so a run
-// that was down over one still catches up instead of collecting it.
+// that was down over one still catches up instead of collecting it. The window
+// is checked again here rather than trusted from the listing: the console may
+// have saved a scheduled announcement with a later pinned_until in the
+// meantime, and that banner is not to be taken down.
 func (q *Queries) ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, ClearAnnouncementPin, id)
 	return err
