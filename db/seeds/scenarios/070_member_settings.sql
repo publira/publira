@@ -2,7 +2,8 @@
 --
 -- `storefront.member-settings.spec.ts` renames the reader, sets and removes
 -- their icon, saves their notification preferences, submits an email change,
--- changes their password, and follows a series. The dev seed member cannot absorb that: `storefront.auth` signs
+-- changes their password, follows a series, and asks for and downloads an
+-- archive of their data. The dev seed member cannot absorb that: `storefront.auth` signs
 -- in with its address, `announcements.pagination` reads its announcement list,
 -- and both run beside this suite under `workers: 3`.
 --
@@ -63,3 +64,15 @@ WHERE user_id IN (SELECT id FROM users WHERE public_id = 'MsetMMBRAAA1');
 
 DELETE FROM user_email_change_tokens
 WHERE user_id IN (SELECT id FROM users WHERE public_id = 'MsetMMBRAAA1');
+
+-- The data download starts with nothing asked for: the suite requests an
+-- archive and waits for the worker to build it, so a leftover ready row would
+-- offer the download before the request had been made. The archives these
+-- rows name are left for the data export purge, which takes an object no row
+-- names once it is a day old. The notice of a ready archive goes with them.
+DELETE FROM user_data_exports
+WHERE user_id IN (SELECT id FROM users WHERE public_id = 'MsetMMBRAAA1');
+
+DELETE FROM notifications
+WHERE notification_type = 'data_export_ready'
+  AND user_id IN (SELECT id FROM users WHERE public_id = 'MsetMMBRAAA1');

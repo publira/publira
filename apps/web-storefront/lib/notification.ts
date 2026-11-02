@@ -34,6 +34,7 @@ import {
   notificationDisplay,
   parseNotificationPayload,
 } from "./notification-copy";
+import { getTenantDisplayTimeZone } from "./tenant";
 
 const defaultPageSize = 20;
 
@@ -87,12 +88,14 @@ type RawNotification = Pick<
 
 const mapNotification = async (
   item: RawNotification,
-  locale: Locale
+  locale: Locale,
+  timeZone: string
 ): Promise<NotificationItem> => {
   const display = await notificationDisplay(
     item.notificationType,
     parseNotificationPayload(item.payload),
-    locale
+    locale,
+    timeZone
   );
 
   return {
@@ -161,9 +164,11 @@ const readNotificationList = async (
       buildSessionHeaders(sessionId)
     );
 
+    const timeZone = await getTenantDisplayTimeZone(tenantId);
+
     const notifications = await Promise.all(
       (response.notifications ?? []).map((item) =>
-        mapNotification(item, locale)
+        mapNotification(item, locale, timeZone)
       )
     );
 

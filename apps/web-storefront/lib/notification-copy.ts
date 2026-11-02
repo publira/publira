@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import { formatDate } from "@publira/utils";
 import { z } from "zod";
 
 import type { StorefrontMessageAccessor } from "./messages";
@@ -8,9 +9,16 @@ export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 export const NOTIFICATION_TYPE_COMMENT_APPROVED = "comment_approved";
 export const NOTIFICATION_TYPE_COMMENT_HIDDEN = "comment_hidden";
 export const NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED = "announcement_posted";
+export const NOTIFICATION_TYPE_DATA_EXPORT_READY = "data_export_ready";
 
 /** Where an `announcement_posted` row takes the reader: the whole inbox. */
 const ANNOUNCEMENTS_HREF = "/announcements";
+
+/**
+ * Where a `data_export_ready` row takes the reader: the account settings,
+ * whose section downloads the archive.
+ */
+const DATA_EXPORT_HREF = "/settings";
 
 /** The `hidden_reason` categories `comment_hidden` carries. */
 const COMMENT_HIDDEN_REASON_STAFF = "staff";
@@ -66,6 +74,9 @@ const payloadSchema = z.object({
   announcement_title: optionalLabel,
   episode_id: optionalResourceId,
   episode_title: optionalLabel,
+  // An instant is checked where it is formatted, which words the row without a
+  // date when it cannot read one.
+  expires_at: optionalLabel,
   hidden_reason: optionalHiddenReason,
   series_id: optionalResourceId,
   series_title: optionalLabel,
@@ -179,15 +190,36 @@ const commentHiddenDescription = (
 /**
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
+ * `timeZone` is the tenant's display zone, which names the day a date in the
+ * copy falls on.
  */
 export const notificationDisplay = async (
   notificationType: string,
   payload: NotificationPayload,
-  locale: Locale
+  locale: Locale,
+  timeZone: string
 ): Promise<NotificationDisplay> => {
   const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
+
+  if (type === NOTIFICATION_TYPE_DATA_EXPORT_READY) {
+    const expiresOn = formatDate(payload.expires_at ?? "", {
+      fallback: "",
+      locale,
+      timeZone,
+    });
+
+    return {
+      description: expiresOn
+        ? t("storefront.notifications.data_export_ready_description", {
+            date: expiresOn,
+          })
+        : t("storefront.notifications.data_export_ready_description_unknown"),
+      href: DATA_EXPORT_HREF,
+      title: t("storefront.notifications.data_export_ready_title"),
+    };
+  }
 
   if (type === NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED) {
     // The row links at the inbox rather than at one announcement: its payload
