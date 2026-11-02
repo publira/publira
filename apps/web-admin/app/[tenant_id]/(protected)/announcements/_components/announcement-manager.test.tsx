@@ -45,8 +45,11 @@ vi.mock("next/link", () => ({
 }));
 
 const announcement = (id: string): AnnouncementItem => ({
+  audience: null,
   body: "Announcement body",
   createdAt: "2026-06-01T00:00:00Z",
+  deliverAt: "2026-06-01T00:00:00Z",
+  deliveredAt: "2026-06-01T00:00:00Z",
   delivery: "preferred",
   id,
   linkUrl: "/series/S001",
@@ -54,6 +57,9 @@ const announcement = (id: string): AnnouncementItem => ({
   pinnedUntil: "",
   title: "Scheduled maintenance",
   translatedLocales: ["en"],
+  translations: [
+    { body: "Announcement body", locale: "en", title: "Scheduled maintenance" },
+  ],
 });
 
 afterEach(() => {
@@ -246,6 +252,80 @@ describe("AnnouncementManager", () => {
       expect(
         screen.queryAllByRole("button", { name: "Stop showing" })
       ).toHaveLength(count);
+    }
+  );
+
+  it("names who each announcement is for", async () => {
+    render(
+      await AnnouncementManager({
+        announcements: [
+          announcement("n1"),
+          {
+            ...announcement("n2"),
+            audience: [
+              { seriesPublicId: "SERIES001", type: "follows_series" },
+              { locale: "en", type: "locale" },
+            ],
+          },
+          { ...announcement("n3"), audience: [{ type: "never_purchased" }] },
+        ],
+        canEdit: true,
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    const [, everyone, two, one] = screen.getAllByRole("row");
+    expect(within(everyone).getByText("Everyone")).toBeDefined();
+    expect(within(two).getByText("2 conditions")).toBeDefined();
+    expect(within(one).getByText("1 condition")).toBeDefined();
+  });
+
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])(
+    "says when a scheduled announcement goes out, and offers to edit it when the operator may: %s",
+    async (canEdit, count) => {
+      render(
+        await AnnouncementManager({
+          announcements: [
+            {
+              ...announcement("018f0f90-0001-7000-8000-000000000101"),
+              deliverAt: "2026-07-01T09:00:00Z",
+              deliveredAt: "",
+            },
+            announcement("n2"),
+          ],
+          canEdit,
+          locale: "en",
+          pageSize: 20,
+          tenantId: "TENANT001",
+          timeZone: "UTC",
+        })
+      );
+
+      const [, scheduled, delivered] = screen.getAllByRole("row");
+      expect(
+        within(scheduled).getByText("Scheduled for Jul 1, 2026, 9:00 AM")
+      ).toBeDefined();
+      expect(
+        within(delivered).getByText("Delivered Jun 1, 2026, 12:00 AM")
+      ).toBeDefined();
+
+      const edit = screen.queryAllByRole("link", { name: "Edit" });
+      expect(edit).toHaveLength(count);
+      expect(edit[0]?.getAttribute("href") ?? null).toBe(
+        count
+          ? "/announcements/018f0f90-0001-7000-8000-000000000101/edit"
+          : null
+      );
+      // One that has gone out is edited no more.
+      expect(
+        within(delivered).queryByRole("link", { name: "Edit" })
+      ).toBeNull();
     }
   );
 });

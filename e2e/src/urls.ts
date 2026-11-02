@@ -199,6 +199,25 @@ export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the audience tenant from the scenario seed
+ * `db/seeds/scenarios/760_announcement_audience.sql`.
+ *
+ * A targeted announcement notifies the readers its conditions select, and a
+ * scheduled one stays on the list, so both are posted in a tenant no other
+ * spec counts the rows or the bells of.
+ */
+export const WEB_STOREFRONT_ANNOUNCEMENT_AUDIENCE_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_ANNOUNCEMENT_AUDIENCE_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "audience.localhost")
+);
+
+/** Admin console of the same audience tenant. */
+export const WEB_ADMIN_ANNOUNCEMENT_AUDIENCE_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_ANNOUNCEMENT_AUDIENCE_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.audience.localhost")
+);
+
+/**
  * Public site of the agreement tenant from the scenario seed
  * `db/seeds/scenarios/500_legal_page_agreement.sql`.
  *

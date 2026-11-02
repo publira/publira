@@ -563,9 +563,9 @@
     },
     "announcements": {
       "title": "公告",
-      "page_description": "查看向所有打开网站的人发布的公告。",
+      "page_description": "查看向所有打开网站的人或符合条件的读者投放的公告，并修改已预约投放的公告。",
       "new_title": "创建公告",
-      "new_description": "设置标题、正文和链接，然后向所有人发布公告。",
+      "new_description": "撰写公告，选择接收对象和投放时间，然后投放或预约。",
       "back_to_list": "返回列表",
       "list_error": "无法显示公告",
       "empty_title": "暂无公告。",
@@ -582,7 +582,9 @@
         "body": "正文",
         "delivery": "通知",
         "banner": "横幅",
-        "link": "链接"
+        "link": "链接",
+        "audience": "接收对象",
+        "status": "状态"
       },
       "delivery": {
         "everyone": "发送给所有人",
@@ -604,7 +606,42 @@
         "pinned_until": "停止展示的时间",
         "pinned_until_description": "时间以{$time_zone}为准。留空则一直展示，直到你撤下为止。",
         "send_to_everyone": "发送给所有人",
-        "send_to_everyone_description": "也会通知关闭了公告通知的读者。仅用于每位读者都必须看到的公告，例如条款变更或服务故障。"
+        "send_to_everyone_description": "也会通知关闭了公告通知的读者。仅用于每位读者都必须看到的公告，例如条款变更或服务故障。",
+        "audience": "接收对象",
+        "audience_everyone": "所有打开网站的人",
+        "audience_targeted": "满足以下全部条件的读者",
+        "audience_targeted_description": "只有在投放时满足全部条件的读者才会收到。",
+        "audience_add": "添加条件",
+        "audience_remove": "移除",
+        "audience_condition": {
+          "follows_series": "关注了系列",
+          "bought_series_episode": "购买过系列的章节",
+          "subscription": "订阅",
+          "never_purchased": "从未购买过",
+          "last_read_days_ago": "未阅读的天数",
+          "signed_up_within_days": "注册后的天数",
+          "locale": "语言",
+          "has_mobile_push_device": "登记了应用的推送通知"
+        },
+        "audience_series": "系列",
+        "audience_series_placeholder": "搜索系列",
+        "audience_series_empty": "没有匹配的系列。",
+        "audience_plan": "套餐",
+        "audience_plans_admin_only": "只有租户管理员可以查看套餐，因此该条件适用于任意套餐的订阅。",
+        "audience_any_plan": "任意套餐",
+        "audience_plan_state": "订阅状态",
+        "audience_plan_state_active": "正在订阅",
+        "audience_plan_state_ended": "订阅已结束",
+        "audience_days": "天数",
+        "audience_reach": "将送达{$count}位读者",
+        "audience_reach_pending": "正在统计读者…",
+        "audience_reach_failed": "无法统计读者。公告仍可照常投放。",
+        "targeted_notice": "指定了条件的公告只会送达对象读者的通知，因此不能发送给所有人，也不能作为站点横幅展示。",
+        "deliver_at": "投放时间",
+        "deliver_at_description": "时间以{$time_zone}为准。留空则立即投放。",
+        "submit_schedule": "预约投放公告",
+        "save": "保存",
+        "saving": "正在保存…"
       },
       "validation": {
         "body_required": "正文为必填项。",
@@ -614,12 +651,40 @@
         "locale_invalid": "请选择支持的语言。",
         "link_invalid": "链接必须以 / 或http(s):// 开头。",
         "pinned_until_invalid": "请正确填写停止展示的时间。",
-        "pinned_until_future": "停止展示的时间需要晚于当前时间。"
+        "pinned_until_future": "停止展示的时间需要晚于当前时间。",
+        "deliver_at_invalid": "请正确填写投放时间。",
+        "deliver_at_future": "投放时间需要晚于当前时间。",
+        "pinned_until_after_deliver_at": "停止展示的时间需要晚于投放时间。",
+        "audience_condition_required": "请至少添加一个条件，或将接收对象设为所有人。",
+        "audience_condition_duplicate": "每个条件只能使用一次。",
+        "audience_condition_invalid": "请从列表中选择条件。",
+        "audience_series_required": "请选择系列。",
+        "audience_days_range": "请输入1到3650之间的天数。",
+        "audience_targeted_broadcast": "指定了条件的公告不能发送给所有人，也不能作为站点横幅展示。"
       },
       "banner_showing": "展示中",
       "banner_showing_until": "展示至{$until}",
       "unpin_action": "停止展示",
-      "unpin_failed": "无法撤下横幅。请稍后再试。"
+      "unpin_failed": "无法撤下横幅。请稍后再试。",
+      "edit_title": "编辑已预约的公告",
+      "edit_description": "在投放之前，公告的任何内容都可以修改，也可以删除。",
+      "edit_action": "编辑",
+      "delete_action": "删除",
+      "deleting": "正在删除…",
+      "delete_confirm": "要删除这条已预约的公告吗？",
+      "delete_confirm_description": "它尚未投放，还没有读者看到过。删除后无法恢复。",
+      "delete_confirm_action": "删除",
+      "delete_failed": "无法删除该公告。请稍后再试。",
+      "update_failed": "无法保存该公告。请稍后再试。",
+      "already_delivered": "该公告已经投放，无法再修改或删除。",
+      "audience": {
+        "everyone": "所有人",
+        "targeted": "{$count}个条件"
+      },
+      "status": {
+        "scheduled": "预约于{$at}投放",
+        "delivered": "已于{$at}投放"
+      }
     },
     "campaign_banners": {
       "title": "活动横幅",

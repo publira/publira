@@ -563,9 +563,9 @@
     },
     "announcements": {
       "title": "公告",
-      "page_description": "查看向所有開啟網站的人發送的公告。",
+      "page_description": "查看向所有開啟網站的人或符合條件的讀者發送的公告，並修改已預約發送的公告。",
       "new_title": "建立公告",
-      "new_description": "設定標題、正文與連結，然後向所有人發送公告。",
+      "new_description": "撰寫公告，選擇接收對象與發送時間，然後發送或預約。",
       "back_to_list": "返回列表",
       "list_error": "無法顯示公告",
       "empty_title": "目前沒有公告。",
@@ -582,7 +582,9 @@
         "body": "正文",
         "delivery": "通知",
         "banner": "橫幅",
-        "link": "連結"
+        "link": "連結",
+        "audience": "接收對象",
+        "status": "狀態"
       },
       "delivery": {
         "everyone": "傳送給所有人",
@@ -604,7 +606,42 @@
         "pinned_until": "停止展示的時間",
         "pinned_until_description": "時間以{$time_zone}為準。留空則會一直展示，直到你撤下為止。",
         "send_to_everyone": "傳送給所有人",
-        "send_to_everyone_description": "也會通知關閉了公告通知的讀者。僅用於每位讀者都必須看到的公告，例如條款變更或服務故障。"
+        "send_to_everyone_description": "也會通知關閉了公告通知的讀者。僅用於每位讀者都必須看到的公告，例如條款變更或服務故障。",
+        "audience": "接收對象",
+        "audience_everyone": "所有開啟網站的人",
+        "audience_targeted": "符合以下所有條件的讀者",
+        "audience_targeted_description": "只有在發送時符合所有條件的讀者才會收到。",
+        "audience_add": "新增條件",
+        "audience_remove": "移除",
+        "audience_condition": {
+          "follows_series": "追蹤了系列",
+          "bought_series_episode": "購買過系列的章節",
+          "subscription": "訂閱",
+          "never_purchased": "從未購買過",
+          "last_read_days_ago": "未閱讀的天數",
+          "signed_up_within_days": "註冊後的天數",
+          "locale": "語言",
+          "has_mobile_push_device": "登記了應用程式的推播通知"
+        },
+        "audience_series": "系列",
+        "audience_series_placeholder": "搜尋系列",
+        "audience_series_empty": "沒有相符的系列。",
+        "audience_plan": "方案",
+        "audience_plans_admin_only": "只有租戶管理員可以查看方案，因此此條件適用於任何方案的訂閱。",
+        "audience_any_plan": "任何方案",
+        "audience_plan_state": "訂閱狀態",
+        "audience_plan_state_active": "訂閱中",
+        "audience_plan_state_ended": "訂閱已結束",
+        "audience_days": "天數",
+        "audience_reach": "將送達{$count}位讀者",
+        "audience_reach_pending": "正在計算讀者…",
+        "audience_reach_failed": "無法計算讀者。公告仍可照常發送。",
+        "targeted_notice": "指定了條件的公告只會送達對象讀者的通知，因此不能傳送給所有人，也不能作為網站橫幅展示。",
+        "deliver_at": "發送時間",
+        "deliver_at_description": "時間以{$time_zone}為準。留空則立即發送。",
+        "submit_schedule": "預約發送公告",
+        "save": "儲存",
+        "saving": "正在儲存…"
       },
       "validation": {
         "body_required": "正文為必填。",
@@ -614,12 +651,40 @@
         "locale_invalid": "請選擇支援的語言。",
         "link_invalid": "連結必須以 / 或http(s):// 開頭。",
         "pinned_until_invalid": "請正確填寫停止展示的時間。",
-        "pinned_until_future": "停止展示的時間需要晚於目前時間。"
+        "pinned_until_future": "停止展示的時間需要晚於目前時間。",
+        "deliver_at_invalid": "請正確填寫發送時間。",
+        "deliver_at_future": "發送時間需要晚於目前時間。",
+        "pinned_until_after_deliver_at": "停止展示的時間需要晚於發送時間。",
+        "audience_condition_required": "請至少新增一個條件，或將接收對象設為所有人。",
+        "audience_condition_duplicate": "每個條件只能使用一次。",
+        "audience_condition_invalid": "請從列表中選擇條件。",
+        "audience_series_required": "請選擇系列。",
+        "audience_days_range": "請輸入1到3650之間的天數。",
+        "audience_targeted_broadcast": "指定了條件的公告不能傳送給所有人，也不能作為網站橫幅展示。"
       },
       "banner_showing": "展示中",
       "banner_showing_until": "展示至{$until}",
       "unpin_action": "停止展示",
-      "unpin_failed": "無法撤下橫幅。請稍後再試。"
+      "unpin_failed": "無法撤下橫幅。請稍後再試。",
+      "edit_title": "編輯已預約的公告",
+      "edit_description": "在發送之前，公告的任何內容都可以修改，也可以刪除。",
+      "edit_action": "編輯",
+      "delete_action": "刪除",
+      "deleting": "正在刪除…",
+      "delete_confirm": "要刪除這則已預約的公告嗎？",
+      "delete_confirm_description": "它尚未發送，還沒有讀者看過。刪除後無法復原。",
+      "delete_confirm_action": "刪除",
+      "delete_failed": "無法刪除該公告。請稍後再試。",
+      "update_failed": "無法儲存該公告。請稍後再試。",
+      "already_delivered": "該公告已經發送，無法再修改或刪除。",
+      "audience": {
+        "everyone": "所有人",
+        "targeted": "{$count}個條件"
+      },
+      "status": {
+        "scheduled": "預約於{$at}發送",
+        "delivered": "已於{$at}發送"
+      }
     },
     "campaign_banners": {
       "title": "活動橫幅",

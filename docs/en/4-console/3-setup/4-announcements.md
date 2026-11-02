@@ -15,18 +15,20 @@ Choose **Create an announcement** and fill in:
 
 - **Title** and **Body**, on a tab for each language the site offers: up to 120 characters of title and 2000 characters of plain text. See [Writing in several languages](#writing-in-several-languages).
 - **Link** (optional): where the announcement takes a reader who opens it. Start it with `/` for a page of this site, such as `/series/SERIES001` or `/legal/terms`, or with `https://` or `http://` for another site.
+- **Audience**: **Everyone who opens the site** (the default), or **Readers who match all of these conditions**. See [Choosing who receives it](#choosing-who-receives-it).
 - **Send to everyone** (off by default): notifies every reader with an account, including readers whose notification settings turn announcements off. See [Sending to everyone](#sending-to-everyone).
 - **Show as a site banner**: also shows the announcement above every page. See [The site banner](#the-site-banner).
+- **Deliver at** (optional): the time the announcement goes out at. Leave it empty to deliver it at once. See [Scheduling an announcement](#scheduling-an-announcement).
 
-**Deliver the announcement** delivers it at once, unless it is given a later time to go out at, as [Scheduling an announcement](#scheduling-an-announcement) describes. Once delivered, an announcement cannot be edited or deleted, so read it over before it goes out.
+**Deliver the announcement** delivers it at once. With a **Deliver at**, the button reads **Schedule the announcement** instead, and the announcement goes out at that time. Once delivered, an announcement cannot be edited or deleted, so read it over before it goes out.
 
-![The Create an announcement form: a tab for each language the site offers with English open, Title, Body, Link, Send to everyone, Show as a site banner, and Deliver the announcement.](./announcements-create-form.png)
+![The Create an announcement form: a tab for each language the site offers with English open, Title, Body, Link, Audience with Everyone who opens the site chosen, Send to everyone, Show as a site banner, Deliver at, and Deliver the announcement.](./announcements-create-form.png)
 
 ## Scheduling an announcement
 
-An announcement can be given a time to go out at instead of going out at once: written on a Friday, for instance, to be delivered at nine on Monday. The time is in the tenant's time zone and must be in the future. A banner's **Stop showing at** must be after it.
+An announcement can be given a time to go out at instead of going out at once: written on a Friday, for instance, to be delivered at nine on Monday. Enter it in **Deliver at** and choose **Schedule the announcement**. The time is in the tenant's time zone and must be in the future. A banner's **Stop showing at** must be after it.
 
-Until that time the announcement is scheduled, and readers do not see it: it is not on the site's **Announcements** page or in the app, no reader is notified of it, and its banner is not shown. A Tenant admin or an Editor can still change anything in it, the time included, or delete it. Saving it with no time delivers it at once.
+Until that time the announcement is scheduled, and readers do not see it: it is not on the site's **Announcements** page or in the app, no reader is notified of it, and its banner is not shown. The **Status** column of the list reads **Scheduled for** that time. A Tenant admin or an Editor can still choose **Edit** in that column and change anything in it, the time included, then choose **Save**, or choose **Delete** and confirm to delete it. Saving it with **Deliver at** empty delivers it at once.
 
 Within about a minute of its time, the announcement is delivered as one created then would be: readers are notified, it appears on the **Announcements** page and in the app, and its banner is shown. Readers see it among the others by the time it went out, not the time it was written. An announcement with conditions selects its readers at that moment too. From then on it can no longer be edited or deleted.
 
@@ -49,18 +51,24 @@ The **Notification** column of the list says how each announcement was sent: **S
 
 ## Choosing who receives it
 
-An announcement can be addressed to the readers who meet a set of conditions instead of to everyone. The conditions are:
+An announcement can be addressed to the readers who meet a set of conditions instead of to everyone. Under **Audience**, choose **Readers who match all of these conditions**, then pick a condition in **Add a condition**. Each one adds a row with the inputs it takes, and **Remove** takes it off again. The conditions are:
 
-- The reader follows a given series.
-- The reader holds a purchase of an episode of a given series, bought on its own, in a volume, or in a bundle. A purchase that was refunded or revoked does not count.
-- The reader's subscription, to a given plan or to any plan, is live: in its trial, active, or with a renewal payment past due. Or the reverse: the reader has had one that ended and holds no live one.
-- The reader has never bought anything from the site. A purchase made in the payment provider's test mode does not count.
-- The reader has opened no episode for at least a given number of days, or has never opened one.
-- The reader signed up no more than a given number of days ago.
-- The reader uses the site in a given language: the one they last browsed the site or used the app in, or the site's default language for a reader who has never chosen one.
-- The reader has registered a phone running the site's app for push notifications.
+- **Follows series**: the reader follows the **Series** you pick.
+- **Bought an episode of series**: the reader holds a purchase of an episode of the **Series** you pick, bought on its own, in a volume, or in a bundle. A purchase that was refunded or revoked does not count.
+- **Subscription**: the reader's subscription to the **Plan** you pick, or to **Any plan**, is live (**Holds it**: in its trial, active, or with a renewal payment past due), or the reader has had one that ended and holds no live one (**Had one that ended**). Only a Tenant admin can see the plans, so an Editor's form offers **Any plan** alone.
+- **Has never bought anything**: the reader has never bought anything from the site. A purchase made in the payment provider's test mode does not count.
+- **Has not read for**: the reader has opened no episode for at least the number of **Days** you enter, or has never opened one.
+- **Signed up within**: the reader signed up no more than the number of **Days** you enter ago.
+- **Language**: the reader uses the site in the language you pick, out of the ones the site offers: the one they last browsed the site or used the app in, or the site's default language for a reader who has never chosen one.
+- **Has the app's push notifications registered**: the reader has registered a phone running the site's app for push notifications.
 
-A number of days is from 1 to 3650. Each condition can be used once, and they combine: a reader receives the announcement only when they meet every condition it names.
+A number of days is from 1 to 3650. Each condition can be used once, so a condition already added is not offered again, and they combine: a reader receives the announcement only when they meet every condition it names.
+
+Once every row is filled in, the form counts the readers the conditions select and shows the number, such as **Reaches 12 readers**, counting again as the conditions change. It is the count at that moment, and only a guide: the readers are selected again when the announcement goes out, and it can go out whether or not the count could be made.
+
+While the announcement has a condition, **Send to everyone** and **Show as a site banner** are off and cannot be turned on, as the form says above them. Removing every condition makes them available again.
+
+The **Audience** column of the list says who each announcement is for: **Everyone**, or the number of conditions it names, such as **2 conditions**.
 
 The conditions are evaluated once, at the moment the announcement is delivered. A reader who comes to meet them afterwards, by following the series a day later for instance, does not receive it, and a reader who stops meeting them keeps the one they received.
 
@@ -91,6 +99,6 @@ A banner stays up until you take it down, unless you give it an end:
 - **Stop showing at**, under the banner checkbox, takes it down at that time, in the tenant's time zone. It must be in the future.
 - **Stop showing**, in the **Banner** column of the list, takes it down at once.
 
-![The Announcements list: Create an announcement at the top, and three announcements, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
+![The Announcements list: Create an announcement at the top, and three announcements addressed to Everyone and marked Delivered in their Status column, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
 
 Either way the announcement stays on the **Announcements** page and in readers' notifications. Only the banner goes.

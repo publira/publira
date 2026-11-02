@@ -563,9 +563,9 @@
     },
     "announcements": {
       "title": "お知らせ",
-      "page_description": "サイトを開いた全員に配信したお知らせを確認できます。",
+      "page_description": "サイトを開いた全員、または条件に合う読者に配信したお知らせを確認し、配信を予約したお知らせを変更できます。",
       "new_title": "お知らせを作成",
-      "new_description": "タイトル、本文、リンク先を指定して、お知らせを全員に配信します。",
+      "new_description": "お知らせを書き、届ける相手と配信日時を選んで、配信または予約します。",
       "back_to_list": "一覧へ戻る",
       "list_error": "お知らせ一覧を表示できませんでした",
       "empty_title": "お知らせがまだありません。",
@@ -582,7 +582,9 @@
         "body": "本文",
         "delivery": "通知",
         "banner": "バナー",
-        "link": "リンク先"
+        "link": "リンク先",
+        "audience": "配信先",
+        "status": "状態"
       },
       "delivery": {
         "everyone": "全員に送信",
@@ -604,7 +606,42 @@
         "pinned_until": "掲出を終える日時",
         "pinned_until_description": "時刻は{$time_zone}です。空欄にすると、掲出をやめるまで表示し続けます。",
         "send_to_everyone": "全員に送信する",
-        "send_to_everyone_description": "お知らせの通知をオフにしている読者にも通知します。規約の変更や障害など、すべての読者に必ず伝えるお知らせにだけ使ってください。"
+        "send_to_everyone_description": "お知らせの通知をオフにしている読者にも通知します。規約の変更や障害など、すべての読者に必ず伝えるお知らせにだけ使ってください。",
+        "audience": "配信先",
+        "audience_everyone": "サイトを開いた全員",
+        "audience_targeted": "以下の条件をすべて満たす読者",
+        "audience_targeted_description": "配信の時点ですべての条件を満たしている読者だけに届きます。",
+        "audience_add": "条件を追加",
+        "audience_remove": "外す",
+        "audience_condition": {
+          "follows_series": "シリーズをフォローしている",
+          "bought_series_episode": "シリーズのエピソードを購入している",
+          "subscription": "サブスクリプション",
+          "never_purchased": "一度も購入していない",
+          "last_read_days_ago": "読んでいない期間",
+          "signed_up_within_days": "登録してからの期間",
+          "locale": "言語",
+          "has_mobile_push_device": "アプリのプッシュ通知を登録している"
+        },
+        "audience_series": "シリーズ",
+        "audience_series_placeholder": "シリーズを検索",
+        "audience_series_empty": "一致するシリーズがありません。",
+        "audience_plan": "プラン",
+        "audience_plans_admin_only": "プランを確認できるのはテナント管理者だけのため、この条件はすべてのプランのサブスクリプションに当てはまります。",
+        "audience_any_plan": "すべてのプラン",
+        "audience_plan_state": "契約の状態",
+        "audience_plan_state_active": "契約中",
+        "audience_plan_state_ended": "契約が終了した",
+        "audience_days": "日数",
+        "audience_reach": "{$count}人に届きます",
+        "audience_reach_pending": "読者を数えています…",
+        "audience_reach_failed": "読者を数えられませんでした。お知らせはこのまま配信できます。",
+        "targeted_notice": "条件を指定したお知らせは対象の読者の通知にだけ届くため、全員への送信やサイトのバナーとしての掲出はできません。",
+        "deliver_at": "配信日時",
+        "deliver_at_description": "時刻は{$time_zone}です。空欄にすると、すぐに配信します。",
+        "submit_schedule": "お知らせの配信を予約",
+        "save": "保存",
+        "saving": "保存中…"
       },
       "validation": {
         "body_required": "本文は必須です。",
@@ -614,12 +651,40 @@
         "locale_invalid": "対応している言語を選んでください。",
         "link_invalid": "リンク先は / もしくはhttp(s):// で入力してください。",
         "pinned_until_invalid": "掲出を終える日時を正しく入力してください。",
-        "pinned_until_future": "掲出を終える日時には未来の時刻を指定してください。"
+        "pinned_until_future": "掲出を終える日時には未来の時刻を指定してください。",
+        "deliver_at_invalid": "配信日時を正しく入力してください。",
+        "deliver_at_future": "配信日時には未来の時刻を指定してください。",
+        "pinned_until_after_deliver_at": "掲出を終える日時は配信日時より後にしてください。",
+        "audience_condition_required": "条件を1つ以上追加するか、配信先を全員にしてください。",
+        "audience_condition_duplicate": "同じ条件は1つしか使えません。",
+        "audience_condition_invalid": "一覧から条件を選んでください。",
+        "audience_series_required": "シリーズを選んでください。",
+        "audience_days_range": "日数は1から3650までで入力してください。",
+        "audience_targeted_broadcast": "条件を指定したお知らせは、全員への送信やサイトのバナーとしての掲出ができません。"
       },
       "banner_showing": "掲出中",
       "banner_showing_until": "{$until}まで掲出",
       "unpin_action": "掲出をやめる",
-      "unpin_failed": "バナーの掲出を止められませんでした。時間をおいて再試行してください。"
+      "unpin_failed": "バナーの掲出を止められませんでした。時間をおいて再試行してください。",
+      "edit_title": "予約したお知らせを編集",
+      "edit_description": "配信されるまでは、お知らせのどこでも変更でき、削除もできます。",
+      "edit_action": "編集",
+      "delete_action": "削除",
+      "deleting": "削除中…",
+      "delete_confirm": "この予約したお知らせを削除しますか？",
+      "delete_confirm_description": "まだ配信されていないため、読者の目には触れていません。削除すると元に戻せません。",
+      "delete_confirm_action": "削除する",
+      "delete_failed": "お知らせを削除できませんでした。時間をおいて再試行してください。",
+      "update_failed": "お知らせを保存できませんでした。時間をおいて再試行してください。",
+      "already_delivered": "このお知らせはすでに配信されたため、変更も削除もできません。",
+      "audience": {
+        "everyone": "全員",
+        "targeted": "条件{$count}件"
+      },
+      "status": {
+        "scheduled": "{$at}に配信予定",
+        "delivered": "{$at}に配信済み"
+      }
     },
     "campaign_banners": {
       "title": "キャンペーンバナー",

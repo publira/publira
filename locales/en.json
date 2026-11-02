@@ -563,9 +563,9 @@
     },
     "announcements": {
       "title": "Announcements",
-      "page_description": "Review the announcements delivered to everyone who opens the site.",
+      "page_description": "Review the announcements delivered to everyone who opens the site or to the readers a set of conditions selects, and change the ones scheduled to go out later.",
       "new_title": "Create an announcement",
-      "new_description": "Set the title, the body, and the link, then deliver the announcement to everyone.",
+      "new_description": "Write the announcement, choose who receives it and when, then deliver it or schedule it.",
       "back_to_list": "Back to the list",
       "list_error": "Could not display the announcements",
       "empty_title": "There are no announcements yet.",
@@ -582,7 +582,9 @@
         "body": "Body",
         "delivery": "Notification",
         "banner": "Banner",
-        "link": "Link"
+        "link": "Link",
+        "audience": "Audience",
+        "status": "Status"
       },
       "delivery": {
         "everyone": "Sent to everyone",
@@ -604,7 +606,42 @@
         "pinned_until": "Stop showing at",
         "pinned_until_description": "Times are in {$time_zone}. Leave it empty to keep the banner up until you take it down.",
         "send_to_everyone": "Send to everyone",
-        "send_to_everyone_description": "Also notifies readers who turned announcement notifications off. Use it only for a notice every reader must see, such as a change of terms or an outage."
+        "send_to_everyone_description": "Also notifies readers who turned announcement notifications off. Use it only for a notice every reader must see, such as a change of terms or an outage.",
+        "audience": "Audience",
+        "audience_everyone": "Everyone who opens the site",
+        "audience_targeted": "Readers who match all of these conditions",
+        "audience_targeted_description": "Only the readers who meet every condition when it goes out receive it.",
+        "audience_add": "Add a condition",
+        "audience_remove": "Remove",
+        "audience_condition": {
+          "follows_series": "Follows series",
+          "bought_series_episode": "Bought an episode of series",
+          "subscription": "Subscription",
+          "never_purchased": "Has never bought anything",
+          "last_read_days_ago": "Has not read for",
+          "signed_up_within_days": "Signed up within",
+          "locale": "Language",
+          "has_mobile_push_device": "Has the app's push notifications registered"
+        },
+        "audience_series": "Series",
+        "audience_series_placeholder": "Search series",
+        "audience_series_empty": "No matching series.",
+        "audience_plan": "Plan",
+        "audience_plans_admin_only": "Only a tenant admin can see the plans, so this condition matches a subscription to any plan.",
+        "audience_any_plan": "Any plan",
+        "audience_plan_state": "Subscription state",
+        "audience_plan_state_active": "Holds it",
+        "audience_plan_state_ended": "Had one that ended",
+        "audience_days": "Days",
+        "audience_reach": ".input {$count :integer}\n.match $count\none {{Reaches {$count} reader}}\n* {{Reaches {$count} readers}}",
+        "audience_reach_pending": "Counting the readers…",
+        "audience_reach_failed": "Could not count the readers. The announcement can still go out.",
+        "targeted_notice": "A targeted announcement reaches only its readers' notifications, so it cannot be sent to everyone or shown as a site banner.",
+        "deliver_at": "Deliver at",
+        "deliver_at_description": "Times are in {$time_zone}. Leave it empty to deliver the announcement at once.",
+        "submit_schedule": "Schedule the announcement",
+        "save": "Save",
+        "saving": "Saving…"
       },
       "validation": {
         "body_required": "The body is required.",
@@ -614,12 +651,40 @@
         "locale_invalid": "Choose a supported language.",
         "link_invalid": "The link must start with / or http(s)://.",
         "pinned_until_invalid": "Enter a valid date and time for when the banner stops.",
-        "pinned_until_future": "The banner has to stop at a time in the future."
+        "pinned_until_future": "The banner has to stop at a time in the future.",
+        "deliver_at_invalid": "Enter a valid date and time to deliver the announcement at.",
+        "deliver_at_future": "The announcement has to go out at a time in the future.",
+        "pinned_until_after_deliver_at": "The banner has to stop after the announcement goes out.",
+        "audience_condition_required": "Add at least one condition, or address the announcement to everyone.",
+        "audience_condition_duplicate": "Each condition can be used only once.",
+        "audience_condition_invalid": "Choose a condition from the list.",
+        "audience_series_required": "Choose a series.",
+        "audience_days_range": "Enter a number of days from 1 to 3650.",
+        "audience_targeted_broadcast": "An announcement with conditions cannot be sent to everyone or shown as a site banner."
       },
       "banner_showing": "Showing",
       "banner_showing_until": "Showing until {$until}",
       "unpin_action": "Stop showing",
-      "unpin_failed": "Could not take the banner down. Please try again later."
+      "unpin_failed": "Could not take the banner down. Please try again later.",
+      "edit_title": "Edit the scheduled announcement",
+      "edit_description": "Anything in the announcement can change until it goes out, or it can be deleted.",
+      "edit_action": "Edit",
+      "delete_action": "Delete",
+      "deleting": "Deleting…",
+      "delete_confirm": "Delete this scheduled announcement?",
+      "delete_confirm_description": "It has not gone out yet, so no reader has seen it. This cannot be undone.",
+      "delete_confirm_action": "Delete",
+      "delete_failed": "Could not delete the announcement. Please try again later.",
+      "update_failed": "Could not save the announcement. Please try again later.",
+      "already_delivered": "The announcement has already gone out, so it can no longer be changed or deleted.",
+      "audience": {
+        "everyone": "Everyone",
+        "targeted": ".input {$count :integer}\n.match $count\none {{{$count} condition}}\n* {{{$count} conditions}}"
+      },
+      "status": {
+        "scheduled": "Scheduled for {$at}",
+        "delivered": "Delivered {$at}"
+      }
     },
     "campaign_banners": {
       "title": "Campaign banners",
