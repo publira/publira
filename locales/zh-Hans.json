@@ -2508,6 +2508,7 @@
         "empty_description": "请通过上方的“创建卷”创建第一卷。",
         "empty_description_read_only": "编辑创建的卷会显示在这里。",
         "episode_count": "{$count :integer}个章节",
+        "bookstore_link_count": "{$count :integer}个书店链接",
         "status": {
           "on_sale": "销售中",
           "off_sale": "未销售"
@@ -2517,7 +2518,7 @@
         "edit_action": "编辑",
         "back_to_list": "返回卷列表",
         "edit_title": "编辑卷",
-        "edit_description": "更改卷的标题、价格、章节和封面，并开始销售。",
+        "edit_description": "更改卷的标题、价格、章节、封面和书店链接，并开始销售。",
         "detail_error": "无法显示卷",
         "created": "已创建卷。",
         "updated": "已更新卷。",
@@ -2580,6 +2581,26 @@
           "image_invalid": "请检查图片。请选择不超过10MB、至少2400x3200px的JPEG、PNG或WebP图片后重试。",
           "variants_missing": "上传已被接受，但无法确认生成的图片。请重试。",
           "upload_not_reflected": "上传尚未生效。请重新选择图片后重试。"
+        },
+        "bookstore_links": {
+          "title": "书店链接",
+          "description": "指向销售此卷纸质书的书店的链接。在此卷销售期间，链接会显示在网站和应用的系列页面中该卷的下方。",
+          "none": "此卷没有书店链接。",
+          "label": "标签",
+          "url": "URL",
+          "row_name": "链接{$number :integer}",
+          "reorder": "调整{$name}的顺序",
+          "remove": "删除{$name}",
+          "add": "添加链接",
+          "limit": "每卷最多可添加{$max :integer}个书店链接。",
+          "save": "保存书店链接",
+          "saved": "已保存书店链接。",
+          "save_failed": "无法保存书店链接。请稍后重试。",
+          "invalid": "无法读取书店链接。请重新加载页面后重试。",
+          "validation": {
+            "label_invalid": "请为链接{$number :integer}输入1至{$max :integer}个字符的标签。",
+            "url_invalid": "请为链接{$number :integer}输入以https://开头、不超过{$max :integer}个字符的URL。"
+          }
         },
         "sale": {
           "title": "销售",

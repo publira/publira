@@ -14,6 +14,7 @@ const {
   mockListVolumes,
   mockPublishVolume,
   mockReorderVolumes,
+  mockSetVolumeBookstoreLinks,
   mockSetVolumeEpisodes,
   mockUpdateVolume,
   mockUploadVolumeCoverImage,
@@ -26,6 +27,7 @@ const {
   mockListVolumes: vi.fn(),
   mockPublishVolume: vi.fn(),
   mockReorderVolumes: vi.fn(),
+  mockSetVolumeBookstoreLinks: vi.fn(),
   mockSetVolumeEpisodes: vi.fn(),
   mockUpdateVolume: vi.fn(),
   mockUploadVolumeCoverImage: vi.fn(),
@@ -48,6 +50,7 @@ vi.mock("./api", () => ({
       listVolumes: mockListVolumes,
       publishVolume: mockPublishVolume,
       reorderVolumes: mockReorderVolumes,
+      setVolumeBookstoreLinks: mockSetVolumeBookstoreLinks,
       setVolumeEpisodes: mockSetVolumeEpisodes,
       updateVolume: mockUpdateVolume,
       uploadVolumeCoverImage: mockUploadVolumeCoverImage,
@@ -77,6 +80,9 @@ const portraitVariant = {
 };
 
 const rawVolume = {
+  bookstoreLinks: [
+    { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+  ],
   coverImageUpdatedAt: "2099-05-01T00:00:00Z",
   coverImageVariants: [{ ...portraitVariant, fileSizeBytes: 2048n }],
   episodeIds: ["EPISODE001", "EPISODE002"],
@@ -326,6 +332,79 @@ describe("setVolumeEpisodes", () => {
     ).resolves.toEqual({
       message:
         "Another volume now holds one of these episodes, or an episode was taken out of a volume that has been on sale. Reload the page and try again.",
+      ok: false,
+    });
+  });
+});
+
+describe("setVolumeBookstoreLinks", () => {
+  const links = [
+    { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+    { label: "Bookstore B", url: "https://shop.example.net/v1" },
+  ];
+
+  it("sends the whole list in its order", async () => {
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      volume: { ...rawVolume, bookstoreLinks: links },
+    });
+
+    const { setVolumeBookstoreLinks } = await import("./volume");
+
+    await expect(
+      setVolumeBookstoreLinks(
+        { bookstoreLinks: links, id: rawVolume.id, tenantId: "TENANT001" },
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      volume: { ...mappedVolume, bookstoreLinks: links },
+    });
+    expect(mockSetVolumeBookstoreLinks).toHaveBeenCalledWith(
+      {
+        bookstoreLinks: links,
+        tenant: { tenantId: "TENANT001" },
+        volumeId: rawVolume.id,
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("places a refused field on the row the API names", async () => {
+    mockSetVolumeBookstoreLinks.mockRejectedValue(
+      invalidField("bookstore_links[1].url")
+    );
+
+    const { setVolumeBookstoreLinks } = await import("./volume");
+
+    const message =
+      "Enter a URL that starts with https:// and is at most 2,048 characters for link 2.";
+
+    await expect(
+      setVolumeBookstoreLinks(
+        { bookstoreLinks: links, id: rawVolume.id, tenantId: "TENANT001" },
+        "en"
+      )
+    ).resolves.toEqual({
+      fieldErrors: { "bookstore_links[1].url": message },
+      message,
+      ok: false,
+    });
+  });
+
+  it("words a list longer than a volume carries", async () => {
+    mockSetVolumeBookstoreLinks.mockRejectedValue(
+      invalidField("bookstore_links")
+    );
+
+    const { setVolumeBookstoreLinks } = await import("./volume");
+
+    await expect(
+      setVolumeBookstoreLinks(
+        { bookstoreLinks: links, id: rawVolume.id, tenantId: "TENANT001" },
+        "en"
+      )
+    ).resolves.toEqual({
+      message: "A volume can have up to 10 bookstore links.",
       ok: false,
     });
   });

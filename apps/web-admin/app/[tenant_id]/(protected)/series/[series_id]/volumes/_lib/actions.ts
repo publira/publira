@@ -2,7 +2,7 @@
 
 import type { Locale } from "@publira/i18n";
 import type * as ActionForm from "@publira/ui-components/action-form";
-import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -13,8 +13,10 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
+  isFormText,
   jsonRecordIdArrayFormSchema,
   optionalFileFormSchema,
+  optionalHttpsUrlFormSchema,
   optionalTrimmedString,
   requiredRecordId,
   requiredTrimmedString,
@@ -27,12 +29,19 @@ import {
   deleteVolumeCoverImage,
   publishVolume,
   reorderVolumes,
+  setVolumeBookstoreLinks,
   setVolumeEpisodes,
   updateVolume,
   uploadVolumeCoverImage,
   volumesCacheTag,
 } from "#lib/volume";
 import type { VolumeItem } from "#lib/volume";
+import {
+  bookstoreLinkFieldName,
+  MAX_BOOKSTORE_LINK_LABEL_LENGTH,
+  MAX_BOOKSTORE_LINK_URL_LENGTH,
+  MAX_VOLUME_BOOKSTORE_LINKS,
+} from "#lib/volume-bookstore-links";
 
 import type { VolumeReorderResult } from "../volume-types";
 
@@ -339,6 +348,157 @@ export const setVolumeEpisodesAction = async (
   updateTag(volumesCacheTag(tenantId, seriesId));
 
   return { message: t("admin.series.volumes.episodes.saved"), ok: true };
+};
+
+/**
+ * The links the editor posts, as a JSON array of `{ label, url }`. Anything
+ * else is a form the editor did not write, and reads as `null`.
+ */
+const postedBookstoreLinksSchema = z.preprocess(
+  (value) => {
+    if (!isFormText(value)) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  },
+  z.array(z.object({ label: z.string(), url: z.string() }))
+);
+
+/**
+ * One posted link held to what the API stores, each refusal worded with the
+ * row's number so that the form-level message still says which row it is.
+ */
+const bookstoreLinkSchema = (t: AdminMessageAccessor, number: number) => {
+  const labelInvalid = t(
+    "admin.series.volumes.bookstore_links.validation.label_invalid",
+    { max: MAX_BOOKSTORE_LINK_LABEL_LENGTH, number }
+  );
+
+  const urlInvalid = t(
+    "admin.series.volumes.bookstore_links.validation.url_invalid",
+    { max: MAX_BOOKSTORE_LINK_URL_LENGTH, number }
+  );
+
+  // The API counts both lengths in code points, so a character outside the
+  // BMP is one character here too rather than the two UTF-16 units zod's own
+  // bound would count; the shared schemas are left unbounded for that.
+  return z.object({
+    label: requiredTrimmedString(labelInvalid, Number.POSITIVE_INFINITY).refine(
+      (value) => [...value].length <= MAX_BOOKSTORE_LINK_LABEL_LENGTH,
+      labelInvalid
+    ),
+    // Required here, where the shared schema lets a blank through.
+    url: optionalHttpsUrlFormSchema(
+      urlInvalid,
+      Number.POSITIVE_INFINITY
+    ).refine(
+      (value) =>
+        value !== "" && [...value].length <= MAX_BOOKSTORE_LINK_URL_LENGTH,
+      urlInvalid
+    ),
+  });
+};
+
+/**
+ * Replaces the volume's bookstore links with the list the editor arranged,
+ * posted whole and in its order because `SetVolumeBookstoreLinks` takes it
+ * that way; an emptied list leaves the volume with none. Each row is checked
+ * here first, so a link the API would refuse is reported on its row without a
+ * round trip.
+ */
+export const setVolumeBookstoreLinksAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    volumeFieldsSchema(locale),
+  ]);
+
+  const parsed = base
+    .extend({ bookstoreLinks: postedBookstoreLinksSchema })
+    .safeParse(
+      toFormDataInput(formData, {
+        ...volumeFormFields,
+        bookstoreLinks: { kind: "value", name: "bookstore_links" },
+      })
+    );
+
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, {
+        fallback: t("admin.series.volumes.bookstore_links.invalid"),
+        locale,
+      }),
+      ok: false,
+    };
+  }
+
+  const { id, seriesId, tenantId } = parsed.data;
+
+  if (parsed.data.bookstoreLinks.length > MAX_VOLUME_BOOKSTORE_LINKS) {
+    return {
+      message: t("admin.series.volumes.bookstore_links.limit", {
+        max: MAX_VOLUME_BOOKSTORE_LINKS,
+      }),
+      ok: false,
+    };
+  }
+
+  const fieldErrors: Record<string, string> = {};
+  const bookstoreLinks: { label: string; url: string }[] = [];
+
+  for (const [index, link] of parsed.data.bookstoreLinks.entries()) {
+    const row = bookstoreLinkSchema(t, index + 1).safeParse(link);
+
+    if (row.success) {
+      bookstoreLinks.push(row.data);
+      continue;
+    }
+
+    const rowErrors = toFieldErrors(row.error);
+
+    for (const field of ["label", "url"] as const) {
+      const message = rowErrors[field];
+
+      if (message) {
+        fieldErrors[bookstoreLinkFieldName(index, field)] = message;
+      }
+    }
+  }
+
+  const [firstFieldError] = Object.values(fieldErrors);
+
+  if (firstFieldError) {
+    return { fieldErrors, message: firstFieldError, ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    setVolumeBookstoreLinks({ bookstoreLinks, id, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(volumesCacheTag(tenantId, seriesId));
+
+  return {
+    message: t("admin.series.volumes.bookstore_links.saved"),
+    ok: true,
+  };
 };
 
 export const reorderVolumesAction = async (

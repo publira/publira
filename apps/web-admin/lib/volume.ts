@@ -21,6 +21,12 @@ import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
+import {
+  bookstoreLinkFieldName,
+  MAX_BOOKSTORE_LINK_LABEL_LENGTH,
+  MAX_BOOKSTORE_LINK_URL_LENGTH,
+  MAX_VOLUME_BOOKSTORE_LINKS,
+} from "./volume-bookstore-links";
 
 export interface VolumeItem {
   /** The primary key every volume write addresses the volume by. */
@@ -39,6 +45,8 @@ export interface VolumeItem {
    * empty for a volume never on sale. Once set, no episode can be taken out.
    */
   publishedAt: string;
+  /** Where the volume's printed book is sold, in the volume's own order. */
+  bookstoreLinks: { label: string; url: string }[];
   coverImageUpdatedAt: string;
   coverImageVariants: {
     variantType: string;
@@ -77,9 +85,19 @@ export type GetVolumeResult =
       requiresSignIn: boolean;
     };
 
+/**
+ * What a refused write says of single fields, keyed by the field path the API
+ * named, which is also the name the form gives the field's message.
+ */
+export type VolumeFieldErrors = Record<string, string>;
+
 export type SaveVolumeResult =
   | { ok: true; volume: VolumeItem }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: VolumeFieldErrors;
+    };
 
 export type ReorderVolumesResult =
   | { ok: true }
@@ -95,6 +113,7 @@ export const volumesCacheTag = (tenantId: string, seriesId: string): string =>
 /** The generated `AdminVolume` fields {@link mapVolume} reads. */
 type RawVolume = Pick<
   AdminVolume,
+  | "bookstoreLinks"
   | "coverImageUpdatedAt"
   | "coverImageVariants"
   | "episodeIds"
@@ -107,6 +126,10 @@ type RawVolume = Pick<
 >;
 
 const mapVolume = (volume: RawVolume): VolumeItem => ({
+  bookstoreLinks: (volume.bookstoreLinks ?? []).map((link) => ({
+    label: link.label ?? "",
+    url: link.url ?? "",
+  })),
   coverImageUpdatedAt: volume.coverImageUpdatedAt ?? "",
   coverImageVariants: (volume.coverImageVariants ?? []).flatMap((variant) => {
     const mappedVariant = {
@@ -272,13 +295,19 @@ interface VolumeFields {
 
 /**
  * Runs one volume write with the operator's session, and words its failure
- * with `fallback` and the screen's own `overrides`.
+ * with `fallback` and the screen's own `overrides`. A refusal `fieldErrors`
+ * places on single fields is worded by the first of them, which is the one
+ * the API stopped at.
  */
 const writeVolume = async (
   locale: Locale,
   write: (sessionId: string) => Promise<{ volume?: RawVolume }>,
   failure: {
     fallback: (t: AdminMessageAccessor) => string;
+    fieldErrors?: (
+      cause: unknown,
+      t: AdminMessageAccessor
+    ) => VolumeFieldErrors;
     overrides?: (cause: unknown) => Promise<RpcErrorMessageOverrides>;
   }
 ): Promise<SaveVolumeResult> => {
@@ -302,6 +331,13 @@ const writeVolume = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
+    const fieldErrors = failure.fieldErrors?.(error, t) ?? {};
+    const [fieldMessage] = Object.values(fieldErrors);
+
+    if (fieldMessage) {
+      return { fieldErrors, message: fieldMessage, ok: false };
+    }
 
     return {
       message: rpcErrorMessage(error, failure.fallback(t), {
@@ -439,6 +475,91 @@ export const setVolumeEpisodes = (
           "invalid-argument": t("admin.series.volumes.episodes.invalid"),
           "not-found": t("admin.series.volumes.not_found"),
           precondition: t("admin.series.volumes.episodes.conflict"),
+        };
+      },
+    }
+  );
+
+/**
+ * The field of the link the API refused, worded with the row's number. The
+ * API stops at the first link it cannot store, so this is at most one field.
+ */
+const bookstoreLinkFieldErrors = (
+  cause: unknown,
+  t: AdminMessageAccessor,
+  count: number
+) => {
+  for (let index = 0; index < count; index += 1) {
+    const number = index + 1;
+    const label = bookstoreLinkFieldName(index, "label");
+    const url = bookstoreLinkFieldName(index, "url");
+
+    if (rpcErrorHasFieldViolation(cause, label)) {
+      return {
+        [label]: t(
+          "admin.series.volumes.bookstore_links.validation.label_invalid",
+          { max: MAX_BOOKSTORE_LINK_LABEL_LENGTH, number }
+        ),
+      };
+    }
+
+    if (rpcErrorHasFieldViolation(cause, url)) {
+      return {
+        [url]: t(
+          "admin.series.volumes.bookstore_links.validation.url_invalid",
+          {
+            max: MAX_BOOKSTORE_LINK_URL_LENGTH,
+            number,
+          }
+        ),
+      };
+    }
+  }
+
+  return {};
+};
+
+/**
+ * Replaces the volume's bookstore links, in the order given; an empty list
+ * leaves it with none. The title, the price, and the episodes stay as they
+ * are.
+ */
+export const setVolumeBookstoreLinks = (
+  input: {
+    bookstoreLinks: { label: string; url: string }[];
+    id: string;
+    tenantId: string;
+  },
+  locale: Locale
+): Promise<SaveVolumeResult> =>
+  writeVolume(
+    locale,
+    (sessionId) =>
+      apiClient.series.setVolumeBookstoreLinks(
+        {
+          bookstoreLinks: input.bookstoreLinks,
+          tenant: { tenantId: input.tenantId },
+          volumeId: input.id,
+        },
+        withSessionHeaders(sessionId)
+      ),
+    {
+      fallback: (t) => t("admin.series.volumes.bookstore_links.save_failed"),
+      fieldErrors: (cause, t) =>
+        bookstoreLinkFieldErrors(cause, t, input.bookstoreLinks.length),
+      overrides: async (cause) => {
+        const t = await getMessagesFor(locale);
+
+        return {
+          "invalid-argument": rpcErrorHasFieldViolation(
+            cause,
+            "bookstore_links"
+          )
+            ? t("admin.series.volumes.bookstore_links.limit", {
+                max: MAX_VOLUME_BOOKSTORE_LINKS,
+              })
+            : undefined,
+          "not-found": t("admin.series.volumes.not_found"),
         };
       },
     }

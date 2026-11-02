@@ -2508,6 +2508,7 @@
         "empty_description": "請透過上方的「建立卷」建立第一卷。",
         "empty_description_read_only": "編輯建立的卷會顯示在這裡。",
         "episode_count": "{$count :integer}個章節",
+        "bookstore_link_count": "{$count :integer}個書店連結",
         "status": {
           "on_sale": "銷售中",
           "off_sale": "未銷售"
@@ -2517,7 +2518,7 @@
         "edit_action": "編輯",
         "back_to_list": "返回卷列表",
         "edit_title": "編輯卷",
-        "edit_description": "變更卷的標題、價格、章節和封面，並開始銷售。",
+        "edit_description": "變更卷的標題、價格、章節、封面和書店連結，並開始銷售。",
         "detail_error": "無法顯示卷",
         "created": "已建立卷。",
         "updated": "已更新卷。",
@@ -2580,6 +2581,26 @@
           "image_invalid": "請檢查圖片。請選擇不超過10MB、至少2400x3200px的JPEG、PNG或WebP圖片後重試。",
           "variants_missing": "上傳已被接受，但無法確認產生的圖片。請重試。",
           "upload_not_reflected": "上傳尚未生效。請重新選擇圖片後重試。"
+        },
+        "bookstore_links": {
+          "title": "書店連結",
+          "description": "指向銷售此卷紙本書的書店的連結。在此卷銷售期間，連結會顯示在網站和應用程式的系列頁面中該卷的下方。",
+          "none": "此卷沒有書店連結。",
+          "label": "標籤",
+          "url": "URL",
+          "row_name": "連結{$number :integer}",
+          "reorder": "調整{$name}的順序",
+          "remove": "刪除{$name}",
+          "add": "新增連結",
+          "limit": "每卷最多可新增{$max :integer}個書店連結。",
+          "save": "儲存書店連結",
+          "saved": "已儲存書店連結。",
+          "save_failed": "無法儲存書店連結。請稍後重試。",
+          "invalid": "無法讀取書店連結。請重新載入頁面後重試。",
+          "validation": {
+            "label_invalid": "請為連結{$number :integer}輸入1至{$max :integer}個字元的標籤。",
+            "url_invalid": "請為連結{$number :integer}輸入以https://開頭、不超過{$max :integer}個字元的URL。"
+          }
         },
         "sale": {
           "title": "銷售",

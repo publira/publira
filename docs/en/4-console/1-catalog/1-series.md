@@ -1,8 +1,8 @@
 ---
 title: Series
-description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes.
+description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes with links to where their printed books are sold.
 published: 2026-10-07
-updated: 2026-10-28
+updated: 2026-11-02
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -163,19 +163,20 @@ Choose **Save free-after settings** to save. The worker opens each episode on it
 
 A volume is a run of the series' episodes sold together, in one checkout, at a price of its own. Buying a volume opens every episode it holds, for good: a volume is never rented and has no reading period. An episode is in one volume at most, and stays on sale on its own beside it.
 
-The **Volumes** tab of a series lists its volumes in their order, each with its cover, its price, how many episodes it holds, and whether it is **On sale**. Drag a volume by its handle to change the order, which is saved as soon as it is dropped. An Auditor sees the list without the handles, and opens each volume with **View**.
+The **Volumes** tab of a series lists its volumes in their order, each with its cover, its price, how many episodes it holds, how many bookstore links it has, and whether it is **On sale**. Drag a volume by its handle to change the order, which is saved as soon as it is dropped. An Auditor sees the list without the handles, and opens each volume with **View**.
 
-![The Volumes tab of a series: the Create volume form with Title and Price, and two volumes, one on sale holding two episodes and one not on sale holding none, each with Edit.](./series-volumes.png)
+![The Volumes tab of a series: the Create volume form with Title and Price, and two volumes, one on sale holding two episodes with two bookstore links and one not on sale holding none, each with Edit.](./series-volumes.png)
 
 ### Creating a volume
 
 Under **Create volume**, enter a **Title**, up to 255 characters, and a **Price** in the tenant's currency, which has to be more than `0`. Choosing **Create volume** opens the new volume. It holds no episodes and is not on sale yet. A series holds at most 100 volumes.
 
-The volume's screen has four parts:
+The volume's screen has five parts:
 
 - **Details** changes the title and the price together, with **Update volume**. A new price applies to purchases made after it is saved.
 - **Episodes** is the list of what the volume holds, as described below.
 - **Cover image** takes a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels, cut into the same four shapes as [the series' cover image](#the-cover-image). A volume without one is shown with the series' cover image.
+- **Bookstore links** lists where the volume's printed book is sold, as described below.
 - **Sale** puts the volume on sale, or takes it off.
 
 ### Choosing the episodes
@@ -188,6 +189,16 @@ Once a volume has been on sale, the episodes it held cannot be taken out of it a
 
 ![The Episodes section of a volume that has been on sale: two episodes, each with its handle and its place in the series and no way to take it out, the Add an episode search, and Save episodes.](./series-volume-episodes.png)
 
+### Bookstore links
+
+Under **Bookstore links**, **Add a link** adds a row at the end of the list. Give each row a **Label**, the words its button says, such as the bookstore's name, of 1 to 50 characters, and a **URL** that starts with `https://`, of at most 2,048 characters. A volume has at most 10 links. Drag a link by its handle to change its place in the list, and take one out with the button at the end of its row.
+
+Nothing is saved until **Save bookstore links**, which saves the list as it stands, in its order: saving with every row taken out leaves the volume with none. When a row cannot be saved, the message under its field names the row, and nothing in the list is saved. Whether a URL answers is not checked.
+
+While the volume is on sale, the links are shown under it on the series page, on the site and in the app, in the list's order.
+
+![The Bookstore links section of a volume: two links, each with its handle, its Label and URL, and the button that takes it out, then Add a link and Save bookstore links.](./series-volume-bookstore-links.png)
+
 ### Putting a volume on sale
 
 Under **Sale**, **Put on sale** offers the volume to readers, and **Take off sale** stops offering it. A volume holding no episodes cannot be put on sale. Taking a volume off sale takes back nothing a reader already bought.
@@ -196,4 +207,4 @@ A volume is sold only where every one of its episodes can be bought, since buyin
 
 ![The Sale section of a volume on sale, with the On sale status and Take off sale.](./series-volume-sale.png)
 
-The site and the app do not offer volumes to readers yet, and royalty statements do not yet credit the sale of a volume to the Authors of its episodes.
+The site and the app do not offer volumes or their bookstore links to readers yet, and royalty statements do not yet credit the sale of a volume to the Authors of its episodes.

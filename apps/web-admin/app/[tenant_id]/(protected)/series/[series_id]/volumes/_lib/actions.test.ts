@@ -11,6 +11,7 @@ const {
   mockPublishVolume,
   mockRedirect,
   mockReorderVolumes,
+  mockSetVolumeBookstoreLinks,
   mockSetVolumeEpisodes,
   mockUpdateTag,
   mockUpdateVolume,
@@ -27,6 +28,7 @@ const {
     throw new Error(`redirect:${url}`);
   }),
   mockReorderVolumes: vi.fn(),
+  mockSetVolumeBookstoreLinks: vi.fn(),
   mockSetVolumeEpisodes: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateVolume: vi.fn(),
@@ -60,6 +62,7 @@ vi.mock("#lib/volume", () => ({
   deleteVolumeCoverImage: mockDeleteVolumeCoverImage,
   publishVolume: mockPublishVolume,
   reorderVolumes: mockReorderVolumes,
+  setVolumeBookstoreLinks: mockSetVolumeBookstoreLinks,
   setVolumeEpisodes: mockSetVolumeEpisodes,
   updateVolume: mockUpdateVolume,
   uploadVolumeCoverImage: mockUploadVolumeCoverImage,
@@ -74,6 +77,7 @@ const EPISODE_ONE = "018f0e6a-6000-7000-8000-0000000000c1";
 const EPISODE_TWO = "018f0e6a-6000-7000-8000-0000000000c2";
 
 const savedVolume = (overrides: Partial<VolumeItem> = {}) => ({
+  bookstoreLinks: [],
   coverImageUpdatedAt: "",
   coverImageVariants: [],
   episodeIds: [],
@@ -117,6 +121,13 @@ const createForm = (fields: Record<string, string> = {}) =>
     series_public_id: "SERIES001",
     title: "Volume 1",
     ...fields,
+  });
+
+/** What the bookstore links form posts for `links`. */
+const linksForm = (links: { label: string; url: string }[]) =>
+  formData({
+    bookstore_links: JSON.stringify(links),
+    volume_id: VOLUME_ID,
   });
 
 const coverFile = () =>
@@ -369,6 +380,182 @@ describe("setVolumeEpisodesAction", () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(mockSetVolumeEpisodes).not.toHaveBeenCalled();
+  });
+});
+
+describe("setVolumeBookstoreLinksAction", () => {
+  it("replaces the links with the list in the order posted", async () => {
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      ok: true,
+      volume: savedVolume(),
+    });
+
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        linksForm([
+          { label: " Bookstore B ", url: "https://shop.example.net/v1 " },
+          { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+        ])
+      )
+    ).resolves.toEqual({ message: "Bookstore links saved.", ok: true });
+    expect(mockSetVolumeBookstoreLinks).toHaveBeenCalledWith(
+      {
+        bookstoreLinks: [
+          { label: "Bookstore B", url: "https://shop.example.net/v1" },
+          { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+        ],
+        id: VOLUME_ID,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `volumes-TENANT001-${SERIES_ID}`
+    );
+  });
+
+  it("sends an emptied list, which leaves the volume with none", async () => {
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      ok: true,
+      volume: savedVolume(),
+    });
+
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    await setVolumeBookstoreLinksAction(null, linksForm([]));
+
+    expect(mockSetVolumeBookstoreLinks).toHaveBeenCalledWith(
+      { bookstoreLinks: [], id: VOLUME_ID, tenantId: "TENANT001" },
+      "en"
+    );
+  });
+
+  it("refuses an http URL on its row before it reaches the API", async () => {
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    const message =
+      "Enter a URL that starts with https:// and is at most 2,048 characters for link 2.";
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        linksForm([
+          { label: "Bookstore A", url: "https://books.example.com/volume-1" },
+          { label: "Bookstore B", url: "http://shop.example.net/v1" },
+        ])
+      )
+    ).resolves.toEqual({
+      fieldErrors: { "bookstore_links[1].url": message },
+      message,
+      ok: false,
+    });
+    expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
+  });
+
+  it("refuses a label longer than 50 characters, naming the row", async () => {
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+    const message = "Enter a label of 1 to 50 characters for link 1.";
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        linksForm([
+          { label: "B".repeat(51), url: "https://books.example.com/volume-1" },
+        ])
+      )
+    ).resolves.toEqual({
+      fieldErrors: { "bookstore_links[0].label": message },
+      message,
+      ok: false,
+    });
+    expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
+  });
+
+  // The API counts characters by code point, so a character outside the BMP,
+  // two UTF-16 units, is still one character: the label is 50 of them and the
+  // URL 1526, which zod's own bounds would read as 51 and 3026.
+  it("counts characters as the API does", async () => {
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      ok: true,
+      volume: savedVolume(),
+    });
+
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+    const label = `${"B".repeat(49)}\u{1F4DA}`;
+    const url = `https://books.example.com/${"\u{1F4DA}".repeat(1500)}`;
+
+    await expect(
+      setVolumeBookstoreLinksAction(null, linksForm([{ label, url }]))
+    ).resolves.toEqual({ message: "Bookstore links saved.", ok: true });
+    expect(mockSetVolumeBookstoreLinks).toHaveBeenCalledWith(
+      {
+        bookstoreLinks: [{ label, url }],
+        id: VOLUME_ID,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+  });
+
+  it("refuses an eleventh link", async () => {
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        linksForm(
+          Array.from({ length: 11 }, (_, index) => ({
+            label: `Bookstore ${index + 1}`,
+            url: `https://books.example.com/${index + 1}`,
+          }))
+        )
+      )
+    ).resolves.toEqual({
+      message: "A volume can have up to 10 bookstore links.",
+      ok: false,
+    });
+    expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
+  });
+
+  it("refuses a list the editor did not write", async () => {
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        formData({ bookstore_links: "{", volume_id: VOLUME_ID })
+      )
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
+  });
+
+  it("hands on the rows the API refused", async () => {
+    const fieldErrors = {
+      "bookstore_links[0].url": "Enter a URL for link 1.",
+    };
+
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      fieldErrors,
+      message: "Enter a URL for link 1.",
+      ok: false,
+    });
+
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+
+    await expect(
+      setVolumeBookstoreLinksAction(
+        null,
+        linksForm([{ label: "Bookstore A", url: "https://books.example.com" }])
+      )
+    ).resolves.toEqual({
+      fieldErrors,
+      message: "Enter a URL for link 1.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
 

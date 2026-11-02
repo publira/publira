@@ -19,7 +19,9 @@
 -- The series' Volumes tab is photographed too, so the file gives the series
 -- two volumes: one on sale holding both episodes above, and an empty one never
 -- on sale. An episode a volume holds cannot be deleted, so the volumes go
--- first and are written again after the episodes.
+-- first and are written again after the episodes. The volume on sale carries
+-- two bookstore links, which its Bookstore links section is photographed
+-- with; deleting the volume drops them with it.
 
 BEGIN;
 
@@ -183,5 +185,19 @@ FROM (
         ('018f1090-0005-7000-8000-000000000002'::uuid, 1)
 ) AS ve (episode_id, position)
 JOIN episodes e ON e.id = ve.episode_id;
+
+INSERT INTO volume_bookstore_links (tenant_id, volume_id, position, label, url)
+SELECT
+    v.tenant_id,
+    v.id,
+    l.position,
+    l.label,
+    l.url
+FROM (
+    VALUES
+        (0, 'Bookstore A', 'https://books.example.com/moderation-volume-1'),
+        (1, 'Bookstore B', 'https://shop.example.net/items/moderation-1')
+) AS l (position, label, url)
+JOIN volumes v ON v.id = '018f1090-0005-7000-8000-000000000005'::uuid;
 
 COMMIT;
