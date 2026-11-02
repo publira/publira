@@ -80,6 +80,10 @@ const VolumeBookstoreLinkRow = ({
           </Field.Label>
           <Field.Content>
             <Input
+              // The save in flight carries what the row held when it was
+              // sent, and its answer remounts the list, so an edit made
+              // meanwhile would be dropped unsaved.
+              disabled={pending}
               onChange={(event) =>
                 onChange({ label: event.target.value, url: row.url })
               }
@@ -96,6 +100,7 @@ const VolumeBookstoreLinkRow = ({
           </Field.Label>
           <Field.Content>
             <Input
+              disabled={pending}
               inputMode="url"
               onChange={(event) =>
                 onChange({ label: row.label, url: event.target.value })

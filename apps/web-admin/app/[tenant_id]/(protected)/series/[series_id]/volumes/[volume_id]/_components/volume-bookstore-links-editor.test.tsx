@@ -10,6 +10,7 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -166,5 +167,28 @@ describe("VolumeBookstoreLinksEditor", () => {
     // The form repeats it under the list, so it is looked for on the row.
     expect(await within(rows()[1]).findByText(message)).toBeTruthy();
     expect(within(rows()[0]).queryByText(message)).toBeNull();
+  });
+
+  // The save carries what the rows held when it was sent, and its answer
+  // remounts the list, so an edit made meanwhile would be dropped.
+  it("closes the fields while a save is in flight", async () => {
+    const { promise, resolve } = Promise.withResolvers<null>();
+    render(links, () => promise);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const fields = [
+      ...screen.getAllByRole<HTMLInputElement>("textbox", { name: "Label" }),
+      ...screen.getAllByRole<HTMLInputElement>("textbox", { name: "URL" }),
+    ];
+
+    await waitFor(() => {
+      expect(fields.every((field) => field.disabled)).toBe(true);
+    });
+
+    resolve(null);
+    await waitFor(() => {
+      expect(fields.every((field) => field.disabled)).toBe(false);
+    });
   });
 });
