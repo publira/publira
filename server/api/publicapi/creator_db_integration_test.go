@@ -318,10 +318,12 @@ func TestDBCreatorServiceDoesNotAnswerAboutAnUnlinkedCreator(t *testing.T) {
 		_, statsErr := client.GetMyCreatorStats(ctx, &publirav1.GetMyCreatorStatsRequest{Tenant: tenantContext(f.tenant), CreatorId: creatorID})
 		_, listErr := client.ListMyCreatorStatements(ctx, &publirav1.ListMyCreatorStatementsRequest{Tenant: tenantContext(f.tenant), CreatorId: creatorID})
 		_, getErr := client.GetMyCreatorStatement(ctx, &publirav1.GetMyCreatorStatementRequest{Tenant: tenantContext(f.tenant), CreatorId: creatorID, Period: f.closedPeriod})
+		_, commentsErr := client.ListMyCreatorEpisodeComments(ctx, &publirav1.ListMyCreatorEpisodeCommentsRequest{Tenant: tenantContext(f.tenant), CreatorId: creatorID})
 		for name, err := range map[string]error{
-			"GetMyCreatorStats":       statsErr,
-			"ListMyCreatorStatements": listErr,
-			"GetMyCreatorStatement":   getErr,
+			"GetMyCreatorStats":            statsErr,
+			"ListMyCreatorStatements":      listErr,
+			"GetMyCreatorStatement":        getErr,
+			"ListMyCreatorEpisodeComments": commentsErr,
 		} {
 			if connect.CodeOf(err) != connect.CodeNotFound {
 				t.Fatalf("%s of creator %s: error = %v, want not_found", name, creatorID, err)
@@ -412,11 +414,13 @@ func TestDBCreatorServiceKeepsToTheTenantsSwitches(t *testing.T) {
 	_, statsErr := client.GetMyCreatorStats(ctx, &publirav1.GetMyCreatorStatsRequest{Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String()})
 	_, listErr = client.ListMyCreatorStatements(ctx, &publirav1.ListMyCreatorStatementsRequest{Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String()})
 	_, getErr = client.GetMyCreatorStatement(ctx, &publirav1.GetMyCreatorStatementRequest{Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String(), Period: f.closedPeriod})
+	_, commentsErr := client.ListMyCreatorEpisodeComments(ctx, &publirav1.ListMyCreatorEpisodeCommentsRequest{Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String()})
 	for name, err := range map[string]error{
-		"ListMyCreators":          listCreatorsErr,
-		"GetMyCreatorStats":       statsErr,
-		"ListMyCreatorStatements": listErr,
-		"GetMyCreatorStatement":   getErr,
+		"ListMyCreators":               listCreatorsErr,
+		"GetMyCreatorStats":            statsErr,
+		"ListMyCreatorStatements":      listErr,
+		"GetMyCreatorStatement":        getErr,
+		"ListMyCreatorEpisodeComments": commentsErr,
 	} {
 		assertFailedPreconditionReason(t, name, err, rpcerrors.ReasonCreatorPagesDisabled)
 	}

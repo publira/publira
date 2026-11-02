@@ -6,13 +6,15 @@ import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobu
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { ClientSurface, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
+import type { EpisodeComment } from "./comment_pb";
+import { file_publira_v1_comment } from "./comment_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file publira/v1/creator.proto.
  */
 export const file_publira_v1_creator: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NyZWF0b3IucHJvdG8SCnB1YmxpcmEudjEicAoJTXlDcmVhdG9yEgoKAmlkGAEgASgJEhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJEhYKDmljb25faW1hZ2VfdXJsGAQgASgJEh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYBSABKAUiegoVTGlzdE15Q3JlYXRvcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIwCgdzdXJmYWNlGAIgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlIlgKFkxpc3RNeUNyZWF0b3JzUmVzcG9uc2USJwoIY3JlYXRvcnMYASADKAsyFS5wdWJsaXJhLnYxLk15Q3JlYXRvchIVCg1zYWxlc192aXNpYmxlGAIgASgIIoQCChVNeUNyZWF0b3JFcGlzb2RlU3RhdHMSGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRIUCgxzZXJpZXNfdGl0bGUYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIZChFtZW1iZXJfdmlld19jb3VudBgFIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgGIAEoAxIbCg5wdXJjaGFzZV9jb3VudBgHIAEoA0gAiAEBEhcKCm5ldF9hbW91bnQYCCABKANIAYgBAUIRCg9fcHVyY2hhc2VfY291bnRCDQoLX25ldF9hbW91bnQivwEKGEdldE15Q3JlYXRvclN0YXRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSMAoHc3VyZmFjZRgCIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgpjcmVhdG9yX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCRINCgVsaW1pdBgFIAEoBRINCgV0b2tlbhgGIAEoCSKiAgoZR2V0TXlDcmVhdG9yU3RhdHNSZXNwb25zZRIUCgxwZXJpb2Rfc3RhcnQYASABKAkSEgoKcGVyaW9kX2VuZBgCIAEoCRIRCgl0aW1lX3pvbmUYAyABKAkSFgoOZm9sbG93ZXJfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSHAoUdG90YWxfY29tcGxldGVfY291bnQYBiABKAMSEAoIY3VycmVuY3kYByABKAkSMwoIZXBpc29kZXMYCCADKAsyIS5wdWJsaXJhLnYxLk15Q3JlYXRvckVwaXNvZGVTdGF0cxIWCg5wcmV2aW91c190b2tlbhgJIAEoCRISCgpuZXh0X3Rva2VuGAogASgJIrYBChJNeUNyZWF0b3JTdGF0ZW1lbnQSDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRIRCgljbG9zZWRfYXQYAyABKAkSEAoIY3VycmVuY3kYBCABKAkSEgoKc2FsZV9jb3VudBgFIAEoAxIUCgxncm9zc19hbW91bnQYBiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAcgASgDEhUKDXBheW91dF9hbW91bnQYCCABKAMi4AIKFk15Q3JlYXRvclN0YXRlbWVudExpbmUSEwoLbGluZV9udW1iZXIYASABKAUSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRIUCgxzZXJpZXNfdGl0bGUYAyABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBCABKAkSFQoNZXBpc29kZV90aXRsZRgFIAEoCRIRCglyb2xlX25hbWUYBiABKAkSEgoKc2FsZV9jb3VudBgHIAEoBRIUCgxncm9zc19hbW91bnQYCCABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAkgASgDEhEKCXNoYXJlX2JwcxgKIAEoBRIVCg1wYXlvdXRfYW1vdW50GAsgASgDEhcKD2FkanVzdGVkX3BlcmlvZBgMIAEoCRI2CgZzb3VyY2UYDSABKA4yJi5wdWJsaXJhLnYxLkNyZWF0b3JTdGF0ZW1lbnRMaW5lU291cmNlIrUBCh5MaXN0TXlDcmVhdG9yU3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USEgoKY3JlYXRvcl9pZBgDIAEoCRINCgVsaW1pdBgEIAEoBRINCgV0b2tlbhgFIAEoCSKBAQofTGlzdE15Q3JlYXRvclN0YXRlbWVudHNSZXNwb25zZRIyCgpzdGF0ZW1lbnRzGAEgAygLMh4ucHVibGlyYS52MS5NeUNyZWF0b3JTdGF0ZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLDAQocR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSMAoHc3VyZmFjZRgCIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgpjcmVhdG9yX2lkGAMgASgJEg4KBnBlcmlvZBgEIAEoCRINCgVsaW1pdBgFIAEoBRINCgV0b2tlbhgGIAEoCSKxAQodR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVzcG9uc2USMQoJc3RhdGVtZW50GAEgASgLMh4ucHVibGlyYS52MS5NeUNyZWF0b3JTdGF0ZW1lbnQSMQoFbGluZXMYAiADKAsyIi5wdWJsaXJhLnYxLk15Q3JlYXRvclN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSqjAQoaQ3JlYXRvclN0YXRlbWVudExpbmVTb3VyY2USLQopQ1JFQVRPUl9TVEFURU1FTlRfTElORV9TT1VSQ0VfVU5TUEVDSUZJRUQQABImCiJDUkVBVE9SX1NUQVRFTUVOVF9MSU5FX1NPVVJDRV9TQUxFEAESLgoqQ1JFQVRPUl9TVEFURU1FTlRfTElORV9TT1VSQ0VfU1VCU0NSSVBUSU9OEAIytQMKDkNyZWF0b3JTZXJ2aWNlElkKDkxpc3RNeUNyZWF0b3JzEiEucHVibGlyYS52MS5MaXN0TXlDcmVhdG9yc1JlcXVlc3QaIi5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JzUmVzcG9uc2UiABJiChFHZXRNeUNyZWF0b3JTdGF0cxIkLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdHNSZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeUNyZWF0b3JTdGF0c1Jlc3BvbnNlIgASdAoXTGlzdE15Q3JlYXRvclN0YXRlbWVudHMSKi5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JTdGF0ZW1lbnRzUmVxdWVzdBorLnB1YmxpcmEudjEuTGlzdE15Q3JlYXRvclN0YXRlbWVudHNSZXNwb25zZSIAEm4KFUdldE15Q3JlYXRvclN0YXRlbWVudBIoLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVxdWVzdBopLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NyZWF0b3IucHJvdG8SCnB1YmxpcmEudjEicAoJTXlDcmVhdG9yEgoKAmlkGAEgASgJEhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJEhYKDmljb25faW1hZ2VfdXJsGAQgASgJEh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYBSABKAUiegoVTGlzdE15Q3JlYXRvcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIwCgdzdXJmYWNlGAIgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlIlgKFkxpc3RNeUNyZWF0b3JzUmVzcG9uc2USJwoIY3JlYXRvcnMYASADKAsyFS5wdWJsaXJhLnYxLk15Q3JlYXRvchIVCg1zYWxlc192aXNpYmxlGAIgASgIIoQCChVNeUNyZWF0b3JFcGlzb2RlU3RhdHMSGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRIUCgxzZXJpZXNfdGl0bGUYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIZChFtZW1iZXJfdmlld19jb3VudBgFIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgGIAEoAxIbCg5wdXJjaGFzZV9jb3VudBgHIAEoA0gAiAEBEhcKCm5ldF9hbW91bnQYCCABKANIAYgBAUIRCg9fcHVyY2hhc2VfY291bnRCDQoLX25ldF9hbW91bnQivwEKGEdldE15Q3JlYXRvclN0YXRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSMAoHc3VyZmFjZRgCIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgpjcmVhdG9yX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCRINCgVsaW1pdBgFIAEoBRINCgV0b2tlbhgGIAEoCSKiAgoZR2V0TXlDcmVhdG9yU3RhdHNSZXNwb25zZRIUCgxwZXJpb2Rfc3RhcnQYASABKAkSEgoKcGVyaW9kX2VuZBgCIAEoCRIRCgl0aW1lX3pvbmUYAyABKAkSFgoOZm9sbG93ZXJfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSHAoUdG90YWxfY29tcGxldGVfY291bnQYBiABKAMSEAoIY3VycmVuY3kYByABKAkSMwoIZXBpc29kZXMYCCADKAsyIS5wdWJsaXJhLnYxLk15Q3JlYXRvckVwaXNvZGVTdGF0cxIWCg5wcmV2aW91c190b2tlbhgJIAEoCRISCgpuZXh0X3Rva2VuGAogASgJIrYBChJNeUNyZWF0b3JTdGF0ZW1lbnQSDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRIRCgljbG9zZWRfYXQYAyABKAkSEAoIY3VycmVuY3kYBCABKAkSEgoKc2FsZV9jb3VudBgFIAEoAxIUCgxncm9zc19hbW91bnQYBiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAcgASgDEhUKDXBheW91dF9hbW91bnQYCCABKAMi4AIKFk15Q3JlYXRvclN0YXRlbWVudExpbmUSEwoLbGluZV9udW1iZXIYASABKAUSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRIUCgxzZXJpZXNfdGl0bGUYAyABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBCABKAkSFQoNZXBpc29kZV90aXRsZRgFIAEoCRIRCglyb2xlX25hbWUYBiABKAkSEgoKc2FsZV9jb3VudBgHIAEoBRIUCgxncm9zc19hbW91bnQYCCABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAkgASgDEhEKCXNoYXJlX2JwcxgKIAEoBRIVCg1wYXlvdXRfYW1vdW50GAsgASgDEhcKD2FkanVzdGVkX3BlcmlvZBgMIAEoCRI2CgZzb3VyY2UYDSABKA4yJi5wdWJsaXJhLnYxLkNyZWF0b3JTdGF0ZW1lbnRMaW5lU291cmNlIrUBCh5MaXN0TXlDcmVhdG9yU3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USEgoKY3JlYXRvcl9pZBgDIAEoCRINCgVsaW1pdBgEIAEoBRINCgV0b2tlbhgFIAEoCSKBAQofTGlzdE15Q3JlYXRvclN0YXRlbWVudHNSZXNwb25zZRIyCgpzdGF0ZW1lbnRzGAEgAygLMh4ucHVibGlyYS52MS5NeUNyZWF0b3JTdGF0ZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLDAQocR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSMAoHc3VyZmFjZRgCIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgpjcmVhdG9yX2lkGAMgASgJEg4KBnBlcmlvZBgEIAEoCRINCgVsaW1pdBgFIAEoBRINCgV0b2tlbhgGIAEoCSKxAQodR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVzcG9uc2USMQoJc3RhdGVtZW50GAEgASgLMh4ucHVibGlyYS52MS5NeUNyZWF0b3JTdGF0ZW1lbnQSMQoFbGluZXMYAiADKAsyIi5wdWJsaXJhLnYxLk15Q3JlYXRvclN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSKoAQoXTXlDcmVhdG9yRXBpc29kZUNvbW1lbnQSKwoHY29tbWVudBgBIAEoCzIaLnB1YmxpcmEudjEuRXBpc29kZUNvbW1lbnQSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRIUCgxzZXJpZXNfdGl0bGUYAyABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBCABKAkSFQoNZXBpc29kZV90aXRsZRgFIAEoCSLKAQojTGlzdE15Q3JlYXRvckVwaXNvZGVDb21tZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USEgoKY3JlYXRvcl9pZBgDIAEoCRIOCgZsb2NhbGUYBCABKAkSDQoFbGltaXQYBSABKAUSDQoFdG9rZW4YBiABKAkiiQEKJExpc3RNeUNyZWF0b3JFcGlzb2RlQ29tbWVudHNSZXNwb25zZRI1Cghjb21tZW50cxgBIAMoCzIjLnB1YmxpcmEudjEuTXlDcmVhdG9yRXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSqjAQoaQ3JlYXRvclN0YXRlbWVudExpbmVTb3VyY2USLQopQ1JFQVRPUl9TVEFURU1FTlRfTElORV9TT1VSQ0VfVU5TUEVDSUZJRUQQABImCiJDUkVBVE9SX1NUQVRFTUVOVF9MSU5FX1NPVVJDRV9TQUxFEAESLgoqQ1JFQVRPUl9TVEFURU1FTlRfTElORV9TT1VSQ0VfU1VCU0NSSVBUSU9OEAIyuwQKDkNyZWF0b3JTZXJ2aWNlElkKDkxpc3RNeUNyZWF0b3JzEiEucHVibGlyYS52MS5MaXN0TXlDcmVhdG9yc1JlcXVlc3QaIi5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JzUmVzcG9uc2UiABJiChFHZXRNeUNyZWF0b3JTdGF0cxIkLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdHNSZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeUNyZWF0b3JTdGF0c1Jlc3BvbnNlIgASdAoXTGlzdE15Q3JlYXRvclN0YXRlbWVudHMSKi5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JTdGF0ZW1lbnRzUmVxdWVzdBorLnB1YmxpcmEudjEuTGlzdE15Q3JlYXRvclN0YXRlbWVudHNSZXNwb25zZSIAEm4KFUdldE15Q3JlYXRvclN0YXRlbWVudBIoLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVxdWVzdBopLnB1YmxpcmEudjEuR2V0TXlDcmVhdG9yU3RhdGVtZW50UmVzcG9uc2UiABKDAQocTGlzdE15Q3JlYXRvckVwaXNvZGVDb21tZW50cxIvLnB1YmxpcmEudjEuTGlzdE15Q3JlYXRvckVwaXNvZGVDb21tZW50c1JlcXVlc3QaMC5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JFcGlzb2RlQ29tbWVudHNSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types, file_publira_v1_comment]);
 
 /**
  * A creator the signed-in reader's account is linked to: the link
@@ -642,6 +644,135 @@ export const GetMyCreatorStatementResponseSchema: GenMessage<GetMyCreatorStateme
   messageDesc(file_publira_v1_creator, 11);
 
 /**
+ * A published comment on an episode crediting the creator, with the episode
+ * it was left on.
+ *
+ * @generated from message publira.v1.MyCreatorEpisodeComment
+ */
+export type MyCreatorEpisodeComment = Message<"publira.v1.MyCreatorEpisodeComment"> & {
+  /**
+   * As ListEpisodeComments answers it, so the creator's own comments carry
+   * creator there as they do here.
+   *
+   * @generated from field: publira.v1.EpisodeComment comment = 1;
+   */
+  comment?: EpisodeComment | undefined;
+
+  /**
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
+
+  /**
+   * @generated from field: string series_title = 3;
+   */
+  seriesTitle: string;
+
+  /**
+   * @generated from field: string episode_public_id = 4;
+   */
+  episodePublicId: string;
+
+  /**
+   * @generated from field: string episode_title = 5;
+   */
+  episodeTitle: string;
+};
+
+/**
+ * Describes the message publira.v1.MyCreatorEpisodeComment.
+ * Use `create(MyCreatorEpisodeCommentSchema)` to create a new message.
+ */
+export const MyCreatorEpisodeCommentSchema: GenMessage<MyCreatorEpisodeComment> = /*@__PURE__*/
+  messageDesc(file_publira_v1_creator, 12);
+
+/**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
+ * @generated from message publira.v1.ListMyCreatorEpisodeCommentsRequest
+ */
+export type ListMyCreatorEpisodeCommentsRequest = Message<"publira.v1.ListMyCreatorEpisodeCommentsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.ClientSurface surface = 2;
+   */
+  surface: ClientSurface;
+
+  /**
+   * MyCreator.id of a creator the account is linked to. Any other is
+   * not_found.
+   *
+   * @generated from field: string creator_id = 3;
+   */
+  creatorId: string;
+
+  /**
+   * The reader's locale, which every title is given in. Empty means the
+   * tenant's default locale.
+   *
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
+
+  /**
+   * Max comments in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 5;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page. A token
+   * issued for another creator or another surface is invalid_argument.
+   *
+   * @generated from field: string token = 6;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.ListMyCreatorEpisodeCommentsRequest.
+ * Use `create(ListMyCreatorEpisodeCommentsRequestSchema)` to create a new message.
+ */
+export const ListMyCreatorEpisodeCommentsRequestSchema: GenMessage<ListMyCreatorEpisodeCommentsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_creator, 13);
+
+/**
+ * @generated from message publira.v1.ListMyCreatorEpisodeCommentsResponse
+ */
+export type ListMyCreatorEpisodeCommentsResponse = Message<"publira.v1.ListMyCreatorEpisodeCommentsResponse"> & {
+  /**
+   * The published comments on every episode crediting the creator that the
+   * calling surface shows now, newest first. An episode credited only through
+   * its series is not among them.
+   *
+   * @generated from field: repeated publira.v1.MyCreatorEpisodeComment comments = 1;
+   */
+  comments: MyCreatorEpisodeComment[];
+
+  /**
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.v1.ListMyCreatorEpisodeCommentsResponse.
+ * Use `create(ListMyCreatorEpisodeCommentsResponseSchema)` to create a new message.
+ */
+export const ListMyCreatorEpisodeCommentsResponseSchema: GenMessage<ListMyCreatorEpisodeCommentsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_creator, 14);
+
+/**
  * What one line of a creator's statement credits.
  *
  * @generated from enum publira.v1.CreatorStatementLineSource
@@ -725,6 +856,17 @@ export const CreatorService: GenService<{
     methodKind: "unary";
     input: typeof GetMyCreatorStatementRequestSchema;
     output: typeof GetMyCreatorStatementResponseSchema;
+  },
+  /**
+   * What readers say about the creator's episodes: exactly what every reader
+   * reads under each of them, and nothing awaiting approval or removed.
+   *
+   * @generated from rpc publira.v1.CreatorService.ListMyCreatorEpisodeComments
+   */
+  listMyCreatorEpisodeComments: {
+    methodKind: "unary";
+    input: typeof ListMyCreatorEpisodeCommentsRequestSchema;
+    output: typeof ListMyCreatorEpisodeCommentsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_creator, 0);

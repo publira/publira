@@ -322,6 +322,9 @@ type Querier interface {
 	// Expected plans:
 	//   ListPublishedEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_episode_status_created_at
+	//   ListCreatorEpisodeComments*
+	//     -> idx_episode_comments_tenant_episode_status_created_at, once per
+	//        credited episode
 	//   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_user_created_at
 	//   ListEpisodeCommentsForModerationByCreatedAt*
@@ -1903,6 +1906,17 @@ type Querier interface {
 	// The accounts linked to one creator, oldest link first. The account columns
 	// are the ones GetTenantReaderByID selects, less the birth date.
 	ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCreatorAccountsByCreatorIDParams) ([]ListCreatorAccountsByCreatorIDRow, error)
+	// The previous-page half of ListCreatorEpisodeCommentsDesc. The handler
+	// reverses the returned rows to preserve the newest-first display order.
+	ListCreatorEpisodeCommentsAsc(ctx context.Context, arg ListCreatorEpisodeCommentsAscParams) ([]ListCreatorEpisodeCommentsAscRow, error)
+	// The published comments on every episode crediting one creator that the
+	// surface shows now, newest first: what an Author reads of what readers say
+	// about their work. The episodes are those episode_creators credits, the rule
+	// the creator grant and the comment mark follow, rather than the series
+	// credit, and an episode credited to the creator under two roles is listed
+	// once. The comment columns are ListPublishedEpisodeCommentsByCreatedAtDesc's,
+	// so a comment reads here as it does under its episode.
+	ListCreatorEpisodeCommentsDesc(ctx context.Context, arg ListCreatorEpisodeCommentsDescParams) ([]ListCreatorEpisodeCommentsDescRow, error)
 	// Resolves the roles a series form credited creators in. The caller compares
 	// the row count against what it asked for, so an id of another tenant reads
 	// as a role that does not exist.

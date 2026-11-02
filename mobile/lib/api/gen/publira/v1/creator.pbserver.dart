@@ -15,31 +15,36 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
-import 'creator.pb.dart' as $1;
+import 'creator.pb.dart' as $2;
 import 'creator.pbjson.dart';
 
 export 'creator.pb.dart';
 
 abstract class CreatorServiceBase extends $pb.GeneratedService {
-  $async.Future<$1.ListMyCreatorsResponse> listMyCreators(
-      $pb.ServerContext ctx, $1.ListMyCreatorsRequest request);
-  $async.Future<$1.GetMyCreatorStatsResponse> getMyCreatorStats(
-      $pb.ServerContext ctx, $1.GetMyCreatorStatsRequest request);
-  $async.Future<$1.ListMyCreatorStatementsResponse> listMyCreatorStatements(
-      $pb.ServerContext ctx, $1.ListMyCreatorStatementsRequest request);
-  $async.Future<$1.GetMyCreatorStatementResponse> getMyCreatorStatement(
-      $pb.ServerContext ctx, $1.GetMyCreatorStatementRequest request);
+  $async.Future<$2.ListMyCreatorsResponse> listMyCreators(
+      $pb.ServerContext ctx, $2.ListMyCreatorsRequest request);
+  $async.Future<$2.GetMyCreatorStatsResponse> getMyCreatorStats(
+      $pb.ServerContext ctx, $2.GetMyCreatorStatsRequest request);
+  $async.Future<$2.ListMyCreatorStatementsResponse> listMyCreatorStatements(
+      $pb.ServerContext ctx, $2.ListMyCreatorStatementsRequest request);
+  $async.Future<$2.GetMyCreatorStatementResponse> getMyCreatorStatement(
+      $pb.ServerContext ctx, $2.GetMyCreatorStatementRequest request);
+  $async.Future<$2.ListMyCreatorEpisodeCommentsResponse>
+      listMyCreatorEpisodeComments($pb.ServerContext ctx,
+          $2.ListMyCreatorEpisodeCommentsRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
       case 'ListMyCreators':
-        return $1.ListMyCreatorsRequest();
+        return $2.ListMyCreatorsRequest();
       case 'GetMyCreatorStats':
-        return $1.GetMyCreatorStatsRequest();
+        return $2.GetMyCreatorStatsRequest();
       case 'ListMyCreatorStatements':
-        return $1.ListMyCreatorStatementsRequest();
+        return $2.ListMyCreatorStatementsRequest();
       case 'GetMyCreatorStatement':
-        return $1.GetMyCreatorStatementRequest();
+        return $2.GetMyCreatorStatementRequest();
+      case 'ListMyCreatorEpisodeComments':
+        return $2.ListMyCreatorEpisodeCommentsRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -49,15 +54,18 @@ abstract class CreatorServiceBase extends $pb.GeneratedService {
       $core.String methodName, $pb.GeneratedMessage request) {
     switch (methodName) {
       case 'ListMyCreators':
-        return listMyCreators(ctx, request as $1.ListMyCreatorsRequest);
+        return listMyCreators(ctx, request as $2.ListMyCreatorsRequest);
       case 'GetMyCreatorStats':
-        return getMyCreatorStats(ctx, request as $1.GetMyCreatorStatsRequest);
+        return getMyCreatorStats(ctx, request as $2.GetMyCreatorStatsRequest);
       case 'ListMyCreatorStatements':
         return listMyCreatorStatements(
-            ctx, request as $1.ListMyCreatorStatementsRequest);
+            ctx, request as $2.ListMyCreatorStatementsRequest);
       case 'GetMyCreatorStatement':
         return getMyCreatorStatement(
-            ctx, request as $1.GetMyCreatorStatementRequest);
+            ctx, request as $2.GetMyCreatorStatementRequest);
+      case 'ListMyCreatorEpisodeComments':
+        return listMyCreatorEpisodeComments(
+            ctx, request as $2.ListMyCreatorEpisodeCommentsRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

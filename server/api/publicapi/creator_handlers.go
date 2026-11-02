@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"strconv"
 	"time"
 
@@ -34,6 +35,7 @@ const (
 	creatorStatsListOrder          = "complete_count_desc"
 	creatorStatementsListOrder     = "period_desc"
 	creatorStatementLinesListOrder = "line_number_asc"
+	creatorCommentsListOrder       = "created_at_desc"
 )
 
 var (
@@ -635,5 +637,127 @@ func (s *apiServer) GetMyCreatorStatement(
 			res.NextToken = listKey.Encode(pagination.Forward, strconv.Itoa(int(rows[len(rows)-1].LineNumber)))
 		}
 	}
+	return noStorePrivateResponse(ctx, res), nil
+}
+
+func (s *apiServer) creatorEpisodeCommentPage(
+	ctx context.Context,
+	params dbmodels.ListCreatorEpisodeCommentsDescParams,
+	direction pagination.Direction,
+) ([]dbmodels.ListCreatorEpisodeCommentsDescRow, error) {
+	if direction == pagination.Backward {
+		rows, err := s.queriesFor(ctx).ListCreatorEpisodeCommentsAsc(ctx, dbmodels.ListCreatorEpisodeCommentsAscParams(params))
+		if err != nil {
+			return nil, err
+		}
+		mapped := make([]dbmodels.ListCreatorEpisodeCommentsDescRow, 0, len(rows))
+		for _, row := range rows {
+			mapped = append(mapped, dbmodels.ListCreatorEpisodeCommentsDescRow(row))
+		}
+		return mapped, nil
+	}
+	return s.queriesFor(ctx).ListCreatorEpisodeCommentsDesc(ctx, params)
+}
+
+// ListMyCreatorEpisodeComments lists, newest first, the published comments on
+// every episode crediting the creator that the calling surface shows now: the
+// list each of those episodes shows every reader, gathered into one. A comment
+// that is hidden or withdrawn leaves the list, so an empty page recovers once,
+// as ListEpisodeComments does.
+func (s *apiServer) ListMyCreatorEpisodeComments(
+	ctx context.Context,
+	req *publirav1.ListMyCreatorEpisodeCommentsRequest,
+) (*publirav1.ListMyCreatorEpisodeCommentsResponse, error) {
+	reader, err := s.creatorPageReaderOf(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	readerLocale, err := readerLocaleOf(req.Locale, reader.tenant)
+	if err != nil {
+		return nil, err
+	}
+	creatorID, _, err := s.linkedCreator(ctx, reader, req.CreatorId)
+	if err != nil {
+		return nil, err
+	}
+
+	listKey := pagination.NewListKey(creatorCommentsListOrder).Value("creator", creatorID.String())
+	limit := pagination.NormalizeLimit(req.Limit, defaultCreatorPagePageSize, maxCreatorPagePageSize)
+	cursor, err := decodeSurfaceToken(req.Token, reader.surface)
+	if err != nil {
+		return nil, invalidCreatorPageTokenError()
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, invalidCreatorPageTokenError()
+		}
+	}
+
+	rows, err := s.creatorEpisodeCommentPage(ctx, dbmodels.ListCreatorEpisodeCommentsDescParams{
+		TenantID:        reader.tenant.ID,
+		CreatorID:       creatorID,
+		Surface:         reader.surface,
+		Locale:          readerLocale,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		Limit:           limit + 1,
+	}, cursor.Direction)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the creator's episode comments", err,
+			"tenant_id", reader.tenant.ID.String(), "creator_id", creatorID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
+	authorIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		if !slices.Contains(authorIDs, row.UserID) {
+			authorIDs = append(authorIDs, row.UserID)
+		}
+	}
+	icons, err := s.userIcons(ctx, s.queriesFor(ctx), reader.tenant, authorIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &publirav1.ListMyCreatorEpisodeCommentsResponse{
+		Comments: make([]*publirav1.MyCreatorEpisodeComment, 0, len(rows)),
+	}
+	for _, row := range rows {
+		res.Comments = append(res.Comments, &publirav1.MyCreatorEpisodeComment{
+			Comment: &publirav1.EpisodeComment{
+				Id:                      row.ID.String(),
+				PublicId:                row.PublicID,
+				Body:                    row.Body,
+				CreatedAt:               row.CreatedAt.UTC().Format(time.RFC3339),
+				AuthorPublicId:          row.AuthorPublicID,
+				AuthorName:              row.AuthorName,
+				Creator:                 episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+				AuthorIconImageVariants: icons[row.UserID].Variants,
+			},
+			SeriesPublicId:  row.SeriesPublicID,
+			SeriesTitle:     row.SeriesTitle,
+			EpisodePublicId: row.EpisodePublicID,
+			EpisodeTitle:    row.EpisodeTitle,
+		})
+	}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+	bindSurfaceTokens(reader.surface, &res.PreviousToken, &res.NextToken)
 	return noStorePrivateResponse(ctx, res), nil
 }
