@@ -124,8 +124,9 @@ class FakeAuthRepository implements AuthRepository {
   AuthFailure? emailFailure;
 
   /// What the account holds about notifications, which
-  /// [updateNotificationSettings] writes. Every cell on by default, as the
-  /// API answers an account that has saved nothing.
+  /// [updateNotificationSettings] writes. Every cell at
+  /// [notificationCellDefault], as the API answers an account that has saved
+  /// nothing.
   var notificationSettings = const NotificationSettings(preferences: {});
 
   /// Thrown by [readNotificationSettings], standing in for settings that

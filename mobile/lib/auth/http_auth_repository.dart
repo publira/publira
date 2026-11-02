@@ -780,11 +780,14 @@ class HttpAuthRepository implements AuthRepository {
       preferences.commentsEmailEnabled,
     (NotificationCategory.announcements, NotificationChannel.inbox) =>
       preferences.announcementsInboxEnabled,
+    (NotificationCategory.announcements, NotificationChannel.webPush) =>
+      preferences.announcementsWebPushEnabled,
+    (NotificationCategory.announcements, NotificationChannel.mobilePush) =>
+      preferences.announcementsMobilePushEnabled,
     (NotificationCategory.announcements, NotificationChannel.email) =>
       preferences.announcementsEmailEnabled,
     // No cell the server delivers; [notificationCells] names none of these.
-    (NotificationCategory.comments, _) ||
-    (NotificationCategory.announcements, _) => true,
+    (NotificationCategory.comments, _) => true,
   };
 
   static void _setRequestCell(
@@ -821,11 +824,14 @@ class HttpAuthRepository implements AuthRepository {
         request.commentsEmailEnabled = enabled;
       case (NotificationCategory.announcements, NotificationChannel.inbox):
         request.announcementsInboxEnabled = enabled;
+      case (NotificationCategory.announcements, NotificationChannel.webPush):
+        request.announcementsWebPushEnabled = enabled;
+      case (NotificationCategory.announcements, NotificationChannel.mobilePush):
+        request.announcementsMobilePushEnabled = enabled;
       case (NotificationCategory.announcements, NotificationChannel.email):
         request.announcementsEmailEnabled = enabled;
       // The request has no field for a cell the server does not deliver.
-      case (NotificationCategory.comments, _) ||
-          (NotificationCategory.announcements, _):
+      case (NotificationCategory.comments, _):
         break;
     }
   }
