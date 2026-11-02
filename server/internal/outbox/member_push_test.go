@@ -76,6 +76,81 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	}
 }
 
+func TestAnnouncementPushShowsEachReadersTitleAndOpensTheAnnouncement(t *testing.T) {
+	tenantID := uuid.New()
+	announcementID := uuid.New()
+	phoneNotification := uuid.New()
+	browserNotification := uuid.New()
+	endpoint := "https://push.example.test/reader"
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{
+			NotificationID: phoneNotification, UserID: uuid.New(), Token: "phone", Platform: "android",
+			Payload: json.RawMessage(`{"announcement_title":"Maintenance tonight"}`),
+		},
+		{
+			NotificationID: browserNotification, UserID: uuid.New(), Token: endpoint, Platform: "web",
+			Endpoint: sql.NullString{String: endpoint, Valid: true},
+			P256dh:   sql.NullString{String: "p256dh", Valid: true},
+			Auth:     sql.NullString{String: "auth", Valid: true},
+			Payload:  json.RawMessage(`{"announcement_title":"今夜のメンテナンス"}`),
+		},
+	}}
+	fcm := &stubPushSender{}
+	web := &stubWebPushSender{}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: fcm, WebSender: web}, queries, defaultMemberPushPaging)
+
+	payload, err := json.Marshal(MemberPushNotificationPayload{
+		TenantID:         tenantID.String(),
+		NotificationType: NotificationTypeAnnouncementPosted,
+		SubjectKey:       AnnouncementSubjectKey(announcementID),
+		AnnouncementID:   announcementID.String(),
+		SeriesTitle:      "must not be shown",
+		EpisodeTitle:     "must not be shown",
+	})
+	if err != nil {
+		t.Fatalf("encode payload: %v", err)
+	}
+	if err := handler(context.Background(), dbmodels.OutboxEvent{
+		ID:             uuid.New(),
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      EventTypeAnnouncementPushNotification,
+		Payload:        payload,
+		IdempotencyKey: AnnouncementPushIdempotencyKey(announcementID),
+		Status:         StatusProcessing,
+	}); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	phone := fcm.sentTo(t, "phone")
+	if phone.Title != "Maintenance tonight" || phone.Body != "" {
+		t.Fatalf("phone title/body = %q / %q", phone.Title, phone.Body)
+	}
+	wantData := map[string]string{
+		"notification_id":   phoneNotification.String(),
+		"notification_type": NotificationTypeAnnouncementPosted,
+		"announcement_id":   announcementID.String(),
+		"route":             "/announcements/" + announcementID.String(),
+	}
+	if len(phone.Data) != len(wantData) {
+		t.Fatalf("phone data = %v, want %v", phone.Data, wantData)
+	}
+	for key, value := range wantData {
+		if phone.Data[key] != value {
+			t.Fatalf("phone data[%q] = %q, want %q", key, phone.Data[key], value)
+		}
+	}
+	if len(web.sent) != 1 {
+		t.Fatalf("web messages = %d, want 1", len(web.sent))
+	}
+	browser := web.sent[0].message
+	if browser.Title != "今夜のメンテナンス" || browser.Body != "" {
+		t.Fatalf("browser title/body = %q / %q", browser.Title, browser.Body)
+	}
+	if browser.Data["notification_id"] != browserNotification.String() || browser.Data["route"] != wantData["route"] {
+		t.Fatalf("browser data = %v, want the reader's notification and the announcement route", browser.Data)
+	}
+}
+
 func TestMemberPushNotificationSendsWebPushAndDeletesGoneEndpoint(t *testing.T) {
 	endpoint := "https://push.example.test/subscription"
 	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{{

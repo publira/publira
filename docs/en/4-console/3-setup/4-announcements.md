@@ -2,7 +2,7 @@
 title: Announcements
 description: Tell every reader of the site, or the readers a set of conditions selects, something at once, and keep the most important announcement in a banner above every page.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 **Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. An announcement can also be addressed only to the readers a set of conditions selects, such as the followers of one series; see [Choosing who receives it](#choosing-who-receives-it). One of them at a time can also be shown as a banner above every page of the site and the app.
@@ -35,7 +35,7 @@ The list shows each announcement's title in the default language, and the **Lang
 
 ## Sending to everyone
 
-An announcement reaches a reader's notifications and their email only while their notification settings take announcements there, so a reader who turned them off does not hear about a campaign. **Send to everyone** notifies every reader with an account, and emails every one whose address is confirmed, whatever those settings say. Keep it for a notice every reader must see, such as a change to the terms or an outage.
+An announcement reaches a reader's notifications and their email only while their notification settings take announcements there, so a reader who turned them off does not hear about a campaign. **Send to everyone** notifies every reader with an account, and emails every one whose address is confirmed, whatever those settings say. A push still reaches only a reader who turned the announcement push settings on. Keep it for a notice every reader must see, such as a change to the terms or an outage.
 
 The **Notification** column of the list says how each announcement was sent: **Sent to everyone**, or **As each reader allows** for one sent without the option.
 
@@ -66,7 +66,8 @@ An announcement with conditions reaches each reader it selects as their notifica
 
 - **On the site**, the **Announcements** page in the header lists every announcement addressed to everyone, newest first, and anyone can read it. A signed-in reader also sees there the announcements with conditions that were delivered to them. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
 - **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**. An announcement with conditions reaches only the readers it selects.
-- **By email**, every reader with a confirmed address whose notification settings take announcements by email gets a mail with the announcement's title and a link to the **Announcements** page, and every reader with a confirmed address gets it for an announcement sent with **Send to everyone**. Announcements are not sent as push notifications.
+- **By email**, every reader with a confirmed address whose notification settings take announcements by email gets a mail with the announcement's title and a link to the **Announcements** page, and every reader with a confirmed address gets it for an announcement sent with **Send to everyone**.
+- **As a push notification**, a reader whose notification settings take announcements as browser notifications gets one in their browser, and a reader whose settings take them on the phone gets one from the app. The notification's title is the announcement's title in the reader's language, and opening it shows the announcement. Both settings start off, so a reader who has saved nothing receives none, and **Send to everyone** does not override them.
 - **In the app**, the **Announcements** screen lists the same announcements, with the same read marks.
 
 A reader sees each announcement in their language: on the site, the one they browse in, and in the app, the one the app is shown in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.

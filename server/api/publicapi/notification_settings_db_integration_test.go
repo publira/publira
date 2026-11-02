@@ -71,8 +71,8 @@ func getNotificationSettingsRequest(tenant testutil.Tenant) *publirav1.GetNotifi
 	return &publirav1.GetNotificationSettingsRequest{Tenant: tenantContext(tenant)}
 }
 
-// allNotificationPreferencesOn is the grid of a reader who has turned nothing
-// off, which is what a reader who has saved nothing reads.
+// allNotificationPreferencesOn is what a reader who has saved nothing reads:
+// every cell on, except the announcement push cells, which start off.
 func allNotificationPreferencesOn() *publirav1.NotificationPreferences {
 	return &publirav1.NotificationPreferences{
 		FollowedEpisodesInboxEnabled:      true,
@@ -86,6 +86,8 @@ func allNotificationPreferencesOn() *publirav1.NotificationPreferences {
 		CommentsInboxEnabled:              true,
 		CommentsEmailEnabled:              true,
 		AnnouncementsInboxEnabled:         true,
+		AnnouncementsWebPushEnabled:       false,
+		AnnouncementsMobilePushEnabled:    false,
 		AnnouncementsEmailEnabled:         true,
 	}
 }
