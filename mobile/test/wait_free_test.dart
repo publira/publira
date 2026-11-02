@@ -121,6 +121,35 @@ void main() {
       expect(locked, findsNothing);
     });
 
+    testWidgets('opens the episode when the reader turns back into the '
+        'preview while the ticket is being spent', (tester) async {
+      offerWaitFree();
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        previewPageCount: 3,
+      );
+      waitFree.useGate = Completer<void>();
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, pages);
+      for (var turn = 0; turn < 3; turn++) {
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      }
+      await pumpUntilFound(tester, use);
+
+      await tester.tap(use);
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(find.text('3 / 3'), findsOneWidget);
+
+      waitFree.useGate!.complete();
+      await pumpUntilFound(tester, find.text('1 / 3'));
+
+      expect(waitFree.used, [paidInternalId]);
+      expect(locked, findsNothing);
+    });
+
     testWidgets('counts down to the reader\'s next ticket', (tester) async {
       offerWaitFree();
       waitFree.state = WaitFreeTicketState(

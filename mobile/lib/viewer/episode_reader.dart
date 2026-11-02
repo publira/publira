@@ -582,7 +582,7 @@ class _ReaderPagerState extends State<_ReaderPager> {
         // The end panel is read rather than looked at, so it is drawn outside
         // the zoom the pages share.
         itemBuilder: (context, screen) => screen >= widget.spreads.length
-            ? widget.endScreen
+            ? _KeptAlive(child: widget.endScreen!)
             : InteractiveViewer(
                 transformationController: _zoom,
                 // Panning is what a zoomed page needs; at 1.0 the page is
@@ -593,6 +593,31 @@ class _ReaderPagerState extends State<_ReaderPager> {
               ),
       ),
     );
+  }
+}
+
+/// Keeps the end screen built while the reader turns back from it. A gate's
+/// payment or ticket left in flight reports the episode opened only to a
+/// mounted widget, so a page view that dropped it would leave the reader on
+/// the locked episode the server has already opened.
+class _KeptAlive extends StatefulWidget {
+  const _KeptAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeptAlive> createState() => _KeptAliveState();
+}
+
+class _KeptAliveState extends State<_KeptAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
