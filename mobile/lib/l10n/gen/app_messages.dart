@@ -1827,6 +1827,41 @@ final class AppMessages {
     return _format('mobile.creator.title');
   }
 
+  /// `mobile.creator_comments.description`
+  String get creatorCommentsDescription {
+    return _format('mobile.creator_comments.description');
+  }
+
+  /// `mobile.creator_comments.empty`
+  String get creatorCommentsEmpty {
+    return _format('mobile.creator_comments.empty');
+  }
+
+  /// `mobile.creator_comments.link`
+  String get creatorCommentsLink {
+    return _format('mobile.creator_comments.link');
+  }
+
+  /// `mobile.creator_comments.load_failed`
+  String get creatorCommentsLoadFailed {
+    return _format('mobile.creator_comments.load_failed');
+  }
+
+  /// `mobile.creator_comments.page_empty`
+  String get creatorCommentsPageEmpty {
+    return _format('mobile.creator_comments.page_empty');
+  }
+
+  /// `mobile.creator_comments.reply_hint`
+  String get creatorCommentsReplyHint {
+    return _format('mobile.creator_comments.reply_hint');
+  }
+
+  /// `mobile.creator_comments.title`
+  String get creatorCommentsTitle {
+    return _format('mobile.creator_comments.title');
+  }
+
   /// `mobile.creator_pages.account_description`
   String get creatorPagesAccountDescription {
     return _format('mobile.creator_pages.account_description');
@@ -4621,6 +4656,15 @@ const _jaSources = <String, String>{
   'mobile.creator.series_empty': 'まだ公開中シリーズはありません。',
   'mobile.creator.series_heading': '関連シリーズ',
   'mobile.creator.title': '著者',
+  'mobile.creator_comments.description':
+      'この著者がクレジットされているエピソードに寄せられたコメントを、新しい順に表示します。',
+  'mobile.creator_comments.empty': 'この著者のエピソードにはまだコメントがありません。',
+  'mobile.creator_comments.link': 'コメント',
+  'mobile.creator_comments.load_failed': 'コメントを表示できませんでした。もう一度お試しください。',
+  'mobile.creator_comments.page_empty': 'このページにコメントはありません。',
+  'mobile.creator_comments.reply_hint':
+      '返信するには、コメントをタップしてそのエピソードのコメント画面を開き、そこで投稿してください。あなたのコメントには著者のバッジが付きます。',
+  'mobile.creator_comments.title': 'コメント',
   'mobile.creator_pages.account_description': '作品がどのように読まれ、いくら得ているかを確認できます。',
   'mobile.creator_pages.adjustment': '{\$period}分の返金の調整',
   'mobile.creator_pages.completions': '完読数',
@@ -5599,6 +5643,17 @@ const _enSources = <String, String>{
   'mobile.creator.series_empty': 'No published series yet.',
   'mobile.creator.series_heading': 'Related series',
   'mobile.creator.title': 'Author',
+  'mobile.creator_comments.description':
+      'What readers say about the episodes crediting this author, newest first.',
+  'mobile.creator_comments.empty':
+      'Nobody has commented on this author\'s episodes yet.',
+  'mobile.creator_comments.link': 'Comments',
+  'mobile.creator_comments.load_failed':
+      'Could not show the comments. Try again.',
+  'mobile.creator_comments.page_empty': 'This page has no comments.',
+  'mobile.creator_comments.reply_hint':
+      'To reply, tap a comment to open its episode\'s comments and post one there. Your comment carries the Author badge.',
+  'mobile.creator_comments.title': 'Comments',
   'mobile.creator_pages.account_description':
       'How your works are read, and what they earn.',
   'mobile.creator_pages.adjustment': 'Refund adjustment for {\$period}',
@@ -6592,6 +6647,15 @@ const _koSources = <String, String>{
   'mobile.creator.series_empty': '아직 공개 중인 시리즈가 없습니다.',
   'mobile.creator.series_heading': '관련 시리즈',
   'mobile.creator.title': '작가',
+  'mobile.creator_comments.description':
+      '이 작가가 크레딧된 에피소드에 달린 댓글을 최신순으로 보여 줍니다.',
+  'mobile.creator_comments.empty': '이 작가의 에피소드에 아직 댓글이 없습니다.',
+  'mobile.creator_comments.link': '댓글',
+  'mobile.creator_comments.load_failed': '댓글을 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.creator_comments.page_empty': '이 페이지에는 댓글이 없습니다.',
+  'mobile.creator_comments.reply_hint':
+      '답글을 달려면 댓글을 탭해 해당 에피소드의 댓글 화면을 열고 그곳에서 작성하세요. 작성한 댓글에는 작가 배지가 붙습니다.',
+  'mobile.creator_comments.title': '댓글',
   'mobile.creator_pages.account_description':
       '작품이 어떻게 읽히고 얼마를 벌었는지 확인할 수 있습니다.',
   'mobile.creator_pages.adjustment': '{\$period}분 환불 조정',
@@ -7480,6 +7544,14 @@ const _zhHansSources = <String, String>{
   'mobile.creator.series_empty': '暂无已发布的系列。',
   'mobile.creator.series_heading': '相关系列',
   'mobile.creator.title': '作者',
+  'mobile.creator_comments.description': '按从新到旧显示署名此作者的章节下的评论。',
+  'mobile.creator_comments.empty': '此作者的章节还没有评论。',
+  'mobile.creator_comments.link': '评论',
+  'mobile.creator_comments.load_failed': '无法显示评论。请重试。',
+  'mobile.creator_comments.page_empty': '本页没有评论。',
+  'mobile.creator_comments.reply_hint':
+      '如需回复，请点按评论打开该章节的评论页面，并在那里发表评论。您的评论会带有作者徽章。',
+  'mobile.creator_comments.title': '评论',
   'mobile.creator_pages.account_description': '查看您的作品如何被阅读以及收益多少。',
   'mobile.creator_pages.adjustment': '{\$period}的退款调整',
   'mobile.creator_pages.completions': '读完次数',
@@ -8308,6 +8380,14 @@ const _zhHantSources = <String, String>{
   'mobile.creator.series_empty': '目前沒有已發布的系列。',
   'mobile.creator.series_heading': '相關系列',
   'mobile.creator.title': '作者',
+  'mobile.creator_comments.description': '依從新到舊顯示署名此作者的章節下的留言。',
+  'mobile.creator_comments.empty': '此作者的章節還沒有留言。',
+  'mobile.creator_comments.link': '留言',
+  'mobile.creator_comments.load_failed': '無法顯示留言。請重試。',
+  'mobile.creator_comments.page_empty': '本頁沒有留言。',
+  'mobile.creator_comments.reply_hint':
+      '如需回覆，請點按留言開啟該章節的留言頁面，並在那裡發表留言。您的留言會帶有作者徽章。',
+  'mobile.creator_comments.title': '留言',
   'mobile.creator_pages.account_description': '查看您的作品如何被閱讀以及收益多少。',
   'mobile.creator_pages.adjustment': '{\$period}的退款調整',
   'mobile.creator_pages.completions': '讀完次數',

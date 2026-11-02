@@ -6227,6 +6227,15 @@
       "share_csv": "分享CSV",
       "share_csv_failed": "无法分享明细。请重试。"
     },
+    "creator_comments": {
+      "title": "评论",
+      "link": "评论",
+      "description": "按从新到旧显示署名此作者的章节下的评论。",
+      "reply_hint": "如需回复，请点按评论打开该章节的评论页面，并在那里发表评论。您的评论会带有作者徽章。",
+      "empty": "此作者的章节还没有评论。",
+      "page_empty": "本页没有评论。",
+      "load_failed": "无法显示评论。请重试。"
+    },
     "follow": {
       "failed": "无法更改关注状态。请重试。",
       "follow": "关注",

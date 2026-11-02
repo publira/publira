@@ -18,6 +18,7 @@ import 'package:publira/screens/confirm_email_screen.dart';
 import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
 import 'package:publira/screens/continue_sign_up_screen.dart';
+import 'package:publira/screens/creator_comments_screen.dart';
 import 'package:publira/screens/creator_pages_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
 import 'package:publira/screens/creator_statement_screen.dart';
@@ -118,12 +119,14 @@ abstract final class AppRoutes {
   static const accountPages = '$account/$pages';
 
   /// The pages of the Authors the reader's account is linked to: the first
-  /// Author's, one Author's, and one closed month of theirs. Not under
-  /// [creators], which every tab holds for the catalog's own Author pages.
+  /// Author's, one Author's, one closed month of theirs, and the comments on
+  /// their episodes. Not under [creators], which every tab holds for the
+  /// catalog's own Author pages.
   static const creatorPages = 'creator-pages';
   static const accountCreatorPages = '$account/$creatorPages';
   static const creatorPage = ':creatorId';
   static const creatorStatement = 'statements/:period';
+  static const creatorComments = 'comments';
 
   /// [accountCreatorPages] opened on the Author whose `MyCreator.id` is
   /// [creatorId].
@@ -133,6 +136,10 @@ abstract final class AppRoutes {
   /// That Author's part of the closed month [period] (`YYYY-MM`).
   static String accountCreatorStatementPath(String creatorId, String period) =>
       '${accountCreatorPagePath(creatorId)}/statements/$period';
+
+  /// The comments on the episodes crediting that Author.
+  static String accountCreatorCommentsPath(String creatorId) =>
+      '${accountCreatorPagePath(creatorId)}/$creatorComments';
 
   /// The tenant's coins, which the account screen and a locked episode's gate
   /// open on their own tab.
@@ -699,6 +706,14 @@ GoRouter createAppRouter({String? initialLocation}) {
                               child: CreatorStatementScreen(
                                 creatorId: state.pathParameters['creatorId']!,
                                 period: state.pathParameters['period']!,
+                              ),
+                            ),
+                          ),
+                          GoRoute(
+                            path: AppRoutes.creatorComments,
+                            builder: (context, state) => ReaderKeyed(
+                              child: CreatorCommentsScreen(
+                                creatorId: state.pathParameters['creatorId']!,
                               ),
                             ),
                           ),

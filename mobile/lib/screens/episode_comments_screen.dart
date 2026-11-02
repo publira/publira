@@ -4,6 +4,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
+import 'package:publira/comments/comment_view.dart';
 import 'package:publira/comments/own_comments.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -382,7 +383,11 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
               ),
           if (section.page.previousToken.isNotEmpty ||
               section.page.nextToken.isNotEmpty)
-            _Pagination(page: section.page, onShowPage: _showPage),
+            CommentPagination(
+              previousToken: section.page.previousToken,
+              nextToken: section.page.nextToken,
+              onShowPage: _showPage,
+            ),
         ],
       ),
     );
@@ -695,53 +700,21 @@ class _CommentTileState extends State<_CommentTile> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _AuthorIcon(comment: comment),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          AutospacedText(
-                            comment.displayName,
-                            style: theme.textTheme.titleSmall,
-                          ),
-                          if (comment.creatorName.isNotEmpty)
-                            const _CreatorBadge(),
-                        ],
-                      ),
-                      if (at.isNotEmpty)
-                        AutospacedText(
-                          at,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+            CommentContent(
+              comment: comment,
+              trailing: comment.awaitingApproval
+                  ? Padding(
+                      key: const ValueKey('comment-awaiting-approval'),
+                      padding: const EdgeInsets.only(left: 8),
+                      child: AutospacedText(
+                        messages.commentsAwaitingApproval,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.primary,
                         ),
-                    ],
-                  ),
-                ),
-                if (comment.awaitingApproval)
-                  Padding(
-                    key: const ValueKey('comment-awaiting-approval'),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: AutospacedText(
-                      messages.commentsAwaitingApproval,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary,
                       ),
-                    ),
-                  ),
-              ],
+                    )
+                  : null,
             ),
-            const SizedBox(height: 8),
-            AutospacedText(comment.body),
             if (_control(messages, at) case final control?)
               Align(alignment: Alignment.centerRight, child: control),
             if (message != null)
@@ -787,36 +760,6 @@ class _CommentTileState extends State<_CommentTile> {
                 author: widget.comment.displayName,
                 date: at,
               ),
-      ),
-    );
-  }
-}
-
-/// The mark beside a comment by a creator the episode credits.
-///
-/// It says so in words rather than in colour alone, so a reader who cannot
-/// tell the colour apart still reads it, and a screen reader announces it
-/// after the name it follows.
-class _CreatorBadge extends StatelessWidget {
-  const _CreatorBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DecoratedBox(
-      key: const ValueKey('comment-creator-badge'),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: AutospacedText(
-          AppMessages.of(context).commentsCreatorBadge,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-        ),
       ),
     );
   }
@@ -942,42 +885,6 @@ class _ReportDialogState extends State<_ReportDialog> {
   }
 }
 
-/// The way to the pages either side of this one.
-///
-/// The list is newest first, so the previous page holds the newer comments and
-/// the next page the older ones, which is what the labels say rather than
-/// naming a direction the reader has to work out.
-class _Pagination extends StatelessWidget {
-  const _Pagination({required this.page, required this.onShowPage});
-
-  final EpisodeCommentPage page;
-  final ValueChanged<String> onShowPage;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        TextButton(
-          key: const ValueKey('comment-newer-page'),
-          onPressed: page.previousToken.isEmpty
-              ? null
-              : () => onShowPage(page.previousToken),
-          child: AutospacedText(messages.commentsNewer),
-        ),
-        TextButton(
-          key: const ValueKey('comment-older-page'),
-          onPressed: page.nextToken.isEmpty
-              ? null
-              : () => onShowPage(page.nextToken),
-          child: AutospacedText(messages.commentsOlder),
-        ),
-      ],
-    );
-  }
-}
-
 /// A sentence in the colour a failure is told in.
 class _ErrorText extends StatelessWidget {
   const _ErrorText(this.message);
@@ -998,45 +905,6 @@ class _ErrorText extends StatelessWidget {
 
 /// The whole screen saying one thing, with the way out of it where there is
 /// one.
-/// The icon a comment's author shows, in a circle beside their name, and an
-/// icon in its place for an author who shows none or whose icon cannot be
-/// fetched.
-class _AuthorIcon extends StatelessWidget {
-  const _AuthorIcon({required this.comment});
-
-  final EpisodeComment comment;
-
-  static const _radius = 20.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final iconUrl = comment.authorIconUrl;
-    final colors = Theme.of(context).colorScheme;
-    return CircleAvatar(
-      key: ValueKey(
-        iconUrl == null
-            ? 'comment-author-icon-fallback-${comment.id}'
-            : 'comment-author-icon-${comment.id}',
-      ),
-      radius: _radius,
-      backgroundColor: colors.surfaceContainerHighest,
-      // Decoded no larger than the circle, for the reason a cover is.
-      foregroundImage: iconUrl == null
-          ? null
-          : ResizeImage.resizeIfNeeded(
-              (_radius * 2 * MediaQuery.devicePixelRatioOf(context)).round(),
-              null,
-              NetworkImage(
-                iconUrl.toString(),
-                headers: comment.imageRequestHeaders,
-              ),
-            ),
-      onForegroundImageError: iconUrl == null ? null : (_, _) {},
-      child: Icon(Icons.person_outline, color: colors.onSurfaceVariant),
-    );
-  }
-}
-
 class _CommentsMessage extends StatelessWidget {
   const _CommentsMessage({
     super.key,

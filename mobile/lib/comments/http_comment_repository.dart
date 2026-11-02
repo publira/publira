@@ -71,7 +71,9 @@ class HttpCommentRepository implements CommentRepository {
       );
       return EpisodeCommentPage(
         comments: List<EpisodeComment>.unmodifiable(
-          body.comments.map(_publicComment),
+          body.comments.map(
+            (comment) => publishedEpisodeComment(comment, _config),
+          ),
         ),
         previousToken: body.previousToken.trim(),
         nextToken: body.nextToken.trim(),
@@ -208,20 +210,6 @@ class HttpCommentRepository implements CommentRepository {
     return accessToken;
   }
 
-  /// One published comment, as every visitor of the episode sees it.
-  EpisodeComment _publicComment(pb.EpisodeComment comment) {
-    return EpisodeComment(
-      id: comment.id.trim(),
-      body: comment.body.trim(),
-      createdAt: _readInstant(comment.createdAt),
-      authorId: comment.authorPublicId.trim(),
-      authorName: comment.authorName.trim(),
-      authorIconUrl: userIconUrl(comment.authorIconImageVariants, _config),
-      imageRequestHeaders: _config.publicImageRequestHeaders,
-      creatorName: _creatorName(comment.creator),
-    );
-  }
-
   /// One of the caller's own comments, which names no author: it is the
   /// caller, and the API does not repeat their name or icon back to them.
   EpisodeComment _ownComment(pb.MyEpisodeComment comment) {
@@ -234,11 +222,6 @@ class HttpCommentRepository implements CommentRepository {
       awaitingApproval: comment.awaitingApproval,
     );
   }
-
-  /// The name the episode credits the comment's author as, empty when it
-  /// credits them as nothing: the wire format omits the unset `creator` message
-  /// every other comment carries, which reads as one without a name.
-  String _creatorName(pb.EpisodeCommentCreator creator) => creator.name.trim();
 
   CommentFailure _toFailure(ConnectException error) {
     if (error.isUnavailable) {
@@ -278,11 +261,34 @@ class HttpCommentRepository implements CommentRepository {
       ),
     };
   }
+}
 
-  /// The RFC 3339 timestamp [value], or `null` when the API sent one this
-  /// build could not read. A row without a date still renders: its text is
-  /// what the reader came for.
-  DateTime? _readInstant(String value) {
-    return DateTime.tryParse(value.trim())?.toLocal();
-  }
+/// One published comment, as every visitor of the episode sees it, wherever
+/// the API hands one over.
+EpisodeComment publishedEpisodeComment(
+  pb.EpisodeComment comment,
+  AppConfig config,
+) {
+  return EpisodeComment(
+    id: comment.id.trim(),
+    body: comment.body.trim(),
+    createdAt: _readInstant(comment.createdAt),
+    authorId: comment.authorPublicId.trim(),
+    authorName: comment.authorName.trim(),
+    authorIconUrl: userIconUrl(comment.authorIconImageVariants, config),
+    imageRequestHeaders: config.publicImageRequestHeaders,
+    creatorName: _creatorName(comment.creator),
+  );
+}
+
+/// The name the episode credits the comment's author as, empty when it
+/// credits them as nothing: the wire format omits the unset `creator` message
+/// every other comment carries, which reads as one without a name.
+String _creatorName(pb.EpisodeCommentCreator creator) => creator.name.trim();
+
+/// The RFC 3339 timestamp [value], or `null` when the API sent one this build
+/// could not read. A row without a date still renders: its text is what the
+/// reader came for.
+DateTime? _readInstant(String value) {
+  return DateTime.tryParse(value.trim())?.toLocal();
 }

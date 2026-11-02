@@ -6227,6 +6227,15 @@
       "share_csv": "分享CSV",
       "share_csv_failed": "無法分享明細。請重試。"
     },
+    "creator_comments": {
+      "title": "留言",
+      "link": "留言",
+      "description": "依從新到舊顯示署名此作者的章節下的留言。",
+      "reply_hint": "如需回覆，請點按留言開啟該章節的留言頁面，並在那裡發表留言。您的留言會帶有作者徽章。",
+      "empty": "此作者的章節還沒有留言。",
+      "page_empty": "本頁沒有留言。",
+      "load_failed": "無法顯示留言。請重試。"
+    },
     "follow": {
       "failed": "無法變更追蹤狀態。請重試。",
       "follow": "追蹤",
