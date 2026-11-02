@@ -195,7 +195,7 @@ Under **Bookstore links**, **Add a link** adds a row at the end of the list. Giv
 
 Nothing is saved until **Save bookstore links**, which saves the list as it stands, in its order: saving with every row taken out leaves the volume with none. When a row cannot be saved, the message under its field names the row, and nothing in the list is saved. Whether a URL answers is not checked.
 
-While the volume is on sale, the site's series page lists its links under the volume, beneath **Buy the book**, in the list's order. Each is a button carrying its label, which opens the bookstore in a new tab. The app does not show them yet.
+While the volume is on sale, the series page lists its links under the volume, beneath **Buy the book**, in the list's order, on the site and in the app. Each is a button carrying its label, which opens the bookstore in a new tab on the site, and in the device's browser from the app, never inside the app.
 
 ![The Bookstore links section of a volume: two links, each with its handle, its Label and URL, and the button that takes it out, then Add a link and Save bookstore links.](./series-volume-bookstore-links.png)
 

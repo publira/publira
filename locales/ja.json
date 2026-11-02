@@ -6509,6 +6509,7 @@
       "remainder_buy": "残りの{$count :integer}話を{$price}で購入",
       "remainder_discount": "1話ずつ買うと{$list_price}のところ{$percent}オフ",
       "remainder_failed": "残りのエピソードの価格を表示できませんでした",
+      "volume_bookstore_links_heading": "紙の本を購入",
       "volume_buy": "この巻を購入",
       "volume_owned": "この巻のエピソードはすべて購入済みです",
       "volume_ownership_failed": "所持している巻を確認できませんでした",

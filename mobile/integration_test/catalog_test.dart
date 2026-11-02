@@ -29,6 +29,7 @@ import 'package:publira/config.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
+import 'package:publira/links/external_browser.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -204,6 +205,7 @@ void main() {
       AuthSession? session,
       FakeCheckoutLauncher? checkoutLauncher,
       FakeIncomingLinks? incomingLinks,
+      FakeExternalBrowser? browser,
       AccountIconPicker? iconPicker,
     }) async {
       final offline = FileOfflineLibrary(
@@ -215,6 +217,7 @@ void main() {
         PubliraApp.fromConfig(
           checkoutLauncher: checkoutLauncher,
           incomingLinks: incomingLinks,
+          browser: browser ?? const PluginExternalBrowser(),
           iconPicker: iconPicker,
           config:
               config ??
@@ -1220,6 +1223,67 @@ void main() {
         for (final delay in checkoutConfirmationDelays) {
           await tester.pump(delay);
         }
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('the bookstores selling a volume open in the browser', (
+      tester,
+    ) async {
+      const volumeId = 'VOLUME000001';
+      server.details = {
+        ConnectFixtureServer.seedSeriesId:
+            ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+                  .seedSeriesId]!
+              ..volumes.add(
+                pb.Volume(
+                  id: ConnectFixtureServer.internalIdOf(volumeId),
+                  publicId: volumeId,
+                  title: 'Seed Volume 1',
+                  orderIndex: 1,
+                  price: 400,
+                  episodeIds: [
+                    ConnectFixtureServer.internalIdOf(
+                      ConnectFixtureServer.paidEpisodeId,
+                    ),
+                  ],
+                  bookstoreLinks: [
+                    pb.BookstoreLink(
+                      label: 'Bookstore A',
+                      url: 'https://books.example.com/seed-volume-1',
+                    ),
+                    pb.BookstoreLink(
+                      label: 'Bookstore B',
+                      url: 'https://shop.example.net/seed-volume-1',
+                    ),
+                  ],
+                ),
+              ),
+      };
+      final browser = FakeExternalBrowser();
+      await withFailureScreenshot(tester, 'fixture-bookstore-links', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+          browser: browser,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        final bookstoreB = find.byKey(
+          const ValueKey('volume-bookstore-link-$volumeId-1'),
+        );
+        await scrollSeriesTo(tester, bookstoreB);
+
+        await tapVisible(tester, bookstoreB);
+        await pumpUntilTrue(tester, () => browser.opened.isNotEmpty);
+
+        expect(browser.opened, [
+          Uri.parse('https://shop.example.net/seed-volume-1'),
+        ]);
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
