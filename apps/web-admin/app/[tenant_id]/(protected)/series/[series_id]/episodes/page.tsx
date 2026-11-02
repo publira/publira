@@ -17,7 +17,10 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
-import { isSignedInTenantEditor } from "#lib/auth-session";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -29,6 +32,7 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { getSeries } from "#lib/series";
+import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -190,13 +194,23 @@ const SeriesEpisodesData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
 
-  const [seriesResult, timeZone, t, canEdit, currency] = await Promise.all([
+  const [
+    seriesResult,
+    timeZone,
+    t,
+    canEdit,
+    currency,
+    episodeReviewSettingsResult,
+  ] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
     isSignedInTenantEditor(tenantId),
     getTenantCurrency(tenantId),
+    getTenantEpisodeReviewSettings(tenantId, locale),
   ]);
+
+  await redirectToLoginIfSessionRejected(episodeReviewSettingsResult);
 
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
@@ -296,6 +310,12 @@ const SeriesEpisodesData = async ({
           currency={currency}
           episodes={result.episodes}
           reorderAction={reorderEpisodesAction}
+          // Only to mark the rows waiting on review, so a read that failed
+          // leaves them unmarked rather than the list unreadable.
+          reviewRequired={
+            episodeReviewSettingsResult.ok &&
+            episodeReviewSettingsResult.episodeReviewRequired
+          }
           seriesAvailability={seriesResult.series.availability}
           seriesId={seriesResult.series.id}
           seriesPublicId={series_id}

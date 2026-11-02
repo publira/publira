@@ -60,6 +60,10 @@ import {
   parseEmailRejectionEntries,
 } from "#lib/tenant-email-rejection-settings-shared";
 import {
+  tenantEpisodeReviewSettingsCacheTag,
+  updateTenantEpisodeReviewSettings,
+} from "#lib/tenant-episode-review-settings";
+import {
   tenantLegalPagesCacheTag,
   updateTenantLegalPages,
 } from "#lib/tenant-legal-pages";
@@ -91,6 +95,7 @@ import type {
   TenantCrawlerSettingsActionState,
   TenantCreatorPageSettingsActionState,
   TenantEmailRejectionActionState,
+  TenantEpisodeReviewSettingsActionState,
   TenantLegalPagesActionState,
   TenantLocalesActionState,
   TenantSignUpSettingsActionState,
@@ -189,6 +194,15 @@ const tenantCreatorPageSettingsSchema = async (locale: Locale) => {
   return z.object({
     creatorPagesEnabled: checkboxOnFormSchema,
     creatorPagesShowSales: checkboxOnFormSchema,
+    tenantId,
+  });
+};
+
+const tenantEpisodeReviewSettingsSchema = async (locale: Locale) => {
+  const tenantId = await tenantIdFormSchema(locale);
+
+  return z.object({
+    episodeReviewRequired: checkboxOnFormSchema,
     tenantId,
   });
 };
@@ -559,6 +573,62 @@ export const updateTenantCommentSettingsAction = async (
 
   return {
     message: t("admin.settings.comments.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantEpisodeReviewSettingsAction = async (
+  _prevState: TenantEpisodeReviewSettingsActionState,
+  formData: FormData
+): Promise<TenantEpisodeReviewSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantEpisodeReviewSettingsSchema(locale),
+  ]);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      episodeReviewRequired: {
+        kind: "value",
+        name: "episode_review_required",
+      },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { episodeReviewRequired, tenantId } = parsed.data;
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantEpisodeReviewSettings(
+      { episodeReviewRequired, tenantId },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(tenantEpisodeReviewSettingsCacheTag(tenantId));
+  // Turning review on submits every scheduled episode, which the episode
+  // reads and the dashboard filed under the episodes' tag report.
+  updateTag(episodesCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.episode_review.saved"),
     ok: true,
   };
 };

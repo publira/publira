@@ -84,6 +84,7 @@ export type {
   AdminEpisodeFreeWindow,
   AdminVolume,
   EpisodePublication,
+  EpisodeReviewRound,
   SeriesFreeAfterSettings,
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";

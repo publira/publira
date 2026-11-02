@@ -1236,9 +1236,12 @@
       "unset": "Not set",
       "status_scheduled": "Scheduled",
       "status_draft": "Draft",
+      "review_in_review": "In review",
+      "review_returned": "Returned",
       "published_series": "Published series",
       "draft_episodes": "Draft episodes",
       "scheduled_episodes": "Scheduled releases",
+      "in_review_episodes": "Waiting for review",
       "queue_title": "Publishing queue",
       "queue_description": "Episodes and upcoming releases that need attention.",
       "calendar_link": "Open calendar",
@@ -2457,6 +2460,45 @@
           "delete_failed": "Could not delete the translation. Please try again later.",
           "not_found": "This translation has already been deleted. Reload the page.",
           "last_translation": "An episode keeps at least one translation, so its last one cannot be deleted."
+        },
+        "review": {
+          "title": "Review",
+          "description": "Every round of this episode's review, oldest first, with what the Tenant admin wrote.",
+          "error": "Could not display the review",
+          "list_failed": "Could not load the review. Please try again later.",
+          "empty": "This episode has not been submitted for review.",
+          "state_in_review": "In review",
+          "state_returned": "Returned",
+          "state_approved": "Approved",
+          "round_submitted": "Submitted by {$name} on {$date}",
+          "round_submitted_unnamed": "Submitted on {$date}",
+          "round_approved": "Approved by {$name} on {$date}",
+          "round_approved_unnamed": "Approved on {$date}",
+          "round_returned": "Returned by {$name} on {$date}",
+          "round_returned_unnamed": "Returned on {$date}",
+          "round_waiting": "Waiting for a Tenant admin's decision.",
+          "schedule_note": "This tenant requires review: saving a time submits the episode for review, and it is published at that time once a Tenant admin approves it.",
+          "submit_returned_description": "A Tenant admin returned this episode. Once the changes the review asks for are made, submit it again. Its time stays as it is.",
+          "submit_unreviewed_description": "This episode has not been submitted for review, so it is not published at its time. Submit it to put it in front of a Tenant admin.",
+          "submit": "Submit for review",
+          "submitting": "Submitting...",
+          "submitted": "Submitted for review.",
+          "comment_label": "Comment",
+          "comment_description": "Say what to fix when you return the episode. A comment is optional when you approve it.",
+          "approve": "Approve",
+          "return": "Return",
+          "approved": "Episode approved.",
+          "returned": "Episode returned.",
+          "submit_failed": "Could not submit the episode for review. Please try again later.",
+          "approve_failed": "Could not approve the episode. Please try again later.",
+          "return_failed": "Could not return the episode. Please try again later.",
+          "state_changed": "This episode's review has changed since the page was loaded. Reload the page to see where it stands.",
+          "episode_not_found": "The episode could not be found. Reload the page and try again.",
+          "validation": {
+            "comment_required": "Write what to fix before returning the episode.",
+            "comment_too_long": "Keep the comment to 2,000 characters or fewer.",
+            "decision_missing": "Choose whether to approve or return the episode."
+          }
         }
       },
       "status": {
@@ -2953,6 +2995,17 @@
           "mode_required": "Select how comments are published.",
           "auto_hide_range": "Enter a whole number between 0 and {$max}."
         }
+      },
+      "episode_review": {
+        "title": "Review before publishing",
+        "description": "Whether a Tenant admin has to approve each episode before it is published.",
+        "required_label": "Require review before publishing",
+        "required_description": "Saving an episode's publication time submits it for review, and it is published at that time only once a Tenant admin approves it. Turning this on submits every scheduled episode for review; turning it off lets every scheduled episode be published at its time.",
+        "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
+        "submit": "Save the review setting",
+        "saved": "The review setting was saved.",
+        "load_failed": "Could not load the review setting. Please try again later.",
+        "save_failed": "Could not save the review setting. Please try again later."
       },
       "creator_pages": {
         "title": "Author pages",

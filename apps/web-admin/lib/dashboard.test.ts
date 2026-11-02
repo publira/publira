@@ -1,3 +1,4 @@
+import { EpisodeReviewState } from "@publira/api-client/admin/types";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -54,6 +55,7 @@ describe("dashboard", () => {
         {
           episodePublicId: "EP001",
           episodeTitle: "Episode 1",
+          reviewState: EpisodeReviewState.IN_REVIEW,
           scheduledAt: "2026-04-01T10:00:00Z",
           seriesPublicId: "SR001",
           seriesTitle: "Test Series",
@@ -62,6 +64,7 @@ describe("dashboard", () => {
       ],
       stats: {
         draftEpisodeCount: 3,
+        inReviewEpisodeCount: 1,
         publishedSeriesCount: 5,
         scheduledEpisodeCount: 2,
       },
@@ -77,6 +80,7 @@ describe("dashboard", () => {
         {
           episodePublicId: "EP001",
           episodeTitle: "Episode 1",
+          reviewState: "in_review",
           scheduledAt: "2026-04-01T10:00:00Z",
           seriesPublicId: "SR001",
           seriesTitle: "Test Series",
@@ -85,6 +89,7 @@ describe("dashboard", () => {
       ],
       stats: {
         draftEpisodeCount: 3,
+        inReviewEpisodeCount: 1,
         publishedSeriesCount: 5,
         scheduledEpisodeCount: 2,
       },
@@ -111,6 +116,7 @@ describe("dashboard", () => {
       queue: [],
       stats: {
         draftEpisodeCount: 0,
+        inReviewEpisodeCount: 0,
         publishedSeriesCount: 0,
         scheduledEpisodeCount: 0,
       },

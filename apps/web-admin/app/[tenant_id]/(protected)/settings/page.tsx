@@ -29,6 +29,7 @@ import { getTenantCrawlerSettings } from "#lib/tenant-crawler-settings";
 import { getTenantCreatorPageSettings } from "#lib/tenant-creator-page-settings";
 import { getTenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 import type { TenantEmailRejectionSettingsResult } from "#lib/tenant-email-rejection-settings";
+import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantLocales } from "#lib/tenant-locales";
@@ -45,6 +46,7 @@ import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings
 import { TenantCrawlerSettingsForm } from "./_components/tenant-crawler-settings-form";
 import { TenantCreatorPageSettingsForm } from "./_components/tenant-creator-page-settings-form";
 import { TenantEmailRejectionForm } from "./_components/tenant-email-rejection-form";
+import { TenantEpisodeReviewSettingsForm } from "./_components/tenant-episode-review-settings-form";
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantLocalesForm } from "./_components/tenant-locales-form";
 import { TenantSignUpSettingsForm } from "./_components/tenant-sign-up-settings-form";
@@ -121,6 +123,10 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-10" />
     </ConsoleSection.Root>
     <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
@@ -223,6 +229,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     timezoneResult,
     localesResult,
     commentSettingsResult,
+    episodeReviewSettingsResult,
     creatorPageSettingsResult,
     ageVerificationResult,
     legalPagesResult,
@@ -237,6 +244,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     getTenantTimezone(tenantId, locale),
     localesPromise,
     getTenantCommentSettings(tenantId, locale),
+    getTenantEpisodeReviewSettings(tenantId, locale),
     getTenantCreatorPageSettings(tenantId, locale),
     getTenantAgeVerification(tenantId, locale),
     getTenantLegalPages(tenantId, locale),
@@ -251,6 +259,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
   await redirectToLoginIfSessionRejected(
     settingsResult,
     commentSettingsResult,
+    episodeReviewSettingsResult,
     creatorPageSettingsResult,
     ageVerificationResult,
     legalPagesResult,
@@ -311,6 +320,21 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
         }
         loadErrorMessage={
           commentSettingsResult.ok ? undefined : commentSettingsResult.message
+        }
+        tenantId={tenantId}
+      />
+
+      <TenantEpisodeReviewSettingsForm
+        canEdit={canEdit}
+        initialEpisodeReviewRequired={
+          episodeReviewSettingsResult.ok
+            ? episodeReviewSettingsResult.episodeReviewRequired
+            : undefined
+        }
+        loadErrorMessage={
+          episodeReviewSettingsResult.ok
+            ? undefined
+            : episodeReviewSettingsResult.message
         }
         tenantId={tenantId}
       />

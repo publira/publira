@@ -6,12 +6,16 @@ import { cacheTag } from "next/cache";
 import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders } from "./api";
 import { episodePublicationCacheTag, episodesCacheTag } from "./episode";
+import type { EpisodeReviewStateValue } from "./episode-review-state";
+import { toEpisodeReviewStateValue } from "./episode-review-state-enum";
 import { getMessagesFor } from "./messages";
 
 export interface DashboardStats {
   publishedSeriesCount: number;
   draftEpisodeCount: number;
   scheduledEpisodeCount: number;
+  /** Scheduled episodes waiting for a Tenant admin's decision. */
+  inReviewEpisodeCount: number;
 }
 
 export interface DashboardQueueItem {
@@ -21,6 +25,8 @@ export interface DashboardQueueItem {
   episodeTitle: string;
   status: "draft" | "scheduled";
   scheduledAt: string;
+  /** Where its latest round of review left it, empty for one never submitted. */
+  reviewState: "" | EpisodeReviewStateValue;
 }
 
 export type GetDashboardResult =
@@ -63,6 +69,7 @@ const getDashboardForTenant = async (
 
     const stats: DashboardStats = {
       draftEpisodeCount: response.stats?.draftEpisodeCount ?? 0,
+      inReviewEpisodeCount: response.stats?.inReviewEpisodeCount ?? 0,
       publishedSeriesCount: response.stats?.publishedSeriesCount ?? 0,
       scheduledEpisodeCount: response.stats?.scheduledEpisodeCount ?? 0,
     };
@@ -70,6 +77,7 @@ const getDashboardForTenant = async (
     const queue: DashboardQueueItem[] = (response.queue ?? []).map((item) => ({
       episodePublicId: item.episodePublicId,
       episodeTitle: item.episodeTitle,
+      reviewState: toEpisodeReviewStateValue(item.reviewState),
       scheduledAt: item.scheduledAt,
       seriesPublicId: item.seriesPublicId,
       seriesTitle: item.seriesTitle,

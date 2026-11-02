@@ -55,6 +55,7 @@ const firstEpisode: EpisodeItem = {
   readingPeriodHours: 72,
   rentalPeriodHours: 0,
   rentalPrice: 0,
+  reviewState: "",
   scheduledAt: "",
   status: "published",
   title: "Episode 1",
@@ -62,7 +63,11 @@ const firstEpisode: EpisodeItem = {
 
 const episodes: EpisodeItem[] = [firstEpisode];
 
-const renderList = (canEdit: boolean, items: EpisodeItem[] = episodes) =>
+const renderList = (
+  canEdit: boolean,
+  items: EpisodeItem[] = episodes,
+  reviewRequired = false
+) =>
   render(
     <AdminLocaleTestProvider locale="en">
       <EpisodeSelectionProvider>
@@ -71,6 +76,7 @@ const renderList = (canEdit: boolean, items: EpisodeItem[] = episodes) =>
           currency="JPY"
           episodes={items}
           reorderAction={vi.fn()}
+          reviewRequired={reviewRequired}
           seriesId="SERIES001-ID"
           seriesPublicId="SERIES001"
           timeZone="UTC"
@@ -120,5 +126,36 @@ describe("EpisodesSortableList", () => {
     renderList(true, [{ ...firstEpisode, previewPageCount, price }]);
 
     expect(screen.queryByText(/^Preview:/u)).toBeNull();
+  });
+
+  const scheduled: EpisodeItem = {
+    ...firstEpisode,
+    publishedAt: "",
+    scheduledAt: "2026-12-01T00:00:00Z",
+    status: "scheduled",
+  };
+
+  it.each([
+    ["in_review", "In review"],
+    ["returned", "Returned"],
+  ] as const)(
+    "marks a scheduled episode %s while the tenant requires review",
+    (reviewState, label) => {
+      renderList(true, [{ ...scheduled, reviewState }], true);
+
+      expect(screen.getByText(label, { exact: true })).toBeTruthy();
+    }
+  );
+
+  it("does not mark an episode's review while the tenant does not require it", () => {
+    renderList(true, [{ ...scheduled, reviewState: "returned" }], false);
+
+    expect(screen.queryByText("Returned", { exact: true })).toBeNull();
+  });
+
+  it("does not mark a published episode with the state its last round left", () => {
+    renderList(true, [{ ...firstEpisode, reviewState: "in_review" }], true);
+
+    expect(screen.queryByText("In review", { exact: true })).toBeNull();
   });
 });

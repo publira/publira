@@ -1236,9 +1236,12 @@
       "unset": "未设置",
       "status_scheduled": "已预约",
       "status_draft": "草稿",
+      "review_in_review": "审核中",
+      "review_returned": "已退回",
       "published_series": "已发布的系列",
       "draft_episodes": "草稿章节",
       "scheduled_episodes": "预约发布",
+      "in_review_episodes": "待审核",
       "queue_title": "发布队列",
       "queue_description": "需要关注的章节和即将进行的发布。",
       "calendar_link": "打开日历",
@@ -2457,6 +2460,45 @@
           "delete_failed": "无法删除翻译。请稍后再试。",
           "not_found": "此翻译已被删除。请重新加载页面。",
           "last_translation": "章节至少需要保留一个翻译，因此无法删除最后一个翻译。"
+        },
+        "review": {
+          "title": "审核",
+          "description": "此章节每一轮审核的经过，按从早到晚排列，并附有租户管理员的评语。",
+          "error": "无法显示审核",
+          "list_failed": "无法加载审核。请稍后再试。",
+          "empty": "此章节尚未提交审核。",
+          "state_in_review": "审核中",
+          "state_returned": "已退回",
+          "state_approved": "已批准",
+          "round_submitted": "{$name}于{$date}提交",
+          "round_submitted_unnamed": "于{$date}提交",
+          "round_approved": "{$name}于{$date}批准",
+          "round_approved_unnamed": "于{$date}批准",
+          "round_returned": "{$name}于{$date}退回",
+          "round_returned_unnamed": "于{$date}退回",
+          "round_waiting": "正在等待租户管理员的决定。",
+          "schedule_note": "此租户要求审核：保存时间即会提交章节审核，租户管理员批准后将在该时间发布。",
+          "submit_returned_description": "租户管理员退回了此章节。按评语完成修改后，请重新提交审核。发布时间保持不变。",
+          "submit_unreviewed_description": "此章节尚未提交审核，因此到了发布时间也不会发布。请提交审核，交由租户管理员审核。",
+          "submit": "提交审核",
+          "submitting": "正在提交…",
+          "submitted": "已提交审核。",
+          "comment_label": "评语",
+          "comment_description": "退回时请写明需要修改的地方。批准时可以不写。",
+          "approve": "批准",
+          "return": "退回",
+          "approved": "章节已批准。",
+          "returned": "章节已退回。",
+          "submit_failed": "无法提交审核。请稍后再试。",
+          "approve_failed": "无法批准章节。请稍后再试。",
+          "return_failed": "无法退回章节。请稍后再试。",
+          "state_changed": "打开页面后，此章节的审核状态已发生变化。请重新加载页面查看当前状态。",
+          "episode_not_found": "找不到该章节。请重新加载页面后再试。",
+          "validation": {
+            "comment_required": "退回前请在评语中写明需要修改的地方。",
+            "comment_too_long": "评语请控制在2,000个字符以内。",
+            "decision_missing": "请选择批准或退回该章节。"
+          }
         }
       },
       "status": {
@@ -2953,6 +2995,17 @@
           "mode_required": "请选择评论的公开方式。",
           "auto_hide_range": "请输入0到{$max}之间的整数。"
         }
+      },
+      "episode_review": {
+        "title": "发布前审核",
+        "description": "章节发布前是否必须经租户管理员批准。",
+        "required_label": "发布前必须审核",
+        "required_description": "保存章节的发布时间即会提交审核，只有在租户管理员批准后才会在该时间发布。开启后，所有已预约的章节都会提交审核；关闭后，所有已预约的章节都会按时发布。",
+        "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+        "submit": "保存审核设置",
+        "saved": "审核设置已保存。",
+        "load_failed": "无法加载审核设置。请稍后再试。",
+        "save_failed": "无法保存审核设置。请稍后再试。"
       },
       "creator_pages": {
         "title": "作者页面",

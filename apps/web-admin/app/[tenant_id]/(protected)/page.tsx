@@ -16,9 +16,12 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
+import { pendingEpisodeReviewState } from "#lib/episode-review-state";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -54,6 +57,35 @@ const QueueStatusMessage = ({ status }: { status: "draft" | "scheduled" }) => {
   }
 
   return <Message message="admin.dashboard.status_draft" />;
+};
+
+/** What a scheduled episode in the queue waits on in review, if anything. */
+const QueueReviewBadge = ({
+  state,
+}: {
+  state: "in_review" | "returned" | undefined;
+}) => {
+  if (state === "in_review") {
+    return (
+      <Badge tone="info" variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="admin.dashboard.review_in_review" />
+        </Suspense>
+      </Badge>
+    );
+  }
+
+  if (state === "returned") {
+    return (
+      <Badge tone="warning" variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="admin.dashboard.review_returned" />
+        </Suspense>
+      </Badge>
+    );
+  }
+
+  return null;
 };
 
 /**
@@ -119,11 +151,20 @@ const DashboardSkeleton = () => (
 const DashboardContent = async () => {
   const tenantId = await getTenantId();
 
-  const [locale, timeZone, result] = await Promise.all([
-    getLocale(tenantId),
+  const locale = await getLocale(tenantId);
+
+  const [timeZone, result, reviewSettingsResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     getDashboard(),
+    getTenantEpisodeReviewSettings(tenantId, locale),
   ]);
+
+  await redirectToLoginIfSessionRejected(reviewSettingsResult);
+
+  // Only to show what waits on review, so a read that failed leaves that out
+  // rather than the overview.
+  const reviewRequired =
+    reviewSettingsResult.ok && reviewSettingsResult.episodeReviewRequired;
 
   if (!result.ok) {
     return (
@@ -169,6 +210,16 @@ const DashboardContent = async () => {
           </FigureLine.Label>
           <FigureLine.Value>{stats.scheduledEpisodeCount}</FigureLine.Value>
         </FigureLine.Figure>
+        {reviewRequired ? (
+          <FigureLine.Figure>
+            <FigureLine.Label>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.dashboard.in_review_episodes" />
+              </Suspense>
+            </FigureLine.Label>
+            <FigureLine.Value>{stats.inReviewEpisodeCount}</FigureLine.Value>
+          </FigureLine.Figure>
+        ) : null}
       </FigureLine.Root>
 
       <section className="grid gap-4">
@@ -234,16 +285,24 @@ const DashboardContent = async () => {
                     </Table.Cell>
                     <Table.Cell>{item.episodeTitle}</Table.Cell>
                     <Table.Cell>
-                      <Badge
-                        tone={getQueueStatusTone(item.status)}
-                        variant="outline"
-                      >
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-16" />}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          tone={getQueueStatusTone(item.status)}
+                          variant="outline"
                         >
-                          <QueueStatusMessage status={item.status} />
-                        </Suspense>
-                      </Badge>
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-16" />}
+                          >
+                            <QueueStatusMessage status={item.status} />
+                          </Suspense>
+                        </Badge>
+                        <QueueReviewBadge
+                          state={pendingEpisodeReviewState(
+                            item,
+                            reviewRequired
+                          )}
+                        />
+                      </div>
                     </Table.Cell>
                     <Table.Cell>
                       {scheduledAt || (

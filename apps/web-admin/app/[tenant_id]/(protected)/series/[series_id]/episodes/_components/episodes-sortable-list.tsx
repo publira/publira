@@ -14,6 +14,7 @@ import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import * as Sortable from "#components/sortable-list";
 import type { EpisodeItem } from "#lib/episode";
+import { pendingEpisodeReviewState } from "#lib/episode-review-state";
 import { DEFAULT_SURFACE_AVAILABILITY } from "#lib/surface-availability";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -50,10 +51,37 @@ interface EpisodesSortableListProps {
   reorderAction: (
     formData: FormData
   ) => Promise<{ ok: boolean; message?: string }>;
+  /** Whether the tenant requires review, which is when a row is marked by it. */
+  reviewRequired: boolean;
   timeZone: string;
 }
 
 const episodeId = (episode: EpisodeItem): string => episode.id;
+
+/** What a scheduled episode waits on in review, if anything. */
+const EpisodeReviewStateBadge = ({
+  state,
+}: {
+  state: "in_review" | "returned" | undefined;
+}) => {
+  if (state === "in_review") {
+    return (
+      <Badge tone="info" variant="outline">
+        <ClientMessage message="admin.series.episodes.review.state_in_review" />
+      </Badge>
+    );
+  }
+
+  if (state === "returned") {
+    return (
+      <Badge tone="warning" variant="outline">
+        <ClientMessage message="admin.series.episodes.review.state_returned" />
+      </Badge>
+    );
+  }
+
+  return null;
+};
 
 export const EpisodesSortableList = ({
   canEdit,
@@ -63,6 +91,7 @@ export const EpisodesSortableList = ({
   seriesAvailability = DEFAULT_SURFACE_AVAILABILITY,
   episodes,
   reorderAction,
+  reviewRequired,
   timeZone,
 }: EpisodesSortableListProps) => {
   const locale = useAdminLocale();
@@ -233,6 +262,9 @@ export const EpisodesSortableList = ({
                     status={episode.status}
                   />
                 </p>
+                <EpisodeReviewStateBadge
+                  state={pendingEpisodeReviewState(episode, reviewRequired)}
+                />
                 {/* A free episode opens its whole body, whatever count it holds. */}
                 {episode.price > 0 && episode.previewPageCount > 0 ? (
                   <Badge tone="muted" variant="outline">

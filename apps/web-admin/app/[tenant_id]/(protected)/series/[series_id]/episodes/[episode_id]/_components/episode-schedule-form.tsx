@@ -2,6 +2,7 @@ import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
 
@@ -9,6 +10,13 @@ import { PublishAtInput } from "../../_components/publish-at-input";
 import type { EpisodeEditActionState } from "../episode-edit-types";
 
 interface EpisodeScheduleFormProps {
+  /**
+   * What follows the time inside the section: the submission of a returned
+   * episode, which goes out without moving its time.
+   */
+  children?: ReactNode;
+  /** Whether saving a time puts the episode in review rather than scheduling it. */
+  reviewRequired?: boolean;
   seriesPublicId: string;
   episodeId: string;
   episodePublicId: string;
@@ -22,6 +30,8 @@ interface EpisodeScheduleFormProps {
 }
 
 export const EpisodeScheduleForm = ({
+  children,
+  reviewRequired = false,
   seriesPublicId,
   episodeId,
   episodePublicId,
@@ -43,6 +53,13 @@ export const EpisodeScheduleForm = ({
             <Message message="admin.series.episodes.schedule_description" />
           </Suspense>
         </ConsoleSection.Description>
+        {reviewRequired ? (
+          <ConsoleSection.Description>
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="admin.series.episodes.review.schedule_note" />
+            </Suspense>
+          </ConsoleSection.Description>
+        ) : null}
       </ConsoleSection.Heading>
     </ConsoleSection.Header>
     <ActionForm.Root action={action} className="grid gap-4">
@@ -77,5 +94,6 @@ export const EpisodeScheduleForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
+    {children}
   </ConsoleSection.Root>
 );

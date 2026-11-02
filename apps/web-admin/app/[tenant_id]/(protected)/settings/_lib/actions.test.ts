@@ -7,6 +7,7 @@ const {
   mockUpdateTenantCrawlerSettings,
   mockUpdateTenantCreatorPageSettings,
   mockUpdateTenantEmailRejectionSettings,
+  mockUpdateTenantEpisodeReviewSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantLocales,
   mockUpdateTenantSignUpSettings,
@@ -20,6 +21,7 @@ const {
   mockUpdateTenantCrawlerSettings: vi.fn(),
   mockUpdateTenantCreatorPageSettings: vi.fn(),
   mockUpdateTenantEmailRejectionSettings: vi.fn(),
+  mockUpdateTenantEpisodeReviewSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantLocales: vi.fn(),
   mockUpdateTenantSignUpSettings: vi.fn(),
@@ -91,6 +93,12 @@ vi.mock("#lib/tenant-crawler-settings", () => ({
   tenantCrawlerSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:crawler-settings`,
   updateTenantCrawlerSettings: mockUpdateTenantCrawlerSettings,
+}));
+
+vi.mock("#lib/tenant-episode-review-settings", () => ({
+  tenantEpisodeReviewSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:episode-review-settings`,
+  updateTenantEpisodeReviewSettings: mockUpdateTenantEpisodeReviewSettings,
 }));
 
 vi.mock("#lib/tenant-creator-page-settings", () => ({
@@ -1395,4 +1403,102 @@ describe("updateTenantCreatorPageSettingsAction", () => {
       expect(mockUpdateTag).not.toHaveBeenCalled();
     }
   );
+});
+
+const episodeReviewFormData = (
+  required: string | undefined,
+  tenantId: string = CREATOR_PAGE_TENANT_ID
+): FormData => {
+  const formData = new FormData();
+
+  formData.set("tenant_id", tenantId);
+
+  if (required !== undefined) {
+    formData.set("episode_review_required", required);
+  }
+
+  return formData;
+};
+
+describe("updateTenantEpisodeReviewSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it.each([
+    ["on", "on", true],
+    ["off", undefined, false],
+  ])(
+    "turns review %s, then clears the setting and the episodes it moves",
+    async (_, value, episodeReviewRequired) => {
+      mockUpdateTenantEpisodeReviewSettings.mockResolvedValueOnce({
+        episodeReviewRequired,
+        ok: true,
+      });
+
+      const { updateTenantEpisodeReviewSettingsAction } =
+        await import("./actions");
+
+      const result = await updateTenantEpisodeReviewSettingsAction(
+        null,
+        episodeReviewFormData(value)
+      );
+
+      expect(result).toEqual({
+        message: "The review setting was saved.",
+        ok: true,
+      });
+      expect(mockUpdateTenantEpisodeReviewSettings).toHaveBeenCalledWith(
+        { episodeReviewRequired, tenantId: CREATOR_PAGE_TENANT_ID },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        `tenant:${CREATOR_PAGE_TENANT_ID}:episode-review-settings`
+      );
+      // Turning review on submits every scheduled episode, which the episode
+      // reads and the dashboard report.
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        `episodes-${CREATOR_PAGE_TENANT_ID}`
+      );
+    }
+  );
+
+  it("reports a refusal and leaves the caches alone", async () => {
+    mockUpdateTenantEpisodeReviewSettings.mockResolvedValueOnce({
+      message: "Could not save the review setting. Please try again later.",
+      ok: false,
+    });
+
+    const { updateTenantEpisodeReviewSettingsAction } =
+      await import("./actions");
+
+    const result = await updateTenantEpisodeReviewSettingsAction(
+      null,
+      episodeReviewFormData("on")
+    );
+
+    expect(result).toEqual({
+      message: "Could not save the review setting. Please try again later.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("refuses a tenant id that is not one without calling the API", async () => {
+    const { updateTenantEpisodeReviewSettingsAction } =
+      await import("./actions");
+
+    const result = await updateTenantEpisodeReviewSettingsAction(
+      null,
+      episodeReviewFormData("on", "TENANT001")
+    );
+
+    expect(result).toEqual({
+      message: "The tenant ID could not be found. Check the URL and try again.",
+      ok: false,
+    });
+    expect(mockUpdateTenantEpisodeReviewSettings).not.toHaveBeenCalled();
+  });
 });

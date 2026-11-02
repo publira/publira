@@ -40,6 +40,8 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import type { EpisodeReviewStateValue } from "./episode-review-state";
+import { toEpisodeReviewStateValue } from "./episode-review-state-enum";
 import {
   mentionsAspectImageRejection,
   mentionsStorageNotConfigured,
@@ -80,6 +82,12 @@ export interface EpisodeItem {
   status: string;
   scheduledAt: string;
   publishedAt: string;
+  /**
+   * Where its latest round of review left it, empty for an episode never
+   * submitted. It says nothing on its own about whether the episode waits:
+   * see `pendingEpisodeReviewState`.
+   */
+  reviewState: "" | EpisodeReviewStateValue;
   /**
    * Which surfaces the episode states of its own, empty where it follows its
    * series. It is the override rather than where the episode ends up, because
@@ -344,6 +352,7 @@ type RawEpisode = Pick<
   | "readingPeriodHours"
   | "rentalPeriodHours"
   | "rentalPrice"
+  | "review"
   | "scheduledAt"
   | "status"
   | "title"
@@ -407,6 +416,7 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   readingPeriodHours: episode.readingPeriodHours ?? 0,
   rentalPeriodHours: episode.rentalPeriodHours ?? 0,
   rentalPrice: episode.rentalPrice ?? 0,
+  reviewState: toEpisodeReviewStateValue(episode.review?.state),
   scheduledAt: episode.scheduledAt,
   status: episode.status,
   title: episode.title,
