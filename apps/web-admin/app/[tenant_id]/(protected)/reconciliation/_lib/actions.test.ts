@@ -1,10 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAssertSameOrigin, mockGetAccessToken, mockRefresh, mockStart } =
+const { mockAssertSameOrigin, mockGetAccessToken, mockRedirect, mockStart } =
   vi.hoisted(() => ({
     mockAssertSameOrigin: vi.fn(),
     mockGetAccessToken: vi.fn(),
-    mockRefresh: vi.fn(),
+    mockRedirect: vi.fn((path: string) => {
+      throw new Error(`NEXT_REDIRECT ${path}`);
+    }),
     mockStart: vi.fn(),
   }));
 
@@ -22,7 +24,7 @@ vi.mock("#lib/payment-reconciliation", () => ({
   startPaymentReconciliation: mockStart,
 }));
 
-vi.mock("next/cache", () => ({ refresh: mockRefresh }));
+vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
@@ -48,29 +50,25 @@ describe("startPaymentReconciliationAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("starts the period and re-renders the list to show the runs waiting", async () => {
+  it("starts the period and opens the first page of the list, where its runs are", async () => {
     mockStart.mockResolvedValueOnce({
       ok: true,
       reconciliations: [{ id: "run-1" }, { id: "run-2" }],
     });
     const { startPaymentReconciliationAction } = await import("./actions");
 
-    const result = await startPaymentReconciliationAction(
-      null,
-      formData({ end_date: "2026-10-31", start_date: "2026-10-01" })
-    );
+    await expect(
+      startPaymentReconciliationAction(
+        null,
+        formData({ end_date: "2026-10-31", start_date: "2026-10-01" })
+      )
+    ).rejects.toThrow("NEXT_REDIRECT /reconciliation?started=1");
 
     expect(mockAssertSameOrigin).toHaveBeenCalled();
     expect(mockStart).toHaveBeenCalledWith(
       { endDate: "2026-10-31", startDate: "2026-10-01", tenantId: "TENANT001" },
       "en"
     );
-    expect(mockRefresh).toHaveBeenCalled();
-    expect(result).toEqual({
-      message:
-        "A reconciliation was started against 2 sources. The list below shows each once it finishes.",
-      ok: true,
-    });
   });
 
   it.each([
@@ -104,7 +102,7 @@ describe("startPaymentReconciliationAction", () => {
 
     expect(result).toEqual({ message, ok: false });
     expect(mockStart).not.toHaveBeenCalled();
-    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
   it("passes the API's refusal through", async () => {
@@ -125,6 +123,6 @@ describe("startPaymentReconciliationAction", () => {
         "No payment provider or store is ready to reconcile with. Set one up under Payment methods first.",
       ok: false,
     });
-    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

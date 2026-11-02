@@ -4511,7 +4511,7 @@
       "page_description": "将此处记录的购买与支付服务商及应用商店在某一期间内实际收取的款项进行核对，找出对方没有对应记录的每一条明细。",
       "reconcile": "对账",
       "reconciling": "正在开始…",
-      "started": ".input {$count :integer}\n.match $count\n* {{已开始{$count}项对账。完成后结果会显示在下方列表中。}}",
+      "started": "已开始对账。完成后结果会显示在下方列表中。",
       "start_failed": "无法开始对账。请稍后重试。",
       "no_source": "没有可用于对账的支付服务商或应用商店。请先在支付方式中进行设置。",
       "list_error": "无法显示对账",

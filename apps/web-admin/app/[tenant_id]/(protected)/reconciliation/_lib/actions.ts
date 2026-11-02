@@ -3,7 +3,7 @@
 import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFieldErrors } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
@@ -78,11 +78,12 @@ const startReconciliationSchema = (t: AdminMessageAccessor) =>
     });
 
 /**
- * Starts a reconciliation of the period the form names. The runs it writes
- * are finished by the worker, and the list behind the form is uncached (see
- * `lib/payment-reconciliation.ts`), so the route is re-rendered to show them
- * waiting rather than a tag dropped. The audit log the start is recorded in
- * is uncached too.
+ * Starts a reconciliation of the period the form names, then opens the first
+ * page of the list, where the runs it wrote are, the one started last first:
+ * a form submitted from a later page would otherwise stay on runs that do not
+ * include them, and the screen refreshes itself only while a run it lists is
+ * unfinished. The list and the audit log the start is recorded in are
+ * uncached (see `lib/payment-reconciliation.ts`), so there is no tag to drop.
  */
 export const startPaymentReconciliationAction = async (
   _prevState: ActionForm.State,
@@ -123,12 +124,5 @@ export const startPaymentReconciliationAction = async (
     return { message: result.message, ok: false };
   }
 
-  refresh();
-
-  return {
-    message: t("admin.reconciliation.started", {
-      count: result.reconciliations.length,
-    }),
-    ok: true,
-  };
+  redirect("/reconciliation?started=1");
 };

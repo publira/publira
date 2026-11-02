@@ -7,6 +7,7 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -186,6 +187,10 @@ const ReconciliationPage = ({ searchParams }: ReconciliationPageProps) => (
           </ConsolePage.Heading>
         </ConsolePage.Header>
         <ConsolePage.Content>
+          <FlashToast
+            keyName="started"
+            message="admin.reconciliation.started"
+          />
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

@@ -461,9 +461,11 @@ test.describe("Reconciliation", () => {
     await page.getByRole("button", { exact: true, name: "Reconcile" }).click();
     await expect(
       page.getByText(
-        "A reconciliation was started against 1 source. The list below shows it once it finishes."
+        "The reconciliation was started. The list below shows each run once it finishes."
       )
     ).toBeVisible();
+    // Starting opens the first page of the list, where the runs it wrote are.
+    await expect(page).toHaveURL(/\/reconciliation$/u);
 
     // The worker takes the run up within seconds, and the screen refreshes
     // itself while the run is unfinished.

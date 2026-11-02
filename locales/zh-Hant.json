@@ -4511,7 +4511,7 @@
       "page_description": "將此處記錄的購買與付款服務商及應用程式商店在某一期間內實際收取的款項進行核對，找出對方沒有對應記錄的每一筆明細。",
       "reconcile": "對帳",
       "reconciling": "正在開始…",
-      "started": ".input {$count :integer}\n.match $count\n* {{已開始{$count}項對帳。完成後結果會顯示在下方列表中。}}",
+      "started": "已開始對帳。完成後結果會顯示在下方列表中。",
       "start_failed": "無法開始對帳。請稍後再試。",
       "no_source": "沒有可用於對帳的付款服務商或應用程式商店。請先在付款方式中進行設定。",
       "list_error": "無法顯示對帳",

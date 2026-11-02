@@ -4511,7 +4511,7 @@
       "page_description": "Compare the purchases recorded here with what the payment provider and the stores charged over a period, and find every line that matches nothing on the other side.",
       "reconcile": "Reconcile",
       "reconciling": "Starting…",
-      "started": ".input {$count :integer}\n.match $count\none {{A reconciliation was started against {$count} source. The list below shows it once it finishes.}}\n* {{A reconciliation was started against {$count} sources. The list below shows each once it finishes.}}",
+      "started": "The reconciliation was started. The list below shows each run once it finishes.",
       "start_failed": "Could not start the reconciliation. Please try again later.",
       "no_source": "No payment provider or store is ready to reconcile with. Set one up under Payment methods first.",
       "list_error": "Could not display the reconciliations",
