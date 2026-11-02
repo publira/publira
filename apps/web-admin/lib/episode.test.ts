@@ -1,5 +1,6 @@
 import {
   CreatorCreditSource,
+  EpisodeReviewState,
   ReadingDirection,
   SurfaceAvailability,
 } from "@publira/api-client/admin/types";
@@ -339,6 +340,7 @@ describe("getEpisode", () => {
         readingPeriodHours: 0,
         rentalPeriodHours: 0,
         rentalPrice: 0,
+        reviewState: "",
         scheduledAt: "",
         status: "draft",
         title: "EPISODE001",
@@ -349,6 +351,27 @@ describe("getEpisode", () => {
       translations: [],
     });
     expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reads where the episode's latest round of review left it", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        review: { state: EpisodeReviewState.RETURNED },
+      },
+    });
+
+    const { getEpisode } = await import("./episode");
+
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
+
+    expect(result).toMatchObject({
+      episode: { reviewState: "returned" },
+      ok: true,
+    });
   });
 
   it("reads every translation back beside the episode, oldest first", async () => {
