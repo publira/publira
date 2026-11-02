@@ -18,7 +18,8 @@
 -- Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 -- in the integration test to confirm the index is eligible):
 --   ListReferencedObjectKeys
---     -> idx_<entity>_image_variants_object_key, once per variant table
+--     -> idx_<entity>_image_variants_object_key, once per variant table, and
+--        idx_user_data_exports_object_key for the readers' archives
 --   DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
 --   ...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
 --   ...SeriesImages / ...TenantImages / ...VolumeCoverImages
@@ -29,10 +30,10 @@
 --        holds every reader, so the anti-join is a lookup rather than a scan
 
 -- name: ListReferencedObjectKeys :many
--- Returns the subset of object_keys that some image variant still names. The
--- caller deletes what it listed from storage and did not get back, so a key
--- this misses is a deleted live object: every table that holds an object_key
--- has to be listed here.
+-- Returns the subset of object_keys that some image variant, or a reader's
+-- archive, still names. The caller deletes what it listed from storage and did
+-- not get back, so a key this misses is a deleted live object: every table
+-- that holds an object_key has to be listed here.
 WITH candidates AS (
     SELECT unnest(@object_keys::text[]) AS object_key
 )
@@ -48,7 +49,8 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM volume_cover_image_variants v WHERE v.object_key = c.object_key)
-    OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key);
+    OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM user_data_exports d WHERE d.object_key = c.object_key);
 
 -- name: DeleteUnreferencedCampaignBannerImages :execrows
 -- A replaced banner image is left behind by the banner that now points at the

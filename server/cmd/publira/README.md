@@ -182,6 +182,8 @@ It also handles these non-mail events:
 | `episode_published_notification` | The `notifications` rows, and the `member_push_notification` that mirrors them, for the followers of an episode the admin console published as it created it; an episode the scheduled publication job publishes has them written by that job |
 | `comment_approved_notification` | The `notifications` row telling a reader that staff approved their comment |
 | `episode_review_returned_notification` | The `notifications` row telling the member of staff who submitted an episode for review that a Tenant admin returned it, and the mail to them that quotes the comment |
+| `data_export_ready_notification` | The `notifications` row telling a reader that the archive of their data they asked for is ready, in their inbox whatever their settings say, and the `data_export_ready_email` that mirrors it |
+| `data_export_ready_email` | That mail, sent the way `notification_email` sends a notification's. It is a type of its own because a worker of the release before gives up on a `notification_email` it has no mail for, and leaves a type it does not know pending instead |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
 | `catalog_index_sync` | The OpenSearch document of one series, creator, or label, rewritten from the row, or replaced with a tombstone no search finds when the row is published nowhere, and, once a search can find the write, a `next_cache_revalidation` for the storefront's searches of that kind. Nothing on the `sql` search backend |
 | `reader_signup_request` | A sign-up the storefront accepted: the inactive account, its consents, and a `reader_email_verification_email` for a free address, or a `reader_signup_attempt_notice_email` for a registered one |
@@ -253,10 +255,12 @@ The rebuild, purge, royalty close, and search index work runs here as well, on t
 | `maintenance.purge_mfa_challenges` | Deletes the spent MFA challenges whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `maintenance.purge_withdrawn_comments` | Deletes the comments their authors withdrew past the retention window |
 | `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
+| `maintenance.purge_data_exports` | Deletes the readers' data downloads whose seven days are up, and those of deleted accounts, from the bucket and the database, and the archives a day old under `data-exports/` that no row names |
 | `maintenance.close_royalty_statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `maintenance.sync_google_play_voided_purchases` | Takes back the purchases Google Play refunded |
 | `maintenance.build_search_index` | Builds the catalog index on the saved search engine, when the search does not answer from it yet, and moves the search onto it |
 | `maintenance.reconcile_payments` | Runs the payment reconciliations Tenant admins started, each against the provider or the store it names |
+| `maintenance.build_data_exports` | Builds the archives readers asked for of what the install keeps about them, stores each in the bucket, and queues the notice that tells the reader |
 
 Each kind is a thin wrapper around `internal/maintenance`, which is the same implementation [`publiractl job`](../publiractl/README.md) invokes for an explicit operator run — a backfill of a named date, a recovery after an incident, a dry-run purge. A pass only the schedule could reach would be a second copy of the maintenance, free to diverge from the one an operator recovers with.
 
@@ -282,6 +286,7 @@ Each purge is scheduled on its own, runs when the client starts, and then once p
 | `maintenance.purge_mfa_challenges`     | 1 hour   |
 | `maintenance.purge_withdrawn_comments` | 1 hour   |
 | `maintenance.purge_orphan_images`      | 24 hours |
+| `maintenance.purge_data_exports`       | 1 hour   |
 
 A purge needs no record of what it missed: one pass deletes everything past its cutoff at the moment it runs, so the first pass after downtime drains every row that expired in the meantime. Each is also unique over a run that completed in its current interval, counted from the epoch rather than from the process start, so a restart runs a purge only when none has finished in that interval yet — which is what keeps a deploy from being a sweep of the whole bucket. A pass that failed for good does not count, and the next restart or interval tries again.
 
@@ -293,11 +298,13 @@ A purge needs no record of what it missed: one pass deletes everything past its 
 
 `maintenance.reconcile_payments` runs when the client starts and then every 10 seconds, so a reconciliation a Tenant admin starts from the console is taken up within that much of the start. A pass with none waiting reads one row and ends; one that finds a run claims it, reads the period's payments from the source with the tenant's stored credentials, writes what matched nothing, and takes up the next until none is left. A run the source fails is recorded as failed rather than retried, and one a stopped worker left claimed is taken over two hours after its claim. It runs on a queue of its own (`payment_reconciliation`, one worker) for the reason the search index build does: someone is waiting on it, and paging a provider's API over a long period does not hold the daily rebuilds back.
 
-The rest run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time across the whole install, because these share one database with every request the platform is serving: each replica's queue takes one pass at a time, and a pass also holds a PostgreSQL advisory lock for as long as it runs, so a pass another replica picks up meanwhile is snoozed until the lock is free. A snooze spends none of the pass's attempts. `maintenance.build_search_index` and `maintenance.reconcile_payments` are on queues of their own and take no part in this. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
+`maintenance.build_data_exports` runs when the client starts and then every 10 seconds, so an archive a reader asks for is built within that much of the request. A pass with none waiting reads one row and ends; one that finds a request claims it, reads every table that holds the reader's rows into a ZIP, stores it in the bucket saved in the platform's settings, and records it with the outbox event that puts the notice in the reader's inbox and mail, in one transaction. A request made while the platform has no object store is recorded as failed rather than retried, and one a stopped worker left claimed is taken over 15 minutes after its claim. It runs on a queue of its own (`data_export`, one worker) for the same reason: a reader is waiting on it.
+
+The rest run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time across the whole install, because these share one database with every request the platform is serving: each replica's queue takes one pass at a time, and a pass also holds a PostgreSQL advisory lock for as long as it runs, so a pass another replica picks up meanwhile is snoozed until the lock is free. A snooze spends none of the pass's attempts. `maintenance.build_search_index`, `maintenance.reconcile_payments`, and `maintenance.build_data_exports` are on queues of their own and take no part in this. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
 
 They connect as `publira_content_stats`, the role the batch subcommands have always used for this work, on a third pool. What the work may reach is decided by the role, and hosting three kinds of job in one process is not a reason for any of them to borrow another's privileges.
 
-`maintenance.purge_orphan_images` is the one that reaches past the database. It sweeps the bucket saved in the platform's settings, resolved when a run starts, so the worker starts before one is saved; a run on a platform with none is cancelled with that reason rather than retried.
+`maintenance.purge_orphan_images`, `maintenance.build_data_exports`, and `maintenance.purge_data_exports` are the ones that reach past the database. They reach the bucket saved in the platform's settings, resolved when a run starts, so the worker starts before one is saved; a purge on a platform with none is cancelled with that reason rather than retried.
 
 ### Running
 
@@ -365,18 +372,19 @@ River's schema (`river_job` and the rest) is applied with `rivermigrate` at star
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
 ```
 
-hosts the named River queues alone. Every replica otherwise runs every kind of work, so the replica that picks up an hour-long rebuild is also one of the replicas sending mail; with the flag, the Outbox drain gets replicas of its own, sized apart from the ones that run the maintenance passes. Without the flag a replica hosts all five.
+hosts the named River queues alone. Every replica otherwise runs every kind of work, so the replica that picks up an hour-long rebuild is also one of the replicas sending mail; with the flag, the Outbox drain gets replicas of its own, sized apart from the ones that run the maintenance passes. Without the flag a replica hosts all six.
 
 | `--queue` | River queue | Runs | Opens | Reads |
 | --- | --- | --- | --- | --- |
 | `outbox` | `default` | The Outbox drain: mail, push, cache revalidation, search index sync | `PUBLIRA_WORKER_DB_URL` |  |
 | `ticker` | `ticker` | The [periodic jobs](#periodic-jobs) | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL` | `PUBLIRA_PUBLISH_MAX_RETRIES` |
-| `maintenance` | `maintenance` | Every [maintenance job](#maintenance-jobs) but the search index build and the payment reconciliations | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, and `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` when it is set | The maintenance jobs' tunables |
+| `maintenance` | `maintenance` | Every [maintenance job](#maintenance-jobs) but the search index build, the payment reconciliations, and the data export build | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, and `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` when it is set | The maintenance jobs' tunables |
 | `search_index` | `search_index` | `maintenance.build_search_index` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
 | `payment_reconciliation` | `payment_reconciliation` | `maintenance.reconcile_payments` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables, `PUBLIRA_STRIPE_API_URL` |
+| `data_export` | `data_export` | `maintenance.build_data_exports` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
 
 Queues combine with a comma, or with the flag given again. Every queue opens `publira_outbox`, which the River client itself connects as, and a queue opens the pool its jobs connect as besides it; a variable only one queue reads is not read without that queue, and `/readyz` names the pools the process holds alone. An unknown queue, an empty one, or a queue named twice prints the usage and exits with status 2.
 

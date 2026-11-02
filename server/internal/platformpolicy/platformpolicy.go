@@ -180,6 +180,12 @@ type Policy struct {
 	// LoginAttemptsPerSource bounds the sign-ins one client source may fail,
 	// across every address, tenant and console.
 	LoginAttemptsPerSource HourDay
+	// DataExport bounds the archives of what the install keeps about them one
+	// reader may ask for. Each request has the worker read every table that
+	// holds the reader's rows and store the result in the bucket, so what this
+	// bounds is the load one account can put on the database and the objects
+	// it can leave in the bucket.
+	DataExport HourDay
 	// AnonymousReads bounds the reads one client may make of a storefront,
 	// behind the edge's own limits on the same reads.
 	AnonymousReads ReadLimits
@@ -248,6 +254,7 @@ func Defaults() Policy {
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
+		DataExport:                HourDay{PerHour: 1, PerDay: 1},
 		AnonymousReads: ReadLimits{
 			PublicAPI: readHeadroom * edge.PublicAPI,
 			Search:    readHeadroom * edge.Search,
@@ -290,6 +297,7 @@ func (p Policy) Validate() error {
 		{"purchase_checkout", "per_minute", p.PurchaseCheckout.PerMinute, p.PurchaseCheckout.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
+		{"data_export", "per_hour", p.DataExport.PerHour, p.DataExport.PerDay},
 	} {
 		short, day := limit.name+"."+limit.window, limit.name+".per_day"
 		if limit.short < 1 {
@@ -383,6 +391,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		PurchaseCheckout:          MinuteDay{PerMinute: int(config.PurchaseCheckoutLimitPerMinute), PerDay: int(config.PurchaseCheckoutLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
+		DataExport:                HourDay{PerHour: int(config.DataExportLimitPerHour), PerDay: int(config.DataExportLimitPerDay)},
 		AnonymousReads: ReadLimits{
 			PublicAPI: int(config.AnonymousReadPublicApiLimitPer10Seconds),
 			Search:    int(config.AnonymousReadSearchLimitPer10Seconds),
@@ -449,6 +458,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		LoginAccountLimitPerDay:                 int32(policy.LoginAttemptsPerAccount.PerDay),
 		LoginSourceLimitPerHour:                 int32(policy.LoginAttemptsPerSource.PerHour),
 		LoginSourceLimitPerDay:                  int32(policy.LoginAttemptsPerSource.PerDay),
+		DataExportLimitPerHour:                  int32(policy.DataExport.PerHour),
+		DataExportLimitPerDay:                   int32(policy.DataExport.PerDay),
 		DisposableEmailDomainsUrl:               policy.DisposableEmailDomainsURL,
 		TenantCoinsAllowed:                      policy.TenantCoinsAllowed,
 	}

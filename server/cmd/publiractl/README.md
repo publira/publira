@@ -230,6 +230,7 @@ go -C server run ./cmd/publiractl policy show
 | `--purchase-checkout-per-minute`, `--purchase-checkout-per-day` | How many purchases of an episode, a volume, or a coin pack one reader may start, on the web or through the app's store, all counted together | 10, 100 |
 | `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
+| `--data-export-per-hour`, `--data-export-per-day` | How many archives of what the install keeps about them one reader may ask for | 1, 1 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
 | `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant | 30, 150 |
 | `--anonymous-read-public-api-per-10-seconds` | How many calls of the public API, its catalog search aside, one client may make in 10 seconds. A call a web app makes as itself is not counted. At least 320, what the sample edge configurations admit | 640 |
@@ -508,6 +509,8 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `sync-google-play-voided-purchases` | Takes back the purchases Google Play refunded in the last 30 days |
 | `build-search-index` | Builds the catalog index on the saved search engine, if one is due, and moves the search onto it |
 | `reconcile-payments` | Runs the payment reconciliations Tenant admins started and the worker has not finished |
+| `build-data-exports` | Builds the archives readers asked for of their data and the worker has not built |
+| `purge-data-exports` | Deletes the readers' archives past their expiry, and those of deleted accounts |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -881,3 +884,38 @@ Environment variables:
 - `PUBLIRA_STRIPE_API_URL`: replaces the origin of Stripe's API, as in `publira server`. Unset in every deployment.
 
 A run the source refuses, or cannot be reached for, is recorded as failed on its row and logged with the tenant and the reason; the job goes on to the next and exits zero. It exits non-zero only when it cannot record the runs at all.
+
+## build-data-exports
+
+Builds every archive a reader asked for of what the install keeps about them and no worker has built, oldest first: the job the worker runs every 10 seconds on a queue of its own. Each one reads every table that holds the reader's rows into a ZIP of JSON files with the purchase history CSV beside them, stores it in the bucket saved in the platform's settings under `data-exports/<tenant>/`, outside the `tenants/` prefix `purge-orphan-images` sweeps, marks it ready for seven days, and queues the notice that tells the reader, as [Reader accounts](../../../docs/en/4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. A request the worker is building is not taken up a second time, and one a stopped worker left claimed is taken over 15 minutes after its claim. A run with none waiting does nothing.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl job build-data-exports
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store saved with one.
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
+
+A request made while no object store is saved is recorded as failed, for the reader to ask again; the job goes on to the next and exits zero. It exits non-zero when it cannot store an archive or record one, leaving that request to the next run.
+
+## purge-data-exports
+
+Deletes, from the bucket and then from the database, every reader's archive whose seven days are up, every failed request seven days after it failed, and every request and archive of an account that was deleted, across every tenant. A row whose archive cannot be deleted is kept, so the next run tries again rather than forgetting an object. It then walks `data-exports/` and deletes every archive a day old that no row names, as a build cut off between storing an archive and recording it leaves.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_DATA_EXPORT_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-data-exports
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store saved with one.
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
+- `PUBLIRA_DATA_EXPORT_PURGE_DRY_RUN`: `true` deletes nothing and reports the requests and archives the first chunk would remove, and the unrecorded archives the walk would.
+
+The structured log records the requests, archives, and unrecorded archives deleted, whether it was a dry run, and the elapsed time.

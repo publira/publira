@@ -134,6 +134,15 @@
       "series": "系列：{$series_title}",
       "subject": "您在{$tenant_name}的留言已公開"
     },
+    "reader_data_export_ready": {
+      "action": "開啟帳戶設定",
+      "body": "您申請的{$tenant_name}資料已準備好。請在帳戶設定中下載。",
+      "expires_at": "您可以在{$expires_at}之前下載，之後將會刪除。",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您的資料已準備好",
+      "preview": "您申請的資料現在可以下載了。",
+      "subject": "您在{$tenant_name}的資料已可下載"
+    },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",
       "body_current_email": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",

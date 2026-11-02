@@ -58,6 +58,9 @@ const (
 	ServiceNameBuildSearchIndex = "publira-build-search-index"
 
 	ServiceNameReconcilePayments = "publira-reconcile-payments"
+
+	ServiceNameBuildDataExports = "publira-build-data-exports"
+	ServiceNamePurgeDataExports = "publira-purge-data-exports"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -98,6 +101,12 @@ const SearchIndexQueueName = "search_index"
 // One worker, so one install pages each provider once at a time.
 const PaymentReconciliationQueueName = "payment_reconciliation"
 
+// DataExportQueueName is the queue the readers' archives are built on. A
+// reader who asked for one is waiting on it, so it is kept off the maintenance
+// queue for the reason the search index build is. One worker, so one install
+// reads one reader's every table at a time.
+const DataExportQueueName = "data_export"
+
 const (
 	kindProjectEpisodeReads    = "maintenance.project_episode_reads"
 	kindAggregateContentStats  = "maintenance.aggregate_content_stats"
@@ -117,6 +126,9 @@ const (
 	kindBuildSearchIndex = "maintenance.build_search_index"
 
 	kindReconcilePayments = "maintenance.reconcile_payments"
+
+	kindBuildDataExports = "maintenance.build_data_exports"
+	kindPurgeDataExports = "maintenance.purge_data_exports"
 )
 
 const (
@@ -154,19 +166,26 @@ const (
 	// reconciliation a Tenant admin started, which is at most how long one
 	// waits before it runs.
 	paymentReconciliationInterval = 10 * time.Second
+
+	// dataExportBuildInterval is how often the worker looks for an archive a
+	// reader asked for, which is at most how long one waits before it is
+	// built.
+	dataExportBuildInterval = 10 * time.Second
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
 // pass deletes a row at most a day after it expires. The withdrawn comment
 // purge runs hourly because the admin console shows staff the instant a
-// comment is due to go, and the MFA purge because its rows expire five minutes
-// after they are written.
+// comment is due to go, the MFA purge because its rows expire five minutes
+// after they are written, and the data export purge because an archive of a
+// deleted account is taken on its next pass.
 const (
 	contentEventPurgeInterval     = 24 * time.Hour
 	rankingSnapshotPurgeInterval  = 24 * time.Hour
 	mfaChallengePurgeInterval     = time.Hour
 	withdrawnCommentPurgeInterval = time.Hour
 	orphanImagePurgeInterval      = 24 * time.Hour
+	dataExportPurgeInterval       = time.Hour
 )
 
 // ServiceNames lists every service.name these jobs record under, for the
@@ -186,6 +205,8 @@ func ServiceNames() []string {
 		ServiceNameSyncGooglePlayVoidedPurchases,
 		ServiceNameBuildSearchIndex,
 		ServiceNameReconcilePayments,
+		ServiceNameBuildDataExports,
+		ServiceNamePurgeDataExports,
 	}
 }
 
@@ -201,6 +222,10 @@ type Config struct {
 	// with none configured still registers the sweep, whose runs are then
 	// cancelled with storage.ErrNotConfigured.
 	Storage storage.ReclaimerSource
+	// DataExports and DataExportBucket store and delete the readers' archives
+	// in the same bucket, as maintenance.Deps describes.
+	DataExports      storage.Provider
+	DataExportBucket storage.ReclaimerSource
 	// Secrets and GooglePlay are what the voided purchase sync reads each
 	// tenant's Google Play refunds with. Secrets also decrypts the password
 	// the search index build connects to the engine with.
@@ -243,6 +268,9 @@ type Jobs struct {
 
 	paymentReconciliation maintenance.PaymentReconciliation
 
+	dataExports     maintenance.DataExportBuild
+	dataExportPurge maintenance.DataExportPurge
+
 	// turnWait is passTurnWait, kept on the value so a test of two replicas
 	// does not wait it out.
 	turnWait time.Duration
@@ -266,6 +294,9 @@ func New(cfg Config) (*Jobs, error) {
 		Payments:   cfg.Payments,
 		AppStore:   cfg.AppStore,
 		Logger:     cfg.Logger,
+
+		DataExports:      cfg.DataExports,
+		DataExportBucket: cfg.DataExportBucket,
 
 		AppStoreVerifier: cfg.AppStoreVerifier,
 	}, turnWait: passTurnWait}
@@ -299,7 +330,8 @@ func New(cfg Config) (*Jobs, error) {
 }
 
 // Unhosted is the jobs as a worker replica that hosts none of QueueName,
-// SearchIndexQueueName, and PaymentReconciliationQueueName holds them: built without the pool New needs, so none
+// SearchIndexQueueName, PaymentReconciliationQueueName, and
+// DataExportQueueName holds them: built without the pool New needs, so none
 // of them can run, and no tunable is read. Whichever replica River elects
 // leader still needs every one of them, hosted or not: it enqueues each
 // periodic job, and it retries a pass left running by a replica that died only
@@ -350,6 +382,12 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &reconcilePaymentsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register reconcile-payments worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &buildDataExportsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register build-data-exports worker: %w", err)
+	}
+	if err := river.AddWorkerSafely(workers, &purgeDataExportsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register purge-data-exports worker: %w", err)
+	}
 	return nil
 }
 
@@ -377,6 +415,8 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{googlePlayVoidedPurchaseInterval, SyncGooglePlayVoidedPurchasesArgs{}},
 		{searchIndexBuildInterval, BuildSearchIndexArgs{}},
 		{paymentReconciliationInterval, ReconcilePaymentsArgs{}},
+		{dataExportBuildInterval, BuildDataExportsArgs{}},
+		{dataExportPurgeInterval, PurgeDataExportsArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {
@@ -396,6 +436,7 @@ func (j *Jobs) Queues() map[string]river.QueueConfig {
 		QueueName:                      {MaxWorkers: queueMaxWorkers},
 		SearchIndexQueueName:           {MaxWorkers: 1},
 		PaymentReconciliationQueueName: {MaxWorkers: 1},
+		DataExportQueueName:            {MaxWorkers: 1},
 	}
 }
 

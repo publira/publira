@@ -14,6 +14,16 @@ import (
 // is the list the consoles offer, so this is a code no price could be set in.
 var ErrUnknownCurrency = errors.New("no compiled format carries this currency")
 
+// CurrencyDigits is how many digits of the minor unit currency writes after
+// the decimal point: 0 for JPY and 2 for USD.
+func CurrencyDigits(currency string) (int, error) {
+	digits, ok := localegen.CurrencyDigits[currency]
+	if !ok {
+		return 0, fmt.Errorf("%w: %s", ErrUnknownCurrency, currency)
+	}
+	return digits, nil
+}
+
 // FormatPrice writes amount, an integer in the minor unit of currency, the way
 // the locale code names writes that currency: 500 JPY is "￥500" in Japanese
 // and 500 USD is "$5.00" in English. The tables are compiled from the same

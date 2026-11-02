@@ -53,6 +53,7 @@ func TestDefaultsKeepThePreviousDeploymentDefaults(t *testing.T) {
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
+		DataExport:                HourDay{PerHour: 1, PerDay: 1},
 		// What publira server allowed before the read limits became a setting.
 		AnonymousReads: ReadLimits{PublicAPI: 640, Search: 80, Images: 2400},
 	}
@@ -83,6 +84,8 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 		"purchase checkouts day below minute":     func(p *Policy) { p.PurchaseCheckout = MinuteDay{PerMinute: 5, PerDay: 4} },
 		"zero login account minute":               func(p *Policy) { p.LoginAttemptsPerAccount.PerMinute = 0 },
 		"login source day below hour":             func(p *Policy) { p.LoginAttemptsPerSource = HourDay{PerHour: 5, PerDay: 4} },
+		"data export hour below one":              func(p *Policy) { p.DataExport = HourDay{PerHour: 0, PerDay: 1} },
+		"data export day below hour":              func(p *Policy) { p.DataExport = HourDay{PerHour: 2, PerDay: 1} },
 		"no duplicate window":                     func(p *Policy) { p.Community.DuplicateCommentWindow = 0 },
 		"public API reads below the edge":         func(p *Policy) { p.AnonymousReads.PublicAPI = EdgeReadLimits().PublicAPI - 1 },
 		"search reads below the edge":             func(p *Policy) { p.AnonymousReads.Search = EdgeReadLimits().Search - 1 },
@@ -277,6 +280,8 @@ func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.Pl
 		LoginAccountLimitPerDay:                 params.LoginAccountLimitPerDay,
 		LoginSourceLimitPerHour:                 params.LoginSourceLimitPerHour,
 		LoginSourceLimitPerDay:                  params.LoginSourceLimitPerDay,
+		DataExportLimitPerHour:                  params.DataExportLimitPerHour,
+		DataExportLimitPerDay:                   params.DataExportLimitPerDay,
 		DisposableEmailDomainsUrl:               params.DisposableEmailDomainsUrl,
 		TenantCoinsAllowed:                      params.TenantCoinsAllowed,
 	}

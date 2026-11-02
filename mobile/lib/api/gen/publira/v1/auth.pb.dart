@@ -13,6 +13,7 @@
 import 'dart:async' as $async;
 import 'dart:core' as $core;
 
+import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 import '../types/v1/types.pb.dart' as $0;
@@ -6925,6 +6926,507 @@ class AgreeToLegalPagesResponse extends $pb.GeneratedMessage {
   $1.TenantLegalPage ensurePrivacyPage() => $_ensure(1);
 }
 
+/// A reader's request for an archive of what the install keeps about them: a
+/// ZIP of one JSON file per kind of record, with the purchase history CSV
+/// beside them.
+class DataExport extends $pb.GeneratedMessage {
+  factory DataExport({
+    DataExportState? state,
+    $core.String? requestedAt,
+    $core.String? readyAt,
+    $core.String? expiresAt,
+    $fixnum.Int64? sizeBytes,
+  }) {
+    final result = DataExport._();
+    if (state != null) result.state = state;
+    if (requestedAt != null) result.requestedAt = requestedAt;
+    if (readyAt != null) result.readyAt = readyAt;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    if (sizeBytes != null) result.sizeBytes = sizeBytes;
+    return result;
+  }
+
+  DataExport._();
+
+  factory DataExport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataExport()..mergeFromBuffer(data, registry);
+  factory DataExport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DataExport()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DataExport',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DataExport.$_createMessage)
+    ..aE<DataExportState>(1, _omitFieldNames ? '' : 'state',
+        enumValues: DataExportState.values)
+    ..aOS(2, _omitFieldNames ? '' : 'requestedAt')
+    ..aOS(3, _omitFieldNames ? '' : 'readyAt')
+    ..aOS(4, _omitFieldNames ? '' : 'expiresAt')
+    ..aInt64(5, _omitFieldNames ? '' : 'sizeBytes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataExport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DataExport copyWith(void Function(DataExport) updates) =>
+      super.copyWith((message) => updates(message as DataExport)) as DataExport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DataExport() / DataExport.new instead')
+  static DataExport create() => DataExport._();
+  static $pb.GeneratedMessage $_createMessage() => DataExport._();
+  @$core.override
+  DataExport createEmptyInstance() => DataExport._();
+  @$core.pragma('dart2js:noInline')
+  static DataExport getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DataExport>(DataExport.$_createMessage);
+  static DataExport? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DataExportState get state => $_getN(0);
+  @$pb.TagNumber(1)
+  set state(DataExportState value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasState() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearState() => $_clearField(1);
+
+  /// RFC 3339.
+  @$pb.TagNumber(2)
+  $core.String get requestedAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set requestedAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRequestedAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRequestedAt() => $_clearField(2);
+
+  /// RFC 3339, empty until the archive is ready.
+  @$pb.TagNumber(3)
+  $core.String get readyAt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set readyAt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReadyAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReadyAt() => $_clearField(3);
+
+  /// RFC 3339: when a ready archive, or the record of a failed request, is
+  /// deleted. Empty while the request is pending.
+  @$pb.TagNumber(4)
+  $core.String get expiresAt => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set expiresAt($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExpiresAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpiresAt() => $_clearField(4);
+
+  /// The archive's size, zero until it is ready.
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get sizeBytes => $_getI64(4);
+  @$pb.TagNumber(5)
+  set sizeBytes($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSizeBytes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSizeBytes() => $_clearField(5);
+}
+
+class RequestMyDataExportRequest extends $pb.GeneratedMessage {
+  factory RequestMyDataExportRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = RequestMyDataExportRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  RequestMyDataExportRequest._();
+
+  factory RequestMyDataExportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestMyDataExportRequest()..mergeFromBuffer(data, registry);
+  factory RequestMyDataExportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestMyDataExportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RequestMyDataExportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RequestMyDataExportRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestMyDataExportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestMyDataExportRequest copyWith(
+          void Function(RequestMyDataExportRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as RequestMyDataExportRequest))
+          as RequestMyDataExportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestMyDataExportRequest() / RequestMyDataExportRequest.new instead')
+  static RequestMyDataExportRequest create() => RequestMyDataExportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RequestMyDataExportRequest._();
+  @$core.override
+  RequestMyDataExportRequest createEmptyInstance() =>
+      RequestMyDataExportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RequestMyDataExportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RequestMyDataExportRequest>(
+          RequestMyDataExportRequest.$_createMessage);
+  static RequestMyDataExportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class RequestMyDataExportResponse extends $pb.GeneratedMessage {
+  factory RequestMyDataExportResponse({
+    DataExport? dataExport,
+  }) {
+    final result = RequestMyDataExportResponse._();
+    if (dataExport != null) result.dataExport = dataExport;
+    return result;
+  }
+
+  RequestMyDataExportResponse._();
+
+  factory RequestMyDataExportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestMyDataExportResponse()..mergeFromBuffer(data, registry);
+  factory RequestMyDataExportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RequestMyDataExportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RequestMyDataExportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RequestMyDataExportResponse.$_createMessage)
+    ..aOM<DataExport>(1, _omitFieldNames ? '' : 'dataExport',
+        subBuilder: DataExport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestMyDataExportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RequestMyDataExportResponse copyWith(
+          void Function(RequestMyDataExportResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as RequestMyDataExportResponse))
+          as RequestMyDataExportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestMyDataExportResponse() / RequestMyDataExportResponse.new instead')
+  static RequestMyDataExportResponse create() =>
+      RequestMyDataExportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RequestMyDataExportResponse._();
+  @$core.override
+  RequestMyDataExportResponse createEmptyInstance() =>
+      RequestMyDataExportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RequestMyDataExportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RequestMyDataExportResponse>(
+          RequestMyDataExportResponse.$_createMessage);
+  static RequestMyDataExportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  DataExport get dataExport => $_getN(0);
+  @$pb.TagNumber(1)
+  set dataExport(DataExport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDataExport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDataExport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DataExport ensureDataExport() => $_ensure(0);
+}
+
+class GetMyDataExportRequest extends $pb.GeneratedMessage {
+  factory GetMyDataExportRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = GetMyDataExportRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  GetMyDataExportRequest._();
+
+  factory GetMyDataExportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMyDataExportRequest()..mergeFromBuffer(data, registry);
+  factory GetMyDataExportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMyDataExportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetMyDataExportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetMyDataExportRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMyDataExportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMyDataExportRequest copyWith(
+          void Function(GetMyDataExportRequest) updates) =>
+      super.copyWith((message) => updates(message as GetMyDataExportRequest))
+          as GetMyDataExportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetMyDataExportRequest() / GetMyDataExportRequest.new instead')
+  static GetMyDataExportRequest create() => GetMyDataExportRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetMyDataExportRequest._();
+  @$core.override
+  GetMyDataExportRequest createEmptyInstance() => GetMyDataExportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetMyDataExportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetMyDataExportRequest>(
+          GetMyDataExportRequest.$_createMessage);
+  static GetMyDataExportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class GetMyDataExportResponse extends $pb.GeneratedMessage {
+  factory GetMyDataExportResponse({
+    DataExport? dataExport,
+  }) {
+    final result = GetMyDataExportResponse._();
+    if (dataExport != null) result.dataExport = dataExport;
+    return result;
+  }
+
+  GetMyDataExportResponse._();
+
+  factory GetMyDataExportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMyDataExportResponse()..mergeFromBuffer(data, registry);
+  factory GetMyDataExportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMyDataExportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetMyDataExportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetMyDataExportResponse.$_createMessage)
+    ..aOM<DataExport>(1, _omitFieldNames ? '' : 'dataExport',
+        subBuilder: DataExport.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMyDataExportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMyDataExportResponse copyWith(
+          void Function(GetMyDataExportResponse) updates) =>
+      super.copyWith((message) => updates(message as GetMyDataExportResponse))
+          as GetMyDataExportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetMyDataExportResponse() / GetMyDataExportResponse.new instead')
+  static GetMyDataExportResponse create() => GetMyDataExportResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetMyDataExportResponse._();
+  @$core.override
+  GetMyDataExportResponse createEmptyInstance() => GetMyDataExportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetMyDataExportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetMyDataExportResponse>(
+          GetMyDataExportResponse.$_createMessage);
+  static GetMyDataExportResponse? _defaultInstance;
+
+  /// The reader's latest request that has not expired. Absent when there is
+  /// none.
+  @$pb.TagNumber(1)
+  DataExport get dataExport => $_getN(0);
+  @$pb.TagNumber(1)
+  set dataExport(DataExport value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDataExport() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDataExport() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DataExport ensureDataExport() => $_ensure(0);
+}
+
+class DownloadMyDataExportRequest extends $pb.GeneratedMessage {
+  factory DownloadMyDataExportRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = DownloadMyDataExportRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  DownloadMyDataExportRequest._();
+
+  factory DownloadMyDataExportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadMyDataExportRequest()..mergeFromBuffer(data, registry);
+  factory DownloadMyDataExportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadMyDataExportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DownloadMyDataExportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DownloadMyDataExportRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadMyDataExportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadMyDataExportRequest copyWith(
+          void Function(DownloadMyDataExportRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as DownloadMyDataExportRequest))
+          as DownloadMyDataExportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DownloadMyDataExportRequest() / DownloadMyDataExportRequest.new instead')
+  static DownloadMyDataExportRequest create() =>
+      DownloadMyDataExportRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DownloadMyDataExportRequest._();
+  @$core.override
+  DownloadMyDataExportRequest createEmptyInstance() =>
+      DownloadMyDataExportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DownloadMyDataExportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DownloadMyDataExportRequest>(
+          DownloadMyDataExportRequest.$_createMessage);
+  static DownloadMyDataExportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+/// One piece of the archive. The pieces, in the order they arrive, are the ZIP
+/// file.
+class DownloadMyDataExportResponse extends $pb.GeneratedMessage {
+  factory DownloadMyDataExportResponse({
+    $core.List<$core.int>? data,
+  }) {
+    final result = DownloadMyDataExportResponse._();
+    if (data != null) result.data = data;
+    return result;
+  }
+
+  DownloadMyDataExportResponse._();
+
+  factory DownloadMyDataExportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadMyDataExportResponse()..mergeFromBuffer(data, registry);
+  factory DownloadMyDataExportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DownloadMyDataExportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DownloadMyDataExportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DownloadMyDataExportResponse.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'data', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadMyDataExportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DownloadMyDataExportResponse copyWith(
+          void Function(DownloadMyDataExportResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as DownloadMyDataExportResponse))
+          as DownloadMyDataExportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DownloadMyDataExportResponse() / DownloadMyDataExportResponse.new instead')
+  static DownloadMyDataExportResponse create() =>
+      DownloadMyDataExportResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      DownloadMyDataExportResponse._();
+  @$core.override
+  DownloadMyDataExportResponse createEmptyInstance() =>
+      DownloadMyDataExportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DownloadMyDataExportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DownloadMyDataExportResponse>(
+          DownloadMyDataExportResponse.$_createMessage);
+  static DownloadMyDataExportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get data => $_getN(0);
+  @$pb.TagNumber(1)
+  set data($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasData() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearData() => $_clearField(1);
+}
+
 class AuthServiceApi {
   final $pb.RpcClient _client;
 
@@ -7149,6 +7651,34 @@ class AuthServiceApi {
           $pb.ClientContext? ctx, AgreeToLegalPagesRequest request) =>
       _client.invoke<AgreeToLegalPagesResponse>(ctx, 'AuthService',
           'AgreeToLegalPages', request, AgreeToLegalPagesResponse());
+
+  /// Asks for an archive of what the install keeps about the signed-in reader,
+  /// which the worker builds, and then tells the reader of in their inbox and
+  /// by mail. A reader may ask while they owe an agreement to the tenant's
+  /// legal pages, as they may delete their account.
+  ///
+  /// failed_precondition, with the DATA_EXPORT_IN_PROGRESS reason, while a
+  /// request of theirs is still pending, and with STORAGE_NOT_CONFIGURED while
+  /// the platform has no object store to keep the archive in.
+  /// resource_exhausted past the platform policy's data_export limit.
+  $async.Future<RequestMyDataExportResponse> requestMyDataExport(
+          $pb.ClientContext? ctx, RequestMyDataExportRequest request) =>
+      _client.invoke<RequestMyDataExportResponse>(ctx, 'AuthService',
+          'RequestMyDataExport', request, RequestMyDataExportResponse());
+
+  /// The signed-in reader's latest request for their archive.
+  $async.Future<GetMyDataExportResponse> getMyDataExport(
+          $pb.ClientContext? ctx, GetMyDataExportRequest request) =>
+      _client.invoke<GetMyDataExportResponse>(ctx, 'AuthService',
+          'GetMyDataExport', request, GetMyDataExportResponse());
+
+  /// Streams the signed-in reader's latest ready archive, as a ZIP file in
+  /// pieces, until it expires. Any number of times until then. not_found when
+  /// there is none.
+  $async.Future<DownloadMyDataExportResponse> downloadMyDataExport(
+          $pb.ClientContext? ctx, DownloadMyDataExportRequest request) =>
+      _client.invoke<DownloadMyDataExportResponse>(ctx, 'AuthService',
+          'DownloadMyDataExport', request, DownloadMyDataExportResponse());
 }
 
 const $core.bool _omitFieldNames =

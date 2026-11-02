@@ -38,5 +38,39 @@ class IdentityProvider extends $pb.ProtobufEnum {
   const IdentityProvider._(super.value, super.name);
 }
 
+/// What becomes of a reader's request for their archive.
+class DataExportState extends $pb.ProtobufEnum {
+  static const DataExportState DATA_EXPORT_STATE_UNSPECIFIED =
+      DataExportState._(
+          0, _omitEnumNames ? '' : 'DATA_EXPORT_STATE_UNSPECIFIED');
+
+  /// Asked for, and not built yet.
+  static const DataExportState DATA_EXPORT_STATE_PENDING =
+      DataExportState._(1, _omitEnumNames ? '' : 'DATA_EXPORT_STATE_PENDING');
+
+  /// Built, and DownloadMyDataExport streams it until expires_at.
+  static const DataExportState DATA_EXPORT_STATE_READY =
+      DataExportState._(2, _omitEnumNames ? '' : 'DATA_EXPORT_STATE_READY');
+
+  /// Given up on, because the install had no object store to keep it in. The
+  /// reader may ask again.
+  static const DataExportState DATA_EXPORT_STATE_FAILED =
+      DataExportState._(3, _omitEnumNames ? '' : 'DATA_EXPORT_STATE_FAILED');
+
+  static const $core.List<DataExportState> values = <DataExportState>[
+    DATA_EXPORT_STATE_UNSPECIFIED,
+    DATA_EXPORT_STATE_PENDING,
+    DATA_EXPORT_STATE_READY,
+    DATA_EXPORT_STATE_FAILED,
+  ];
+
+  static final $core.List<DataExportState?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static DataExportState? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const DataExportState._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

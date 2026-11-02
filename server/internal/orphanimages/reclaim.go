@@ -23,9 +23,10 @@ const (
 	// one reference lookup and one batch delete carry. It is S3's own page
 	// ceiling: a smaller value only adds round trips.
 	DefaultPageSize = 1000
-	// DefaultPrefix is the only part of the bucket this repository writes
-	// under. Sweeping from the root would put anything an operator stored
-	// beside it in range of a delete.
+	// DefaultPrefix is the part of the bucket every image is written under.
+	// Sweeping from the root would put anything an operator stored beside it
+	// in range of a delete, and the readers' archives too, which are kept
+	// under a prefix of their own and swept by their own purge.
 	DefaultPrefix = "tenants/"
 	// DefaultMinAge keeps a run away from the uploads around it. Nothing older
 	// than this can still be mid-upload, so an object this old that no variant

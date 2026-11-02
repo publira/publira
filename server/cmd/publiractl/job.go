@@ -29,6 +29,8 @@ var jobGroup = commandGroup{
 		jobCommand("sync-google-play-voided-purchases", "Take back the purchases Google Play refunded in the last 30 days", runSyncGooglePlayVoidedPurchases),
 		jobCommand("build-search-index", "Build the catalog index on the saved search engine, if one is due, and move the search onto it", runBuildSearchIndex),
 		jobCommand("reconcile-payments", "Run the payment reconciliations Tenant admins started and the worker has not finished", runReconcilePayments),
+		jobCommand("build-data-exports", "Build the archives readers asked for of their data and the worker has not built", runBuildDataExports),
+		jobCommand("purge-data-exports", "Delete the readers' archives past their expiry, and those of deleted accounts", runPurgeDataExports),
 	},
 }
 

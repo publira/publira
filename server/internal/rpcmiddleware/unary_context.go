@@ -12,20 +12,22 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-// UnaryRequestFunc sees a unary request message before the handler does. It
-// calls next to run the handler, with the context the handler should get, or
-// returns without calling it to refuse the call.
+// UnaryRequestFunc sees the one request message of a call before the handler
+// does. It calls next to run the handler, with the context the handler should
+// get, or returns without calling it to refuse the call.
 type UnaryRequestFunc func(ctx context.Context, spec connect.Spec, req proto.Message, next func(context.Context) error) error
 
-// NewUnaryRequestInterceptor runs intercept on every unary call with its
-// request message.
+// NewUnaryRequestInterceptor runs intercept on every call whose client sends
+// one message, with that message: a unary call, and a server-streaming one,
+// whose answer arrives in pieces but whose request is the same single message
+// that decides the tenant and the session.
 //
 // A connect-go v2 interceptor wraps the call before anything is read, and the
 // handler receives the message only once it has been given its context. A
 // decision that depends on the message and changes the context — which tenant
 // the request names, who the session belongs to — therefore has to receive the
 // message itself, ahead of the handler, and hand the handler that same message
-// when it asks for it. Streaming calls pass through untouched.
+// when it asks for it. A call whose client streams passes through untouched.
 //
 // The message is read once however many of these interceptors a server
 // chains, and the handler is handed its fields rather than a copy of them: the
@@ -34,7 +36,7 @@ type UnaryRequestFunc func(ctx context.Context, spec connect.Spec, req proto.Mes
 func NewUnaryRequestInterceptor(intercept UnaryRequestFunc) connect.ServerInterceptor {
 	return func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
-			if spec.StreamType != connect.StreamTypeUnary {
+			if spec.StreamType != connect.StreamTypeUnary && spec.StreamType != connect.StreamTypeServer {
 				return next(ctx, spec, stream)
 			}
 			if received, ok := stream.(*receivedStream); ok && !received.consumed {

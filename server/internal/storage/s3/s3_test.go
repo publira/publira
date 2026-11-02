@@ -27,6 +27,11 @@ func (blockingClient) ListObjectsV2(ctx context.Context, _ *awss3.ListObjectsV2I
 	return nil, ctx.Err()
 }
 
+func (blockingClient) GetObject(ctx context.Context, _ *awss3.GetObjectInput, _ ...func(*awss3.Options)) (*awss3.GetObjectOutput, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
 func (blockingClient) DeleteObjects(ctx context.Context, _ *awss3.DeleteObjectsInput, _ ...func(*awss3.Options)) (*awss3.DeleteObjectsOutput, error) {
 	<-ctx.Done()
 	return nil, ctx.Err()
@@ -114,4 +119,23 @@ func (c refusingDeleteClient) DeleteObjects(_ context.Context, _ *awss3.DeleteOb
 	return &awss3.DeleteObjectsOutput{
 		Errors: []s3types.Error{{Key: aws.String(c.key), Message: aws.String(c.message)}},
 	}, nil
+}
+
+// missingObjectClient answers every read the way S3 answers a key it holds
+// nothing under.
+type missingObjectClient struct {
+	blockingClient
+}
+
+func (missingObjectClient) GetObject(context.Context, *awss3.GetObjectInput, ...func(*awss3.Options)) (*awss3.GetObjectOutput, error) {
+	return nil, &s3types.NoSuchKey{}
+}
+
+func TestStorageOpenReportsAMissingObject(t *testing.T) {
+	store := Storage{client: missingObjectClient{}, bucket: "test-bucket"}
+
+	_, err := store.Open(t.Context(), "tenants/a/data-exports/gone.zip")
+	if !errors.Is(err, storage.ErrObjectNotFound) {
+		t.Fatalf("Open error = %v, want storage.ErrObjectNotFound", err)
+	}
 }

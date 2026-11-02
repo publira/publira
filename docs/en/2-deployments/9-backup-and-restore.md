@@ -2,7 +2,7 @@
 title: Backup and restore
 description: What an install keeps and has to be backed up, how to take a backup that restores, and how to bring an install back on empty services.
 published: 2026-10-06
-updated: 2026-10-28
+updated: 2026-11-02
 ---
 
 An install keeps its state in three places: the PostgreSQL database, the object store bucket, and the secret encryption keys, which only you hold. Restored without the others, each one is incomplete: rows name images the bucket does not have, the bucket holds images no row names, and the credentials in the database are sealed with keys nobody has. This page names what to back up and why, how to take a backup that restores into a working install, and how to bring an install back from it on empty services.
@@ -55,7 +55,7 @@ Stop `publira worker`, back up the database and then the bucket, and start the w
 
 ### 1. Stop the worker
 
-Stop every `publira worker` replica before the database backup starts, and keep them stopped until the bucket copy has finished. The worker's orphan purge is the only thing that deletes objects from the bucket, and with it stopped, nothing removes an object the database backup names before the copy reaches it. Do not run `publiractl job purge-orphan-images` during the backup either.
+Stop every `publira worker` replica before the database backup starts, and keep them stopped until the bucket copy has finished. The worker's purges of unused images and of readers' expired data downloads are the only things that delete objects from the bucket, and with them stopped, nothing removes an object the database backup names before the copy reaches it. Do not run `publiractl job purge-orphan-images` or `publiractl job purge-data-exports` during the backup either.
 
 The rest of the install keeps serving. What the worker would have done meanwhile — mail, push notifications, cache revalidation, and publishing an episode whose scheduled time arrives — waits in the database and is done as soon as the worker starts again.
 

@@ -113,6 +113,11 @@ const (
 	// They all share the allowance, so moving from one to another, or from the
 	// web to the app, buys a reader no more requests.
 	actionStartPurchaseCheckout readerAction = "purchase_checkout.start"
+	// An archive of what the install keeps about the reader asked for. It
+	// writes one row, but has the worker read every table that holds the
+	// reader's rows and store the result in the bucket, so it is counted in
+	// hours and days rather than minutes.
+	actionRequestDataExport readerAction = "data_export.request"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -134,7 +139,8 @@ func newReaderGuards(policy platformpolicy.Source, logger *slog.Logger) readerGu
 // minute keeps a script from emptying the day's budget in one breath, and the
 // day is what a script pacing itself under the minute still runs into. The
 // contact form counts in hours, because a minute is shorter than it takes to
-// write one.
+// write one, and so does the data export, which a reader asks for once in a
+// long while.
 func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule {
 	community := policy.Community
 	return map[readerAction][]ratelimit.Rule{
@@ -156,6 +162,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionStartSubscriptionCheckout:      minuteDayRules(policy.SubscriptionCheckout),
 		actionPayWithCoins:                   minuteDayRules(policy.CoinPayment),
 		actionStartPurchaseCheckout:          minuteDayRules(policy.PurchaseCheckout),
+		actionRequestDataExport:              hourDayRules(policy.DataExport),
 	}
 }
 

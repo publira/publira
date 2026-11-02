@@ -55,6 +55,8 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 			wantQueue = SearchIndexQueueName
 		case ReconcilePaymentsArgs:
 			wantQueue = PaymentReconciliationQueueName
+		case BuildDataExportsArgs:
+			wantQueue = DataExportQueueName
 		}
 		if opts.Queue != wantQueue {
 			t.Fatalf("%s queue = %q, want %q", args.Kind(), opts.Queue, wantQueue)
@@ -82,6 +84,7 @@ func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
 		CloseRoyaltyStatementsArgs{},
 		BuildSearchIndexArgs{},
 		ReconcilePaymentsArgs{},
+		BuildDataExportsArgs{},
 	} {
 		opts := insertOptsOf(t, args)
 		if !slices.Equal(opts.UniqueOpts.ByState, inFlight()) {
@@ -104,6 +107,7 @@ func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 		PurgeMfaChallengesArgs{}:            mfaChallengePurgeInterval,
 		PurgeWithdrawnCommentsArgs{}:        withdrawnCommentPurgeInterval,
 		PurgeOrphanImagesArgs{}:             orphanImagePurgeInterval,
+		PurgeDataExportsArgs{}:              dataExportPurgeInterval,
 		SyncGooglePlayVoidedPurchasesArgs{}: googlePlayVoidedPurchaseInterval,
 	} {
 		opts := insertOptsOf(t, args)
@@ -122,15 +126,16 @@ func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 // The search index build has a second one, so a saved engine is not waiting
 // behind the daily rebuilds, and one worker on it, so two builds never fill
 // the same alias. The payment reconciliations have a third for the same
-// reason, since a Tenant admin is waiting on each.
+// reason, since a Tenant admin is waiting on each, and the readers' archives a
+// fourth, since a reader is waiting on each.
 func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
 	queues := jobs.Queues()
-	if len(queues) != 3 {
-		t.Fatalf("queues = %v, want exactly three", queues)
+	if len(queues) != 4 {
+		t.Fatalf("queues = %v, want exactly four", queues)
 	}
-	for name, maxWorkers := range map[string]int{QueueName: queueMaxWorkers, SearchIndexQueueName: 1, PaymentReconciliationQueueName: 1} {
+	for name, maxWorkers := range map[string]int{QueueName: queueMaxWorkers, SearchIndexQueueName: 1, PaymentReconciliationQueueName: 1, DataExportQueueName: 1} {
 		queue, ok := queues[name]
 		if !ok {
 			t.Fatalf("queues = %v, want one named %q", queues, name)
@@ -146,13 +151,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 
 // Only the head of the daily rebuild chain is scheduled, since each link
 // enqueues the next, and every purge, the automatic royalty close, the voided
-// purchase sync, the search index build, and the payment reconciliations are
-// scheduled on their own.
+// purchase sync, the search index build, the payment reconciliations, and the
+// readers' archives are scheduled on their own.
 func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 10; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, the voided purchase sync, the search index build, and the payment reconciliations", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 12; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, six purges, the royalty close, the voided purchase sync, the search index build, the payment reconciliations, and the readers' archives", got, want)
 	}
 }
 
@@ -165,7 +170,7 @@ func TestUnhostedNeedsNoPool(t *testing.T) {
 	if err := jobs.Register(river.NewWorkers()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	if got, want := len(jobs.PeriodicJobs()), 10; got != want {
+	if got, want := len(jobs.PeriodicJobs()), 12; got != want {
 		t.Fatalf("periodic jobs = %d, want the same %d a hosted set schedules", got, want)
 	}
 }
@@ -338,6 +343,8 @@ func everyArgs() []river.JobArgs {
 		SyncGooglePlayVoidedPurchasesArgs{},
 		BuildSearchIndexArgs{},
 		ReconcilePaymentsArgs{},
+		BuildDataExportsArgs{},
+		PurgeDataExportsArgs{},
 	}
 }
 
@@ -381,6 +388,12 @@ func probes() map[string]func(*river.Workers) error {
 		},
 		kindBuildSearchIndex: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &buildSearchIndexWorker{})
+		},
+		kindBuildDataExports: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &buildDataExportsWorker{})
+		},
+		kindPurgeDataExports: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &purgeDataExportsWorker{})
 		},
 	}
 }

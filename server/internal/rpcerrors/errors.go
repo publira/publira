@@ -58,6 +58,9 @@ const (
 	// ReasonCreatorSalesHidden refuses a creator's royalty statements while
 	// the tenant does not show its creators their sales.
 	ReasonCreatorSalesHidden = "CREATOR_SALES_HIDDEN"
+	// ReasonDataExportInProgress refuses a reader's request for an archive of
+	// their data while one they asked for is still being built.
+	ReasonDataExportInProgress = "DATA_EXPORT_IN_PROGRESS"
 	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
 	// that signs in to another reader of the tenant.
 	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"

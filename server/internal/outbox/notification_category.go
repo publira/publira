@@ -24,6 +24,10 @@ const (
 	// NotificationCategoryStaff is a row addressed to the tenant's staff for
 	// being staff. No preference governs it.
 	NotificationCategoryStaff NotificationCategory = "staff"
+	// NotificationCategoryAccount is a row about the reader's own account that
+	// they asked for, such as their archive being ready. No preference governs
+	// it.
+	NotificationCategoryAccount NotificationCategory = "account"
 )
 
 // notificationCategories names, for every notification_type a row is filed
@@ -51,6 +55,7 @@ var notificationCategories = map[string][]NotificationCategory{
 	NotificationTypeCommentAwaitingApproval: {NotificationCategoryStaff},
 	NotificationTypeCommentReported:         {NotificationCategoryStaff},
 	NotificationTypeEpisodeReviewReturned:   {NotificationCategoryStaff},
+	NotificationTypeDataExportReady:         {NotificationCategoryAccount},
 }
 
 // NotificationCategoryFor answers the category a row of notificationType is

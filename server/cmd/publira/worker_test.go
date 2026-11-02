@@ -39,6 +39,7 @@ func TestWorkerOpensThePoolsOfItsQueues(t *testing.T) {
 		{"maintenance", workerQueues{maintenance: true}, []string{outboxURL, contentStatsURL}, []string{"db.outbox", "db.content_stats"}},
 		{"search_index", workerQueues{searchIndex: true}, []string{outboxURL, contentStatsURL}, []string{"db.outbox", "db.content_stats"}},
 		{"payment_reconciliation", workerQueues{paymentReconciliation: true}, []string{outboxURL, contentStatsURL}, []string{"db.outbox", "db.content_stats"}},
+		{"data_export", workerQueues{dataExport: true}, []string{outboxURL, contentStatsURL}, []string{"db.outbox", "db.content_stats"}},
 		{"ticker,maintenance,search_index", workerQueues{ticker: true, maintenance: true, searchIndex: true}, []string{outboxURL, tickerURL, contentStatsURL}, []string{"db.outbox", "db.ticker", "db.content_stats"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -76,9 +77,9 @@ func TestWorkerQueuesNameRiversQueues(t *testing.T) {
 		river     []string
 		notHosted []string
 	}{
-		{allWorkerQueues, []string{river.QueueDefault, tickerjobs.QueueName, maintenancejobs.QueueName, maintenancejobs.SearchIndexQueueName, maintenancejobs.PaymentReconciliationQueueName}, nil},
-		{workerQueues{outbox: true}, []string{river.QueueDefault}, []string{"ticker", "maintenance", "search_index", "payment_reconciliation"}},
-		{workerQueues{ticker: true, searchIndex: true}, []string{tickerjobs.QueueName, maintenancejobs.SearchIndexQueueName}, []string{"outbox", "maintenance", "payment_reconciliation"}},
+		{allWorkerQueues, []string{river.QueueDefault, tickerjobs.QueueName, maintenancejobs.QueueName, maintenancejobs.SearchIndexQueueName, maintenancejobs.PaymentReconciliationQueueName, maintenancejobs.DataExportQueueName}, nil},
+		{workerQueues{outbox: true}, []string{river.QueueDefault}, []string{"ticker", "maintenance", "search_index", "payment_reconciliation", "data_export"}},
+		{workerQueues{ticker: true, searchIndex: true}, []string{tickerjobs.QueueName, maintenancejobs.SearchIndexQueueName}, []string{"outbox", "maintenance", "payment_reconciliation", "data_export"}},
 	} {
 		if got := tc.queues.riverQueues(); !slices.Equal(got, tc.river) {
 			t.Errorf("riverQueues(%+v) = %v, want %v", tc.queues, got, tc.river)
@@ -98,6 +99,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EmailHandlerConfig{}, outbox.PushHandlerConfig{}, outbox.StaffNotificationHandlerConfig{},
 		outbox.AnnouncementNotificationHandlerConfig{}, outbox.EpisodePublishedNotificationHandlerConfig{},
 		outbox.CommentApprovedNotificationHandlerConfig{},
+		outbox.DataExportReadyNotificationHandlerConfig{},
 		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
 		outbox.SubscriptionCancelHandlerConfig{},
 		nil, nil, nil)
@@ -120,6 +122,8 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeAnnouncementNotification,
 		outbox.EventTypeEpisodePublishedNotification,
 		outbox.EventTypeCommentApprovedNotification,
+		outbox.EventTypeDataExportReadyNotification,
+		outbox.EventTypeDataExportReadyEmail,
 		outbox.EventTypeMemberPushNotification,
 		outbox.EventTypeAnnouncementPushNotification,
 	}

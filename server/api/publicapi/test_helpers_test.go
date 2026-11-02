@@ -48,7 +48,7 @@ func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emai
 
 	// The read limit is the built-in one, as the server's would be with no
 	// policy saved, so a test's queries are only the ones its call makes.
-	api, err := New(db, nil, queries, nil, encryptor, testutil.TokenManager(), nil, nil, signin.VerifierConfig{}, nil, nil, nil, readguard.NewDefault())
+	api, err := New(db, nil, queries, nil, nil, encryptor, testutil.TokenManager(), nil, nil, signin.VerifierConfig{}, nil, nil, nil, readguard.NewDefault())
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

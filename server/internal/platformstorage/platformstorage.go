@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"sync"
@@ -262,6 +263,15 @@ func (p Provider) Pin(ctx context.Context) (storage.Provider, error) {
 		return nil, err
 	}
 	return resolved.Value, nil
+}
+
+// Open implements storage.Opener.
+func (p Provider) Open(ctx context.Context, objectKey string) (io.ReadCloser, error) {
+	resolved, err := p.Resolver.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return resolved.Value.Open(ctx, objectKey)
 }
 
 // Reclaimers is a [storage.ReclaimerSource] over the resolved bucket.

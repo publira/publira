@@ -60,6 +60,12 @@ type Deps struct {
 	// Storage resolves the bucket OrphanImagePurge reclaims, and is the one
 	// dependency no other job takes.
 	Storage storage.ReclaimerSource
+	// DataExports stores the archives DataExportBuild builds, and
+	// DataExportBucket resolves the bucket DataExportBuild and DataExportPurge
+	// delete them from: the same bucket as Storage's, held apart so that only
+	// the jobs that keep the archives reach it as theirs.
+	DataExports      storage.Provider
+	DataExportBucket storage.ReclaimerSource
 	// Secrets decrypts the store credentials GooglePlayVoidedPurchaseSync
 	// calls Google Play with, and the credentials PaymentReconciliation reads
 	// each source with. GooglePlay is the API both call.

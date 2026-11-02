@@ -98,6 +98,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),
 	hourDayFlags("login_attempts_per_source", "login-attempts-per-source", "failed sign-ins from one source", false,
 		func(p *policySettings) *platformpolicy.HourDay { return &p.LoginAttemptsPerSource }),
+	hourDayFlags("data_export", "data-export", "archives of their data one reader asks for", false,
+		func(p *policySettings) *platformpolicy.HourDay { return &p.DataExport }),
 	hourDayFlags("mail_requests_per_address", "mail-requests-per-address", "email requests for one address", false,
 		func(p *policySettings) *platformpolicy.HourDay { return &p.MailRequestsPerAddress }),
 	hourDayFlags("mail_requests_per_source", "mail-requests-per-source", "email requests from one source", false,
@@ -226,6 +228,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Purchase checkouts per reader:\t%s\n", perMinute(p.PurchaseCheckout))
 		fmt.Fprintf(&b, "Sign-in attempts per address:\t%s\n", perMinute(p.LoginAttemptsPerAccount))
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
+		fmt.Fprintf(&b, "Data exports per reader:\t%s\n", perHour(p.DataExport))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))
 		fmt.Fprintf(&b, "Email requests per source:\t%s\n", perHour(p.MailRequestsPerSource))
 		fmt.Fprintf(&b, "Anonymous public API calls per client:\t%s\n", perReadWindow(p.AnonymousReads.PublicAPI))

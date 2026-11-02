@@ -173,6 +173,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   AnonymousReadLimits anonymous_read_limits = 21;
+  // How often one reader may ask AuthService.RequestMyDataExport for an
+  // archive of what the install keeps about them.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  HourDayLimit data_export = 22;
 }
 
 // The reads one client may make of a storefront in 10 seconds, counted per

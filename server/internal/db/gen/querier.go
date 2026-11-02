@@ -127,6 +127,10 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	// Takes up the oldest request no worker is building: one never claimed, or
+	// one whose claim is older than stale_before, which a worker that died
+	// mid-build left behind. A request whose account is gone is the purge's.
+	ClaimUserDataExport(ctx context.Context, arg ClaimUserDataExportParams) (UserDataExport, error)
 	// Spends the reader's ticket on the series and starts the next recharge, when
 	// one is ready. No row means none was: the update's condition failed on a row
 	// whose instant is still ahead.
@@ -386,12 +390,12 @@ type Querier interface {
 	// category is which of the recipient's notification preferences the row
 	// answers to, and the row is listed in their inbox unless that preference's
 	// inbox cell is off; a recipient who saved nothing holds every cell on, and
-	// the staff and everyone categories have no cell. The cell is read here
-	// rather than passed in, so no writer can file a row past it. Reading it needs
-	// a connection that sees the recipient's settings, which the worker's do: the
-	// settings are isolated to the reader they belong to, so a tenant-scoped API
-	// connection reads no row and would list every notification it filed, which
-	// is why the reader-facing types are filed by the worker.
+	// the staff, everyone, and account categories have no cell. The cell is read
+	// here rather than passed in, so no writer can file a row past it. Reading it
+	// needs a connection that sees the recipient's settings, which the worker's
+	// do: the settings are isolated to the reader they belong to, so a
+	// tenant-scoped API connection reads no row and would list every notification
+	// it filed, which is why the reader-facing types are filed by the worker.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
 	// Grants the reader the coins a pack purchase bought, less what a shortfall
 	// took of them as they were granted. A purchase grants once, so a grant made
@@ -506,6 +510,18 @@ type Querier interface {
 	CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// A reader's download of what the install keeps about them. The reader's own
+	// connection requests it and reads it back, under the member isolation the
+	// table carries. The worker builds it and purges it as the maintenance role,
+	// which reads every tenant's rows: the List…ForDataExport queries below are
+	// what the archive is made of, one per file, and each names the tenant and
+	// the reader itself rather than counting on a policy to.
+	//
+	// A title is the one the locale the archive is written in shows, falling back
+	// the way the storefront's own reads do.
+	// No row when the reader already has a request the worker has neither built
+	// nor given up on.
+	CreateUserDataExport(ctx context.Context, arg CreateUserDataExportParams) (UserDataExport, error)
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error)
@@ -672,6 +688,7 @@ type Querier interface {
 	DeleteUnusedTagsByIDsForTenant(ctx context.Context, arg DeleteUnusedTagsByIDsForTenantParams) error
 	// Hard delete. Related rows go with the user wherever the foreign key cascades.
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	DeleteUserDataExports(ctx context.Context, ids []uuid.UUID) (int64, error)
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserIdentityForUser(ctx context.Context, arg DeleteUserIdentityForUserParams) (UserIdentity, error)
@@ -720,6 +737,8 @@ type Querier interface {
 	// spend holds is passed over and reached by a later pass.
 	ExpireLapsedCoinGrants(ctx context.Context, batch int32) ([]ExpireLapsedCoinGrantsRow, error)
 	FailPaymentReconciliation(ctx context.Context, arg FailPaymentReconciliationParams) (int64, error)
+	// Gives up on a request under the claim that built it.
+	FailUserDataExport(ctx context.Context, arg FailUserDataExportParams) (int64, error)
 	// Records the counts of a run whose claim is still the one that ran it, so a
 	// run another worker has taken over since writes nothing.
 	FinishPaymentReconciliation(ctx context.Context, arg FinishPaymentReconciliationParams) (int64, error)
@@ -842,6 +861,9 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
+	// The reader's latest archive that is ready and has not expired. A request
+	// made after it is still being built does not take it away.
+	GetDownloadableUserDataExport(ctx context.Context, arg GetDownloadableUserDataExportParams) (UserDataExport, error)
 	GetEnabledTenantInboundEmailConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantInboundEmailConfig, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
@@ -978,6 +1000,9 @@ type Querier interface {
 	// A subscription billed by another provider names no Stripe customer, so it is
 	// passed over rather than answered as the latest.
 	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error)
+	// The reader's latest request that has not expired, which is the one their
+	// account shows.
+	GetLatestUserDataExport(ctx context.Context, arg GetLatestUserDataExportParams) (UserDataExport, error)
 	// Where a newly created banner goes: after everything that already exists.
 	GetMaxCampaignBannerDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Where a newly created role goes: after everything that already exists.
@@ -1049,6 +1074,9 @@ type Querier interface {
 	// staff rows. A wait-for-free ticket the reader used is theirs, not one staff
 	// issued, so it neither stands in for a staff ticket nor blocks one.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
+	// The reader's notification settings as saved. No row is a reader who saved
+	// none, which the install keeps nothing about.
+	GetNotificationSettingsForDataExport(ctx context.Context, arg GetNotificationSettingsForDataExportParams) (UserNotificationSetting, error)
 	GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	// The page with the translation page_translation_for picks for the locale.
@@ -1444,6 +1472,10 @@ type Querier interface {
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
+	// The account itself. The password, its hash, and the second factor's secret
+	// are not the reader's data but the means to sign in as them, so the archive
+	// says only whether there is one.
+	GetUserForDataExport(ctx context.Context, arg GetUserForDataExportParams) (GetUserForDataExportRow, error)
 	// The stored object behind an account's icon, and only while the account
 	// elects it. A reader who replaces or removes an icon expects it to stop being
 	// shown, so a superseded image is not served in the time before the orphan
@@ -1471,6 +1503,7 @@ type Querier interface {
 	// The tenant's row-level security policy is what keeps another tenant's
 	// credential out of reach.
 	GetUserWebauthnCredentialForSignIn(ctx context.Context, arg GetUserWebauthnCredentialForSignInParams) (UserWebauthnCredential, error)
+	GetViewerPreferencesForDataExport(ctx context.Context, arg GetViewerPreferencesForDataExportParams) (UserViewerPreference, error)
 	GetVolumeByIDForTenant(ctx context.Context, arg GetVolumeByIDForTenantParams) (GetVolumeByIDForTenantRow, error)
 	GetVolumeCoverImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetVolumeCoverImageVariantByTypeAndWidthForTenantParams) (GetVolumeCoverImageVariantByTypeAndWidthForTenantRow, error)
 	// A published episode of a published series, both shown on the calling
@@ -1707,6 +1740,9 @@ type Querier interface {
 	// refund has covered in full since, one whose dispute has been lost since, or
 	// one that something else revoked, is left alone.
 	LiftStaffRevocation(ctx context.Context, arg LiftStaffRevocationParams) (uuid.UUID, error)
+	// Every episode staff opened to the reader. The note is staff's to one
+	// another, and is left out like the contact inbox's.
+	ListAccessTicketsForDataExport(ctx context.Context, arg ListAccessTicketsForDataExportParams) ([]ListAccessTicketsForDataExportRow, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_access_tickets_staff_tenant_created_at can be
@@ -1903,6 +1939,8 @@ type Querier interface {
 	// history keeps every entry it sums to while a surface leaves out what it
 	// cannot name.
 	ListCoinTransactionsDesc(ctx context.Context, arg ListCoinTransactionsDescParams) ([]ListCoinTransactionsDescRow, error)
+	// Every coin the reader was granted or spent, oldest first.
+	ListCoinTransactionsForDataExport(ctx context.Context, arg ListCoinTransactionsForDataExportParams) ([]ListCoinTransactionsForDataExportRow, error)
 	// One message's exchange as the console shows it under the message, oldest
 	// first so it reads in the order it was written. The author is joined for the
 	// name the console prints beside a staff entry.
@@ -1911,6 +1949,10 @@ type Querier interface {
 	// sent to an address other than the per-message one still finds its message.
 	// The caller decides which of them the mail answers.
 	ListContactMessageEntriesByMessageIDs(ctx context.Context, arg ListContactMessageEntriesByMessageIDsParams) ([]ListContactMessageEntriesByMessageIDsRow, error)
+	// The replies on those messages, the reader's and staff's alike: what staff
+	// wrote is what the reader was sent, and a reader's names the address they
+	// wrote back from.
+	ListContactMessageEntriesForDataExport(ctx context.Context, arg ListContactMessageEntriesForDataExportParams) ([]ListContactMessageEntriesForDataExportRow, error)
 	// The Message-IDs of the entries written before one entry of the same
 	// message, oldest first: the last is what the entry's mail is In-Reply-To, and
 	// all of them are its References. An entry that came in without one has
@@ -1932,6 +1974,9 @@ type Querier interface {
 	//
 	// cursor rules: proto/README.md.
 	ListContactMessagesByCreatedAtDesc(ctx context.Context, arg ListContactMessagesByCreatedAtDescParams) ([]ListContactMessagesByCreatedAtDescRow, error)
+	// Every message the reader sent through the contact form while signed in.
+	// Who on staff handled it, and the note staff keep on it, are the tenant's.
+	ListContactMessagesForDataExport(ctx context.Context, arg ListContactMessagesForDataExportParams) ([]ListContactMessagesForDataExportRow, error)
 	ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error)
 	ListContentEventPurges(ctx context.Context) ([]ListContentEventPurgesRow, error)
 	// Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
@@ -2004,6 +2049,9 @@ type Querier interface {
 	ListEpisodeCampaignPricesByEpisodeForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesByEpisodeForTenantDescParams) ([]ListEpisodeCampaignPricesByEpisodeForTenantDescRow, error)
 	ListEpisodeCampaignPricesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantAscParams) ([]ListEpisodeCampaignPricesBySeriesForTenantAscRow, error)
 	ListEpisodeCampaignPricesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantDescParams) ([]ListEpisodeCampaignPricesBySeriesForTenantDescRow, error)
+	// Every report the reader made of a comment. The comment is named by its ID
+	// alone: its body is its author's, not the reporter's.
+	ListEpisodeCommentReportsForDataExport(ctx context.Context, arg ListEpisodeCommentReportsForDataExportParams) ([]ListEpisodeCommentReportsForDataExportRow, error)
 	// The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
 	// The handler reverses the returned rows to preserve the newest-first order.
 	ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtAscRow, error)
@@ -2017,6 +2065,9 @@ type Querier interface {
 	// included: a report cannot be judged without the text it is about and who
 	// wrote it, and the queue offers the removal actions from the same row.
 	ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtDescRow, error)
+	// Every comment the reader posted, in whatever state it is in now. Which
+	// member of staff approved or hid one is the tenant's record, not theirs.
+	ListEpisodeCommentsForDataExport(ctx context.Context, arg ListEpisodeCommentsForDataExportParams) ([]ListEpisodeCommentsForDataExportRow, error)
 	// The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
 	ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentsForModerationByCreatedAtAscRow, error)
 	// The console queues: 'pending' is the approval queue, 'hidden' the removed
@@ -2140,6 +2191,7 @@ type Querier interface {
 	// change cleared the icon of at once: a change of the reader icon policy, or a
 	// deleted preset.
 	ListEpisodePublicIDsWithPublishedCommentsByUsers(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUsersParams) ([]string, error)
+	ListEpisodeRatingsForDataExport(ctx context.Context, arg ListEpisodeRatingsForDataExportParams) ([]ListEpisodeRatingsForDataExportRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 	// The order it describes is the same one.
 	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)
@@ -2158,6 +2210,8 @@ type Querier interface {
 	// (complete_count, entity_id) is unique because entity_id alone is, so the
 	// keyset scan can neither skip nor repeat episodes that tie on completions.
 	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
+	// The reading history: each episode read, and when.
+	ListEpisodeReadsForDataExport(ctx context.Context, arg ListEpisodeReadsForDataExportParams) ([]ListEpisodeReadsForDataExportRow, error)
 	// ListEpisodeRevenueDesc walked the other way, to build a previous page. The
 	// order it describes is the same one.
 	ListEpisodeRevenueAsc(ctx context.Context, arg ListEpisodeRevenueAscParams) ([]ListEpisodeRevenueAscRow, error)
@@ -2216,6 +2270,8 @@ type Querier interface {
 	// its time passed: it waits for a Tenant admin rather than failing.
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
+	// Every follow, of a series, an episode, or an Author, oldest first.
+	ListFollowsForDataExport(ctx context.Context, arg ListFollowsForDataExportParams) ([]ListFollowsForDataExportRow, error)
 	// The series a page of genre tiles draws its covers from: per genre, the
 	// positions of its newest leaderboard for the surface first, then its newest
 	// published series, up to series_limit. The leaderboard only orders the genre's
@@ -2460,9 +2516,9 @@ type Querier interface {
 	// retry of the event finds only the readers no earlier run reached.
 	//
 	// The recipient's email cell for the row's category decides, every cell on
-	// for a reader who saved nothing, and a row for everyone has no cell. A row
-	// filed for staff for being staff is never mailed: they read the console's
-	// bell. A notification shown on the app alone is not mailed either, because
+	// for a reader who saved nothing, and a row for everyone or about the
+	// reader's own account has no cell. A row filed for staff for being staff is
+	// never mailed: they read the console's bell. A notification shown on the app alone is not mailed either, because
 	// the mail links into the site. The address has to be one the reader
 	// confirmed and the account active, which is what every mail to a reader
 	// takes.
@@ -2492,6 +2548,9 @@ type Querier interface {
 	// taken down, or that the calling surface does not show, is left out: the
 	// reader could not open it there, so it is not one to show them.
 	ListOpenWaitFreeTicketsInSeries(ctx context.Context, arg ListOpenWaitFreeTicketsInSeriesParams) ([]ListOpenWaitFreeTicketsInSeriesRow, error)
+	// Every version of the terms of service or the privacy policy the reader
+	// agreed to, and when.
+	ListPageConsentsForDataExport(ctx context.Context, arg ListPageConsentsForDataExportParams) ([]ListPageConsentsForDataExportRow, error)
 	// Empty only for a page the tenant does not have, since a page always keeps at
 	// least one translation.
 	ListPageTranslationsForTenant(ctx context.Context, arg ListPageTranslationsForTenantParams) ([]PageTranslation, error)
@@ -2747,6 +2806,10 @@ type Querier interface {
 	// and ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
+	// Every purchase, oldest first, with what ListMyPurchasesDesc answers for a
+	// row: an episode, a volume, the rest of a series, or a pack of coins. Unlike
+	// the library, no surface leaves a purchase out.
+	ListPurchasesForDataExport(ctx context.Context, arg ListPurchasesForDataExportParams) ([]ListPurchasesForDataExportRow, error)
 	// What ExportPurchases writes for a range of instants: every purchase charged
 	// through a provider or a store in it, and every refund of one dated in it.
 	// A refund in full is dated by refunded_at; a refund in part has no date of
@@ -2760,6 +2823,9 @@ type Querier interface {
 	// deleted their account, which keeps no user, answers no buyer rather than no
 	// row.
 	ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurchasesForTenantByIDsParams) ([]ListPurchasesForTenantByIDsRow, error)
+	// The requests the purge takes: those whose time is up, and those whose
+	// account is gone, archive and all.
+	ListPurgeableUserDataExports(ctx context.Context, arg ListPurgeableUserDataExportsParams) ([]ListPurgeableUserDataExportsRow, error)
 	// One page of the devices to push one notification to, ordered by recipient
 	// and token after the previous page's last pair (the nil UUID and an empty
 	// token for the first page). The walk runs over the notification's recipients
@@ -2816,6 +2882,8 @@ type Querier interface {
 	// within the process that made it, and uploads reach several, while
 	// created_at is read off the database's one clock.
 	ListReaderIconPresetVariants(ctx context.Context, tenantID uuid.UUID) ([]ListReaderIconPresetVariantsRow, error)
+	// Where the reader stopped in each episode they opened.
+	ListReadingPositionsForDataExport(ctx context.Context, arg ListReadingPositionsForDataExportParams) ([]ListReadingPositionsForDataExportRow, error)
 	// The most recent draft and scheduled episodes, for the publish queue on the
 	// dashboard.
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
@@ -2876,7 +2944,8 @@ type Querier interface {
 	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 	// in the integration test to confirm the index is eligible):
 	//   ListReferencedObjectKeys
-	//     -> idx_<entity>_image_variants_object_key, once per variant table
+	//     -> idx_<entity>_image_variants_object_key, once per variant table, and
+	//        idx_user_data_exports_object_key for the readers' archives
 	//   DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
 	//   ...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
 	//   ...SeriesImages / ...TenantImages / ...VolumeCoverImages
@@ -2885,10 +2954,10 @@ type Querier interface {
 	//   DeleteUnreferencedUserImages
 	//     -> idx_users_tenant_id_icon_image_id, once per user_images row: users
 	//        holds every reader, so the anti-join is a lookup rather than a scan
-	// Returns the subset of object_keys that some image variant still names. The
-	// caller deletes what it listed from storage and did not get back, so a key
-	// this misses is a deleted live object: every table that holds an object_key
-	// has to be listed here.
+	// Returns the subset of object_keys that some image variant, or a reader's
+	// archive, still names. The caller deletes what it listed from storage and did
+	// not get back, so a key this misses is a deleted live object: every table
+	// that holds an object_key has to be listed here.
 	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
 	// The keyset scan behind the "more like this" strip. It scores every other
 	// published series of the tenant against one series and orders the whole
@@ -3125,6 +3194,9 @@ type Querier interface {
 	// readers hold a subscription to it that is trialing, active, or past due. The
 	// admin API caps how many plans a tenant holds, so the list is read whole.
 	ListSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListSubscriptionPlansForTenantRow, error)
+	// Every subscription, on the site or through the app's store, with the plan
+	// it is to. The provider's own IDs are the tenant's record with the provider.
+	ListSubscriptionsForDataExport(ctx context.Context, arg ListSubscriptionsForDataExportParams) ([]ListSubscriptionsForDataExportRow, error)
 	// Who the mail announcing a message goes to: every active tenant_admin of the
 	// tenant, with the address their own account is reached at. The inbox is
 	// theirs alone, so an editor or an auditor is not mailed a message, and the
@@ -3240,7 +3312,13 @@ type Querier interface {
 	// change's drop has passed: a replaced upload as a URL image-server already
 	// refuses, and a preset the reader left as the icon they no longer show.
 	ListUserIconVariantsByUserIDs(ctx context.Context, arg ListUserIconVariantsByUserIDsParams) ([]ListUserIconVariantsByUserIDsRow, error)
+	// The Apple and Google accounts linked to sign in with. The refresh token is
+	// the install's credential with the provider, not the reader's.
+	ListUserIdentitiesForDataExport(ctx context.Context, arg ListUserIdentitiesForDataExportParams) ([]ListUserIdentitiesForDataExportRow, error)
 	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
+	// The passkeys registered to sign in with. The key material is what the
+	// passkey proves itself with, not something about the reader.
+	ListUserPasskeysForDataExport(ctx context.Context, arg ListUserPasskeysForDataExportParams) ([]ListUserPasskeysForDataExportRow, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow, error)
@@ -3699,6 +3777,10 @@ type Querier interface {
 	// between the listing and this mark keeps its drop owed for the new instant.
 	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
+	// Records the stored archive, as long as the claim is still the one that
+	// built it and the account still exists. No row otherwise, and the archive is
+	// then nobody's.
+	MarkUserDataExportReady(ctx context.Context, arg MarkUserDataExportReadyParams) (UserDataExport, error)
 	MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
