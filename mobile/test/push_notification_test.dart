@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/announcements/announcement_board.dart';
+import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_failure.dart';
+import 'package:publira/models/announcement.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_message.dart';
 import 'package:publira/push/push_messaging.dart';
 import 'package:publira/push/push_repository.dart';
 import 'package:publira/router.dart';
 
+import 'support/fake_announcement_repository.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_push.dart';
@@ -54,6 +58,7 @@ void main() {
     String initialLocation = AppRoutes.catalog,
     bool signedIn = true,
     FakeAuthRepository? auth,
+    AnnouncementBoard? announcements,
   }) async {
     final push = pushController();
     router = createAppRouter(initialLocation: initialLocation);
@@ -65,6 +70,7 @@ void main() {
           session: signedIn ? fakeSession : null,
           repository: auth,
         ),
+        announcements: announcements,
         push: push,
       ),
     );
@@ -252,6 +258,44 @@ void main() {
       router.state.uri.path,
       AppRoutes.episodeViewerPath(seriesId, episodeId),
     );
+    expect(push.pendingRoute, isNull);
+  });
+
+  testWidgets('tapping an announcement notification opens the announcement', (
+    tester,
+  ) async {
+    final push = await pumpApp(
+      tester,
+      announcements: AnnouncementBoard(
+        repository: FakeAnnouncementRepository(
+          announcements: [
+            Announcement(
+              id: 'a-1',
+              title: 'Store closed for maintenance',
+              body: 'Purchases pause for an hour.',
+              linkUrl: '',
+              isRead: false,
+              createdAt: DateTime.utc(2026, 9, 20, 9),
+            ),
+          ],
+        ),
+        dismissed: MemoryDismissedAnnouncementStore(),
+      ),
+    );
+
+    messaging.openedController.add(
+      PushMessage(
+        title: 'Store closed for maintenance',
+        data: {'route': AppRoutes.announcementPath('a-1')},
+      ),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('announcement-a-1')),
+    );
+
+    expect(router.state.uri.path, AppRoutes.announcementPath('a-1'));
+    expect(find.text('Purchases pause for an hour.'), findsOneWidget);
     expect(push.pendingRoute, isNull);
   });
 

@@ -4248,7 +4248,8 @@ void main() {
         () async {
           final member = await signInSeedMember();
           // The seed saves no preference, which the API answers as every cell
-          // on, and the run leaves them there whichever way it ends.
+          // on but the announcement pushes, and the run leaves them there
+          // whichever way it ends.
           addTearDown(
             () => saveNotificationPreferencesAtApi(
               member,
@@ -4264,17 +4265,20 @@ void main() {
                 commentsInboxEnabled: true,
                 commentsEmailEnabled: true,
                 announcementsInboxEnabled: true,
+                announcementsWebPushEnabled: false,
+                announcementsMobilePushEnabled: false,
                 announcementsEmailEnabled: true,
               ),
             ),
           );
-          // Turned off where the site turns it off, so the app has to read
-          // the account rather than show the default.
+          // Turned off, or on, where the site turns it so, so the app has to
+          // read the account rather than show the default.
           await saveNotificationPreferencesAtApi(
             member,
             pb.UpdateNotificationSettingsRequest(
               commentsInboxEnabled: false,
               commentsEmailEnabled: false,
+              announcementsWebPushEnabled: true,
             ),
           );
 
@@ -4376,6 +4380,53 @@ void main() {
           expect(emailed.announcementsEmailEnabled, isTrue);
           expect(emailed.followedCreatorsMobilePushEnabled, isFalse);
           expect(tester.widget<SwitchListTile>(episodesEmail).value, isFalse);
+
+          final announcementsWebPush = find.byKey(
+            const ValueKey((
+              'account-notification',
+              'announcements',
+              'webPush',
+            )),
+          );
+          final announcementsMobilePush = find.byKey(
+            const ValueKey((
+              'account-notification',
+              'announcements',
+              'mobilePush',
+            )),
+          );
+          await tester.scrollUntilVisible(
+            announcementsMobilePush,
+            100,
+            scrollable: accountList(),
+          );
+          expect(
+            tester.widget<SwitchListTile>(announcementsWebPush).value,
+            isTrue,
+          );
+          expect(
+            tester.widget<SwitchListTile>(announcementsMobilePush).value,
+            isFalse,
+          );
+          await tapVisible(
+            tester,
+            announcementsMobilePush,
+            scrollable: accountList(),
+          );
+          await pumpUntilTrueAsync(
+            tester,
+            () async => (await notificationPreferencesAtApi(
+              member,
+            )).announcementsMobilePushEnabled,
+            description: 'the API to hold the announcement push the app saved',
+          );
+          final announced = await notificationPreferencesAtApi(member);
+          expect(announced.announcementsWebPushEnabled, isTrue);
+          expect(announced.followedEpisodesEmailEnabled, isFalse);
+          expect(
+            tester.widget<SwitchListTile>(announcementsMobilePush).value,
+            isTrue,
+          );
           expect(
             find.byKey(
               const ValueKey('account-notification-preferences-failure'),

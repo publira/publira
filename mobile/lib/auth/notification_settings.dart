@@ -22,9 +22,8 @@ typedef NotificationCell = (NotificationCategory, NotificationChannel);
 
 /// Every cell the screen shows, in the order it shows them.
 ///
-/// A combination the screen does not offer has no switch. A push of a comment
-/// is not delivered. An announcement push is delivered, and its cells start
-/// off. This screen does not show them.
+/// A combination the screen does not offer has no switch: a push of a comment
+/// is not delivered.
 const notificationCells = <NotificationCell>[
   (NotificationCategory.followedEpisodes, NotificationChannel.inbox),
   (NotificationCategory.followedEpisodes, NotificationChannel.webPush),
@@ -37,8 +36,22 @@ const notificationCells = <NotificationCell>[
   (NotificationCategory.comments, NotificationChannel.inbox),
   (NotificationCategory.comments, NotificationChannel.email),
   (NotificationCategory.announcements, NotificationChannel.inbox),
+  (NotificationCategory.announcements, NotificationChannel.webPush),
+  (NotificationCategory.announcements, NotificationChannel.mobilePush),
   (NotificationCategory.announcements, NotificationChannel.email),
 ];
+
+/// Whether [cell] is on for a reader who has saved nothing: every cell but
+/// the announcement pushes, which the server stores off until the reader
+/// turns them on.
+bool notificationCellDefault(NotificationCell cell) => switch (cell) {
+  (
+    NotificationCategory.announcements,
+    NotificationChannel.webPush || NotificationChannel.mobilePush,
+  ) =>
+    false,
+  _ => true,
+};
 
 /// The cells of [category], in the order of [NotificationChannel].
 List<NotificationCell> cellsOfCategory(NotificationCategory category) => [
@@ -58,9 +71,11 @@ class NotificationSettings {
 
   final Map<NotificationCell, bool> _preferences;
 
-  /// Whether [cell] is on. A cell the server answered nothing for is on,
-  /// since that is how a reader who saved nothing is notified.
-  bool isEnabled(NotificationCell cell) => _preferences[cell] ?? true;
+  /// Whether [cell] is on. A cell the server answered nothing for reads as
+  /// [notificationCellDefault], since that is how a reader who saved nothing
+  /// is notified.
+  bool isEnabled(NotificationCell cell) =>
+      _preferences[cell] ?? notificationCellDefault(cell);
 
   /// Whether every one of [cells] is on (`true`), every one is off (`false`),
   /// or they are mixed (`null`), the three states of a tristate checkbox.

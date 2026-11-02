@@ -58,12 +58,26 @@ void main() {
     NotificationChannel.email,
   );
 
-  /// The switch at the foot of the preferences, which every other one sits
-  /// above.
-  final lastSwitch = cellSwitch((
+  const announcementsInbox = (
+    NotificationCategory.announcements,
+    NotificationChannel.inbox,
+  );
+  const announcementsWebPush = (
+    NotificationCategory.announcements,
+    NotificationChannel.webPush,
+  );
+  const announcementsMobilePush = (
+    NotificationCategory.announcements,
+    NotificationChannel.mobilePush,
+  );
+  const announcementsEmail = (
     NotificationCategory.announcements,
     NotificationChannel.email,
-  ));
+  );
+
+  /// The switch at the foot of the preferences, which every other one sits
+  /// above.
+  final lastSwitch = cellSwitch(announcementsEmail);
 
   setUp(() {
     repository = FakeAuthRepository();
@@ -126,15 +140,39 @@ void main() {
         )),
         findsNothing,
       );
-      expect(
-        cellSwitch((
-          NotificationCategory.announcements,
-          NotificationChannel.webPush,
-        )),
-        findsNothing,
-      );
       expect(find.text('Your comments'), findsOneWidget);
       expect(find.text('New episodes by authors you follow'), findsOneWidget);
+    });
+
+    testWidgets('four switches on Announcements, the push ones off for a '
+        'reader who saved nothing', (tester) async {
+      await pumpApp(tester);
+      await showRow(tester, lastSwitch);
+
+      expect(
+        cellsOfCategory(NotificationCategory.announcements).map((c) => c.$2),
+        NotificationChannel.values,
+      );
+      expect(cellValue(tester, announcementsInbox), isTrue);
+      expect(cellValue(tester, announcementsWebPush), isFalse);
+      expect(cellValue(tester, announcementsMobilePush), isFalse);
+      expect(cellValue(tester, announcementsEmail), isTrue);
+      expect(categoryValue(tester, NotificationCategory.announcements), isNull);
+    });
+
+    testWidgets('turning the Mobile app switch of Announcements on writes '
+        'that cell alone', (tester) async {
+      await pumpApp(tester);
+      await showRow(tester, cellSwitch(announcementsMobilePush));
+
+      await tester.tap(cellSwitch(announcementsMobilePush));
+      await tester.pumpAndSettle();
+
+      expect(updatedCells(), [
+        {announcementsMobilePush: true},
+      ]);
+      expect(cellValue(tester, announcementsMobilePush), isTrue);
+      expect(cellValue(tester, announcementsWebPush), isFalse);
     });
 
     testWidgets('shows the cells the account holds', (tester) async {
@@ -186,7 +224,11 @@ void main() {
       expect(cellValue(tester, creatorsWebPush), isFalse);
       for (final cell in notificationCells) {
         if (cell != creatorsWebPush) {
-          expect(cellValue(tester, cell), isTrue, reason: '$cell');
+          expect(
+            cellValue(tester, cell),
+            notificationCellDefault(cell),
+            reason: '$cell',
+          );
         }
       }
     });
@@ -272,7 +314,7 @@ void main() {
       for (final cell in notificationCells) {
         expect(
           cellValue(tester, cell),
-          cell.$2 != NotificationChannel.inbox,
+          cell.$2 != NotificationChannel.inbox && notificationCellDefault(cell),
           reason: '$cell',
         );
       }
@@ -382,7 +424,11 @@ void main() {
       expect(cellValue(tester, commentsEmail), isFalse);
       for (final cell in notificationCells) {
         if (cell != commentsEmail) {
-          expect(cellValue(tester, cell), isTrue, reason: '$cell');
+          expect(
+            cellValue(tester, cell),
+            notificationCellDefault(cell),
+            reason: '$cell',
+          );
         }
       }
     });
@@ -467,7 +513,9 @@ void main() {
       )
       ..notificationSettings = const NotificationSettings(preferences: {});
     await auth.signIn(email: 'other@example.com', password: 'password');
-    await tester.pump();
+    // The screen is shorter while the new account loads, so the list springs
+    // back from where it was left before it can be scrolled again.
+    await tester.pumpAndSettle();
     await showRow(tester, cellSwitch(commentsEmail));
 
     expect(cellValue(tester, commentsInbox), isTrue);

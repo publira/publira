@@ -2,10 +2,10 @@
 title: Push notifications
 description: Set up the Firebase project a tenant's app receives push notifications through, and give the tenant console the credentials to send with.
 published: 2026-10-06
-updated: 2026-10-22
+updated: 2026-11-02
 ---
 
-The app tells a reader on their phone when a new episode is published of a series they follow, or credited to an author they follow, and a tap opens that episode. The install sends the notification to Firebase Cloud Messaging, which delivers it to Android phones itself and to iPhones through Apple's push service. Three things have to name the same Firebase project for that to work:
+The app tells a reader on their phone when a new episode is published of a series they follow, or credited to an author they follow, and a tap opens that episode. A reader who turns announcements on for the app is also told when the publisher delivers an announcement, and a tap opens the announcement. The install sends the notification to Firebase Cloud Messaging, which delivers it to Android phones itself and to iPhones through Apple's push service. Three things have to name the same Firebase project for that to work:
 
 1. **The app**, which is built with the project's values and registers each phone with it.
 2. **Apple**, whose push key the project relays iPhone notifications with.
@@ -81,10 +81,11 @@ Until a key is saved, the app receives no push notifications. The in-app notific
 
 Try it on a physical phone: Firebase does not deliver to the iOS simulator. Install the release build, through TestFlight on an iPhone or the release APK on Android, then:
 
-1. Sign in to the app as a reader, open **Account**, turn on **Receive push notifications on this device**, and allow notifications when the phone asks. Leave the **Mobile app** switches of the **Notification preferences** above it on: they choose which kinds of notification reach the reader's phones.
+1. Sign in to the app as a reader, open **Account**, turn on **Receive push notifications on this device**, and allow notifications when the phone asks. The **Mobile app** switches of the **Notification preferences** above it choose which kinds of notification reach the reader's phones: leave them on, and turn on the one under **Announcements**, which starts off.
 2. Follow a series in the app.
 3. Publish a new episode of that series from the tenant console, with a **Shown on** that includes the app.
+4. Deliver an announcement from [**Announcements**](../4-console/3-setup/4-announcements.md) in the tenant console.
 
-The notification arrives once `publira worker` has sent it, and tapping it opens the episode. The app asks the phone for permission only when a reader turns the switch on, never at launch, so a reader who has not turned it on receives nothing.
+Each notification arrives once `publira worker` has sent it. Tapping the episode's opens the episode, and the announcement's, titled with the announcement's title, opens the announcement. Turn the **Mobile app** switch under **Announcements** off again and deliver another announcement: no notification arrives for it. The app asks the phone for permission only when a reader turns the switch on, never at launch, so a reader who has not turned it on receives nothing.
 
 Next: [App links](./4-app-links.md).

@@ -1164,11 +1164,18 @@ void main() {
   );
 
   group('notification settings', () {
-    const allOn = NotificationSettings(preferences: {});
+    const nothingSaved = NotificationSettings(preferences: {});
+    const announcementPushes = [
+      (NotificationCategory.announcements, NotificationChannel.webPush),
+      (NotificationCategory.announcements, NotificationChannel.mobilePush),
+    ];
 
     test('reads the settings the account holds', () async {
       final settings = await auth.readNotificationSettings(stored);
-      expect(notificationCells.every(settings.isEnabled), isTrue);
+      expect([
+        for (final cell in notificationCells)
+          if (!settings.isEnabled(cell)) cell,
+      ], announcementPushes);
 
       server.memberNotificationPreferences
         ..commentsInboxEnabled = false
@@ -1183,6 +1190,7 @@ void main() {
         [
           (NotificationCategory.comments, NotificationChannel.inbox),
           (NotificationCategory.comments, NotificationChannel.email),
+          ...announcementPushes,
         ],
       );
     });
@@ -1190,7 +1198,7 @@ void main() {
     test('writes the email cells it is given and no other', () async {
       final settings = await auth.updateNotificationSettings(
         stored,
-        current: allOn,
+        current: nothingSaved,
         cells: {
           (NotificationCategory.comments, NotificationChannel.email): false,
         },
@@ -1210,14 +1218,45 @@ void main() {
           for (final cell in notificationCells)
             if (!settings.isEnabled(cell)) cell,
         ],
-        [(NotificationCategory.comments, NotificationChannel.email)],
+        [
+          (NotificationCategory.comments, NotificationChannel.email),
+          ...announcementPushes,
+        ],
       );
+    });
+
+    test('writes the announcement push cells to their own fields', () async {
+      final settings = await auth.updateNotificationSettings(
+        stored,
+        current: nothingSaved,
+        cells: {
+          (NotificationCategory.announcements, NotificationChannel.webPush):
+              true,
+          (NotificationCategory.announcements, NotificationChannel.mobilePush):
+              true,
+        },
+      );
+
+      final request = server.requestsTo('UpdateNotificationSettings').single;
+      expect(
+        request.decode(pb.UpdateNotificationSettingsRequest()),
+        pb.UpdateNotificationSettingsRequest(
+          tenant: _defaultTenant(),
+          followedEpisodesEmailEnabled: true,
+          followedCreatorsEmailEnabled: true,
+          commentsEmailEnabled: true,
+          announcementsEmailEnabled: true,
+          announcementsWebPushEnabled: true,
+          announcementsMobilePushEnabled: true,
+        ),
+      );
+      expect(notificationCells.every(settings.isEnabled), isTrue);
     });
 
     test('writes the cells it is given in one request, with every email cell '
         'as the reader was shown it', () async {
       server.memberNotificationPreferences.announcementsEmailEnabled = false;
-      final current = allOn.copyWith(
+      final current = nothingSaved.copyWith(
         cells: {
           (NotificationCategory.announcements, NotificationChannel.email):
               false,
@@ -1261,6 +1300,7 @@ void main() {
             NotificationCategory.followedCreators,
             NotificationChannel.mobilePush,
           ),
+          ...announcementPushes,
           (NotificationCategory.announcements, NotificationChannel.email),
         ],
       );
@@ -1274,7 +1314,7 @@ void main() {
         failsWith(AuthFailureKind.sessionExpired),
       );
       await expectLater(
-        () => auth.updateNotificationSettings(stored, current: allOn),
+        () => auth.updateNotificationSettings(stored, current: nothingSaved),
         failsWith(AuthFailureKind.sessionExpired),
       );
     });
@@ -1287,7 +1327,7 @@ void main() {
       );
 
       await expectLater(
-        () => offline.updateNotificationSettings(stored, current: allOn),
+        () => offline.updateNotificationSettings(stored, current: nothingSaved),
         failsWith(AuthFailureKind.network),
       );
     });
