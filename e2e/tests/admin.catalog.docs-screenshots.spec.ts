@@ -396,6 +396,24 @@ for (const locale of DOCS_LOCALES) {
           });
         });
 
+        test("the bookstore links of a volume", async ({ page }) => {
+          await openModerationScreen(
+            page,
+            locale,
+            `${volumesPath}/DocsVOLMAAA1`
+          );
+
+          await expectDocsScreenshot(page, {
+            element: docsSection(
+              page,
+              t("admin.series.volumes.bookstore_links.title")
+            ),
+            locale,
+            page: "console/catalog/series",
+            subject: "volume-bookstore-links",
+          });
+        });
+
         test("the sale of a volume", async ({ page }) => {
           await openModerationScreen(
             page,

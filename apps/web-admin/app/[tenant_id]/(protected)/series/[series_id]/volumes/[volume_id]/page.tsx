@@ -27,6 +27,7 @@ import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getVolume } from "#lib/volume";
 
+import { VolumeBookstoreLinksForm } from "./_components/volume-bookstore-links-form";
 import { VolumeCoverForm } from "./_components/volume-cover-form";
 import { VolumeDetailsForm } from "./_components/volume-details-form";
 import { VolumeEpisodesForm } from "./_components/volume-episodes-form";
@@ -213,6 +214,11 @@ const EditVolumeData = async ({ params }: EditVolumePageProps) => {
         </SectionError.Root>
       )}
       <VolumeCoverForm
+        seriesId={seriesId}
+        tenantId={tenantId}
+        volume={volume}
+      />
+      <VolumeBookstoreLinksForm
         seriesId={seriesId}
         tenantId={tenantId}
         volume={volume}

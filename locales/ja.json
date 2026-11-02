@@ -2508,6 +2508,7 @@
         "empty_description": "上の「巻を作成」から最初の巻を作成してください。",
         "empty_description_read_only": "編集者が作成した巻がここに表示されます。",
         "episode_count": "{$count :integer}話",
+        "bookstore_link_count": "書店リンク{$count :integer}件",
         "status": {
           "on_sale": "販売中",
           "off_sale": "販売停止中"
@@ -2517,7 +2518,7 @@
         "edit_action": "編集",
         "back_to_list": "巻の一覧へ戻る",
         "edit_title": "巻を編集",
-        "edit_description": "巻のタイトル、価格、エピソード、アイキャッチを変更し、販売を開始します。",
+        "edit_description": "巻のタイトル、価格、エピソード、アイキャッチ、書店リンクを変更し、販売を開始します。",
         "detail_error": "巻を表示できませんでした",
         "created": "巻を作成しました。",
         "updated": "巻を更新しました。",
@@ -2580,6 +2581,26 @@
           "image_invalid": "画像を確認してください。JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選び、もう一度お試しください。",
           "variants_missing": "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
           "upload_not_reflected": "アップロード処理が反映されていません。画像を選び直して再試行してください。"
+        },
+        "bookstore_links": {
+          "title": "書店リンク",
+          "description": "この巻の紙の本を販売している書店へのリンクです。巻が販売中のあいだ、サイトとアプリのシリーズページで巻の下に表示されます。",
+          "none": "この巻には書店リンクがありません。",
+          "label": "ラベル",
+          "url": "URL",
+          "row_name": "リンク{$number :integer}",
+          "reorder": "{$name}を並べ替え",
+          "remove": "{$name}を削除",
+          "add": "リンクを追加",
+          "limit": "書店リンクは1つの巻に{$max :integer}件まで登録できます。",
+          "save": "書店リンクを保存",
+          "saved": "書店リンクを保存しました。",
+          "save_failed": "書店リンクを保存できませんでした。時間をおいて再度お試しください。",
+          "invalid": "書店リンクを読み取れませんでした。ページを再読み込みしてからもう一度お試しください。",
+          "validation": {
+            "label_invalid": "リンク{$number :integer}のラベルを1〜{$max :integer}文字で入力してください。",
+            "url_invalid": "リンク{$number :integer}のURLは、https://で始まる{$max :integer}文字以内で入力してください。"
+          }
         },
         "sale": {
           "title": "販売",

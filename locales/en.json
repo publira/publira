@@ -2508,6 +2508,7 @@
         "empty_description": "Create the first one with Create volume above.",
         "empty_description_read_only": "Volumes an editor creates appear here.",
         "episode_count": ".input {$count :integer}\n.match $count\none {{{$count} episode}}\n* {{{$count} episodes}}",
+        "bookstore_link_count": ".input {$count :integer}\n.match $count\none {{{$count} bookstore link}}\n* {{{$count} bookstore links}}",
         "status": {
           "on_sale": "On sale",
           "off_sale": "Not on sale"
@@ -2517,7 +2518,7 @@
         "edit_action": "Edit",
         "back_to_list": "Back to volumes",
         "edit_title": "Edit volume",
-        "edit_description": "Change the volume's title, price, episodes, and cover, and put it on sale.",
+        "edit_description": "Change the volume's title, price, episodes, cover, and bookstore links, and put it on sale.",
         "detail_error": "Could not display the volume",
         "created": "Volume created.",
         "updated": "Volume updated.",
@@ -2580,6 +2581,26 @@
           "image_invalid": "Check the image. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
           "variants_missing": "The upload was accepted, but generated images could not be confirmed. Please try again.",
           "upload_not_reflected": "The upload has not been applied. Select the image again and try again."
+        },
+        "bookstore_links": {
+          "title": "Bookstore links",
+          "description": "Where the volume's printed book is sold. While the volume is on sale, the links are shown under it on the series page, on the site and in the app.",
+          "none": "This volume has no bookstore links.",
+          "label": "Label",
+          "url": "URL",
+          "row_name": "Link {$number :integer}",
+          "reorder": "Reorder {$name}",
+          "remove": "Remove {$name}",
+          "add": "Add a link",
+          "limit": "A volume can have up to {$max :integer} bookstore links.",
+          "save": "Save bookstore links",
+          "saved": "Bookstore links saved.",
+          "save_failed": "Could not save the bookstore links. Please try again later.",
+          "invalid": "The bookstore links could not be read. Reload the page and try again.",
+          "validation": {
+            "label_invalid": "Enter a label of 1 to {$max :integer} characters for link {$number :integer}.",
+            "url_invalid": "Enter a URL that starts with https:// and is at most {$max :integer} characters for link {$number :integer}."
+          }
         },
         "sale": {
           "title": "Sale",

@@ -79,7 +79,10 @@ const VolumeThumbnail = ({ volume }: { volume: VolumeItem }) => {
   );
 };
 
-/** What the row says of the volume: its cover, title, price, and episodes. */
+/**
+ * What the row says of the volume: its cover, title, price, episodes, and
+ * bookstore links.
+ */
 const VolumeSummary = ({
   currency,
   locale,
@@ -100,6 +103,13 @@ const VolumeSummary = ({
           <Message
             message="admin.series.volumes.episode_count"
             values={{ count: volume.episodeIds.length }}
+          />
+        </Suspense>
+        {" · "}
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-28" />}>
+          <Message
+            message="admin.series.volumes.bookstore_link_count"
+            values={{ count: volume.bookstoreLinks.length }}
           />
         </Suspense>
       </p>
