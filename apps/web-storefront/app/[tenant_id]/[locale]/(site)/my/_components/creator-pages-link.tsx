@@ -16,8 +16,13 @@ import { getTenantId } from "#lib/tenant-id";
  *
  * The tenant's setting is read first, from the shared tenant read, so a site
  * that shows no Author pages asks nothing more of the API for a reader who
- * opens My Page. A failed read of the Authors leaves the link out: the rest of
- * the header still stands, and the page it leads to reports the failure.
+ * opens My Page.
+ *
+ * Any failed read of the Authors leaves the link out, one nothing classifies
+ * included, as a failed read of the footer links does: the link is chrome,
+ * and a throw would take the whole of My Page down with it, while a section
+ * error in its place would tell every reader of the site, most of them no
+ * Author, that pages they never had could not be shown.
  */
 export const CreatorPagesLink = async () => {
   const tenantId = await getTenantId();
@@ -26,7 +31,16 @@ export const CreatorPagesLink = async () => {
     return null;
   }
 
-  const result = await listMyCreators(tenantId, await getLocale());
+  let result;
+
+  try {
+    result = await listMyCreators(tenantId, await getLocale());
+  } catch (error) {
+    console.warn("[web-storefront] listMyCreators failed", error);
+
+    return null;
+  }
+
   const [first] = result.ok ? result.value.creators : [];
 
   if (!first) {
