@@ -246,8 +246,8 @@ func TestRunPendingBuildsStoresAndNotifiesInOnePass(t *testing.T) {
 	if !row.ReadyAt.Valid || !row.ExpiresAt.Time.Equal(now.Add(7*24*time.Hour)) {
 		t.Fatalf("data export = %+v, want ready and kept for seven days", row)
 	}
-	if want := dataexport.ObjectKey(f.tenant.PublicID, id); row.ObjectKey.String != want {
-		t.Fatalf("object key = %q, want %q", row.ObjectKey.String, want)
+	if prefix := "tenants/" + f.tenant.PublicID + "/data-exports/" + id.String() + "/"; !strings.HasPrefix(row.ObjectKey.String, prefix) || !strings.HasSuffix(row.ObjectKey.String, ".zip") {
+		t.Fatalf("object key = %q, want a ZIP under %q", row.ObjectKey.String, prefix)
 	}
 	stored, ok := bucket.Object(row.ObjectKey.String)
 	if !ok || int64(len(stored)) != row.SizeBytes.Int64 {
@@ -274,7 +274,7 @@ func TestRunPendingBuildsStoresAndNotifiesInOnePass(t *testing.T) {
 	var mails int
 	if err := f.pg.DB.QueryRowContext(context.Background(), `
 		SELECT count(*) FROM outbox_events WHERE event_type = $1 AND payload->>'subject_key' = $2
-	`, outbox.EventTypeNotificationEmail, outbox.DataExportSubjectKey(id)).Scan(&mails); err != nil {
+	`, outbox.EventTypeDataExportReadyEmail, outbox.DataExportSubjectKey(id)).Scan(&mails); err != nil {
 		t.Fatalf("count the mail: %v", err)
 	}
 	if mails != 1 {
@@ -299,6 +299,28 @@ func TestRunPendingFailsARequestThereIsNoObjectStoreFor(t *testing.T) {
 	}
 	if row := f.row(t, id); !row.FailedAt.Valid || row.ReadyAt.Valid || !row.ExpiresAt.Valid {
 		t.Fatalf("data export = %+v, want failed and due for the purge", row)
+	}
+}
+
+// A stored locale that names no supported language is a fault the archive
+// must not hide by being written in the tenant's language instead, so the
+// request fails, and nothing is stored.
+func TestRunPendingFailsARequestWhoseStoredLocaleIsUnsupported(t *testing.T) {
+	t.Parallel()
+	f := newExportFixture(t)
+	f.exec(t, `UPDATE users SET last_locale = 'tlh' WHERE id = $1`, f.reader.ID)
+	id := f.request(t, f.reader)
+	bucket := storagetest.NewMemory()
+
+	summary, err := dataexport.RunPending(context.Background(), dataexport.Deps{DB: f.pg.OpenContentStatsDB(t), Storage: bucket, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil || summary != (dataexport.Summary{Failed: 1}) {
+		t.Fatalf("RunPending = %+v, %v, want one failed", summary, err)
+	}
+	if row := f.row(t, id); !row.FailedAt.Valid || row.ReadyAt.Valid {
+		t.Fatalf("data export = %+v, want failed", row)
+	}
+	if keys := bucket.Keys(); len(keys) != 0 {
+		t.Fatalf("bucket = %v, want nothing stored", keys)
 	}
 }
 

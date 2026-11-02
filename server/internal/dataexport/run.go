@@ -33,12 +33,14 @@ const StaleClaim = 15 * time.Minute
 // ContentType is what an archive is stored and served as.
 const ContentType = "application/zip"
 
-// ObjectKey is where one request's archive is stored. It sits under the
-// tenant's prefix, which the orphan sweep walks, so an archive whose row was
-// never written, as one a build stored and then could not record is, is
-// deleted by the sweep a day later.
-func ObjectKey(tenantPublicID string, id uuid.UUID) string {
-	return "tenants/" + tenantPublicID + "/data-exports/" + id.String() + ".zip"
+// ObjectKey is where one build of a request's archive is stored. It sits
+// under the tenant's prefix, which the orphan sweep walks, so an archive whose
+// row was never written, as one a build stored and then could not record is,
+// is deleted by the sweep a day later. Each build has a key of its own: a
+// build that took over a stale claim and one still running under it both
+// store an archive, and the one whose record loses deletes its own alone.
+func ObjectKey(tenantPublicID string, id, buildID uuid.UUID) string {
+	return "tenants/" + tenantPublicID + "/data-exports/" + id.String() + "/" + buildID.String() + ".zip"
 }
 
 // Deps is what a pass runs on.
@@ -137,6 +139,13 @@ func buildOne(ctx context.Context, deps Deps, queries *dbmodels.Queries, request
 	}
 
 	loc, err := archiveLocale(ctx, queries, tenant, userID)
+	if errors.Is(err, locale.ErrUnresolved) {
+		// A stored locale no build of this release can write in is a data
+		// fault no retry fixes, and an archive in another language would hide
+		// it, so the request fails where an operator sees why.
+		logger.ErrorContext(ctx, "data export failed: the stored locale names no supported language", "error", err)
+		return false, fail(ctx, deps, queries, request)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -150,7 +159,11 @@ func buildOne(ctx context.Context, deps Deps, queries *dbmodels.Queries, request
 		return false, fmt.Errorf("build data export %s: %w", request.ID, err)
 	}
 
-	key := ObjectKey(tenant.PublicID, request.ID)
+	buildID, err := uuid.NewV7()
+	if err != nil {
+		return false, fmt.Errorf("allocate a data export build id: %w", err)
+	}
+	key := ObjectKey(tenant.PublicID, request.ID, buildID)
 	if _, err := store.Upload(ctx, storage.UploadRequest{ObjectKey: key, ContentType: ContentType, Data: archive}); err != nil {
 		return false, fmt.Errorf("store data export %s: %w", request.ID, err)
 	}
@@ -173,7 +186,9 @@ func buildOne(ctx context.Context, deps Deps, queries *dbmodels.Queries, request
 }
 
 // archiveLocale is the language the archive's titles are written in: the one
-// the reader last read in, else the tenant's own.
+// the reader last read in, else, for a reader who never named one, the
+// tenant's own. A stored value that names no supported language is reported
+// as locale.ErrUnresolved rather than replaced.
 func archiveLocale(ctx context.Context, queries *dbmodels.Queries, tenant dbmodels.Tenant, userID uuid.UUID) (string, error) {
 	user, err := queries.GetUserForDataExport(ctx, dbmodels.GetUserForDataExportParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -183,9 +198,11 @@ func archiveLocale(ctx context.Context, queries *dbmodels.Queries, tenant dbmode
 		return "", fmt.Errorf("read the locale of the account: %w", err)
 	}
 	if user.LastLocale.Valid {
-		if resolved, err := locale.Resolve(user.LastLocale.String); err == nil {
-			return resolved, nil
+		resolved, err := locale.Resolve(user.LastLocale.String)
+		if err != nil {
+			return "", fmt.Errorf("resolve the last locale of the account: %w", err)
 		}
+		return resolved, nil
 	}
 	resolved, err := locale.Resolve(tenant.DefaultLocale)
 	if err != nil {

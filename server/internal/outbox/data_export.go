@@ -173,5 +173,5 @@ func notifyDataExportReady(ctx context.Context, queries dataExportNotifier, n Da
 		}
 		return fmt.Errorf("insert data export notification: %w", err)
 	}
-	return queueNotificationEmail(ctx, queries, n.TenantID, NotificationTypeDataExportReady, subjectKey)
+	return queueNotificationEmailAs(ctx, queries, EventTypeDataExportReadyEmail, n.TenantID, NotificationTypeDataExportReady, subjectKey)
 }

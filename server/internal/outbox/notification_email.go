@@ -25,6 +25,14 @@ import (
 // notification, not per reader, for the same reason the push has one.
 const EventTypeNotificationEmail = "notification_email"
 
+// EventTypeDataExportReadyEmail is EventTypeNotificationEmail for a reader's
+// ready archive, drained by the same handler. The previous release's handler
+// gives up on a notification_email whose type it has no mail for, so a mail
+// queued that way during an upgrade would be lost when one of its workers
+// claimed it; under a type of its own, such a worker leaves it pending for a
+// worker of this release instead.
+const EventTypeDataExportReadyEmail = "data_export_ready_email"
+
 // notificationSettingsPath is the storefront page a reader changes which
 // notifications reach them on, linked from every notification mail.
 const notificationSettingsPath = "/settings/notifications"
@@ -45,7 +53,11 @@ type NotificationEmailPayload struct {
 // over the same subject queues no second mail. The tenant is part of it
 // because a subject key is unique only within its tenant.
 func NotificationEmailIdempotencyKey(tenantID uuid.UUID, notificationType, subjectKey string) string {
-	return EventTypeNotificationEmail + ":" + tenantID.String() + ":" + notificationType + ":" + subjectKey
+	return notificationEmailIdempotencyKey(EventTypeNotificationEmail, tenantID, notificationType, subjectKey)
+}
+
+func notificationEmailIdempotencyKey(eventType string, tenantID uuid.UUID, notificationType, subjectKey string) string {
+	return eventType + ":" + tenantID.String() + ":" + notificationType + ":" + subjectKey
 }
 
 // notificationEmailQueuer is the insert [queueNotificationEmail] runs.
@@ -56,6 +68,12 @@ type notificationEmailQueuer interface {
 // queueNotificationEmail schedules the mail for the notification rows a
 // fan-out wrote, on the querier that wrote them.
 func queueNotificationEmail(ctx context.Context, q notificationEmailQueuer, tenantID uuid.UUID, notificationType, subjectKey string) error {
+	return queueNotificationEmailAs(ctx, q, EventTypeNotificationEmail, tenantID, notificationType, subjectKey)
+}
+
+// queueNotificationEmailAs is queueNotificationEmail under eventType, one of
+// the event types the notification email handler drains.
+func queueNotificationEmailAs(ctx context.Context, q notificationEmailQueuer, eventType string, tenantID uuid.UUID, notificationType, subjectKey string) error {
 	payload, err := json.Marshal(NotificationEmailPayload{
 		TenantID:         tenantID.String(),
 		NotificationType: notificationType,
@@ -71,9 +89,9 @@ func queueNotificationEmail(ctx context.Context, q notificationEmailQueuer, tena
 	_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
 		ID:             eventID,
 		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
-		EventType:      EventTypeNotificationEmail,
+		EventType:      eventType,
 		Payload:        payload,
-		IdempotencyKey: NotificationEmailIdempotencyKey(tenantID, notificationType, subjectKey),
+		IdempotencyKey: notificationEmailIdempotencyKey(eventType, tenantID, notificationType, subjectKey),
 		AvailableAt:    time.Now().UTC(),
 	})
 	// The insert is a no-op when the same key is already queued, and :one then

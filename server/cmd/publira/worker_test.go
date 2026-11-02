@@ -123,6 +123,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeEpisodePublishedNotification,
 		outbox.EventTypeCommentApprovedNotification,
 		outbox.EventTypeDataExportReadyNotification,
+		outbox.EventTypeDataExportReadyEmail,
 		outbox.EventTypeMemberPushNotification,
 		outbox.EventTypeAnnouncementPushNotification,
 	}
