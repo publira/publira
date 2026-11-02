@@ -156,6 +156,9 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits after replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
+	if err := s.reopenEpisodeReview(txCtx, tenant.ID, episode.ID); err != nil {
+		return nil, err
+	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the replaced episode credits", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())

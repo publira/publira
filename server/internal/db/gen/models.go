@@ -473,17 +473,19 @@ type EpisodeImageVariant struct {
 }
 
 type EpisodeListing struct {
-	EpisodeID          uuid.UUID     `json:"episode_id"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
-	TenantID           uuid.UUID     `json:"tenant_id"`
-	AnnouncementOwed   bool          `json:"announcement_owed"`
-	RentalPrice        sql.NullInt32 `json:"rental_price"`
-	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
-	PreviewPageCount   int32         `json:"preview_page_count"`
+	EpisodeID          uuid.UUID      `json:"episode_id"`
+	Price              int32          `json:"price"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	AnnouncementOwed   bool           `json:"announcement_owed"`
+	RentalPrice        sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
+	PreviewPageCount   int32          `json:"preview_page_count"`
+	ReviewState        sql.NullString `json:"review_state"`
+	ReviewApprovedAt   sql.NullTime   `json:"review_approved_at"`
 }
 
 type EpisodePageReachStat struct {
@@ -529,6 +531,18 @@ type EpisodeReadingPosition struct {
 	PageIndex int32     `json:"page_index"`
 	PageCount int32     `json:"page_count"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type EpisodeReview struct {
+	ID                uuid.UUID      `json:"id"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	EpisodeID         uuid.UUID      `json:"episode_id"`
+	SubmittedByUserID uuid.NullUUID  `json:"submitted_by_user_id"`
+	SubmittedAt       time.Time      `json:"submitted_at"`
+	Decision          sql.NullString `json:"decision"`
+	DecidedByUserID   uuid.NullUUID  `json:"decided_by_user_id"`
+	DecidedAt         sql.NullTime   `json:"decided_at"`
+	Comment           sql.NullString `json:"comment"`
 }
 
 type EpisodeSurface struct {
@@ -1675,6 +1689,7 @@ type TenantConfig struct {
 	ReaderIconPolicy               string         `json:"reader_icon_policy"`
 	CreatorPagesEnabled            bool           `json:"creator_pages_enabled"`
 	CreatorPagesShowSales          bool           `json:"creator_pages_show_sales"`
+	EpisodeReviewRequired          bool           `json:"episode_review_required"`
 }
 
 type TenantConfigTranslation struct {

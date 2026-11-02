@@ -186,6 +186,7 @@ type Querier interface {
 	// volume first.
 	CountEpisodesInOtherVolumes(ctx context.Context, arg CountEpisodesInOtherVolumesParams) (int32, error)
 	CountGenreTranslations(ctx context.Context, arg CountGenreTranslationsParams) (int32, error)
+	CountInReviewEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// How many of the labels a plan is saved with belong to the tenant.
 	CountLabelsForSubscriptionPlan(ctx context.Context, arg CountLabelsForSubscriptionPlanParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
@@ -535,6 +536,9 @@ type Querier interface {
 	// that decides access sees it through episode_grants, and it expires by the
 	// series' access period from the same clock.
 	CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error)
+	// Closes the open round with a Tenant admin's decision. An episode with no
+	// open round answers no row.
+	DecideEpisodeReview(ctx context.Context, arg DecideEpisodeReviewParams) (DecideEpisodeReviewRow, error)
 	// Hand back an event whose type this worker has no handler for, so that a
 	// worker of a newer release, which writes the type, claims it later. Like
 	// ResumeOutboxEvent it charges no attempt: nothing failed, and the worker
@@ -1192,6 +1196,12 @@ type Querier interface {
 	GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error)
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
+	// Worker read: what the notice of a returned round says, and who it goes to.
+	// The submitter is told only while they are still an active member of the
+	// tenant's staff, the people the console's bell and the episode screen are
+	// for; a round opened in no one's name, or by an account deleted or removed
+	// from the staff since, answers a row with no recipient.
+	GetReturnedEpisodeReviewNotice(ctx context.Context, arg GetReturnedEpisodeReviewNoticeParams) (GetReturnedEpisodeReviewNoticeRow, error)
 	// The console's revenue statistics: what a tenant's purchases earned over a
 	// period of its own days, net of what went back to the readers.
 	//
@@ -1358,6 +1368,9 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as the
 	// disposable-domain list off.
 	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
+	// A tenant with no config row requires no review, as the column's default
+	// says.
+	GetTenantEpisodeReviewRequired(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Returns no rows for a tenant that has no Firebase credentials, which is the
 	// whole "mobile push is disabled" state.
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
@@ -2135,6 +2148,9 @@ type Querier interface {
 	// accounts for, and what went back on it is divided the way a royalty
 	// statement divides a refund.
 	ListEpisodeRevenueDesc(ctx context.Context, arg ListEpisodeRevenueDescParams) ([]ListEpisodeRevenueDescRow, error)
+	// Every round of one episode, oldest first, with who submitted and who decided
+	// it. A deleted account reads as no one.
+	ListEpisodeReviews(ctx context.Context, arg ListEpisodeReviewsParams) ([]ListEpisodeReviewsRow, error)
 	// Oldest first, the order episode_translation_for falls back through.
 	ListEpisodeTranslationsForTenant(ctx context.Context, arg ListEpisodeTranslationsForTenantParams) ([]EpisodeTranslation, error)
 	// The console's publishing schedule: every episode of the tenant, across its
@@ -2178,6 +2194,8 @@ type Querier interface {
 	// carry the one it would become. The unique constraint would refuse the whole
 	// statement, so the handler refuses first and names them.
 	ListEpisodesHoldingBothEpisodeCredits(ctx context.Context, arg ListEpisodesHoldingBothEpisodeCreditsParams) ([]uuid.UUID, error)
+	// An episode its tenant's review has not cleared is not due, however long ago
+	// its time passed: it waits for a Tenant admin rather than failing.
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	// The series a page of genre tiles draws its covers from: per genre, the
@@ -2244,6 +2262,10 @@ type Querier interface {
 	// DISTINCT FROM, which no btree index serves; the planner drops the branch the
 	// bound value rules out.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
+	// The review state of each of the episodes a console read answers, with the
+	// round that state comes from. An episode no round was opened for answers no
+	// row.
+	ListLatestEpisodeReviewsByEpisodeIDs(ctx context.Context, arg ListLatestEpisodeReviewsByEpisodeIDsParams) ([]ListLatestEpisodeReviewsByEpisodeIDsRow, error)
 	// What the named episodes sold in the window, counted as ListEpisodeRevenueDesc
 	// counts an episode: each purchase that paid for it, at the part of its price
 	// the episode accounts for, less that part of what went back. An episode that
@@ -3266,6 +3288,10 @@ type Querier interface {
 	// start, so a read that waited for the lock inside the same statement would
 	// still answer from before the wait.
 	LockEpisodeByIDForTenant(ctx context.Context, arg LockEpisodeByIDForTenantParams) (LockEpisodeByIDForTenantRow, error)
+	// The listing a review step reads and writes, locked so a submission, a
+	// decision, and the publication job's promotion of the same episode happen one
+	// after another.
+	LockEpisodeListingForReview(ctx context.Context, arg LockEpisodeListingForReviewParams) (LockEpisodeListingForReviewRow, error)
 	// Episode ratings and the public tally kept beside them. Every statement here
 	// runs on the reader's own connection: episode_ratings is member-isolated, so a
 	// rating is written and read under the reader whose rating it is.
@@ -3580,8 +3606,8 @@ type Querier interface {
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	// The scheduled publication job's promotion of an episode it listed as due.
 	// The job lists before it publishes, so the listing is matched again here: one
-	// the console published, took back to a draft, or moved later in between
-	// counts no row and is left as the console saved it.
+	// the console published, took back to a draft, moved later, or sent back to
+	// review in between counts no row and is left as the console saved it.
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) (int64, error)
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
 	// Worker mail: records that a row's recipient was mailed about it, once the
@@ -3681,6 +3707,10 @@ type Querier interface {
 	// replaced it, as Google Play gives a change of plan a purchase token of its
 	// own, so the reader keeps one subscription rather than gaining a second.
 	MoveStoreSubscriptionToToken(ctx context.Context, arg MoveStoreSubscriptionToTokenParams) error
+	// Opens a round for the episode, or leaves the one already open as it is: a
+	// second save while an episode waits for a decision is still the same
+	// submission.
+	OpenEpisodeReview(ctx context.Context, arg OpenEpisodeReviewParams) error
 	// Opens the reader's intent to buy a pack as a store product, or answers the
 	// one already open for the same pack and product, as
 	// OpenStorePurchaseIntent does for an episode, with the terms it was first
@@ -4007,6 +4037,15 @@ type Querier interface {
 	ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error
 	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
 	RenameUserWebauthnCredential(ctx context.Context, arg RenameUserWebauthnCredentialParams) (UserWebauthnCredential, error)
+	// An episode edited after it was approved is no longer what was approved, so
+	// the edit takes the approval back and opens a round in the editor's name. It
+	// does so only while the episode waits for its time and its tenant requires
+	// review: a published episode is not reviewed again, and with review off an
+	// approval holds nothing back. One statement for every episode an edit
+	// touched, which a bulk edit of a series' credits makes many of; it answers
+	// the public id of each episode it reopened, which the submission is recorded
+	// under.
+	ReopenApprovedEpisodeReviews(ctx context.Context, arg ReopenApprovedEpisodeReviewsParams) ([]string, error)
 	// Sets a held refund to the total that stays refunded once one of the refunds
 	// it counted has failed, the one place a held amount goes down. Nothing is
 	// held for the payment in the ordinary case, and nothing changes then.
@@ -4097,6 +4136,7 @@ type Querier interface {
 	// Points the episode at an uploaded eye-catch, or at none. The image it
 	// pointed at before is left for the orphan image sweep.
 	SetEpisodeEyeCatchImageIDForTenant(ctx context.Context, arg SetEpisodeEyeCatchImageIDForTenantParams) error
+	SetEpisodeListingReviewState(ctx context.Context, arg SetEpisodeListingReviewStateParams) error
 	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like
@@ -4187,6 +4227,13 @@ type Querier interface {
 	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
 	// counts are the ones there are.
 	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
+	// Turning review on puts every scheduled episode of the tenant in review, so
+	// the episodes it now holds back are the ones a Tenant admin is shown to
+	// decide on, rather than waiting where nobody looks. An approval given before
+	// review was last turned off is taken back with the rest: the episode may have
+	// been edited since without anyone reviewing it. The rounds are opened in no
+	// one's name, because nobody submitted them.
+	SubmitScheduledEpisodesForReview(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	// Whether the subscription is recorded and over. One not recorded yet has not
 	// ended as far as the reader's next checkout is concerned: Stripe's
 	// notification about it is still on its way.
@@ -4259,6 +4306,9 @@ type Querier interface {
 	// Taking the episode off the site settles what it owed: no reader can open it,
 	// and the publication that puts it back owes its own announcement if its
 	// series is still not public then.
+	//
+	// A draft has no time to review, so taking an episode back to one clears its
+	// review state as well; the rounds already decided stay in episode_reviews.
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
@@ -4416,6 +4466,8 @@ type Querier interface {
 	UpsertTenantCreatorPageSettings(ctx context.Context, arg UpsertTenantCreatorPageSettingsParams) (TenantConfig, error)
 	UpsertTenantDarkTheme(ctx context.Context, arg UpsertTenantDarkThemeParams) (TenantThemeDark, error)
 	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives.
+	UpsertTenantEpisodeReviewRequired(ctx context.Context, arg UpsertTenantEpisodeReviewRequiredParams) (TenantConfig, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
 	UpsertTenantGoogleSignInConfig(ctx context.Context, arg UpsertTenantGoogleSignInConfigParams) (TenantGoogleSignInConfig, error)
@@ -4502,6 +4554,10 @@ type Querier interface {
 	// are cleared because no removal is in force on a withdrawn row any more;
 	// audit_logs keeps what staff did and why.
 	WithdrawEpisodeCommentForUser(ctx context.Context, arg WithdrawEpisodeCommentForUserParams) (EpisodeComment, error)
+	// The open round of an episode taken back to a draft. It was decided by no one
+	// and says nothing, so it is deleted rather than kept beside the rounds that
+	// were.
+	WithdrawEpisodeReview(ctx context.Context, arg WithdrawEpisodeReviewParams) error
 }
 
 var _ Querier = (*Queries)(nil)

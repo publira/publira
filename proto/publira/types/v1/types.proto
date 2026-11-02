@@ -417,6 +417,36 @@ message Episode {
   // Set on GetEpisodeDetail and on the console's reads of one episode and of
   // a series' episodes; 0 elsewhere.
   int32 preview_page_count = 27;
+  // Where the episode stands in its tenant's review, from the latest round of
+  // it. Set on the console's reads and writes of an episode a round was ever
+  // opened for, and absent on every other episode and on the public reads.
+  EpisodeReview review = 28;
+}
+
+// Where an episode stands in review: the step a tenant may require between
+// saving an episode's publication time and the episode being published.
+enum EpisodeReviewState {
+  EPISODE_REVIEW_STATE_UNSPECIFIED = 0;
+  // Submitted, and waiting for a Tenant admin's decision. The episode is not
+  // published at its time while it waits.
+  EPISODE_REVIEW_STATE_IN_REVIEW = 1;
+  // A Tenant admin approved it, and it is published at its time.
+  EPISODE_REVIEW_STATE_APPROVED = 2;
+  // A Tenant admin sent it back with a comment. It keeps its time and is not
+  // published until it is submitted and approved again.
+  EPISODE_REVIEW_STATE_RETURNED = 3;
+}
+
+// The latest round of an episode's review.
+message EpisodeReview {
+  EpisodeReviewState state = 1;
+  // RFC3339 instant the round was submitted.
+  string submitted_at = 2;
+  // RFC3339 instant the round was decided, and empty while it is in review.
+  string decided_at = 3;
+  // What the Tenant admin wrote with the decision: what to fix, on a return,
+  // which always carries one. Empty when the decision came without one.
+  string comment = 4;
 }
 
 // Which way the pages of a work are turned. A series states it for every one

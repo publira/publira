@@ -490,6 +490,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Creator': $0.Creator$json,
   '.publira.types.v1.CreatorRole': $0.CreatorRole$json,
   '.publira.types.v1.SeriesEyeCatchVariant': $0.SeriesEyeCatchVariant$json,
+  '.publira.types.v1.EpisodeReview': $0.EpisodeReview$json,
   '.publira.types.v1.Series': $0.Series$json,
   '.publira.types.v1.Label': $0.Label$json,
   '.publira.types.v1.Genre': $0.Genre$json,

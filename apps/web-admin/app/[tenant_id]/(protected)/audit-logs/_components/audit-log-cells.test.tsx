@@ -252,6 +252,30 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to the episode review setting in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_episode_review_settings_updated",
+        "tenant_episode_review_settings",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_episode_review_settings_updated",
+        locale
+      );
+
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_episode_review_settings",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the refused email addresses in %s",
     async (locale) => {
       const cell = await renderActionCell(

@@ -69,6 +69,18 @@ const (
 	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the procedure name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
+	// AdminSeriesServiceSubmitEpisodeForReviewProcedure is the procedure name of the
+	// AdminSeriesService's SubmitEpisodeForReview RPC.
+	AdminSeriesServiceSubmitEpisodeForReviewProcedure = "/publira.admin.v1.AdminSeriesService/SubmitEpisodeForReview"
+	// AdminSeriesServiceApproveEpisodeProcedure is the procedure name of the AdminSeriesService's
+	// ApproveEpisode RPC.
+	AdminSeriesServiceApproveEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/ApproveEpisode"
+	// AdminSeriesServiceReturnEpisodeProcedure is the procedure name of the AdminSeriesService's
+	// ReturnEpisode RPC.
+	AdminSeriesServiceReturnEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/ReturnEpisode"
+	// AdminSeriesServiceListEpisodeReviewsProcedure is the procedure name of the AdminSeriesService's
+	// ListEpisodeReviews RPC.
+	AdminSeriesServiceListEpisodeReviewsProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeReviews"
 	// AdminSeriesServiceUpdateEpisodeTitleProcedure is the procedure name of the AdminSeriesService's
 	// UpdateEpisodeTitle RPC.
 	AdminSeriesServiceUpdateEpisodeTitleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeTitle"
@@ -280,6 +292,34 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodePublishSchedule"),
 			Procedure:  AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
+		}
+	})
+	adminSeriesServiceSubmitEpisodeForReviewSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("SubmitEpisodeForReview"),
+			Procedure:  AdminSeriesServiceSubmitEpisodeForReviewProcedure,
+		}
+	})
+	adminSeriesServiceApproveEpisodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ApproveEpisode"),
+			Procedure:  AdminSeriesServiceApproveEpisodeProcedure,
+		}
+	})
+	adminSeriesServiceReturnEpisodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReturnEpisode"),
+			Procedure:  AdminSeriesServiceReturnEpisodeProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodeReviewsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodeReviews"),
+			Procedure:  AdminSeriesServiceListEpisodeReviewsProcedure,
 		}
 	})
 	adminSeriesServiceUpdateEpisodeTitleSpec = sync.OnceValue(func() connect.Spec {
@@ -571,8 +611,29 @@ type AdminSeriesServiceClient interface {
 	// tells its followers, as CreateEpisode does, and leaves an episode already
 	// published as it is.
 	//
+	// While the tenant requires review, a time schedules the episode and submits
+	// it for review instead, whether it has passed or not, unless the episode is
+	// already published: it is published once a Tenant admin approves it. A
+	// draft is never in review.
+	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
+	// failed_precondition while the tenant does not require review, and for an
+	// episode with no publication time, a published one, or one in review or
+	// approved already.
+	//
+	// Minimum role: tenant_editor.
+	SubmitEpisodeForReview(context.Context, *v1.SubmitEpisodeForReviewRequest) (*v1.SubmitEpisodeForReviewResponse, error)
+	// failed_precondition for an episode that is not in review.
+	//
+	// Minimum role: tenant_admin.
+	ApproveEpisode(context.Context, *v1.ApproveEpisodeRequest) (*v1.ApproveEpisodeResponse, error)
+	// failed_precondition for an episode that is not in review.
+	//
+	// Minimum role: tenant_admin.
+	ReturnEpisode(context.Context, *v1.ReturnEpisodeRequest) (*v1.ReturnEpisodeResponse, error)
+	// Minimum role: tenant_auditor.
+	ListEpisodeReviews(context.Context, *v1.ListEpisodeReviewsRequest) (*v1.ListEpisodeReviewsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
@@ -694,8 +755,29 @@ type AdminSeriesServiceHandler interface {
 	// tells its followers, as CreateEpisode does, and leaves an episode already
 	// published as it is.
 	//
+	// While the tenant requires review, a time schedules the episode and submits
+	// it for review instead, whether it has passed or not, unless the episode is
+	// already published: it is published once a Tenant admin approves it. A
+	// draft is never in review.
+	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
+	// failed_precondition while the tenant does not require review, and for an
+	// episode with no publication time, a published one, or one in review or
+	// approved already.
+	//
+	// Minimum role: tenant_editor.
+	SubmitEpisodeForReview(context.Context, *v1.SubmitEpisodeForReviewRequest) (*v1.SubmitEpisodeForReviewResponse, error)
+	// failed_precondition for an episode that is not in review.
+	//
+	// Minimum role: tenant_admin.
+	ApproveEpisode(context.Context, *v1.ApproveEpisodeRequest) (*v1.ApproveEpisodeResponse, error)
+	// failed_precondition for an episode that is not in review.
+	//
+	// Minimum role: tenant_admin.
+	ReturnEpisode(context.Context, *v1.ReturnEpisodeRequest) (*v1.ReturnEpisodeResponse, error)
+	// Minimum role: tenant_auditor.
+	ListEpisodeReviews(context.Context, *v1.ListEpisodeReviewsRequest) (*v1.ListEpisodeReviewsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
@@ -788,6 +870,10 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeImageSpec(), Handler: adapter.deleteEpisodeImage},
 		connect.Method{Spec: adminSeriesServiceReplaceEpisodeImageSpec(), Handler: adapter.replaceEpisodeImage},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePublishScheduleSpec(), Handler: adapter.updateEpisodePublishSchedule},
+		connect.Method{Spec: adminSeriesServiceSubmitEpisodeForReviewSpec(), Handler: adapter.submitEpisodeForReview},
+		connect.Method{Spec: adminSeriesServiceApproveEpisodeSpec(), Handler: adapter.approveEpisode},
+		connect.Method{Spec: adminSeriesServiceReturnEpisodeSpec(), Handler: adapter.returnEpisode},
+		connect.Method{Spec: adminSeriesServiceListEpisodeReviewsSpec(), Handler: adapter.listEpisodeReviews},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeTitleSpec(), Handler: adapter.updateEpisodeTitle},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePricingSpec(), Handler: adapter.updateEpisodePricing},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeLayoutSpec(), Handler: adapter.updateEpisodeLayout},
@@ -887,6 +973,22 @@ func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeImage(context.Contex
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) SubmitEpisodeForReview(context.Context, *v1.SubmitEpisodeForReviewRequest) (*v1.SubmitEpisodeForReviewResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.SubmitEpisodeForReview is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ApproveEpisode(context.Context, *v1.ApproveEpisodeRequest) (*v1.ApproveEpisodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ApproveEpisode is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ReturnEpisode(context.Context, *v1.ReturnEpisodeRequest) (*v1.ReturnEpisodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReturnEpisode is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeReviews(context.Context, *v1.ListEpisodeReviewsRequest) (*v1.ListEpisodeReviewsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodeReviews is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error) {
@@ -1148,6 +1250,38 @@ func (c *adminSeriesServiceClient) ReplaceEpisodeImage(ctx context.Context, req 
 func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Context, req *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
 	var res v1.UpdateEpisodePublishScheduleResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodePublishScheduleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) SubmitEpisodeForReview(ctx context.Context, req *v1.SubmitEpisodeForReviewRequest) (*v1.SubmitEpisodeForReviewResponse, error) {
+	var res v1.SubmitEpisodeForReviewResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceSubmitEpisodeForReviewSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ApproveEpisode(ctx context.Context, req *v1.ApproveEpisodeRequest) (*v1.ApproveEpisodeResponse, error) {
+	var res v1.ApproveEpisodeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceApproveEpisodeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReturnEpisode(ctx context.Context, req *v1.ReturnEpisodeRequest) (*v1.ReturnEpisodeResponse, error) {
+	var res v1.ReturnEpisodeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReturnEpisodeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodeReviews(ctx context.Context, req *v1.ListEpisodeReviewsRequest) (*v1.ListEpisodeReviewsResponse, error) {
+	var res v1.ListEpisodeReviewsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodeReviewsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1609,6 +1743,54 @@ func (h adminSeriesServiceHandler) updateEpisodePublishSchedule(ctx context.Cont
 		return err
 	}
 	res, err := h.svc.UpdateEpisodePublishSchedule(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) submitEpisodeForReview(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SubmitEpisodeForReviewRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SubmitEpisodeForReview(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) approveEpisode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ApproveEpisodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ApproveEpisode(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) returnEpisode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReturnEpisodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReturnEpisode(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodeReviews(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodeReviewsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodeReviews(ctx, &req)
 	if err != nil {
 		return err
 	}

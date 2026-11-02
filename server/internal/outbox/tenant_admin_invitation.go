@@ -218,6 +218,16 @@ func tenantAdminInvitationRequest(ctx context.Context, queries *dbmodels.Queries
 // from the tenant's configured admin domain rather than from an incoming Host
 // header. It fails like tenantSiteURL does.
 func tenantAdminConsoleURL(tenant dbmodels.Tenant, path, token string) (string, error) {
+	page, err := tenantAdminConsolePageURL(tenant, path)
+	if err != nil {
+		return "", err
+	}
+	return page + "?token=" + url.QueryEscape(token), nil
+}
+
+// tenantAdminConsolePageURL is tenantAdminConsoleURL for a page that takes no
+// token: one a member of staff opens with the session they already have.
+func tenantAdminConsolePageURL(tenant dbmodels.Tenant, path string) (string, error) {
 	origin, err := tenantorigin.AdminConsole(tenant)
 	if errors.Is(err, tenantorigin.ErrAdminDomainNotConfigured) {
 		return "", Permanent(err)
@@ -225,5 +235,5 @@ func tenantAdminConsoleURL(tenant dbmodels.Tenant, path, token string) (string, 
 	if err != nil {
 		return "", err
 	}
-	return origin.JoinPath(path).String() + "?token=" + url.QueryEscape(token), nil
+	return origin.JoinPath(path).String(), nil
 }

@@ -145,7 +145,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET reader_icon_policy = EXCLUDED.reader_icon_policy,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required
 `
 
 type UpsertTenantReaderIconPolicyParams struct {
@@ -178,6 +178,7 @@ func (q *Queries) UpsertTenantReaderIconPolicy(ctx context.Context, arg UpsertTe
 		&i.ReaderIconPolicy,
 		&i.CreatorPagesEnabled,
 		&i.CreatorPagesShowSales,
+		&i.EpisodeReviewRequired,
 	)
 	return i, err
 }

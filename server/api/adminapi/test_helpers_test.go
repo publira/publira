@@ -620,12 +620,39 @@ func expectResolvedEpisodePurchaseAvailability(mock sqlmock.Sqlmock, tenantID, e
 // of every episode an episode RPC answers with.
 var episodeEyeCatchVariantColumns = []string{"episode_id", "episode_eye_catch_image_id", "image_updated_at", "id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
 
-// expectNoEpisodeEyeCatches answers that read for episodes none of which has
-// an eye-catch of its own.
-func expectNoEpisodeEyeCatches(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+// expectNoEpisodeDetails answers the reads that fill in what an episode RPC
+// answers beyond the episode's own row, for episodes none of which has an
+// eye-catch of its own or was ever submitted for review.
+func expectNoEpisodeDetails(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDs)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(episodeEyeCatchVariantColumns))
+	expectNoEpisodeReviews(mock, tenantID)
+}
+
+// expectNoEpisodeReviews answers ListLatestEpisodeReviewsByEpisodeIDs for
+// episodes none of which was ever submitted for review.
+func expectNoEpisodeReviews(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestEpisodeReviewsByEpisodeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "review_state", "review_approved_at", "submitted_at", "decided_at", "comment"}))
+}
+
+// expectEpisodeReviewNotRequired answers that the tenant does not require
+// review before an episode is published, which is every tenant that has not
+// turned it on.
+func expectEpisodeReviewNotRequired(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantEpisodeReviewRequired)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"episode_review_required"}).AddRow(false))
+}
+
+// expectNoEpisodeReviewReopened answers the edit's attempt to take back an
+// approval for an episode that is not approved.
+func expectNoEpisodeReviewReopened(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ReopenApprovedEpisodeReviews)).
+		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"public_id"}))
 }
 
 // expectCreateEpisodeBaseInsert expects the insert of the episode row and then

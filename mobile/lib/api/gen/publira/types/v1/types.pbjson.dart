@@ -65,6 +65,23 @@ final $typed_data.Uint8List seriesAgeRatingDescriptor = $convert.base64Decode(
     'VTRVJJRVNfQUdFX1JBVElOR19BTEwQARIZChVTRVJJRVNfQUdFX1JBVElOR19SMTUQAhIZChVT'
     'RVJJRVNfQUdFX1JBVElOR19SMTgQAw==');
 
+@$core.Deprecated('Use episodeReviewStateDescriptor instead')
+const EpisodeReviewState$json = {
+  '1': 'EpisodeReviewState',
+  '2': [
+    {'1': 'EPISODE_REVIEW_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'EPISODE_REVIEW_STATE_IN_REVIEW', '2': 1},
+    {'1': 'EPISODE_REVIEW_STATE_APPROVED', '2': 2},
+    {'1': 'EPISODE_REVIEW_STATE_RETURNED', '2': 3},
+  ],
+};
+
+/// Descriptor for `EpisodeReviewState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List episodeReviewStateDescriptor = $convert.base64Decode(
+    'ChJFcGlzb2RlUmV2aWV3U3RhdGUSJAogRVBJU09ERV9SRVZJRVdfU1RBVEVfVU5TUEVDSUZJRU'
+    'QQABIiCh5FUElTT0RFX1JFVklFV19TVEFURV9JTl9SRVZJRVcQARIhCh1FUElTT0RFX1JFVklF'
+    'V19TVEFURV9BUFBST1ZFRBACEiEKHUVQSVNPREVfUkVWSUVXX1NUQVRFX1JFVFVSTkVEEAM=');
+
 @$core.Deprecated('Use readingDirectionDescriptor instead')
 const ReadingDirection$json = {
   '1': 'ReadingDirection',
@@ -866,6 +883,14 @@ const Episode$json = {
       '5': 5,
       '10': 'previewPageCount'
     },
+    {
+      '1': 'review',
+      '3': 28,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.EpisodeReview',
+      '10': 'review'
+    },
   ],
 };
 
@@ -892,7 +917,33 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'YW1wYWlnbl9lbmRzX2F0GBcgASgJUg5jYW1wYWlnbkVuZHNBdBIdCgpjb2luX3ByaWNlGBggAS'
     'gFUgljb2luUHJpY2USKgoRY29pbl9yZW50YWxfcHJpY2UYGSABKAVSD2NvaW5SZW50YWxQcmlj'
     'ZRIbCgljb2luX25hbWUYGiABKAlSCGNvaW5OYW1lEiwKEnByZXZpZXdfcGFnZV9jb3VudBgbIA'
-    'EoBVIQcHJldmlld1BhZ2VDb3VudA==');
+    'EoBVIQcHJldmlld1BhZ2VDb3VudBI3CgZyZXZpZXcYHCABKAsyHy5wdWJsaXJhLnR5cGVzLnYx'
+    'LkVwaXNvZGVSZXZpZXdSBnJldmlldw==');
+
+@$core.Deprecated('Use episodeReviewDescriptor instead')
+const EpisodeReview$json = {
+  '1': 'EpisodeReview',
+  '2': [
+    {
+      '1': 'state',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.EpisodeReviewState',
+      '10': 'state'
+    },
+    {'1': 'submitted_at', '3': 2, '4': 1, '5': 9, '10': 'submittedAt'},
+    {'1': 'decided_at', '3': 3, '4': 1, '5': 9, '10': 'decidedAt'},
+    {'1': 'comment', '3': 4, '4': 1, '5': 9, '10': 'comment'},
+  ],
+};
+
+/// Descriptor for `EpisodeReview`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List episodeReviewDescriptor = $convert.base64Decode(
+    'Cg1FcGlzb2RlUmV2aWV3EjoKBXN0YXRlGAEgASgOMiQucHVibGlyYS50eXBlcy52MS5FcGlzb2'
+    'RlUmV2aWV3U3RhdGVSBXN0YXRlEiEKDHN1Ym1pdHRlZF9hdBgCIAEoCVILc3VibWl0dGVkQXQS'
+    'HQoKZGVjaWRlZF9hdBgDIAEoCVIJZGVjaWRlZEF0EhgKB2NvbW1lbnQYBCABKAlSB2NvbW1lbn'
+    'Q=');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

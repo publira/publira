@@ -124,6 +124,27 @@ const catalogActionName = (action: string) => {
   }
 };
 
+/** A step of an episode's review before it is published. */
+const episodeReviewActionName = (action: string) => {
+  switch (action) {
+    case "episode_review_submitted": {
+      return <Message message="admin.audit.actions.episode_review_submitted" />;
+    }
+
+    case "episode_review_approved": {
+      return <Message message="admin.audit.actions.episode_review_approved" />;
+    }
+
+    case "episode_review_returned": {
+      return <Message message="admin.audit.actions.episode_review_returned" />;
+    }
+
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on volumes. */
 const volumeActionName = (action: string) => {
   switch (action) {
@@ -623,6 +644,12 @@ const settingsActionName = (action: string) => {
       );
     }
 
+    case "tenant_episode_review_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_episode_review_settings_updated" />
+      );
+    }
+
     case "tenant_reader_icon_policy_updated": {
       return (
         <Message message="admin.audit.actions.tenant_reader_icon_policy_updated" />
@@ -875,6 +902,7 @@ const mfaActionName = (action: string) => {
 /** The name of an action the admin API records, or `null` for any other. */
 const actionName = (action: string) =>
   catalogActionName(action) ??
+  episodeReviewActionName(action) ??
   volumeActionName(action) ??
   taxonomyActionName(action) ??
   siteActionName(action) ??
@@ -988,6 +1016,8 @@ const settingTargetMessages = {
   tenant_default_locale: "admin.audit.targets.tenant_default_locale",
   tenant_email_rejection_settings:
     "admin.audit.targets.tenant_email_rejection_settings",
+  tenant_episode_review_settings:
+    "admin.audit.targets.tenant_episode_review_settings",
   tenant_legal_pages: "admin.audit.targets.tenant_legal_pages",
   tenant_mobile_app_association:
     "admin.audit.targets.tenant_mobile_app_association",

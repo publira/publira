@@ -228,6 +228,15 @@ SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
 RETURNING *;
 
+-- name: UpsertTenantEpisodeReviewRequired :one
+-- An upsert for the reason UpsertTenantCommentSettings gives.
+INSERT INTO tenant_config (tenant_id, episode_review_required)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET episode_review_required = EXCLUDED.episode_review_required,
+    updated_at = NOW()
+RETURNING *;
+
 -- name: UpsertTenantPurchaseSettings :one
 -- An upsert for the reason UpsertTenantCommentSettings gives. The default and
 -- the store listings are written together because the console offers them as

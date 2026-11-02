@@ -69,6 +69,12 @@ const (
 	// TenantSettingsServiceUpdateTenantAgeVerificationProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantAgeVerification RPC.
 	TenantSettingsServiceUpdateTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAgeVerification"
+	// TenantSettingsServiceGetTenantEpisodeReviewSettingsProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantEpisodeReviewSettings RPC.
+	TenantSettingsServiceGetTenantEpisodeReviewSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantEpisodeReviewSettings"
+	// TenantSettingsServiceUpdateTenantEpisodeReviewSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantEpisodeReviewSettings RPC.
+	TenantSettingsServiceUpdateTenantEpisodeReviewSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantEpisodeReviewSettings"
 	// TenantSettingsServiceGetTenantPurchaseSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantPurchaseSettings RPC.
 	TenantSettingsServiceGetTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantPurchaseSettings"
@@ -241,6 +247,20 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantAgeVerification"),
 			Procedure:  TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantEpisodeReviewSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantEpisodeReviewSettings"),
+			Procedure:  TenantSettingsServiceGetTenantEpisodeReviewSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantEpisodeReviewSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantEpisodeReviewSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantEpisodeReviewSettingsProcedure,
 		}
 	})
 	tenantSettingsServiceGetTenantPurchaseSettingsSpec = sync.OnceValue(func() connect.Spec {
@@ -438,6 +458,10 @@ type TenantSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantEpisodeReviewSettings(context.Context, *v1.GetTenantEpisodeReviewSettingsRequest) (*v1.GetTenantEpisodeReviewSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantEpisodeReviewSettings(context.Context, *v1.UpdateTenantEpisodeReviewSettingsRequest) (*v1.UpdateTenantEpisodeReviewSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
@@ -532,6 +556,10 @@ type TenantSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantEpisodeReviewSettings(context.Context, *v1.GetTenantEpisodeReviewSettingsRequest) (*v1.GetTenantEpisodeReviewSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantEpisodeReviewSettings(context.Context, *v1.UpdateTenantEpisodeReviewSettingsRequest) (*v1.UpdateTenantEpisodeReviewSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
@@ -600,6 +628,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceDeleteReaderIconPresetSpec(), Handler: adapter.deleteReaderIconPreset},
 		connect.Method{Spec: tenantSettingsServiceGetTenantAgeVerificationSpec(), Handler: adapter.getTenantAgeVerification},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantAgeVerificationSpec(), Handler: adapter.updateTenantAgeVerification},
+		connect.Method{Spec: tenantSettingsServiceGetTenantEpisodeReviewSettingsSpec(), Handler: adapter.getTenantEpisodeReviewSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantEpisodeReviewSettingsSpec(), Handler: adapter.updateTenantEpisodeReviewSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantPurchaseSettingsSpec(), Handler: adapter.getTenantPurchaseSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantPurchaseSettingsSpec(), Handler: adapter.updateTenantPurchaseSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantLegalPagesSpec(), Handler: adapter.getTenantLegalPages},
@@ -686,6 +716,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(contex
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantEpisodeReviewSettings(context.Context, *v1.GetTenantEpisodeReviewSettingsRequest) (*v1.GetTenantEpisodeReviewSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantEpisodeReviewSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantEpisodeReviewSettings(context.Context, *v1.UpdateTenantEpisodeReviewSettingsRequest) (*v1.UpdateTenantEpisodeReviewSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantEpisodeReviewSettings is not implemented")
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error) {
@@ -895,6 +933,22 @@ func (c *tenantSettingsServiceClient) GetTenantAgeVerification(ctx context.Conte
 func (c *tenantSettingsServiceClient) UpdateTenantAgeVerification(ctx context.Context, req *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error) {
 	var res v1.UpdateTenantAgeVerificationResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantAgeVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantEpisodeReviewSettings(ctx context.Context, req *v1.GetTenantEpisodeReviewSettingsRequest) (*v1.GetTenantEpisodeReviewSettingsResponse, error) {
+	var res v1.GetTenantEpisodeReviewSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantEpisodeReviewSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantEpisodeReviewSettings(ctx context.Context, req *v1.UpdateTenantEpisodeReviewSettingsRequest) (*v1.UpdateTenantEpisodeReviewSettingsResponse, error) {
+	var res v1.UpdateTenantEpisodeReviewSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantEpisodeReviewSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1252,6 +1306,30 @@ func (h tenantSettingsServiceHandler) updateTenantAgeVerification(ctx context.Co
 		return err
 	}
 	res, err := h.svc.UpdateTenantAgeVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantEpisodeReviewSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantEpisodeReviewSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantEpisodeReviewSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantEpisodeReviewSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantEpisodeReviewSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantEpisodeReviewSettings(ctx, &req)
 	if err != nil {
 		return err
 	}

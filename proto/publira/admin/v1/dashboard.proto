@@ -14,6 +14,8 @@ message DashboardStats {
   int32 published_series_count = 1;
   int32 draft_episode_count = 2;
   int32 scheduled_episode_count = 3;
+  // Scheduled episodes waiting for a Tenant admin's review decision.
+  int32 in_review_episode_count = 4;
 }
 
 message DashboardQueueItem {
@@ -23,6 +25,9 @@ message DashboardQueueItem {
   string episode_title = 4;
   string status = 5;
   string scheduled_at = 6;
+  // EPISODE_REVIEW_STATE_UNSPECIFIED for an episode no review round was
+  // opened for.
+  publira.types.v1.EpisodeReviewState review_state = 7;
 }
 
 message GetDashboardResponse {

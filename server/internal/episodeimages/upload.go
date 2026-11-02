@@ -63,6 +63,11 @@ type UploadRequest struct {
 	ArchiveData     []byte
 	ArchiveFilename string
 	ArchiveType     string
+	// BeforeFirstPage, when set, runs once, right before the first page row
+	// is written, and an error it returns ends the upload with nothing
+	// written. It is for what has to change before the new pages can be seen,
+	// such as taking back the approval of an episode waiting to be published.
+	BeforeFirstPage func(ctx context.Context, episodeID uuid.UUID) error
 }
 
 func storageUploadError(err error) error {
@@ -99,7 +104,7 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 	if s.Storage, err = storage.Pin(ctx, s.Storage); err != nil {
 		return nil, uuid.Nil, storageUploadError(err)
 	}
-	items, wrote, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs)
+	items, wrote, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.BeforeFirstPage)
 	if err != nil {
 		if wrote {
 			return nil, episodeID, err
@@ -201,6 +206,7 @@ func (s Service) storeImages(
 	episodeID uuid.UUID,
 	episodePublicID string,
 	imageInputs []archiveimages.Input,
+	beforeFirstPage func(ctx context.Context, episodeID uuid.UUID) error,
 ) (items []*publirattypesv1.EpisodeImage, wrote bool, err error) {
 	maxDisplayOrder, err := s.Queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episodeID)
 	if err != nil {
@@ -221,6 +227,12 @@ func (s Service) storeImages(
 		if buildErr != nil {
 			err := fmt.Errorf("images[%d]: %w", index, buildErr)
 			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		}
+
+		if !wrote && beforeFirstPage != nil {
+			if hookErr := beforeFirstPage(ctx, episodeID); hookErr != nil {
+				return nil, false, hookErr
+			}
 		}
 
 		displayOrder++

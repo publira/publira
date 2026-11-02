@@ -71,8 +71,10 @@ type DashboardStats struct {
 	PublishedSeriesCount  int32                  `protobuf:"varint,1,opt,name=published_series_count,json=publishedSeriesCount,proto3" json:"published_series_count,omitempty"`
 	DraftEpisodeCount     int32                  `protobuf:"varint,2,opt,name=draft_episode_count,json=draftEpisodeCount,proto3" json:"draft_episode_count,omitempty"`
 	ScheduledEpisodeCount int32                  `protobuf:"varint,3,opt,name=scheduled_episode_count,json=scheduledEpisodeCount,proto3" json:"scheduled_episode_count,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Scheduled episodes waiting for a Tenant admin's review decision.
+	InReviewEpisodeCount int32 `protobuf:"varint,4,opt,name=in_review_episode_count,json=inReviewEpisodeCount,proto3" json:"in_review_episode_count,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *DashboardStats) Reset() {
@@ -126,6 +128,13 @@ func (x *DashboardStats) GetScheduledEpisodeCount() int32 {
 	return 0
 }
 
+func (x *DashboardStats) GetInReviewEpisodeCount() int32 {
+	if x != nil {
+		return x.InReviewEpisodeCount
+	}
+	return 0
+}
+
 type DashboardQueueItem struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	SeriesPublicId  string                 `protobuf:"bytes,1,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
@@ -134,8 +143,11 @@ type DashboardQueueItem struct {
 	EpisodeTitle    string                 `protobuf:"bytes,4,opt,name=episode_title,json=episodeTitle,proto3" json:"episode_title,omitempty"`
 	Status          string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	ScheduledAt     string                 `protobuf:"bytes,6,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// EPISODE_REVIEW_STATE_UNSPECIFIED for an episode no review round was
+	// opened for.
+	ReviewState   v1.EpisodeReviewState `protobuf:"varint,7,opt,name=review_state,json=reviewState,proto3,enum=publira.types.v1.EpisodeReviewState" json:"review_state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DashboardQueueItem) Reset() {
@@ -210,6 +222,13 @@ func (x *DashboardQueueItem) GetScheduledAt() string {
 	return ""
 }
 
+func (x *DashboardQueueItem) GetReviewState() v1.EpisodeReviewState {
+	if x != nil {
+		return x.ReviewState
+	}
+	return v1.EpisodeReviewState(0)
+}
+
 type GetDashboardResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Stats         *DashboardStats        `protobuf:"bytes,1,opt,name=stats,proto3" json:"stats,omitempty"`
@@ -268,18 +287,20 @@ const file_publira_admin_v1_dashboard_proto_rawDesc = "" +
 	"\n" +
 	" publira/admin/v1/dashboard.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"N\n" +
 	"\x13GetDashboardRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xae\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xe5\x01\n" +
 	"\x0eDashboardStats\x124\n" +
 	"\x16published_series_count\x18\x01 \x01(\x05R\x14publishedSeriesCount\x12.\n" +
 	"\x13draft_episode_count\x18\x02 \x01(\x05R\x11draftEpisodeCount\x126\n" +
-	"\x17scheduled_episode_count\x18\x03 \x01(\x05R\x15scheduledEpisodeCount\"\xed\x01\n" +
+	"\x17scheduled_episode_count\x18\x03 \x01(\x05R\x15scheduledEpisodeCount\x125\n" +
+	"\x17in_review_episode_count\x18\x04 \x01(\x05R\x14inReviewEpisodeCount\"\xb6\x02\n" +
 	"\x12DashboardQueueItem\x12(\n" +
 	"\x10series_public_id\x18\x01 \x01(\tR\x0eseriesPublicId\x12!\n" +
 	"\fseries_title\x18\x02 \x01(\tR\vseriesTitle\x12*\n" +
 	"\x11episode_public_id\x18\x03 \x01(\tR\x0fepisodePublicId\x12#\n" +
 	"\repisode_title\x18\x04 \x01(\tR\fepisodeTitle\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12!\n" +
-	"\fscheduled_at\x18\x06 \x01(\tR\vscheduledAt\"\x8a\x01\n" +
+	"\fscheduled_at\x18\x06 \x01(\tR\vscheduledAt\x12G\n" +
+	"\freview_state\x18\a \x01(\x0e2$.publira.types.v1.EpisodeReviewStateR\vreviewState\"\x8a\x01\n" +
 	"\x14GetDashboardResponse\x126\n" +
 	"\x05stats\x18\x01 \x01(\v2 .publira.admin.v1.DashboardStatsR\x05stats\x12:\n" +
 	"\x05queue\x18\x02 \x03(\v2$.publira.admin.v1.DashboardQueueItemR\x05queue2v\n" +
@@ -305,18 +326,20 @@ var file_publira_admin_v1_dashboard_proto_goTypes = []any{
 	(*DashboardQueueItem)(nil),   // 2: publira.admin.v1.DashboardQueueItem
 	(*GetDashboardResponse)(nil), // 3: publira.admin.v1.GetDashboardResponse
 	(*v1.TenantContext)(nil),     // 4: publira.types.v1.TenantContext
+	(v1.EpisodeReviewState)(0),   // 5: publira.types.v1.EpisodeReviewState
 }
 var file_publira_admin_v1_dashboard_proto_depIdxs = []int32{
 	4, // 0: publira.admin.v1.GetDashboardRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1, // 1: publira.admin.v1.GetDashboardResponse.stats:type_name -> publira.admin.v1.DashboardStats
-	2, // 2: publira.admin.v1.GetDashboardResponse.queue:type_name -> publira.admin.v1.DashboardQueueItem
-	0, // 3: publira.admin.v1.AdminDashboardService.GetDashboard:input_type -> publira.admin.v1.GetDashboardRequest
-	3, // 4: publira.admin.v1.AdminDashboardService.GetDashboard:output_type -> publira.admin.v1.GetDashboardResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 1: publira.admin.v1.DashboardQueueItem.review_state:type_name -> publira.types.v1.EpisodeReviewState
+	1, // 2: publira.admin.v1.GetDashboardResponse.stats:type_name -> publira.admin.v1.DashboardStats
+	2, // 3: publira.admin.v1.GetDashboardResponse.queue:type_name -> publira.admin.v1.DashboardQueueItem
+	0, // 4: publira.admin.v1.AdminDashboardService.GetDashboard:input_type -> publira.admin.v1.GetDashboardRequest
+	3, // 5: publira.admin.v1.AdminDashboardService.GetDashboard:output_type -> publira.admin.v1.GetDashboardResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_dashboard_proto_init() }

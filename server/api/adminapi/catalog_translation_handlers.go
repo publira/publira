@@ -258,6 +258,9 @@ func (s *adminServer) DeleteEpisodeTranslation(
 		if err := queries.TouchEpisodeTranslationDeletedAt(txCtx, dbmodels.TouchEpisodeTranslationDeletedAtParams{TenantID: tenant.ID, ID: episodeID}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to touch episode after translation deletion", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
+		if err := s.reopenEpisodeReview(txCtx, tenant.ID, episodeID); err != nil {
+			return nil, err
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err

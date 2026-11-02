@@ -107,6 +107,11 @@ import {
   staffContactReplyPreview,
 } from "./templates/staff-contact-reply";
 import {
+  StaffEpisodeReviewReturnedEmail,
+  staffEpisodeReviewReturnedDataSchema,
+  staffEpisodeReviewReturnedPreview,
+} from "./templates/staff-episode-review-returned";
+import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
   tenantAdminInvitationPreview,
@@ -130,6 +135,7 @@ export const TEMPLATE_IDS = [
   "platform_console_password_reset",
   "staff_contact_message_notice",
   "staff_contact_reply",
+  "staff_episode_review_returned",
   "purchase_receipt",
   "reader_episode_published",
   "reader_announcement_posted",
@@ -413,6 +419,16 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: staffContactReplyPreview,
     schema: staffContactReplyDataSchema,
+  }),
+  staff_episode_review_returned: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(StaffEpisodeReviewReturnedEmail, {
+        data,
+        locale,
+        messages,
+      }),
+    preview: staffEpisodeReviewReturnedPreview,
+    schema: staffEpisodeReviewReturnedDataSchema,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

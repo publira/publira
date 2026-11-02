@@ -178,6 +178,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"reader_signup_attempt_notice":               readerSignupAttemptNoticeCopy,
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
+	"staff_episode_review_returned":              staffEpisodeReviewReturnedCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
 }
 
@@ -303,6 +304,24 @@ func staffContactMessageNoticeCopy(c *emailComposer) {
 	c.line("email.staff_contact_message_notice.body_heading", nil)
 	c.text(c.value("body"))
 	c.line("email.staff_contact_message_notice.footnote", nil)
+}
+
+// staffEpisodeReviewReturnedCopy words the mail that tells a member of staff a
+// Tenant admin sent their episode back. The comment is the point of it, so it
+// travels with the mail, and the link opens the episode where it is fixed.
+func staffEpisodeReviewReturnedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	episodeURL := c.value("episode_url")
+	c.setSubject("email.staff_episode_review_returned.subject", map[string]any{"episode_title": c.value("episode_title")})
+	c.from(brand)
+	c.line("email.staff_episode_review_returned.heading", nil)
+	c.line("email.staff_episode_review_returned.intro", map[string]any{"tenant_name": brand})
+	c.line("email.staff_episode_review_returned.series", map[string]any{"series_title": c.value("series_title")})
+	c.line("email.staff_episode_review_returned.episode", map[string]any{"episode_title": c.value("episode_title")})
+	c.line("email.staff_episode_review_returned.comment_heading", nil)
+	c.text(c.value("comment"))
+	c.linkLine("email.staff_episode_review_returned.action", nil, episodeURL)
+	c.linkLine("email.staff_episode_review_returned.fallback_link", nil, episodeURL)
 }
 
 // staffContactReplyCopy words the answer staff send a reader. The answer is

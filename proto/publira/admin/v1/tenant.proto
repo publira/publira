@@ -194,6 +194,29 @@ message UpdateTenantAgeVerificationResponse {
   publira.types.v1.AgeVerification age_verification = 1;
 }
 
+message GetTenantEpisodeReviewSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantEpisodeReviewSettingsResponse {
+  // Whether a scheduled episode waits for a Tenant admin's approval before it
+  // is published. False for a tenant that has saved nothing.
+  bool episode_review_required = 1;
+}
+
+// Turning review on submits every scheduled episode for review, those approved
+// while it was last on included, so none is published until a Tenant admin
+// approves it. Turning it off lets every scheduled episode be published at its
+// time, those in review or sent back included.
+message UpdateTenantEpisodeReviewSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bool episode_review_required = 2;
+}
+
+message UpdateTenantEpisodeReviewSettingsResponse {
+  bool episode_review_required = 1;
+}
+
 // Where this tenant's episodes may be bought unless a series or an episode
 // states otherwise, and the store listings of its app.
 message TenantPurchaseSettings {
@@ -739,6 +762,10 @@ service TenantSettingsService {
   rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantEpisodeReviewSettings(GetTenantEpisodeReviewSettingsRequest) returns (GetTenantEpisodeReviewSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantEpisodeReviewSettings(UpdateTenantEpisodeReviewSettingsRequest) returns (UpdateTenantEpisodeReviewSettingsResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
   // Minimum role: tenant_admin.

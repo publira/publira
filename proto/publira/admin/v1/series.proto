@@ -303,6 +303,10 @@ message ListEpisodesRequest {
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
   string series_id = 5;
+  // Lists only the episodes whose latest review decision is this state, and
+  // every episode when unspecified. A token names the state it was issued
+  // for, and one presented with another is invalid_argument.
+  publira.types.v1.EpisodeReviewState review_state = 6;
 }
 
 message ListEpisodesResponse {
@@ -527,7 +531,9 @@ message CreateEpisodeRequest {
   int32 price = 5;
   int32 reading_period_hours = 6;
   // RFC 3339. Empty creates a draft, a future time schedules the episode, and
-  // a time at or before the request publishes it as it is created.
+  // a time at or before the request publishes it as it is created. While the
+  // tenant requires review, any time schedules the episode and submits it for
+  // review, as UpdateEpisodePublishSchedule does.
   string scheduled_at = 7;
   // Which surfaces this episode may be shown on, narrowing its series'.
   // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
@@ -658,6 +664,76 @@ message UpdateEpisodePublishScheduleRequest {
 
 message UpdateEpisodePublishScheduleResponse {
   publira.types.v1.Episode episode = 1;
+}
+
+// Submits an episode for review: one with a publication time that is not
+// published, and that is neither in review nor approved already. Saving a time
+// through UpdateEpisodePublishSchedule or CreateEpisode submits it as well; this
+// is what resubmits a returned episode without moving its time.
+message SubmitEpisodeForReviewRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+}
+
+message SubmitEpisodeForReviewResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+// Approves the episode's open round. An episode whose time has already passed
+// is published at once, as UpdateEpisodePublishSchedule publishes one, and the
+// rest at their time.
+message ApproveEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // Optional, at most 2000 characters.
+  string comment = 3;
+}
+
+message ApproveEpisodeResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+// Sends the episode's open round back to whoever submitted it, with what to
+// fix. The episode keeps its time and stays unpublished until it is approved.
+message ReturnEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // Required, at most 2000 characters.
+  string comment = 3;
+}
+
+message ReturnEpisodeResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+message ListEpisodeReviewsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+}
+
+// One round of an episode's review.
+message EpisodeReviewRound {
+  string id = 1;
+  // RFC3339.
+  string submitted_at = 2;
+  // Who submitted the round, and who decided it. Both are empty for an account
+  // deleted since, and the decider while the round is in review.
+  string submitted_by_user_public_id = 3;
+  string submitted_by_name = 4;
+  // EPISODE_REVIEW_STATE_IN_REVIEW while the round waits for a decision, else
+  // the decision: approved or returned.
+  publira.types.v1.EpisodeReviewState state = 5;
+  // RFC3339, and empty while the round is in review.
+  string decided_at = 6;
+  string decided_by_user_public_id = 7;
+  string decided_by_name = 8;
+  string comment = 9;
+}
+
+message ListEpisodeReviewsResponse {
+  // Oldest first. An episode has a few rounds at most, so the list is not
+  // paginated.
+  repeated EpisodeReviewRound rounds = 1;
 }
 
 // One credit line on an episode: who, and in what role. It is the same shape a
@@ -1377,8 +1453,29 @@ service AdminSeriesService {
   // tells its followers, as CreateEpisode does, and leaves an episode already
   // published as it is.
   //
+  // While the tenant requires review, a time schedules the episode and submits
+  // it for review instead, whether it has passed or not, unless the episode is
+  // already published: it is published once a Tenant admin approves it. A
+  // draft is never in review.
+  //
   // Minimum role: tenant_editor.
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  // failed_precondition while the tenant does not require review, and for an
+  // episode with no publication time, a published one, or one in review or
+  // approved already.
+  //
+  // Minimum role: tenant_editor.
+  rpc SubmitEpisodeForReview(SubmitEpisodeForReviewRequest) returns (SubmitEpisodeForReviewResponse) {}
+  // failed_precondition for an episode that is not in review.
+  //
+  // Minimum role: tenant_admin.
+  rpc ApproveEpisode(ApproveEpisodeRequest) returns (ApproveEpisodeResponse) {}
+  // failed_precondition for an episode that is not in review.
+  //
+  // Minimum role: tenant_admin.
+  rpc ReturnEpisode(ReturnEpisodeRequest) returns (ReturnEpisodeResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListEpisodeReviews(ListEpisodeReviewsRequest) returns (ListEpisodeReviewsResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateEpisodeTitle(UpdateEpisodeTitleRequest) returns (UpdateEpisodeTitleResponse) {}
   // Minimum role: tenant_editor.

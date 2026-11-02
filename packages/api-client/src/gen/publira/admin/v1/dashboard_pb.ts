@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { TenantContext } from "../../types/v1/types_pb";
+import type { EpisodeReviewState, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/dashboard.proto.
  */
 export const file_publira_admin_v1_dashboard: GenFile = /*@__PURE__*/
-  fileDesc("CiBwdWJsaXJhL2FkbWluL3YxL2Rhc2hib2FyZC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChNHZXREYXNoYm9hcmRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJuCg5EYXNoYm9hcmRTdGF0cxIeChZwdWJsaXNoZWRfc2VyaWVzX2NvdW50GAEgASgFEhsKE2RyYWZ0X2VwaXNvZGVfY291bnQYAiABKAUSHwoXc2NoZWR1bGVkX2VwaXNvZGVfY291bnQYAyABKAUinAEKEkRhc2hib2FyZFF1ZXVlSXRlbRIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEg4KBnN0YXR1cxgFIAEoCRIUCgxzY2hlZHVsZWRfYXQYBiABKAkifAoUR2V0RGFzaGJvYXJkUmVzcG9uc2USLwoFc3RhdHMYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkRhc2hib2FyZFN0YXRzEjMKBXF1ZXVlGAIgAygLMiQucHVibGlyYS5hZG1pbi52MS5EYXNoYm9hcmRRdWV1ZUl0ZW0ydgoVQWRtaW5EYXNoYm9hcmRTZXJ2aWNlEl0KDEdldERhc2hib2FyZBIlLnB1YmxpcmEuYWRtaW4udjEuR2V0RGFzaGJvYXJkUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuR2V0RGFzaGJvYXJkUmVzcG9uc2VCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CiBwdWJsaXJhL2FkbWluL3YxL2Rhc2hib2FyZC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChNHZXREYXNoYm9hcmRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCKPAQoORGFzaGJvYXJkU3RhdHMSHgoWcHVibGlzaGVkX3Nlcmllc19jb3VudBgBIAEoBRIbChNkcmFmdF9lcGlzb2RlX2NvdW50GAIgASgFEh8KF3NjaGVkdWxlZF9lcGlzb2RlX2NvdW50GAMgASgFEh8KF2luX3Jldmlld19lcGlzb2RlX2NvdW50GAQgASgFItgBChJEYXNoYm9hcmRRdWV1ZUl0ZW0SGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRIUCgxzZXJpZXNfdGl0bGUYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSFAoMc2NoZWR1bGVkX2F0GAYgASgJEjoKDHJldmlld19zdGF0ZRgHIAEoDjIkLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZVJldmlld1N0YXRlInwKFEdldERhc2hib2FyZFJlc3BvbnNlEi8KBXN0YXRzGAEgASgLMiAucHVibGlyYS5hZG1pbi52MS5EYXNoYm9hcmRTdGF0cxIzCgVxdWV1ZRgCIAMoCzIkLnB1YmxpcmEuYWRtaW4udjEuRGFzaGJvYXJkUXVldWVJdGVtMnYKFUFkbWluRGFzaGJvYXJkU2VydmljZRJdCgxHZXREYXNoYm9hcmQSJS5wdWJsaXJhLmFkbWluLnYxLkdldERhc2hib2FyZFJlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLkdldERhc2hib2FyZFJlc3BvbnNlQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetDashboardRequest
@@ -49,6 +49,13 @@ export type DashboardStats = Message<"publira.admin.v1.DashboardStats"> & {
    * @generated from field: int32 scheduled_episode_count = 3;
    */
   scheduledEpisodeCount: number;
+
+  /**
+   * Scheduled episodes waiting for a Tenant admin's review decision.
+   *
+   * @generated from field: int32 in_review_episode_count = 4;
+   */
+  inReviewEpisodeCount: number;
 };
 
 /**
@@ -91,6 +98,14 @@ export type DashboardQueueItem = Message<"publira.admin.v1.DashboardQueueItem"> 
    * @generated from field: string scheduled_at = 6;
    */
   scheduledAt: string;
+
+  /**
+   * EPISODE_REVIEW_STATE_UNSPECIFIED for an episode no review round was
+   * opened for.
+   *
+   * @generated from field: publira.types.v1.EpisodeReviewState review_state = 7;
+   */
+  reviewState: EpisodeReviewState;
 };
 
 /**
