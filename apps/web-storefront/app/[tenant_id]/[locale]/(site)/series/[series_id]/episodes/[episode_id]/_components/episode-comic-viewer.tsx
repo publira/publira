@@ -48,7 +48,7 @@ const VIEWER_GESTURES: ViewportGestures = { keyboard: { scope: "global" } };
  * cannot hold anything else.
  */
 const buildPageStatusFormatter =
-  (t: StorefrontClientMessageAccessor) =>
+  (t: StorefrontClientMessageAccessor, endPageLabel: string) =>
   (value: PageStatusValue): string => {
     const visible = describeVisiblePages(value);
 
@@ -58,7 +58,7 @@ const buildPageStatusFormatter =
       }
 
       case "end-page": {
-        return t("storefront.episode.viewer.end_page");
+        return endPageLabel;
       }
 
       case "page": {
@@ -201,16 +201,19 @@ const WideViewerMarker = () => {
 
 /** The shell's toolbar, with the wide viewer and full screen controls. */
 const EpisodeViewerToolbar = ({
+  endPageLabel,
   isWide,
   onToggleFullscreen,
   onToggleWide,
 }: {
+  /** What the page after the last one is called. */
+  endPageLabel: string;
   isWide: boolean;
   onToggleFullscreen: () => void;
   onToggleWide: () => void;
 }) => {
   const t = useClientMessages();
-  const formatPageStatus = buildPageStatusFormatter(t);
+  const formatPageStatus = buildPageStatusFormatter(t, endPageLabel);
 
   return (
     <Viewer.Toolbar>
@@ -321,6 +324,10 @@ const EpisodeViewerPageNavigation = ({
  * `renewPageUrls` reads the pages' URLs again, for a page the reader reaches
  * after the media token in its URL has expired: an entitled body's token lasts
  * minutes, and the viewer fetches a page only as the reader nears it.
+ *
+ * `preview` says the pages are the episode's preview rather than its body, so
+ * the page after them is where the preview ends, not where the episode does,
+ * and the end page and the page status call it that.
  */
 export const EpisodeComicViewer = ({
   children,
@@ -328,6 +335,7 @@ export const EpisodeComicViewer = ({
   initialPageIndex = 0,
   nextEpisodeHref,
   pages,
+  preview = false,
   previousEpisodeHref,
   readingDirection,
   renewPageUrls,
@@ -343,6 +351,8 @@ export const EpisodeComicViewer = ({
   /** Absent on the last published episode of the series. */
   nextEpisodeHref?: string;
   pages: ViewerPageItem[];
+  /** Whether `pages` are the episode's preview, which `endPage` follows. */
+  preview?: boolean;
   /** Absent on the first one. */
   previousEpisodeHref?: string;
   readingDirection: ReadingDirection;
@@ -358,6 +368,11 @@ export const EpisodeComicViewer = ({
 }) => {
   const t = useClientMessages();
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
+
+  const endPageLabel = preview
+    ? t("storefront.episode.viewer.preview_end_page")
+    : t("storefront.episode.viewer.end_page");
+
   const boxHeight = useBoxHeight(shell);
 
   const renewPageUrl = useMemo(
@@ -447,7 +462,7 @@ export const EpisodeComicViewer = ({
                 page canvas does: as large as the slot allows at the page's
                 own proportion. */}
             <section
-              aria-label={t("storefront.episode.viewer.end_page")}
+              aria-label={endPageLabel}
               className="flex h-[min(100cqh,calc(100cqw/var(--end-page-aspect)))] w-[min(100cqw,calc(100cqh*var(--end-page-aspect)))] flex-col overflow-y-auto overscroll-contain bg-background text-foreground"
               style={
                 // SAFETY: React writes a `--` custom property onto the
@@ -463,6 +478,7 @@ export const EpisodeComicViewer = ({
           </EndPage>
         )}
         <EpisodeViewerToolbar
+          endPageLabel={endPageLabel}
           isWide={isWide}
           onToggleFullscreen={toggleFullscreen}
           onToggleWide={toggleWide}

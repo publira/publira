@@ -39,6 +39,8 @@ All five can be changed later under **Price and reading period** on the episode'
 
 On a paid episode the site shows the price and **Buy this episode**. On a rented one it offers both sales instead, each with what it costs: **Buy for** the price, and **Rent for** the rental period at the rental price. A reader who is signed in and chooses one is sent to the payment provider's checkout page, pays there, and comes back to the episode, which tells them their payment is being confirmed. The episode opens when the provider's notification of the payment reaches the install, usually within seconds. Coming back from the checkout page opens nothing by itself.
 
+On a paid episode with [preview pages](./1-catalog/2-episodes.md#preview-pages), a reader who cannot open it yet, signed in or not, reads those pages on the site first, in the same reader as the rest of the episode: in its reading direction, and paired into spreads as its layout pairs them. The page counter and the progress slider count the preview pages alone, such as `Page 3 of 3`. Turning past the last of them brings up **The preview ends here**, with the purchase and the other ways in the episode offers. A paid episode without preview pages shows the same offers in place of its pages, over a blurred view of its opening pages. Neither how far the reader got in a preview nor reaching its end is recorded, so once bought, the episode opens on its first page.
+
 Once bought, the episode:
 
 - Stays open for its reading period, or a rental for its rental period, counted from the moment the purchase is recorded.

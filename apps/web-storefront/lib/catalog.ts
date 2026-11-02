@@ -2164,6 +2164,14 @@ export const getEpisodeDetail = async (
      * and carry no key material, so this shared entry can hold them.
      */
     previewImages: EpisodeImageItem[];
+    /**
+     * The opening pages the episode opens to every reader as a preview, set
+     * beside `locked` alone. Their URLs carry a free body's media token, which
+     * is the same for every reader of a series the age rule does not cover;
+     * on one it does cover the shared read answers `age_restricted`, so none
+     * reaches this entry.
+     */
+    previewPages: EpisodeImageItem[];
     previousEpisode: EpisodeNeighborItem | undefined;
     /**
      * Every locale the tenant offers that the episode has a translation in,
@@ -2248,6 +2256,7 @@ export const getEpisodeDetail = async (
       nextEpisode: mapEpisodeNeighbor(response.nextEpisode),
       nextFreeEpisode: mapEpisodeNeighbor(response.nextFreeEpisode),
       previewImages: mapEpisodeImages(response.previewImages),
+      previewPages: mapEpisodeImages(response.previewPages),
       previousEpisode: mapEpisodeNeighbor(response.previousEpisode),
       publishedLocales: publishedLocalesFrom(
         response.publishedLocales,
@@ -2280,6 +2289,12 @@ export const getEpisodeViewer = async (
     /** Set only beside `entitled`. */
     entitlementSource?: EpisodeEntitlementSourceState;
     images: EpisodeImageItem[];
+    /**
+     * The opening pages the episode opens as a preview, set beside `locked`
+     * alone, with this reader's media token where the age rule covers the
+     * series.
+     */
+    previewPages: EpisodeImageItem[];
   } | null>
 > => {
   "use cache: private";
@@ -2304,7 +2319,10 @@ export const getEpisodeViewer = async (
   void checkoutSessionId.trim();
 
   if (!sessionId) {
-    return { ok: true, value: { access: "locked", images: [] } };
+    return {
+      ok: true,
+      value: { access: "locked", images: [], previewPages: [] },
+    };
   }
 
   let response;
@@ -2325,7 +2343,10 @@ export const getEpisodeViewer = async (
     // question, so it must not become notFound() on a page that already
     // showed the title.
     if (isRpcError(error, Code.PermissionDenied)) {
-      return { ok: true, value: { access: "locked", images: [] } };
+      return {
+        ok: true,
+        value: { access: "locked", images: [], previewPages: [] },
+      };
     }
 
     if (isMissingResourceRpcError(error)) {
@@ -2354,6 +2375,7 @@ export const getEpisodeViewer = async (
       access: toEpisodeAccessState(response.access, response.episode.price),
       entitlementSource: toEpisodeEntitlementSource(response.entitlementSource),
       images: mapEpisodeImages(response.images),
+      previewPages: mapEpisodeImages(response.previewPages),
     },
   };
 };

@@ -686,6 +686,28 @@ const WaitFreeSection = ({
 };
 
 /**
+ * What the gate opens with: that the preview has ended, where the reader has
+ * just turned its pages, and otherwise why the episode is closed to them.
+ */
+const GateTitle = ({
+  previewEnded,
+  signedIn,
+}: {
+  previewEnded: boolean;
+  signedIn: boolean;
+}) => {
+  if (previewEnded) {
+    return <Message message="storefront.episode.gate.preview_ended_title" />;
+  }
+
+  return signedIn ? (
+    <Message message="storefront.episode.gate.signed_in_title" />
+  ) : (
+    <Message message="storefront.episode.gate.guest_title" />
+  );
+};
+
+/**
  * The card over the preview when the reader may not open the pages: why the
  * body is closed, the one thing that opens it, and the nearest later episode
  * they could read instead.
@@ -715,6 +737,11 @@ const WaitFreeSection = ({
  * to a guest as to a reader signed in: the campaign is a reason to sign in and
  * buy now, and its end is when that reason runs out. One sold in the app is
  * not quoted, because the store sets the price there.
+ *
+ * Where the reader has just turned the episode's preview pages, the gate is the
+ * page after them, and its heading says the preview has ended rather than that
+ * the episode is closed: the reader already knows it is paid, and what they
+ * are looking at is where the free part stops.
  */
 export const EpisodeAccessGate = ({
   acceptsPayments,
@@ -730,6 +757,7 @@ export const EpisodeAccessGate = ({
   googlePlayUrl,
   locale,
   nextFreeEpisode,
+  previewEnded = false,
   price,
   purchaseSurface,
   rentalPeriodHours,
@@ -766,6 +794,8 @@ export const EpisodeAccessGate = ({
   locale: Locale;
   /** Absent when no later episode of the series is free right now. */
   nextFreeEpisode?: EpisodeNeighborItem;
+  /** Whether the gate is the page after the episode's preview pages. */
+  previewEnded?: boolean;
   /** What the permanent copy costs. */
   price: number;
   purchaseSurface: EpisodePurchaseSurface;
@@ -845,11 +875,7 @@ export const EpisodeAccessGate = ({
       <div className="grid gap-2">
         <p className="font-serif text-xl leading-tight">
           <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-64" />}>
-            {signedIn ? (
-              <Message message="storefront.episode.gate.signed_in_title" />
-            ) : (
-              <Message message="storefront.episode.gate.guest_title" />
-            )}
+            <GateTitle previewEnded={previewEnded} signedIn={signedIn} />
           </Suspense>
         </p>
         <p className="text-sm text-muted-foreground">

@@ -5179,6 +5179,7 @@
         "guest_app_only_description": "이 에피소드는 앱에서 판매합니다. 이미 앱에서 구매하셨다면 같은 계정으로 로그인해 주세요.",
         "guest_payable_description": "이 에피소드를 읽으려면 로그인한 뒤 구매하거나, 관리자에게 이용권을 받아야 합니다.",
         "guest_title": "이 에피소드는 유료입니다",
+        "preview_ended_title": "미리보기는 여기까지입니다",
         "guest_unpayable_description": "이 에피소드를 읽으려면 로그인한 뒤 관리자에게 이용권을 받아야 합니다. 현재 이 사이트에서는 구매할 수 없습니다.",
         "login": "로그인하고 읽기",
         "next_free_episode": "{$number}화 무료로 읽기",
@@ -5235,6 +5236,7 @@
       "viewer": {
         "collapse_viewer": "페이지 너비 되돌리기",
         "end_page": "끝",
+        "preview_end_page": "미리보기 끝",
         "enter_fullscreen": "전체 화면으로 보기",
         "exit_fullscreen": "전체 화면 종료",
         "expand_viewer": "창 너비로 넓히기",

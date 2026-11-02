@@ -996,6 +996,65 @@ describe("catalog.getEpisodeDetail", () => {
     });
   });
 
+  it("Carry the preview pages of a locked body in reading order", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: { price: 300, publicId: "EP_002", title: "Episode 2" },
+      images: [],
+      previewPages: [
+        {
+          contentType: "image/jpeg",
+          displayOrder: 2,
+          fileSizeBytes: 2048n,
+          height: 1500,
+          id: "img_2",
+          imageUrl: "/images/episodes/img_2?token=free",
+          width: 1050,
+        },
+        {
+          contentType: "image/jpeg",
+          displayOrder: 1,
+          fileSizeBytes: 1024n,
+          height: 1500,
+          id: "img_1",
+          imageUrl: "/images/episodes/img_1?token=free",
+          width: 1050,
+        },
+      ],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_002",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.images).toEqual([]);
+    expect(detail?.previewPages).toEqual([
+      {
+        contentType: "image/jpeg",
+        displayOrder: 1,
+        fileSizeBytes: 1024,
+        height: 1500,
+        id: "img_1",
+        imageUrl: "/images/episodes/img_1?token=free",
+        width: 1050,
+      },
+      {
+        contentType: "image/jpeg",
+        displayOrder: 2,
+        fileSizeBytes: 2048,
+        height: 1500,
+        id: "img_2",
+        imageUrl: "/images/episodes/img_2?token=free",
+        width: 1050,
+      },
+    ]);
+  });
+
   it("null if episode is missing", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       episode: undefined,
@@ -1151,7 +1210,7 @@ describe("catalog.getEpisodeViewer", () => {
       getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "en")
     ).resolves.toEqual({
       ok: true,
-      value: { access: "locked", images: [] },
+      value: { access: "locked", images: [], previewPages: [] },
     });
     expect(mockGetEpisodeDetail).not.toHaveBeenCalled();
   });
@@ -1227,8 +1286,52 @@ describe("catalog.getEpisodeViewer", () => {
             width: 1200,
           },
         ],
+        previewPages: [],
       },
     });
+  });
+
+  it("Carry the preview pages of a body that stays locked to the reader", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: { price: 500, publicId: "EP_010", title: "Episode 10" },
+      images: [],
+      previewPages: [
+        {
+          contentType: "image/jpeg",
+          displayOrder: 2,
+          height: 1500,
+          id: "img_2",
+          imageUrl: "/images/episodes/img_2?token=reader",
+          width: 1050,
+        },
+        {
+          contentType: "image/jpeg",
+          displayOrder: 1,
+          height: 1500,
+          id: "img_1",
+          imageUrl: "/images/episodes/img_1?token=reader",
+          width: 1050,
+        },
+      ],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeViewer(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_010",
+      "session-token",
+      "en"
+    );
+
+    const viewer = result.ok ? result.value : null;
+    expect(viewer?.access).toBe("locked");
+    expect(viewer?.images).toEqual([]);
+    expect(viewer?.previewPages.map((image) => image.imageUrl)).toEqual([
+      "/images/episodes/img_1?token=reader",
+      "/images/episodes/img_2?token=reader",
+    ]);
   });
 
   it("names the author's own episode apart from a bought one", async () => {
@@ -1250,7 +1353,12 @@ describe("catalog.getEpisodeViewer", () => {
       )
     ).resolves.toEqual({
       ok: true,
-      value: { access: "entitled", entitlementSource: "creator", images: [] },
+      value: {
+        access: "entitled",
+        entitlementSource: "creator",
+        images: [],
+        previewPages: [],
+      },
     });
   });
 
@@ -1273,7 +1381,12 @@ describe("catalog.getEpisodeViewer", () => {
       )
     ).resolves.toEqual({
       ok: true,
-      value: { access: "entitled", entitlementSource: "staff", images: [] },
+      value: {
+        access: "entitled",
+        entitlementSource: "staff",
+        images: [],
+        previewPages: [],
+      },
     });
   });
 
@@ -1304,7 +1417,7 @@ describe("catalog.getEpisodeViewer", () => {
       )
     ).resolves.toEqual({
       ok: true,
-      value: { access: "locked", images: [] },
+      value: { access: "locked", images: [], previewPages: [] },
     });
   });
 
@@ -1323,7 +1436,7 @@ describe("catalog.getEpisodeViewer", () => {
       )
     ).resolves.toEqual({
       ok: true,
-      value: { access: "locked", images: [] },
+      value: { access: "locked", images: [], previewPages: [] },
     });
   });
 

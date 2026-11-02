@@ -116,6 +116,58 @@ describe("EpisodeAccessGate", () => {
     ).toBeDefined();
   });
 
+  describe("the heading", () => {
+    it("Say the episode is closed to a reader signed in", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments />);
+
+      expect(
+        screen.getByText("storefront.episode.gate.signed_in_title")
+      ).toBeDefined();
+    });
+
+    it("Say the episode is paid to a guest", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments signedIn={false} />);
+
+      expect(
+        screen.getByText("storefront.episode.gate.guest_title")
+      ).toBeDefined();
+    });
+
+    it("Say the preview has ended after its pages, signed in or not, and keep the offers", () => {
+      const { unmount } = render(
+        <EpisodeAccessGate {...props} acceptsPayments previewEnded />
+      );
+
+      expect(
+        screen.getByText("storefront.episode.gate.preview_ended_title")
+      ).toBeDefined();
+      expect(
+        screen.queryByText("storefront.episode.gate.signed_in_title")
+      ).toBeNull();
+      expect(purchaseButton()).toBeDefined();
+
+      unmount();
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          previewEnded
+          signedIn={false}
+        />
+      );
+
+      expect(
+        screen.getByText("storefront.episode.gate.preview_ended_title")
+      ).toBeDefined();
+      expect(
+        screen.queryByText("storefront.episode.gate.guest_title")
+      ).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "storefront.episode.gate.login" })
+      ).toBeDefined();
+    });
+  });
+
   it("Show purchase CTA if payment settings are enabled", () => {
     render(<EpisodeAccessGate {...props} acceptsPayments />);
 
