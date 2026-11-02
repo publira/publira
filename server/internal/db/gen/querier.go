@@ -736,7 +736,7 @@ type Querier interface {
 	// The row UpdateAnnouncement and DeleteAnnouncement act on, locked until the
 	// transaction ends so the ticker job cannot deliver it in between: the job's
 	// MarkAnnouncementDelivered waits on the lock, and then delivers what the edit
-	// left or finds nothing to deliver.
+	// left if it is still due, or finds nothing to deliver.
 	GetAnnouncementForUpdate(ctx context.Context, arg GetAnnouncementForUpdateParams) (Announcement, error)
 	// Returns the announcement with the caller's read state, in its translation
 	// for the locale asked for. A row owned by another tenant, a targeted one the
@@ -3583,8 +3583,10 @@ type Querier interface {
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	// The ticker job's write, in the transaction that queues the announcement's
 	// event. It is what makes the row stop being due, so a worker that was down
-	// over the time still delivers it on its next pass. An announcement the
-	// console deleted or delivered in the meantime comes back as no rows.
+	// over the time still delivers it on its next pass. The time is checked again
+	// here rather than trusted from the listing: an announcement the console
+	// deleted, delivered, or put off to a later time in the meantime comes back
+	// as no rows.
 	MarkAnnouncementDelivered(ctx context.Context, id uuid.UUID) (MarkAnnouncementDeliveredRow, error)
 	MarkCampaignBannerEndRevalidated(ctx context.Context, id uuid.UUID) error
 	// The marks re-check the instant, so a banner rescheduled ahead between the

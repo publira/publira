@@ -780,7 +780,8 @@ func errAnnouncementDelivered() error {
 // DeleteAnnouncement is about, locked for the rest of the transaction, and
 // refuses one that is missing or has been delivered. The lock is what keeps
 // the deliver-announcements job from delivering it between this check and the
-// write: the job waits, then delivers what the write left, or nothing.
+// write: the job waits, then delivers what the write left if it is still due,
+// or nothing.
 func (s *adminServer) lockScheduledAnnouncement(
 	ctx context.Context,
 	txq *dbmodels.Queries,

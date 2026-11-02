@@ -421,7 +421,7 @@ WHERE id = $1;
 -- The row UpdateAnnouncement and DeleteAnnouncement act on, locked until the
 -- transaction ends so the ticker job cannot deliver it in between: the job's
 -- MarkAnnouncementDelivered waits on the lock, and then delivers what the edit
--- left or finds nothing to deliver.
+-- left if it is still due, or finds nothing to deliver.
 SELECT *
 FROM announcements
 WHERE id = sqlc.arg('id')
@@ -471,10 +471,13 @@ ORDER BY deliver_at, id;
 -- name: MarkAnnouncementDelivered :one
 -- The ticker job's write, in the transaction that queues the announcement's
 -- event. It is what makes the row stop being due, so a worker that was down
--- over the time still delivers it on its next pass. An announcement the
--- console deleted or delivered in the meantime comes back as no rows.
+-- over the time still delivers it on its next pass. The time is checked again
+-- here rather than trusted from the listing: an announcement the console
+-- deleted, delivered, or put off to a later time in the meantime comes back
+-- as no rows.
 UPDATE announcements
 SET delivered_at = NOW()
 WHERE id = sqlc.arg('id')
     AND delivered_at IS NULL
+    AND deliver_at <= NOW()
 RETURNING id, tenant_id, pinned, audience;

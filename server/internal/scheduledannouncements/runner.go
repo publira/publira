@@ -112,9 +112,9 @@ func (r *Runner) RunOnce(ctx context.Context) {
 
 // deliver marks one announcement delivered, queues its event, and records the
 // drops it owes, in one transaction, so none of the three outlives the others.
-// It reports false for an announcement the console deleted or delivered after
-// the listing: the mark waits on the console's lock and then finds nothing to
-// deliver.
+// It reports false for an announcement the console deleted, delivered, or put
+// off to a later time after the listing: the mark waits on the console's lock
+// and then finds nothing due to deliver.
 func (r *Runner) deliver(ctx context.Context, announcementID uuid.UUID) (bool, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

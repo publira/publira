@@ -132,30 +132,42 @@ func TestRunOnceDeliversEveryAnnouncementThatIsDue(t *testing.T) {
 	}
 }
 
-// An announcement the console delivered or deleted after the listing is
-// passed over: the mark finds no row still waiting, and nothing is queued.
-func TestDeliverPassesOverAnAnnouncementNoLongerWaiting(t *testing.T) {
+// An announcement the console delivered, deleted, or put off to a later time
+// after the listing is passed over: the mark finds no row still due, and
+// nothing is queued.
+func TestDeliverPassesOverAnAnnouncementNoLongerDue(t *testing.T) {
 	t.Parallel()
 
 	pg := testutil.StartIsolatedPostgres(t)
 	tenant := pg.SeedTenant(t, "SCHEDANN0002", "passed-over.example.com", "Passed Over Tenant")
-	id := insertScheduledAnnouncement(t, pg, tenant.ID, time.Now().Add(-time.Minute), false, nil)
-	if _, err := pg.DB.ExecContext(t.Context(), "UPDATE announcements SET delivered_at = now() WHERE id = $1", id); err != nil {
-		t.Fatalf("deliver announcement: %v", err)
-	}
+	for _, tc := range []struct {
+		name   string
+		change string
+	}{
+		{"delivered", "UPDATE announcements SET delivered_at = now() WHERE id = $1"},
+		{"deleted", "DELETE FROM announcements WHERE id = $1"},
+		{"put off", "UPDATE announcements SET deliver_at = now() + interval '1 hour' WHERE id = $1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := insertScheduledAnnouncement(t, pg, tenant.ID, time.Now().Add(-time.Minute), false, nil)
+			if _, err := pg.DB.ExecContext(t.Context(), tc.change, id); err != nil {
+				t.Fatalf("change announcement: %v", err)
+			}
 
-	reval := &stubRecorder{}
-	delivered, err := New(pg.OpenTickerDB(t), reval, quietLogger()).deliver(t.Context(), id)
-	if err != nil {
-		t.Fatalf("deliver: %v", err)
-	}
-	if delivered {
-		t.Fatal("deliver reported an announcement already delivered as delivered again")
-	}
-	if got := queuedKeys(t, pg); len(got) != 0 {
-		t.Fatalf("queued %v, want nothing", got)
-	}
-	if len(reval.drops) != 0 {
-		t.Fatalf("owed %v, want nothing", reval.drops)
+			reval := &stubRecorder{}
+			delivered, err := New(pg.OpenTickerDB(t), reval, quietLogger()).deliver(t.Context(), id)
+			if err != nil {
+				t.Fatalf("deliver: %v", err)
+			}
+			if delivered {
+				t.Fatal("deliver reported an announcement no longer due as delivered")
+			}
+			if got := queuedKeys(t, pg); len(got) != 0 {
+				t.Fatalf("queued %v, want nothing", got)
+			}
+			if len(reval.drops) != 0 {
+				t.Fatalf("owed %v, want nothing", reval.drops)
+			}
+		})
 	}
 }
