@@ -4,7 +4,8 @@ import 'package:publira/models/my_creator.dart';
 
 /// [CreatorRepository] that answers from what a test sets on it, one page at
 /// a time: each list is answered in pages of the given size, with the index of
-/// the next as its token.
+/// the next as its token, and the comments with the index of the previous as
+/// theirs too.
 class FakeCreatorRepository implements CreatorRepository {
   FakeCreatorRepository({
     this.enabled = true,
@@ -12,10 +13,12 @@ class FakeCreatorRepository implements CreatorRepository {
     Map<String, MyCreatorStats>? figures,
     Map<String, List<MyCreatorStatement>>? statements,
     Map<(String, String), List<MyCreatorStatementLine>>? lines,
+    Map<String, List<MyCreatorEpisodeComment>>? comments,
     this.pageSize = 20,
   }) : figures = figures ?? {},
        statements = statements ?? {},
-       lines = lines ?? {};
+       lines = lines ?? {},
+       comments = comments ?? {};
 
   /// What [pagesEnabled] answers.
   bool enabled;
@@ -32,6 +35,9 @@ class FakeCreatorRepository implements CreatorRepository {
   /// The lines of each Author's month, by [MyCreator.id] and `YYYY-MM`.
   final Map<(String, String), List<MyCreatorStatementLine>> lines;
 
+  /// The comments on each Author's episodes by [MyCreator.id], newest first.
+  final Map<String, List<MyCreatorEpisodeComment>> comments;
+
   /// How many rows one page holds when the call names no limit.
   int pageSize;
 
@@ -43,6 +49,9 @@ class FakeCreatorRepository implements CreatorRepository {
   /// fails while the rest reads.
   CreatorFailure? statsFailure;
   CreatorFailure? statementsFailure;
+
+  /// Thrown by [listEpisodeComments] alone.
+  CreatorFailure? commentsFailure;
 
   /// The calls made, by method name, in order.
   final calls = <String>[];
@@ -150,6 +159,32 @@ class FakeCreatorRepository implements CreatorRepository {
     return MyCreatorStatementDetail(
       statement: statement,
       lines: page.rows,
+      nextToken: page.nextToken,
+    );
+  }
+
+  @override
+  Future<MyCreatorEpisodeCommentPage> listEpisodeComments({
+    required String creatorId,
+    required String locale,
+    String token = '',
+  }) async {
+    calls.add('listEpisodeComments');
+    _throwIfFailing(commentsFailure);
+    if (!creators.creators.any((creator) => creator.id == creatorId)) {
+      throw const CreatorFailure(CreatorFailureKind.unavailable);
+    }
+    final page = _page(
+      comments[creatorId] ?? const <MyCreatorEpisodeComment>[],
+      token,
+      pageSize,
+    );
+    final start = token.isEmpty ? 0 : int.parse(token);
+    return MyCreatorEpisodeCommentPage(
+      comments: page.rows,
+      // The newest page is asked for with `0` from the page after it, since
+      // an empty token says there is no page that way.
+      previousToken: start == 0 ? '' : '${(start - pageSize).clamp(0, start)}',
       nextToken: page.nextToken,
     );
   }

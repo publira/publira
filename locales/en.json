@@ -6227,6 +6227,15 @@
       "share_csv": "Share CSV",
       "share_csv_failed": "Could not share the statement. Try again."
     },
+    "creator_comments": {
+      "title": "Comments",
+      "link": "Comments",
+      "description": "What readers say about the episodes crediting this author, newest first.",
+      "reply_hint": "To reply, tap a comment to open its episode's comments and post one there. Your comment carries the Author badge.",
+      "empty": "Nobody has commented on this author's episodes yet.",
+      "page_empty": "This page has no comments.",
+      "load_failed": "Could not show the comments. Try again."
+    },
     "follow": {
       "failed": "Could not change what you follow. Try again.",
       "follow": "Follow",

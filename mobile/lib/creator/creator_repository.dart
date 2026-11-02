@@ -8,7 +8,8 @@ import 'package:publira/models/my_creator.dart';
 const myCreatorPageLimitMax = 100;
 
 /// The reader's half of `publira.v1.CreatorService`: the pages of the Authors
-/// their account is linked to, and the tenant setting that turns them on.
+/// their account is linked to, what readers say about their episodes, and the
+/// tenant setting that turns them on.
 abstract class CreatorRepository {
   /// Whether the tenant shows a linked reader their Authors' pages, as
   /// `GetTenantResponse.creator_pages_enabled` says. While it does not, every
@@ -49,6 +50,19 @@ abstract class CreatorRepository {
     required String period,
     String token = '',
     int? limit,
+  });
+
+  /// One page of the published comments on every episode crediting the
+  /// Author, newest first, each with its episode titled in [locale]: what
+  /// every reader reads under those episodes, and nothing awaiting approval
+  /// or removed.
+  ///
+  /// [token] is the opaque cursor from a previous page, empty for the newest
+  /// one. Throws [CreatorFailure].
+  Future<MyCreatorEpisodeCommentPage> listEpisodeComments({
+    required String creatorId,
+    required String locale,
+    String token = '',
   });
 }
 

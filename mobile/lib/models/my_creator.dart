@@ -1,3 +1,5 @@
+import 'package:publira/models/episode_comment.dart';
+
 /// A creator the signed-in reader's account is linked to, as
 /// `publira.v1.MyCreator` describes them.
 class MyCreator {
@@ -223,5 +225,45 @@ class MyCreatorStatementDetail {
   final List<MyCreatorStatementLine> lines;
 
   /// What the API calls the page of lines after this one. Empty at the end.
+  final String nextToken;
+}
+
+/// A published comment on an episode crediting the creator, with the episode
+/// it was left on, as `publira.v1.MyCreatorEpisodeComment` describes it.
+class MyCreatorEpisodeComment {
+  const MyCreatorEpisodeComment({
+    required this.comment,
+    required this.seriesPublicId,
+    required this.seriesTitle,
+    required this.episodePublicId,
+    required this.episodeTitle,
+  });
+
+  /// As the episode's own comment list carries it, so the creator's own
+  /// comments are marked here as they are there.
+  final EpisodeComment comment;
+
+  /// Public ids (`public_id`), which the routes to the episode carry.
+  final String seriesPublicId;
+  final String seriesTitle;
+  final String episodePublicId;
+  final String episodeTitle;
+}
+
+/// One page of the comments on the creator's episodes, newest first, as
+/// `ListMyCreatorEpisodeCommentsResponse` answers it.
+class MyCreatorEpisodeCommentPage {
+  const MyCreatorEpisodeCommentPage({
+    this.comments = const [],
+    this.previousToken = '',
+    this.nextToken = '',
+  });
+
+  final List<MyCreatorEpisodeComment> comments;
+
+  /// Token for the page of newer comments, empty on the newest page.
+  final String previousToken;
+
+  /// Token for the page of older comments, empty on the oldest page.
   final String nextToken;
 }

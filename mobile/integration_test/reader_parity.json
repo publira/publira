@@ -587,7 +587,11 @@
         "routes": ["[locale]/(site)/my/creators/[creator_id]/comments"],
         "rpcs": ["ListMyCreatorEpisodeComments"]
       },
-      "exception": "Not in the app yet: #4899."
+      "mobile": {
+        "routes": ["/account/creator-pages/:creatorId/comments"],
+        "rpcs": ["ListMyCreatorEpisodeComments"]
+      },
+      "tests": ["the creator reader reads the comments on their episodes"]
     },
     {
       "name": "Signing in",

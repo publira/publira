@@ -5,6 +5,7 @@ import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/creator.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/creator/creator_failure.dart';
 import 'package:publira/creator/creator_repository.dart';
@@ -198,6 +199,44 @@ class HttpCreatorRepository implements CreatorRepository {
             ),
         ]),
         nextToken: body.nextToken,
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<MyCreatorEpisodeCommentPage> listEpisodeComments({
+    required String creatorId,
+    required String locale,
+    String token = '',
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.CreatorServiceApi(_client)
+          .listMyCreatorEpisodeComments(
+            ConnectCallContext(tenantId: tenantId),
+            pb.ListMyCreatorEpisodeCommentsRequest(
+              tenant: pb.TenantContext(tenantId: tenantId),
+              surface: appClientSurface,
+              creatorId: creatorId,
+              locale: locale,
+              token: token.isEmpty ? null : token,
+            ),
+          );
+      return MyCreatorEpisodeCommentPage(
+        comments: List.unmodifiable([
+          for (final row in body.comments)
+            MyCreatorEpisodeComment(
+              comment: publishedEpisodeComment(row.comment, _config),
+              seriesPublicId: row.seriesPublicId.trim(),
+              seriesTitle: row.seriesTitle.trim(),
+              episodePublicId: row.episodePublicId.trim(),
+              episodeTitle: row.episodeTitle.trim(),
+            ),
+        ]),
+        previousToken: body.previousToken.trim(),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);

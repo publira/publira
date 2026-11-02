@@ -8,6 +8,7 @@ import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/comment.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/creator.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
@@ -210,6 +211,77 @@ void main() {
     expect(line.isAdjustment, isTrue);
     expect(line.source, CreatorStatementLineSource.subscription);
     expect(line.grossAmount, -500);
+  });
+
+  test('reads a page of the comments on the Author\'s episodes', () async {
+    answers['ListMyCreatorEpisodeComments'] = () => protoResponse(
+      pb.ListMyCreatorEpisodeCommentsResponse(
+        comments: [
+          pb.MyCreatorEpisodeComment(
+            comment: pb.EpisodeComment(
+              id: 'comment-2',
+              body: 'Thank you for reading.',
+              createdAt: '2026-10-05T10:00:00Z',
+              authorPublicId: 'MEMBER000001',
+              authorName: 'Sample Member',
+              creator: pb.EpisodeCommentCreator(name: 'Mina Harbor'),
+            ),
+            seriesPublicId: 'SERIES000001',
+            seriesTitle: 'Night Ferry',
+            episodePublicId: 'EPISODE00002',
+            episodeTitle: 'The Lighthouse',
+          ),
+          pb.MyCreatorEpisodeComment(
+            comment: pb.EpisodeComment(
+              id: 'comment-1',
+              body: 'Loved the ending.',
+              createdAt: '2026-10-04T09:00:00Z',
+              authorPublicId: 'MEMBER000002',
+              authorName: 'Another Member',
+            ),
+            seriesPublicId: 'SERIES000001',
+            seriesTitle: 'Night Ferry',
+            episodePublicId: 'EPISODE00001',
+            episodeTitle: 'The Harbor',
+          ),
+        ],
+        previousToken: 'newer',
+        nextToken: 'older',
+      ),
+    );
+
+    final page = await repository().listEpisodeComments(
+      creatorId: 'creator-1',
+      locale: 'ja',
+      token: 'page-2',
+    );
+
+    expect(
+      decoded(
+        'ListMyCreatorEpisodeComments',
+        pb.ListMyCreatorEpisodeCommentsRequest(),
+      ),
+      pb.ListMyCreatorEpisodeCommentsRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        surface: appClientSurface,
+        creatorId: 'creator-1',
+        locale: 'ja',
+        token: 'page-2',
+      ),
+    );
+    expect(page.previousToken, 'newer');
+    expect(page.nextToken, 'older');
+    expect(page.comments.map((row) => row.comment.id), [
+      'comment-2',
+      'comment-1',
+    ]);
+    final first = page.comments.first;
+    expect(first.seriesPublicId, 'SERIES000001');
+    expect(first.episodePublicId, 'EPISODE00002');
+    expect(first.episodeTitle, 'The Lighthouse');
+    expect(first.comment.creatorName, 'Mina Harbor');
+    expect(first.comment.createdAt?.toUtc(), DateTime.utc(2026, 10, 5, 10));
+    expect(page.comments.last.comment.creatorName, isEmpty);
   });
 
   for (final (code, status, kind) in [

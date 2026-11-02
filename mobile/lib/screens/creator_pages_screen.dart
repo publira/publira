@@ -20,10 +20,11 @@ import 'package:publira/typography/autospaced_text.dart';
 /// a time, switched with tabs when there are several, as the site's My Page
 /// shows them.
 ///
-/// Each Author's page states the follower count and how their episodes were
-/// read over the tenant's last 28 whole days, and, where the tenant shows its
-/// Authors their sales, each episode's sales and the Author's part of every
-/// closed month, which opens that month's lines.
+/// Each Author's page leads to what readers say about their episodes, and
+/// states the follower count and how their episodes were read over the
+/// tenant's last 28 whole days, and, where the tenant shows its Authors their
+/// sales, each episode's sales and the Author's part of every closed month,
+/// which opens that month's lines.
 ///
 /// [creatorId] is the [MyCreator.id] of the Author to open on, and the first
 /// one when `null`.
@@ -223,6 +224,16 @@ class _CreatorPageState extends State<_CreatorPage>
             creator: creator,
             subtitle: messages.creatorPagesDescription,
           ),
+          ListTile(
+            key: ValueKey('creator-pages-comments-${creator.id}'),
+            leading: const Icon(Icons.forum_outlined),
+            title: AutospacedText(messages.creatorCommentsLink),
+            subtitle: AutospacedText(messages.creatorCommentsDescription),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () =>
+                context.push(AppRoutes.accountCreatorCommentsPath(creator.id)),
+          ),
+          const Divider(height: 1),
           _StatsSection(creator: creator),
           if (widget.salesVisible) _StatementsSection(creator: creator),
         ],

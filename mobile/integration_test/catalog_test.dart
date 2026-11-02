@@ -3499,6 +3499,80 @@ void main() {
       });
     });
 
+    testApp('the creator reader reads the comments on their episodes', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-creator-comments', () async {
+        // `db/seeds/scenarios/730_creator_pages.sql` publishes a seed member's
+        // comment on Seed Episode 001-01 and the creator reader's own, later
+        // one on Seed Episode 001-10, both crediting Seed Author 001, and one
+        // on an episode of an Author the reader is not linked to.
+        final signedIn = await signInSeedAccount('creator-reader@example.com');
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.accountCreatorPagePath(
+            '018f0e71-0001-7000-8000-000000000001',
+          ),
+          session: signedIn.session,
+        );
+        final entry = find.byKey(
+          const ValueKey(
+            'creator-pages-comments-018f0e71-0001-7000-8000-000000000001',
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          entry,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapReachable(tester, entry);
+        final own = find.byKey(
+          const ValueKey(
+            'creator-comments-row-018f1741-0001-7000-8000-000000000002',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          own,
+          timeout: const Duration(seconds: 20),
+        );
+        final other = find.byKey(
+          const ValueKey(
+            'creator-comments-row-018f1741-0001-7000-8000-000000000001',
+          ),
+        );
+        expect(other, findsOneWidget);
+        expect(
+          tester.getTopLeft(own).dy,
+          lessThan(tester.getTopLeft(other).dy),
+        );
+        expect(
+          find.descendant(
+            of: own,
+            matching: find.byKey(const ValueKey('comment-creator-badge')),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(
+            const ValueKey(
+              'creator-comments-row-018f1741-0001-7000-8000-000000000003',
+            ),
+          ),
+          findsNothing,
+        );
+
+        await tapReachable(tester, own);
+        // The seed tenant takes no comments, so the episode's comments say
+        // so rather than list any.
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('episode-comments-disabled')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
     testApp('the seed tenant chart reaches the catalog', (tester) async {
       await withFailureScreenshot(tester, 'live-ranking', () async {
         await pumpLive(tester);
