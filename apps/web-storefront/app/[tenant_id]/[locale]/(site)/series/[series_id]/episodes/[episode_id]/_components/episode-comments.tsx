@@ -237,19 +237,44 @@ export const EpisodeComments = async ({
             <li className="py-4 first:pt-0" key={comment.id}>
               <EpisodeComment.Root>
                 <EpisodeComment.Header>
-                  <EpisodeComment.Author comment={comment}>
-                    <time dateTime={comment.createdAt}>
-                      {commentedAt(comment)}
-                    </time>
-                    {comment.awaitingApproval ? (
-                      <span className="ml-3 text-warning">
-                        <Suspense
-                          fallback={<SkeletonLine className="h-3 w-28" />}
-                        >
-                          <Message message="storefront.episode.comments.awaiting_approval" />
-                        </Suspense>
-                      </span>
-                    ) : null}
+                  <EpisodeComment.Author>
+                    <EpisodeComment.Icon icon={comment.authorIcon} />
+                    <EpisodeComment.Byline>
+                      <EpisodeComment.Name>
+                        {comment.creatorPublicId ? (
+                          <EpisodeComment.CreatorLink
+                            href={`/creators/${comment.creatorPublicId}`}
+                          >
+                            {episodeCommentDisplayName(comment)}
+                          </EpisodeComment.CreatorLink>
+                        ) : (
+                          episodeCommentDisplayName(comment)
+                        )}
+                        {comment.creatorName ? (
+                          <EpisodeComment.CreatorBadge>
+                            <Suspense
+                              fallback={<SkeletonLine className="h-3 w-12" />}
+                            >
+                              <Message message="storefront.episode.comments.creator_badge" />
+                            </Suspense>
+                          </EpisodeComment.CreatorBadge>
+                        ) : null}
+                      </EpisodeComment.Name>
+                      <EpisodeComment.Meta>
+                        <time dateTime={comment.createdAt}>
+                          {commentedAt(comment)}
+                        </time>
+                        {comment.awaitingApproval ? (
+                          <span className="ml-3 text-warning">
+                            <Suspense
+                              fallback={<SkeletonLine className="h-3 w-28" />}
+                            >
+                              <Message message="storefront.episode.comments.awaiting_approval" />
+                            </Suspense>
+                          </span>
+                        ) : null}
+                      </EpisodeComment.Meta>
+                    </EpisodeComment.Byline>
                   </EpisodeComment.Author>
                   {viewer && comment.authorPublicId === viewer.publicId ? (
                     <CommentDeleteButton

@@ -1,13 +1,9 @@
 import { UserIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 import { AccountIcon } from "#components/account-icon";
 import { LocaleLink } from "#components/locale-link";
-import { Message } from "#components/message";
-import { episodeCommentDisplayName } from "#lib/comments";
 import type { EpisodeCommentItem } from "#lib/comments";
 
 /**
@@ -27,70 +23,76 @@ const EpisodeCommentHeader = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+/** Who wrote the comment: their `Icon` beside a `Byline`. */
+const EpisodeCommentAuthor = ({ children }: { children: ReactNode }) => (
+  <div className="flex min-w-0 items-start gap-3">{children}</div>
+);
+
 /**
- * Who wrote the comment, with `children` — the date, and whatever else the
- * caller says about the comment — in a line under the name.
- *
- * A comment by one of the episode's credited creators is shown under the name
- * the episode credits them as, with a badge saying so in words: the badge is
- * the whole of the mark, so a reader who cannot tell its colour apart still
- * reads it. That name links to the creator's page, since it is the one name in
- * the list a reader may want to follow; a reader's name stays plain text.
- *
- * Every author is drawn with the icon their account shows now, and with a
- * person glyph when it shows none, so a list with and without icons keeps one
- * column of faces beside the names.
+ * The icon the author's account shows now, and a person glyph when it shows
+ * none, so a list with and without icons keeps one column of faces beside the
+ * names. The name beside it says whose icon it is, so the image itself says
+ * nothing.
  */
-const EpisodeCommentAuthor = ({
+const EpisodeCommentIcon = ({
+  icon,
+}: {
+  icon: EpisodeCommentItem["authorIcon"];
+}) => (
+  <AccountIcon
+    alt=""
+    className="size-10 shrink-0 rounded-full border border-border object-cover"
+    fallback={
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+        <UserIcon aria-hidden="true" className="size-5 text-muted-foreground" />
+      </span>
+    }
+    icon={icon}
+    size={40}
+  />
+);
+
+/** The `Name` line above the `Meta` line. */
+const EpisodeCommentByline = ({ children }: { children: ReactNode }) => (
+  <div className="min-w-0">{children}</div>
+);
+
+/** The author's name, and the `CreatorBadge` when the episode credits them. */
+const EpisodeCommentName = ({ children }: { children: ReactNode }) => (
+  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+    {children}
+  </p>
+);
+
+/**
+ * The name of one of the episode's credited creators, linked to their page:
+ * it is the one name in the list a reader may want to follow, so a reader's
+ * name stays plain text.
+ */
+const EpisodeCommentCreatorLink = ({
   children,
-  comment,
+  href,
 }: {
   children: ReactNode;
-  comment: Pick<
-    EpisodeCommentItem,
-    "authorIcon" | "authorName" | "creatorName" | "creatorPublicId"
-  >;
+  href: string;
 }) => (
-  <div className="flex min-w-0 items-start gap-3">
-    {/* The name beside it says whose icon it is, so the image itself says
-        nothing. */}
-    <AccountIcon
-      alt=""
-      className="size-10 shrink-0 rounded-full border border-border object-cover"
-      fallback={
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
-          <UserIcon
-            aria-hidden="true"
-            className="size-5 text-muted-foreground"
-          />
-        </span>
-      }
-      icon={comment.authorIcon}
-      size={40}
-    />
-    <div className="min-w-0">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
-        {comment.creatorPublicId ? (
-          <LocaleLink
-            className="text-primary underline underline-offset-4"
-            href={`/creators/${comment.creatorPublicId}`}
-          >
-            {episodeCommentDisplayName(comment)}
-          </LocaleLink>
-        ) : (
-          episodeCommentDisplayName(comment)
-        )}
-        {comment.creatorName ? (
-          <Badge tone="info">
-            <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-              <Message message="storefront.episode.comments.creator_badge" />
-            </Suspense>
-          </Badge>
-        ) : null}
-      </p>
-      <p className="text-xs text-muted-foreground">{children}</p>
-    </div>
-  </div>
+  <LocaleLink className="text-primary underline underline-offset-4" href={href}>
+    {children}
+  </LocaleLink>
+);
+
+/**
+ * Says in words that one of the episode's credited creators wrote the comment.
+ * The badge is the whole of the mark, so a reader who cannot tell its colour
+ * apart still reads it.
+ */
+const EpisodeCommentCreatorBadge = ({ children }: { children: ReactNode }) => (
+  <Badge tone="info">{children}</Badge>
+);
+
+/** The date, and whatever else the caller says about the comment. */
+const EpisodeCommentMeta = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-muted-foreground">{children}</p>
 );
 
 const EpisodeCommentBody = ({ children }: { children: ReactNode }) => (
@@ -100,6 +102,12 @@ const EpisodeCommentBody = ({ children }: { children: ReactNode }) => (
 export {
   EpisodeCommentAuthor as Author,
   EpisodeCommentBody as Body,
+  EpisodeCommentByline as Byline,
+  EpisodeCommentCreatorBadge as CreatorBadge,
+  EpisodeCommentCreatorLink as CreatorLink,
   EpisodeCommentHeader as Header,
+  EpisodeCommentIcon as Icon,
+  EpisodeCommentMeta as Meta,
+  EpisodeCommentName as Name,
   EpisodeCommentRoot as Root,
 };

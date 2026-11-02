@@ -12,6 +12,7 @@ import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { PageLoadError } from "#components/page-load-error";
 import { redirectToLogin } from "#lib/auth-session";
+import { episodeCommentDisplayName } from "#lib/comments";
 import {
   creatorCommentsHref,
   creatorIdParamSchema,
@@ -163,14 +164,35 @@ const CreatorCommentsPageContent = async ({
                   </h2>
                   <EpisodeComment.Root>
                     <EpisodeComment.Header>
-                      <EpisodeComment.Author comment={comment}>
-                        <time dateTime={comment.createdAt}>
-                          {formatDateTime(comment.createdAt, {
-                            fallback: t("storefront.common.unset"),
-                            locale,
-                            timeZone,
-                          })}
-                        </time>
+                      <EpisodeComment.Author>
+                        <EpisodeComment.Icon icon={comment.authorIcon} />
+                        <EpisodeComment.Byline>
+                          <EpisodeComment.Name>
+                            {comment.creatorPublicId ? (
+                              <EpisodeComment.CreatorLink
+                                href={`/creators/${comment.creatorPublicId}`}
+                              >
+                                {episodeCommentDisplayName(comment)}
+                              </EpisodeComment.CreatorLink>
+                            ) : (
+                              episodeCommentDisplayName(comment)
+                            )}
+                            {comment.creatorName ? (
+                              <EpisodeComment.CreatorBadge>
+                                {t("storefront.episode.comments.creator_badge")}
+                              </EpisodeComment.CreatorBadge>
+                            ) : null}
+                          </EpisodeComment.Name>
+                          <EpisodeComment.Meta>
+                            <time dateTime={comment.createdAt}>
+                              {formatDateTime(comment.createdAt, {
+                                fallback: t("storefront.common.unset"),
+                                locale,
+                                timeZone,
+                              })}
+                            </time>
+                          </EpisodeComment.Meta>
+                        </EpisodeComment.Byline>
                       </EpisodeComment.Author>
                     </EpisodeComment.Header>
                     <EpisodeComment.Body>{comment.body}</EpisodeComment.Body>
