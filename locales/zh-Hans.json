@@ -6579,6 +6579,7 @@
       "page_failed": "网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "preview_ended_title": "试读到此结束",
       "previous_episode": "上一章",
       "previous_page": "上一页",
       "progress": "阅读进度",

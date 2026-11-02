@@ -22,6 +22,7 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
+import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
 import 'package:publira/viewer/screen_captures.dart';
 
@@ -141,6 +142,15 @@ void main() {
     await pumpUntilFound(tester, endPanel);
   }
 
+  /// Turns through a three-page preview to the gate after it.
+  Future<void> turnToGate(WidgetTester tester) async {
+    for (var turn = 0; turn < 3; turn++) {
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    }
+    await pumpUntilFound(tester, find.byKey(const ValueKey('episode-locked')));
+  }
+
   /// The reader opened at [episodeId] of the first fixture series.
   void openEpisode(String episodeId) {
     router = createAppRouter(
@@ -194,6 +204,7 @@ void main() {
       access: detail.access,
       images: detail.images,
       previewImages: detail.previewImages,
+      previewPages: detail.previewPages,
       previousEpisode: detail.previousEpisode,
       nextEpisode: detail.nextEpisode,
       nextFreeEpisode: detail.nextFreeEpisode,
@@ -641,6 +652,178 @@ void main() {
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('series-detail-body')),
+      );
+    });
+  });
+
+  group('the preview pages before the gate', () {
+    final locked = find.byKey(const ValueKey('episode-locked'));
+    final card = find.byKey(const ValueKey('episode-gate-card'));
+    final status = find.byKey(const ValueKey('episode-page-status'));
+
+    setUp(() {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        pageCount: 8,
+        previewPageCount: 3,
+      );
+    });
+
+    testWidgets('a guest turns the preview pages and meets the gate after '
+        'them', (tester) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      // The counter counts the preview, not the episode's eight pages.
+      expect(page(1), findsOneWidget);
+      expect(find.text('1 / 3'), findsOneWidget);
+      expect(locked, findsNothing);
+
+      for (final next in ['2 / 3', '3 / 3']) {
+        await tester.drag(pageView, const Offset(300, 0));
+        await pumpUntilFound(tester, find.text(next));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      }
+      expect(page(3), findsOneWidget);
+
+      await tester.drag(pageView, const Offset(300, 0));
+      await pumpUntilFound(tester, card);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(
+        find.descendant(of: card, matching: find.text('The preview ends here')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('Sign in')),
+        findsOneWidget,
+      );
+      // The reader has just seen the pages whole, so the gate stands on the
+      // dark screen rather than over their blurred renditions.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith(
+                'episode-gate-preview-',
+              ),
+        ),
+        findsNothing,
+      );
+      // Nothing past the preview is a page of it.
+      expect(page(4), findsNothing);
+      expect(status, findsOneWidget);
+      expect(find.text('3 / 3'), findsOneWidget);
+      expect(tester.getRect(card).bottom, lessThan(tester.getRect(status).top));
+      expect(
+        tester
+            .widget<IconButton>(find.byKey(const ValueKey('episode-next-page')))
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilFound(tester, page(3));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(locked, findsNothing);
+    });
+
+    testWidgets('a signed-in reader is told the preview has ended too', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, pageView);
+
+      await tester.drag(pageView, const Offset(-300, 0));
+      await tester.pump(const Duration(milliseconds: 400));
+      // A right-to-left episode is not turned by a swipe from the left.
+      expect(find.text('1 / 3'), findsOneWidget);
+
+      await turnToGate(tester);
+      expect(
+        find.descendant(of: card, matching: find.text('The preview ends here')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text('This episode can be read once it is purchased.'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('episode-gate-series')), findsOneWidget);
+      expect(find.byKey(const ValueKey('episode-next-free')), findsOneWidget);
+    });
+
+    testWidgets('reading the preview records no position and no finish', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, pageView);
+
+      await turnToGate(tester);
+      await tester.pump(readingPositionSaveDelay);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(catalog.readingPositions, isEmpty);
+      expect(catalog.markedRead, isEmpty);
+    });
+
+    testWidgets('a saved position does not move the preview off its first '
+        'page', (tester) async {
+      catalog.readingPositions = {episodeKey(seriesId, episodeId): 5};
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, pageView);
+
+      expect(find.text('1 / 3'), findsOneWidget);
+      expect(page(1), findsOneWidget);
+    });
+
+    testWidgets('the preview pages are not kept on the device', (tester) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      // A body's reader keeps each page it fetches in the device's store; the
+      // preview's is handed none to keep them in.
+      final reader = tester.widget<EpisodeReader>(find.byType(EpisodeReader));
+      expect(reader.pageStore, isNull);
+      expect(reader.imageClient, isNull);
+    });
+
+    testWidgets('a wide screen pairs the preview pages after the cover', (
+      tester,
+    ) async {
+      await pumpApp(tester, screen: landscape);
+      await pumpUntilFound(tester, pageView);
+      expect(find.text('1 / 3'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('2–3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(
+        tester.getRect(page(2)).center.dx,
+        greaterThan(tester.getRect(page(3)).center.dx),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, card);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    });
+
+    testWidgets('an episode that opens no preview keeps its gate on page one', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        pageCount: 8,
+      );
+      await pumpApp(tester);
+      await pumpUntilFound(tester, card);
+
+      expect(pageView, findsNothing);
+      expect(
+        find.descendant(of: card, matching: find.text('This episode is paid')),
+        findsOneWidget,
       );
     });
   });

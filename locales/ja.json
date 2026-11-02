@@ -6579,6 +6579,7 @@
       "page_failed": "ネットワークエラーか、サーバーの一時的な問題でこのページを読み込めませんでした。再読み込みしてください。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
+      "preview_ended_title": "試し読みはここまでです",
       "previous_episode": "前のエピソード",
       "previous_page": "前のページ",
       "progress": "読み進み",

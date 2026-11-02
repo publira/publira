@@ -6,6 +6,7 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
+import 'package:publira/viewer/episode_reader.dart';
 
 /// What the reader is offered once the pages run out: the next episode
 /// `GetEpisodeDetail` names, with what it costs, or, after the last published
@@ -78,7 +79,7 @@ class EpisodeEndPanel extends StatelessWidget {
       child: SingleChildScrollView(
         // The reader's page controls stay overlaid at the bottom. Keep every
         // end-of-episode action, including the reaction button, above them.
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, readerControlsClearance),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

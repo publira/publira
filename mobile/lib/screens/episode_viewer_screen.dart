@@ -743,6 +743,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// The tenant's coins are offered on the store route alone, and lead where
   /// the reader's coins pay for the episode: the purchase stands beside them
   /// in outline then.
+  ///
+  /// An episode that opens its first pages as a preview shows them first, and
+  /// the gate is the screen after the last of them, saying the preview has
+  /// ended: the reader meets it where the free part stops.
   Widget _locked(
     AppMessages messages,
     EpisodeDetail detail,
@@ -887,9 +891,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     // The free episode is a way around this one rather than into it, so it is
     // a link under the actions rather than a third button beside them.
     final nextFree = detail.nextFreeEpisode;
-    return _gate(
+    final afterPreview = detail.previewPages.isNotEmpty;
+    final gate = _gate(
       detail,
       key: const ValueKey('episode-locked'),
+      afterPreview: afterPreview,
       badge: buy == null || campaign == null
           ? null
           : CampaignPriceNote(
@@ -899,7 +905,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
               endsAt: campaign.endsAt,
               alignment: WrapAlignment.center,
             ),
-      title: messages.viewerLockedTitle,
+      title: afterPreview
+          ? messages.viewerPreviewEndedTitle
+          : messages.viewerLockedTitle,
       message: message,
       notice: switch ((waitFree, coinSection)) {
         (null, null) => null,
@@ -936,6 +944,35 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
                 textAlign: TextAlign.center,
               ),
             ),
+    );
+    return afterPreview ? _preview(detail, gate) : gate;
+  }
+
+  /// [detail]'s preview pages in the reader, with [gate] as the screen after
+  /// the last of them.
+  ///
+  /// They are turned as a body is, in the episode's reading direction and
+  /// paired from its spread start, and the counter counts them alone. Nothing
+  /// of the reading is kept: no page is saved to the device, no position is
+  /// recorded, and reaching the gate is not finishing the episode, so a
+  /// reader who buys it opens the body on its first page. One the browser
+  /// hands back from a checkout opens on the gate they left from.
+  Widget _preview(EpisodeDetail detail, Widget gate) {
+    final next = detail.nextEpisode;
+    final previous = detail.previousEpisode;
+    return ScreenCaptureNotice(
+      episodeId: widget.episodeId,
+      child: EpisodeReader(
+        key: const ValueKey('episode-preview'),
+        images: detail.previewPages,
+        imageHeaders: detail.imageRequestHeaders,
+        readingDirection: detail.readingDirection,
+        spreadStartIndex: detail.spreadStartIndex,
+        opensOnEndScreen: widget.checkout != null,
+        endScreen: gate,
+        onNextEpisode: next == null ? null : () => _open(next),
+        onPreviousEpisode: previous == null ? null : () => _open(previous),
+      ),
     );
   }
 
@@ -987,11 +1024,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     );
   }
 
-  /// A gate drawn over [detail]'s preview pages.
+  /// A gate drawn over [detail]'s blurred opening pages, or, [afterPreview],
+  /// on the reader's dark screen past the preview pages, where the reader has
+  /// just seen those pages whole and the controls are drawn over its bottom.
   Widget _gate(
     EpisodeDetail detail, {
     required Key key,
     required String message,
+    bool afterPreview = false,
     Widget? badge,
     String? title,
     Widget? notice,
@@ -1000,9 +1040,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   }) {
     return EpisodeGateFrame(
       key: key,
-      previewImages: detail.previewImages,
+      previewImages: afterPreview ? const [] : detail.previewImages,
       previewHeaders: detail.previewImageRequestHeaders,
       readingDirection: detail.readingDirection,
+      bottomInset: afterPreview ? readerControlsClearance : 0,
       badge: badge,
       title: title,
       message: message,

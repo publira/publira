@@ -16,6 +16,7 @@ import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/episode_page_store.dart';
+import 'package:publira/api/image_cipher.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/account_icon_picker.dart';
@@ -872,6 +873,58 @@ void main() {
           description: 'a decrypted page to reach the screen',
         );
         expect(find.byKey(const ValueKey('episode-page-error')), findsNothing);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a paid episode turns its preview pages to the purchase gate', (
+      tester,
+    ) async {
+      const paidEpisodeId = ConnectFixtureServer.paidEpisodeId;
+      server.episodes[paidEpisodeId]!.previewPages.addAll([
+        for (
+          var page = 1;
+          page <= ConnectFixtureServer.seedEpisodePageCount;
+          page++
+        )
+          pb.EpisodeImage(
+            id: '$paidEpisodeId-page-$page',
+            imageUrl:
+                '/images/episodes/$paidEpisodeId-page-$page'
+                '?$mediaTokenQueryParam='
+                '${ConnectFixtureServer.freeEpisodeMediaToken}',
+            contentType: 'image/png',
+            displayOrder: page,
+            width: 800,
+            height: 1200,
+          ),
+      ]);
+      await withFailureScreenshot(tester, 'fixture-viewer-preview', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            paidEpisodeId,
+          ),
+        );
+        // The preview's pages are fetched and decrypted as a free body's.
+        await pumpUntilPagesDrawn(tester);
+        const total = ConnectFixtureServer.seedEpisodePageCount;
+        expect(find.text('1 / $total'), findsOneWidget);
+        expect(find.byKey(const ValueKey('episode-locked')), findsNothing);
+
+        for (var page = 2; page <= total; page++) {
+          await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+          await pumpUntilFound(tester, find.text('$page / $total'));
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-locked')),
+        );
+        expect(find.text('The preview ends here'), findsOneWidget);
+        expect(find.text('Sign in'), findsWidgets);
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });

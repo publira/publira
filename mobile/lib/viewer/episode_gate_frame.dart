@@ -31,6 +31,7 @@ class EpisodeGateFrame extends StatelessWidget {
     this.notice,
     this.actions = const [],
     this.footer,
+    this.bottomInset = 0,
   });
 
   final List<EpisodeImageItem> previewImages;
@@ -59,6 +60,11 @@ class EpisodeGateFrame extends StatelessWidget {
   /// A way around the gate rather than through it, under [actions].
   final Widget? footer;
 
+  /// How much of the bottom edge something else is drawn over, which the
+  /// card is kept clear of: it is centred above it, and scrolls up past it
+  /// where it is taller than what is left.
+  final double bottomInset;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -85,8 +91,11 @@ class EpisodeGateFrame extends StatelessWidget {
             // A tall card on a short screen scrolls rather than overflowing,
             // and a short one stays centred over the pages.
             SingleChildScrollView(
+              padding: EdgeInsets.only(bottom: bottomInset),
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                constraints: BoxConstraints(
+                  minHeight: max(0, constraints.maxHeight - bottomInset),
+                ),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(

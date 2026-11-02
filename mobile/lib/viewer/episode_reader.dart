@@ -22,6 +22,10 @@ const _turnDuration = Duration(milliseconds: 200);
 const _doubleTapScale = 2.5;
 const _maxScale = 4.0;
 
+/// How far up from the bottom edge the reader's controls reach, which an end
+/// screen keeps what the reader acts on above: they stay overlaid on it.
+const readerControlsClearance = 120.0;
+
 /// Paged body reader.
 ///
 /// Pages turn the way the episode is bound: right to left unless it says
@@ -38,6 +42,7 @@ class EpisodeReader extends StatefulWidget {
     required this.images,
     required this.imageHeaders,
     this.initialPageIndex = 0,
+    this.opensOnEndScreen = false,
     this.onPageChanged,
     this.onFinished,
     this.endScreen,
@@ -57,6 +62,11 @@ class EpisodeReader extends StatefulWidget {
   /// page they are looking at rather than being moved to the one the API
   /// answers for them.
   final int initialPageIndex;
+
+  /// Whether the reader opens on [endScreen] rather than on a page, with the
+  /// last page behind it. Read once, as [initialPageIndex] is, which it
+  /// stands in for.
+  final bool opensOnEndScreen;
 
   /// The reader moved to another page of the episode. It is not called for
   /// [initialPageIndex], which is the page they were already on.
@@ -127,7 +137,11 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   @override
   void initState() {
     super.initState();
-    _index = widget.initialPageIndex;
+    _atEnd =
+        widget.opensOnEndScreen &&
+        widget.endScreen != null &&
+        widget.images.isNotEmpty;
+    _index = _atEnd ? widget.images.length - 1 : widget.initialPageIndex;
     _ownsClient = widget.imageClient == null;
     _client = widget.imageClient ?? EpisodeImageClient(pages: widget.pageStore);
   }
@@ -568,7 +582,7 @@ class _ReaderPagerState extends State<_ReaderPager> {
         // The end panel is read rather than looked at, so it is drawn outside
         // the zoom the pages share.
         itemBuilder: (context, screen) => screen >= widget.spreads.length
-            ? widget.endScreen
+            ? _KeptAlive(child: widget.endScreen!)
             : InteractiveViewer(
                 transformationController: _zoom,
                 // Panning is what a zoomed page needs; at 1.0 the page is
@@ -579,6 +593,31 @@ class _ReaderPagerState extends State<_ReaderPager> {
               ),
       ),
     );
+  }
+}
+
+/// Keeps the end screen built while the reader turns back from it. A gate's
+/// payment or ticket left in flight reports the episode opened only to a
+/// mounted widget, so a page view that dropped it would leave the reader on
+/// the locked episode the server has already opened.
+class _KeptAlive extends StatefulWidget {
+  const _KeptAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeptAlive> createState() => _KeptAliveState();
+}
+
+class _KeptAliveState extends State<_KeptAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

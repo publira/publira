@@ -259,7 +259,11 @@
         "routes": ["[locale]/(site)/series/[series_id]/episodes/[episode_id]"],
         "rpcs": ["GetEpisodeDetail"]
       },
-      "exception": "Not in the app yet: #4924."
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["GetEpisodeDetail"]
+      },
+      "tests": ["a paid episode turns its preview pages to the purchase gate"]
     },
     {
       "name": "The page a member stopped on",
