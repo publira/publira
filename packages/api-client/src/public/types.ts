@@ -24,6 +24,7 @@ export { CreatorStatementLineSource } from "../gen/publira/v1/creator_pb.js";
 
 export type {
   MyCreator,
+  MyCreatorEpisodeComment,
   MyCreatorEpisodeStats,
   MyCreatorStatement,
   MyCreatorStatementLine,

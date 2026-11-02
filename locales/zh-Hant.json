@@ -5443,7 +5443,18 @@
       "adjustment": "{$period}的退款調整",
       "subscription": "訂閱分潤",
       "download_csv": "下載CSV",
-      "back_to_creator": "返回{$name}"
+      "back_to_creator": "返回{$name}",
+      "comments": {
+        "link": "留言",
+        "title": "留言",
+        "description": "依從新到舊顯示署名此作者的章節下的留言。",
+        "reply_hint": "如需回覆，請開啟該章節並發表留言。您的留言會帶有作者徽章。",
+        "empty": "此作者的章節還沒有留言。",
+        "page_empty": "本頁沒有留言。",
+        "pagination_aria": "留言分頁",
+        "load_failed": "無法載入留言。請稍後再試。",
+        "load_error": "無法顯示留言"
+      }
     },
     "nav": {
       "account_menu": "帳戶選單",

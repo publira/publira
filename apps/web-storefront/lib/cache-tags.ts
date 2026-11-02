@@ -127,11 +127,20 @@ export const tenantPurchasesTag = (tenantId: string) =>
 
 /**
  * The private reads of the Author pages: the Authors the signed-in reader is
- * linked to, their figures, and their closed statements. Nothing this app
- * does changes any of them, so no Action clears it.
+ * linked to, their figures, their closed statements, and the comments on their
+ * episodes. Nothing this app does changes the first three, so no Action clears
+ * it; the comments carry {@link tenantCreatorCommentsTag} as well.
  */
 export const tenantCreatorPagesTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:creator-pages`;
+
+/**
+ * The comments an Author reads of all their episodes. Posting and withdrawing
+ * a comment change it, and the Action behind either cannot tell which Authors
+ * the episode credits, so the tag covers every Author of the tenant.
+ */
+export const tenantCreatorCommentsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:creator-pages:comments`;
 
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;

@@ -15,6 +15,15 @@
 -- deleted tenant makes to it, so the statements are written only where they
 -- are missing, and the file can be applied any number of times.
 --
+-- Three published comments give the Author's comment list something to show:
+-- one by the development seed member on `Seed Episode 001-01`, one by the
+-- creator reader on `Seed Episode 001-10`, which carries the Author badge
+-- because the episode credits them, and one on an episode of `Seed Series 003`,
+-- whose Author the reader is not linked to and which the list must leave out.
+-- The development seed tenant takes no comments, so no episode page shows
+-- them. Their dates are literals, and the rows are written again on every
+-- application.
+--
 -- The spec turns the tenant's sales off and on again by itself, so the file
 -- writes both settings back to on every time it is applied. public_id values
 -- are hard-coded in e2e/src/scenarios/creator-pages.ts.
@@ -148,5 +157,44 @@ CROSS JOIN LATERAL series_translation_for(s.id, '') st
 JOIN creators c ON c.public_id = line.creator_public_id
 JOIN creator_roles r ON r.tenant_id = e.tenant_id AND r.name = 'Original Author'
 ON CONFLICT (statement_id, line_number) DO NOTHING;
+
+DELETE FROM episode_comments
+WHERE id IN (
+    '018f1741-0001-7000-8000-000000000001'::uuid,
+    '018f1741-0001-7000-8000-000000000002'::uuid,
+    '018f1741-0001-7000-8000-000000000003'::uuid
+);
+
+INSERT INTO episode_comments (
+    id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    body,
+    status,
+    created_at,
+    updated_at,
+    published_at
+)
+SELECT
+    comment.id,
+    e.tenant_id,
+    comment.public_id,
+    e.id,
+    u.id,
+    comment.body,
+    'published',
+    comment.created_at,
+    comment.created_at,
+    comment.created_at
+FROM (
+    VALUES
+        ('018f1741-0001-7000-8000-000000000001'::uuid, 'CrpgCMNTAAA1', 'SeedEPSDAAA1', 'SeedMMBRAAA1', 'The first page already had me hooked.', '2025-12-10T09:00:00Z'::timestamptz),
+        ('018f1741-0001-7000-8000-000000000002'::uuid, 'CrpgCMNTAAA2', 'SeedEPSDAA1A', 'CrdrMMBRAAA1', 'Thank you for reading to the end.', '2025-12-12T09:00:00Z'::timestamptz),
+        ('018f1741-0001-7000-8000-000000000003'::uuid, 'CrpgCMNTAAA3', 'SeedEPSDAA21', 'SeedMMBRAAA1', 'A comment on another author''s episode.', '2025-12-14T09:00:00Z'::timestamptz)
+) AS comment (id, public_id, episode_public_id, author_public_id, body, created_at)
+JOIN episodes e ON e.public_id = comment.episode_public_id
+JOIN users u ON u.tenant_id = e.tenant_id AND u.public_id = comment.author_public_id;
 
 COMMIT;

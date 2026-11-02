@@ -5443,7 +5443,18 @@
       "adjustment": "Refund adjustment for {$period}",
       "subscription": "Subscription share",
       "download_csv": "Download CSV",
-      "back_to_creator": "Back to {$name}"
+      "back_to_creator": "Back to {$name}",
+      "comments": {
+        "link": "Comments",
+        "title": "Comments",
+        "description": "What readers say about the episodes crediting this author, newest first.",
+        "reply_hint": "To reply, open the episode and post a comment there. Your comment carries the Author badge.",
+        "empty": "Nobody has commented on this author's episodes yet.",
+        "page_empty": "This page has no comments.",
+        "pagination_aria": "Comment pages",
+        "load_failed": "Could not load the comments. Please try again later.",
+        "load_error": "Could not show the comments"
+      }
     },
     "nav": {
       "account_menu": "Account menu",

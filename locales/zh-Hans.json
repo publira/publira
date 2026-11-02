@@ -5443,7 +5443,18 @@
       "adjustment": "{$period}的退款调整",
       "subscription": "订阅分成",
       "download_csv": "下载CSV",
-      "back_to_creator": "返回{$name}"
+      "back_to_creator": "返回{$name}",
+      "comments": {
+        "link": "评论",
+        "title": "评论",
+        "description": "按从新到旧显示署名此作者的章节下的评论。",
+        "reply_hint": "如需回复，请打开该章节并发表评论。您的评论会带有作者徽章。",
+        "empty": "此作者的章节还没有评论。",
+        "page_empty": "本页没有评论。",
+        "pagination_aria": "评论分页",
+        "load_failed": "无法加载评论。请稍后再试。",
+        "load_error": "无法显示评论"
+      }
     },
     "nav": {
       "account_menu": "账户菜单",

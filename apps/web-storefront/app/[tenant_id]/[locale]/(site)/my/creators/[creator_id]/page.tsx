@@ -1,3 +1,4 @@
+import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -10,7 +11,11 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLogin } from "#lib/auth-session";
-import { creatorIdParamSchema, creatorPageHref } from "#lib/creator-page-paths";
+import {
+  creatorCommentsHref,
+  creatorIdParamSchema,
+  creatorPageHref,
+} from "#lib/creator-page-paths";
 import { listMyCreators } from "#lib/creator-pages";
 import { cursorTokenSchema } from "#lib/cursor-token";
 import { getMessages } from "#lib/get-messages";
@@ -115,6 +120,16 @@ const CreatorPageContent = async ({
             </Suspense>
           </p>
         </CreatorHeading>
+        <p>
+          <LinkButton
+            render={<LocaleLink href={creatorCommentsHref(creator.id)} />}
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="storefront.my_creator.comments.link" />
+            </Suspense>
+          </LinkButton>
+        </p>
       </section>
 
       <SectionErrorBoundary

@@ -5443,7 +5443,18 @@
       "adjustment": "{$period}分の返金の調整",
       "subscription": "サブスクリプションの分配",
       "download_csv": "CSVでダウンロード",
-      "back_to_creator": "{$name}に戻る"
+      "back_to_creator": "{$name}に戻る",
+      "comments": {
+        "link": "コメント",
+        "title": "コメント",
+        "description": "この著者がクレジットされているエピソードに寄せられたコメントを、新しい順に表示します。",
+        "reply_hint": "返信するには、エピソードを開いてコメントを投稿してください。あなたのコメントには著者のバッジが付きます。",
+        "empty": "この著者のエピソードにはまだコメントがありません。",
+        "page_empty": "このページにコメントはありません。",
+        "pagination_aria": "コメントのページ送り",
+        "load_failed": "コメントを読み込めませんでした。しばらくしてからもう一度お試しください。",
+        "load_error": "コメントを表示できませんでした"
+      }
     },
     "nav": {
       "account_menu": "アカウントメニュー",

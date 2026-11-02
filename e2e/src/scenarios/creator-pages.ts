@@ -3,8 +3,9 @@
  * `320_creator_reader.sql` first.
  *
  * The creator reader is linked to `Seed Author 001` and `Seed Author 002`, the
- * development seed tenant shows them their pages and sales, and November and
- * December 2025 are closed.
+ * development seed tenant shows them their pages and sales, November and
+ * December 2025 are closed, and readers have commented on episodes of
+ * `Seed Series 001` and `Seed Series 003`.
  */
 
 export const CREATOR_PAGES_SCENARIO = "730_creator_pages";
@@ -43,3 +44,27 @@ export const CREATOR_PAGES_DECEMBER = {
   period: "2025-12",
   sales: "5",
 } as const;
+
+/**
+ * The published comments on `Seed Author 001`'s episodes, newest first: the
+ * creator reader's own, which the episode credits them on, and the development
+ * seed member's.
+ */
+export const CREATOR_PAGES_COMMENTS = [
+  {
+    author: "Seed Author 001",
+    body: "Thank you for reading to the end.",
+    episodePath: "/series/SeedSERSAAA1/episodes/SeedEPSDAA1A",
+    episodeTitle: "Seed Episode 001-10",
+  },
+  {
+    author: "Sample Member",
+    body: "The first page already had me hooked.",
+    episodePath: "/series/SeedSERSAAA1/episodes/SeedEPSDAAA1",
+    episodeTitle: "Seed Episode 001-01",
+  },
+] as const;
+
+/** The comment on an episode of `Seed Series 003`, which no list of theirs shows. */
+export const CREATOR_PAGES_OTHER_AUTHORS_COMMENT =
+  "A comment on another author's episode.";

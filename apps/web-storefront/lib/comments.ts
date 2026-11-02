@@ -134,7 +134,13 @@ type RawMyEpisodeComment = Pick<
   "awaitingApproval" | "body" | "createdAt" | "creator" | "id"
 >;
 
-const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
+/**
+ * A published comment as every list of them renders it: the episode's own and
+ * the one an Author reads of all their episodes.
+ */
+export const toPublicComment = (
+  comment: RawEpisodeComment
+): EpisodeCommentItem => ({
   authorIcon: toAccountIcon(comment.authorIconImageVariants ?? []),
   authorName: comment.authorName ?? "",
   authorPublicId: comment.authorPublicId ?? "",

@@ -9,11 +9,12 @@ import {
 } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { tenantCreatorPagesTag } from "./cache-tags";
+import { tenantCreatorCommentsTag, tenantCreatorPagesTag } from "./cache-tags";
 import {
   getMyCreatorStatement,
   getMyCreatorStatementExport,
   getMyCreatorStats,
+  listMyCreatorComments,
   listMyCreators,
 } from "./creator-pages";
 
@@ -21,12 +22,14 @@ const {
   mockCacheTag,
   mockGetMyCreatorStatement,
   mockGetMyCreatorStats,
+  mockListMyCreatorEpisodeComments,
   mockListMyCreators,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
   mockGetMyCreatorStatement: vi.fn(),
   mockGetMyCreatorStats: vi.fn(),
+  mockListMyCreatorEpisodeComments: vi.fn(),
   mockListMyCreators: vi.fn(),
   mockResolveAccessToken: vi.fn(),
 }));
@@ -40,6 +43,7 @@ vi.mock("./api-client", () => ({
     creator: {
       getMyCreatorStatement: mockGetMyCreatorStatement,
       getMyCreatorStats: mockGetMyCreatorStats,
+      listMyCreatorEpisodeComments: mockListMyCreatorEpisodeComments,
       listMyCreators: mockListMyCreators,
     },
   },
@@ -239,6 +243,133 @@ describe("getMyCreatorStats", () => {
         token: "",
       })
     ).resolves.toEqual({ missing: true, ok: false });
+  });
+});
+
+describe("listMyCreatorComments", () => {
+  it("reads one page of the comments with their episodes, filed under both tags", async () => {
+    mockListMyCreatorEpisodeComments.mockResolvedValue({
+      comments: [
+        {
+          comment: {
+            authorIconImageVariants: [],
+            authorName: "Night Reader",
+            authorPublicId: "READER000001",
+            body: "The last page got me.",
+            createdAt: "2026-10-30T12:00:00Z",
+            creator: { name: "Night Author", publicId: "AUTHOR000001" },
+            id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          },
+          episodePublicId: "EPISODE00001",
+          episodeTitle: "The Harbor",
+          seriesPublicId: "SERIES000001",
+          seriesTitle: "Night Ferry",
+        },
+        {
+          comment: undefined,
+          episodePublicId: "EPISODE00002",
+          episodeTitle: "The Lighthouse",
+          seriesPublicId: "SERIES000001",
+          seriesTitle: "Night Ferry",
+        },
+      ],
+      nextToken: "NEXT",
+      previousToken: "",
+    });
+
+    const result = await listMyCreatorComments(TENANT_ID, {
+      creatorId: CREATOR_ID,
+      locale: "ja",
+      token: "CURRENT",
+    });
+
+    expect(mockListMyCreatorEpisodeComments).toHaveBeenCalledWith(
+      {
+        creatorId: CREATOR_ID,
+        limit: 20,
+        locale: "ja",
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+        token: "CURRENT",
+      },
+      SESSION
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith(tenantCreatorPagesTag(TENANT_ID));
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      tenantCreatorCommentsTag(TENANT_ID)
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        comments: [
+          {
+            comment: {
+              authorIcon: null,
+              authorName: "Night Reader",
+              authorPublicId: "READER000001",
+              awaitingApproval: false,
+              body: "The last page got me.",
+              createdAt: "2026-10-30T12:00:00Z",
+              creatorName: "Night Author",
+              creatorPublicId: "AUTHOR000001",
+              id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            },
+            episodePublicId: "EPISODE00001",
+            episodeTitle: "The Harbor",
+            seriesPublicId: "SERIES000001",
+            seriesTitle: "Night Ferry",
+          },
+        ],
+        nextToken: "NEXT",
+        previousToken: "",
+      },
+    });
+  });
+
+  it("answers missing while the tenant shows no Author pages", async () => {
+    mockListMyCreatorEpisodeComments.mockRejectedValue(
+      refusedWith("CREATOR_PAGES_DISABLED")
+    );
+
+    await expect(
+      listMyCreatorComments(TENANT_ID, {
+        creatorId: CREATOR_ID,
+        locale: "en",
+        token: "",
+      })
+    ).resolves.toEqual({ missing: true, ok: false });
+  });
+
+  it("answers missing for an Author the account is not linked to", async () => {
+    mockListMyCreatorEpisodeComments.mockRejectedValue(
+      new ConnectError("creator not found", Code.NotFound)
+    );
+
+    await expect(
+      listMyCreatorComments(TENANT_ID, {
+        creatorId: CREATOR_ID,
+        locale: "en",
+        token: "",
+      })
+    ).resolves.toEqual({ missing: true, ok: false });
+  });
+
+  it("reports a read the API failed, for the page to show", async () => {
+    mockListMyCreatorEpisodeComments.mockRejectedValue(
+      new ConnectError("down", Code.Unavailable)
+    );
+
+    await expect(
+      listMyCreatorComments(TENANT_ID, {
+        creatorId: CREATOR_ID,
+        locale: "en",
+        token: "",
+      })
+    ).resolves.toMatchObject({
+      missing: false,
+      ok: false,
+      requiresSignIn: false,
+    });
   });
 });
 
