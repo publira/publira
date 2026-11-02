@@ -36,6 +36,9 @@ const (
 	// CreatorServiceGetMyCreatorStatementProcedure is the procedure name of the CreatorService's
 	// GetMyCreatorStatement RPC.
 	CreatorServiceGetMyCreatorStatementProcedure = "/publira.v1.CreatorService/GetMyCreatorStatement"
+	// CreatorServiceListMyCreatorEpisodeCommentsProcedure is the procedure name of the CreatorService's
+	// ListMyCreatorEpisodeComments RPC.
+	CreatorServiceListMyCreatorEpisodeCommentsProcedure = "/publira.v1.CreatorService/ListMyCreatorEpisodeComments"
 )
 
 var (
@@ -67,6 +70,13 @@ var (
 			Procedure:  CreatorServiceGetMyCreatorStatementProcedure,
 		}
 	})
+	creatorServiceListMyCreatorEpisodeCommentsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_creator_proto.Services().ByName("CreatorService").Methods().ByName("ListMyCreatorEpisodeComments"),
+			Procedure:  CreatorServiceListMyCreatorEpisodeCommentsProcedure,
+		}
+	})
 )
 
 // CreatorServiceClient is a client for the publira.v1.CreatorService service.
@@ -83,6 +93,9 @@ type CreatorServiceClient interface {
 	// The creator's part of one closed month, line by line. Refused as
 	// ListMyCreatorStatements is.
 	GetMyCreatorStatement(context.Context, *v1.GetMyCreatorStatementRequest) (*v1.GetMyCreatorStatementResponse, error)
+	// What readers say about the creator's episodes: exactly what every reader
+	// reads under each of them, and nothing awaiting approval or removed.
+	ListMyCreatorEpisodeComments(context.Context, *v1.ListMyCreatorEpisodeCommentsRequest) (*v1.ListMyCreatorEpisodeCommentsResponse, error)
 }
 
 // NewCreatorServiceClient constructs a client for the publira.v1.CreatorService service. Multiple
@@ -105,6 +118,9 @@ type CreatorServiceHandler interface {
 	// The creator's part of one closed month, line by line. Refused as
 	// ListMyCreatorStatements is.
 	GetMyCreatorStatement(context.Context, *v1.GetMyCreatorStatementRequest) (*v1.GetMyCreatorStatementResponse, error)
+	// What readers say about the creator's episodes: exactly what every reader
+	// reads under each of them, and nothing awaiting approval or removed.
+	ListMyCreatorEpisodeComments(context.Context, *v1.ListMyCreatorEpisodeCommentsRequest) (*v1.ListMyCreatorEpisodeCommentsResponse, error)
 }
 
 // RegisterCreatorServiceHandler registers svc as the publira.v1.CreatorService implementation on
@@ -116,6 +132,7 @@ func RegisterCreatorServiceHandler(server *connect.Server, svc CreatorServiceHan
 		connect.Method{Spec: creatorServiceGetMyCreatorStatsSpec(), Handler: adapter.getMyCreatorStats},
 		connect.Method{Spec: creatorServiceListMyCreatorStatementsSpec(), Handler: adapter.listMyCreatorStatements},
 		connect.Method{Spec: creatorServiceGetMyCreatorStatementSpec(), Handler: adapter.getMyCreatorStatement},
+		connect.Method{Spec: creatorServiceListMyCreatorEpisodeCommentsSpec(), Handler: adapter.listMyCreatorEpisodeComments},
 	)
 }
 
@@ -136,6 +153,10 @@ func (UnimplementedCreatorServiceHandler) ListMyCreatorStatements(context.Contex
 
 func (UnimplementedCreatorServiceHandler) GetMyCreatorStatement(context.Context, *v1.GetMyCreatorStatementRequest) (*v1.GetMyCreatorStatementResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CreatorService.GetMyCreatorStatement is not implemented")
+}
+
+func (UnimplementedCreatorServiceHandler) ListMyCreatorEpisodeComments(context.Context, *v1.ListMyCreatorEpisodeCommentsRequest) (*v1.ListMyCreatorEpisodeCommentsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CreatorService.ListMyCreatorEpisodeComments is not implemented")
 }
 
 type creatorServiceClient struct {
@@ -169,6 +190,14 @@ func (c *creatorServiceClient) ListMyCreatorStatements(ctx context.Context, req 
 func (c *creatorServiceClient) GetMyCreatorStatement(ctx context.Context, req *v1.GetMyCreatorStatementRequest) (*v1.GetMyCreatorStatementResponse, error) {
 	var res v1.GetMyCreatorStatementResponse
 	if err := c.client.CallUnary(ctx, creatorServiceGetMyCreatorStatementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *creatorServiceClient) ListMyCreatorEpisodeComments(ctx context.Context, req *v1.ListMyCreatorEpisodeCommentsRequest) (*v1.ListMyCreatorEpisodeCommentsResponse, error) {
+	var res v1.ListMyCreatorEpisodeCommentsResponse
+	if err := c.client.CallUnary(ctx, creatorServiceListMyCreatorEpisodeCommentsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -218,6 +247,18 @@ func (h creatorServiceHandler) getMyCreatorStatement(ctx context.Context, _ conn
 		return err
 	}
 	res, err := h.svc.GetMyCreatorStatement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h creatorServiceHandler) listMyCreatorEpisodeComments(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyCreatorEpisodeCommentsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyCreatorEpisodeComments(ctx, &req)
 	if err != nil {
 		return err
 	}

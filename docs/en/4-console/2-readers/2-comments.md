@@ -2,6 +2,7 @@
 title: Comments
 description: Approve, remove, restore, and purge readers' comments, and work through the comments readers report.
 published: 2026-10-21
+updated: 2026-11-02
 ---
 
 Readers can comment on an episode only when comments are turned on, under **Settings** › **Reader comments** for the whole tenant, or on a series' form for that series. [Reader comments](../3-setup/1-settings.md#reader-comments) explains the three choices, **Do not accept comments**, **Publish straight away**, and **Publish after approval**, and the number of reports that removes a comment on its own.
@@ -70,5 +71,7 @@ Withdrawn comments are purged, with their reports, once they have been withdrawn
 The comment list narrows by **State**, **Series public_id**, and **Episode public_id**. A public ID is the last part of the console's address for the series or the episode, as in `/series/<series public ID>/episodes/<episode public ID>`, and the **Episode** of each comment links there. An ID that matches nothing shows an empty list.
 
 A comment from an account linked to an Author credited on the episode carries an **Author** badge, on the site and here. It changes nothing about how the comment is moderated.
+
+An Author does not need the console to read what readers say about their work. A reader linked to an Author reads the published comments on every episode credited to that Author from their own Author pages, as [Authors](../1-catalog/4-authors.md#linking-an-author-to-a-reader-account) describes. A comment awaiting approval or removed never reaches them there, so a removal stays as silent to everyone as it is to its commenter.
 
 Approving, removing, restoring, and purging comments, and upholding and dismissing reports, are recorded in the audit log, with the reason you gave.

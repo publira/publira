@@ -16,6 +16,7 @@ import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
 import '../types/v1/types.pbjson.dart' as $0;
+import 'comment.pbjson.dart' as $1;
 
 @$core.Deprecated('Use creatorStatementLineSourceDescriptor instead')
 const CreatorStatementLineSource$json = {
@@ -425,6 +426,94 @@ final $typed_data.Uint8List getMyCreatorStatementResponseDescriptor = $convert.b
     'cHVibGlyYS52MS5NeUNyZWF0b3JTdGF0ZW1lbnRMaW5lUgVsaW5lcxIlCg5wcmV2aW91c190b2'
     'tlbhgDIAEoCVINcHJldmlvdXNUb2tlbhIdCgpuZXh0X3Rva2VuGAQgASgJUgluZXh0VG9rZW4=');
 
+@$core.Deprecated('Use myCreatorEpisodeCommentDescriptor instead')
+const MyCreatorEpisodeComment$json = {
+  '1': 'MyCreatorEpisodeComment',
+  '2': [
+    {
+      '1': 'comment',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.EpisodeComment',
+      '10': 'comment'
+    },
+    {'1': 'series_public_id', '3': 2, '4': 1, '5': 9, '10': 'seriesPublicId'},
+    {'1': 'series_title', '3': 3, '4': 1, '5': 9, '10': 'seriesTitle'},
+    {'1': 'episode_public_id', '3': 4, '4': 1, '5': 9, '10': 'episodePublicId'},
+    {'1': 'episode_title', '3': 5, '4': 1, '5': 9, '10': 'episodeTitle'},
+  ],
+};
+
+/// Descriptor for `MyCreatorEpisodeComment`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List myCreatorEpisodeCommentDescriptor = $convert.base64Decode(
+    'ChdNeUNyZWF0b3JFcGlzb2RlQ29tbWVudBI0Cgdjb21tZW50GAEgASgLMhoucHVibGlyYS52MS'
+    '5FcGlzb2RlQ29tbWVudFIHY29tbWVudBIoChBzZXJpZXNfcHVibGljX2lkGAIgASgJUg5zZXJp'
+    'ZXNQdWJsaWNJZBIhCgxzZXJpZXNfdGl0bGUYAyABKAlSC3Nlcmllc1RpdGxlEioKEWVwaXNvZG'
+    'VfcHVibGljX2lkGAQgASgJUg9lcGlzb2RlUHVibGljSWQSIwoNZXBpc29kZV90aXRsZRgFIAEo'
+    'CVIMZXBpc29kZVRpdGxl');
+
+@$core.Deprecated('Use listMyCreatorEpisodeCommentsRequestDescriptor instead')
+const ListMyCreatorEpisodeCommentsRequest$json = {
+  '1': 'ListMyCreatorEpisodeCommentsRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {
+      '1': 'surface',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.ClientSurface',
+      '10': 'surface'
+    },
+    {'1': 'creator_id', '3': 3, '4': 1, '5': 9, '10': 'creatorId'},
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'limit', '3': 5, '4': 1, '5': 5, '10': 'limit'},
+    {'1': 'token', '3': 6, '4': 1, '5': 9, '10': 'token'},
+  ],
+};
+
+/// Descriptor for `ListMyCreatorEpisodeCommentsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listMyCreatorEpisodeCommentsRequestDescriptor =
+    $convert.base64Decode(
+        'CiNMaXN0TXlDcmVhdG9yRXBpc29kZUNvbW1lbnRzUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy'
+        '5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBI5CgdzdXJmYWNlGAIgASgO'
+        'Mh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlUgdzdXJmYWNlEh0KCmNyZWF0b3JfaW'
+        'QYAyABKAlSCWNyZWF0b3JJZBIWCgZsb2NhbGUYBCABKAlSBmxvY2FsZRIUCgVsaW1pdBgFIAEo'
+        'BVIFbGltaXQSFAoFdG9rZW4YBiABKAlSBXRva2Vu');
+
+@$core.Deprecated('Use listMyCreatorEpisodeCommentsResponseDescriptor instead')
+const ListMyCreatorEpisodeCommentsResponse$json = {
+  '1': 'ListMyCreatorEpisodeCommentsResponse',
+  '2': [
+    {
+      '1': 'comments',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.MyCreatorEpisodeComment',
+      '10': 'comments'
+    },
+    {'1': 'previous_token', '3': 2, '4': 1, '5': 9, '10': 'previousToken'},
+    {'1': 'next_token', '3': 3, '4': 1, '5': 9, '10': 'nextToken'},
+  ],
+};
+
+/// Descriptor for `ListMyCreatorEpisodeCommentsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listMyCreatorEpisodeCommentsResponseDescriptor =
+    $convert.base64Decode(
+        'CiRMaXN0TXlDcmVhdG9yRXBpc29kZUNvbW1lbnRzUmVzcG9uc2USPwoIY29tbWVudHMYASADKA'
+        'syIy5wdWJsaXJhLnYxLk15Q3JlYXRvckVwaXNvZGVDb21tZW50Ughjb21tZW50cxIlCg5wcmV2'
+        'aW91c190b2tlbhgCIAEoCVINcHJldmlvdXNUb2tlbhIdCgpuZXh0X3Rva2VuGAMgASgJUgluZX'
+        'h0VG9rZW4=');
+
 const $core.Map<$core.String, $core.dynamic> CreatorServiceBase$json = {
   '1': 'CreatorService',
   '2': [
@@ -448,6 +537,11 @@ const $core.Map<$core.String, $core.dynamic> CreatorServiceBase$json = {
       '2': '.publira.v1.GetMyCreatorStatementRequest',
       '3': '.publira.v1.GetMyCreatorStatementResponse'
     },
+    {
+      '1': 'ListMyCreatorEpisodeComments',
+      '2': '.publira.v1.ListMyCreatorEpisodeCommentsRequest',
+      '3': '.publira.v1.ListMyCreatorEpisodeCommentsResponse'
+    },
   ],
 };
 
@@ -470,6 +564,14 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetMyCreatorStatementResponse':
       GetMyCreatorStatementResponse$json,
   '.publira.v1.MyCreatorStatementLine': MyCreatorStatementLine$json,
+  '.publira.v1.ListMyCreatorEpisodeCommentsRequest':
+      ListMyCreatorEpisodeCommentsRequest$json,
+  '.publira.v1.ListMyCreatorEpisodeCommentsResponse':
+      ListMyCreatorEpisodeCommentsResponse$json,
+  '.publira.v1.MyCreatorEpisodeComment': MyCreatorEpisodeComment$json,
+  '.publira.v1.EpisodeComment': $1.EpisodeComment$json,
+  '.publira.v1.EpisodeCommentCreator': $1.EpisodeCommentCreator$json,
+  '.publira.types.v1.UserIconVariant': $0.UserIconVariant$json,
 };
 
 /// Descriptor for `CreatorService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -481,4 +583,7 @@ final $typed_data.Uint8List creatorServiceDescriptor = $convert.base64Decode(
     'YXRlbWVudHMSKi5wdWJsaXJhLnYxLkxpc3RNeUNyZWF0b3JTdGF0ZW1lbnRzUmVxdWVzdBorLn'
     'B1YmxpcmEudjEuTGlzdE15Q3JlYXRvclN0YXRlbWVudHNSZXNwb25zZRJsChVHZXRNeUNyZWF0'
     'b3JTdGF0ZW1lbnQSKC5wdWJsaXJhLnYxLkdldE15Q3JlYXRvclN0YXRlbWVudFJlcXVlc3QaKS'
-    '5wdWJsaXJhLnYxLkdldE15Q3JlYXRvclN0YXRlbWVudFJlc3BvbnNl');
+    '5wdWJsaXJhLnYxLkdldE15Q3JlYXRvclN0YXRlbWVudFJlc3BvbnNlEoEBChxMaXN0TXlDcmVh'
+    'dG9yRXBpc29kZUNvbW1lbnRzEi8ucHVibGlyYS52MS5MaXN0TXlDcmVhdG9yRXBpc29kZUNvbW'
+    '1lbnRzUmVxdWVzdBowLnB1YmxpcmEudjEuTGlzdE15Q3JlYXRvckVwaXNvZGVDb21tZW50c1Jl'
+    'c3BvbnNl');

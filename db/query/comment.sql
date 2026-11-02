@@ -8,6 +8,9 @@
 -- Expected plans:
 --   ListPublishedEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_episode_status_created_at
+--   ListCreatorEpisodeComments*
+--     -> idx_episode_comments_tenant_episode_status_created_at, once per
+--        credited episode
 --   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_user_created_at
 --   ListEpisodeCommentsForModerationByCreatedAt*
@@ -112,6 +115,131 @@ FROM episode_comments c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.episode_id = sqlc.arg('episode_id')
     AND c.status = 'published'
+    AND (
+        sqlc.narg('cursor_created_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) >= (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) > (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY c.created_at ASC,
+    c.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListCreatorEpisodeCommentsDesc :many
+-- The published comments on every episode crediting one creator that the
+-- surface shows now, newest first: what an Author reads of what readers say
+-- about their work. The episodes are those episode_creators credits, the rule
+-- the creator grant and the comment mark follow, rather than the series
+-- credit, and an episode credited to the creator under two roles is listed
+-- once. The comment columns are ListPublishedEpisodeCommentsByCreatedAtDesc's,
+-- so a comment reads here as it does under its episode.
+WITH credited AS (
+    SELECT DISTINCT ec.episode_id
+    FROM episode_creators ec
+        JOIN published_episode_surfaces pes ON pes.tenant_id = ec.tenant_id
+            AND pes.episode_id = ec.episode_id
+            AND pes.surface = sqlc.arg('surface')::text
+    WHERE ec.tenant_id = sqlc.arg('tenant_id')
+        AND ec.creator_id = sqlc.arg('creator_id')
+)
+SELECT c.id,
+    c.public_id,
+    c.body,
+    c.created_at,
+    c.user_id,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    sr.public_id AS series_public_id,
+    srtr.title AS series_title
+FROM credited cr
+    JOIN episode_comments c ON c.tenant_id = sqlc.arg('tenant_id')
+        AND c.episode_id = cr.episode_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
+    JOIN series sr ON sr.tenant_id = e.tenant_id
+        AND sr.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(sr.id, sqlc.arg('locale')::text) srtr
+WHERE c.status = 'published'
+    AND (
+        sqlc.narg('cursor_created_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) <= (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) < (
+                sqlc.narg('cursor_created_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY c.created_at DESC,
+    c.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListCreatorEpisodeCommentsAsc :many
+-- The previous-page half of ListCreatorEpisodeCommentsDesc. The handler
+-- reverses the returned rows to preserve the newest-first display order.
+WITH credited AS (
+    SELECT DISTINCT ec.episode_id
+    FROM episode_creators ec
+        JOIN published_episode_surfaces pes ON pes.tenant_id = ec.tenant_id
+            AND pes.episode_id = ec.episode_id
+            AND pes.surface = sqlc.arg('surface')::text
+    WHERE ec.tenant_id = sqlc.arg('tenant_id')
+        AND ec.creator_id = sqlc.arg('creator_id')
+)
+SELECT c.id,
+    c.public_id,
+    c.body,
+    c.created_at,
+    c.user_id,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    sr.public_id AS series_public_id,
+    srtr.title AS series_title
+FROM credited cr
+    JOIN episode_comments c ON c.tenant_id = sqlc.arg('tenant_id')
+        AND c.episode_id = cr.episode_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
+    JOIN series sr ON sr.tenant_id = e.tenant_id
+        AND sr.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(sr.id, sqlc.arg('locale')::text) srtr
+WHERE c.status = 'published'
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (

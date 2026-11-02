@@ -1162,12 +1162,247 @@ func (x *GetMyCreatorStatementResponse) GetNextToken() string {
 	return ""
 }
 
+// A published comment on an episode crediting the creator, with the episode
+// it was left on.
+type MyCreatorEpisodeComment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// As ListEpisodeComments answers it, so the creator's own comments carry
+	// creator there as they do here.
+	Comment         *EpisodeComment `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
+	SeriesPublicId  string          `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
+	SeriesTitle     string          `protobuf:"bytes,3,opt,name=series_title,json=seriesTitle,proto3" json:"series_title,omitempty"`
+	EpisodePublicId string          `protobuf:"bytes,4,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	EpisodeTitle    string          `protobuf:"bytes,5,opt,name=episode_title,json=episodeTitle,proto3" json:"episode_title,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MyCreatorEpisodeComment) Reset() {
+	*x = MyCreatorEpisodeComment{}
+	mi := &file_publira_v1_creator_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MyCreatorEpisodeComment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MyCreatorEpisodeComment) ProtoMessage() {}
+
+func (x *MyCreatorEpisodeComment) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_creator_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MyCreatorEpisodeComment.ProtoReflect.Descriptor instead.
+func (*MyCreatorEpisodeComment) Descriptor() ([]byte, []int) {
+	return file_publira_v1_creator_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *MyCreatorEpisodeComment) GetComment() *EpisodeComment {
+	if x != nil {
+		return x.Comment
+	}
+	return nil
+}
+
+func (x *MyCreatorEpisodeComment) GetSeriesPublicId() string {
+	if x != nil {
+		return x.SeriesPublicId
+	}
+	return ""
+}
+
+func (x *MyCreatorEpisodeComment) GetSeriesTitle() string {
+	if x != nil {
+		return x.SeriesTitle
+	}
+	return ""
+}
+
+func (x *MyCreatorEpisodeComment) GetEpisodePublicId() string {
+	if x != nil {
+		return x.EpisodePublicId
+	}
+	return ""
+}
+
+func (x *MyCreatorEpisodeComment) GetEpisodeTitle() string {
+	if x != nil {
+		return x.EpisodeTitle
+	}
+	return ""
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+type ListMyCreatorEpisodeCommentsRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Tenant  *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Surface v1.ClientSurface       `protobuf:"varint,2,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// MyCreator.id of a creator the account is linked to. Any other is
+	// not_found.
+	CreatorId string `protobuf:"bytes,3,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	// The reader's locale, which every title is given in. Empty means the
+	// tenant's default locale.
+	Locale string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	// Max comments in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page. A token
+	// issued for another creator or another surface is invalid_argument.
+	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) Reset() {
+	*x = ListMyCreatorEpisodeCommentsRequest{}
+	mi := &file_publira_v1_creator_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyCreatorEpisodeCommentsRequest) ProtoMessage() {}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_creator_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyCreatorEpisodeCommentsRequest.ProtoReflect.Descriptor instead.
+func (*ListMyCreatorEpisodeCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_creator_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListMyCreatorEpisodeCommentsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ListMyCreatorEpisodeCommentsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The published comments on every episode crediting the creator that the
+	// calling surface shows now, newest first. An episode credited only through
+	// its series is not among them.
+	Comments      []*MyCreatorEpisodeComment `protobuf:"bytes,1,rep,name=comments,proto3" json:"comments,omitempty"`
+	PreviousToken string                     `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	NextToken     string                     `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) Reset() {
+	*x = ListMyCreatorEpisodeCommentsResponse{}
+	mi := &file_publira_v1_creator_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyCreatorEpisodeCommentsResponse) ProtoMessage() {}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_creator_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyCreatorEpisodeCommentsResponse.ProtoReflect.Descriptor instead.
+func (*ListMyCreatorEpisodeCommentsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_creator_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) GetComments() []*MyCreatorEpisodeComment {
+	if x != nil {
+		return x.Comments
+	}
+	return nil
+}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListMyCreatorEpisodeCommentsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
+}
+
 var File_publira_v1_creator_proto protoreflect.FileDescriptor
 
 const file_publira_v1_creator_proto_rawDesc = "" +
 	"\n" +
 	"\x18publira/v1/creator.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\xa8\x01\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\x1a\x18publira/v1/comment.proto\"\xa8\x01\n" +
 	"\tMyCreator\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -1268,16 +1503,36 @@ const file_publira_v1_creator_proto_rawDesc = "" +
 	"\x05lines\x18\x02 \x03(\v2\".publira.v1.MyCreatorStatementLineR\x05lines\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x04 \x01(\tR\tnextToken*\xa3\x01\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken\"\xed\x01\n" +
+	"\x17MyCreatorEpisodeComment\x124\n" +
+	"\acomment\x18\x01 \x01(\v2\x1a.publira.v1.EpisodeCommentR\acomment\x12(\n" +
+	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12!\n" +
+	"\fseries_title\x18\x03 \x01(\tR\vseriesTitle\x12*\n" +
+	"\x11episode_public_id\x18\x04 \x01(\tR\x0fepisodePublicId\x12#\n" +
+	"\repisode_title\x18\x05 \x01(\tR\fepisodeTitle\"\xfc\x01\n" +
+	"#ListMyCreatorEpisodeCommentsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
+	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x03 \x01(\tR\tcreatorId\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12\x14\n" +
+	"\x05limit\x18\x05 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x06 \x01(\tR\x05token\"\xad\x01\n" +
+	"$ListMyCreatorEpisodeCommentsResponse\x12?\n" +
+	"\bcomments\x18\x01 \x03(\v2#.publira.v1.MyCreatorEpisodeCommentR\bcomments\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken*\xa3\x01\n" +
 	"\x1aCreatorStatementLineSource\x12-\n" +
 	")CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"CREATOR_STATEMENT_LINE_SOURCE_SALE\x10\x01\x12.\n" +
-	"*CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION\x10\x022\xb5\x03\n" +
+	"*CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION\x10\x022\xbb\x04\n" +
 	"\x0eCreatorService\x12Y\n" +
 	"\x0eListMyCreators\x12!.publira.v1.ListMyCreatorsRequest\x1a\".publira.v1.ListMyCreatorsResponse\"\x00\x12b\n" +
 	"\x11GetMyCreatorStats\x12$.publira.v1.GetMyCreatorStatsRequest\x1a%.publira.v1.GetMyCreatorStatsResponse\"\x00\x12t\n" +
 	"\x17ListMyCreatorStatements\x12*.publira.v1.ListMyCreatorStatementsRequest\x1a+.publira.v1.ListMyCreatorStatementsResponse\"\x00\x12n\n" +
-	"\x15GetMyCreatorStatement\x12(.publira.v1.GetMyCreatorStatementRequest\x1a).publira.v1.GetMyCreatorStatementResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x15GetMyCreatorStatement\x12(.publira.v1.GetMyCreatorStatementRequest\x1a).publira.v1.GetMyCreatorStatementResponse\"\x00\x12\x83\x01\n" +
+	"\x1cListMyCreatorEpisodeComments\x12/.publira.v1.ListMyCreatorEpisodeCommentsRequest\x1a0.publira.v1.ListMyCreatorEpisodeCommentsResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_creator_proto_rawDescOnce sync.Once
@@ -1292,52 +1547,62 @@ func file_publira_v1_creator_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_creator_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_v1_creator_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_v1_creator_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_publira_v1_creator_proto_goTypes = []any{
-	(CreatorStatementLineSource)(0),         // 0: publira.v1.CreatorStatementLineSource
-	(*MyCreator)(nil),                       // 1: publira.v1.MyCreator
-	(*ListMyCreatorsRequest)(nil),           // 2: publira.v1.ListMyCreatorsRequest
-	(*ListMyCreatorsResponse)(nil),          // 3: publira.v1.ListMyCreatorsResponse
-	(*MyCreatorEpisodeStats)(nil),           // 4: publira.v1.MyCreatorEpisodeStats
-	(*GetMyCreatorStatsRequest)(nil),        // 5: publira.v1.GetMyCreatorStatsRequest
-	(*GetMyCreatorStatsResponse)(nil),       // 6: publira.v1.GetMyCreatorStatsResponse
-	(*MyCreatorStatement)(nil),              // 7: publira.v1.MyCreatorStatement
-	(*MyCreatorStatementLine)(nil),          // 8: publira.v1.MyCreatorStatementLine
-	(*ListMyCreatorStatementsRequest)(nil),  // 9: publira.v1.ListMyCreatorStatementsRequest
-	(*ListMyCreatorStatementsResponse)(nil), // 10: publira.v1.ListMyCreatorStatementsResponse
-	(*GetMyCreatorStatementRequest)(nil),    // 11: publira.v1.GetMyCreatorStatementRequest
-	(*GetMyCreatorStatementResponse)(nil),   // 12: publira.v1.GetMyCreatorStatementResponse
-	(*v1.TenantContext)(nil),                // 13: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                   // 14: publira.types.v1.ClientSurface
+	(CreatorStatementLineSource)(0),              // 0: publira.v1.CreatorStatementLineSource
+	(*MyCreator)(nil),                            // 1: publira.v1.MyCreator
+	(*ListMyCreatorsRequest)(nil),                // 2: publira.v1.ListMyCreatorsRequest
+	(*ListMyCreatorsResponse)(nil),               // 3: publira.v1.ListMyCreatorsResponse
+	(*MyCreatorEpisodeStats)(nil),                // 4: publira.v1.MyCreatorEpisodeStats
+	(*GetMyCreatorStatsRequest)(nil),             // 5: publira.v1.GetMyCreatorStatsRequest
+	(*GetMyCreatorStatsResponse)(nil),            // 6: publira.v1.GetMyCreatorStatsResponse
+	(*MyCreatorStatement)(nil),                   // 7: publira.v1.MyCreatorStatement
+	(*MyCreatorStatementLine)(nil),               // 8: publira.v1.MyCreatorStatementLine
+	(*ListMyCreatorStatementsRequest)(nil),       // 9: publira.v1.ListMyCreatorStatementsRequest
+	(*ListMyCreatorStatementsResponse)(nil),      // 10: publira.v1.ListMyCreatorStatementsResponse
+	(*GetMyCreatorStatementRequest)(nil),         // 11: publira.v1.GetMyCreatorStatementRequest
+	(*GetMyCreatorStatementResponse)(nil),        // 12: publira.v1.GetMyCreatorStatementResponse
+	(*MyCreatorEpisodeComment)(nil),              // 13: publira.v1.MyCreatorEpisodeComment
+	(*ListMyCreatorEpisodeCommentsRequest)(nil),  // 14: publira.v1.ListMyCreatorEpisodeCommentsRequest
+	(*ListMyCreatorEpisodeCommentsResponse)(nil), // 15: publira.v1.ListMyCreatorEpisodeCommentsResponse
+	(*v1.TenantContext)(nil),                     // 16: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                        // 17: publira.types.v1.ClientSurface
+	(*EpisodeComment)(nil),                       // 18: publira.v1.EpisodeComment
 }
 var file_publira_v1_creator_proto_depIdxs = []int32{
-	13, // 0: publira.v1.ListMyCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 1: publira.v1.ListMyCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	16, // 0: publira.v1.ListMyCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 1: publira.v1.ListMyCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	1,  // 2: publira.v1.ListMyCreatorsResponse.creators:type_name -> publira.v1.MyCreator
-	13, // 3: publira.v1.GetMyCreatorStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 4: publira.v1.GetMyCreatorStatsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	16, // 3: publira.v1.GetMyCreatorStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 4: publira.v1.GetMyCreatorStatsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	4,  // 5: publira.v1.GetMyCreatorStatsResponse.episodes:type_name -> publira.v1.MyCreatorEpisodeStats
 	0,  // 6: publira.v1.MyCreatorStatementLine.source:type_name -> publira.v1.CreatorStatementLineSource
-	13, // 7: publira.v1.ListMyCreatorStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 8: publira.v1.ListMyCreatorStatementsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	16, // 7: publira.v1.ListMyCreatorStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 8: publira.v1.ListMyCreatorStatementsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	7,  // 9: publira.v1.ListMyCreatorStatementsResponse.statements:type_name -> publira.v1.MyCreatorStatement
-	13, // 10: publira.v1.GetMyCreatorStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 11: publira.v1.GetMyCreatorStatementRequest.surface:type_name -> publira.types.v1.ClientSurface
+	16, // 10: publira.v1.GetMyCreatorStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 11: publira.v1.GetMyCreatorStatementRequest.surface:type_name -> publira.types.v1.ClientSurface
 	7,  // 12: publira.v1.GetMyCreatorStatementResponse.statement:type_name -> publira.v1.MyCreatorStatement
 	8,  // 13: publira.v1.GetMyCreatorStatementResponse.lines:type_name -> publira.v1.MyCreatorStatementLine
-	2,  // 14: publira.v1.CreatorService.ListMyCreators:input_type -> publira.v1.ListMyCreatorsRequest
-	5,  // 15: publira.v1.CreatorService.GetMyCreatorStats:input_type -> publira.v1.GetMyCreatorStatsRequest
-	9,  // 16: publira.v1.CreatorService.ListMyCreatorStatements:input_type -> publira.v1.ListMyCreatorStatementsRequest
-	11, // 17: publira.v1.CreatorService.GetMyCreatorStatement:input_type -> publira.v1.GetMyCreatorStatementRequest
-	3,  // 18: publira.v1.CreatorService.ListMyCreators:output_type -> publira.v1.ListMyCreatorsResponse
-	6,  // 19: publira.v1.CreatorService.GetMyCreatorStats:output_type -> publira.v1.GetMyCreatorStatsResponse
-	10, // 20: publira.v1.CreatorService.ListMyCreatorStatements:output_type -> publira.v1.ListMyCreatorStatementsResponse
-	12, // 21: publira.v1.CreatorService.GetMyCreatorStatement:output_type -> publira.v1.GetMyCreatorStatementResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	18, // 14: publira.v1.MyCreatorEpisodeComment.comment:type_name -> publira.v1.EpisodeComment
+	16, // 15: publira.v1.ListMyCreatorEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 16: publira.v1.ListMyCreatorEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	13, // 17: publira.v1.ListMyCreatorEpisodeCommentsResponse.comments:type_name -> publira.v1.MyCreatorEpisodeComment
+	2,  // 18: publira.v1.CreatorService.ListMyCreators:input_type -> publira.v1.ListMyCreatorsRequest
+	5,  // 19: publira.v1.CreatorService.GetMyCreatorStats:input_type -> publira.v1.GetMyCreatorStatsRequest
+	9,  // 20: publira.v1.CreatorService.ListMyCreatorStatements:input_type -> publira.v1.ListMyCreatorStatementsRequest
+	11, // 21: publira.v1.CreatorService.GetMyCreatorStatement:input_type -> publira.v1.GetMyCreatorStatementRequest
+	14, // 22: publira.v1.CreatorService.ListMyCreatorEpisodeComments:input_type -> publira.v1.ListMyCreatorEpisodeCommentsRequest
+	3,  // 23: publira.v1.CreatorService.ListMyCreators:output_type -> publira.v1.ListMyCreatorsResponse
+	6,  // 24: publira.v1.CreatorService.GetMyCreatorStats:output_type -> publira.v1.GetMyCreatorStatsResponse
+	10, // 25: publira.v1.CreatorService.ListMyCreatorStatements:output_type -> publira.v1.ListMyCreatorStatementsResponse
+	12, // 26: publira.v1.CreatorService.GetMyCreatorStatement:output_type -> publira.v1.GetMyCreatorStatementResponse
+	15, // 27: publira.v1.CreatorService.ListMyCreatorEpisodeComments:output_type -> publira.v1.ListMyCreatorEpisodeCommentsResponse
+	23, // [23:28] is the sub-list for method output_type
+	18, // [18:23] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_creator_proto_init() }
@@ -1345,6 +1610,7 @@ func file_publira_v1_creator_proto_init() {
 	if File_publira_v1_creator_proto != nil {
 		return
 	}
+	file_publira_v1_comment_proto_init()
 	file_publira_v1_creator_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1352,7 +1618,7 @@ func file_publira_v1_creator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_creator_proto_rawDesc), len(file_publira_v1_creator_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -144,6 +144,9 @@ type CreateEpisodeCommentParams struct {
 //
 //	ListPublishedEpisodeCommentsByCreatedAt*
 //	  -> idx_episode_comments_tenant_episode_status_created_at
+//	ListCreatorEpisodeComments*
+//	  -> idx_episode_comments_tenant_episode_status_created_at, once per
+//	     credited episode
 //	ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 //	  -> idx_episode_comments_tenant_user_created_at
 //	ListEpisodeCommentsForModerationByCreatedAt*
@@ -399,6 +402,283 @@ func (q *Queries) HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideE
 		&i.OpenReportCount,
 	)
 	return i, err
+}
+
+const ListCreatorEpisodeCommentsAsc = `-- name: ListCreatorEpisodeCommentsAsc :many
+WITH credited AS (
+    SELECT DISTINCT ec.episode_id
+    FROM episode_creators ec
+        JOIN published_episode_surfaces pes ON pes.tenant_id = ec.tenant_id
+            AND pes.episode_id = ec.episode_id
+            AND pes.surface = $7::text
+    WHERE ec.tenant_id = $1
+        AND ec.creator_id = $8
+)
+SELECT c.id,
+    c.public_id,
+    c.body,
+    c.created_at,
+    c.user_id,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    sr.public_id AS series_public_id,
+    srtr.title AS series_title
+FROM credited cr
+    JOIN episode_comments c ON c.tenant_id = $1
+        AND c.episode_id = cr.episode_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, $2::text) et
+    JOIN series sr ON sr.tenant_id = e.tenant_id
+        AND sr.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(sr.id, $2::text) srtr
+WHERE c.status = 'published'
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (c.created_at, c.id) >= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (c.created_at, c.id) > (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY c.created_at ASC,
+    c.id ASC
+LIMIT $6
+`
+
+type ListCreatorEpisodeCommentsAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	Locale          string        `json:"locale"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	Limit           int32         `json:"limit"`
+	Surface         string        `json:"surface"`
+	CreatorID       uuid.UUID     `json:"creator_id"`
+}
+
+type ListCreatorEpisodeCommentsAscRow struct {
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+}
+
+// The previous-page half of ListCreatorEpisodeCommentsDesc. The handler
+// reverses the returned rows to preserve the newest-first display order.
+func (q *Queries) ListCreatorEpisodeCommentsAsc(ctx context.Context, arg ListCreatorEpisodeCommentsAscParams) ([]ListCreatorEpisodeCommentsAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListCreatorEpisodeCommentsAsc,
+		arg.TenantID,
+		arg.Locale,
+		arg.CursorCreatedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+		arg.Surface,
+		arg.CreatorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreatorEpisodeCommentsAscRow
+	for rows.Next() {
+		var i ListCreatorEpisodeCommentsAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.AuthorPublicID,
+			&i.AuthorName,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListCreatorEpisodeCommentsDesc = `-- name: ListCreatorEpisodeCommentsDesc :many
+WITH credited AS (
+    SELECT DISTINCT ec.episode_id
+    FROM episode_creators ec
+        JOIN published_episode_surfaces pes ON pes.tenant_id = ec.tenant_id
+            AND pes.episode_id = ec.episode_id
+            AND pes.surface = $7::text
+    WHERE ec.tenant_id = $1
+        AND ec.creator_id = $8
+)
+SELECT c.id,
+    c.public_id,
+    c.body,
+    c.created_at,
+    c.user_id,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    sr.public_id AS series_public_id,
+    srtr.title AS series_title
+FROM credited cr
+    JOIN episode_comments c ON c.tenant_id = $1
+        AND c.episode_id = cr.episode_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, $2::text) et
+    JOIN series sr ON sr.tenant_id = e.tenant_id
+        AND sr.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(sr.id, $2::text) srtr
+WHERE c.status = 'published'
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (c.created_at, c.id) <= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (c.created_at, c.id) < (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY c.created_at DESC,
+    c.id DESC
+LIMIT $6
+`
+
+type ListCreatorEpisodeCommentsDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	Locale          string        `json:"locale"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	Limit           int32         `json:"limit"`
+	Surface         string        `json:"surface"`
+	CreatorID       uuid.UUID     `json:"creator_id"`
+}
+
+type ListCreatorEpisodeCommentsDescRow struct {
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+}
+
+// The published comments on every episode crediting one creator that the
+// surface shows now, newest first: what an Author reads of what readers say
+// about their work. The episodes are those episode_creators credits, the rule
+// the creator grant and the comment mark follow, rather than the series
+// credit, and an episode credited to the creator under two roles is listed
+// once. The comment columns are ListPublishedEpisodeCommentsByCreatedAtDesc's,
+// so a comment reads here as it does under its episode.
+func (q *Queries) ListCreatorEpisodeCommentsDesc(ctx context.Context, arg ListCreatorEpisodeCommentsDescParams) ([]ListCreatorEpisodeCommentsDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListCreatorEpisodeCommentsDesc,
+		arg.TenantID,
+		arg.Locale,
+		arg.CursorCreatedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+		arg.Surface,
+		arg.CreatorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreatorEpisodeCommentsDescRow
+	for rows.Next() {
+		var i ListCreatorEpisodeCommentsDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.AuthorPublicID,
+			&i.AuthorName,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListEpisodeCommentsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentsForModerationByCreatedAtAsc :many

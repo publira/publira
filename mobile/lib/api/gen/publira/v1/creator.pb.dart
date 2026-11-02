@@ -17,6 +17,7 @@ import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 import '../types/v1/types.pb.dart' as $0;
+import 'comment.pb.dart' as $1;
 import 'creator.pbenum.dart';
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
@@ -1547,6 +1548,344 @@ class GetMyCreatorStatementResponse extends $pb.GeneratedMessage {
   void clearNextToken() => $_clearField(4);
 }
 
+/// A published comment on an episode crediting the creator, with the episode
+/// it was left on.
+class MyCreatorEpisodeComment extends $pb.GeneratedMessage {
+  factory MyCreatorEpisodeComment({
+    $1.EpisodeComment? comment,
+    $core.String? seriesPublicId,
+    $core.String? seriesTitle,
+    $core.String? episodePublicId,
+    $core.String? episodeTitle,
+  }) {
+    final result = MyCreatorEpisodeComment._();
+    if (comment != null) result.comment = comment;
+    if (seriesPublicId != null) result.seriesPublicId = seriesPublicId;
+    if (seriesTitle != null) result.seriesTitle = seriesTitle;
+    if (episodePublicId != null) result.episodePublicId = episodePublicId;
+    if (episodeTitle != null) result.episodeTitle = episodeTitle;
+    return result;
+  }
+
+  MyCreatorEpisodeComment._();
+
+  factory MyCreatorEpisodeComment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MyCreatorEpisodeComment()..mergeFromBuffer(data, registry);
+  factory MyCreatorEpisodeComment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MyCreatorEpisodeComment()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'MyCreatorEpisodeComment',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: MyCreatorEpisodeComment.$_createMessage)
+    ..aOM<$1.EpisodeComment>(1, _omitFieldNames ? '' : 'comment',
+        subBuilder: $1.EpisodeComment.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'seriesPublicId')
+    ..aOS(3, _omitFieldNames ? '' : 'seriesTitle')
+    ..aOS(4, _omitFieldNames ? '' : 'episodePublicId')
+    ..aOS(5, _omitFieldNames ? '' : 'episodeTitle')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MyCreatorEpisodeComment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MyCreatorEpisodeComment copyWith(
+          void Function(MyCreatorEpisodeComment) updates) =>
+      super.copyWith((message) => updates(message as MyCreatorEpisodeComment))
+          as MyCreatorEpisodeComment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use MyCreatorEpisodeComment() / MyCreatorEpisodeComment.new instead')
+  static MyCreatorEpisodeComment create() => MyCreatorEpisodeComment._();
+  static $pb.GeneratedMessage $_createMessage() => MyCreatorEpisodeComment._();
+  @$core.override
+  MyCreatorEpisodeComment createEmptyInstance() => MyCreatorEpisodeComment._();
+  @$core.pragma('dart2js:noInline')
+  static MyCreatorEpisodeComment getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MyCreatorEpisodeComment>(
+          MyCreatorEpisodeComment.$_createMessage);
+  static MyCreatorEpisodeComment? _defaultInstance;
+
+  /// As ListEpisodeComments answers it, so the creator's own comments carry
+  /// creator there as they do here.
+  @$pb.TagNumber(1)
+  $1.EpisodeComment get comment => $_getN(0);
+  @$pb.TagNumber(1)
+  set comment($1.EpisodeComment value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasComment() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearComment() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.EpisodeComment ensureComment() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get seriesPublicId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set seriesPublicId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSeriesPublicId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSeriesPublicId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get seriesTitle => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set seriesTitle($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSeriesTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSeriesTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get episodePublicId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set episodePublicId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEpisodePublicId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEpisodePublicId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get episodeTitle => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set episodeTitle($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEpisodeTitle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEpisodeTitle() => $_clearField(5);
+}
+
+/// Cursor pagination. Field shape and token rules: proto/README.md.
+class ListMyCreatorEpisodeCommentsRequest extends $pb.GeneratedMessage {
+  factory ListMyCreatorEpisodeCommentsRequest({
+    $0.TenantContext? tenant,
+    $0.ClientSurface? surface,
+    $core.String? creatorId,
+    $core.String? locale,
+    $core.int? limit,
+    $core.String? token,
+  }) {
+    final result = ListMyCreatorEpisodeCommentsRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (surface != null) result.surface = surface;
+    if (creatorId != null) result.creatorId = creatorId;
+    if (locale != null) result.locale = locale;
+    if (limit != null) result.limit = limit;
+    if (token != null) result.token = token;
+    return result;
+  }
+
+  ListMyCreatorEpisodeCommentsRequest._();
+
+  factory ListMyCreatorEpisodeCommentsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyCreatorEpisodeCommentsRequest()..mergeFromBuffer(data, registry);
+  factory ListMyCreatorEpisodeCommentsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyCreatorEpisodeCommentsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListMyCreatorEpisodeCommentsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListMyCreatorEpisodeCommentsRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aE<$0.ClientSurface>(2, _omitFieldNames ? '' : 'surface',
+        enumValues: $0.ClientSurface.values)
+    ..aOS(3, _omitFieldNames ? '' : 'creatorId')
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..aI(5, _omitFieldNames ? '' : 'limit')
+    ..aOS(6, _omitFieldNames ? '' : 'token')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyCreatorEpisodeCommentsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyCreatorEpisodeCommentsRequest copyWith(
+          void Function(ListMyCreatorEpisodeCommentsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ListMyCreatorEpisodeCommentsRequest))
+          as ListMyCreatorEpisodeCommentsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListMyCreatorEpisodeCommentsRequest() / ListMyCreatorEpisodeCommentsRequest.new instead')
+  static ListMyCreatorEpisodeCommentsRequest create() =>
+      ListMyCreatorEpisodeCommentsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListMyCreatorEpisodeCommentsRequest._();
+  @$core.override
+  ListMyCreatorEpisodeCommentsRequest createEmptyInstance() =>
+      ListMyCreatorEpisodeCommentsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListMyCreatorEpisodeCommentsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ListMyCreatorEpisodeCommentsRequest>(
+          ListMyCreatorEpisodeCommentsRequest.$_createMessage);
+  static ListMyCreatorEpisodeCommentsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $0.ClientSurface get surface => $_getN(1);
+  @$pb.TagNumber(2)
+  set surface($0.ClientSurface value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSurface() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSurface() => $_clearField(2);
+
+  /// MyCreator.id of a creator the account is linked to. Any other is
+  /// not_found.
+  @$pb.TagNumber(3)
+  $core.String get creatorId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set creatorId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatorId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatorId() => $_clearField(3);
+
+  /// The reader's locale, which every title is given in. Empty means the
+  /// tenant's default locale.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
+
+  /// Max comments in one page. <= 0 or > 100 falls back to 20.
+  @$pb.TagNumber(5)
+  $core.int get limit => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set limit($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLimit() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLimit() => $_clearField(5);
+
+  /// Opaque token from a previous response. Empty for the first page. A token
+  /// issued for another creator or another surface is invalid_argument.
+  @$pb.TagNumber(6)
+  $core.String get token => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set token($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasToken() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearToken() => $_clearField(6);
+}
+
+class ListMyCreatorEpisodeCommentsResponse extends $pb.GeneratedMessage {
+  factory ListMyCreatorEpisodeCommentsResponse({
+    $core.Iterable<MyCreatorEpisodeComment>? comments,
+    $core.String? previousToken,
+    $core.String? nextToken,
+  }) {
+    final result = ListMyCreatorEpisodeCommentsResponse._();
+    if (comments != null) result.comments.addAll(comments);
+    if (previousToken != null) result.previousToken = previousToken;
+    if (nextToken != null) result.nextToken = nextToken;
+    return result;
+  }
+
+  ListMyCreatorEpisodeCommentsResponse._();
+
+  factory ListMyCreatorEpisodeCommentsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyCreatorEpisodeCommentsResponse()..mergeFromBuffer(data, registry);
+  factory ListMyCreatorEpisodeCommentsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyCreatorEpisodeCommentsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListMyCreatorEpisodeCommentsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListMyCreatorEpisodeCommentsResponse.$_createMessage)
+    ..pPM<MyCreatorEpisodeComment>(1, _omitFieldNames ? '' : 'comments',
+        subBuilder: MyCreatorEpisodeComment.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'previousToken')
+    ..aOS(3, _omitFieldNames ? '' : 'nextToken')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyCreatorEpisodeCommentsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyCreatorEpisodeCommentsResponse copyWith(
+          void Function(ListMyCreatorEpisodeCommentsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ListMyCreatorEpisodeCommentsResponse))
+          as ListMyCreatorEpisodeCommentsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListMyCreatorEpisodeCommentsResponse() / ListMyCreatorEpisodeCommentsResponse.new instead')
+  static ListMyCreatorEpisodeCommentsResponse create() =>
+      ListMyCreatorEpisodeCommentsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListMyCreatorEpisodeCommentsResponse._();
+  @$core.override
+  ListMyCreatorEpisodeCommentsResponse createEmptyInstance() =>
+      ListMyCreatorEpisodeCommentsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListMyCreatorEpisodeCommentsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ListMyCreatorEpisodeCommentsResponse>(
+          ListMyCreatorEpisodeCommentsResponse.$_createMessage);
+  static ListMyCreatorEpisodeCommentsResponse? _defaultInstance;
+
+  /// The published comments on every episode crediting the creator that the
+  /// calling surface shows now, newest first. An episode credited only through
+  /// its series is not among them.
+  @$pb.TagNumber(1)
+  $pb.PbList<MyCreatorEpisodeComment> get comments => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get previousToken => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set previousToken($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPreviousToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPreviousToken() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get nextToken => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set nextToken($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNextToken() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNextToken() => $_clearField(3);
+}
+
 /// What a signed-in reader linked to a creator reads of that creator's works.
 /// Every RPC requires a session and answers about the session account's links
 /// alone. While GetTenantResponse.creator_pages_enabled is false every RPC is
@@ -1587,6 +1926,18 @@ class CreatorServiceApi {
           $pb.ClientContext? ctx, GetMyCreatorStatementRequest request) =>
       _client.invoke<GetMyCreatorStatementResponse>(ctx, 'CreatorService',
           'GetMyCreatorStatement', request, GetMyCreatorStatementResponse());
+
+  /// What readers say about the creator's episodes: exactly what every reader
+  /// reads under each of them, and nothing awaiting approval or removed.
+  $async.Future<ListMyCreatorEpisodeCommentsResponse>
+      listMyCreatorEpisodeComments($pb.ClientContext? ctx,
+              ListMyCreatorEpisodeCommentsRequest request) =>
+          _client.invoke<ListMyCreatorEpisodeCommentsResponse>(
+              ctx,
+              'CreatorService',
+              'ListMyCreatorEpisodeComments',
+              request,
+              ListMyCreatorEpisodeCommentsResponse());
 }
 
 const $core.bool _omitFieldNames =
