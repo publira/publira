@@ -90,6 +90,9 @@ type EpisodeSeed struct {
 	// the series, the same way the admin API appends.
 	OrderIndex int32
 	Price      int32
+	// PreviewPageCount is how many opening pages the episode opens as a
+	// preview.
+	PreviewPageCount int32
 	// Status is one of the EpisodeStatus constants; empty means draft.
 	Status string
 	// PublishedAt defaults to an hour ago for a published listing. Set it in the
@@ -726,6 +729,15 @@ func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, se
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, episodeID, tenantID, seed.Price, status, scheduledAt, publishedAt); err != nil {
 		t.Fatalf("insert episode_listings %s: %v", publicID, err)
+	}
+	// Written only when asked for, because the migration tests seed episodes
+	// into a schema from before the column existed.
+	if seed.PreviewPageCount != 0 {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE episode_listings SET preview_page_count = $2 WHERE episode_id = $1
+		`, episodeID, seed.PreviewPageCount); err != nil {
+			t.Fatalf("set preview_page_count of %s: %v", publicID, err)
+		}
 	}
 
 	return Episode{ID: episodeID, PublicID: publicID, Title: title, Price: seed.Price}

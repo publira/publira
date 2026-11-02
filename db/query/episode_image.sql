@@ -81,7 +81,13 @@ SELECT ei.id,
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
     ) AS is_published,
-    reader_may_open_episode(s.tenant_id, sqlc.arg('user_id')::uuid, e.id) AS has_access,
+    -- A page the episode's preview opens is the reader's whether or not they
+    -- hold a grant, so a reader the age rule asks for proof of reaches it with
+    -- their own token, as they reach a free body.
+    (
+        reader_may_open_episode(s.tenant_id, sqlc.arg('user_id')::uuid, e.id)
+        OR episode_page_in_preview(e.id, ei.id)
+    )::boolean AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided
     -- here: which rating demands which age is one mapping the whole build
     -- shares, and it lives in Go. A series the tenant has not classified has no
@@ -138,7 +144,12 @@ SELECT ei.id,
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
     ) AS is_published,
-    (fe.episode_id IS NOT NULL)::boolean AS has_public_access,
+    -- A free body, or a page among the opening pages a priced episode's
+    -- preview opens to everyone.
+    (
+        fe.episode_id IS NOT NULL
+        OR episode_page_in_preview(e.id, ei.id)
+    )::boolean AS has_public_access,
     -- When the body is public only because a window is open, this is the
     -- instant it stops being public. The caller bounds how long the response
     -- may be cached by it, so no copy of a paid page outlives the campaign.
@@ -164,6 +175,35 @@ JOIN LATERAL (
 WHERE ei.id = $1
     AND s.tenant_id = $2
 LIMIT 1;
+
+-- name: ListEpisodePreviewPagesByEpisodeID :many
+-- The pages a priced episode's preview opens to every reader, in the shape and
+-- order ListEpisodeImagesByEpisodeID lists the whole body in. Which pages
+-- those are is episode_page_in_preview's to say, so this lists exactly the
+-- pages the image route serves without a grant.
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+WHERE ei.episode_id = sqlc.arg('episode_id')
+    AND episode_page_in_preview(ei.episode_id, ei.id)
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC,
+    ei.id ASC;
 
 -- name: ListEpisodePreviewImagesByEpisodeID :many
 -- The opening pages of an episode's body, as the preview of a body the reader
