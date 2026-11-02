@@ -542,7 +542,20 @@
           "GetMyCreatorStatement"
         ]
       },
-      "exception": "Not in the app yet: #4896."
+      "mobile": {
+        "routes": [
+          "/account/creator-pages",
+          "/account/creator-pages/:creatorId",
+          "/account/creator-pages/:creatorId/statements/:period"
+        ],
+        "rpcs": [
+          "ListMyCreators",
+          "GetMyCreatorStats",
+          "ListMyCreatorStatements",
+          "GetMyCreatorStatement"
+        ]
+      },
+      "tests": ["the creator reader opens their author page"]
     },
     {
       "name": "Signing in",

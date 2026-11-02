@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -292,7 +292,7 @@ A reader whose account is linked to an Author, as [Authors and Author roles](./1
 
 They never read the statement's totals, another Author's lines, or the open month. Lines are as they were at the close, like everything else on a statement.
 
-**Download CSV** on a month saves the Author's own lines of it in the file [Exporting a statement as CSV](#exporting-a-statement-as-csv) describes, with three columns left out: `creator_id` and `creator_name`, which would name the same Author on every row, and `role_id`. `series_id` and `episode_id` hold the IDs the site's addresses carry rather than the internal ones the console's file holds. The file is named `royalties-<author>-<YYYY-MM>.csv`, after the Author's public ID and the month.
+**Download CSV** on a month saves the Author's own lines of it in the file [Exporting a statement as CSV](#exporting-a-statement-as-csv) describes, with three columns left out: `creator_id` and `creator_name`, which would name the same Author on every row, and `role_id`. `series_id` and `episode_id` hold the IDs the site's addresses carry rather than the internal ones the console's file holds. The file is named `royalties-<author>-<YYYY-MM>.csv`, after the Author's public ID and the month. In the app, **Share CSV** on a month hands the same file to the device's share sheet.
 
 ### Closing months automatically
 
