@@ -384,13 +384,23 @@ const bookstoreLinkSchema = (t: AdminMessageAccessor, number: number) => {
     { max: MAX_BOOKSTORE_LINK_URL_LENGTH, number }
   );
 
+  // The API counts both lengths in code points, so a character outside the
+  // BMP is one character here too rather than the two UTF-16 units zod's own
+  // bound would count; the shared schemas are left unbounded for that.
   return z.object({
-    label: requiredTrimmedString(labelInvalid, MAX_BOOKSTORE_LINK_LABEL_LENGTH),
+    label: requiredTrimmedString(labelInvalid, Number.POSITIVE_INFINITY).refine(
+      (value) => [...value].length <= MAX_BOOKSTORE_LINK_LABEL_LENGTH,
+      labelInvalid
+    ),
     // Required here, where the shared schema lets a blank through.
     url: optionalHttpsUrlFormSchema(
       urlInvalid,
-      MAX_BOOKSTORE_LINK_URL_LENGTH
-    ).refine((value) => value !== "", urlInvalid),
+      Number.POSITIVE_INFINITY
+    ).refine(
+      (value) =>
+        value !== "" && [...value].length <= MAX_BOOKSTORE_LINK_URL_LENGTH,
+      urlInvalid
+    ),
   });
 };
 

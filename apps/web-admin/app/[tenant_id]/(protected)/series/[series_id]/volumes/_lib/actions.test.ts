@@ -474,6 +474,32 @@ describe("setVolumeBookstoreLinksAction", () => {
     expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
   });
 
+  // The API counts characters by code point, so a character outside the BMP,
+  // two UTF-16 units, is still one character: the label is 50 of them and the
+  // URL 1526, which zod's own bounds would read as 51 and 3026.
+  it("counts characters as the API does", async () => {
+    mockSetVolumeBookstoreLinks.mockResolvedValueOnce({
+      ok: true,
+      volume: savedVolume(),
+    });
+
+    const { setVolumeBookstoreLinksAction } = await import("./actions");
+    const label = `${"B".repeat(49)}\u{1F4DA}`;
+    const url = `https://books.example.com/${"\u{1F4DA}".repeat(1500)}`;
+
+    await expect(
+      setVolumeBookstoreLinksAction(null, linksForm([{ label, url }]))
+    ).resolves.toEqual({ message: "Bookstore links saved.", ok: true });
+    expect(mockSetVolumeBookstoreLinks).toHaveBeenCalledWith(
+      {
+        bookstoreLinks: [{ label, url }],
+        id: VOLUME_ID,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+  });
+
   it("refuses an eleventh link", async () => {
     const { setVolumeBookstoreLinksAction } = await import("./actions");
 
