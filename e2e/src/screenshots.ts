@@ -1,3 +1,5 @@
+import { setTimeout } from "node:timers/promises";
+
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
@@ -132,6 +134,51 @@ const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
 };
 
 /**
+ * How long a wait for a quiet network goes before it collects the garbage, and
+ * then between two collections. Of the waits a run of the documentation shots
+ * makes, 95% end within 1.2 seconds, so a collection is spent only on a wait
+ * that has already run long.
+ */
+const GARBAGE_COLLECTION_GRACE_MS = 3000;
+
+/**
+ * Wait until nothing the page asked for is in flight.
+ *
+ * The router of a Next.js app prefetches the links a screen shows, and drops
+ * some of those responses without reading their bodies. Chromium keeps a
+ * request whose body nobody reads open until the garbage collector frees its
+ * `Response`, and only then reports it cancelled, so Playwright counts it in
+ * flight until that collection. V8 schedules the collection itself, and on the
+ * console screens it came about 30 seconds after the page first navigated, in
+ * about one test in sixteen. Collecting the garbage once the wait
+ * has run long releases such a request at once, and leaves alone a request
+ * that is still being answered, which the page still holds.
+ */
+const waitForNetworkToGoQuiet = async (page: Page): Promise<void> => {
+  // oxlint-disable-next-line sonarjs/no-networkidle-wait
+  const quiet = page.waitForLoadState("networkidle").then(() => true);
+
+  const quietWithinGrace = (): Promise<boolean> =>
+    Promise.race([quiet, setTimeout(GARBAGE_COLLECTION_GRACE_MS, false)]);
+
+  if (await quietWithinGrace()) {
+    return;
+  }
+
+  const session = await page.context().newCDPSession(page);
+
+  try {
+    do {
+      // oxlint-disable-next-line no-await-in-loop -- one collection a round, between two waits
+      await session.send("HeapProfiler.collectGarbage");
+      // oxlint-disable-next-line no-await-in-loop -- a round starts after the collection before it
+    } while (!(await quietWithinGrace()));
+  } finally {
+    await session.detach();
+  }
+};
+
+/**
  * Wait until a screen is finished, which is not when it stops changing.
  *
  * `toHaveScreenshot` waits for the page to stop changing, not for it to be
@@ -159,8 +206,7 @@ const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
 export const waitForScreenToSettle = async (page: Page): Promise<void> => {
   // The quiet network is the readiness condition, as explained above: no
   // locator can tell the hydration that is still to come from one that is done.
-  // oxlint-disable-next-line sonarjs/no-networkidle-wait
-  await page.waitForLoadState("networkidle");
+  await waitForNetworkToGoQuiet(page);
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
   await expectEveryImageLoaded(page);
 };
