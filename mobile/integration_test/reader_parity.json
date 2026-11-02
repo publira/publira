@@ -254,6 +254,14 @@
       ]
     },
     {
+      "name": "A paid episode's preview pages in the viewer, with the purchase gate after the last of them",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]/episodes/[episode_id]"],
+        "rpcs": ["GetEpisodeDetail"]
+      },
+      "exception": "Not in the app yet: #4924."
+    },
+    {
       "name": "The page a member stopped on",
       "web": {
         "routes": ["api/v1/episodes/[episode_id]/reading-position"],

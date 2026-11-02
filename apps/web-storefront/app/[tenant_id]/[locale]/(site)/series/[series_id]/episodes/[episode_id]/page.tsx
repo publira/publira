@@ -323,6 +323,7 @@ const EpisodeContent = async (
     nextEpisode,
     nextFreeEpisode,
     previewImages,
+    previewPages,
     previousEpisode,
     series,
   } = result.value;
@@ -434,6 +435,7 @@ const EpisodeContent = async (
                     nextEpisode={nextEpisode}
                     nextFreeEpisode={nextFreeEpisode}
                     previewImages={previewImages}
+                    previewPages={previewPages}
                     previousEpisode={previousEpisode}
                     series={series}
                     tenantId={tenantId}

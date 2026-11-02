@@ -5179,6 +5179,7 @@
         "guest_app_only_description": "このエピソードはアプリで販売しています。アプリで購入済みの場合は、同じアカウントでログインしてください。",
         "guest_payable_description": "本文を読むには、ログインしたうえで購入するか、管理者からチケットを付与してもらう必要があります。",
         "guest_title": "このエピソードは有料です",
+        "preview_ended_title": "試し読みはここまでです",
         "guest_unpayable_description": "本文を読むには、ログインして管理者からチケットを付与してもらう必要があります。現在このサイトでは購入手続きを利用できません。",
         "login": "ログインして閲覧する",
         "next_free_episode": "第{$number}話を無料で読む",
@@ -5235,6 +5236,7 @@
       "viewer": {
         "collapse_viewer": "ページの幅を元に戻す",
         "end_page": "おわり",
+        "preview_end_page": "試し読みのおわり",
         "enter_fullscreen": "全画面表示にする",
         "exit_fullscreen": "全画面表示を終了",
         "expand_viewer": "ウィンドウの幅まで広げる",

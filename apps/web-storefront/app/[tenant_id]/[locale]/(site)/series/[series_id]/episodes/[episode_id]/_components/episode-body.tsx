@@ -2,6 +2,7 @@ import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
 import { resolveAccessToken } from "#lib/api-client";
@@ -32,7 +33,49 @@ import {
 import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeGateFrame } from "./episode-gate-frame";
+import { EpisodePreviewViewer } from "./episode-preview-viewer";
 import { EpisodeViewer } from "./episode-viewer";
+
+/**
+ * Where the gate stands: after the episode's preview pages, as the page the
+ * reader turns to once they run out, or, where the episode opens none, over
+ * the blurred opening pages in place of the reader.
+ */
+const EpisodeGatePlacement = ({
+  children,
+  episode,
+  nextEpisode,
+  previewImages,
+  previewPages,
+  previousEpisode,
+  series,
+}: {
+  /** The gate, told with `previewEnded` whether `previewPages` precede it. */
+  children: ReactNode;
+  episode: EpisodeDetail;
+  nextEpisode?: EpisodeNeighborItem;
+  previewImages: EpisodeImageItem[];
+  previewPages: EpisodeImageItem[];
+  previousEpisode?: EpisodeNeighborItem;
+  series: EpisodeSeriesSummary;
+}) =>
+  previewPages.length > 0 ? (
+    <EpisodePreviewViewer
+      episode={episode}
+      gate={<div className="text-center">{children}</div>}
+      nextEpisode={nextEpisode}
+      previewPages={previewPages}
+      previousEpisode={previousEpisode}
+      series={series}
+    />
+  ) : (
+    <EpisodeGateFrame
+      previewImages={previewImages}
+      readingDirection={episode.readingDirection}
+    >
+      {children}
+    </EpisodeGateFrame>
+  );
 
 export const EpisodeBody = async ({
   acceptsPayments,
@@ -52,6 +95,7 @@ export const EpisodeBody = async ({
   nextEpisode,
   nextFreeEpisode,
   previewImages,
+  previewPages,
   previousEpisode,
   series,
   tenantId,
@@ -91,6 +135,11 @@ export const EpisodeBody = async ({
   nextFreeEpisode?: EpisodeNeighborItem;
   /** The blurred opening pages the gate is drawn over. */
   previewImages: EpisodeImageItem[];
+  /**
+   * The opening pages the shared read opens to every reader as a preview,
+   * which a guest turns before meeting the gate.
+   */
+  previewPages: EpisodeImageItem[];
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
   tenantId: string;
@@ -128,9 +177,13 @@ export const EpisodeBody = async ({
 
   if (!sessionId) {
     return (
-      <EpisodeGateFrame
+      <EpisodeGatePlacement
+        episode={episode}
+        nextEpisode={nextEpisode}
         previewImages={previewImages}
-        readingDirection={episode.readingDirection}
+        previewPages={previewPages}
+        previousEpisode={previousEpisode}
+        series={series}
       >
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
@@ -145,6 +198,7 @@ export const EpisodeBody = async ({
           googlePlayUrl={googlePlayUrl}
           locale={locale}
           nextFreeEpisode={nextFreeEpisode}
+          previewEnded={previewPages.length > 0}
           price={episode.price}
           purchaseSurface={episode.purchaseSurface}
           rentalPeriodHours={episode.rentalPeriodHours}
@@ -164,7 +218,7 @@ export const EpisodeBody = async ({
             ticketState: undefined,
           })}
         />
-      </EpisodeGateFrame>
+      </EpisodeGatePlacement>
     );
   }
 
@@ -261,9 +315,13 @@ export const EpisodeBody = async ({
     : undefined;
 
   return (
-    <EpisodeGateFrame
+    <EpisodeGatePlacement
+      episode={episode}
+      nextEpisode={nextEpisode}
       previewImages={previewImages}
-      readingDirection={episode.readingDirection}
+      previewPages={viewer.value.previewPages}
+      previousEpisode={previousEpisode}
+      series={series}
     >
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
@@ -279,6 +337,7 @@ export const EpisodeBody = async ({
         googlePlayUrl={googlePlayUrl}
         locale={locale}
         nextFreeEpisode={nextFreeEpisode}
+        previewEnded={viewer.value.previewPages.length > 0}
         price={episode.price}
         purchaseSurface={episode.purchaseSurface}
         rentalPeriodHours={episode.rentalPeriodHours}
@@ -294,6 +353,6 @@ export const EpisodeBody = async ({
           ticketState,
         })}
       />
-    </EpisodeGateFrame>
+    </EpisodeGatePlacement>
   );
 };

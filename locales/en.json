@@ -5179,6 +5179,7 @@
         "guest_app_only_description": "This episode is sold in the app. If you have already bought it there, sign in with the same account.",
         "guest_payable_description": "To read this episode, sign in and buy it, or ask an administrator to grant you a ticket.",
         "guest_title": "This episode is paid",
+        "preview_ended_title": "The preview ends here",
         "guest_unpayable_description": "To read this episode, sign in and ask an administrator to grant you a ticket. This site cannot take purchases at the moment.",
         "login": "Sign in to read",
         "next_free_episode": "Read episode {$number} for free",
@@ -5235,6 +5236,7 @@
       "viewer": {
         "collapse_viewer": "Restore the page width",
         "end_page": "The end",
+        "preview_end_page": "End of the preview",
         "enter_fullscreen": "Enter full screen",
         "exit_fullscreen": "Exit full screen",
         "expand_viewer": "Widen to the window",

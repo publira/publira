@@ -5179,6 +5179,7 @@
         "guest_app_only_description": "本章在應用程式內販售。如果您已在應用程式內購買，請使用同一帳戶登入。",
         "guest_payable_description": "要閱讀本章，請登入並購買，或請管理員為您發放閱讀券。",
         "guest_title": "本章為付費內容",
+        "preview_ended_title": "試讀到此結束",
         "guest_unpayable_description": "要閱讀本章，請登入並請管理員為您發放閱讀券。本網站目前無法受理購買。",
         "login": "登入後閱讀",
         "next_free_episode": "免費閱讀第{$number}章",
@@ -5235,6 +5236,7 @@
       "viewer": {
         "collapse_viewer": "恢復頁面寬度",
         "end_page": "完",
+        "preview_end_page": "試讀結束",
         "enter_fullscreen": "進入全螢幕",
         "exit_fullscreen": "結束全螢幕",
         "expand_viewer": "擴展到視窗寬度",

@@ -265,6 +265,37 @@ describe("EpisodeComicViewer progress slider", () => {
     expect(pageStatus().textContent).toBe("Page 1 of 4");
   });
 
+  it("counts a preview's pages alone, and calls the page after them the end of the preview", async () => {
+    const previewPages = pages.slice(0, 3);
+
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        endPage={<p>Buy this episode</p>}
+        pages={previewPages}
+        preview
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+    pressViewer();
+
+    const slider = progressSlider();
+    expect(slider.getAttribute("max")).toBe(String(previewPages.length));
+    expect(pageStatus().textContent).toBe("Page 1 of 3");
+
+    fireEvent.change(slider, {
+      target: { value: String(previewPages.length) },
+    });
+    releaseThumb();
+
+    expect(slider.getAttribute("aria-valuetext")).toBe("End of the preview");
+    expect(
+      screen.getByRole("region", { name: "End of the preview" }).textContent
+    ).toBe("Buy this episode");
+    expect(screen.queryByRole("region", { name: "The end" })).toBeNull();
+  });
+
   it("announces the pages under the thumb in the words the page status shows, in the reader's language", async () => {
     await renderWithClientMessages(
       <EpisodeComicViewer
