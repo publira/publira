@@ -39,13 +39,14 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 		WithArgs(
 			sqlmock.AnyArg(), tenantID, "announcement",
 			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true}, outbox.AnnouncementDeliveryPreferred, nil,
+			anInstant{}, anInstant{},
 		).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "announcement_type",
-			"link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience",
+			"link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery", "audience", "deliver_at", "delivered_at",
 		}).AddRow(
 			announcementID, tenantID, "announcement",
-			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true}, outbox.AnnouncementDeliveryPreferred, nil,
+			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true}, outbox.AnnouncementDeliveryPreferred, nil, now, now,
 		))
 	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Maintenance", "Body", now)
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)

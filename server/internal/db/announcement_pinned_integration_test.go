@@ -28,8 +28,8 @@ func mustInsertPinnedAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, announcement_type, created_at, pinned, pinned_until
-		) VALUES ($1, $2, 'announcement', $3, true, $4)
+			id, tenant_id, announcement_type, created_at, delivered_at, pinned, pinned_until
+		) VALUES ($1, $2, 'announcement', $3, $3, true, $4)
 	`, id, tenantID, createdAt, pinnedUntil)
 	if err != nil {
 		t.Fatalf("insert pinned announcement: %v", err)
@@ -160,5 +160,42 @@ func TestListPinnedAnnouncementsDueNamesOnlyClosedWindows(t *testing.T) {
 	}
 	if len(after) != 0 {
 		t.Fatalf("due after clearing = %v, want none", after)
+	}
+}
+
+// A window the console moved to a later end after the job listed it is left
+// up: the clear checks the window again instead of trusting the listing.
+func TestClearAnnouncementPinLeavesAWindowExtendedAfterTheListing(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "PINTENANT005", "pin5.example.com", "admin-pin5.example.com", "Pinned Tenant 5")
+	now := time.Now().UTC()
+	listed := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
+
+	queries := dbmodels.New(pg.DB)
+	due, err := queries.ListPinnedAnnouncementsDue(ctx)
+	if err != nil {
+		t.Fatalf("ListPinnedAnnouncementsDue: %v", err)
+	}
+	if len(due) != 1 || due[0].ID != listed {
+		t.Fatalf("due = %v, want the closed window %v", due, listed)
+	}
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE announcements SET pinned_until = now() + interval '1 hour' WHERE id = $1", listed); err != nil {
+		t.Fatalf("extend window: %v", err)
+	}
+
+	if err := queries.ClearAnnouncementPin(ctx, listed); err != nil {
+		t.Fatalf("ClearAnnouncementPin: %v", err)
+	}
+	var pinned bool
+	if err := pg.DB.QueryRowContext(ctx, "SELECT pinned FROM announcements WHERE id = $1", listed).Scan(&pinned); err != nil {
+		t.Fatalf("read pinned: %v", err)
+	}
+	if !pinned {
+		t.Fatal("pinned = false, want the extended banner left up")
 	}
 }

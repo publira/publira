@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/announcement.proto.
  */
 export const file_publira_admin_v1_announcement: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChdBbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIOCgZsb2NhbGUYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCSJbChRBbm5vdW5jZW1lbnRBdWRpZW5jZRJDCgpjb25kaXRpb25zGAEgAygLMi8ucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbiLRCAodQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24SVwoOZm9sbG93c19zZXJpZXMYASABKAsyPS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkZvbGxvd3NTZXJpZXNIABJkChVib3VnaHRfc2VyaWVzX2VwaXNvZGUYAiABKAsyQy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkJvdWdodFNlcmllc0VwaXNvZGVIABJUCgxzdWJzY3JpcHRpb24YAyABKAsyPC5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLlN1YnNjcmlwdGlvbkgAElkKD25ldmVyX3B1cmNoYXNlZBgEIAEoCzI+LnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uTmV2ZXJQdXJjaGFzZWRIABJdChJsYXN0X3JlYWRfZGF5c19hZ28YBSABKAsyPy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkxhc3RSZWFkRGF5c0Fnb0gAEmMKFXNpZ25lZF91cF93aXRoaW5fZGF5cxgGIAEoCzJCLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uU2lnbmVkVXBXaXRoaW5EYXlzSAASSAoGbG9jYWxlGAcgASgLMjYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5Mb2NhbGVIABJlChZoYXNfbW9iaWxlX3B1c2hfZGV2aWNlGAggASgLMkMucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5IYXNNb2JpbGVQdXNoRGV2aWNlSAAaKQoNRm9sbG93c1NlcmllcxIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJGi8KE0JvdWdodFNlcmllc0VwaXNvZGUSGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRpaCgxTdWJzY3JpcHRpb24SFgoOcGxhbl9wdWJsaWNfaWQYASABKAkSMgoFc3RhdGUYAiABKA4yIy5wdWJsaXJhLmFkbWluLnYxLlN1YnNjcmlwdGlvblN0YXRlGhAKDk5ldmVyUHVyY2hhc2VkGh8KD0xhc3RSZWFkRGF5c0FnbxIMCgRkYXlzGAEgASgFGiIKElNpZ25lZFVwV2l0aGluRGF5cxIMCgRkYXlzGAEgASgFGhgKBkxvY2FsZRIOCgZsb2NhbGUYASABKAkaFQoTSGFzTW9iaWxlUHVzaERldmljZUILCgljb25kaXRpb24ihwMKEUFkbWluQW5ub3VuY2VtZW50EgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBGJvZHkYAyABKAkSEAoIbGlua191cmwYBCABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJEj8KDHRyYW5zbGF0aW9ucxgLIAMoCzIpLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50VHJhbnNsYXRpb24SOAoIZGVsaXZlcnkYDCABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGA0gASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUoECAUQBkoECAYQB0oECAcQCFINYXVkaWVuY2VfdHlwZVIVdGFyZ2V0X3VzZXJfcHVibGljX2lkUhB0YXJnZXRfdXNlcl9uYW1lIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoUDChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI/Cgx0cmFuc2xhdGlvbnMYCSADKAsyKS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudFRyYW5zbGF0aW9uEhAKCGxpbmtfdXJsGAQgASgJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAkSOAoIZGVsaXZlcnkYCiABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGAsgASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUoECAIQA0oECAMQBEoECAUQBkoECAYQB1IFdGl0bGVSBGJvZHlSDWF1ZGllbmNlX3R5cGVSFnRhcmdldF91c2VyX3B1YmxpY19pZHMibAoaQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2USOQoMYW5ub3VuY2VtZW50GAIgASgLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudEoECAEQAlINYW5ub3VuY2VtZW50cyJkChhVbnBpbkFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIbChlVbnBpbkFubm91bmNlbWVudFJlc3BvbnNlIo0BCiBDb3VudEFubm91bmNlbWVudEF1ZGllbmNlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSOAoIYXVkaWVuY2UYAiABKAsyJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlIjkKIUNvdW50QW5ub3VuY2VtZW50QXVkaWVuY2VSZXNwb25zZRIUCgxyZWFkZXJfY291bnQYASABKAMqhgEKFEFubm91bmNlbWVudERlbGl2ZXJ5EiUKIUFOTk9VTkNFTUVOVF9ERUxJVkVSWV9VTlNQRUNJRklFRBAAEiMKH0FOTk9VTkNFTUVOVF9ERUxJVkVSWV9QUkVGRVJSRUQQARIiCh5BTk5PVU5DRU1FTlRfREVMSVZFUllfRVZFUllPTkUQAip0ChFTdWJzY3JpcHRpb25TdGF0ZRIiCh5TVUJTQ1JJUFRJT05fU1RBVEVfVU5TUEVDSUZJRUQQABIdChlTVUJTQ1JJUFRJT05fU1RBVEVfQUNUSVZFEAESHAoYU1VCU0NSSVBUSU9OX1NUQVRFX0VOREVEEAIy9gMKGEFkbWluQW5ub3VuY2VtZW50U2VydmljZRJuChFMaXN0QW5ub3VuY2VtZW50cxIqLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFubm91bmNlbWVudHNSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1Jlc3BvbnNlIgAScQoSQ3JlYXRlQW5ub3VuY2VtZW50EisucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXNwb25zZSIAEm4KEVVucGluQW5ub3VuY2VtZW50EioucHVibGlyYS5hZG1pbi52MS5VbnBpbkFubm91bmNlbWVudFJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVzcG9uc2UiABKGAQoZQ291bnRBbm5vdW5jZW1lbnRBdWRpZW5jZRIyLnB1YmxpcmEuYWRtaW4udjEuQ291bnRBbm5vdW5jZW1lbnRBdWRpZW5jZVJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLkNvdW50QW5ub3VuY2VtZW50QXVkaWVuY2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChdBbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIOCgZsb2NhbGUYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCSJbChRBbm5vdW5jZW1lbnRBdWRpZW5jZRJDCgpjb25kaXRpb25zGAEgAygLMi8ucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbiLRCAodQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24SVwoOZm9sbG93c19zZXJpZXMYASABKAsyPS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkZvbGxvd3NTZXJpZXNIABJkChVib3VnaHRfc2VyaWVzX2VwaXNvZGUYAiABKAsyQy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkJvdWdodFNlcmllc0VwaXNvZGVIABJUCgxzdWJzY3JpcHRpb24YAyABKAsyPC5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLlN1YnNjcmlwdGlvbkgAElkKD25ldmVyX3B1cmNoYXNlZBgEIAEoCzI+LnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uTmV2ZXJQdXJjaGFzZWRIABJdChJsYXN0X3JlYWRfZGF5c19hZ28YBSABKAsyPy5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlQ29uZGl0aW9uLkxhc3RSZWFkRGF5c0Fnb0gAEmMKFXNpZ25lZF91cF93aXRoaW5fZGF5cxgGIAEoCzJCLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2VDb25kaXRpb24uU2lnbmVkVXBXaXRoaW5EYXlzSAASSAoGbG9jYWxlGAcgASgLMjYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5Mb2NhbGVIABJlChZoYXNfbW9iaWxlX3B1c2hfZGV2aWNlGAggASgLMkMucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZUNvbmRpdGlvbi5IYXNNb2JpbGVQdXNoRGV2aWNlSAAaKQoNRm9sbG93c1NlcmllcxIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJGi8KE0JvdWdodFNlcmllc0VwaXNvZGUSGAoQc2VyaWVzX3B1YmxpY19pZBgBIAEoCRpaCgxTdWJzY3JpcHRpb24SFgoOcGxhbl9wdWJsaWNfaWQYASABKAkSMgoFc3RhdGUYAiABKA4yIy5wdWJsaXJhLmFkbWluLnYxLlN1YnNjcmlwdGlvblN0YXRlGhAKDk5ldmVyUHVyY2hhc2VkGh8KD0xhc3RSZWFkRGF5c0FnbxIMCgRkYXlzGAEgASgFGiIKElNpZ25lZFVwV2l0aGluRGF5cxIMCgRkYXlzGAEgASgFGhgKBkxvY2FsZRIOCgZsb2NhbGUYASABKAkaFQoTSGFzTW9iaWxlUHVzaERldmljZUILCgljb25kaXRpb24isQMKEUFkbWluQW5ub3VuY2VtZW50EgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBGJvZHkYAyABKAkSEAoIbGlua191cmwYBCABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJEj8KDHRyYW5zbGF0aW9ucxgLIAMoCzIpLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50VHJhbnNsYXRpb24SOAoIZGVsaXZlcnkYDCABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGA0gASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZRISCgpkZWxpdmVyX2F0GA4gASgJEhQKDGRlbGl2ZXJlZF9hdBgPIAEoCUoECAUQBkoECAYQB0oECAcQCFINYXVkaWVuY2VfdHlwZVIVdGFyZ2V0X3VzZXJfcHVibGljX2lkUhB0YXJnZXRfdXNlcl9uYW1lIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpkDChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI/Cgx0cmFuc2xhdGlvbnMYCSADKAsyKS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudFRyYW5zbGF0aW9uEhAKCGxpbmtfdXJsGAQgASgJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAkSOAoIZGVsaXZlcnkYCiABKA4yJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudERlbGl2ZXJ5EjgKCGF1ZGllbmNlGAsgASgLMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZRISCgpkZWxpdmVyX2F0GAwgASgJSgQIAhADSgQIAxAESgQIBRAGSgQIBhAHUgV0aXRsZVIEYm9keVINYXVkaWVuY2VfdHlwZVIWdGFyZ2V0X3VzZXJfcHVibGljX2lkcyJsChpDcmVhdGVBbm5vdW5jZW1lbnRSZXNwb25zZRI5Cgxhbm5vdW5jZW1lbnQYAiABKAsyIy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQW5ub3VuY2VtZW50SgQIARACUg1hbm5vdW5jZW1lbnRzIuYCChlVcGRhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkSPwoMdHJhbnNsYXRpb25zGAMgAygLMikucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIQCghsaW5rX3VybBgEIAEoCRIOCgZwaW5uZWQYBSABKAgSFAoMcGlubmVkX3VudGlsGAYgASgJEjgKCGRlbGl2ZXJ5GAcgASgOMiYucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnREZWxpdmVyeRI4CghhdWRpZW5jZRgIIAEoCzImLnB1YmxpcmEuYWRtaW4udjEuQW5ub3VuY2VtZW50QXVkaWVuY2USEgoKZGVsaXZlcl9hdBgJIAEoCSJXChpVcGRhdGVBbm5vdW5jZW1lbnRSZXNwb25zZRI5Cgxhbm5vdW5jZW1lbnQYASABKAsyIy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQW5ub3VuY2VtZW50ImUKGURlbGV0ZUFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIcChpEZWxldGVBbm5vdW5jZW1lbnRSZXNwb25zZSJkChhVbnBpbkFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIbChlVbnBpbkFubm91bmNlbWVudFJlc3BvbnNlIo0BCiBDb3VudEFubm91bmNlbWVudEF1ZGllbmNlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSOAoIYXVkaWVuY2UYAiABKAsyJi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlIjkKIUNvdW50QW5ub3VuY2VtZW50QXVkaWVuY2VSZXNwb25zZRIUCgxyZWFkZXJfY291bnQYASABKAMqhgEKFEFubm91bmNlbWVudERlbGl2ZXJ5EiUKIUFOTk9VTkNFTUVOVF9ERUxJVkVSWV9VTlNQRUNJRklFRBAAEiMKH0FOTk9VTkNFTUVOVF9ERUxJVkVSWV9QUkVGRVJSRUQQARIiCh5BTk5PVU5DRU1FTlRfREVMSVZFUllfRVZFUllPTkUQAip0ChFTdWJzY3JpcHRpb25TdGF0ZRIiCh5TVUJTQ1JJUFRJT05fU1RBVEVfVU5TUEVDSUZJRUQQABIdChlTVUJTQ1JJUFRJT05fU1RBVEVfQUNUSVZFEAESHAoYU1VCU0NSSVBUSU9OX1NUQVRFX0VOREVEEAIy3AUKGEFkbWluQW5ub3VuY2VtZW50U2VydmljZRJuChFMaXN0QW5ub3VuY2VtZW50cxIqLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFubm91bmNlbWVudHNSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1Jlc3BvbnNlIgAScQoSQ3JlYXRlQW5ub3VuY2VtZW50EisucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBbm5vdW5jZW1lbnRSZXNwb25zZSIAEnEKElVwZGF0ZUFubm91bmNlbWVudBIrLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQW5ub3VuY2VtZW50UmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQW5ub3VuY2VtZW50UmVzcG9uc2UiABJxChJEZWxldGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAEoYBChlDb3VudEFubm91bmNlbWVudEF1ZGllbmNlEjIucHVibGlyYS5hZG1pbi52MS5Db3VudEFubm91bmNlbWVudEF1ZGllbmNlUmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuQ291bnRBbm5vdW5jZW1lbnRBdWRpZW5jZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * One locale's title and body of an announcement.
@@ -365,6 +365,23 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
    * @generated from field: publira.admin.v1.AnnouncementAudience audience = 13;
    */
   audience?: AnnouncementAudience | undefined;
+
+  /**
+   * RFC 3339 instant the announcement was asked to go out at. Empty on an
+   * announcement posted before it could be scheduled.
+   *
+   * @generated from field: string deliver_at = 14;
+   */
+  deliverAt: string;
+
+  /**
+   * RFC 3339 instant it went out: shown to readers and its notification
+   * queued. Empty while it is scheduled, which is the one time it can be
+   * edited or deleted.
+   *
+   * @generated from field: string delivered_at = 15;
+   */
+  deliveredAt: string;
 };
 
 /**
@@ -496,6 +513,16 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
    * @generated from field: publira.admin.v1.AnnouncementAudience audience = 11;
    */
   audience?: AnnouncementAudience | undefined;
+
+  /**
+   * RFC 3339 instant the announcement goes out at: shown to readers and their
+   * notification queued. Empty is now; an instant already passed is
+   * invalid_argument, and so is a pinned_until not after it. Until then the
+   * announcement is scheduled and can be edited and deleted.
+   *
+   * @generated from field: string deliver_at = 12;
+   */
+  deliverAt: string;
 };
 
 /**
@@ -523,6 +550,123 @@ export const CreateAnnouncementResponseSchema: GenMessage<CreateAnnouncementResp
   messageDesc(file_publira_admin_v1_announcement, 7);
 
 /**
+ * Replaces the whole of a scheduled announcement, each field as
+ * CreateAnnouncement takes it: an empty deliver_at delivers it now. One that
+ * has been delivered is what its readers were pointed at, and is
+ * failed_precondition.
+ *
+ * @generated from message publira.admin.v1.UpdateAnnouncementRequest
+ */
+export type UpdateAnnouncementRequest = Message<"publira.admin.v1.UpdateAnnouncementRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string announcement_id = 2;
+   */
+  announcementId: string;
+
+  /**
+   * @generated from field: repeated publira.admin.v1.AnnouncementTranslation translations = 3;
+   */
+  translations: AnnouncementTranslation[];
+
+  /**
+   * @generated from field: string link_url = 4;
+   */
+  linkUrl: string;
+
+  /**
+   * @generated from field: bool pinned = 5;
+   */
+  pinned: boolean;
+
+  /**
+   * @generated from field: string pinned_until = 6;
+   */
+  pinnedUntil: string;
+
+  /**
+   * @generated from field: publira.admin.v1.AnnouncementDelivery delivery = 7;
+   */
+  delivery: AnnouncementDelivery;
+
+  /**
+   * @generated from field: publira.admin.v1.AnnouncementAudience audience = 8;
+   */
+  audience?: AnnouncementAudience | undefined;
+
+  /**
+   * @generated from field: string deliver_at = 9;
+   */
+  deliverAt: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateAnnouncementRequest.
+ * Use `create(UpdateAnnouncementRequestSchema)` to create a new message.
+ */
+export const UpdateAnnouncementRequestSchema: GenMessage<UpdateAnnouncementRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 8);
+
+/**
+ * @generated from message publira.admin.v1.UpdateAnnouncementResponse
+ */
+export type UpdateAnnouncementResponse = Message<"publira.admin.v1.UpdateAnnouncementResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminAnnouncement announcement = 1;
+   */
+  announcement?: AdminAnnouncement | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateAnnouncementResponse.
+ * Use `create(UpdateAnnouncementResponseSchema)` to create a new message.
+ */
+export const UpdateAnnouncementResponseSchema: GenMessage<UpdateAnnouncementResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 9);
+
+/**
+ * Deletes a scheduled announcement. One that has been delivered is
+ * failed_precondition, for the reason UpdateAnnouncement gives.
+ *
+ * @generated from message publira.admin.v1.DeleteAnnouncementRequest
+ */
+export type DeleteAnnouncementRequest = Message<"publira.admin.v1.DeleteAnnouncementRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string announcement_id = 2;
+   */
+  announcementId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteAnnouncementRequest.
+ * Use `create(DeleteAnnouncementRequestSchema)` to create a new message.
+ */
+export const DeleteAnnouncementRequestSchema: GenMessage<DeleteAnnouncementRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 10);
+
+/**
+ * @generated from message publira.admin.v1.DeleteAnnouncementResponse
+ */
+export type DeleteAnnouncementResponse = Message<"publira.admin.v1.DeleteAnnouncementResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteAnnouncementResponse.
+ * Use `create(DeleteAnnouncementResponseSchema)` to create a new message.
+ */
+export const DeleteAnnouncementResponseSchema: GenMessage<DeleteAnnouncementResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 11);
+
+/**
  * Takes the banner down without deleting the announcement, which stays in the
  * list it was posted to.
  *
@@ -545,7 +689,7 @@ export type UnpinAnnouncementRequest = Message<"publira.admin.v1.UnpinAnnounceme
  * Use `create(UnpinAnnouncementRequestSchema)` to create a new message.
  */
 export const UnpinAnnouncementRequestSchema: GenMessage<UnpinAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 8);
+  messageDesc(file_publira_admin_v1_announcement, 12);
 
 /**
  * @generated from message publira.admin.v1.UnpinAnnouncementResponse
@@ -558,7 +702,7 @@ export type UnpinAnnouncementResponse = Message<"publira.admin.v1.UnpinAnnouncem
  * Use `create(UnpinAnnouncementResponseSchema)` to create a new message.
  */
 export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 9);
+  messageDesc(file_publira_admin_v1_announcement, 13);
 
 /**
  * How many readers an audience would reach, for the announcement form to show
@@ -586,7 +730,7 @@ export type CountAnnouncementAudienceRequest = Message<"publira.admin.v1.CountAn
  * Use `create(CountAnnouncementAudienceRequestSchema)` to create a new message.
  */
 export const CountAnnouncementAudienceRequestSchema: GenMessage<CountAnnouncementAudienceRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 10);
+  messageDesc(file_publira_admin_v1_announcement, 14);
 
 /**
  * @generated from message publira.admin.v1.CountAnnouncementAudienceResponse
@@ -606,7 +750,7 @@ export type CountAnnouncementAudienceResponse = Message<"publira.admin.v1.CountA
  * Use `create(CountAnnouncementAudienceResponseSchema)` to create a new message.
  */
 export const CountAnnouncementAudienceResponseSchema: GenMessage<CountAnnouncementAudienceResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 11);
+  messageDesc(file_publira_admin_v1_announcement, 15);
 
 /**
  * Which readers an announcement's notification reaches.
@@ -702,6 +846,26 @@ export const AdminAnnouncementService: GenService<{
     methodKind: "unary";
     input: typeof CreateAnnouncementRequestSchema;
     output: typeof CreateAnnouncementResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_editor.
+   *
+   * @generated from rpc publira.admin.v1.AdminAnnouncementService.UpdateAnnouncement
+   */
+  updateAnnouncement: {
+    methodKind: "unary";
+    input: typeof UpdateAnnouncementRequestSchema;
+    output: typeof UpdateAnnouncementResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_editor.
+   *
+   * @generated from rpc publira.admin.v1.AdminAnnouncementService.DeleteAnnouncement
+   */
+  deleteAnnouncement: {
+    methodKind: "unary";
+    input: typeof DeleteAnnouncementRequestSchema;
+    output: typeof DeleteAnnouncementResponseSchema;
   },
   /**
    * Minimum role: tenant_editor.

@@ -7,7 +7,7 @@ updated: 2026-11-02
 
 **Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. An announcement can also be addressed only to the readers a set of conditions selects, such as the followers of one series; see [Choosing who receives it](#choosing-who-receives-it). One of them at a time can also be shown as a banner above every page of the site and the app.
 
-A Tenant admin and an Editor can create announcements and take banners down. An Auditor sees the list only.
+A Tenant admin and an Editor can create announcements, change or delete one that is scheduled, and take banners down. An Auditor sees the list only.
 
 ## Creating an announcement
 
@@ -18,9 +18,17 @@ Choose **Create an announcement** and fill in:
 - **Send to everyone** (off by default): notifies every reader with an account, including readers whose notification settings turn announcements off. See [Sending to everyone](#sending-to-everyone).
 - **Show as a site banner**: also shows the announcement above every page. See [The site banner](#the-site-banner).
 
-**Deliver the announcement** delivers it at once. An announcement has no draft and cannot be scheduled, edited, or deleted afterwards, so read it over before you deliver it.
+**Deliver the announcement** delivers it at once, unless it is given a later time to go out at, as [Scheduling an announcement](#scheduling-an-announcement) describes. Once delivered, an announcement cannot be edited or deleted, so read it over before it goes out.
 
 ![The Create an announcement form: a tab for each language the site offers with English open, Title, Body, Link, Send to everyone, Show as a site banner, and Deliver the announcement.](./announcements-create-form.png)
+
+## Scheduling an announcement
+
+An announcement can be given a time to go out at instead of going out at once: written on a Friday, for instance, to be delivered at nine on Monday. The time is in the tenant's time zone and must be in the future. A banner's **Stop showing at** must be after it.
+
+Until that time the announcement is scheduled, and readers do not see it: it is not on the site's **Announcements** page or in the app, no reader is notified of it, and its banner is not shown. A Tenant admin or an Editor can still change anything in it, the time included, or delete it. Saving it with no time delivers it at once.
+
+Within about a minute of its time, the announcement is delivered as one created then would be: readers are notified, it appears on the **Announcements** page and in the app, and its banner is shown. Readers see it among the others by the time it went out, not the time it was written. An announcement with conditions selects its readers at that moment too. From then on it can no longer be edited or deleted.
 
 ## Writing in several languages
 

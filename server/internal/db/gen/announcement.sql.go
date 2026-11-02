@@ -44,10 +44,16 @@ const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
 UPDATE announcements
 SET pinned = false
 WHERE id = $1
+    AND pinned
+    AND pinned_until IS NOT NULL
+    AND pinned_until <= NOW()
 `
 
 // The ticker job's write. It is what makes a boundary stop being due, so a run
-// that was down over one still catches up instead of collecting it.
+// that was down over one still catches up instead of collecting it. The window
+// is checked again here rather than trusted from the listing: the console may
+// have saved a scheduled announcement with a later pinned_until in the
+// meantime, and that banner is not to be taken down.
 func (q *Queries) ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, ClearAnnouncementPin, id)
 	return err
@@ -76,10 +82,12 @@ INSERT INTO announcements (
     pinned,
     pinned_until,
     delivery,
-    audience
+    audience,
+    deliver_at,
+    delivered_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery, audience
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery, audience, deliver_at, delivered_at
 `
 
 type CreateAnnouncementParams struct {
@@ -92,6 +100,8 @@ type CreateAnnouncementParams struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 }
 
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
@@ -105,6 +115,8 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		arg.PinnedUntil,
 		arg.Delivery,
 		arg.Audience,
+		arg.DeliverAt,
+		arg.DeliveredAt,
 	)
 	var i Announcement
 	err := row.Scan(
@@ -118,6 +130,8 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		&i.PinnedUntil,
 		&i.Delivery,
 		&i.Audience,
+		&i.DeliverAt,
+		&i.DeliveredAt,
 	)
 	return i, err
 }
@@ -167,6 +181,44 @@ func (q *Queries) CreateAnnouncementTranslation(ctx context.Context, arg CreateA
 	return i, err
 }
 
+const DeleteAnnouncement = `-- name: DeleteAnnouncement :execrows
+DELETE FROM announcements
+WHERE id = $1
+    AND tenant_id = $2
+    AND delivered_at IS NULL
+`
+
+type DeleteAnnouncementParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Deletes an announcement not delivered yet, and its translations with it. A
+// delivered one is what its readers were pointed at, so it stays.
+func (q *Queries) DeleteAnnouncement(ctx context.Context, arg DeleteAnnouncementParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteAnnouncement, arg.ID, arg.TenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const DeleteAnnouncementTranslations = `-- name: DeleteAnnouncementTranslations :exec
+DELETE FROM announcement_translations
+WHERE tenant_id = $1
+    AND announcement_id = $2
+`
+
+type DeleteAnnouncementTranslationsParams struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
+}
+
+func (q *Queries) DeleteAnnouncementTranslations(ctx context.Context, arg DeleteAnnouncementTranslationsParams) error {
+	_, err := q.db.ExecContext(ctx, DeleteAnnouncementTranslations, arg.TenantID, arg.AnnouncementID)
+	return err
+}
+
 const GetAnnouncementDelivery = `-- name: GetAnnouncementDelivery :one
 SELECT delivery,
     audience
@@ -196,9 +248,46 @@ func (q *Queries) GetAnnouncementDelivery(ctx context.Context, arg GetAnnounceme
 	return i, err
 }
 
+const GetAnnouncementForUpdate = `-- name: GetAnnouncementForUpdate :one
+SELECT id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery, audience, deliver_at, delivered_at
+FROM announcements
+WHERE id = $1
+    AND tenant_id = $2
+FOR UPDATE
+`
+
+type GetAnnouncementForUpdateParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// The row UpdateAnnouncement and DeleteAnnouncement act on, locked until the
+// transaction ends so the ticker job cannot deliver it in between: the job's
+// MarkAnnouncementDelivered waits on the lock, and then delivers what the edit
+// left if it is still due, or finds nothing to deliver.
+func (q *Queries) GetAnnouncementForUpdate(ctx context.Context, arg GetAnnouncementForUpdateParams) (Announcement, error) {
+	row := q.db.QueryRowContext(ctx, GetAnnouncementForUpdate, arg.ID, arg.TenantID)
+	var i Announcement
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.AnnouncementType,
+		&i.LinkUrl,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.Pinned,
+		&i.PinnedUntil,
+		&i.Delivery,
+		&i.Audience,
+		&i.DeliverAt,
+		&i.DeliveredAt,
+	)
+	return i, err
+}
+
 const GetAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience, n.deliver_at, n.delivered_at,
     tr.locale,
     tr.title,
     tr.body,
@@ -210,6 +299,7 @@ FROM announcements n
     AND nr.user_id = $2
 WHERE n.id = $3
     AND n.tenant_id = $4
+    AND n.delivered_at IS NOT NULL
     AND (
         n.audience IS NULL
         OR EXISTS (
@@ -241,6 +331,8 @@ type GetAnnouncementForUserRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 	Locale           string           `json:"locale"`
 	Title            string           `json:"title"`
 	Body             string           `json:"body"`
@@ -249,9 +341,9 @@ type GetAnnouncementForUserRow struct {
 }
 
 // Returns the announcement with the caller's read state, in its translation
-// for the locale asked for. A row owned by another tenant, and a targeted one
-// the caller was not sent, come back as no rows, so its existence is not
-// disclosed.
+// for the locale asked for. A row owned by another tenant, a targeted one the
+// caller was not sent, and one not delivered yet come back as no rows, so its
+// existence is not disclosed.
 func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
 	row := q.db.QueryRowContext(ctx, GetAnnouncementForUser,
 		arg.Locale,
@@ -271,6 +363,8 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 		&i.PinnedUntil,
 		&i.Delivery,
 		&i.Audience,
+		&i.DeliverAt,
+		&i.DeliveredAt,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
@@ -281,16 +375,17 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 }
 
 const GetPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
-SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
+SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience, n.deliver_at, n.delivered_at,
     tr.locale,
     tr.title,
     tr.body
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, $1::text) tr
 WHERE n.tenant_id = $2
+    AND n.delivered_at IS NOT NULL
     AND n.pinned
     AND (n.pinned_until IS NULL OR n.pinned_until > NOW())
-ORDER BY n.created_at DESC, n.id DESC
+ORDER BY n.delivered_at DESC, n.id DESC
 LIMIT 1
 `
 
@@ -310,13 +405,15 @@ type GetPinnedAnnouncementForTenantRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 	Locale           string           `json:"locale"`
 	Title            string           `json:"title"`
 	Body             string           `json:"body"`
 }
 
-// What the site shows as a banner: the newest announcement still inside its
-// pinned window, in its translation for the locale asked for. It names no
+// What the site shows as a banner: the newest delivered announcement still
+// inside its pinned window, in its translation for the locale asked for. It names no
 // user, so a visitor with no session gets the same answer as a signed-in
 // reader and the site caches it once per tenant and locale.
 func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPinnedAnnouncementForTenantParams) (GetPinnedAnnouncementForTenantRow, error) {
@@ -333,6 +430,8 @@ func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPin
 		&i.PinnedUntil,
 		&i.Delivery,
 		&i.Audience,
+		&i.DeliverAt,
+		&i.DeliveredAt,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
@@ -590,6 +689,45 @@ func (q *Queries) ListAnnouncementTranslations(ctx context.Context, arg ListAnno
 	return items, nil
 }
 
+const ListAnnouncementsDue = `-- name: ListAnnouncementsDue :many
+SELECT id,
+    tenant_id
+FROM announcements
+WHERE delivered_at IS NULL
+    AND deliver_at <= NOW()
+ORDER BY deliver_at, id
+`
+
+type ListAnnouncementsDueRow struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Every scheduled announcement whose time has passed, across all tenants, for
+// the ticker job that hands each to the outbox.
+func (q *Queries) ListAnnouncementsDue(ctx context.Context) ([]ListAnnouncementsDueRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementsDue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnnouncementsDueRow
+	for rows.Next() {
+		var i ListAnnouncementsDueRow
+		if err := rows.Scan(&i.ID, &i.TenantID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListAnnouncementsForTenantAsc = `-- name: ListAnnouncementsForTenantAsc :many
 SELECT
     n.id,
@@ -603,7 +741,9 @@ SELECT
     n.pinned,
     n.pinned_until,
     n.delivery,
-    n.audience
+    n.audience,
+    n.deliver_at,
+    n.delivered_at
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -643,6 +783,8 @@ type ListAnnouncementsForTenantAscRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 }
 
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
@@ -673,6 +815,8 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 			&i.PinnedUntil,
 			&i.Delivery,
 			&i.Audience,
+			&i.DeliverAt,
+			&i.DeliveredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -700,7 +844,9 @@ SELECT
     n.pinned,
     n.pinned_until,
     n.delivery,
-    n.audience
+    n.audience,
+    n.deliver_at,
+    n.delivered_at
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -740,6 +886,8 @@ type ListAnnouncementsForTenantDescRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 }
 
 // Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -777,6 +925,8 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 			&i.PinnedUntil,
 			&i.Delivery,
 			&i.Audience,
+			&i.DeliverAt,
+			&i.DeliveredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -793,7 +943,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 
 const ListAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience, n.deliver_at, n.delivered_at,
     tr.locale,
     tr.title,
     tr.body,
@@ -804,6 +954,7 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = $2
 WHERE n.tenant_id = $3
+    AND n.delivered_at IS NOT NULL
     AND (
         n.audience IS NULL
         OR EXISTS (
@@ -819,25 +970,25 @@ WHERE n.tenant_id = $3
         $4::uuid IS NULL
         OR (
             $5::boolean
-            AND (n.created_at, n.id) >= ($6::timestamptz, $4::uuid)
+            AND (n.delivered_at, n.id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
             NOT $5::boolean
-            AND (n.created_at, n.id) > ($6::timestamptz, $4::uuid)
+            AND (n.delivered_at, n.id) > ($6::timestamptz, $4::uuid)
         )
     )
-ORDER BY n.created_at ASC, n.id ASC
+ORDER BY n.delivered_at ASC, n.id ASC
 LIMIT $7
 `
 
 type ListAnnouncementsForUserAscParams struct {
-	Locale          string        `json:"locale"`
-	UserID          uuid.NullUUID `json:"user_id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	Locale            string        `json:"locale"`
+	UserID            uuid.NullUUID `json:"user_id"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorDeliveredAt sql.NullTime  `json:"cursor_delivered_at"`
+	Limit             int32         `json:"limit"`
 }
 
 type ListAnnouncementsForUserAscRow struct {
@@ -851,6 +1002,8 @@ type ListAnnouncementsForUserAscRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 	Locale           string           `json:"locale"`
 	Title            string           `json:"title"`
 	Body             string           `json:"body"`
@@ -865,7 +1018,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
-		arg.CursorCreatedAt,
+		arg.CursorDeliveredAt,
 		arg.Limit,
 	)
 	if err != nil {
@@ -886,6 +1039,8 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 			&i.PinnedUntil,
 			&i.Delivery,
 			&i.Audience,
+			&i.DeliverAt,
+			&i.DeliveredAt,
 			&i.Locale,
 			&i.Title,
 			&i.Body,
@@ -907,7 +1062,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 
 const ListAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery, n.audience, n.deliver_at, n.delivered_at,
     tr.locale,
     tr.title,
     tr.body,
@@ -918,6 +1073,7 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = $2
 WHERE n.tenant_id = $3
+    AND n.delivered_at IS NOT NULL
     AND (
         n.audience IS NULL
         OR EXISTS (
@@ -933,25 +1089,25 @@ WHERE n.tenant_id = $3
         $4::uuid IS NULL
         OR (
             $5::boolean
-            AND (n.created_at, n.id) <= ($6::timestamptz, $4::uuid)
+            AND (n.delivered_at, n.id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
             NOT $5::boolean
-            AND (n.created_at, n.id) < ($6::timestamptz, $4::uuid)
+            AND (n.delivered_at, n.id) < ($6::timestamptz, $4::uuid)
         )
     )
-ORDER BY n.created_at DESC, n.id DESC
+ORDER BY n.delivered_at DESC, n.id DESC
 LIMIT $7
 `
 
 type ListAnnouncementsForUserDescParams struct {
-	Locale          string        `json:"locale"`
-	UserID          uuid.NullUUID `json:"user_id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	Locale            string        `json:"locale"`
+	UserID            uuid.NullUUID `json:"user_id"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorDeliveredAt sql.NullTime  `json:"cursor_delivered_at"`
+	Limit             int32         `json:"limit"`
 }
 
 type ListAnnouncementsForUserDescRow struct {
@@ -965,6 +1121,8 @@ type ListAnnouncementsForUserDescRow struct {
 	PinnedUntil      sql.NullTime     `json:"pinned_until"`
 	Delivery         string           `json:"delivery"`
 	Audience         *json.RawMessage `json:"audience"`
+	DeliverAt        sql.NullTime     `json:"deliver_at"`
+	DeliveredAt      sql.NullTime     `json:"delivered_at"`
 	Locale           string           `json:"locale"`
 	Title            string           `json:"title"`
 	Body             string           `json:"body"`
@@ -972,7 +1130,10 @@ type ListAnnouncementsForUserDescRow struct {
 	ReadAt           sql.NullTime     `json:"read_at"`
 }
 
-// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
+// The public site's ListAnnouncements is (delivered_at, id) DESC, and lists
+// only delivered rows: a scheduled announcement is the console's draft until
+// the ticker job hands it to the outbox, and ordering by delivery is what puts
+// one scheduled long ago at the top the day it goes out. Forward uses
 // the DESC query; backward uses ASC so the index can be scanned in reverse.
 // The handler flips ASC rows back into display order. A parameterized
 // ORDER BY cannot be read in index order, so each scan direction gets its own
@@ -987,7 +1148,7 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
-		arg.CursorCreatedAt,
+		arg.CursorDeliveredAt,
 		arg.Limit,
 	)
 	if err != nil {
@@ -1008,6 +1169,8 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 			&i.PinnedUntil,
 			&i.Delivery,
 			&i.Audience,
+			&i.DeliverAt,
+			&i.DeliveredAt,
 			&i.Locale,
 			&i.Title,
 			&i.Body,
@@ -1071,6 +1234,7 @@ INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
+    AND n.delivered_at IS NOT NULL
     AND (
         n.audience IS NULL
         OR EXISTS (
@@ -1112,6 +1276,7 @@ SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
+    AND n.delivered_at IS NOT NULL
     AND (
         n.audience IS NULL
         OR EXISTS (
@@ -1149,6 +1314,40 @@ func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnounceme
 	return i, err
 }
 
+const MarkAnnouncementDelivered = `-- name: MarkAnnouncementDelivered :one
+UPDATE announcements
+SET delivered_at = NOW()
+WHERE id = $1
+    AND delivered_at IS NULL
+    AND deliver_at <= NOW()
+RETURNING id, tenant_id, pinned, audience
+`
+
+type MarkAnnouncementDeliveredRow struct {
+	ID       uuid.UUID        `json:"id"`
+	TenantID uuid.UUID        `json:"tenant_id"`
+	Pinned   bool             `json:"pinned"`
+	Audience *json.RawMessage `json:"audience"`
+}
+
+// The ticker job's write, in the transaction that queues the announcement's
+// event. It is what makes the row stop being due, so a worker that was down
+// over the time still delivers it on its next pass. The time is checked again
+// here rather than trusted from the listing: an announcement the console
+// deleted, delivered, or put off to a later time in the meantime comes back
+// as no rows.
+func (q *Queries) MarkAnnouncementDelivered(ctx context.Context, id uuid.UUID) (MarkAnnouncementDeliveredRow, error) {
+	row := q.db.QueryRowContext(ctx, MarkAnnouncementDelivered, id)
+	var i MarkAnnouncementDeliveredRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Pinned,
+		&i.Audience,
+	)
+	return i, err
+}
+
 const UnpinAnnouncement = `-- name: UnpinAnnouncement :one
 UPDATE announcements
 SET pinned = false
@@ -1170,4 +1369,64 @@ func (q *Queries) UnpinAnnouncement(ctx context.Context, arg UnpinAnnouncementPa
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const UpdateAnnouncement = `-- name: UpdateAnnouncement :one
+UPDATE announcements
+SET link_url = $1,
+    pinned = $2,
+    pinned_until = $3,
+    delivery = $4,
+    audience = $5,
+    deliver_at = $6,
+    delivered_at = $7
+WHERE id = $8
+    AND tenant_id = $9
+    AND delivered_at IS NULL
+RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery, audience, deliver_at, delivered_at
+`
+
+type UpdateAnnouncementParams struct {
+	LinkUrl     sql.NullString   `json:"link_url"`
+	Pinned      bool             `json:"pinned"`
+	PinnedUntil sql.NullTime     `json:"pinned_until"`
+	Delivery    string           `json:"delivery"`
+	Audience    *json.RawMessage `json:"audience"`
+	DeliverAt   sql.NullTime     `json:"deliver_at"`
+	DeliveredAt sql.NullTime     `json:"delivered_at"`
+	ID          uuid.UUID        `json:"id"`
+	TenantID    uuid.UUID        `json:"tenant_id"`
+}
+
+// Replaces everything the console writes of an announcement not delivered yet.
+// The translations are replaced beside it, through
+// DeleteAnnouncementTranslations and CreateAnnouncementTranslation.
+func (q *Queries) UpdateAnnouncement(ctx context.Context, arg UpdateAnnouncementParams) (Announcement, error) {
+	row := q.db.QueryRowContext(ctx, UpdateAnnouncement,
+		arg.LinkUrl,
+		arg.Pinned,
+		arg.PinnedUntil,
+		arg.Delivery,
+		arg.Audience,
+		arg.DeliverAt,
+		arg.DeliveredAt,
+		arg.ID,
+		arg.TenantID,
+	)
+	var i Announcement
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.AnnouncementType,
+		&i.LinkUrl,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.Pinned,
+		&i.PinnedUntil,
+		&i.Delivery,
+		&i.Audience,
+		&i.DeliverAt,
+		&i.DeliveredAt,
+	)
+	return i, err
 }

@@ -444,6 +444,8 @@
         "page_translation_created": "Page translation added",
         "page_translation_deleted": "Page translation deleted",
         "announcement_created": "Announcement created",
+        "announcement_updated": "Announcement updated",
+        "announcement_deleted": "Announcement deleted",
         "announcement_unpinned": "Announcement taken down from the site banner",
         "campaign_banner_created": "Campaign banner created",
         "campaign_banner_updated": "Campaign banner updated",

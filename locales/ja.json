@@ -444,6 +444,8 @@
         "page_translation_created": "ページの翻訳の追加",
         "page_translation_deleted": "ページの翻訳の削除",
         "announcement_created": "お知らせ作成",
+        "announcement_updated": "お知らせ更新",
+        "announcement_deleted": "お知らせ削除",
         "announcement_unpinned": "お知らせのバナー掲出終了",
         "campaign_banner_created": "キャンペーンバナー作成",
         "campaign_banner_updated": "キャンペーンバナー更新",

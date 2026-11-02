@@ -94,6 +94,59 @@ type AnnouncementNotificationPayload struct {
 	AnnouncementID string `json:"announcement_id"`
 }
 
+// AnnouncementEventQuerier is what [QueueAnnouncementNotification] writes
+// through: the querier of the transaction that delivers the announcement.
+type AnnouncementEventQuerier interface {
+	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+}
+
+// QueueAnnouncementNotification queues the bell delivery of one announcement,
+// on the querier of the write that delivers it: the console posting it for
+// now, or the deliver-announcements job once its scheduled time has passed.
+//
+// The worker owns the fan-out: an announcement addresses every user the tenant
+// has, or every one its audience selects, and an operator submitting the
+// console form must not wait on an insert per person. The idempotency key is
+// the announcement's own identity, so a redelivered event notifies nobody a
+// second time. One with an audience is queued as an event of its own type, so
+// that a worker that would deliver it to everyone never claims it.
+func QueueAnnouncementNotification(
+	ctx context.Context,
+	q AnnouncementEventQuerier,
+	tenantID, announcementID uuid.UUID,
+	targeted bool,
+) error {
+	payload, err := json.Marshal(AnnouncementNotificationPayload{
+		TenantID:       tenantID.String(),
+		AnnouncementID: announcementID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal announcement notification event: %w", err)
+	}
+	eventType, key := EventTypeAnnouncementNotification, AnnouncementIdempotencyKey(announcementID)
+	if targeted {
+		eventType, key = EventTypeTargetedAnnouncementNotification, TargetedAnnouncementIdempotencyKey(announcementID)
+	}
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("allocate outbox event id: %w", err)
+	}
+	_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      eventType,
+		Payload:        payload,
+		IdempotencyKey: key,
+		AvailableAt:    time.Now().UTC(),
+	})
+	// The insert is a no-op when the same key is already queued, and :one then
+	// returns no rows.
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("queue announcement notification: %w", err)
+	}
+	return nil
+}
+
 // announcementNotificationBody is what the inbox reads back. The tenant and the
 // announcement id are how the row found its recipients and neither says
 // anything to the person reading it, so the title is all that is carried; the

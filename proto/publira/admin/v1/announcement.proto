@@ -129,6 +129,13 @@ message AdminAnnouncement {
   AnnouncementDelivery delivery = 12;
   // The readers it was addressed to. Unset is everyone who opens the site.
   AnnouncementAudience audience = 13;
+  // RFC 3339 instant the announcement was asked to go out at. Empty on an
+  // announcement posted before it could be scheduled.
+  string deliver_at = 14;
+  // RFC 3339 instant it went out: shown to readers and its notification
+  // queued. Empty while it is scheduled, which is the one time it can be
+  // edited or deleted.
+  string delivered_at = 15;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -181,6 +188,11 @@ message CreateAnnouncementRequest {
   // with no session, so pinning it or delivering it to everyone is
   // invalid_argument.
   AnnouncementAudience audience = 11;
+  // RFC 3339 instant the announcement goes out at: shown to readers and their
+  // notification queued. Empty is now; an instant already passed is
+  // invalid_argument, and so is a pinned_until not after it. Until then the
+  // announcement is scheduled and can be edited and deleted.
+  string deliver_at = 12;
 }
 
 message CreateAnnouncementResponse {
@@ -189,6 +201,35 @@ message CreateAnnouncementResponse {
 
   AdminAnnouncement announcement = 2;
 }
+
+// Replaces the whole of a scheduled announcement, each field as
+// CreateAnnouncement takes it: an empty deliver_at delivers it now. One that
+// has been delivered is what its readers were pointed at, and is
+// failed_precondition.
+message UpdateAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+  repeated AnnouncementTranslation translations = 3;
+  string link_url = 4;
+  bool pinned = 5;
+  string pinned_until = 6;
+  AnnouncementDelivery delivery = 7;
+  AnnouncementAudience audience = 8;
+  string deliver_at = 9;
+}
+
+message UpdateAnnouncementResponse {
+  AdminAnnouncement announcement = 1;
+}
+
+// Deletes a scheduled announcement. One that has been delivered is
+// failed_precondition, for the reason UpdateAnnouncement gives.
+message DeleteAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message DeleteAnnouncementResponse {}
 
 // Takes the banner down without deleting the announcement, which stays in the
 // list it was posted to.
@@ -219,6 +260,10 @@ service AdminAnnouncementService {
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
   // Minimum role: tenant_editor.
   rpc CreateAnnouncement(CreateAnnouncementRequest) returns (CreateAnnouncementResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateAnnouncement(UpdateAnnouncementRequest) returns (UpdateAnnouncementResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteAnnouncement(DeleteAnnouncementRequest) returns (DeleteAnnouncementResponse) {}
   // Minimum role: tenant_editor.
   rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
   // Counts the readers an audience selects, and names none of them.

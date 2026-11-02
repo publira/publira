@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 	"github.com/publira/publira/server/internal/tickerjobs"
@@ -168,6 +170,49 @@ func TestWorkerAppliesAPassedCampaignPriceBoundaryAsAPeriodicJob(t *testing.T) {
 	assertJobRan(t, ctx, pg, "ticker.apply_campaign_prices")
 }
 
+// An announcement scheduled for a time that passed while no worker was running
+// is delivered on the first pass once one starts: it reads as delivered, and
+// its notification event is queued.
+func TestWorkerDeliversAnAnnouncementWhoseTimePassedWhileItWasDown(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKJOBS0006", "announcements.tickerjobs.example.com", "Ticker Announcements Tenant")
+	announcementID := uuid.Must(uuid.NewV7())
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO announcements (id, tenant_id, announcement_type, deliver_at, delivered_at)
+		VALUES ($1, $2, 'announcement', $3, NULL)
+	`, announcementID, tenant.ID, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatalf("insert scheduled announcement: %v", err)
+	}
+
+	startWorkerWithTickerJobs(t, pg)
+
+	waitFor(t, ctx, "the scheduled announcement to be delivered", func() bool {
+		var delivered sql.NullTime
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT delivered_at FROM announcements WHERE id = $1", announcementID,
+		).Scan(&delivered); err != nil {
+			t.Fatalf("read announcement: %v", err)
+		}
+		return delivered.Valid
+	})
+	var queued int
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT count(*) FROM outbox_events WHERE idempotency_key = $1", outbox.AnnouncementIdempotencyKey(announcementID),
+	).Scan(&queued); err != nil {
+		t.Fatalf("count announcement events: %v", err)
+	}
+	if queued != 1 {
+		t.Fatalf("queued %d notification events for the announcement, want 1", queued)
+	}
+
+	assertJobRan(t, ctx, pg, "ticker.deliver_announcements")
+}
+
 func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -177,7 +222,7 @@ func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 
 	startWorkerWithTickerJobs(t, pg)
 
-	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day", "ticker.apply_series_publications", "ticker.apply_campaign_banners", "ticker.apply_campaign_prices"} {
+	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day", "ticker.apply_series_publications", "ticker.apply_campaign_banners", "ticker.apply_campaign_prices", "ticker.deliver_announcements"} {
 		assertJobRan(t, ctx, pg, kind)
 	}
 }

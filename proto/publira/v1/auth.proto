@@ -618,6 +618,9 @@ message AnnouncementItem {
   string link_url = 5;
   bool is_read = 6;
   string read_at = 7;
+  // RFC 3339 instant the announcement went out to readers, which the list is
+  // ordered by: the instant it was posted, or for a scheduled one the instant
+  // it was delivered.
   string created_at = 8;
   // Whether the site shows this announcement as a banner above every page.
   bool pinned = 9;

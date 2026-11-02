@@ -5772,6 +5772,9 @@ class AnnouncementItem extends $pb.GeneratedMessage {
   @$pb.TagNumber(7)
   void clearReadAt() => $_clearField(7);
 
+  /// RFC 3339 instant the announcement went out to readers, which the list is
+  /// ordered by: the instant it was posted, or for a scheduled one the instant
+  /// it was delivered.
   @$pb.TagNumber(8)
   $core.String get createdAt => $_getSZ(7);
   @$pb.TagNumber(8)

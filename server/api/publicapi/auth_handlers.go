@@ -1740,9 +1740,12 @@ type announcementPageRow struct {
 	linkURL          sql.NullString
 	isRead           bool
 	readAt           sql.NullTime
-	createdAt        time.Time
-	pinned           bool
-	pinnedUntil      sql.NullTime
+	// deliveredAt is when the announcement went out to readers: the list's
+	// sort key and the instant it is answered as created at. Every row read
+	// here has been delivered.
+	deliveredAt time.Time
+	pinned      bool
+	pinnedUntil sql.NullTime
 }
 
 // is_read comes back as an untyped SQL boolean expression, so it lands in an
@@ -1764,7 +1767,7 @@ func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForUserDescRow) []
 			linkURL:          row.LinkUrl,
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
-			createdAt:        row.CreatedAt,
+			deliveredAt:      row.DeliveredAt.Time,
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		})
@@ -1784,7 +1787,7 @@ func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []an
 			linkURL:          row.LinkUrl,
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
-			createdAt:        row.CreatedAt,
+			deliveredAt:      row.DeliveredAt.Time,
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		})
@@ -1809,7 +1812,7 @@ func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
 		LinkUrl:          row.linkURL.String,
 		IsRead:           row.isRead,
 		ReadAt:           readAt,
-		CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
+		CreatedAt:        row.deliveredAt.UTC().Format(time.RFC3339),
 		Pinned:           row.pinned,
 		PinnedUntil:      pinnedUntil,
 		Locale:           row.locale,
@@ -1828,13 +1831,13 @@ func (s *apiServer) announcementPage(
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
 		rows, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
-			TenantID:        tenantID,
-			UserID:          userID,
-			Locale:          locale,
-			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-			CursorInclusive: keys.Inclusive,
-			Limit:           limit,
+			TenantID:          tenantID,
+			UserID:            userID,
+			Locale:            locale,
+			CursorID:          uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorDeliveredAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			CursorInclusive:   keys.Inclusive,
+			Limit:             limit,
 		})
 		if err != nil {
 			return nil, err
@@ -1843,13 +1846,13 @@ func (s *apiServer) announcementPage(
 	}
 
 	rows, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
-		TenantID:        tenantID,
-		UserID:          userID,
-		Locale:          locale,
-		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-		CursorInclusive: keys.Inclusive,
-		Limit:           limit,
+		TenantID:          tenantID,
+		UserID:            userID,
+		Locale:            locale,
+		CursorID:          uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorDeliveredAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive:   keys.Inclusive,
+		Limit:             limit,
 	})
 	if err != nil {
 		return nil, err
@@ -1905,11 +1908,11 @@ func (s *apiServer) ListAnnouncements(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].deliveredAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.deliveredAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -1990,7 +1993,7 @@ func (s *apiServer) GetAnnouncement(
 			linkURL:          row.LinkUrl,
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
-			createdAt:        row.CreatedAt,
+			deliveredAt:      row.DeliveredAt.Time,
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		}),
@@ -2034,7 +2037,7 @@ func (s *apiServer) GetPinnedAnnouncement(
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
-			createdAt:        row.CreatedAt,
+			deliveredAt:      row.DeliveredAt.Time,
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		}),

@@ -301,20 +301,25 @@ describe("AuditLogActionCell", () => {
 
   it.each(
     getLocales().flatMap((locale) =>
-      (
-        [
-          ["preferred", "delivery=preferred"],
-          ["everyone", "delivery=everyone"],
-          ["targeted", "delivery=preferred;audience=targeted"],
-        ] as const
-      ).map(([delivery, reason]) => [locale, delivery, reason] as const)
+      (["announcement_created", "announcement_updated"] as const).flatMap(
+        (action) =>
+          (
+            [
+              ["preferred", "delivery=preferred"],
+              ["everyone", "delivery=everyone"],
+              ["targeted", "delivery=preferred;audience=targeted"],
+            ] as const
+          ).map(
+            ([delivery, reason]) => [locale, action, delivery, reason] as const
+          )
+      )
     )
   )(
-    "names who a posted announcement's notification was for in %s: %s",
-    async (locale, delivery, reason) => {
+    "names who an announcement's notification is for in %s: %s %s",
+    async (locale, action, delivery, reason) => {
       const cell = await renderActionCell(
         locale,
-        "announcement_created",
+        action,
         "announcement",
         "ANNOUNCEMENT001",
         reason

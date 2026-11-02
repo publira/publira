@@ -139,7 +139,10 @@ type Querier interface {
 	// clears the presets accounts elected as well.
 	ClearAllReaderIcons(ctx context.Context, tenantID uuid.NullUUID) ([]uuid.UUID, error)
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
-	// that was down over one still catches up instead of collecting it.
+	// that was down over one still catches up instead of collecting it. The window
+	// is checked again here rather than trusted from the listing: the console may
+	// have saved a scheduled announcement with a later pinned_until in the
+	// meantime, and that banner is not to be taken down.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
 	// The episodes RedateEpisodesForSeriesPublication answered, once their
 	// announcements are queued: the outbox owns them from there.
@@ -546,6 +549,10 @@ type Querier interface {
 	// any token, as a retry does, until that worker finishes the event or the
 	// worker gives the type up and marks the event dead.
 	DeferOutboxEvent(ctx context.Context, arg DeferOutboxEventParams) (OutboxEvent, error)
+	// Deletes an announcement not delivered yet, and its translations with it. A
+	// delivered one is what its readers were pointed at, so it stays.
+	DeleteAnnouncement(ctx context.Context, arg DeleteAnnouncementParams) (int64, error)
+	DeleteAnnouncementTranslations(ctx context.Context, arg DeleteAnnouncementTranslationsParams) error
 	DeleteCampaignBanner(ctx context.Context, arg DeleteCampaignBannerParams) (int64, error)
 	// Clears one aspect ratio of a banner image.
 	DeleteCampaignBannerImageVariantsByType(ctx context.Context, arg DeleteCampaignBannerImageVariantsByTypeParams) (int64, error)
@@ -733,10 +740,15 @@ type Querier interface {
 	// and the audience it is addressed to, which the worker validates before it
 	// writes a row for anyone.
 	GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (GetAnnouncementDeliveryRow, error)
+	// The row UpdateAnnouncement and DeleteAnnouncement act on, locked until the
+	// transaction ends so the ticker job cannot deliver it in between: the job's
+	// MarkAnnouncementDelivered waits on the lock, and then delivers what the edit
+	// left if it is still due, or finds nothing to deliver.
+	GetAnnouncementForUpdate(ctx context.Context, arg GetAnnouncementForUpdateParams) (Announcement, error)
 	// Returns the announcement with the caller's read state, in its translation
-	// for the locale asked for. A row owned by another tenant, and a targeted one
-	// the caller was not sent, come back as no rows, so its existence is not
-	// disclosed.
+	// for the locale asked for. A row owned by another tenant, a targeted one the
+	// caller was not sent, and one not delivered yet come back as no rows, so its
+	// existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	// The console's audience statistics: how a tenant's series were followed,
 	// read, and reacted to over a period of its own days.
@@ -1050,8 +1062,8 @@ type Querier interface {
 	GetPageWithTranslationForTenant(ctx context.Context, arg GetPageWithTranslationForTenantParams) (GetPageWithTranslationForTenantRow, error)
 	GetPaymentReconciliation(ctx context.Context, arg GetPaymentReconciliationParams) (PaymentReconciliation, error)
 	GetPaymentReconciliationForPeriod(ctx context.Context, arg GetPaymentReconciliationForPeriodParams) (PaymentReconciliation, error)
-	// What the site shows as a banner: the newest announcement still inside its
-	// pinned window, in its translation for the locale asked for. It names no
+	// What the site shows as a banner: the newest delivered announcement still
+	// inside its pinned window, in its translation for the locale asked for. It names no
 	// user, so a visitor with no session gets the same answer as a signed-in
 	// reader and the site caches it once per tenant and locale.
 	GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPinnedAnnouncementForTenantParams) (GetPinnedAnnouncementForTenantRow, error)
@@ -1810,6 +1822,9 @@ type Querier interface {
 	// Every translation of the announcements named, oldest first within each, for
 	// the console to read back what it wrote.
 	ListAnnouncementTranslations(ctx context.Context, arg ListAnnouncementTranslationsParams) ([]AnnouncementTranslation, error)
+	// Every scheduled announcement whose time has passed, across all tenants, for
+	// the ticker job that hands each to the outbox.
+	ListAnnouncementsDue(ctx context.Context) ([]ListAnnouncementsDueRow, error)
 	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error)
 	// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_announcements_tenant_created_at can be
@@ -1820,7 +1835,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
 	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
-	// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
+	// The public site's ListAnnouncements is (delivered_at, id) DESC, and lists
+	// only delivered rows: a scheduled announcement is the console's draft until
+	// the ticker job hands it to the outbox, and ordering by delivery is what puts
+	// one scheduled long ago at the top the day it goes out. Forward uses
 	// the DESC query; backward uses ASC so the index can be scanned in reverse.
 	// The handler flips ASC rows back into display order. A parameterized
 	// ORDER BY cannot be read in index order, so each scan direction gets its own
@@ -3592,6 +3610,13 @@ type Querier interface {
 	// of failing. The SELECT confines the insert to the caller's own tenant and to
 	// an announcement listed to the caller.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
+	// The ticker job's write, in the transaction that queues the announcement's
+	// event. It is what makes the row stop being due, so a worker that was down
+	// over the time still delivers it on its next pass. The time is checked again
+	// here rather than trusted from the listing: an announcement the console
+	// deleted, delivered, or put off to a later time in the meantime comes back
+	// as no rows.
+	MarkAnnouncementDelivered(ctx context.Context, id uuid.UUID) (MarkAnnouncementDeliveredRow, error)
 	MarkCampaignBannerEndRevalidated(ctx context.Context, id uuid.UUID) error
 	// The marks re-check the instant, so a banner rescheduled ahead between the
 	// listing and the mark keeps its drop owed.
@@ -4286,6 +4311,10 @@ type Querier interface {
 	// A user who never confirmed their address goes back to inactive, the state
 	// VerifyUserEmail activates.
 	UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Replaces everything the console writes of an announcement not delivered yet.
+	// The translations are replaced beside it, through
+	// DeleteAnnouncementTranslations and CreateAnnouncementTranslation.
+	UpdateAnnouncement(ctx context.Context, arg UpdateAnnouncementParams) (Announcement, error)
 	UpdateCampaignBanner(ctx context.Context, arg UpdateCampaignBannerParams) error
 	UpdateCampaignBannerDisplayOrder(ctx context.Context, arg UpdateCampaignBannerDisplayOrderParams) error
 	UpdateCoinPack(ctx context.Context, arg UpdateCoinPackParams) (TenantCoinPack, error)

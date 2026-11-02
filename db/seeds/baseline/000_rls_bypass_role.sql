@@ -558,11 +558,12 @@ TO publira_ticker;
 -- and the rows the fan-out files. SELECT rides along on the last three
 -- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
 GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
--- The pinned flag is the one column expire-pinned-announcements writes, and an
--- announcement carries the tenant's own words, so the grant names the column
--- rather than the table. This role reaches every tenant, so a table-wide UPDATE here
--- would let a ticker job rewrite any announcement of any tenant.
-GRANT UPDATE (pinned) ON announcements TO publira_ticker;
+-- The pinned flag is the one column expire-pinned-announcements writes, and
+-- delivered_at the one deliver-announcements writes. An announcement carries
+-- the tenant's own words, so the grant names the columns rather than the table.
+-- This role reaches every tenant, so a table-wide UPDATE here would let a ticker
+-- job rewrite any announcement of any tenant.
+GRANT UPDATE (pinned, delivered_at) ON announcements TO publira_ticker;
 -- The same holds for a series: apply-series-publications records the drop it
 -- owed for a series whose publication instant has passed, and writes nothing
 -- else of a row that carries the tenant's own catalog.

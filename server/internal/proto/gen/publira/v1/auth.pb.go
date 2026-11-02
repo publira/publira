@@ -4052,11 +4052,14 @@ type AnnouncementItem struct {
 	AnnouncementType string                 `protobuf:"bytes,2,opt,name=announcement_type,json=announcementType,proto3" json:"announcement_type,omitempty"`
 	// The title and body of the translation in the locale the request asked for,
 	// else the tenant's default locale, else the oldest. locale names which.
-	Title     string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Body      string `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
-	LinkUrl   string `protobuf:"bytes,5,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
-	IsRead    bool   `protobuf:"varint,6,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
-	ReadAt    string `protobuf:"bytes,7,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`
+	Title   string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Body    string `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	LinkUrl string `protobuf:"bytes,5,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
+	IsRead  bool   `protobuf:"varint,6,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
+	ReadAt  string `protobuf:"bytes,7,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`
+	// RFC 3339 instant the announcement went out to readers, which the list is
+	// ordered by: the instant it was posted, or for a scheduled one the instant
+	// it was delivered.
 	CreatedAt string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Whether the site shows this announcement as a banner above every page.
 	Pinned bool `protobuf:"varint,9,opt,name=pinned,proto3" json:"pinned,omitempty"`

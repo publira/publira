@@ -188,16 +188,17 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	var periodic []outbox.PeriodicRegistrar
 
 	tickerConfig := tickerjobs.Config{
-		Logger:                     logger,
-		PublishInterval:            envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
-		FreeWindowInterval:         envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
-		TenantDayInterval:          envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
-		PinnedAnnouncementInterval: envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
-		SeriesPublicationInterval:  envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
-		CampaignBannerInterval:     envSeconds("PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS", 0),
-		CampaignPriceInterval:      envSeconds("PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS", 0),
-		CoinExpiryInterval:         envSeconds("PUBLIRA_COIN_EXPIRY_INTERVAL_SECONDS", 0),
-		FreeAfterInterval:          envSeconds("PUBLIRA_FREE_AFTER_INTERVAL_SECONDS", 0),
+		Logger:                        logger,
+		PublishInterval:               envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
+		FreeWindowInterval:            envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
+		TenantDayInterval:             envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
+		PinnedAnnouncementInterval:    envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
+		SeriesPublicationInterval:     envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
+		CampaignBannerInterval:        envSeconds("PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS", 0),
+		CampaignPriceInterval:         envSeconds("PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS", 0),
+		CoinExpiryInterval:            envSeconds("PUBLIRA_COIN_EXPIRY_INTERVAL_SECONDS", 0),
+		FreeAfterInterval:             envSeconds("PUBLIRA_FREE_AFTER_INTERVAL_SECONDS", 0),
+		ScheduledAnnouncementInterval: envSeconds("PUBLIRA_SCHEDULED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
 	}
 	if tickerDB := pools.ticker; tickerDB != nil {
 		tickerConfig.DB = tickerDB
