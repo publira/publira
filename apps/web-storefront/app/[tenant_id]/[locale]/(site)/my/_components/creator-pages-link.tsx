@@ -1,4 +1,5 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
@@ -22,7 +23,9 @@ import { getTenantId } from "#lib/tenant-id";
  * included, as a failed read of the footer links does: the link is chrome,
  * and a throw would take the whole of My Page down with it, while a section
  * error in its place would tell every reader of the site, most of them no
- * Author, that pages they never had could not be shown.
+ * Author, that pages they never had could not be shown. What Next.js throws
+ * to steer the render, such as the end of a prerender, is not a failed read
+ * and goes on to Next.js.
  */
 export const CreatorPagesLink = async () => {
   const tenantId = await getTenantId();
@@ -36,6 +39,7 @@ export const CreatorPagesLink = async () => {
   try {
     result = await listMyCreators(tenantId, await getLocale());
   } catch (error) {
+    unstable_rethrow(error);
     console.warn("[web-storefront] listMyCreators failed", error);
 
     return null;

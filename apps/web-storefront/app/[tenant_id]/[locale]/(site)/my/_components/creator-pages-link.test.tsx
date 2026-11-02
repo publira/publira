@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
+import { notFound } from "next/navigation";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -112,5 +113,19 @@ describe("CreatorPagesLink", () => {
     expect(link()).toBeNull();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("hands what Next.js throws to steer the render back to Next.js", async () => {
+    let steer: unknown;
+
+    try {
+      notFound();
+    } catch (error) {
+      steer = error;
+    }
+
+    mockListMyCreators.mockRejectedValue(steer);
+
+    await expect(renderLink()).rejects.toBe(steer);
   });
 });
