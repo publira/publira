@@ -22,8 +22,8 @@ func (DataExportBuild) Run(ctx context.Context, deps Deps) error {
 	started := time.Now()
 	summary, err := dataexport.RunPending(ctx, dataexport.Deps{
 		DB:         deps.DB,
-		Storage:    deps.Uploads,
-		Reclaimers: deps.Storage,
+		Storage:    deps.DataExports,
+		Reclaimers: deps.DataExportBucket,
 		Logger:     logger,
 	})
 	attrs := []any{
@@ -57,7 +57,7 @@ func (j DataExportPurge) Run(ctx context.Context, deps Deps) error {
 	started := time.Now()
 	result, err := dataexport.Purge(ctx, dataexport.Deps{
 		DB:         deps.DB,
-		Reclaimers: deps.Storage,
+		Reclaimers: deps.DataExportBucket,
 		Logger:     logger,
 	}, j.DryRun)
 	attrs := []any{

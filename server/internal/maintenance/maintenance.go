@@ -57,12 +57,15 @@ type Deps struct {
 	// primary had committed when that tenant's rebuild began, waiting up to
 	// replicaCatchUpWait for it, and on DB when it has not.
 	Replica *sql.DB
-	// Storage resolves the bucket OrphanImagePurge reclaims, and the one
-	// DataExportPurge deletes the readers' archives from.
+	// Storage resolves the bucket OrphanImagePurge reclaims, and is the one
+	// dependency no other job takes.
 	Storage storage.ReclaimerSource
-	// Uploads stores the archives DataExportBuild builds, in the bucket the
-	// platform names when the pass runs.
-	Uploads storage.Provider
+	// DataExports stores the archives DataExportBuild builds, and
+	// DataExportBucket resolves the bucket DataExportBuild and DataExportPurge
+	// delete them from: the same bucket as Storage's, held apart so that only
+	// the jobs that keep the archives reach it as theirs.
+	DataExports      storage.Provider
+	DataExportBucket storage.ReclaimerSource
 	// Secrets decrypts the store credentials GooglePlayVoidedPurchaseSync
 	// calls Google Play with, and the credentials PaymentReconciliation reads
 	// each source with. GooglePlay is the API both call.

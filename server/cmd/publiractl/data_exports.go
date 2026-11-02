@@ -51,9 +51,9 @@ func runDataExportJob(ctx context.Context, logger *slog.Logger, cfg *config.Conf
 		Logger:  logger,
 	}, platformstorage.NewStorage)
 	return run(ctx, maintenance.Deps{
-		DB:      db,
-		Storage: platformstorage.Reclaimers{Resolver: bucket},
-		Uploads: platformstorage.Provider{Resolver: bucket},
-		Logger:  logger,
+		DB:               db,
+		DataExports:      platformstorage.Provider{Resolver: bucket},
+		DataExportBucket: platformstorage.Reclaimers{Resolver: bucket},
+		Logger:           logger,
 	})
 }

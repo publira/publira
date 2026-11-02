@@ -237,7 +237,6 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			DB:         contentStatsDB,
 			Replica:    pools.contentStatsReplica,
 			Storage:    reclaimers,
-			Uploads:    platformstorage.Provider{Resolver: bucket},
 			Secrets:    encryptor,
 			GooglePlay: googleplay.NewClient(googleplay.Config{}),
 			Payments:   payments,
@@ -245,6 +244,8 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			Logger:     logger,
 
 			AppStoreVerifier: appstore.NewVerifier(),
+			DataExports:      platformstorage.Provider{Resolver: bucket},
+			DataExportBucket: reclaimers,
 		})
 		if err != nil {
 			return half{}, failed("failed to initialize the maintenance jobs", err)

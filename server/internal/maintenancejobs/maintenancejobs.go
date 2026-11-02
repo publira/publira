@@ -218,13 +218,14 @@ type Config struct {
 	// Replica is a hot standby of DB's cluster signed in as the same login, or
 	// nil; maintenance.Deps.Replica says which reads it makes.
 	Replica *sql.DB
-	// Storage resolves the bucket the orphan image sweep reclaims, and the one
-	// the data export purge deletes from. A platform with none configured
-	// still registers the sweep, whose runs are then cancelled with
-	// storage.ErrNotConfigured.
+	// Storage resolves the bucket the orphan image sweep reclaims. A platform
+	// with none configured still registers the sweep, whose runs are then
+	// cancelled with storage.ErrNotConfigured.
 	Storage storage.ReclaimerSource
-	// Uploads stores the readers' archives in the same bucket.
-	Uploads storage.Provider
+	// DataExports and DataExportBucket store and delete the readers' archives
+	// in the same bucket, as maintenance.Deps describes.
+	DataExports      storage.Provider
+	DataExportBucket storage.ReclaimerSource
 	// Secrets and GooglePlay are what the voided purchase sync reads each
 	// tenant's Google Play refunds with. Secrets also decrypts the password
 	// the search index build connects to the engine with.
@@ -288,12 +289,14 @@ func New(cfg Config) (*Jobs, error) {
 		DB:         cfg.DB,
 		Replica:    cfg.Replica,
 		Storage:    cfg.Storage,
-		Uploads:    cfg.Uploads,
 		Secrets:    cfg.Secrets,
 		GooglePlay: cfg.GooglePlay,
 		Payments:   cfg.Payments,
 		AppStore:   cfg.AppStore,
 		Logger:     cfg.Logger,
+
+		DataExports:      cfg.DataExports,
+		DataExportBucket: cfg.DataExportBucket,
 
 		AppStoreVerifier: cfg.AppStoreVerifier,
 	}, turnWait: passTurnWait}
