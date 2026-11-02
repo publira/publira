@@ -76,6 +76,14 @@ mobile_device_address() {
   esac
 }
 
+# Whether adb answers for $1. A name it does not is a target of another kind
+# -- `chrome`, `linux`, an iOS simulator -- and each of those already runs
+# here. Ask this before any other adb command on $1: those wait for the device
+# to appear, and a target of another kind never does.
+mobile_adb_device() {
+  adb -s "$1" get-state > /dev/null 2>&1
+}
+
 # Binds this machine's port $2 onto $1's own loopback, which is the address
 # mobile_device_address answers with for anything but an emulator.
 mobile_bind_device_port() {
@@ -83,9 +91,7 @@ mobile_bind_device_port() {
   case "${device}" in
     '' | emulator-*) return 0 ;;
   esac
-  # A name adb does not answer for is a target of another kind -- `chrome`,
-  # `linux`, an iOS simulator -- and each of those already runs here.
-  adb -s "${device}" get-state > /dev/null 2>&1 || return 0
+  mobile_adb_device "${device}" || return 0
   adb -s "${device}" reverse "tcp:${port}" "tcp:${port}" > /dev/null
 }
 

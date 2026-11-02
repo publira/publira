@@ -71,7 +71,7 @@ tasks:
       - flutter test
 
   test-device-ports:
-    desc: Check the address and port forwarding test-integration gives each kind of device, with adb and flutter stubbed (no device)
+    desc: Check the address and port forwarding test-integration gives each kind of device, and what a failing run collects from it, with adb and flutter stubbed (no device)
     cmds:
       - bash scripts/device-ports_test.sh
 
