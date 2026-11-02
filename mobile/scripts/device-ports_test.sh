@@ -27,7 +27,7 @@ mkdir -p "${stub_bin}"
 # and every emulator reaches the API at once.
 cat > "${stub_bin}/adb" << 'EOF'
 #!/usr/bin/env bash
-printf 'adb %s\n' "$*" >> "${STUB_LOG}"
+printf 'adb %s\n' "$*" >> "${PUBLIRA_STUB_LOG}"
 case "$2" in
   R5CT* | emulator-*) ;;
   *) exit 1 ;;
@@ -35,15 +35,15 @@ esac
 [[ "$3" == shell ]] && printf 'HTTP/1.0 404 Not Found\n'
 exit 0
 EOF
-# `flutter test` exits with STUB_TEST_STATUS, and a failure leaves a screenshot
-# where the Linux desktop build writes them.
+# `flutter test` exits with PUBLIRA_STUB_TEST_STATUS, and a failure leaves a
+# screenshot where the Linux desktop build writes them.
 cat > "${stub_bin}/flutter" << 'EOF'
 #!/usr/bin/env bash
-printf 'flutter %s\n' "$*" >> "${STUB_LOG}"
-if [[ "$1" == test && "${STUB_TEST_STATUS}" -ne 0 ]]; then
+printf 'flutter %s\n' "$*" >> "${PUBLIRA_STUB_LOG}"
+if [[ "$1" == test && "${PUBLIRA_STUB_TEST_STATUS}" -ne 0 ]]; then
   mkdir -p "${TMPDIR}/publira-integration"
   : > "${TMPDIR}/publira-integration/failure.png"
-  exit "${STUB_TEST_STATUS}"
+  exit "${PUBLIRA_STUB_TEST_STATUS}"
 fi
 EOF
 cat > "${stub_bin}/dart" << 'EOF'
@@ -52,13 +52,13 @@ EOF
 # The Linux desktop's session: each wrapper logs itself and runs its command.
 cat > "${stub_bin}/dbus-run-session" << 'EOF'
 #!/usr/bin/env bash
-printf 'dbus-run-session\n' >> "${STUB_LOG}"
+printf 'dbus-run-session\n' >> "${PUBLIRA_STUB_LOG}"
 shift
 exec "$@"
 EOF
 cat > "${stub_bin}/xvfb-run" << 'EOF'
 #!/usr/bin/env bash
-printf 'xvfb-run\n' >> "${STUB_LOG}"
+printf 'xvfb-run\n' >> "${PUBLIRA_STUB_LOG}"
 while [[ "$1" == --* ]]; do shift; done
 exec "$@"
 EOF
@@ -86,8 +86,8 @@ run_on() {
   : > "${log}"
   env -u PUBLIRA_BASE_URL -u PUBLIRA_TENANT_HOST \
     PATH="${stub_bin}:${PATH}" \
-    STUB_LOG="${log}" \
-    STUB_TEST_STATUS="${expected}" \
+    PUBLIRA_STUB_LOG="${log}" \
+    PUBLIRA_STUB_TEST_STATUS="${expected}" \
     PUBLIRA_E2E_RUN_DIR="${artifacts%/artifacts}" \
     PUBLIRA_E2E_MOBILE_DEVICE="$1" \
     PUBLIRA_E2E_PUBLIC_API_PORT="${port}" \
