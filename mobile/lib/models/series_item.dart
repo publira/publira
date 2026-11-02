@@ -494,6 +494,7 @@ class VolumeItem {
     required this.price,
     required this.episodeIds,
     this.coverVariants = const [],
+    this.bookstoreLinks = const [],
   });
 
   /// Internal id (`id`), which `StartVolumeCheckout` takes.
@@ -514,6 +515,23 @@ class VolumeItem {
   /// Renditions of the volume's cover. Empty on a volume with none, where the
   /// series' eye-catch stands in for it.
   final List<EyeCatchVariant> coverVariants;
+
+  /// Where the volume's printed book is sold, in the order the console saved
+  /// them. Empty on a volume with none.
+  final List<BookstoreLink> bookstoreLinks;
+}
+
+/// A bookstore selling a volume's printed book, as
+/// `publira.types.v1.BookstoreLink` describes it.
+class BookstoreLink {
+  const BookstoreLink({required this.label, required this.url});
+
+  /// What the link's button says, which the tenant writes, such as the
+  /// bookstore's name.
+  final String label;
+
+  /// The bookstore's page, which the system browser is handed.
+  final Uri url;
 }
 
 /// Series plus its published episodes.

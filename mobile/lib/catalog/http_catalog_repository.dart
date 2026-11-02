@@ -1285,10 +1285,32 @@ class HttpCatalogRepository implements CatalogRepository {
               'volumes[]',
               field: 'coverImageVariants',
             ),
+            bookstoreLinks: _parseBookstoreLinks(volume.bookstoreLinks),
           ),
     ];
     parsed.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return List<VolumeItem>.unmodifiable(parsed);
+  }
+
+  /// The links in the order the console saved them.
+  List<BookstoreLink> _parseBookstoreLinks(List<pb.BookstoreLink> links) {
+    return List<BookstoreLink>.unmodifiable([
+      for (final link in links) ?_parseBookstoreLink(link),
+    ]);
+  }
+
+  /// The system browser is handed the link, so one without a label or an
+  /// https URL is left out rather than failing the series it came with.
+  static BookstoreLink? _parseBookstoreLink(pb.BookstoreLink link) {
+    final label = link.label.trim();
+    final url = Uri.tryParse(link.url.trim());
+    if (label.isEmpty ||
+        url == null ||
+        !url.isScheme('https') ||
+        url.host.isEmpty) {
+      return null;
+    }
+    return BookstoreLink(label: label, url: url);
   }
 
   WaitFreeRule _parseWaitFreeRule(pb.WaitFreeRule rule) {

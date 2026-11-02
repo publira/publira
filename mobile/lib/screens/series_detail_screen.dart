@@ -22,7 +22,9 @@ import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/link_scope.dart';
+import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
@@ -1450,7 +1452,8 @@ class _PurchaseStateFailure extends StatelessWidget {
 }
 
 /// One volume of the series: its cover, its title, how many episodes it holds
-/// and what it costs, and [control] under them.
+/// and what it costs, [control] under them, and the bookstores selling its
+/// printed book under that.
 class _VolumeTile extends StatelessWidget {
   const _VolumeTile({
     required this.volume,
@@ -1516,8 +1519,63 @@ class _VolumeTile extends StatelessWidget {
                   ),
                 ),
                 if (control != null) ...[const SizedBox(height: 8), control],
+                if (volume.bookstoreLinks.isNotEmpty)
+                  _BookstoreLinks(volume: volume),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The bookstores selling [volume]'s printed book, under **Buy the book**, a
+/// button each in the order the console saved them.
+///
+/// Each opens in the system browser and never inside the app, so a bookstore
+/// the reader is signed in to there keeps that session. A run with no browser
+/// shows none of them.
+class _BookstoreLinks extends StatelessWidget {
+  const _BookstoreLinks({required this.volume});
+
+  final VolumeItem volume;
+
+  @override
+  Widget build(BuildContext context) {
+    if (LinkScope.maybeOf(context)?.browser == null) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    final messages = AppMessages.of(context);
+    return Padding(
+      key: ValueKey('volume-bookstore-links-${volume.publicId}'),
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AutospacedText(
+            messages.seriesVolumeBookstoreLinksHeading,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final (index, link) in volume.bookstoreLinks.indexed)
+                OutlinedButton.icon(
+                  key: ValueKey(
+                    'volume-bookstore-link-${volume.publicId}-$index',
+                  ),
+                  icon: const Icon(Icons.open_in_new),
+                  label: AutospacedText(link.label),
+                  onPressed: () =>
+                      followTenantLink(context, ExternalDestination(link.url)),
+                ),
+            ],
           ),
         ],
       ),

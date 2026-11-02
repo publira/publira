@@ -105,9 +105,16 @@ class FakeExternalBrowser implements ExternalBrowser {
   /// What [open] answers, standing in for a device with nothing to take it.
   var succeeds = true;
 
+  /// What [open] throws instead of answering, as `url_launcher` does on an
+  /// Android device with no activity for the URL.
+  Object? error;
+
   @override
   Future<bool> open(Uri url) async {
     opened.add(url);
+    if (error case final error?) {
+      throw error;
+    }
     return succeeds;
   }
 }

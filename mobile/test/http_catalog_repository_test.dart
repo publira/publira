@@ -1103,6 +1103,51 @@ void main() {
     expect(first.coverVariants.single.variantType, 'portrait');
     expect(second.publicId, 'VOLUME000002');
     expect(second.coverVariants, isEmpty);
+    expect(first.bookstoreLinks, isEmpty);
+  });
+
+  test('getSeries carries a volume\'s bookstore links in their order, '
+      'leaving out one the browser could not be handed', () async {
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..volumes.add(
+            pb.Volume(
+              id: 'volume-1',
+              publicId: 'VOLUME000001',
+              title: 'Volume 1',
+              orderIndex: 1,
+              price: 350,
+              episodeIds: ['internal-EP01'],
+              bookstoreLinks: [
+                pb.BookstoreLink(
+                  label: ' Bookstore B ',
+                  url: 'https://shop.example.net/v1',
+                ),
+                pb.BookstoreLink(
+                  label: 'Plain',
+                  url: 'http://books.example.com/volume-1',
+                ),
+                pb.BookstoreLink(label: ' ', url: 'https://example.org/'),
+                pb.BookstoreLink(
+                  label: 'Bookstore A',
+                  url: 'https://books.example.com/volume-1',
+                ),
+              ],
+            ),
+          );
+
+    final [volume] = (await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    ))!.volumes;
+    expect(
+      [for (final link in volume.bookstoreLinks) (link.label, '${link.url}')],
+      [
+        ('Bookstore B', 'https://shop.example.net/v1'),
+        ('Bookstore A', 'https://books.example.com/volume-1'),
+      ],
+    );
   });
 
   test('getSeries returns null for a missing public id', () async {

@@ -6511,6 +6511,7 @@
       "remainder_buy": "Buy remaining episodes ({$count :integer}) for {$price}",
       "remainder_discount": "{$percent} off the {$list_price} they cost one by one",
       "remainder_failed": "Could not show the price of the remaining episodes",
+      "volume_bookstore_links_heading": "Buy the book",
       "volume_buy": "Buy volume",
       "volume_owned": "You own every episode in this volume",
       "volume_ownership_failed": "Could not check which volumes you own",

@@ -3712,6 +3712,11 @@ final class AppMessages {
     return _format('mobile.series.title');
   }
 
+  /// `mobile.series.volume_bookstore_links_heading`
+  String get seriesVolumeBookstoreLinksHeading {
+    return _format('mobile.series.volume_bookstore_links_heading');
+  }
+
   /// `mobile.series.volume_buy`
   String get seriesVolumeBuy {
     return _format('mobile.series.volume_buy');
@@ -5023,6 +5028,7 @@ const _jaSources = <String, String>{
   'mobile.series.status_hiatus': '休載中',
   'mobile.series.status_ongoing': '連載中',
   'mobile.series.title': 'シリーズ',
+  'mobile.series.volume_bookstore_links_heading': '紙の本を購入',
   'mobile.series.volume_buy': 'この巻を購入',
   'mobile.series.volume_owned': 'この巻のエピソードはすべて購入済みです',
   'mobile.series.volume_ownership_failed': '所持している巻を確認できませんでした',
@@ -6071,6 +6077,7 @@ const _enSources = <String, String>{
   'mobile.series.status_hiatus': 'On hiatus',
   'mobile.series.status_ongoing': 'Ongoing',
   'mobile.series.title': 'Series',
+  'mobile.series.volume_bookstore_links_heading': 'Buy the book',
   'mobile.series.volume_buy': 'Buy volume',
   'mobile.series.volume_owned': 'You own every episode in this volume',
   'mobile.series.volume_ownership_failed':
@@ -7004,6 +7011,7 @@ const _koSources = <String, String>{
   'mobile.series.status_hiatus': '휴재 중',
   'mobile.series.status_ongoing': '연재 중',
   'mobile.series.title': '시리즈',
+  'mobile.series.volume_bookstore_links_heading': '종이책 구매',
   'mobile.series.volume_buy': '이 권 구매',
   'mobile.series.volume_owned': '이 권의 에피소드를 모두 구매했습니다',
   'mobile.series.volume_ownership_failed': '보유한 권을 확인할 수 없습니다',
@@ -7842,6 +7850,7 @@ const _zhHansSources = <String, String>{
   'mobile.series.status_hiatus': '休载中',
   'mobile.series.status_ongoing': '连载中',
   'mobile.series.title': '系列',
+  'mobile.series.volume_bookstore_links_heading': '购买纸质书',
   'mobile.series.volume_buy': '购买本卷',
   'mobile.series.volume_owned': '本卷的所有章节均已购买',
   'mobile.series.volume_ownership_failed': '无法确认您已拥有的卷',
@@ -8668,6 +8677,7 @@ const _zhHantSources = <String, String>{
   'mobile.series.status_hiatus': '休載中',
   'mobile.series.status_ongoing': '連載中',
   'mobile.series.title': '系列',
+  'mobile.series.volume_bookstore_links_heading': '購買紙本書',
   'mobile.series.volume_buy': '購買本卷',
   'mobile.series.volume_owned': '本卷的所有章節皆已購買',
   'mobile.series.volume_ownership_failed': '無法確認您已擁有的卷',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
@@ -50,6 +51,7 @@ void main() {
   late FakePurchaseRepository purchases;
   late FakeCheckoutLauncher launcher;
   late FakeIncomingLinks incoming;
+  late FakeExternalBrowser browser;
 
   setUp(() {
     final details = fixtureDetails();
@@ -64,6 +66,7 @@ void main() {
     launcher = FakeCheckoutLauncher();
     incoming = FakeIncomingLinks();
     addTearDown(incoming.close);
+    browser = FakeExternalBrowser();
   });
 
   Future<void> pumpApp(
@@ -87,6 +90,7 @@ void main() {
         checkoutLauncher: launcher,
         site: const PublicSite(host: 'localhost'),
         incomingLinks: incoming,
+        browser: browser,
       ),
     );
     await tester.pump();
@@ -244,6 +248,144 @@ void main() {
       await pumpUntilFound(tester, buyRemainder);
 
       expect(find.text('Volumes'), findsNothing);
+    });
+  });
+
+  group('a volume\'s bookstore links', () {
+    /// The fixture series' third episode, sold on its own with two bookstores
+    /// selling its printed book.
+    final linked = VolumeItem(
+      id: 'volume-2',
+      publicId: 'VOLUME000002',
+      title: 'Volume 2',
+      orderIndex: 2,
+      price: 180,
+      episodeIds: [fixtureInternalId('${series.id}-ep-3')],
+      bookstoreLinks: [
+        BookstoreLink(
+          label: 'Bookstore A',
+          url: Uri.parse('https://books.example.com/volume-2'),
+        ),
+        BookstoreLink(
+          label: 'Bookstore B',
+          url: Uri.parse('https://shop.example.net/v2'),
+        ),
+      ],
+    );
+    final linkedCard = find.byKey(ValueKey('series-volume-${linked.publicId}'));
+    final bookstoreA = find.byKey(
+      ValueKey('volume-bookstore-link-${linked.publicId}-0'),
+    );
+    final bookstoreB = find.byKey(
+      ValueKey('volume-bookstore-link-${linked.publicId}-1'),
+    );
+
+    setUp(() {
+      final details = fixtureDetails();
+      final detail = details[series.id]!;
+      details[series.id] = SeriesDetail(
+        series: detail.series,
+        episodes: detail.episodes,
+        volumes: [volume, linked],
+      );
+      catalog.details = details;
+    });
+
+    testWidgets('open the browser on each bookstore, in the saved order', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, bookstoreB);
+
+      expect(
+        find.descendant(of: linkedCard, matching: find.text('Buy the book')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: bookstoreA, matching: find.text('Bookstore A')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: bookstoreB, matching: find.text('Bookstore B')),
+        findsOne,
+      );
+      expect(
+        [
+          for (final button in tester.widgetList<OutlinedButton>(
+            find.descendant(
+              of: find.byKey(
+                ValueKey('volume-bookstore-links-${linked.publicId}'),
+              ),
+              matching: find.byType(OutlinedButton),
+            ),
+          ))
+            button.key,
+        ],
+        [
+          ValueKey('volume-bookstore-link-${linked.publicId}-0'),
+          ValueKey('volume-bookstore-link-${linked.publicId}-1'),
+        ],
+      );
+
+      await tester.tap(bookstoreA);
+      await tester.pump();
+      await tester.tap(bookstoreB);
+      await tester.pump();
+
+      expect(browser.opened, [
+        Uri.parse('https://books.example.com/volume-2'),
+        Uri.parse('https://shop.example.net/v2'),
+      ]);
+    });
+
+    testWidgets('are not shown, nor their heading, on a volume with none', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, bookstoreA);
+
+      expect(
+        find.byKey(ValueKey('volume-bookstore-links-${volume.publicId}')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('Buy the book')),
+        findsNothing,
+      );
+      expect(find.text('Buy the book'), findsOne);
+    });
+
+    testWidgets('are shown to a guest, who has no purchase to make', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: null);
+      await pumpUntilFound(tester, bookstoreA);
+
+      expect(bookstoreB, findsOne);
+    });
+
+    testWidgets('say so when the device has nothing to open them with', (
+      tester,
+    ) async {
+      browser.succeeds = false;
+      await pumpApp(tester);
+      await pumpUntilFound(tester, bookstoreA);
+
+      await tester.tap(bookstoreA);
+      await pumpUntilFound(tester, find.byType(SnackBar));
+
+      expect(browser.opened, [Uri.parse('https://books.example.com/volume-2')]);
+    });
+
+    testWidgets('say so when the device refuses to open them', (tester) async {
+      browser.error = PlatformException(code: 'ACTIVITY_NOT_FOUND');
+      await pumpApp(tester);
+      await pumpUntilFound(tester, bookstoreA);
+
+      await tester.tap(bookstoreA);
+      await pumpUntilFound(tester, find.byType(SnackBar));
+
+      expect(browser.opened, [Uri.parse('https://books.example.com/volume-2')]);
     });
   });
 

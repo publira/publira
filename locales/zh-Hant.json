@@ -6511,6 +6511,7 @@
       "remainder_buy": "以{$price}購買剩餘的{$count :integer}章",
       "remainder_discount": "逐章購買需{$list_price}，現優惠{$percent}",
       "remainder_failed": "無法顯示剩餘章節的價格",
+      "volume_bookstore_links_heading": "購買紙本書",
       "volume_buy": "購買本卷",
       "volume_owned": "本卷的所有章節皆已購買",
       "volume_ownership_failed": "無法確認您已擁有的卷",
