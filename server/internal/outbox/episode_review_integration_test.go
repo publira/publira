@@ -128,7 +128,8 @@ func TestEpisodeReviewReturnedNotificationTellsTheSubmitter(t *testing.T) {
 	for _, fragment := range []string{
 		"The speech bubble on page 4 is cut off.",
 		"The Lighthouse Keeper",
-		"http://admin-obrret.example.com/series/OBRRETSER001/episodes/OBRRETEP0001",
+		// The scheme is the deployment's, so only the host and the path are fixed.
+		"://admin-obrret.example.com/series/OBRRETSER001/episodes/OBRRETEP0001",
 	} {
 		if !strings.Contains(sent.Text, fragment) {
 			t.Errorf("the mail does not carry %q:\n%s", fragment, sent.Text)
