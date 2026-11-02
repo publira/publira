@@ -13,11 +13,7 @@ import {
   toPriceInputValue,
 } from "#lib/price";
 
-import {
-  EpisodePreviewPagesField,
-  EpisodePriceInput,
-  EpisodePriceScope,
-} from "../../_components/episode-price-scope";
+import * as EpisodePrice from "../../_components/episode-price-fields";
 import { EpisodeRentalFields } from "../../_components/episode-rental-fields";
 
 interface EpisodePricingFormProps {
@@ -93,7 +89,7 @@ export const EpisodePricingForm = ({
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
       <ActionForm.Fieldset className="grid gap-4">
-        <EpisodePriceScope initialPrice={initialPrice}>
+        <EpisodePrice.Root initialPrice={initialPrice}>
           <Field.Root>
             <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -101,7 +97,7 @@ export const EpisodePricingForm = ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <EpisodePriceInput
+              <EpisodePrice.Input
                 defaultValue={toPriceInputValue(initialPrice, currency)}
                 max={maxPriceInputValue(currency)}
                 min={0}
@@ -151,11 +147,11 @@ export const EpisodePricingForm = ({
             initialRentalPrice={initialRentalPrice}
           />
 
-          <EpisodePreviewPagesField
+          <EpisodePrice.PreviewPagesField
             initialPreviewPageCount={initialPreviewPageCount}
             pageCount={pageCount}
           />
-        </EpisodePriceScope>
+        </EpisodePrice.Root>
       </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">

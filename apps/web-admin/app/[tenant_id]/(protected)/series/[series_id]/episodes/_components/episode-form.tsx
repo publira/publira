@@ -16,11 +16,7 @@ import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeAvailabilityField } from "./episode-availability-field";
-import {
-  EpisodePreviewPagesField,
-  EpisodePriceInput,
-  EpisodePriceScope,
-} from "./episode-price-scope";
+import * as EpisodePrice from "./episode-price-fields";
 import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availability-field";
 import { EpisodeRentalFields } from "./episode-rental-fields";
 import { PublishAtInput } from "./publish-at-input";
@@ -94,7 +90,7 @@ export const EpisodeForm = async ({
           </Field.Content>
         </Field.Root>
 
-        <EpisodePriceScope initialPrice={0}>
+        <EpisodePrice.Root initialPrice={0}>
           <Field.Root>
             <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -102,7 +98,7 @@ export const EpisodeForm = async ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <EpisodePriceInput
+              <EpisodePrice.Input
                 defaultValue={toPriceInputValue(0, currency)}
                 max={maxPriceInputValue(currency)}
                 min={0}
@@ -153,8 +149,11 @@ export const EpisodeForm = async ({
           />
 
           {/* A new episode has no pages yet: every page of a preview is to come. */}
-          <EpisodePreviewPagesField initialPreviewPageCount={0} pageCount={0} />
-        </EpisodePriceScope>
+          <EpisodePrice.PreviewPagesField
+            initialPreviewPageCount={0}
+            pageCount={0}
+          />
+        </EpisodePrice.Root>
 
         <PublishAtInput timeZone={timeZone}>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>

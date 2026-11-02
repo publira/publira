@@ -32,7 +32,7 @@ const useEpisodePriced = () => {
  * The part of an episode form whose fields follow its price: the price input
  * and the preview pages, which a free episode has no use for.
  */
-export const EpisodePriceScope = ({
+const EpisodePriceScope = ({
   children,
   initialPrice,
 }: {
@@ -49,7 +49,7 @@ export const EpisodePriceScope = ({
 };
 
 /** The episode's price, posted as `price`. */
-export const EpisodePriceInput = (
+const EpisodePriceInput = (
   props: Omit<ComponentProps<typeof Input>, "onChange">
 ) => {
   const { setPriced } = useEpisodePriced();
@@ -82,7 +82,7 @@ interface EpisodePreviewPagesFieldProps {
  * A count above the pages the episode has is accepted, since pages are added
  * after the price as often as before, and is noted instead.
  */
-export const EpisodePreviewPagesField = ({
+const EpisodePreviewPagesField = ({
   initialPreviewPageCount,
   pageCount,
 }: EpisodePreviewPagesFieldProps) => {
@@ -143,4 +143,10 @@ export const EpisodePreviewPagesField = ({
       </Field.Content>
     </Field.Root>
   );
+};
+
+export {
+  EpisodePriceScope as Root,
+  EpisodePriceInput as Input,
+  EpisodePreviewPagesField as PreviewPagesField,
 };
