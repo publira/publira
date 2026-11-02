@@ -789,12 +789,22 @@ func (a *API) SetInvoicePayment(secretKey, invoiceID, paymentIntentID string) {
 }
 
 // listInvoicePayments answers the paid payment of the invoice a request
-// names, or none for an invoice the fake was told of no payment of.
+// names, or of the payment intent it names instead, or none for one the fake
+// was told of no payment of.
 func (a *API) listInvoicePayments(w http.ResponseWriter, r *http.Request) {
 	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	invoiceID := r.URL.Query().Get("invoice")
 	a.mu.Lock()
 	paymentIntentID, ok := a.invoicePayments[secretKey][invoiceID]
+	// A list by the payment rather than by the invoice finds the invoice
+	// that payment paid.
+	if paid := r.URL.Query().Get("payment[payment_intent]"); paid != "" && invoiceID == "" {
+		for invoice, intent := range a.invoicePayments[secretKey] {
+			if intent == paid {
+				invoiceID, paymentIntentID, ok = invoice, intent, true
+			}
+		}
+	}
 	a.mu.Unlock()
 	data := []any{}
 	if ok && r.URL.Query().Get("status") == "paid" {

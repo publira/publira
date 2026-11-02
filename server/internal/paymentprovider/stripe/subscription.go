@@ -347,6 +347,30 @@ func (p *Provider) invoicePaymentIntent(ctx context.Context, credentials payment
 	return "", nil
 }
 
+// PaidInvoice looks the payment intent up among the invoice payments Stripe
+// recorded as paid.
+func (p *Provider) PaidInvoice(ctx context.Context, credentials paymentprovider.Credentials, paymentID string) (bool, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return false, err
+	}
+	params := &stripego.InvoicePaymentListParams{
+		Payment: &stripego.InvoicePaymentListPaymentParams{
+			Type:          stripego.String(string(stripego.InvoicePaymentPaymentTypePaymentIntent)),
+			PaymentIntent: stripego.String(paymentID),
+		},
+		Status: stripego.String("paid"),
+	}
+	params.Limit = stripego.Int64(1)
+	for _, err := range client.V1InvoicePayments.List(ctx, params).All(ctx) {
+		if err != nil {
+			return false, subscriptionError("list invoice payments", err)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 // subscriptionChangedEvent names the subscription a notification is about.
 // The subscription itself is read by [Provider.RetrieveSubscription], which
 // the purchase flow calls while it holds the subscription's lock.

@@ -761,6 +761,23 @@ func runParseSubscriptionPayments(t *testing.T, fixture SubscriptionFixture, cur
 		PeriodEnd:      start.AddDate(0, 1, 0),
 	}
 
+	t.Run("the provider tells an invoice's payment from a purchase's", func(t *testing.T) {
+		_, _ = fixture.SubscriptionPaid(t, credentials, payment)
+		subscriptions, ok := provider.(paymentprovider.Subscriptions)
+		if !ok {
+			t.Fatal("a provider with a subscription fixture sells no subscriptions")
+		}
+		paid, err := subscriptions.PaidInvoice(t.Context(), credentials, payment.PaymentID)
+		if err != nil || !paid {
+			t.Fatalf("PaidInvoice(%s) = %v, %v; want the invoice's payment", payment.PaymentID, paid, err)
+		}
+		purchase := "payment_purchase_contract_" + strings.ToLower(currency)
+		fixture.PaymentTaken(t, credentials, Checkout{PaymentID: purchase, Purchase: paymentprovider.Purchase{Price: 500, Currency: currency}}, start)
+		if paid, err := subscriptions.PaidInvoice(t.Context(), credentials, purchase); err != nil || paid {
+			t.Fatalf("PaidInvoice(%s) = %v, %v; want a purchase's payment told apart", purchase, paid, err)
+		}
+	})
+
 	t.Run("a paid subscription invoice names its subscription, payment, amount, and period", func(t *testing.T) {
 		payload, headers := fixture.SubscriptionPaid(t, credentials, payment)
 		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)

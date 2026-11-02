@@ -192,6 +192,13 @@ func reconcile(ctx context.Context, deps Deps, run dbmodels.PaymentReconciliatio
 		for _, id := range excluded {
 			in.Excluded[id] = true
 		}
+		// A plan's invoice whose notification never arrived has no row there
+		// either, so a payment that still matches nothing is asked about.
+		if provider, ok := src.(providerSource); ok {
+			if err := provider.excludeInvoicePayments(ctx, records, append(in.Named, in.Purchases...), in.Excluded); err != nil {
+				return Result{}, err
+			}
+		}
 	}
 	if in.Holds, err = holds(ctx, queries, run); err != nil {
 		return Result{}, err

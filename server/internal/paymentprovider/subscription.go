@@ -53,6 +53,11 @@ type Subscriptions interface {
 	// period paid for, and refunds nothing of that period. A subscription the
 	// account does not hold answers [ErrSubscriptionNotFound].
 	CancelSubscription(ctx context.Context, credentials Credentials, subscriptionID string) error
+	// PaidInvoice reports whether the payment paymentID, as
+	// [Transaction.PaymentID] names it, paid a subscription's invoice rather
+	// than a purchase, read from the provider's records, so that a payment
+	// whose notification never arrived is still told apart.
+	PaidInvoice(ctx context.Context, credentials Credentials, paymentID string) (bool, error)
 }
 
 // Interval is the unit a recurring price is billed every so many of, spelled

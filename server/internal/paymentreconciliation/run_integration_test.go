@@ -165,6 +165,10 @@ func TestDBReconciliationFindsThePaymentWhoseNotificationNeverArrived(t *testing
 	s.paid(t, "pi_test", 200, true, march.Add(11*24*time.Hour))
 	s.bought(t, "pi_test", 200, true, march.Add(11*24*time.Hour+time.Minute))
 	s.paid(t, "pi_mode", 400, true, march.Add(12*24*time.Hour))
+	// A plan's invoice whose notification never arrived is no purchase's, as
+	// Stripe's own records tell it.
+	s.paid(t, "pi_invoice", 980, false, march.Add(13*24*time.Hour))
+	s.stripe.API.SetInvoicePayment(s.stripe.Credentials()[stripe.FieldSecretKey], "in_lost", "pi_invoice")
 	livePurchase := s.bought(t, "pi_mode", 400, false, march.Add(12*24*time.Hour+time.Minute))
 
 	// A refund that arrived in February for a payment no purchase names, and

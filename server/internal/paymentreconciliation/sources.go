@@ -74,6 +74,36 @@ func (s providerSource) records(ctx context.Context, from, to time.Time, _ []Pur
 	return records, nil
 }
 
+// excludeInvoicePayments adds to excluded every payment of records that no
+// purchase names and that paid a subscription's invoice, as the provider's
+// records tell it. A provider that sells no subscriptions takes no invoice.
+func (s providerSource) excludeInvoicePayments(ctx context.Context, records []Record, purchases []Purchase, excluded map[string]bool) error {
+	subscriptions, ok := s.provider.(paymentprovider.Subscriptions)
+	if !ok {
+		return nil
+	}
+	named := map[string]bool{}
+	for _, p := range purchases {
+		named[p.PaymentID] = true
+	}
+	for _, r := range records {
+		if named[r.PaymentID] || excluded[r.PaymentID] {
+			continue
+		}
+		paid, err := subscriptions.PaidInvoice(ctx, s.credentials, r.PaymentID)
+		if errors.Is(err, paymentprovider.ErrCredentialsRefused) {
+			return fmt.Errorf("%w: %v", ErrCredentials, err)
+		}
+		if err != nil {
+			return fmt.Errorf("look up the invoice of payment %s: %w", r.PaymentID, err)
+		}
+		if paid {
+			excluded[r.PaymentID] = true
+		}
+	}
+	return nil
+}
+
 // appStoreSource is the App Store, which keeps a transaction history per
 // customer and none for the whole app. It is read through the history of
 // every customer the install has a purchase of in the range, so a payment by
