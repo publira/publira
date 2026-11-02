@@ -199,6 +199,8 @@ export interface TenantSiteInfo {
   brandMarks?: TenantBrandMarks;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
+  /** Whether a reader linked to an Author is shown that Author's pages. */
+  creatorPagesEnabled: boolean;
   /**
    * ISO 4217 code of the currency the tenant sells in. Every price the site
    * shows is an integer in its minor unit.
@@ -402,6 +404,7 @@ export const getTenantSiteInfo = async (
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       brandMarks: toTenantBrandMarks(response.brandMarks),
       commentMode: toTenantCommentMode(response.commentMode),
+      creatorPagesEnabled: response.creatorPagesEnabled,
       currency: requireCurrency(response.currency),
       defaultLocale,
       domain: trimmed(response.tenantDomain) ?? "",
@@ -743,6 +746,21 @@ export const getTenantCommentMode = async (
   const tenant = await getTenantSiteInfo(tenantId);
 
   return tenant?.commentMode ?? "disabled";
+};
+
+/**
+ * Whether the tenant shows a reader linked to an Author that Author's pages.
+ * An unavailable read degrades to off, which only hides the way in from My
+ * Page: the API answers the pages themselves from the stored setting. The
+ * read carries `tenant:<id>:site`, which the API drops when the setting is
+ * saved.
+ */
+export const getTenantCreatorPagesEnabled = async (
+  tenantId: string
+): Promise<boolean> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+
+  return tenant?.creatorPagesEnabled ?? false;
 };
 
 /**

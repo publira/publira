@@ -6,6 +6,7 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 
 import { CoinsSection } from "./_components/coins-section";
+import { CreatorPagesLink } from "./_components/creator-pages-link";
 import {
   FollowUpdatesSection,
   FollowUpdatesSectionSkeleton,
@@ -71,6 +72,11 @@ const MyPage = ({ searchParams }: MyPageProps) => (
             >
               <Message message="storefront.my.to_library" />
             </LocaleLink>
+          </Suspense>
+          {/* No skeleton: most readers are no Author, and the link is not
+            there for them. */}
+          <Suspense fallback={null}>
+            <CreatorPagesLink />
           </Suspense>
           <Suspense fallback={<SkeletonLine className="h-9 w-28" />}>
             <LocaleLink

@@ -125,6 +125,14 @@ export const tenantReaderAccessTag = (tenantId: string) =>
 export const tenantPurchasesTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:purchases`;
 
+/**
+ * The private reads of the Author pages: the Authors the signed-in reader is
+ * linked to, their figures, and their closed statements. Nothing this app
+ * does changes any of them, so no Action clears it.
+ */
+export const tenantCreatorPagesTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:creator-pages`;
+
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 
