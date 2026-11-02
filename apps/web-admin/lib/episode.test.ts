@@ -332,6 +332,7 @@ describe("getEpisode", () => {
         eyeCatchImageVariants: [],
         id: "EPISODE001-ID",
         orderIndex: 1,
+        previewPageCount: 0,
         price: 0,
         publicId: "EPISODE001",
         publishedAt: "",
@@ -658,6 +659,7 @@ describe("the surfaces an episode is shown on", () => {
       {
         availability: "",
         currency: "JPY",
+        previewPageCount: 0,
         price: 0,
         publishAt: "",
         purchaseAvailability: "",
@@ -685,6 +687,7 @@ describe("the surfaces an episode is shown on", () => {
       {
         availability: "web",
         currency: "JPY",
+        previewPageCount: 0,
         price: 0,
         publishAt: "",
         purchaseAvailability: "",
@@ -819,6 +822,7 @@ describe("where an episode may be bought", () => {
       {
         availability: "",
         currency: "JPY",
+        previewPageCount: 0,
         price: 100,
         publishAt: "",
         purchaseAvailability: "app",
@@ -836,6 +840,34 @@ describe("where an episode may be bought", () => {
       expect.objectContaining({
         purchaseAvailability: SurfaceAvailability.APP,
       }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("creates an episode with the pages it opens before a purchase", async () => {
+    mockCreateEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
+
+    const { createEpisode } = await import("./episode");
+    await createEpisode(
+      {
+        availability: "",
+        currency: "JPY",
+        previewPageCount: 3,
+        price: 100,
+        publishAt: "",
+        purchaseAvailability: "",
+        readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
+        seriesId: "SERIES001",
+        tenantId: "TENANT001",
+        title: "Episode title",
+      },
+      "en"
+    );
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ previewPageCount: 3 }),
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
@@ -1157,10 +1189,11 @@ describe("deleteEpisodeTranslation", () => {
 });
 
 describe("updateEpisodePricing", () => {
-  it("sends the price, reading period, and rental and reads back the episode", async () => {
+  it("sends the price, reading period, rental, and preview pages and reads back the episode", async () => {
     mockUpdateEpisodePricing.mockResolvedValue({
       episode: {
         ...episode("EPISODE001", 1),
+        previewPageCount: 3,
         price: 120,
         readingPeriodHours: 72,
         rentalPeriodHours: 48,
@@ -1174,6 +1207,7 @@ describe("updateEpisodePricing", () => {
       {
         currency: "JPY",
         episodeId: "EPISODE001-ID",
+        previewPageCount: 3,
         price: 120,
         readingPeriodHours: 72,
         rentalPeriodHours: 48,
@@ -1187,6 +1221,7 @@ describe("updateEpisodePricing", () => {
       {
         currency: "JPY",
         episodeId: "EPISODE001-ID",
+        previewPageCount: 3,
         price: 120,
         readingPeriodHours: 72,
         rentalPeriodHours: 48,
@@ -1197,6 +1232,7 @@ describe("updateEpisodePricing", () => {
     );
     expect(result).toMatchObject({
       episode: {
+        previewPageCount: 3,
         price: 120,
         publicId: "EPISODE001",
         readingPeriodHours: 72,
@@ -1225,6 +1261,7 @@ describe("updateEpisodePricing", () => {
       {
         currency: "JPY",
         episodeId: "EPISODE001-ID",
+        previewPageCount: 0,
         price: 500,
         readingPeriodHours: 0,
         rentalPeriodHours: 0,
@@ -1250,6 +1287,7 @@ describe("updateEpisodePricing", () => {
       {
         currency: "JPY",
         episodeId: "EPISODE001-ID",
+        previewPageCount: 0,
         price: 0,
         readingPeriodHours: 0,
         rentalPeriodHours: 0,

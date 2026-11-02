@@ -1,6 +1,7 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
+import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Toast from "@publira/ui-components/toast";
@@ -224,13 +225,24 @@ export const EpisodesSortableList = ({
                   seriesAvailability={seriesAvailability}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                <EpisodeStatusPrice
-                  currency={currency}
-                  price={episode.price}
-                  status={episode.status}
-                />
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  <EpisodeStatusPrice
+                    currency={currency}
+                    price={episode.price}
+                    status={episode.status}
+                  />
+                </p>
+                {/* A free episode opens its whole body, whatever count it holds. */}
+                {episode.price > 0 && episode.previewPageCount > 0 ? (
+                  <Badge tone="muted" variant="outline">
+                    <ClientMessage
+                      message="admin.series.episodes.preview_page_count_mark"
+                      values={{ count: episode.previewPageCount }}
+                    />
+                  </Badge>
+                ) : null}
+              </div>
               {episode.status === "scheduled" && episode.scheduledAt ? (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
                   <ClientMessage

@@ -1126,6 +1126,7 @@ describe("episode actions", () => {
         {
           currency: "JPY",
           episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          previewPageCount: 0,
           price: 120,
           readingPeriodHours: 72,
           rentalPeriodHours: 0,
@@ -1165,6 +1166,73 @@ describe("episode actions", () => {
         expect.objectContaining({ rentalPeriodHours: 48, rentalPrice: 80 }),
         "en"
       );
+    });
+
+    it("sends the pages a priced episode opens before a purchase", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        episode: { price: 120, readingPeriodHours: 0 },
+        ok: true,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          preview_page_count: "3",
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+        })
+      );
+
+      expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+        expect.objectContaining({ previewPageCount: 3 }),
+        "en"
+      );
+    });
+
+    // A form rendered while the episode was priced still posts its count.
+    it("stores no preview on an episode made free", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        episode: { price: 0, readingPeriodHours: 0 },
+        ok: true,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          preview_page_count: "3",
+          price: "0",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+        })
+      );
+
+      expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+        expect.objectContaining({ previewPageCount: 0, price: 0 }),
+        "en"
+      );
+    });
+
+    it("refuses a negative preview page count in words that name the field", async () => {
+      const { updateEpisodePricingAction } = await import("./actions");
+
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          preview_page_count: "-1",
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+        })
+      );
+
+      expect(result).toEqual({
+        message: "Preview pages must be a whole number, 0 or more.",
+        ok: false,
+      });
+      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
     });
 
     // The period starts at the series' whether or not the episode is rented,

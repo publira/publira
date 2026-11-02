@@ -362,8 +362,22 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
-  const { price, readingPeriodHours, rentalPeriodHours, rentalPrice } =
-    episodeResult.episode;
+  const {
+    previewPageCount,
+    price,
+    readingPeriodHours,
+    rentalPeriodHours,
+    rentalPrice,
+  } = episodeResult.episode;
+
+  // Only the note on a preview past the last page needs the pages, so a read
+  // that fails leaves that note out rather than the form.
+  const imagesResult = await listEpisodeImages(
+    { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
+    context.locale
+  );
+
+  await redirectToLoginIfSessionRejected(imagesResult);
 
   // An episode that is not rented offers the series' period, so renting it
   // takes only a price. A series that could not be read offers none.
@@ -384,11 +398,13 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
       currency={currency}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
+      initialPreviewPageCount={previewPageCount}
       initialPrice={price}
       initialReadingPeriodHours={readingPeriodHours}
       initialRentalPeriodHours={initialRentalPeriodHours}
       initialRentalPrice={rentalPrice}
-      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}:${rentalPrice}:${initialRentalPeriodHours}`}
+      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}:${rentalPrice}:${initialRentalPeriodHours}:${previewPageCount}`}
+      pageCount={imagesResult.ok ? imagesResult.images.length : undefined}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
     />

@@ -13,6 +13,11 @@ import {
   toPriceInputValue,
 } from "#lib/price";
 
+import {
+  EpisodePreviewPagesField,
+  EpisodePriceInput,
+  EpisodePriceScope,
+} from "../../_components/episode-price-scope";
 import { EpisodeRentalFields } from "../../_components/episode-rental-fields";
 
 interface EpisodePricingFormProps {
@@ -38,6 +43,16 @@ interface EpisodePricingFormProps {
    * rented.
    */
   initialRentalPeriodHours: number;
+  /**
+   * How many of the body's first pages open before a purchase. Seeded once per
+   * mount, like the price.
+   */
+  initialPreviewPageCount: number;
+  /**
+   * How many pages the episode has now, for the note on a preview past them.
+   * Absent when they could not be read.
+   */
+  pageCount?: number;
   seriesPublicId: string;
   tenantId: string;
 }
@@ -47,10 +62,12 @@ export const EpisodePricingForm = ({
   currency,
   episodeId,
   episodePublicId,
+  initialPreviewPageCount,
   initialPrice,
   initialReadingPeriodHours,
   initialRentalPeriodHours,
   initialRentalPrice,
+  pageCount,
   seriesPublicId,
   tenantId,
 }: EpisodePricingFormProps) => (
@@ -76,62 +93,69 @@ export const EpisodePricingForm = ({
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
       <ActionForm.Fieldset className="grid gap-4">
-        <Field.Root>
-          <Field.Label required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <Message message="admin.series.episodes.form.price" />
-            </Suspense>
-          </Field.Label>
-          <Field.Content>
-            <Input
-              defaultValue={toPriceInputValue(initialPrice, currency)}
-              max={maxPriceInputValue(currency)}
-              min={0}
-              name="price"
-              required
-              step={priceInputStep(currency)}
-              type="number"
-            />
-            <input name="price_currency" type="hidden" value={currency} />
-            <Field.Description>
-              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message
-                  message="admin.series.episodes.form.price_description"
-                  values={{ currency }}
-                />
+        <EpisodePriceScope initialPrice={initialPrice}>
+          <Field.Root>
+            <Field.Label required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.series.episodes.form.price" />
               </Suspense>
-            </Field.Description>
-          </Field.Content>
-        </Field.Root>
+            </Field.Label>
+            <Field.Content>
+              <EpisodePriceInput
+                defaultValue={toPriceInputValue(initialPrice, currency)}
+                max={maxPriceInputValue(currency)}
+                min={0}
+                name="price"
+                required
+                step={priceInputStep(currency)}
+                type="number"
+              />
+              <input name="price_currency" type="hidden" value={currency} />
+              <Field.Description>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message
+                    message="admin.series.episodes.form.price_description"
+                    values={{ currency }}
+                  />
+                </Suspense>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-        <Field.Root>
-          <Field.Label required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.form.reading_period" />
-            </Suspense>
-          </Field.Label>
-          <Field.Content>
-            <Input
-              defaultValue={initialReadingPeriodHours}
-              max={MAX_INT32}
-              min={0}
-              name="reading_period_hours"
-              required
-              type="number"
-            />
-            <Field.Description>
-              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message message="admin.series.episodes.pricing.reading_period_description" />
+          <Field.Root>
+            <Field.Label required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.form.reading_period" />
               </Suspense>
-            </Field.Description>
-          </Field.Content>
-        </Field.Root>
+            </Field.Label>
+            <Field.Content>
+              <Input
+                defaultValue={initialReadingPeriodHours}
+                max={MAX_INT32}
+                min={0}
+                name="reading_period_hours"
+                required
+                type="number"
+              />
+              <Field.Description>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.series.episodes.pricing.reading_period_description" />
+                </Suspense>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-        <EpisodeRentalFields
-          currency={currency}
-          initialRentalPeriodHours={initialRentalPeriodHours}
-          initialRentalPrice={initialRentalPrice}
-        />
+          <EpisodeRentalFields
+            currency={currency}
+            initialRentalPeriodHours={initialRentalPeriodHours}
+            initialRentalPrice={initialRentalPrice}
+          />
+
+          <EpisodePreviewPagesField
+            initialPreviewPageCount={initialPreviewPageCount}
+            pageCount={pageCount}
+          />
+        </EpisodePriceScope>
       </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">

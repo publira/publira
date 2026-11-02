@@ -493,7 +493,6 @@ for (const locale of DOCS_LOCALES) {
 
       for (const [subject, title] of [
         ["title", "admin.series.episodes.rename.title"],
-        ["price-and-reading-period", "admin.series.episodes.pricing.title"],
         ["add-pages", "admin.series.episodes.pages.title"],
         ["registered-pages", "admin.series.episodes.image_list_title"],
         ["page-layout", "admin.series.episodes.layout.title"],
@@ -514,6 +513,21 @@ for (const locale of DOCS_LOCALES) {
           });
         });
       }
+
+      // A free episode has no preview pages to set, so the section is taken on
+      // the paid one, where every field of it shows.
+      test("the price and reading period section of a paid episode's edit screen", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, `${episodesPath}/${PAID_EPISODE}`);
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(page, t("admin.series.episodes.pricing.title")),
+          locale,
+          page: "console/catalog/episodes",
+          subject: "price-and-reading-period",
+        });
+      });
 
       test("the campaign prices section of a paid episode's edit screen", async ({
         page,

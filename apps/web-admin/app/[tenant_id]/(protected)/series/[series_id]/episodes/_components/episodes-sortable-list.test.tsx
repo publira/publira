@@ -42,33 +42,34 @@ vi.mock("@dnd-kit/react/sortable", () => ({
   }),
 }));
 
-const episodes: EpisodeItem[] = [
-  {
-    availability: "",
-    eyeCatchImageUpdatedAt: "",
-    eyeCatchImageVariants: [],
-    id: "EPISODE001-ID",
-    orderIndex: 1,
-    price: 0,
-    publicId: "EPISODE001",
-    publishedAt: "2026-06-01T00:00:00Z",
-    readingPeriodHours: 72,
-    rentalPeriodHours: 0,
-    rentalPrice: 0,
-    scheduledAt: "",
-    status: "published",
-    title: "Episode 1",
-  },
-];
+const firstEpisode: EpisodeItem = {
+  availability: "",
+  eyeCatchImageUpdatedAt: "",
+  eyeCatchImageVariants: [],
+  id: "EPISODE001-ID",
+  orderIndex: 1,
+  previewPageCount: 0,
+  price: 0,
+  publicId: "EPISODE001",
+  publishedAt: "2026-06-01T00:00:00Z",
+  readingPeriodHours: 72,
+  rentalPeriodHours: 0,
+  rentalPrice: 0,
+  scheduledAt: "",
+  status: "published",
+  title: "Episode 1",
+};
 
-const renderList = (canEdit: boolean) =>
+const episodes: EpisodeItem[] = [firstEpisode];
+
+const renderList = (canEdit: boolean, items: EpisodeItem[] = episodes) =>
   render(
     <AdminLocaleTestProvider locale="en">
       <EpisodeSelectionProvider>
         <EpisodesSortableList
           canEdit={canEdit}
           currency="JPY"
-          episodes={episodes}
+          episodes={items}
           reorderAction={vi.fn()}
           seriesId="SERIES001-ID"
           seriesPublicId="SERIES001"
@@ -104,5 +105,20 @@ describe("EpisodesSortableList", () => {
     expect(
       screen.getByRole("link", { name: "View" }).getAttribute("href")
     ).toBe("/series/SERIES001/episodes/EPISODE001");
+  });
+
+  it("marks a priced episode that opens pages before a purchase", () => {
+    renderList(true, [{ ...firstEpisode, previewPageCount: 3, price: 120 }]);
+
+    expect(screen.getByText("Preview: 3")).toBeTruthy();
+  });
+
+  it.each([
+    ["a priced episode that opens none", 0, 120],
+    ["a free episode, which opens its whole body", 3, 0],
+  ])("does not mark %s", (_case, previewPageCount, price) => {
+    renderList(true, [{ ...firstEpisode, previewPageCount, price }]);
+
+    expect(screen.queryByText(/^Preview:/u)).toBeNull();
   });
 });

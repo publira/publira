@@ -47,6 +47,7 @@ import {
   deleteEpisodeFreeWindow,
   episodeFreeWindowsCacheTag,
 } from "#lib/episode-free-window";
+import { previewPageCountFor } from "#lib/episode-preview";
 import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   creditShareBpsSchema,
@@ -519,6 +520,9 @@ const pricingFormSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
+    previewPageCount: nonNegativeIntFormSchema(
+      t("admin.series.episodes.validation.preview_page_count_invalid")
+    ),
     // Read once the tenant's currency is known.
     price: rawPriceFormSchema,
     // The currency the form showed the price in.
@@ -543,6 +547,7 @@ export const updateEpisodePricingAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
+      previewPageCount: { kind: "value", name: "preview_page_count" },
       price: "value",
       priceCurrency: { kind: "value", name: "price_currency" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
@@ -558,6 +563,7 @@ export const updateEpisodePricingAction = async (
   const {
     episodeId,
     episodePublicId,
+    previewPageCount,
     price,
     priceCurrency,
     readingPeriodHours,
@@ -603,6 +609,10 @@ export const updateEpisodePricingAction = async (
       {
         currency: parsedPrice.currency,
         episodeId,
+        previewPageCount: previewPageCountFor(
+          parsedPrice.value,
+          previewPageCount
+        ),
         price: parsedPrice.value,
         readingPeriodHours,
         rentalPeriodHours: rental.rentalPeriodHours,
