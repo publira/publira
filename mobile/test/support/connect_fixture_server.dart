@@ -170,6 +170,12 @@ class ConnectFixtureServer {
   static const memberAnnouncementId = '018f1010-0001-7000-8000-000000000001';
   static const memberNotificationId = '018f1010-0001-7000-8000-000000000002';
 
+  /// The announcement the same file delivers to the member alone, as a
+  /// follower of Seed Series 011, and to no other reader of the tenant.
+  static const memberTargetedAnnouncementId =
+      '018f1010-0001-7000-8000-000000000003';
+  static const memberTargetedAnnouncementTitle = 'Mobile Follower Notice';
+
   /// Unsigned JWT whose `sub` is [memberPublicId]. It is shaped like the real
   /// public-audience token because image-server derives a page's content key
   /// from the token itself, so a fixture that is not a JWT could not be

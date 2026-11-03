@@ -19,8 +19,10 @@ import 'package:publira/typography/autospaced_text.dart';
 /// the operator gave it, in the app's language where the announcement was
 /// written in it. It is the screen at `/announcements/:announcementId`.
 ///
-/// A visitor reads it as a signed-in reader does. Opening it is what reading
-/// it means, so a signed-in reader's unread announcement is marked read here.
+/// A visitor reads one addressed to everyone as a signed-in reader does. One
+/// with conditions opens only for a reader it was delivered to, and is not
+/// found for anyone else, signed in or not. Opening it is what reading it
+/// means, so a signed-in reader's unread announcement is marked read here.
 class AnnouncementScreen extends StatefulWidget {
   const AnnouncementScreen({super.key, required this.announcementId});
 
@@ -42,8 +44,9 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
   var _started = false;
 
   /// Reads the announcement again whenever the reader or the locale changes:
-  /// read state belongs to whoever holds the session, and the text to the
-  /// language it is asked for in.
+  /// read state, and whether one with conditions is there at all, belong to
+  /// whoever holds the session, and the text to the language it is asked for
+  /// in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

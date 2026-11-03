@@ -6,8 +6,9 @@ import 'package:publira/models/announcement.dart';
 
 /// [AnnouncementRepository] that answers from what a test sets on it, the way
 /// the API would: the read marks write to the rows, and the next read sees
-/// them, and a read in a locale [translations] has a row's copy in answers
-/// that copy.
+/// them, a read in a locale [translations] has a row's copy in answers that
+/// copy, and a row [audiences] names is answered only to the readers it was
+/// delivered to.
 class FakeAnnouncementRepository implements AnnouncementRepository {
   FakeAnnouncementRepository({
     List<Announcement> announcements = const [],
@@ -18,7 +19,10 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     this.pinnedFailure,
     this.markFailure,
     this.translations = const {},
-  }) : announcements = List.of(announcements);
+    this.audiences = const {},
+    String Function()? accessToken,
+  }) : announcements = List.of(announcements),
+       accessToken = accessToken ?? (() => '');
 
   /// Every announcement of the tenant, newest first, each in the copy a read
   /// in a locale [translations] has nothing for answers.
@@ -27,6 +31,16 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
   /// The title and body of an announcement per locale, by id: what a read in
   /// that locale answers in place of the row's own copy.
   Map<String, Map<String, ({String title, String body})>> translations;
+
+  /// The access tokens of the readers each targeted announcement was
+  /// delivered to, by id. A row named here is answered to nobody else, the
+  /// way the API answers a targeted announcement only to a reader holding its
+  /// notification.
+  Map<String, Set<String>> audiences;
+
+  /// The token of the reader a call is made as, empty for a visitor: what
+  /// the app's repository reads from the session when the call starts.
+  String Function() accessToken;
 
   /// How many rows one page holds. The token of a page is the index of its
   /// first row, written out. `0` answers every row at once.
@@ -77,19 +91,20 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (more != null && token.isNotEmpty) {
       throw more;
     }
+    final rows = _held();
     final AnnouncementPage page;
     if (pageSize <= 0) {
       page = AnnouncementPage(
-        announcements: [for (final row in announcements) _in(row, locale)],
+        announcements: [for (final row in rows) _in(row, locale)],
       );
     } else {
       final start = token.isEmpty ? 0 : int.parse(token);
-      final end = (start + pageSize).clamp(0, announcements.length);
+      final end = (start + pageSize).clamp(0, rows.length);
       page = AnnouncementPage(
         announcements: [
-          for (final row in announcements.sublist(start, end)) _in(row, locale),
+          for (final row in rows.sublist(start, end)) _in(row, locale),
         ],
-        nextToken: end < announcements.length ? '$end' : '',
+        nextToken: end < rows.length ? '$end' : '',
       );
     }
     await listGate?.future;
@@ -107,7 +122,7 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (failure != null) {
       throw failure;
     }
-    for (final row in announcements) {
+    for (final row in _held()) {
       if (row.id == announcementId) {
         return _in(row, locale);
       }
@@ -123,7 +138,7 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (failure != null) {
       throw failure;
     }
-    for (final row in announcements) {
+    for (final row in _held()) {
       if (row.id == pinnedId) {
         return _in(row, locale);
       }
@@ -139,7 +154,7 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (failure != null) {
       throw failure;
     }
-    if (!announcements.any((row) => row.id == announcementId)) {
+    if (!_held().any((row) => row.id == announcementId)) {
       throw const AnnouncementFailure(AnnouncementFailureKind.notFound);
     }
     announcements = [
@@ -156,7 +171,21 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (failure != null) {
       throw failure;
     }
-    announcements = [for (final row in announcements) row.markedRead()];
+    final held = {for (final row in _held()) row.id};
+    announcements = [
+      for (final row in announcements)
+        held.contains(row.id) ? row.markedRead() : row,
+    ];
+  }
+
+  /// The rows answered to the reader [accessToken] names: every one that is
+  /// for everyone, and the targeted ones delivered to them.
+  List<Announcement> _held() {
+    final reader = accessToken();
+    return [
+      for (final row in announcements)
+        if (audiences[row.id]?.contains(reader) ?? true) row,
+    ];
   }
 
   /// [row] with the copy [translations] has for it in [locale], or as it is

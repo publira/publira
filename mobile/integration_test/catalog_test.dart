@@ -4944,6 +4944,173 @@ void main() {
       });
     });
 
+    group('an announcement delivered to the seed member alone', () {
+      const targetedId = ConnectFixtureServer.memberTargetedAnnouncementId;
+      final targetedRow = find.byKey(
+        const ValueKey('announcement-row-$targetedId'),
+      );
+      final publicRow = find.byKey(
+        const ValueKey(
+          'announcement-row-${ConnectFixtureServer.memberAnnouncementId}',
+        ),
+      );
+
+      /// The first page of the announcements as [reader] reads them.
+      Future<Iterable<({String id, bool isRead})>> listFor(
+        ({ConnectClient client, TenantResolver tenants, AuthSession session})
+        reader,
+        ConnectCallContext ctx,
+        pb.TenantContext tenant,
+      ) async => [
+        for (final row
+            in (await pb.AuthServiceApi(reader.client).listAnnouncements(
+              ctx,
+              pb.ListAnnouncementsRequest(tenant: tenant),
+            )).announcements)
+          (id: row.id, isRead: row.isRead),
+      ];
+
+      testApp(
+        'the seed member reads a live targeted announcement until signing out',
+        (tester) async {
+          await withFailureScreenshot(
+            tester,
+            'live-targeted-announcement',
+            () async {
+              final member = await signInSeedMember();
+              Future<bool?> isRead() => isReadAtApi(
+                member,
+                rows: (ctx, tenant) => listFor(member, ctx, tenant),
+                id: targetedId,
+              );
+              // Null would be a stack that delivered it to nobody.
+              expect(
+                await isRead(),
+                isFalse,
+                reason:
+                    'the stack must start from '
+                    'db/seeds/scenarios/310_mobile_reader_records.sql',
+              );
+
+              await pumpLive(
+                tester,
+                initialLocation: AppRoutes.announcements,
+                session: member.session,
+              );
+              await pumpUntilRouteSettled(
+                tester,
+                targetedRow,
+                timeout: const Duration(seconds: 20),
+              );
+              expect(publicRow, findsOneWidget);
+              expect(
+                find.byKey(const ValueKey('announcement-unread-$targetedId')),
+                findsOneWidget,
+              );
+
+              await tapReachable(tester, targetedRow);
+              await pumpUntilRouteSettled(
+                tester,
+                find.byKey(const ValueKey('announcement-$targetedId')),
+              );
+              expect(
+                find.text(ConnectFixtureServer.memberTargetedAnnouncementTitle),
+                findsOneWidget,
+              );
+              await pumpUntilReadAtApi(tester, isRead);
+
+              await tapBack(tester);
+              await pumpUntilRouteSettled(tester, targetedRow);
+              await tapReachable(
+                tester,
+                find.byKey(const ValueKey('tab-account')),
+              );
+              await pumpUntilRouteSettled(
+                tester,
+                find.byKey(const ValueKey('account-name')),
+              );
+              await tapVisible(
+                tester,
+                find.byKey(const ValueKey('account-sign-out')),
+                scrollable: accountList(),
+              );
+              await pumpUntilRouteSettled(
+                tester,
+                find.text('You are not signed in.'),
+              );
+              await tapReachable(
+                tester,
+                find.byKey(const ValueKey('tab-home')),
+              );
+
+              // The home tab keeps the list it was on, read again as a visitor.
+              await pumpUntilRouteSettled(tester, publicRow);
+              expect(targetedRow, findsNothing);
+            },
+          );
+        },
+      );
+
+      testApp(
+        'a live targeted announcement is hidden from a reader outside it',
+        (tester) async {
+          await withFailureScreenshot(
+            tester,
+            'live-targeted-announcement-outside',
+            () async {
+              // `db/seeds/scenarios/730_creator_pages.sql` adds this reader,
+              // who does not follow Seed Series 011.
+              final reader = await signInSeedAccount(
+                'creator-reader@example.com',
+              );
+              final tenantId = await reader.tenants.resolve();
+              final ctx = ConnectCallContext(
+                tenantId: tenantId,
+                accessToken: reader.session.accessToken,
+              );
+              final tenant = pb.TenantContext(tenantId: tenantId);
+              expect(
+                [for (final row in await listFor(reader, ctx, tenant)) row.id],
+                allOf(
+                  contains(ConnectFixtureServer.memberAnnouncementId),
+                  isNot(contains(targetedId)),
+                ),
+              );
+
+              await pumpLive(
+                tester,
+                initialLocation: AppRoutes.announcements,
+                session: reader.session,
+              );
+              await pumpUntilRouteSettled(
+                tester,
+                publicRow,
+                timeout: const Duration(seconds: 20),
+              );
+              expect(targetedRow, findsNothing);
+
+              // The address the member could open is no announcement to anyone
+              // else, and nothing they could sign in to fix.
+              await pumpLive(
+                tester,
+                initialLocation: AppRoutes.announcementPath(targetedId),
+                session: reader.session,
+              );
+              await pumpUntilRouteSettled(
+                tester,
+                find.byKey(const ValueKey('announcement-not-found')),
+                timeout: const Duration(seconds: 20),
+              );
+              expect(
+                find.byKey(const ValueKey('announcement-sign-in')),
+                findsNothing,
+              );
+            },
+          );
+        },
+      );
+    });
+
     group('content views', () {
       /// The views recorder the app builds, as [accessToken] would send them.
       HttpContentViewRepository contentViews({

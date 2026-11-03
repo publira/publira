@@ -411,7 +411,9 @@
       "tests": [
         "a pinned announcement is read, closed, and marked read",
         "a visitor reads the live announcements",
-        "the seed member reads a live announcement and it stays read"
+        "the seed member reads a live announcement and it stays read",
+        "the seed member reads a live targeted announcement until signing out",
+        "a live targeted announcement is hidden from a reader outside it"
       ]
     },
     {
