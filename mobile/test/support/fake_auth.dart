@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/notification_settings.dart';
@@ -145,6 +146,25 @@ class FakeAuthRepository implements AuthRepository {
   /// request, in order.
   final notificationSettingsUpdates =
       <({NotificationSettings current, Map<NotificationCell, bool> cells})>[];
+
+  /// The reader's latest request for their archive, which
+  /// [requestDataExport] replaces with a pending one, and `null` while there
+  /// is none.
+  DataExport? dataExport;
+
+  /// Thrown by [readDataExport], [requestDataExport], and
+  /// [downloadDataExport], standing in for an API that cannot be reached or
+  /// refuses.
+  AuthFailure? dataExportReadFailure;
+  AuthFailure? dataExportRequestFailure;
+  AuthFailure? dataExportDownloadFailure;
+
+  /// The pieces [downloadDataExport] sends of the archive.
+  List<List<int>> dataExportArchive = const [];
+
+  /// How many times [readDataExport] and [requestDataExport] were called.
+  var dataExportReads = 0;
+  var dataExportRequests = 0;
 
   /// Held open by a test that needs to act while [readEmail] is in flight.
   Completer<void>? emailGate;
@@ -930,6 +950,42 @@ class FakeAuthRepository implements AuthRepository {
       throw const AuthFailure(AuthFailureKind.linkInvalid);
     }
     return progress;
+  }
+
+  @override
+  Future<DataExport?> readDataExport(AuthSession session) async {
+    dataExportReads++;
+    final failure = dataExportReadFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return dataExport;
+  }
+
+  @override
+  Future<DataExport> requestDataExport(AuthSession session) async {
+    dataExportRequests++;
+    final failure = dataExportRequestFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    const pending = DataExport(state: DataExportState.pending);
+    dataExport = pending;
+    return pending;
+  }
+
+  @override
+  Stream<List<int>> downloadDataExport(AuthSession session) async* {
+    final failure = dataExportDownloadFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (dataExport?.state != DataExportState.ready) {
+      throw const AuthFailure(AuthFailureKind.dataExportGone);
+    }
+    for (final piece in dataExportArchive) {
+      yield piece;
+    }
   }
 
   @override

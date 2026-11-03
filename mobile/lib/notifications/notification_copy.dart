@@ -1,3 +1,4 @@
+import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/inbox_notification.dart';
 import 'package:publira/router.dart';
@@ -15,6 +16,8 @@ extension InboxNotificationCopy on AppMessages {
       InboxNotificationKind.commentHidden => notificationsCommentHiddenTitle,
       InboxNotificationKind.announcementPosted =>
         notificationsAnnouncementPostedTitle,
+      InboxNotificationKind.dataExportReady =>
+        notificationsDataExportReadyTitle,
       InboxNotificationKind.unknown => notificationsUnknownTitle,
     };
   }
@@ -48,6 +51,13 @@ extension InboxNotificationCopy on AppMessages {
         return title == null
             ? notificationsAnnouncementPostedDescriptionUnknown
             : notificationsAnnouncementPostedDescription(title: title);
+      case InboxNotificationKind.dataExportReady:
+        final expiresAt = payload.expiresAt;
+        return expiresAt == null
+            ? notificationsDataExportReadyDescriptionUnknown
+            : notificationsDataExportReadyDescription(
+                date: formatDate(expiresAt),
+              );
       case InboxNotificationKind.unknown:
         return notificationsUnknownDescription;
     }
@@ -81,7 +91,8 @@ extension InboxNotificationCopy on AppMessages {
 /// A new episode opens its viewer, and a payload naming only a series opens
 /// the series. A comment notification opens the comments of its episode, which
 /// the app has a route for where the site does not. An announcement's payload
-/// names no announcement, so it opens the list the announcement is in.
+/// names no announcement, so it opens the list the announcement is in. A
+/// ready archive opens the account screen, which downloads it.
 String? notificationLocation(InboxNotification notification) {
   final payload = notification.payload;
   final seriesId = payload.seriesId;
@@ -89,6 +100,8 @@ String? notificationLocation(InboxNotification notification) {
   switch (notification.kind) {
     case InboxNotificationKind.announcementPosted:
       return AppRoutes.announcements;
+    case InboxNotificationKind.dataExportReady:
+      return AppRoutes.account;
     case InboxNotificationKind.commentApproved ||
             InboxNotificationKind.commentHidden
         when seriesId != null && episodeId != null:

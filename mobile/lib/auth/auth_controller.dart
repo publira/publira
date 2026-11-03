@@ -5,6 +5,7 @@ import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/notification_settings.dart';
@@ -392,6 +393,52 @@ class AuthController extends ChangeNotifier {
       return null;
     }
     return _whileHeld(() => _repository.readNotificationSettings(session));
+  }
+
+  /// The signed-in reader's latest request for their archive that has not
+  /// expired, or `null` when there is none or nobody is signed in.
+  ///
+  /// Throws [AuthFailure], and signs out on a token the API has stopped
+  /// accepting.
+  Future<DataExport?> readDataExport() async {
+    final session = _session;
+    if (session == null) {
+      return null;
+    }
+    return _whileHeld(() => _repository.readDataExport(session));
+  }
+
+  /// Asks for an archive of the signed-in reader's data, and returns the
+  /// request as it then stands.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<DataExport> requestDataExport() async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.requestDataExport(session));
+  }
+
+  /// The signed-in reader's ready archive, as the bytes of the ZIP file in the
+  /// order they arrive.
+  ///
+  /// Fails with [AuthFailure], with [AuthFailureKind.sessionExpired] when
+  /// nobody is signed in, and signs out on a token the API has stopped
+  /// accepting.
+  Stream<List<int>> downloadDataExport() async* {
+    final session = _requireSession();
+    final revision = _revision;
+    try {
+      // Not `yield*`, which hands an error on without throwing it here.
+      await for (final piece in _repository.downloadDataExport(session)) {
+        yield piece;
+      }
+    } on AuthFailure catch (failure) {
+      if (failure.kind == AuthFailureKind.sessionExpired &&
+          _revision == revision) {
+        await _expire();
+      }
+      rethrow;
+    }
   }
 
   /// Writes [cells] over [current], the settings the reader was shown, to

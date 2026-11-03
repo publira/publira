@@ -13,6 +13,7 @@ import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/notification_settings.dart';
@@ -1186,6 +1187,108 @@ class HttpAuthRepository implements AuthRepository {
     return body.pendingConfirmationFor.trim() == 'current_email'
         ? EmailChangeProgress.awaitingCurrentEmail
         : EmailChangeProgress.awaitingNewEmail;
+  }
+
+  /// `DataExport.state`'s field number.
+  static const _dataExportStateField = 1;
+
+  @override
+  Future<DataExport?> readDataExport(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.getMyDataExport(
+        _sessionContext(tenantId, session),
+        pb.GetMyDataExportRequest(tenant: pb.TenantContext(tenantId: tenantId)),
+      );
+      return body.hasDataExport() ? _dataExport(body.dataExport) : null;
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<DataExport> requestDataExport(AuthSession session) async {
+    final pb.RequestMyDataExportResponse body;
+    try {
+      final tenantId = await _tenants.resolve();
+      body = await _auth.requestMyDataExport(
+        _sessionContext(tenantId, session),
+        pb.RequestMyDataExportRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+    } on ConnectException catch (error) {
+      if (error.code == 'failed_precondition' &&
+          error.reasons.contains(dataExportInProgressReason)) {
+        throw AuthFailure(
+          AuthFailureKind.dataExportInProgress,
+          message: error.message,
+        );
+      }
+      if (error.code == 'failed_precondition' &&
+          error.reasons.contains(storageNotConfiguredReason)) {
+        throw AuthFailure(
+          AuthFailureKind.storageNotConfigured,
+          message: error.message,
+        );
+      }
+      throw _toAccountFailure(error);
+    }
+    // The request was taken, so one the answer does not describe in a way
+    // this build reads is still the one the worker is preparing.
+    return (body.hasDataExport() ? _dataExport(body.dataExport) : null) ??
+        const DataExport(state: DataExportState.pending);
+  }
+
+  @override
+  Stream<List<int>> downloadDataExport(AuthSession session) async* {
+    try {
+      final tenantId = await _tenants.resolve();
+      // The generated stub would call the method as unary, which connect-go
+      // refuses for a streaming one.
+      final pieces = _client.serverStream(
+        _sessionContext(tenantId, session),
+        'AuthService',
+        'DownloadMyDataExport',
+        pb.DownloadMyDataExportRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+        pb.DownloadMyDataExportResponse.new,
+      );
+      await for (final piece in pieces) {
+        yield piece.data;
+      }
+    } on ConnectException catch (error) {
+      if (error.code == 'not_found') {
+        throw AuthFailure(
+          AuthFailureKind.dataExportGone,
+          message: error.message,
+        );
+      }
+      throw _toAccountFailure(error);
+    }
+  }
+
+  /// [dataExport] as the app reads it, or `null` for a state this build does
+  /// not know, which reads as no request at all: the reader may ask again,
+  /// and the API says so if they may not.
+  static DataExport? _dataExport(pb.DataExport dataExport) {
+    if (carriesUnknownEnum(dataExport, _dataExportStateField)) {
+      return null;
+    }
+    final state = switch (dataExport.state) {
+      pb.DataExportState.DATA_EXPORT_STATE_PENDING => DataExportState.pending,
+      pb.DataExportState.DATA_EXPORT_STATE_READY => DataExportState.ready,
+      pb.DataExportState.DATA_EXPORT_STATE_FAILED => DataExportState.failed,
+      _ => null,
+    };
+    if (state == null) {
+      return null;
+    }
+    return DataExport(
+      state: state,
+      expiresAt: DateTime.tryParse(dataExport.expiresAt.trim())?.toUtc(),
+    );
   }
 
   @override

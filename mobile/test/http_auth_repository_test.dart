@@ -11,6 +11,7 @@ import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/notification_settings.dart';
@@ -1162,6 +1163,146 @@ void main() {
       expect(request.decode(pb.LogoutRequest()).tenant, _defaultTenant());
     },
   );
+
+  group('the data export', () {
+    final ready = pb.DataExport(
+      state: pb.DataExportState.DATA_EXPORT_STATE_READY,
+      requestedAt: '2026-11-03T09:00:00Z',
+      readyAt: '2026-11-03T09:00:10Z',
+      expiresAt: '2026-11-10T09:00:10Z',
+      sizeBytes: Int64(5),
+    );
+
+    test('reads no request while the reader has made none', () async {
+      expect(await auth.readDataExport(stored), isNull);
+
+      final request = server.requestsTo('GetMyDataExport').single;
+      expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
+      expect(
+        request.decode(pb.GetMyDataExportRequest()).tenant,
+        _defaultTenant(),
+      );
+    });
+
+    test('reads a ready archive and the day it is deleted', () async {
+      server.memberDataExport = ready;
+
+      final export = await auth.readDataExport(stored);
+
+      expect(export?.state, DataExportState.ready);
+      expect(export?.expiresAt, DateTime.utc(2026, 11, 10, 9, 0, 10));
+    });
+
+    test('reads a state this build does not know as no request', () async {
+      server.memberDataExport = pb.DataExport()..mergeFromBuffer([0x08, 0x63]);
+
+      expect(await auth.readDataExport(stored), isNull);
+    });
+
+    test('a request is pending until the worker has built it', () async {
+      final export = await auth.requestDataExport(stored);
+
+      expect(export.state, DataExportState.pending);
+      expect(export.expiresAt, isNull);
+      expect(
+        server.memberDataExport?.state,
+        pb.DataExportState.DATA_EXPORT_STATE_PENDING,
+      );
+    });
+
+    test('a second request while one is pending is in progress', () async {
+      await auth.requestDataExport(stored);
+
+      await expectLater(
+        () => auth.requestDataExport(stored),
+        failsWith(AuthFailureKind.dataExportInProgress),
+      );
+    });
+
+    test('an install with no object store says so', () async {
+      server.requestDataExportError = (
+        status: HttpStatus.badRequest,
+        body: {
+          'code': 'failed_precondition',
+          'message': 'storage is not configured',
+          'details': [
+            ConnectFixtureServer.errorInfoDetail('STORAGE_NOT_CONFIGURED'),
+          ],
+        },
+      );
+
+      await expectLater(
+        () => auth.requestDataExport(stored),
+        failsWith(AuthFailureKind.storageNotConfigured),
+      );
+    });
+
+    test('a request past the limit is rate limited', () async {
+      server.requestDataExportError = (
+        status: HttpStatus.tooManyRequests,
+        body: {'code': 'resource_exhausted', 'message': 'slow down'},
+      );
+
+      await expectLater(
+        () => auth.requestDataExport(stored),
+        failsWith(AuthFailureKind.rateLimited),
+      );
+    });
+
+    test('downloads the bytes of a ready archive in order', () async {
+      server
+        ..memberDataExport = ready
+        ..dataExportArchive = [
+          [0x50, 0x4b],
+          [0x03, 0x04, 0x00],
+        ];
+
+      final bytes = await auth
+          .downloadDataExport(stored)
+          .expand((piece) => piece)
+          .toList();
+
+      expect(bytes, [0x50, 0x4b, 0x03, 0x04, 0x00]);
+      final request = server.requestsTo('DownloadMyDataExport').single;
+      expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
+      expect(
+        request.decodeEnveloped(pb.DownloadMyDataExportRequest()).tenant,
+        _defaultTenant(),
+      );
+    });
+
+    test('an archive that is no longer ready is gone', () async {
+      await expectLater(
+        auth.downloadDataExport(stored).toList(),
+        failsWith(AuthFailureKind.dataExportGone),
+      );
+    });
+
+    test('a session the API turns away has expired', () async {
+      server
+        ..memberDataExport = ready
+        ..activeAccessToken = 'another-token';
+
+      await expectLater(
+        auth.downloadDataExport(stored).toList(),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+    });
+
+    test('a download cut off part way is a network failure', () async {
+      server
+        ..memberDataExport = ready
+        ..dataExportArchive = [
+          [0x50, 0x4b],
+        ]
+        ..dataExportStreamCutOff = true;
+
+      await expectLater(
+        auth.downloadDataExport(stored).toList(),
+        failsWith(AuthFailureKind.network),
+      );
+    });
+  });
 
   group('notification settings', () {
     const nothingSaved = NotificationSettings(preferences: {});

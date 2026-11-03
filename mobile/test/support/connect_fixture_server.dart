@@ -117,6 +117,10 @@ class ConnectFixtureServer {
   /// names and every success answers with.
   static const protoContentType = 'application/proto';
 
+  /// The content type of the same codec in the Connect protocol's streaming
+  /// form, which a server-streaming request names and its answer carries.
+  static const streamContentType = 'application/connect+proto';
+
   /// What the development seed (`db/seeds/dev/001_tenant_users.sql`) stores
   /// as the tenant's default locale.
   static const defaultTenantLocale = 'en';
@@ -1132,6 +1136,26 @@ class ConnectFixtureServer {
   /// and the Connect error body.
   ({int status, Map<String, Object?> body})? rateEpisodeError;
 
+  /// The member's latest request for their archive, which
+  /// `GetMyDataExport` answers and `RequestMyDataExport` replaces with a
+  /// pending one, and `null` while there is none.
+  pb.DataExport? memberDataExport;
+
+  /// The error `RequestMyDataExport` answers with in place of a request, as
+  /// the status and the Connect error body.
+  ({int status, Map<String, Object?> body})? requestDataExportError;
+
+  /// The pieces `DownloadMyDataExport` streams of a ready archive, in order.
+  List<List<int>> dataExportArchive = const [];
+
+  /// The Connect error `DownloadMyDataExport` ends its stream with after
+  /// every piece, standing in for an archive that could not be read through.
+  Map<String, Object?>? dataExportStreamError;
+
+  /// Whether `DownloadMyDataExport` drops the connection after the last piece
+  /// rather than ending the stream, standing in for a download cut off.
+  var dataExportStreamCutOff = false;
+
   /// The status `RecordContentView` answers with.
   int contentViewStatus = HttpStatus.ok;
 
@@ -1228,7 +1252,10 @@ class ConnectFixtureServer {
       // connect-go picks the codec from the content type, and refuses one it
       // has no codec for before any handler runs.
       final contentType = recorded.headers['content-type'] ?? '';
-      if (contentType != protoContentType) {
+      final expected = path.endsWith('/DownloadMyDataExport')
+          ? streamContentType
+          : protoContentType;
+      if (contentType != expected) {
         throw FormatException('request sent as "$contentType"');
       }
       await _answer(request, recorded);
@@ -1791,6 +1818,34 @@ class ConnectFixtureServer {
       await _writeConfirmEmailChange(
         request,
         recorded.decode(pb.ConfirmEmailChangeRequest()),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetMyDataExport')) {
+      recorded.decode(pb.GetMyDataExportRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetMyDataExportResponse(dataExport: memberDataExport),
+      );
+      return;
+    }
+
+    if (path.endsWith('/RequestMyDataExport')) {
+      await _writeRequestMyDataExport(
+        request,
+        recorded.decode(pb.RequestMyDataExportRequest()),
+      );
+      return;
+    }
+
+    if (path.endsWith('/DownloadMyDataExport')) {
+      await _writeDownloadMyDataExport(
+        request,
+        recorded.decodeEnveloped(pb.DownloadMyDataExportRequest()),
       );
       return;
     }
@@ -4429,6 +4484,90 @@ class ConnectFixtureServer {
   /// linked provider, or one of the member's passkeys has to confirm it, the
   /// tenant's last active tenant admin is refused, and the account is then
   /// gone along with every token it held.
+  /// `RequestMyDataExport` for the member: refused as the API refuses a
+  /// second open request while one is pending, and otherwise recorded as a
+  /// pending request.
+  Future<void> _writeRequestMyDataExport(
+    HttpRequest request,
+    pb.RequestMyDataExportRequest body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    if (requestDataExportError case final error?) {
+      await _writeJson(request, error.status, error.body);
+      return;
+    }
+    if (memberDataExport?.state ==
+        pb.DataExportState.DATA_EXPORT_STATE_PENDING) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'a data export is already pending',
+        details: [errorInfoDetail('DATA_EXPORT_IN_PROGRESS')],
+      );
+      return;
+    }
+    final pending = pb.DataExport(
+      state: pb.DataExportState.DATA_EXPORT_STATE_PENDING,
+      requestedAt: DateTime.now().toUtc().toIso8601String(),
+    );
+    memberDataExport = pending;
+    await _writeMessage(
+      request,
+      pb.RequestMyDataExportResponse(dataExport: pending),
+    );
+  }
+
+  /// `DownloadMyDataExport` in the Connect protocol's streaming form, as
+  /// connect-go answers a server-streaming handler: 200 whatever the outcome,
+  /// a message per piece of [dataExportArchive], and an end-of-stream message
+  /// carrying the refusal, if any. A refusal before the first piece is sent
+  /// the same way, after no message at all.
+  Future<void> _writeDownloadMyDataExport(
+    HttpRequest request,
+    pb.DownloadMyDataExportRequest body,
+  ) async {
+    final response = request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType.parse(streamContentType);
+    Map<String, Object?>? error;
+    if (!_isAuthorized(request)) {
+      error = {'code': 'unauthenticated', 'message': 'invalid token'};
+    } else if (memberDataExport?.state !=
+        pb.DataExportState.DATA_EXPORT_STATE_READY) {
+      error = {'code': 'not_found', 'message': 'no data export is ready'};
+    } else {
+      for (final piece in dataExportArchive) {
+        response.add(
+          _envelope(
+            0,
+            pb.DownloadMyDataExportResponse(data: piece).writeToBuffer(),
+          ),
+        );
+        await response.flush();
+      }
+      if (dataExportStreamCutOff) {
+        await response.close();
+        return;
+      }
+      error = dataExportStreamError;
+    }
+    response.add(_envelope(2, utf8.encode(jsonEncode({'error': ?error}))));
+    await response.close();
+  }
+
+  /// [payload] enveloped as the Connect protocol's streaming form sends a
+  /// message, under [flags].
+  static Uint8List _envelope(int flags, List<int> payload) {
+    final envelope = Uint8List(5 + payload.length);
+    envelope[0] = flags;
+    ByteData.sublistView(envelope).setUint32(1, payload.length);
+    envelope.setAll(5, payload);
+    return envelope;
+  }
+
   Future<void> _writeDeleteMe(
     HttpRequest request,
     pb.DeleteMeRequest body,
@@ -4858,6 +4997,21 @@ class RecordedRequest {
     }
     _rejectUnknownFields(message);
     return message;
+  }
+
+  /// [decode] for a request in the Connect protocol's streaming form, whose
+  /// body is the one message, enveloped.
+  T decodeEnveloped<T extends GeneratedMessage>(T message) {
+    if (_body.length < 5 ||
+        _body[0] != 0 ||
+        ByteData.sublistView(_body).getUint32(1) != _body.length - 5) {
+      throw const FormatException('the body is not one enveloped message');
+    }
+    return RecordedRequest(
+      path: path,
+      headers: headers,
+      body: Uint8List.sublistView(_body, 5),
+    ).decode(message);
   }
 
   /// Throws a [FormatException] when [message], or any message nested in it,

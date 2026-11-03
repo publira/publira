@@ -111,6 +111,18 @@ void main() {
         AppRoutes.announcements,
       );
     });
+
+    test('opens the account screen for a ready archive', () {
+      expect(
+        notificationLocation(
+          notification(
+            InboxNotificationKind.dataExportReady,
+            '{"expires_at":"2026-11-10T12:00:00Z"}',
+          ),
+        ),
+        AppRoutes.account,
+      );
+    });
   });
 
   group('the copy', () {
@@ -139,6 +151,38 @@ void main() {
       expect(
         messages.notificationDescription(row),
         'Your comment on “Episode 1” was removed by the operator.',
+      );
+    });
+
+    test('names the day a ready archive is deleted', () {
+      final row = InboxNotification(
+        id: 'n-1',
+        kind: InboxNotificationKind.fromWire('data_export_ready'),
+        payload: InboxNotificationPayload.parse(
+          // Midday, so the day is the same in every zone a test runs in.
+          '{"expires_at":"2026-11-10T12:00:00Z"}',
+        ),
+      );
+
+      expect(messages.notificationTitle(row), 'Your data is ready');
+      expect(
+        messages.notificationDescription(row),
+        'The copy of your data you asked for is ready. Download it from your '
+        'account by Nov 10, 2026.',
+      );
+    });
+
+    test('words a ready archive without a day it cannot read', () {
+      final row = notification(
+        InboxNotificationKind.dataExportReady,
+        '{"expires_at":"next week"}',
+      );
+
+      expect(row.payload.expiresAt, isNull);
+      expect(
+        messages.notificationDescription(row),
+        'The copy of your data you asked for is ready. Download it from your '
+        'account.',
       );
     });
 

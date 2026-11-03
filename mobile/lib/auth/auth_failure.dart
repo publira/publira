@@ -93,6 +93,14 @@ enum AuthFailureKind {
   /// can do nothing about.
   storageNotConfigured,
 
+  /// A request of the reader's for their archive is still being prepared,
+  /// which the API lets them have one of at a time.
+  dataExportInProgress,
+
+  /// The reader has no archive to download: the one the account screen showed
+  /// expired, or was deleted, since it was read.
+  dataExportGone,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

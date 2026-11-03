@@ -1,6 +1,7 @@
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/notification_settings.dart';
@@ -382,6 +383,30 @@ abstract class AuthRepository {
   /// Throws [AuthFailure]; the kind tells a link the API never issued from
   /// one whose time has run out or whose request has been overtaken.
   Future<EmailChangeProgress> confirmEmailChange(String token);
+
+  /// The latest request of the reader behind [session] for an archive of
+  /// what the install keeps about them that has not expired, or `null` when
+  /// there is none.
+  ///
+  /// Throws [AuthFailure].
+  Future<DataExport?> readDataExport(AuthSession session);
+
+  /// Asks for an archive of what the install keeps about the reader behind
+  /// [session], which the worker builds and then tells them of in their inbox
+  /// and by mail, and returns the request as it then stands.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.dataExportInProgress] while a
+  /// request of theirs is still being prepared, and
+  /// [AuthFailureKind.storageNotConfigured] on an install with no object
+  /// store to keep the archive in.
+  Future<DataExport> requestDataExport(AuthSession session);
+
+  /// The ready archive of the reader behind [session], as the bytes of the ZIP
+  /// file in the order they arrive.
+  ///
+  /// The stream fails with [AuthFailure];
+  /// [AuthFailureKind.dataExportGone] when there is no ready archive to send.
+  Stream<List<int>> downloadDataExport(AuthSession session);
 
   /// Deletes the account behind [session], once [password] confirms it is
   /// the reader asking.

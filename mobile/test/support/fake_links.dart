@@ -54,11 +54,11 @@ class FakeShareSheet implements ShareSheet {
     this.text = text;
   }
 
-  /// The files [shareFile] was handed, in order.
+  /// The files [shareFile] and [shareFileStream] were handed, in order.
   final files = <SharedFile>[];
 
-  /// Thrown by [shareFile], standing in for a platform that cannot open the
-  /// sheet.
+  /// Thrown by [shareFile] and [shareFileStream], standing in for a platform
+  /// that cannot open the sheet.
   Exception? fileFailure;
 
   @override
@@ -74,6 +74,25 @@ class FakeShareSheet implements ShareSheet {
     }
     files.add(
       SharedFile(bytes: bytes, name: name, mimeType: mimeType, title: title),
+    );
+  }
+
+  @override
+  Future<void> shareFileStream({
+    required Stream<List<int>> bytes,
+    required String name,
+    required String mimeType,
+    required String title,
+  }) async {
+    // Read before the failure is thrown, as the plugin writes the whole file
+    // before it opens the sheet.
+    final builder = BytesBuilder(copy: false);
+    await bytes.forEach(builder.add);
+    await shareFile(
+      bytes: builder.takeBytes(),
+      name: name,
+      mimeType: mimeType,
+      title: title,
     );
   }
 }

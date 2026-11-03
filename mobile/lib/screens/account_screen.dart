@@ -1,12 +1,14 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -20,6 +22,7 @@ import 'package:publira/creator/creator_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
+import 'package:publira/links/link_scope.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_failure.dart';
@@ -175,6 +178,11 @@ class AccountScreen extends StatelessWidget {
                         'notification-settings',
                         session.userPublicId,
                       )),
+                    ),
+                    // Keyed by the reader, so another account signing in reads
+                    // its own request rather than showing the last one's.
+                    _DataExportSection(
+                      key: ValueKey(('data-export', session.userPublicId)),
                     ),
                     const _PagesEntry(),
                     const _ContactEntry(),
@@ -1465,6 +1473,283 @@ class _NotificationSwitch extends StatelessWidget {
           ),
         const Divider(height: 1),
       ],
+    );
+  }
+}
+
+/// An archive of what the install keeps about the reader, asked for here and,
+/// once the worker has built it, downloaded from here into a file handed to
+/// the share sheet: the same request the storefront's account settings make,
+/// so a request made on either shows on both.
+///
+/// A request being prepared offers nothing, since the API refuses a second
+/// open request; a ready archive can be asked for again. The request is read
+/// again whenever the account tab comes back on screen, which is where the
+/// inbox notice of a ready archive leads, and whenever the app comes back to
+/// the front, which is where the mail saying so leaves the reader.
+///
+/// The download is left out in a build carrying no share sheet.
+class _DataExportSection extends StatefulWidget {
+  const _DataExportSection({super.key});
+
+  @override
+  State<_DataExportSection> createState() => _DataExportSectionState();
+}
+
+class _DataExportSectionState extends State<_DataExportSection> {
+  DataExport? _export;
+  var _loaded = false;
+  var _failed = false;
+  var _requesting = false;
+  var _downloading = false;
+  var _reads = 0;
+
+  /// Whether the account tab was on screen when last asked.
+  var _active = true;
+  var _started = false;
+
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: () => unawaited(_read()));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = AppTabScope.isActive(context);
+    final returned = active && !_active;
+    _active = active;
+    if (_started && !returned) {
+      return;
+    }
+    _started = true;
+    unawaited(_read());
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _read() async {
+    final read = ++_reads;
+    DataExport? export;
+    var failed = false;
+    try {
+      export = await AuthScope.of(context).readDataExport();
+    } on AuthFailure {
+      failed = true;
+    }
+    if (!mounted || read != _reads) {
+      return;
+    }
+    setState(() {
+      _export = export;
+      _loaded = true;
+      _failed = failed;
+    });
+  }
+
+  Future<void> _request() async {
+    if (_requesting) {
+      return;
+    }
+    final auth = AuthScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    void report(String message) => messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey('account-data-export-failure'),
+        content: AutospacedText(message),
+      ),
+    );
+    setState(() {
+      _requesting = true;
+    });
+    try {
+      final export = await auth.requestDataExport();
+      if (mounted) {
+        // A read that was already on its way answered from before the
+        // request, so it is not allowed to land over it.
+        _reads++;
+        setState(() {
+          _export = export;
+          _failed = false;
+        });
+      }
+    } on AuthFailure catch (failure) {
+      report(switch (failure.kind) {
+        AuthFailureKind.dataExportInProgress =>
+          messages.accountDataExportInProgress,
+        AuthFailureKind.storageNotConfigured =>
+          messages.accountDataExportStorageUnavailable,
+        AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
+        AuthFailureKind.network => messages.errorsRpcUnavailable,
+        _ => messages.accountDataExportRequestFailed,
+      });
+      // A request made on the site meanwhile is the one being prepared.
+      if (failure.kind == AuthFailureKind.dataExportInProgress && mounted) {
+        unawaited(_read());
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _requesting = false;
+        });
+      }
+    }
+  }
+
+  /// Reads the archive into a file and hands it to the share sheet, for the
+  /// reader to save or send on.
+  Future<void> _download() async {
+    final share = LinkScope.maybeOf(context)?.share;
+    if (share == null || _downloading) {
+      return;
+    }
+    final auth = AuthScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    void report(String message) => messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey('account-data-export-failure'),
+        content: AutospacedText(message),
+      ),
+    );
+    setState(() {
+      _downloading = true;
+    });
+    try {
+      await share.shareFileStream(
+        bytes: auth.downloadDataExport(),
+        name: dataExportFileName,
+        mimeType: dataExportMimeType,
+        title: messages.accountDataExportHeading,
+      );
+    } on AuthFailure catch (failure) {
+      report(switch (failure.kind) {
+        AuthFailureKind.dataExportGone => messages.accountDataExportGone,
+        AuthFailureKind.network => messages.errorsRpcUnavailable,
+        _ => messages.accountDataExportDownloadFailed,
+      });
+      // The archive shown has expired, so the section offers a new request.
+      if (failure.kind == AuthFailureKind.dataExportGone && mounted) {
+        unawaited(_read());
+      }
+    } on PlatformException {
+      // The share sheet could not be opened, so the file reached no one.
+      report(messages.accountDataExportDownloadFailed);
+    } on FileSystemException {
+      // The device would not hold the file for the share sheet.
+      report(messages.accountDataExportDownloadFailed);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    if (!_loaded) {
+      return _section([
+        ListTile(
+          key: const ValueKey('account-data-export-loading'),
+          title: AutospacedText(messages.accountDataExportHeading),
+          trailing: const SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ]);
+    }
+    if (_failed) {
+      return _section([
+        ListTile(
+          key: const ValueKey('account-data-export-error'),
+          title: AutospacedText(messages.accountDataExportHeading),
+          subtitle: AutospacedText(messages.accountDataExportLoadFailed),
+          trailing: TextButton(
+            key: const ValueKey('account-data-export-retry'),
+            onPressed: () => unawaited(_read()),
+            child: AutospacedText(messages.commonRetry),
+          ),
+        ),
+      ]);
+    }
+    final export = _export;
+    final expiresAt = export?.expiresAt;
+    final status = switch (export?.state) {
+      DataExportState.pending => messages.accountDataExportPending,
+      DataExportState.ready when expiresAt != null =>
+        messages.accountDataExportReady(date: messages.formatDate(expiresAt)),
+      DataExportState.failed => messages.accountDataExportFailed,
+      DataExportState.ready || null => null,
+    };
+    final ready = export?.state == DataExportState.ready;
+    final canDownload = ready && LinkScope.maybeOf(context)?.share != null;
+    final busy = _requesting || _downloading;
+    return _section([
+      ListTile(
+        key: ValueKey(('account-data-export', export?.state.name ?? 'none')),
+        title: AutospacedText(messages.accountDataExportHeading),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AutospacedText(messages.accountDataExportDescription),
+            if (status != null) ...[
+              const SizedBox(height: 8),
+              AutospacedText(
+                status,
+                key: const ValueKey('account-data-export-status'),
+              ),
+            ],
+          ],
+        ),
+      ),
+      if (export?.state != DataExportState.pending)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (canDownload)
+                FilledButton(
+                  key: const ValueKey('account-data-export-download'),
+                  onPressed: busy ? null : () => unawaited(_download()),
+                  child: AutospacedText(
+                    _downloading
+                        ? messages.accountDataExportDownloading
+                        : messages.accountDataExportDownload,
+                  ),
+                ),
+              OutlinedButton(
+                key: const ValueKey('account-data-export-request'),
+                onPressed: busy ? null : () => unawaited(_request()),
+                child: AutospacedText(
+                  ready
+                      ? messages.accountDataExportRequestAgain
+                      : messages.accountDataExportRequest,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ]);
+  }
+
+  Widget _section(List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [...children, const Divider(height: 1)],
     );
   }
 }

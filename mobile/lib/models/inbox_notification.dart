@@ -7,6 +7,9 @@ enum InboxNotificationKind {
   commentHidden('comment_hidden'),
   announcementPosted('announcement_posted'),
 
+  /// The archive of the reader's data they asked for is ready to download.
+  dataExportReady('data_export_ready'),
+
   /// A type this build has no copy for, which still stays in the list as a
   /// generic row: the reader was notified of something, and the row is where
   /// they mark it read.
@@ -59,6 +62,7 @@ class InboxNotificationPayload {
     this.episodeTitle,
     this.announcementTitle,
     this.hiddenReason,
+    this.expiresAt,
   });
 
   factory InboxNotificationPayload.parse(String raw) {
@@ -82,6 +86,7 @@ class InboxNotificationPayload {
       episodeTitle: _label(decoded['episode_title']),
       announcementTitle: _label(decoded['announcement_title']),
       hiddenReason: CommentHiddenReason.fromWire(decoded['hidden_reason']),
+      expiresAt: _instant(decoded['expires_at']),
     );
   }
 
@@ -107,12 +112,23 @@ class InboxNotificationPayload {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  /// An RFC 3339 instant, which reads as absent when it is not one.
+  static DateTime? _instant(Object? value) {
+    if (value is! String) {
+      return null;
+    }
+    return DateTime.tryParse(value.trim())?.toUtc();
+  }
+
   final String? seriesId;
   final String? episodeId;
   final String? seriesTitle;
   final String? episodeTitle;
   final String? announcementTitle;
   final CommentHiddenReason? hiddenReason;
+
+  /// When the archive `data_export_ready` is about is deleted.
+  final DateTime? expiresAt;
 }
 
 /// One row of the signed-in reader's inbox, as `publira.v1.NotificationItem`
