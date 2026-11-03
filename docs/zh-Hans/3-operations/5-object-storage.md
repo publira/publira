@@ -2,10 +2,11 @@
 title: 对象存储
 description: 选择保存所有上传图片的存储桶、Publira登录该存储桶的方式，以及图片的分发与缓存方式。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-10-16
 ---
 
-安装实例保存的每一张图片——封面、章节页面、作者照片、各租户的标志——都存放在一个兼容S3的存储桶中，由所有租户共用。`publiractl setup`已经保存了这个存储桶的设置。本页说明其中每一项设置、如何测试、以后如何更改，以及已保存的图片如何送达读者。
+安装实例保存的每一张图片——封面、章节页面、作者照片、各租户的徽标——都存放在一个兼容S3的存储桶中，由所有租户共用。`publiractl setup`已经保存了这个存储桶的设置。本页说明其中每一项设置、如何测试、以后如何更改，以及已保存的图片如何送达读者。
 
 本页中的`publiractl`命令都只写出命令本身。请按照[平台控制台与publiractl](./1-platform-console.md#在两者之间进行选择)中的说明运行：将`PUBLIRA_PLATFORM_DB_URL`设置为`publira_platform`的连接，并使用与各进程相同的`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。所有选项都列在[`publiractl`参考](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#storage)中。
 
@@ -105,7 +106,7 @@ aws s3 sync s3://publira-images s3://publira-images-new
 1. 检查读者是否可以查看该图片。章节页面只向该章节对其免费或已解锁该章节的读者显示，未发布章节的页面只向租户在控制台中的工作人员显示。
 2. 从存储桶读取原图，转换为浏览器支持的WebP或AVIF，并调整为页面请求的尺寸。
 3. 将转换结果保存在转换缓存中，这样下次以相同尺寸请求同一图片时，无需再次读取存储桶或重新转换。
-4. 向读者发送章节页面前对其加密，因此浏览器收到的并不是可以另存并在别处打开的图片文件。封面、标志和其他图片按原样发送。
+4. 向读者发送章节页面前对其加密，因此浏览器收到的并不是可以另存并在别处打开的图片文件。封面、徽标和其他图片按原样发送。
 
 正因如此，存储桶无需公开访问，前面无需CDN，也无需预先生成缩放后的副本：每张图片只需保存一份原图。
 
