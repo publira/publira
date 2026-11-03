@@ -17,11 +17,11 @@ source_updated: 2026-10-31
 | Deployment | イメージと引数 | ポート | Service | レプリカ数 |
 | --- | --- | --- | --- | --- |
 | `publira-server` | `ghcr.io/publira/publira:<tag>` | `8000` | あり。リバースプロキシとWebアプリが呼び出します | 任意 |
-| `publira-worker` | `ghcr.io/publira/publira:<tag>`、引数は`worker` | `8003`(プローブ専用) | なし。呼び出し元がありません | 任意 |
+| `publira-worker` | `ghcr.io/publira/publira:<tag>`、引数は`worker` | `8003` (プローブ専用) | なし。呼び出し元がありません | 任意 |
 | `web-storefront` | `ghcr.io/publira/web-storefront:<tag>` | `3000` | あり。リバースプロキシが呼び出すほか、サーバーとワーカーがキャッシュの再検証で呼び出します | 任意 |
 | `web-admin` | `ghcr.io/publira/web-admin:<tag>` | `4000` | あり。呼び出し元は`web-storefront`と同じです | 任意 |
-| `web-platform`(動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | あり。呼び出し元は`web-storefront`と同じです | 任意 |
-| `email-renderer`(動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | あり。ワーカーが呼び出します | 任意 |
+| `web-platform` (動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | あり。呼び出し元は`web-storefront`と同じです | 任意 |
+| `email-renderer` (動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | あり。ワーカーが呼び出します | 任意 |
 
 ワーカーは複数のレプリカで動かせます。どの定期ジョブも実行中は一意に扱われるので、2つのレプリカが同じジョブを同時に実行することはありません。繰り返し実行するジョブもワーカー自身がスケジュールするので、CronJobは要りません。サーバーとワーカーの各レプリカは、データベースのログインごとに接続プールを開きます。レプリカを増やすほど、データベースが受け付ける接続も多く必要になります。必要な接続数の計算は[接続プール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
 
@@ -137,7 +137,7 @@ kubectl create secret generic publira-db-roles \
 | `publiractl` | `db`のJob | 環境変数。[管理用ログイン](../2-installing.md#サービスを用意する)の接続情報`PUBLIRA_DB_URL`だけを入れます。この変数を読むのは`db`コマンドだけなので、ほかの`publiractl`コマンドにも、常駐するプロセスにも渡しません |
 | `publira-db-roles` | `db roles`のJob | ロールごとに1つのファイル。`db roles`が`--<role>-password-file`フラグで読み込みます |
 
-クラスター内のSecretはバックアップの代わりになりません。暗号化キーは、自分で管理するシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)にあるとおり、キーを失うと、Publiraに保存したすべての認証情報を入力し直すことになります。シークレットをストアで管理してクラスターに同期する場合(ストアからSecretを書き出すOperatorを使う場合など)は、同じ名前のSecretに同じキー名で書き出させてください。
+クラスター内のSecretはバックアップの代わりになりません。暗号化キーは、自分で管理するシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)にあるとおり、キーを失うと、Publiraに保存したすべての認証情報を入力し直すことになります。シークレットをストアで管理してクラスターに同期する場合 (ストアからSecretを書き出すOperatorを使う場合など) は、同じ名前のSecretに同じキー名で書き出させてください。
 
 ## 2. マイグレーションを適用する
 
@@ -171,7 +171,7 @@ kubectl logs job/publira-db-migrate
 
 `backoffLimit: 0`は、失敗したマイグレーションをKubernetesが勝手に再実行しないようにするためのものです。失敗したマイグレーションはデータベースにdirtyの印を残し、[マイグレーションが失敗したとき](../8-upgrading.md#マイグレーションが失敗したとき)の手順に従って手作業で解消する必要があります。`kubectl wait`は、Jobが失敗していてもまだ実行中でも10分で待つのをやめるので、どちらの場合もログを確認してください。
 
-Jobは作成後に変更できません。また、終了したJobは、完了したか失敗したかにかかわらず、マニフェストを適用し直しても再実行されません。このJobは終了の1日後に削除されます。それより前に再実行するとき(マイグレーションが失敗したときの復旧手順の最後など)は、まずJobを削除します。
+Jobは作成後に変更できません。また、終了したJobは、完了したか失敗したかにかかわらず、マニフェストを適用し直しても再実行されません。このJobは終了の1日後に削除されます。それより前に再実行するとき (マイグレーションが失敗したときの復旧手順の最後など) は、まずJobを削除します。
 
 ```bash
 kubectl delete job publira-db-migrate --ignore-not-found
@@ -406,7 +406,7 @@ spec:
       targetPort: http
 ```
 
-`web-storefront`にも`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を設定します。テナントのGoogleタグゲートウェイに渡す読者のアドレスを判別するためです。`web-admin.yaml`は、`web-storefront`をすべて`web-admin`に置き換え(Secretの名前も変わります)、ポートを`3000`から`4000`に変え、`web-admin`が読まない`PUBLIRA_TRUSTED_PROXIES`を削除したものです。
+`web-storefront`にも`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を設定します。テナントのGoogleタグゲートウェイに渡す読者のアドレスを判別するためです。`web-admin.yaml`は、`web-storefront`をすべて`web-admin`に置き換え (Secretの名前も変わります)、ポートを`3000`から`4000`に変え、`web-admin`が読まない`PUBLIRA_TRUSTED_PROXIES`を削除したものです。
 
 すべて適用し、どのDeploymentも準備ができるまで待ちます。
 
@@ -526,7 +526,7 @@ Amazon S3以外のストレージを使う場合は、`--endpoint`でそのURL�
 
 ## 7. ログインする
 
-`https://admin.comics.example.com`(`--admin-domain`で管理画面のホストを指定した場合はそのホスト)でテナント管理画面を開き、管理者のメールアドレスとパスワードでログインします。ここから先は、インストールの[ログインする](../2-installing.md#6-ログインする)を済ませた後と同じです。
+`https://admin.comics.example.com` (`--admin-domain`で管理画面のホストを指定した場合はそのホスト) でテナント管理画面を開き、管理者のメールアドレスとパスワードでログインします。ここから先は、インストールの[ログインする](../2-installing.md#6-ログインする)を済ませた後と同じです。
 
 ## このセクションのページ
 

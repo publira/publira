@@ -35,8 +35,8 @@ Publiraには、すべてのテナントの決済プロバイダとメールサ�
 | シークレット | 設定する場所 | 設定してはいけない場所 | 持っている者にできること |
 | --- | --- | --- | --- |
 | シークレットの暗号化キー | `publira server`、`publira worker`、`publiractl` | Webアプリ | データベースのコピーがあれば、保存されているすべての認証情報を復号できる |
-| アクセストークンの署名キー(`PUBLIRA_AUTH_JWT_SECRET`) | `publira server` | それ以外のすべて | どの読者、スタッフ、オペレーターのセッションにも署名できる |
-| 各Webアプリのセッションキー(`PUBLIRA_AUTH_SECRET`) | そのWebアプリ | `publira server`、`publira worker` | そのアプリのセッションCookieを読み取ったり偽造したりできる。セッションCookieにはユーザーのアクセストークンが入っている |
+| アクセストークンの署名キー (`PUBLIRA_AUTH_JWT_SECRET`) | `publira server` | それ以外のすべて | どの読者、スタッフ、オペレーターのセッションにも署名できる |
+| 各Webアプリのセッションキー (`PUBLIRA_AUTH_SECRET`) | そのWebアプリ | `publira server`、`publira worker` | そのアプリのセッションCookieを読み取ったり偽造したりできる。セッションCookieにはユーザーのアクセストークンが入っている |
 | キャッシュ再検証トークン | `publira server`、`publira worker`、すべてのWebアプリ | `publiractl` | キャッシュされたどのページでも、何度でも破棄できる |
 | Webサービストークン | `publira server`、`web-admin`、`web-platform` | `web-storefront`、`publira worker` | 非公開のシリーズを含むすべてのテナントの作品と、プラットフォームのテナント、オペレーター、読者を読み取れる |
 | 管理用ログインのパスワード | `publiractl db`コマンド | 常駐するすべてのプロセス | データベースのすべてを操作できる |

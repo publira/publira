@@ -17,7 +17,7 @@ Composeファイルが実行するのは[インストール](./2-installing.md)�
 | サービス | 内容 | ホストに残すデータ |
 | --- | --- | --- |
 | `postgres` | PostgreSQL。Publiraが保存するすべてのデータを持ちます | `postgres-data`ボリューム |
-| `valkey` | Valkey。画像変換のキャッシュ、レート制限のカウンター、Webアプリのキャッシュを持ちます | なし(再起動のたびに空で起動します) |
+| `valkey` | Valkey。画像変換のキャッシュ、レート制限のカウンター、Webアプリのキャッシュを持ちます | なし (再起動のたびに空で起動します) |
 | `rustfs` | S3互換のオブジェクトストレージの[RustFS](https://github.com/rustfs/rustfs)。アップロードされたすべての画像を持ちます | `rustfs-data`ボリューム |
 | `proxy` | リバースプロキシのCaddy。リポジトリのルーティング設定で動き、設定したホスト名の証明書を取得して更新します | 証明書を入れる`caddy-data`ボリューム |
 | `server` | `publira server`と`publira worker`を1つのプロセスにまとめた`publira server --with-worker`。[構成の概要](./1-overview.md#publiraで動かすプロセス)で説明しています | なし |
@@ -38,7 +38,7 @@ Composeファイルが実行するのは[インストール](./2-installing.md)�
 
 次のものを用意してください。
 
-- Docker EngineとComposeプラグイン(`docker compose`)を入れたホストが必要です。イメージを公開しているのは`linux/amd64`と`linux/arm64`だけです。ほかのプラットフォームでは最初のpullが`no matching manifest`で失敗するので、[イメージの指定](#イメージの指定)で説明しているように、そのプラットフォーム向けにビルドしたイメージを使います。
+- Docker EngineとComposeプラグイン (`docker compose`) を入れたホストが必要です。イメージを公開しているのは`linux/amd64`と`linux/arm64`だけです。ほかのプラットフォームでは最初のpullが`no matching manifest`で失敗するので、[イメージの指定](#イメージの指定)で説明しているように、そのプラットフォーム向けにビルドしたイメージを使います。
 - インストールするリリースのアーカイブを使います。[Releases](https://github.com/publira/publira/releases)ページの各リリースに`publira-deploy-<version>.tar.gz`として添付してあり、[Composeファイルのダウンロード](#composeファイルのダウンロード)の手順で取得します。リポジトリのほかのファイルは、ホストにいりません。
 - ホストから`ghcr.io`にアクセスできる必要があります。各リリースのイメージはここで公開しています。`docker compose`はイメージが必要になった時点でログインせずにpullするので、ホストでビルドすることはありません。
 - SMTPサーバーのホスト、ポート、暗号化の方式、メールの送信元アドレスと、ログインに使うユーザー名とパスワードを、`publiractl setup`で尋ねます。認証なしで中継するサーバーなら、ユーザー名とパスワードはいりません。
@@ -84,7 +84,7 @@ PUBLIRA_IMAGE_TAG=0.1.0
 
 タグもそのままにしてください。すべてのイメージがこの1つのタグで動き、タグは`.env`と同じディレクトリのファイルと合っている必要があります。`publiractl`には自分のリリースのマイグレーションが入っていて、各プロセスは自分のリリースのスキーマを前提にし、プロキシは隣の`Caddyfile`のルーティングで動くからです。チェックアウトしたリポジトリでは`.env.example`のタグが空なので、チェックアウトしたリリースのバージョンを設定します。
 
-コードに手を加える場合や、ホストが`linux/amd64`でも`linux/arm64`でもない場合は、[イメージのビルド手順](https://github.com/publira/publira/blob/main/infra/docker/README.md)に従ってイメージを自分でビルドし、2つの変数をそのイメージの場所に合わせます。プッシュ先のレジストリのアドレス(`registry.example.com/publira`など)と自分で決めたタグを設定してください。ホスト上で`task docker:verify:full`がビルドしたイメージを使うなら、`publira`と`local`です。
+コードに手を加える場合や、ホストが`linux/amd64`でも`linux/arm64`でもない場合は、[イメージのビルド手順](https://github.com/publira/publira/blob/main/infra/docker/README.md)に従ってイメージを自分でビルドし、2つの変数をそのイメージの場所に合わせます。プッシュ先のレジストリのアドレス (`registry.example.com/publira`など) と自分で決めたタグを設定してください。ホスト上で`task docker:verify:full`がビルドしたイメージを使うなら、`publira`と`local`です。
 
 ### HTTPSとテナントのURLのスキーム
 
@@ -117,13 +117,13 @@ PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com
 
 | 変数 | 生成した値 |
 | --- | --- |
-| `PUBLIRA_POSTGRES_PASSWORD` | 32バイトの乱数(16進数) |
-| `PUBLIRA_PUBLIC_DB_PASSWORD`、`PUBLIRA_ADMIN_DB_PASSWORD`、`PUBLIRA_PLATFORM_DB_PASSWORD`、`PUBLIRA_OUTBOX_DB_PASSWORD`、`PUBLIRA_TICKER_DB_PASSWORD`、`PUBLIRA_CONTENT_STATS_DB_PASSWORD` | 32バイトの乱数(16進数)。それぞれ別の値です |
-| `PUBLIRA_SECRET_ENCRYPTION_KEYS` | `k1:`に続く32バイトの乱数(base64) |
-| `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | `k1`(上のキーの前に付いているID) |
-| `PUBLIRA_AUTH_JWT_SECRET`、`PUBLIRA_WEB_STOREFRONT_AUTH_SECRET`、`PUBLIRA_WEB_ADMIN_AUTH_SECRET`、`PUBLIRA_WEB_PLATFORM_AUTH_SECRET`、`PUBLIRA_WEB_SERVICE_TOKEN` | 32バイトの乱数(base64)。それぞれ別の値です |
-| `PUBLIRA_REVALIDATE_TOKEN` | 32バイトの乱数(16進数) |
-| `PUBLIRA_RUSTFS_ACCESS_KEY`、`PUBLIRA_RUSTFS_SECRET_KEY` | 32バイトの乱数(16進数)。それぞれ別の値です |
+| `PUBLIRA_POSTGRES_PASSWORD` | 32バイトの乱数 (16進数) |
+| `PUBLIRA_PUBLIC_DB_PASSWORD`、`PUBLIRA_ADMIN_DB_PASSWORD`、`PUBLIRA_PLATFORM_DB_PASSWORD`、`PUBLIRA_OUTBOX_DB_PASSWORD`、`PUBLIRA_TICKER_DB_PASSWORD`、`PUBLIRA_CONTENT_STATS_DB_PASSWORD` | 32バイトの乱数 (16進数)。それぞれ別の値です |
+| `PUBLIRA_SECRET_ENCRYPTION_KEYS` | `k1:`に続く32バイトの乱数 (base64) |
+| `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | `k1` (上のキーの前に付いているID) |
+| `PUBLIRA_AUTH_JWT_SECRET`、`PUBLIRA_WEB_STOREFRONT_AUTH_SECRET`、`PUBLIRA_WEB_ADMIN_AUTH_SECRET`、`PUBLIRA_WEB_PLATFORM_AUTH_SECRET`、`PUBLIRA_WEB_SERVICE_TOKEN` | 32バイトの乱数 (base64)。それぞれ別の値です |
+| `PUBLIRA_REVALIDATE_TOKEN` | 32バイトの乱数 (16進数) |
+| `PUBLIRA_RUSTFS_ACCESS_KEY`、`PUBLIRA_RUSTFS_SECRET_KEY` | 32バイトの乱数 (16進数)。それぞれ別の値です |
 
 これらの値は変えないでください。データベースのパスワードはエスケープされずに接続URLに入るので、16進数にしています。自分で値を決める場合も、URLで使える文字だけにしてください。
 
@@ -141,8 +141,8 @@ error while interpolating services.proxy.environment.PUBLIRA_EDGE_ADMIN_HOSTS: r
 `PUBLIRA_EDGE_ACME_EMAIL`が空でも`docker compose`は止まらず、プロキシがHTTPで応答します。次の変数も空のままで構いません。
 
 - `PUBLIRA_TENANT_URL_SCHEME`、`COMPOSE_PROFILES`、`PUBLIRA_EDGE_PLATFORM_HOSTS`、`PUBLIRA_EDGE_IMAGE_HOSTS`
-- `PUBLIRA_EDGE_TRUSTED_PROXIES`(設定するのは[CDNやロードバランサーを前に置く場合](#cdnやロードバランサーを前に置く場合)だけです)
-- 追加のプロセスの変数(プロセスを有効にするときに、次の節に従って設定します)
+- `PUBLIRA_EDGE_TRUSTED_PROXIES` (設定するのは[CDNやロードバランサーを前に置く場合](#cdnやロードバランサーを前に置く場合)だけです)
+- 追加のプロセスの変数 (プロセスを有効にするときに、次の節に従って設定します)
 
 `docker compose`を実行するシェルでエクスポートした変数は、`.env`の同じ名前の変数より優先されます。`.env`に書いた値が効いていないようなら、シェルの環境に`PUBLIRA_*`の変数が残っていないか確認してください。
 
@@ -153,7 +153,7 @@ error while interpolating services.proxy.environment.PUBLIRA_EDGE_ADMIN_HOSTS: r
 | プロファイル | 加わるもの | `.env`にほかに設定するもの |
 | --- | --- | --- |
 | `email-renderer` | すべてのメールに付くHTMLパート | `PUBLIRA_EMAIL_RENDERER_URL=http://email-renderer:8080` |
-| `web-platform` | プラットフォーム管理画面 | `PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://web-platform:4100`と、オペレーターがプラットフォーム管理画面を開くアドレス(`https://platform.example.com`など)を入れた`PUBLIRA_PLATFORM_APP_URL`と、そのアドレスのホスト名(`platform.example.com`など)を入れた`PUBLIRA_EDGE_PLATFORM_HOSTS`。セッションキーの`PUBLIRA_WEB_PLATFORM_AUTH_SECRET`は`env generate`が設定済みです |
+| `web-platform` | プラットフォーム管理画面 | `PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://web-platform:4100`と、オペレーターがプラットフォーム管理画面を開くアドレス (`https://platform.example.com`など) を入れた`PUBLIRA_PLATFORM_APP_URL`と、そのアドレスのホスト名 (`platform.example.com`など) を入れた`PUBLIRA_EDGE_PLATFORM_HOSTS`。セッションキーの`PUBLIRA_WEB_PLATFORM_AUTH_SECRET`は`env generate`が設定済みです |
 
 たとえば両方を動かすなら、次のように設定します。
 
@@ -181,7 +181,7 @@ docker compose run --rm setup
 2. RustFSに`publira`という名前のバケットを作成し、`.env`にあるRustFSの認証情報でテストに成功したら、バケットと認証情報を保存します。
 3. 残りを端末で尋ねます。プラットフォームの既定のロケール、タイムゾーン、通貨と、SMTPの設定、Web Pushを設定するかどうか、テナントの名前とドメイン、テナントの最初の管理者です。各項目は[初期設定をする](./2-installing.md#4-初期設定をする)で説明しています。
 
-テナントのサイトのドメインを尋ねられたら、`PUBLIRA_EDGE_SITE_HOSTS`に設定したドメイン(`comics.example.com`など)を入力します。テナント管理画面のドメインを尋ねられたら、`PUBLIRA_EDGE_ADMIN_HOSTS`に`admin.<domain>`を設定したなら空欄のままにし、それ以外なら設定したホスト名を入力します。
+テナントのサイトのドメインを尋ねられたら、`PUBLIRA_EDGE_SITE_HOSTS`に設定したドメイン (`comics.example.com`など) を入力します。テナント管理画面のドメインを尋ねられたら、`PUBLIRA_EDGE_ADMIN_HOSTS`に`admin.<domain>`を設定したなら空欄のままにし、それ以外なら設定したホスト名を入力します。
 
 最後に表示される概要には、テナントのサイトとテナント管理画面のURLが並びます。`setup`が管理者のパスワードを自動で生成した場合は、そのパスワードも表示されます。表示されるのはここだけなので、端末を閉じる前に控えておいてください。
 

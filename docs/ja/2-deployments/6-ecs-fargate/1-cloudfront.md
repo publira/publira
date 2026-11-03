@@ -1,12 +1,12 @@
 ---
 title: CloudFrontを使った公開
-description: Amazon ECS(Fargate)で動かすPubliraの内部向けApplication Load Balancerの前にCloudFrontを置き、VPCの外から動作を確かめます。
+description: Amazon ECS (Fargate) で動かすPubliraの内部向けApplication Load Balancerの前にCloudFrontを置き、VPCの外から動作を確かめます。
 published: 2026-10-29
 updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 
-このページは[Amazon ECS(Fargate)](./index.md)の手順8です。それまでの手順と同じシェルで実行し、そこで定義した`VPC`、`VPC_CIDR`、`ALB`などの変数や、`allow`などの関数を使います。
+このページは[Amazon ECS (Fargate)](./index.md) の手順8です。それまでの手順と同じシェルで実行し、そこで定義した`VPC`、`VPC_CIDR`、`ALB`などの変数や、`allow`などの関数を使います。
 
 読者が接続する先はCloudFrontです。CloudFrontは`us-east-1`の証明書ですべてのテナントのホストのTLSを終端し、HTTPのリクエストをHTTPSにリダイレクトします。さらに、呼び出し元に値を決めさせてはいけないヘッダーを取り除き、残りはすべてロードバランサーに転送します。これが[リバースプロキシで必要な設定](../4-edge/index.md#リバースプロキシで必要な設定)の求めることです。
 
@@ -238,4 +238,4 @@ curl -sI http://comics.example.com/ | grep -i '^location'
 
 1つ目には`web-storefront`が`200`を返します。2つ目にはレディネスが返り、`publira server`とValkeyに接続できていれば`"status":"ok"`です。3つ目は`publira server`に届き、空のリクエストが`invalid_argument`で拒否されます。4つ目はテナント管理画面のAPIを呼び出しますが、ロードバランサーは転送せずに`404`を返します。最後には、CloudFrontが`https://comics.example.com/`へのリダイレクトを返します。管理画面のホストでも同じことを確かめてください。管理画面のホストでも、管理画面のAPIには`404`が返ります。管理画面はこのAPIをリバースプロキシを通さず、VPC内で呼び出すからです。
 
-確かめ終わったら、Amazon ECS(Fargate)のページの[ログインする](./index.md#9-ログインする)に戻ってください。
+確かめ終わったら、Amazon ECS (Fargate) のページの[ログインする](./index.md#9-ログインする)に戻ってください。

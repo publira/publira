@@ -71,7 +71,7 @@ source_updated: 2026-11-02
 | `purchases.json`、`purchases.csv` | 購入したすべてのもの |
 | `coin_transactions.json` | 付与されたコインと使ったコイン |
 | `subscriptions.json` | サイトとアプリでのサブスクリプション |
-| `preferences.json` | 通知設定とビューアーのレイアウト(一度でも保存した場合) |
+| `preferences.json` | 通知設定とビューアーのレイアウト (一度でも保存した場合) |
 | `legal_page_consents.json` | 同意した利用規約とプライバシーポリシーの各版 |
 | `access_tickets.json` | スタッフが発行したアクセスチケット |
 | `contact_messages.json` | ログインした状態で送ったお問い合わせと、それぞれへの返信 |

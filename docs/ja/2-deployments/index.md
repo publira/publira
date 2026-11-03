@@ -18,7 +18,7 @@ source_updated: 2026-10-22
 - [Kubernetes](./5-kubernetes/index.md)は、KubernetesクラスターでPubliraを動かす方法です。Secret、Job、Deploymentの作成から最初のログインまでを扱います。
   - [Kubernetesでのリバースプロキシの設定](./5-kubernetes/1-edge.md)は、Serviceの前にGatewayかIngressを置き、cert-managerで証明書を発行する構成を説明します。
   - [Kubernetesでの運用](./5-kubernetes/2-operating.md)は、テナントの追加、管理画面の認証情報をテナントのドメインに送らないための設定、メトリクス、アップグレードを説明します。
-- [Amazon ECS(Fargate)](./6-ecs-fargate/index.md)は、PubliraをFargate上のECSサービスとして動かす方法です。パラメーターの用意、単発で実行するタスク、Application Load Balancerの背後に置くサービスから、最初のログインまでを扱います。
+- [Amazon ECS (Fargate)](./6-ecs-fargate/index.md) は、PubliraをFargate上のECSサービスとして動かす方法です。パラメーターの用意、単発で実行するタスク、Application Load Balancerの背後に置くサービスから、最初のログインまでを扱います。
   - [CloudFrontを使った公開](./6-ecs-fargate/1-cloudfront.md)は、ロードバランサーをVPCオリジンとして、その前にCloudFrontを置く構成を説明します。
   - [Amazon ECSでの運用](./6-ecs-fargate/2-operating.md)は、テナントの追加、管理画面の認証情報をテナントのドメインに送らないための設定、アップグレードを説明します。
 - [スケールアウト](./7-scaling-out.md)は、各プロセスを複数動かす方法、`publira server`を受け持つトラフィックごとに分ける方法、複数のプロセスが共有するものを説明します。

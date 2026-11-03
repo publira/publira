@@ -1,5 +1,5 @@
 ---
-title: Amazon ECS(Fargate)
+title: Amazon ECS (Fargate)
 description: CloudFrontとApplication Load Balancerの背後で、PubliraをAWS Fargate上のAmazon ECSサービスとして動かす手順を、パラメーターとタスク定義の用意からテナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
 updated: 2026-10-31
@@ -20,8 +20,8 @@ source_updated: 2026-10-31
 | `publira-worker` | `ghcr.io/publira/publira:<tag>`。コマンドは`worker` | `8003`。ヘルスチェック専用 | なし | 任意 |
 | `web-storefront` | `ghcr.io/publira/web-storefront:<tag>` | `3000` | ロードバランサーと、Cloud Map経由でキャッシュの再検証を送るサーバーとワーカー | 任意 |
 | `web-admin` | `ghcr.io/publira/web-admin:<tag>` | `4000` | `web-storefront`と同じ | 任意 |
-| `web-platform`(動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | `web-storefront`と同じ | 任意 |
-| `email-renderer`(動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | Cloud Map経由のワーカー | 任意 |
+| `web-platform` (動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | `web-storefront`と同じ | 任意 |
+| `email-renderer` (動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | Cloud Map経由のワーカー | 任意 |
 
 ワーカーは複数のタスクで動かせます。定期ジョブは実行中のものと同じジョブを重ねて実行しない仕組みなので、2つのタスクが同じジョブを同時に実行することはありません。繰り返し実行するジョブのスケジュールもワーカーが自分で管理するので、EventBridgeのスケジュールやスケジュールされたタスクは要りません。サーバーとワーカーのタスクはデータベースのログインごとに接続プールを開くので、タスクを増やすと、データベースもそれだけ多くの接続を受け付ける必要があります。必要な接続数の計算は[接続プール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
 

@@ -20,4 +20,6 @@ A screen element is named by its label in that locale's catalog, `locales/<local
 
 How a page is written in a translated tree's language — its register, its spacing, its punctuation, and the words it prefers — is in the `AGENTS.md` at the root of that tree.
 
+CommonMark does not close `**` between punctuation and a letter, nor open it between a letter and punctuation, and it reads a CJK character as a letter. A bold label that starts or ends with punctuation, such as `**理由(任意)**`, therefore renders only when a space or punctuation sets it off from the word beside it: `**理由(任意)** に` and `**理由(任意)**、`, not `**理由(任意)**に`, which stays as literal asterisks. `pnpm docs:check` fails on a `**` a page leaves as text.
+
 `pnpm docs:check` checks the shape a translation keeps — the pages and images it mirrors, the `source_updated` it records, and the links and anchors it resolves. Whether its text says what the English page says is a review judgement.

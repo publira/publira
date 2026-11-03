@@ -76,7 +76,7 @@ task mobile:build -- ~/example-reader/app.yaml appbundle \
 
 ### Macを準備する
 
-iOSアプリはXcodeを入れたMacでビルドします。**Xcode** › **Settings** › **Accounts**で、出版社のApple Developerチームに所属するAppleアカウントにログインします。ビルドは自動署名を使います。Xcodeが、アプリで使う機能(プッシュ通知、Associated Domains、Sign in with Apple)を付けてバンドルIDを登録し、証明書とプロファイルも作成するので、Apple Developerのウェブサイトから手作業でダウンロードするものはありません。
+iOSアプリはXcodeを入れたMacでビルドします。**Xcode** › **Settings** › **Accounts**で、出版社のApple Developerチームに所属するAppleアカウントにログインします。ビルドは自動署名を使います。Xcodeが、アプリで使う機能 (プッシュ通知、Associated Domains、Sign in with Apple) を付けてバンドルIDを登録し、証明書とプロファイルも作成するので、Apple Developerのウェブサイトから手作業でダウンロードするものはありません。
 
 チームのTeam IDは、Apple Developerのウェブサイトの**Membership details**にある、英字と数字からなる10文字のIDです。これを環境変数で指定します。
 
