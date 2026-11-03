@@ -186,11 +186,26 @@ export const SiteLayoutMain = ({ children }: { children: ReactNode }) => (
   <main className="flex-1">{children}</main>
 );
 
+/**
+ * The row of controls at the band's trailing edge: the wide-only ones, then the
+ * account controls. One wrapper rather than one per group, so that every
+ * neighbour in the row sits at the same gap; as separate children of the band
+ * the groups would take the band's wider gap, which is there to separate the
+ * brand, the navigation, and this row.
+ *
+ * Below `md` the wrapper drops out of the band's layout, and its children are
+ * laid out as the band's own: a signed-out phone band hides every control in
+ * the row, and a wrapper left in place would still take a gap beside the brand.
+ */
 export const SiteLayoutHeaderActions = ({
   children,
 }: {
   children: ReactNode;
-}) => children;
+}) => (
+  <div className="max-md:contents md:flex md:items-center md:gap-2">
+    {children}
+  </div>
+);
 
 /**
  * The two account buttons the band draws while it does not yet know whether

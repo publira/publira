@@ -671,15 +671,15 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
       <SiteLayout.HeaderSearch>
         <SiteSearch id="catalog-search-header" />
       </SiteLayout.HeaderSearch>
-      <SiteLayout.HeaderWideControls>
-        <Suspense fallback={<ThemeSwitch.Skeleton />}>
-          <ThemeSwitch.Root />
-        </Suspense>
-        <Suspense fallback={<LocaleSwitcher.Skeleton />}>
-          <LocaleSwitcher.Root />
-        </Suspense>
-      </SiteLayout.HeaderWideControls>
       <SiteLayout.HeaderActions>
+        <SiteLayout.HeaderWideControls>
+          <Suspense fallback={<ThemeSwitch.Skeleton />}>
+            <ThemeSwitch.Root />
+          </Suspense>
+          <Suspense fallback={<LocaleSwitcher.Skeleton />}>
+            <LocaleSwitcher.Root />
+          </Suspense>
+        </SiteLayout.HeaderWideControls>
         <Suspense fallback={<SiteLayout.HeaderActionsSkeleton />}>
           <HeaderActions />
         </Suspense>
