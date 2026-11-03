@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { signInAsSeedMember } from "../src/storefront";
 import { storefrontPath } from "../src/urls";
 
 /** The width most of a tenant's readers arrive at, as the screenshots record it. */
@@ -264,6 +265,47 @@ test.describe("web-storefront header at a desktop width", () => {
       page.getByRole("heading", { level: 2, name: "Labels" })
     ).toBeVisible();
     await expect(page.getByRole("dialog", { name: "Search" })).toBeHidden();
+  });
+
+  test("spaces the icon controls at its trailing edge as one row", async ({
+    page,
+  }) => {
+    await signInAsSeedMember(page, "/series");
+
+    const banner = page.getByRole("banner");
+
+    const controls = [
+      banner.getByRole("button", { name: "Theme" }),
+      banner.getByRole("button", { name: "Language" }),
+      banner.getByRole("button", { name: /^Notifications/u }),
+      banner.getByRole("button", { name: "Account menu" }),
+    ];
+
+    const boxes = await Promise.all(
+      controls.map(async (control) => {
+        await expect(control).toBeVisible();
+
+        const box = await control.boundingBox();
+
+        if (!box) {
+          throw new Error("a header control has no box");
+        }
+
+        return box;
+      })
+    );
+
+    // Theme → language, language → bell, bell → account menu.
+    const gaps = boxes
+      .slice(1)
+      .map((box, index) =>
+        Math.round(
+          box.x - ((boxes[index]?.x ?? 0) + (boxes[index]?.width ?? 0))
+        )
+      );
+
+    expect(gaps[0]).toBeGreaterThan(0);
+    expect(gaps).toEqual(gaps.map(() => gaps[0]));
   });
 
   test("links to the labels and the genres, and to neither flat list", async ({
