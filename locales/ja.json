@@ -1236,9 +1236,12 @@
       "unset": "未設定",
       "status_scheduled": "予約済み",
       "status_draft": "下書き",
+      "review_in_review": "審査中",
+      "review_returned": "差し戻し",
       "published_series": "公開中シリーズ",
       "draft_episodes": "下書きエピソード",
       "scheduled_episodes": "予約公開",
+      "in_review_episodes": "審査待ち",
       "queue_title": "公開キュー",
       "queue_description": "直近で確認が必要なエピソードと公開予定です。",
       "calendar_link": "カレンダーを開く",
@@ -2457,6 +2460,45 @@
           "delete_failed": "翻訳を削除できませんでした。時間をおいて再試行してください。",
           "not_found": "この翻訳はすでに削除されています。ページを再読み込みしてください。",
           "last_translation": "エピソードには少なくとも1つの翻訳が必要なため、最後の翻訳は削除できません。"
+        },
+        "review": {
+          "title": "審査",
+          "description": "このエピソードの審査の経過です。古い順に、テナント管理者のコメントとともに表示します。",
+          "error": "審査を表示できませんでした",
+          "list_failed": "審査の取得に失敗しました。時間をおいて再試行してください。",
+          "empty": "このエピソードはまだ審査に提出されていません。",
+          "state_in_review": "審査中",
+          "state_returned": "差し戻し",
+          "state_approved": "承認済み",
+          "round_submitted": "{$date}に{$name}が提出",
+          "round_submitted_unnamed": "{$date}に提出",
+          "round_approved": "{$date}に{$name}が承認",
+          "round_approved_unnamed": "{$date}に承認",
+          "round_returned": "{$date}に{$name}が差し戻し",
+          "round_returned_unnamed": "{$date}に差し戻し",
+          "round_waiting": "テナント管理者の判断を待っています。",
+          "schedule_note": "このテナントでは審査が必須です。日時を保存するとエピソードは審査に提出され、テナント管理者が承認するとその日時に公開されます。",
+          "submit_returned_description": "テナント管理者がこのエピソードを差し戻しました。コメントの指摘を直したら、もう一度提出してください。公開日時はそのままです。",
+          "submit_unreviewed_description": "このエピソードは審査に提出されていないため、日時になっても公開されません。提出してテナント管理者に審査を依頼してください。",
+          "submit": "審査に提出",
+          "submitting": "提出中...",
+          "submitted": "審査に提出しました。",
+          "comment_label": "コメント",
+          "comment_description": "差し戻すときは、直してほしい点を書いてください。承認するときは省略できます。",
+          "approve": "承認",
+          "return": "差し戻す",
+          "approved": "エピソードを承認しました。",
+          "returned": "エピソードを差し戻しました。",
+          "submit_failed": "審査への提出に失敗しました。時間をおいて再試行してください。",
+          "approve_failed": "エピソードの承認に失敗しました。時間をおいて再試行してください。",
+          "return_failed": "エピソードの差し戻しに失敗しました。時間をおいて再試行してください。",
+          "state_changed": "画面を開いた後にこのエピソードの審査の状態が変わりました。再読み込みして現在の状態を確認してください。",
+          "episode_not_found": "エピソードが見つかりません。画面を再読み込みして再試行してください。",
+          "validation": {
+            "comment_required": "差し戻す前に、直してほしい点をコメントに書いてください。",
+            "comment_too_long": "コメントは2,000文字以内で入力してください。",
+            "decision_missing": "承認するか差し戻すかを選んでください。"
+          }
         }
       },
       "status": {
@@ -2953,6 +2995,17 @@
           "mode_required": "コメントの公開方法を選択してください。",
           "auto_hide_range": "0から{$max}までの整数を入力してください。"
         }
+      },
+      "episode_review": {
+        "title": "公開前の審査",
+        "description": "エピソードを公開する前に、テナント管理者の承認を必須にするかどうかです。",
+        "required_label": "公開前の審査を必須にする",
+        "required_description": "エピソードの公開日時を保存すると審査に提出され、テナント管理者が承認したときに限り、その日時に公開されます。オンにすると予約済みのエピソードがすべて審査に提出され、オフにすると予約済みのエピソードはすべて日時どおりに公開されます。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "submit": "審査の設定を保存",
+        "saved": "審査の設定を保存しました。",
+        "load_failed": "審査の設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "審査の設定の保存に失敗しました。時間をおいて再試行してください。"
       },
       "creator_pages": {
         "title": "著者ページ",

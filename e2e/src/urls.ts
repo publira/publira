@@ -726,3 +726,15 @@ export const WEB_STOREFRONT_WAIT_FREE_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_STOREFRONT_WAIT_FREE_BASE_URL",
   withHostname(WEB_STOREFRONT_BASE_URL, "waitfree.localhost")
 );
+
+/**
+ * Admin console of the tenant that requires review before publishing, from
+ * the scenario seed `db/seeds/scenarios/750_episode_review.sql`.
+ *
+ * Review is tenant-wide and holds back every scheduled episode, so the suite
+ * that turns it on cannot share a tenant with the suites that schedule one.
+ */
+export const WEB_ADMIN_EPISODE_REVIEW_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_EPISODE_REVIEW_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.review.localhost")
+);

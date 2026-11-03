@@ -22,15 +22,16 @@ Changing the time zone after a statement has been closed leaves that statement a
 
 ## Dashboard
 
-**Dashboard**, the first entry of the console, is an overview of the catalog's publishing, not of sales or reading. Its three figures count the whole tenant, with no date range:
+**Dashboard**, the first entry of the console, is an overview of the catalog's publishing, not of sales or reading. Its figures count the whole tenant, with no date range:
 
-| Figure                 | What it counts                                     |
-| ---------------------- | -------------------------------------------------- |
-| **Published series**   | Series that are published                          |
-| **Draft episodes**     | Episodes saved as a draft                          |
+| Figure | What it counts |
+| --- | --- |
+| **Published series** | Series that are published |
+| **Draft episodes** | Episodes saved as a draft |
 | **Scheduled releases** | Episodes with a release date that has not come yet |
+| **Waiting for review** | Scheduled episodes waiting for a Tenant admin's decision, shown only while the tenant [requires review](./1-catalog/2-episodes.md#review-before-publishing) |
 
-**Publishing queue** lists up to ten of those episodes: the scheduled ones first, soonest release first, then the drafts, newest first. **Scheduled for** is shown in the tenant's time zone, and **Not set** on a draft with no date. **Open calendar**, beside it, opens the [Calendar](./1-catalog/2-episodes.md#what-goes-out-when), which shows every scheduled and published episode by the day it goes out.
+**Publishing queue** lists up to ten of those episodes: the scheduled ones first, soonest release first, then the drafts, newest first. **Scheduled for** is shown in the tenant's time zone, and **Not set** on a draft with no date. While the tenant requires review, a scheduled episode waiting for a decision is marked **In review** beside its status, and one sent back **Returned**. **Open calendar**, beside it, opens the [Calendar](./1-catalog/2-episodes.md#what-goes-out-when), which shows every scheduled and published episode by the day it goes out.
 
 ![The Dashboard: one published series, one draft episode, and one scheduled release, and the Publishing queue, with Open calendar beside its title, listing the scheduled episode with its time first and the draft, Not set, after it.](./reports-and-royalties-dashboard.png)
 

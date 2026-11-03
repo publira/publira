@@ -1236,9 +1236,12 @@
       "unset": "未設定",
       "status_scheduled": "已預約",
       "status_draft": "草稿",
+      "review_in_review": "審核中",
+      "review_returned": "已退回",
       "published_series": "已發布的系列",
       "draft_episodes": "草稿章節",
       "scheduled_episodes": "預約發布",
+      "in_review_episodes": "待審核",
       "queue_title": "發布佇列",
       "queue_description": "需要留意的章節與即將進行的發布。",
       "calendar_link": "開啟行事曆",
@@ -2457,6 +2460,45 @@
           "delete_failed": "無法刪除翻譯。請稍後再試。",
           "not_found": "此翻譯已被刪除。請重新載入頁面。",
           "last_translation": "章節至少需要保留一個翻譯，因此無法刪除最後一個翻譯。"
+        },
+        "review": {
+          "title": "審核",
+          "description": "此章節每一輪審核的經過，依時間先後排列，並附有租戶管理員的評語。",
+          "error": "無法顯示審核",
+          "list_failed": "無法載入審核。請稍後再試。",
+          "empty": "此章節尚未提交審核。",
+          "state_in_review": "審核中",
+          "state_returned": "已退回",
+          "state_approved": "已核准",
+          "round_submitted": "{$name}於{$date}提交",
+          "round_submitted_unnamed": "於{$date}提交",
+          "round_approved": "{$name}於{$date}核准",
+          "round_approved_unnamed": "於{$date}核准",
+          "round_returned": "{$name}於{$date}退回",
+          "round_returned_unnamed": "於{$date}退回",
+          "round_waiting": "正在等待租戶管理員的決定。",
+          "schedule_note": "此租戶要求審核：儲存時間即會提交章節審核，租戶管理員核准後將在該時間發布。",
+          "submit_returned_description": "租戶管理員退回了此章節。依評語完成修改後，請重新提交審核。發布時間維持不變。",
+          "submit_unreviewed_description": "此章節尚未提交審核，因此到了發布時間也不會發布。請提交審核，交由租戶管理員審核。",
+          "submit": "提交審核",
+          "submitting": "正在提交…",
+          "submitted": "已提交審核。",
+          "comment_label": "評語",
+          "comment_description": "退回時請寫明需要修改的地方。核准時可以不寫。",
+          "approve": "核准",
+          "return": "退回",
+          "approved": "章節已核准。",
+          "returned": "章節已退回。",
+          "submit_failed": "無法提交審核。請稍後再試。",
+          "approve_failed": "無法核准章節。請稍後再試。",
+          "return_failed": "無法退回章節。請稍後再試。",
+          "state_changed": "開啟頁面後，此章節的審核狀態已有變化。請重新載入頁面查看目前狀態。",
+          "episode_not_found": "找不到該章節。請重新載入頁面後再試。",
+          "validation": {
+            "comment_required": "退回前請在評語中寫明需要修改的地方。",
+            "comment_too_long": "評語請控制在2,000個字元以內。",
+            "decision_missing": "請選擇核准或退回該章節。"
+          }
         }
       },
       "status": {
@@ -2953,6 +2995,17 @@
           "mode_required": "請選擇留言的公開方式。",
           "auto_hide_range": "請輸入0到{$max}之間的整數。"
         }
+      },
+      "episode_review": {
+        "title": "發布前審核",
+        "description": "章節發布前是否必須經租戶管理員核准。",
+        "required_label": "發布前必須審核",
+        "required_description": "儲存章節的發布時間即會提交審核，只有在租戶管理員核准後才會在該時間發布。開啟後，所有已預約的章節都會提交審核；關閉後，所有已預約的章節都會按時發布。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "submit": "儲存審核設定",
+        "saved": "審核設定已儲存。",
+        "load_failed": "無法載入審核設定。請稍後再試。",
+        "save_failed": "無法儲存審核設定。請稍後再試。"
       },
       "creator_pages": {
         "title": "作者頁面",

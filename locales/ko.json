@@ -1236,9 +1236,12 @@
       "unset": "미설정",
       "status_scheduled": "예약됨",
       "status_draft": "임시저장",
+      "review_in_review": "검토 중",
+      "review_returned": "반려됨",
       "published_series": "공개 중인 시리즈",
       "draft_episodes": "임시저장 에피소드",
       "scheduled_episodes": "예약 공개",
+      "in_review_episodes": "검토 대기",
       "queue_title": "공개 대기열",
       "queue_description": "확인이 필요한 에피소드와 공개 예정 항목입니다.",
       "calendar_link": "캘린더 열기",
@@ -2457,6 +2460,45 @@
           "delete_failed": "번역을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
           "not_found": "이 번역은 이미 삭제되었습니다. 페이지를 새로 고치세요.",
           "last_translation": "에피소드에는 번역이 하나 이상 있어야 하므로 마지막 번역은 삭제할 수 없습니다."
+        },
+        "review": {
+          "title": "검토",
+          "description": "이 에피소드의 검토 경과입니다. 오래된 순서로 테넌트 관리자의 코멘트와 함께 표시합니다.",
+          "error": "검토를 표시할 수 없습니다",
+          "list_failed": "검토를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "empty": "이 에피소드는 아직 검토를 요청하지 않았습니다.",
+          "state_in_review": "검토 중",
+          "state_returned": "반려됨",
+          "state_approved": "승인됨",
+          "round_submitted": "{$date}에 {$name} 님이 검토 요청",
+          "round_submitted_unnamed": "{$date}에 검토 요청",
+          "round_approved": "{$date}에 {$name} 님이 승인",
+          "round_approved_unnamed": "{$date}에 승인",
+          "round_returned": "{$date}에 {$name} 님이 반려",
+          "round_returned_unnamed": "{$date}에 반려",
+          "round_waiting": "테넌트 관리자의 결정을 기다리고 있습니다.",
+          "schedule_note": "이 테넌트는 검토가 필수입니다. 일시를 저장하면 에피소드의 검토가 요청되며, 테넌트 관리자가 승인하면 그 일시에 공개됩니다.",
+          "submit_returned_description": "테넌트 관리자가 이 에피소드를 반려했습니다. 코멘트에서 지적한 내용을 수정한 뒤 다시 검토를 요청해 주세요. 공개 일시는 그대로 유지됩니다.",
+          "submit_unreviewed_description": "이 에피소드는 검토를 요청하지 않아 일시가 되어도 공개되지 않습니다. 검토를 요청해 테넌트 관리자에게 보내 주세요.",
+          "submit": "검토 요청",
+          "submitting": "요청 중...",
+          "submitted": "검토를 요청했습니다.",
+          "comment_label": "코멘트",
+          "comment_description": "반려할 때는 수정할 점을 적어 주세요. 승인할 때는 생략할 수 있습니다.",
+          "approve": "승인",
+          "return": "반려",
+          "approved": "에피소드를 승인했습니다.",
+          "returned": "에피소드를 반려했습니다.",
+          "submit_failed": "검토를 요청하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "approve_failed": "에피소드를 승인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "return_failed": "에피소드를 반려하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "state_changed": "화면을 연 뒤에 이 에피소드의 검토 상태가 바뀌었습니다. 페이지를 새로 고쳐 현재 상태를 확인해 주세요.",
+          "episode_not_found": "에피소드를 찾을 수 없습니다. 화면을 새로 고친 뒤 다시 시도해 주세요.",
+          "validation": {
+            "comment_required": "반려하기 전에 수정할 점을 코멘트에 적어 주세요.",
+            "comment_too_long": "코멘트는 2,000자 이내로 입력해 주세요.",
+            "decision_missing": "승인할지 반려할지 선택해 주세요."
+          }
         }
       },
       "status": {
@@ -2953,6 +2995,17 @@
           "mode_required": "댓글 공개 방식을 선택해 주세요.",
           "auto_hide_range": "0부터 {$max}까지의 정수를 입력해 주세요."
         }
+      },
+      "episode_review": {
+        "title": "공개 전 검토",
+        "description": "에피소드를 공개하기 전에 테넌트 관리자의 승인을 받아야 하는지 여부입니다.",
+        "required_label": "공개 전 검토 필수",
+        "required_description": "에피소드의 공개 일시를 저장하면 검토가 요청되며, 테넌트 관리자가 승인한 경우에만 그 일시에 공개됩니다. 켜면 예약된 에피소드가 모두 검토 요청되고, 끄면 예약된 에피소드는 모두 일시에 맞춰 공개됩니다.",
+        "load_error_hint": "지금 저장하면 저장된 설정을 덮어쓰게 되므로, 페이지를 새로 고친 뒤에 변경해 주세요.",
+        "submit": "검토 설정 저장",
+        "saved": "검토 설정을 저장했습니다.",
+        "load_failed": "검토 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "검토 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
       },
       "creator_pages": {
         "title": "작가 페이지",

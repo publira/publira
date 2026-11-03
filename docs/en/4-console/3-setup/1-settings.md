@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, review before publishing, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -71,6 +71,12 @@ The default language is always offered: its box stays ticked and cannot be clear
 A series can set its own **Comments** choice on its form, which then applies to that series instead of this one. A series left on **Follow the tenant setting** follows any later change here. Choose **Save the comment settings** to save.
 
 ![The Reader comments card: How comments are published, Reports that remove a comment set to 3, and Save the comment settings.](./settings-reader-comments.png)
+
+### Review before publishing
+
+**Require review before publishing**, off on a new tenant, makes every episode wait for a Tenant admin's approval before it is published. With it on, saving an episode's publication time submits the episode for review, and it is published at that time only once a Tenant admin approves it; a Tenant admin can also return it with a comment saying what to fix. [Review before publishing](../1-catalog/2-episodes.md#review-before-publishing) describes the round on the episode's edit screen.
+
+Turning it on submits every scheduled episode for review, so none of them goes out until it is approved. Turning it off lets every scheduled episode be published at its time, whether it was in review, returned, or approved. Choose **Save the review setting** to save.
 
 ### Author pages
 

@@ -239,6 +239,7 @@ services:
         purchases.localhost
         reject.localhost
         rentals.localhost
+        review.localhost
         royalty.localhost
         shared-consent.localhost
         sign-in.localhost
@@ -281,6 +282,7 @@ services:
         admin.purchases.localhost
         admin.reject.localhost
         admin.rentals.localhost
+        admin.review.localhost
         admin.royalty.localhost
         admin.shared-consent.localhost
         admin.sign-in.localhost

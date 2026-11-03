@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AuthSessionModule from "#lib/auth-session";
 
 const {
+  mockApproveEpisode,
   mockAssertSameOrigin,
   mockCreateEpisodeCampaignPrice,
   mockCreateEpisodeFreeWindow,
@@ -18,6 +19,8 @@ const {
   mockRenewEpisodeImageUrls,
   mockReorderEpisodeImages,
   mockReplaceEpisodeCredits,
+  mockReturnEpisode,
+  mockSubmitEpisodeForReview,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePricing,
@@ -29,6 +32,7 @@ const {
   mockUploadEpisodeEyeCatchImage,
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
+  mockApproveEpisode: vi.fn(),
   mockAssertSameOrigin: vi.fn(),
   mockCreateEpisodeCampaignPrice: vi.fn(),
   mockCreateEpisodeFreeWindow: vi.fn(),
@@ -44,6 +48,8 @@ const {
   mockRenewEpisodeImageUrls: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
   mockReplaceEpisodeCredits: vi.fn(),
+  mockReturnEpisode: vi.fn(),
+  mockSubmitEpisodeForReview: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePricing: vi.fn(),
@@ -128,6 +134,12 @@ vi.mock("#lib/episode-campaign-price", () => ({
   deleteEpisodeCampaignPrice: mockDeleteEpisodeCampaignPrice,
   episodeCampaignPricesCacheTag: (tenantId: string) =>
     `episode-campaign-prices-${tenantId}`,
+}));
+
+vi.mock("#lib/episode-review", () => ({
+  approveEpisode: mockApproveEpisode,
+  returnEpisode: mockReturnEpisode,
+  submitEpisodeForReview: mockSubmitEpisodeForReview,
 }));
 
 vi.mock("#lib/episode-free-window", () => ({
@@ -756,6 +768,154 @@ describe("episode actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?credits_updated=1"
     );
+  });
+
+  describe("submitting the episode for review", () => {
+    it("submits the episode and redirects back to it", async () => {
+      mockSubmitEpisodeForReview.mockResolvedValueOnce({ ok: true });
+
+      const { submitEpisodeForReviewAction } = await import("./actions");
+
+      await submitEpisodeForReviewAction(null, layoutFormData({}));
+
+      expect(mockSubmitEpisodeForReview).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      // The dashboard and the episode list mark what waits on review.
+      expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?review_submitted=1"
+      );
+    });
+
+    it("reports a refusal without redirecting", async () => {
+      mockSubmitEpisodeForReview.mockResolvedValueOnce({
+        message: "The review changed.",
+        ok: false,
+      });
+
+      const { submitEpisodeForReviewAction } = await import("./actions");
+
+      const result = await submitEpisodeForReviewAction(
+        null,
+        layoutFormData({})
+      );
+
+      expect(result).toEqual({ message: "The review changed.", ok: false });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deciding the episode's review", () => {
+    it("approves with the comment written beside it", async () => {
+      mockApproveEpisode.mockResolvedValueOnce({ ok: true });
+
+      const { decideEpisodeReviewAction } = await import("./actions");
+
+      await decideEpisodeReviewAction(
+        null,
+        layoutFormData({ comment: "  Looks good.  ", decision: "approve" })
+      );
+
+      expect(mockApproveEpisode).toHaveBeenCalledWith(
+        {
+          comment: "Looks good.",
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockReturnEpisode).not.toHaveBeenCalled();
+      expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?review_approved=1"
+      );
+    });
+
+    it("approves without a comment", async () => {
+      mockApproveEpisode.mockResolvedValueOnce({ ok: true });
+
+      const { decideEpisodeReviewAction } = await import("./actions");
+
+      await decideEpisodeReviewAction(
+        null,
+        layoutFormData({ comment: "", decision: "approve" })
+      );
+
+      expect(mockApproveEpisode).toHaveBeenCalledWith(
+        expect.objectContaining({ comment: "" }),
+        "en"
+      );
+    });
+
+    it("returns with what to fix", async () => {
+      mockReturnEpisode.mockResolvedValueOnce({ ok: true });
+
+      const { decideEpisodeReviewAction } = await import("./actions");
+
+      await decideEpisodeReviewAction(
+        null,
+        layoutFormData({ comment: "Fix page 3.", decision: "return" })
+      );
+
+      expect(mockReturnEpisode).toHaveBeenCalledWith(
+        {
+          comment: "Fix page 3.",
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockApproveEpisode).not.toHaveBeenCalled();
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?review_returned=1"
+      );
+    });
+
+    it("refuses a return that says nothing, beside the comment", async () => {
+      const { decideEpisodeReviewAction } = await import("./actions");
+
+      const result = await decideEpisodeReviewAction(
+        null,
+        layoutFormData({ comment: "   ", decision: "return" })
+      );
+
+      expect(result).toEqual({
+        fieldErrors: {
+          comment: "Write what to fix before returning the episode.",
+        },
+        message: "Write what to fix before returning the episode.",
+        ok: false,
+      });
+      expect(mockReturnEpisode).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it("refuses a submission that names no decision", async () => {
+      const { decideEpisodeReviewAction } = await import("./actions");
+
+      const result = await decideEpisodeReviewAction(
+        null,
+        layoutFormData({ comment: "Fine." })
+      );
+
+      expect(result).toMatchObject({
+        message: "Choose whether to approve or return the episode.",
+        ok: false,
+      });
+      expect(mockApproveEpisode).not.toHaveBeenCalled();
+      expect(mockReturnEpisode).not.toHaveBeenCalled();
+    });
   });
 
   describe("adding a free reading period", () => {

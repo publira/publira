@@ -48,6 +48,31 @@ afterEach(() => {
 describe("EpisodeScheduleForm", () => {
   const action = vi.fn(() => Promise.resolve(null));
 
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])(
+    "says saving a time submits the episode while review is required: %s",
+    (reviewRequired, count) => {
+      render(
+        <EpisodeScheduleForm
+          action={action}
+          episodeId="EP001-ID"
+          episodePublicId="EP001"
+          reviewRequired={reviewRequired}
+          scheduledAt="2030-01-01T01:00:00Z"
+          seriesPublicId="SERIES001"
+          tenantId="TENANT001"
+          timeZone="UTC"
+        />
+      );
+
+      expect(
+        screen.queryAllByText(/This tenant requires review/u)
+      ).toHaveLength(count);
+    }
+  );
+
   it("shows scheduledAt as a wall clock in the tenant time zone", () => {
     render(
       <EpisodeScheduleForm

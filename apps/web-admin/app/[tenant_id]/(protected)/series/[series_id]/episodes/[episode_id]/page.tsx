@@ -23,6 +23,7 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import {
+  TenantAdminOnly,
   TenantEditorFieldset,
   TenantEditorOnly,
 } from "#components/tenant-role-gate";
@@ -42,12 +43,14 @@ import {
 } from "#lib/episode";
 import { listEpisodeCampaignPrices } from "#lib/episode-campaign-price";
 import { listEpisodeFreeWindows } from "#lib/episode-free-window";
+import { listEpisodeReviews } from "#lib/episode-review";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { resolveReadingLayout } from "#lib/reading-layout";
 import { getSeries } from "#lib/series";
+import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { findTenantLocales } from "#lib/tenant-locales";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
@@ -68,6 +71,9 @@ import { EpisodePreview } from "./_components/episode-preview";
 import { EpisodePricingForm } from "./_components/episode-pricing-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
+import { EpisodeReviewDecisionForm } from "./_components/episode-review-decision-form";
+import { EpisodeReviewSection } from "./_components/episode-review-section";
+import { EpisodeReviewSubmitForm } from "./_components/episode-review-submit-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import { EpisodeTabNav } from "./_components/episode-tab-nav";
 import { EpisodeTitleForm } from "./_components/episode-title-form";
@@ -75,6 +81,7 @@ import { EpisodeTranslationDeleteButton } from "./_components/episode-translatio
 import {
   createEpisodeCampaignPriceAction,
   createEpisodeFreeWindowAction,
+  decideEpisodeReviewAction,
   deleteEpisodeCampaignPriceAction,
   deleteEpisodeFreeWindowAction,
   deleteEpisodeTranslationAction,
@@ -87,6 +94,7 @@ import {
   updateEpisodePricingAction,
   updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
+  submitEpisodeForReviewAction,
   updateEpisodeScheduleAction,
   updateEpisodeTitleAction,
   uploadEpisodeEyeCatchAspectImageAction,
@@ -411,12 +419,29 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
   );
 };
 
+/**
+ * Whether the tenant requires review. A read that failed is taken as not
+ * requiring it, which shows the episode screen as it is without review: the
+ * API still holds a reviewed episode back, and refuses what this would offer.
+ */
+const readReviewRequired = async ({
+  locale,
+  tenantId,
+}: EditEpisodeContext): Promise<boolean> => {
+  const result = await getTenantEpisodeReviewSettings(tenantId, locale);
+
+  await redirectToLoginIfSessionRejected(result);
+
+  return result.ok && result.episodeReviewRequired;
+};
+
 const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
 
-  const [episodeResult, timeZone] = await Promise.all([
+  const [episodeResult, timeZone, reviewRequired] = await Promise.all([
     loadEpisode(context),
     getTenantDisplayTimeZone(context.tenantId),
+    readReviewRequired(context),
   ]);
 
   if (!episodeResult.ok) {
@@ -428,16 +453,108 @@ const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
+  const { episode } = episodeResult;
+
+  // A scheduled episode a Tenant admin has not got in front of them: one sent
+  // back, or one scheduled before the tenant required review.
+  const awaitsSubmission =
+    reviewRequired &&
+    episode.status === "scheduled" &&
+    (episode.reviewState === "" || episode.reviewState === "returned");
+
   return (
     <EpisodeScheduleForm
       action={updateEpisodeScheduleAction}
-      episodeId={episodeResult.episode.id}
+      episodeId={episode.id}
       episodePublicId={context.episodeId}
-      scheduledAt={episodeResult.episode.scheduledAt}
+      reviewRequired={reviewRequired}
+      scheduledAt={episode.scheduledAt}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
       timeZone={timeZone}
-    />
+    >
+      {awaitsSubmission ? (
+        <TenantEditorOnly>
+          <EpisodeReviewSubmitForm
+            action={submitEpisodeForReviewAction}
+            episodeId={episode.id}
+            episodePublicId={context.episodeId}
+            returned={episode.reviewState === "returned"}
+            seriesPublicId={context.seriesId}
+            tenantId={context.tenantId}
+          />
+        </TenantEditorOnly>
+      ) : null}
+    </EpisodeScheduleForm>
+  );
+};
+
+/**
+ * The episode's review, while the tenant requires one: nothing at all while
+ * it does not, so a tenant that never turned review on sees the screen it
+ * always had.
+ */
+const EpisodeReviewSectionData = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+
+  const [episodeResult, timeZone, reviewRequired] = await Promise.all([
+    loadEpisode(context),
+    getTenantDisplayTimeZone(context.tenantId),
+    readReviewRequired(context),
+  ]);
+
+  if (!reviewRequired) {
+    return null;
+  }
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.review.error" />}
+      />
+    );
+  }
+
+  const { episode } = episodeResult;
+
+  const reviewsResult = await listEpisodeReviews(
+    { episodeId: episode.id, tenantId: context.tenantId },
+    context.locale
+  );
+
+  await redirectToLoginIfSessionRejected(reviewsResult);
+
+  if (!reviewsResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={reviewsResult.message}
+        title={<Message message="admin.series.episodes.review.error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeReviewSection
+      locale={context.locale}
+      rounds={reviewsResult.rounds}
+      state={episode.reviewState}
+      timeZone={timeZone}
+    >
+      {episode.status === "scheduled" && episode.reviewState === "in_review" ? (
+        <TenantAdminOnly>
+          <EpisodeReviewDecisionForm
+            action={decideEpisodeReviewAction}
+            episodeId={episode.id}
+            episodePublicId={context.episodeId}
+            seriesPublicId={context.seriesId}
+            tenantId={context.tenantId}
+          />
+        </TenantAdminOnly>
+      ) : null}
+    </EpisodeReviewSection>
   );
 };
 
@@ -1003,6 +1120,9 @@ const EditEpisodeTabContent = async ({
           <Suspense fallback={<Skeleton className="h-40" />}>
             <EpisodeScheduleSection params={params} />
           </Suspense>
+          <Suspense fallback={null}>
+            <EpisodeReviewSectionData params={params} />
+          </Suspense>
           <Suspense fallback={<Skeleton className="h-40" />}>
             <EpisodeAvailabilitySection params={params} />
           </Suspense>
@@ -1121,6 +1241,18 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
       <FlashToast
         keyName="schedule_updated"
         message="admin.series.episodes.schedule_updated"
+      />
+      <FlashToast
+        keyName="review_submitted"
+        message="admin.series.episodes.review.submitted"
+      />
+      <FlashToast
+        keyName="review_approved"
+        message="admin.series.episodes.review.approved"
+      />
+      <FlashToast
+        keyName="review_returned"
+        message="admin.series.episodes.review.returned"
       />
       <FlashToast
         keyName="availability_updated"

@@ -4,7 +4,7 @@ import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type * as ActionForm from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
-import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -49,6 +49,11 @@ import {
 } from "#lib/episode-free-window";
 import { previewPageCountFor } from "#lib/episode-preview";
 import { parseEpisodeRental } from "#lib/episode-rental";
+import {
+  approveEpisode,
+  returnEpisode,
+  submitEpisodeForReview,
+} from "#lib/episode-review";
 import {
   creditShareBpsSchema,
   flagOneFormSchema,
@@ -352,6 +357,136 @@ export const updateEpisodeScheduleAction = async (
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
+  );
+};
+
+/**
+ * Submits an episode that was returned, or one scheduled before the tenant
+ * required review, without moving its time. Saving a time submits it as well,
+ * through {@link updateEpisodeScheduleAction}.
+ */
+export const submitEpisodeForReviewAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await hiddenParamsSchema(locale);
+
+  const parsed = schema.safeParse(toFormDataInput(formData, hiddenFormFields));
+
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
+  if (mismatch) {
+    return toFailure(mismatch);
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    submitEpisodeForReview(
+      { episodeId: parsed.data.episodeId, tenantId: parsed.data.tenantId },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
+  updateTag(episodesCacheTag(parsed.data.tenantId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
+
+  redirect(
+    `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?review_submitted=1`
+  );
+};
+
+/** What a Tenant admin may write with a decision, as the API bounds it. */
+const MAX_EPISODE_REVIEW_COMMENT_LENGTH = 2000;
+
+const reviewDecisionFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base
+    .extend({
+      comment: optionalTrimmedString(
+        MAX_EPISODE_REVIEW_COMMENT_LENGTH,
+        t("admin.series.episodes.review.validation.comment_too_long")
+      ),
+      decision: z.enum(["approve", "return"], {
+        error: t("admin.series.episodes.review.validation.decision_missing"),
+      }),
+    })
+    .refine((value) => value.decision === "approve" || value.comment !== "", {
+      error: t("admin.series.episodes.review.validation.comment_required"),
+      path: ["comment"],
+    });
+};
+
+/**
+ * Approves the episode's open round or returns it, by the button the Tenant
+ * admin pressed. A return says what to fix, so it is refused without a
+ * comment beside the field rather than sent for the API to refuse.
+ */
+export const decideEpisodeReviewAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await reviewDecisionFormSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      comment: { kind: "value", name: "comment" },
+      decision: { kind: "value", name: "decision" },
+    })
+  );
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
+  if (mismatch) {
+    return toFailure(mismatch);
+  }
+
+  const { comment, decision, episodeId, tenantId } = parsed.data;
+
+  const result = await withAdminSessionReauth(() =>
+    decision === "approve"
+      ? approveEpisode({ comment, episodeId, tenantId }, locale)
+      : returnEpisode({ comment, episodeId, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  // An approval whose time has passed publishes the episode, which the
+  // storefront learns of from the API; the console's own reads are these.
+  updateTag(tenantDashboardCacheTag(tenantId));
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+
+  redirect(
+    `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?${
+      decision === "approve" ? "review_approved" : "review_returned"
+    }=1`
   );
 };
 
