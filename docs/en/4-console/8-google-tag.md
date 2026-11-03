@@ -2,7 +2,7 @@
 title: Google tag
 description: Measure the site with Google Analytics or Google Tag Manager, choose where the tag is loaded from and whether readers are asked first, and set up what Google needs for each choice.
 published: 2026-10-22
-updated: 2026-10-27
+updated: 2026-11-03
 ---
 
 **Integrations** › **Google tag** has the tenant's site load the Google tag: Google Analytics 4 for a measurement ID, Google Tag Manager for a container ID, or both. This page takes a Tenant admin through the IDs, the three places the tag can be loaded from, what each of them needs set up in Google Analytics and Google Tag Manager, and whether readers are asked before the tag runs.
@@ -81,7 +81,7 @@ Google's [setup guide](https://developers.google.com/tag-platform/tag-manager/ga
 
 #### Checking that it works
 
-- **The path answers.** Open `https://comics.example.com/<gateway path>/healthy` in a browser, with the site's domain and the **Gateway path**. It reads `ok` once the gateway reaches Google. Google's second check, `?validate_geo=healthy`, does not read `ok`, since Publira does not pass the reader's country and region.
+- **The path answers.** Open `https://comics.example.com/<gateway path>/healthy` in a browser, with the site's domain and the **Gateway path**. It reads `ok` once the gateway reaches Google. Google's second check, `?validate_geo=healthy`, reads `ok` only behind an edge that looks up the reader's country and region, as described above. Behind one that does not, it does not read `ok`, and Google reports the traffic through the gateway with no region.
 - **The hits go through it.** Preview the container in Tag Assistant and browse the site. Under **Summary** › **Output** › **Hits Sent**, the hits are sent to the gateway path.
 - **Google sees it.** The **Google tag gateway** screen in Google Tag Manager shows the site's domain as **Pending** until Google has received data through the path, and as **First-party** after that.
 

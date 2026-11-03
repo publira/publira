@@ -2,7 +2,8 @@
 title: 에피소드 판매
 description: 에피소드에 가격을 매기고, Stripe나 PAY.JP로 결제를 받고, 판매 위치를 정하고, 환불을 처리하는 방법을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-03
+source_updated: 2026-11-03
 ---
 
 사이트에서 에피소드를 판매하려면 서로 맞아떨어져야 하는 세 가지가 필요합니다. 테넌트 콘솔에서 매기는 에피소드의 가격, 결제 제공자의 계정, 그리고 독자가 결제했다는 사실을 결제 제공자가 설치 환경에 알려 주는 웹훅입니다. 독자에게 요금을 청구하는 것은 결제 제공자이지만, 에피소드를 열어 주는 것은 웹훅뿐입니다. 따라서 세 가지 중 하나라도 잘못 설정되어 있으면 독자의 돈은 받으면서 에피소드는 잠긴 채로 남습니다. 이 페이지에서는 세 가지를 설정하는 순서대로 설명하고, 마지막에 세 가지가 맞아떨어지는지 확인하는 테스트 구매로 마무리합니다.
@@ -104,7 +105,7 @@ source_updated: 2026-11-02
 Stripe Dashboard에서 다음을 진행합니다.
 
 1. API 키 페이지에서 **secret key**를 복사합니다. 테스트 키는 `sk_test_`로, 라이브 키는 `sk_live_`로 시작합니다.
-2. 웹훅 엔드포인트를 추가합니다. URL은 Stripe를 고른 뒤 콘솔의 **결제 설정**에 표시되는 **웹훅 URL**로, 테넌트 자체 사이트 도메인의 `https://<tenant-domain>/api/v1/webhook/payment/stripe`입니다. 다음 일곱 가지 이벤트를 선택하고, 테넌트가 구독 플랜을 판매한다면 [구독 플랜](./5-subscription-plans.md#시작하기-전에)에 나열된 세 가지 이벤트도 추가로 선택합니다.
+2. 웹훅 엔드포인트를 추가합니다. URL은 Stripe를 고른 뒤 콘솔의 **결제 설정**에 표시되는 **웹훅 URL**로, 테넌트 자체 사이트 도메인의 `https://<tenant-domain>/api/v1/webhook/payment/stripe`입니다. 다음 이벤트를 선택하고, 테넌트가 구독 플랜을 판매한다면 [구독 플랜](./5-subscription-plans.md#시작하기-전에)에 나열된 이벤트도 추가로 선택합니다.
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

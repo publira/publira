@@ -2,7 +2,8 @@
 title: Google代码
 description: 使用Google Analytics或Google Tag Manager衡量网站，选择代码的加载来源以及是否先征求读者同意，并为每种选择完成Google所需的设置。
 published: 2026-11-03
-source_updated: 2026-10-27
+updated: 2026-11-03
+source_updated: 2026-11-03
 ---
 
 **集成** › **Google代码**让租户的网站加载Google代码：填写衡量ID时加载Google Analytics 4，填写容器ID时加载Google Tag Manager，也可以两者都加载。本页面带领租户管理员了解这些ID、代码可以加载的三种来源、每种来源需要在Google Analytics和Google Tag Manager中进行的设置，以及代码运行前是否征求读者同意。
@@ -81,7 +82,7 @@ Google的[设置指南](https://developers.google.com/tag-platform/tag-manager/g
 
 #### 确认是否生效
 
-- **路径有响应**。在浏览器中打开`https://comics.example.com/<gateway path>/healthy`，替换为网站的域名和**网关路径**。网关连接到Google后，它会显示`ok`。Google的第二项检查`?validate_geo=healthy`不会显示`ok`，因为Publira不传递读者的国家和地区。
+- **路径有响应**。在浏览器中打开`https://comics.example.com/<gateway path>/healthy`，替换为网站的域名和**网关路径**。网关连接到Google后，它会显示`ok`。Google的第二项检查`?validate_geo=healthy`只有在会查询读者国家和地区的边缘后面才会显示`ok`，如上文所述。如果边缘不做这种查询，它不会显示`ok`，Google报告通过网关的流量时也没有地区信息。
 - **命中经过网关**。在Tag Assistant中预览容器并浏览网站。在**Summary** › **Output** › **Hits Sent**中，命中被发送到网关路径。
 - **Google能看到它**。在Google通过该路径收到数据之前，Google Tag Manager的**Google tag gateway**页面会把网站的域名显示为**Pending**，之后显示为**First-party**。
 

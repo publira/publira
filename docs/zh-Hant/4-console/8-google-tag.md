@@ -2,7 +2,8 @@
 title: Google代碼
 description: 以Google Analytics或Google Tag Manager評估網站、選擇代碼的載入來源以及是否先徵求讀者同意，並為每種選擇設定Google所需的項目。
 published: 2026-11-03
-source_updated: 2026-10-27
+updated: 2026-11-03
+source_updated: 2026-11-03
 ---
 
 **整合** › **Google代碼**會讓租戶的網站載入Google代碼：填寫評估ID時載入Google Analytics 4，填寫容器ID時載入Google Tag Manager，也可以兩者都載入。本頁引導租戶管理員了解這些ID、代碼可以從哪三個地方載入、每種方式需要在Google Analytics與Google Tag Manager中設定什麼，以及代碼執行前是否要先徵求讀者同意。
@@ -81,7 +82,7 @@ Google的[設定指南](https://developers.google.com/tag-platform/tag-manager/g
 
 #### 確認是否正常運作
 
-- **路徑有回應**。在瀏覽器中開啟`https://comics.example.com/<gateway path>/healthy`，並代入網站的網域與**閘道路徑**。閘道連上Google後，頁面會顯示`ok`。Google的第二項檢查`?validate_geo=healthy`不會顯示`ok`，因為Publira不傳遞讀者的國家與地區。
+- **路徑有回應**。在瀏覽器中開啟`https://comics.example.com/<gateway path>/healthy`，並代入網站的網域與**閘道路徑**。閘道連上Google後，頁面會顯示`ok`。Google的第二項檢查`?validate_geo=healthy`只有在會查詢讀者國家與地區的邊緣後方才會顯示`ok`，如上文所述。在不查詢的邊緣後方，它不會顯示`ok`，Google透過閘道回報流量時也不會包含地區。
 - **命中經由閘道傳送**。在Tag Assistant中預覽容器並瀏覽網站。在**Summary** › **Output** › **Hits Sent**下，可以看到命中被傳送到閘道路徑。
 - **Google看得到它**。在Google收到經由該路徑的資料之前，Google Tag Manager中的**Google tag gateway**畫面會將網站的網域顯示為**Pending**，之後則顯示為**First-party**。
 

@@ -2,7 +2,8 @@
 title: Google 태그
 description: Google Analytics나 Google Tag Manager로 사이트를 측정하고, 태그를 불러오는 곳과 독자에게 먼저 물을지를 정하며, 각 선택에 필요한 Google 쪽 설정을 합니다.
 published: 2026-11-03
-source_updated: 2026-10-27
+updated: 2026-11-03
+source_updated: 2026-11-03
 ---
 
 **연동** › **Google 태그**는 테넌트의 사이트가 Google 태그를 불러오게 합니다. 측정 ID를 입력하면 Google Analytics 4를, 컨테이너 ID를 입력하면 Google Tag Manager를, 또는 둘 다를 불러옵니다. 이 페이지는 테넌트 관리자에게 ID, 태그를 불러올 수 있는 세 곳, 각각에 대해 Google Analytics와 Google Tag Manager에서 설정해야 하는 것, 그리고 태그가 실행되기 전에 독자에게 물을지를 안내합니다.
@@ -81,7 +82,7 @@ Google의 [setup guide](https://developers.google.com/tag-platform/tag-manager/g
 
 #### 작동하는지 확인하기
 
-- **경로가 응답하는지.** 사이트의 도메인과 **게이트웨이 경로**로 `https://comics.example.com/<gateway path>/healthy`를 브라우저에서 엽니다. 게이트웨이가 Google에 연결되면 `ok`라고 표시됩니다. Google의 두 번째 확인인 `?validate_geo=healthy`는 Publira가 독자의 국가와 지역을 넘기지 않으므로 `ok`라고 표시되지 않습니다.
+- **경로가 응답하는지.** 사이트의 도메인과 **게이트웨이 경로**로 `https://comics.example.com/<gateway path>/healthy`를 브라우저에서 엽니다. 게이트웨이가 Google에 연결되면 `ok`라고 표시됩니다. Google의 두 번째 확인인 `?validate_geo=healthy`는 앞에서 설명한 대로 독자의 국가와 지역을 조회하는 엣지 뒤에서만 `ok`라고 표시됩니다. 이를 조회하지 않는 엣지 뒤에서는 `ok`라고 표시되지 않으며, Google은 게이트웨이를 거친 트래픽을 지역 없이 보고합니다.
 - **히트가 경로를 거치는지.** Tag Assistant에서 컨테이너를 미리 보기하고 사이트를 둘러봅니다. **Summary** › **Output** › **Hits Sent**에서 히트가 게이트웨이 경로로 보내지는지 확인합니다.
 - **Google이 인식하는지.** Google Tag Manager의 **Google tag gateway** 화면에는 Google이 경로를 통해 데이터를 받기 전까지 사이트의 도메인이 **Pending**으로, 받은 뒤에는 **First-party**로 표시됩니다.
 

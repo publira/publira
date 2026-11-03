@@ -3,7 +3,7 @@ title: 销售章节
 description: 为章节定价，通过Stripe或PAY.JP收款，选择章节的销售位置，并处理退款。
 published: 2026-11-03
 updated: 2026-11-03
-source_updated: 2026-11-02
+source_updated: 2026-11-03
 ---
 
 要在网站上销售章节，需要三样东西彼此吻合：租户控制台中章节的价格、支付服务商的账户，以及支付服务商用来告知安装实例读者已付款的Webhook。向读者扣款的是支付服务商，但只有Webhook才会让章节可以阅读。因此三者中任何一个设置有误，都会出现收了读者的钱、章节却仍然锁定的情况。本页按设置顺序逐一说明这三项，最后通过一次测试购买来确认三者吻合。
@@ -105,7 +105,7 @@ source_updated: 2026-11-02
 在Stripe控制台中：
 
 1. 从API密钥页面复制**secret key**。测试密钥以`sk_test_`开头，正式密钥以`sk_live_`开头。
-2. 添加一个Webhook端点。其URL是选择Stripe后控制台在**支付设置**下显示的**Webhook URL**，即租户自己网站域名上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。选择以下七个事件；如果租户销售订阅方案，还要加上[订阅方案](./5-subscription-plans.md#开始之前)列出的另外三个事件：
+2. 添加一个Webhook端点。其URL是选择Stripe后控制台在**支付设置**下显示的**Webhook URL**，即租户自己网站域名上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。选择以下事件；如果租户销售订阅方案，还要加上[订阅方案](./5-subscription-plans.md#开始之前)列出的事件：
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

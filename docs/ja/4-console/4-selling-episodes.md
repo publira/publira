@@ -3,7 +3,7 @@ title: エピソードの販売
 description: エピソードへの価格の付け方、StripeやPAY.JPでの決済、販売先の選び方、返金の方法を説明します。
 published: 2026-10-29
 updated: 2026-11-03
-source_updated: 2026-11-02
+source_updated: 2026-11-03
 ---
 
 サイトでエピソードを販売するには、3つの設定がかみ合っている必要があります。テナント管理画面で付けるエピソードの価格、決済プロバイダのアカウント、そして読者が支払ったことを決済プロバイダからPubliraに知らせるWebhookです。読者への請求は決済プロバイダが行いますが、エピソードが読めるようになるのはWebhookで通知が届いたときだけです。3つのうちどれかが誤っていると、代金は受け取ったのにエピソードはロックされたまま、という状態になります。このページでは3つを設定する順に説明し、最後にテスト購入で3つがかみ合っていることを確かめます。
@@ -105,7 +105,7 @@ source_updated: 2026-11-02
 Stripeダッシュボードで次の作業をします。
 
 1. APIキーのページで**シークレットキー**をコピーします。テスト用のキーは`sk_test_`、本番用のキーは`sk_live_`で始まります。
-2. Webhookエンドポイントを追加します。URLは、**決済設定**でStripeを選ぶと管理画面に表示される**Webhook URL**で、テナントのサイトのドメインを使った`https://<tenant-domain>/api/v1/webhook/payment/stripe`です。イベントは次の7つを選びます。テナントがサブスクリプションプランを販売する場合は、[サブスクリプションプラン](./5-subscription-plans.md#始める前に)に挙げる3つも選びます。
+2. Webhookエンドポイントを追加します。URLは、**決済設定**でStripeを選ぶと管理画面に表示される**Webhook URL**で、テナントのサイトのドメインを使った`https://<tenant-domain>/api/v1/webhook/payment/stripe`です。イベントは次のものを選びます。テナントがサブスクリプションプランを販売する場合は、[サブスクリプションプラン](./5-subscription-plans.md#始める前に)に挙げるイベントも選びます。
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, remove a two-step verification a member lost, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/6-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -13,7 +13,7 @@ The `publiractl` commands here are run as on [The Platform Console and publiract
 
 Every account belongs to one tenant: a reader who signs up on two tenants' sites has two accounts, one in each. An account is a **user** of its tenant. A user who also holds a console role is a **member** of the tenant's staff, and can sign in to its console.
 
-Two things follow from this:
+This has the following consequences:
 
 - Making someone staff never moves their account. A reader of the tenant who is given a role signs in to the console with the address and password they already read with.
 - Taking someone's role away keeps their account. They stay a reader of the tenant, and can be given a role again later.
