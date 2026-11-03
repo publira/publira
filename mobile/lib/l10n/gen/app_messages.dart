@@ -4982,7 +4982,7 @@ const _jaSources = <String, String>{
   'mobile.notifications.episode_subject': '「{\$episode_title}」',
   'mobile.notifications.episode_subject_series': '「{\$series_title}」のエピソード',
   'mobile.notifications.episode_subject_with_series':
-      '「{\$episode_title}」({\$series_title})',
+      '「{\$series_title}」の「{\$episode_title}」',
   'mobile.notifications.failed': '通知一覧を表示できませんでした。もう一度お試しください。',
   'mobile.notifications.mark_all_read': 'すべて既読にする',
   'mobile.notifications.mark_all_read_failed': '一括既読に失敗しました。時間をおいて再試行してください。',
