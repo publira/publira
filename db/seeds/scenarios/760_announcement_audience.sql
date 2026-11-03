@@ -8,7 +8,9 @@
 --
 -- One series, followed by one of the two readers and not the other, is what a
 -- Follows series condition tells them apart by. The series has no episode, so
--- nothing but an announcement can notify anyone in this tenant.
+-- nothing but an announcement can notify anyone in this tenant. The other
+-- reader holds the first of two plans, which is what a Subscription condition
+-- the editor picks a plan for tells them apart by.
 -- Password hashes match the dev seed (`adminpass` / `memberpass`). public_id
 -- values are hard-coded in e2e/src/scenarios/announcement-audience.ts.
 --   tenant   AudcTNNTAAA1 (audience.localhost / admin.audience.localhost)
@@ -16,6 +18,8 @@
 --   follower AudcFLWRAAA1 — a reader who follows the series
 --   reader   AudcRDERAAA1 — a reader who does not
 --   series   AudcSERSAAA1
+--   plans    AudcPLANAAA1 (Audience Premium), held by the reader, and
+--            AudcPLANAAA2 (Audience Basic), held by nobody
 --
 -- ID band: 018f1aa0-0001-7000-8000-0000000000NN.
 
@@ -169,6 +173,88 @@ SELECT
 FROM users u
 WHERE u.public_id = 'AudcFLWRAAA1'
 ON CONFLICT (tenant_id, user_id, series_id) DO NOTHING;
+
+-- The plans are written again from nothing, the subscription that restricts
+-- the delete of its plan first.
+DELETE FROM subscriptions s
+USING tenants t
+WHERE s.tenant_id = t.id
+    AND t.public_id = 'AudcTNNTAAA1';
+
+DELETE FROM subscription_plans sp
+USING tenants t
+WHERE sp.tenant_id = t.id
+    AND t.public_id = 'AudcTNNTAAA1';
+
+INSERT INTO subscription_plans (
+    id,
+    tenant_id,
+    public_id,
+    name,
+    stripe_price_id,
+    price_amount,
+    currency,
+    recurring_interval,
+    recurring_interval_count,
+    scope,
+    is_published,
+    created_at
+)
+SELECT
+    seed.id,
+    t.id,
+    seed.public_id,
+    seed.name,
+    seed.stripe_price_id,
+    980,
+    'JPY',
+    'month',
+    1,
+    'all',
+    true,
+    seed.created_at
+FROM (
+    VALUES
+        (
+            '018f1aa0-0001-7000-8000-000000000061'::uuid,
+            'AudcPLANAAA1',
+            'Audience Premium',
+            'price_announcement_audience_premium_e2e',
+            NOW() - INTERVAL '2 days'
+        ),
+        (
+            '018f1aa0-0001-7000-8000-000000000062'::uuid,
+            'AudcPLANAAA2',
+            'Audience Basic',
+            'price_announcement_audience_basic_e2e',
+            NOW() - INTERVAL '1 day'
+        )
+) AS seed (id, public_id, name, stripe_price_id, created_at)
+JOIN tenants t ON t.public_id = 'AudcTNNTAAA1';
+
+INSERT INTO subscriptions (
+    id,
+    tenant_id,
+    user_id,
+    plan_id,
+    stripe_customer_id,
+    stripe_subscription_id,
+    stripe_price_id,
+    status,
+    current_period_end
+)
+SELECT
+    '018f1aa0-0001-7000-8000-000000000071'::uuid,
+    u.tenant_id,
+    u.id,
+    '018f1aa0-0001-7000-8000-000000000061'::uuid,
+    'cus_announcement_audience_e2e',
+    'sub_announcement_audience_e2e',
+    'price_announcement_audience_premium_e2e',
+    'active',
+    NOW() + INTERVAL '1 month'
+FROM users u
+WHERE u.public_id = 'AudcRDERAAA1';
 
 -- Everything this tenant holds was posted by a previous run of the spec, so a
 -- re-run starts from an empty list and an empty bell.

@@ -522,6 +522,45 @@ func (q *Queries) ListPublishedSubscriptionPlansForTenant(ctx context.Context, t
 	return items, nil
 }
 
+const ListSubscriptionPlanNamesForTenant = `-- name: ListSubscriptionPlanNamesForTenant :many
+SELECT sp.public_id,
+    sp.name
+FROM subscription_plans sp
+WHERE sp.tenant_id = $1
+ORDER BY sp.created_at ASC,
+    sp.id ASC
+`
+
+type ListSubscriptionPlanNamesForTenantRow struct {
+	PublicID string `json:"public_id"`
+	Name     string `json:"name"`
+}
+
+// Every plan of the tenant by its public id and name alone, in the order
+// ListSubscriptionPlansForTenant reads them.
+func (q *Queries) ListSubscriptionPlanNamesForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListSubscriptionPlanNamesForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListSubscriptionPlanNamesForTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSubscriptionPlanNamesForTenantRow
+	for rows.Next() {
+		var i ListSubscriptionPlanNamesForTenantRow
+		if err := rows.Scan(&i.PublicID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListSubscriptionPlanTargetsForTenant = `-- name: ListSubscriptionPlanTargetsForTenant :many
 SELECT plan_id,
     label_id,

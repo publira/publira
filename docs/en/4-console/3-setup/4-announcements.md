@@ -2,7 +2,7 @@
 title: Announcements
 description: Tell every reader of the site, or the readers a set of conditions selects, something at once, and keep the most important announcement in a banner above every page.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 **Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. An announcement can also be addressed only to the readers a set of conditions selects, such as the followers of one series; see [Choosing who receives it](#choosing-who-receives-it). One of them at a time can also be shown as a banner above every page of the site and the app.
@@ -55,7 +55,7 @@ An announcement can be addressed to the readers who meet a set of conditions ins
 
 - **Follows series**: the reader follows the **Series** you pick.
 - **Bought an episode of series**: the reader holds a purchase of an episode of the **Series** you pick, bought on its own, in a volume, or in a bundle. A purchase that was refunded or revoked does not count.
-- **Subscription**: the reader's subscription to the **Plan** you pick, or to **Any plan**, is live (**Holds it**: in its trial, active, or with a renewal payment past due), or the reader has had one that ended and holds no live one (**Had one that ended**). Only a Tenant admin can see the plans, so an Editor's form offers **Any plan** alone.
+- **Subscription**: the reader's subscription to the **Plan** you pick, or to **Any plan**, is live (**Holds it**: in its trial, active, or with a renewal payment past due), or the reader has had one that ended and holds no live one (**Had one that ended**).
 - **Has never bought anything**: the reader has never bought anything from the site. A purchase made in the payment provider's test mode does not count.
 - **Has not read for**: the reader has opened no episode for at least the number of **Days** you enter, or has never opened one.
 - **Signed up within**: the reader signed up no more than the number of **Days** you enter ago.

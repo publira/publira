@@ -16,6 +16,7 @@ const {
   mockCreateSubscriptionPlan,
   mockDeleteSubscriptionPlan,
   mockGetAccessToken,
+  mockListSubscriptionPlanNames,
   mockListSubscriptionPlans,
   mockUpdateSubscriptionPlan,
 } = vi.hoisted(() => ({
@@ -24,6 +25,7 @@ const {
   mockCreateSubscriptionPlan: vi.fn(),
   mockDeleteSubscriptionPlan: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockListSubscriptionPlanNames: vi.fn(),
   mockListSubscriptionPlans: vi.fn(),
   mockUpdateSubscriptionPlan: vi.fn(),
 }));
@@ -42,6 +44,7 @@ vi.mock("./api", () => ({
     subscriptionPlans: {
       createSubscriptionPlan: mockCreateSubscriptionPlan,
       deleteSubscriptionPlan: mockDeleteSubscriptionPlan,
+      listSubscriptionPlanNames: mockListSubscriptionPlanNames,
       listSubscriptionPlans: mockListSubscriptionPlans,
       updateSubscriptionPlan: mockUpdateSubscriptionPlan,
     },
@@ -203,6 +206,76 @@ describe("listSubscriptionPlans", () => {
     const { listSubscriptionPlans } = await import("./subscription-plan");
 
     await expect(listSubscriptionPlans("TENANT001", "en")).rejects.toThrow();
+  });
+});
+
+describe("listSubscriptionPlanNames", () => {
+  it("reads the tenant's plans by name with the operator's session, under the plan tag", async () => {
+    mockListSubscriptionPlanNames.mockResolvedValueOnce({
+      plans: [
+        { name: "Monthly pass", publicId: "PLAN0001" },
+        { name: "Yearly pass", publicId: "PLAN0002" },
+      ],
+    });
+
+    const { listSubscriptionPlanNames } = await import("./subscription-plan");
+    const result = await listSubscriptionPlanNames("TENANT001", "en");
+
+    expect(result).toEqual({
+      ok: true,
+      plans: [
+        { name: "Monthly pass", publicId: "PLAN0001" },
+        { name: "Yearly pass", publicId: "PLAN0002" },
+      ],
+    });
+    expect(mockListSubscriptionPlanNames).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      SESSION_HEADERS
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith("subscription-plans-TENANT001");
+  });
+
+  it("asks the page to sign the operator in again when the API rejects the session", async () => {
+    mockListSubscriptionPlanNames.mockRejectedValue(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { listSubscriptionPlanNames } = await import("./subscription-plan");
+    const result = await listSubscriptionPlanNames("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      ok: false,
+      plans: [],
+      requiresSignIn: true,
+    });
+  });
+
+  it("reports a failed read as a message and drops the cache entry", async () => {
+    mockListSubscriptionPlanNames.mockRejectedValue(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    const { listSubscriptionPlanNames } = await import("./subscription-plan");
+    const result = await listSubscriptionPlanNames("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, plans: [] });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("throws a failure no screen copy describes", async () => {
+    mockListSubscriptionPlanNames.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listSubscriptionPlanNames } = await import("./subscription-plan");
+
+    await expect(
+      listSubscriptionPlanNames("TENANT001", "en")
+    ).rejects.toThrow();
   });
 });
 

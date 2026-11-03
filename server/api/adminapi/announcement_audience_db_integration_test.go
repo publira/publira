@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -246,6 +247,69 @@ func TestDBCountAnnouncementAudienceAnswersTheReadersDeliveryReaches(t *testing.
 	})
 	if got := announcementRecipients(t, env, uuid.MustParse(created.Announcement.Id)); int64(len(got)) != counted.ReaderCount {
 		t.Fatalf("delivered to %d readers %v, want the %d the count answered", len(got), got, counted.ReaderCount)
+	}
+}
+
+// An editor, who may not read what a plan costs, still picks a plan for a
+// subscription condition by its name, and the count and the delivery reach
+// that plan's subscribers and no one else's.
+func TestDBAnEditorAddressesAnAnnouncementToAPlanItPicksByName(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "AUDTENANT06", "plans.example.com", "Plan Tenant", "AUDADMIN0006", "admin@plans.example.com")
+	editor := tenant.as(env.PG.SeedTenantUser(t, tenant.Tenant.ID, "AUDEDITOR006", "editor@plans.example.com", "Plan Tenant Editor", auth.RoleTenantEditor))
+	premium := env.PG.SeedSubscriptionPlan(t, tenant.Tenant.ID, testutil.SubscriptionPlanSeed{Name: "Premium", Published: true})
+	basic := env.PG.SeedSubscriptionPlan(t, tenant.Tenant.ID, testutil.SubscriptionPlanSeed{Name: "Basic", Published: true})
+	subscriber := env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER008", "premium@plans.example.com", "Premium Subscriber")
+	other := env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER009", "basic@plans.example.com", "Basic Subscriber")
+	env.PG.SeedEndUser(t, tenant.Tenant.ID, "AUDREADER010", "none@plans.example.com", "Subscribes To Nothing")
+	env.PG.SeedSubscription(t, tenant.Tenant.ID, subscriber.ID, premium.ID, testutil.SubscriptionSeed{})
+	env.PG.SeedSubscription(t, tenant.Tenant.ID, other.ID, basic.ID, testutil.SubscriptionSeed{})
+
+	ctx := testutil.WithBearer(context.Background(), editor.token())
+	plans := publiraadminv1connect.NewAdminSubscriptionPlanServiceClient(connect.NewClient(connecthttp.NewTransport(env.Server.Client(), env.Server.URL)))
+	named, err := plans.ListSubscriptionPlanNames(ctx, &publiraadminv1.ListSubscriptionPlanNamesRequest{Tenant: editor.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListSubscriptionPlanNames: %v", err)
+	}
+	picked := slices.IndexFunc(named.Plans, func(plan *publiraadminv1.SubscriptionPlanName) bool { return plan.Name == "Premium" })
+	if picked < 0 {
+		t.Fatalf("plans = %v, want Premium among them", named.Plans)
+	}
+
+	audience := &publiraadminv1.AnnouncementAudience{Conditions: []*publiraadminv1.AnnouncementAudienceCondition{
+		{Condition: &publiraadminv1.AnnouncementAudienceCondition_Subscription_{
+			Subscription: &publiraadminv1.AnnouncementAudienceCondition_Subscription{
+				PlanPublicId: named.Plans[picked].PublicId,
+				State:        publiraadminv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE,
+			},
+		}},
+	}}
+	counted, err := env.announcementClient().CountAnnouncementAudience(ctx, &publiraadminv1.CountAnnouncementAudienceRequest{
+		Tenant:   editor.tenantContext(),
+		Audience: audience,
+	})
+	if err != nil {
+		t.Fatalf("CountAnnouncementAudience: %v", err)
+	}
+	if counted.ReaderCount != 1 {
+		t.Fatalf("reader_count = %d, want the 1 Premium subscriber", counted.ReaderCount)
+	}
+
+	created, err := env.announcementClient().CreateAnnouncement(ctx, &publiraadminv1.CreateAnnouncementRequest{
+		Tenant:       editor.tenantContext(),
+		Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "A Premium preview", Body: "Read it first."}},
+		Audience:     audience,
+	})
+	if err != nil {
+		t.Fatalf("CreateAnnouncement: %v", err)
+	}
+	env.PG.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
+		outbox.EventTypeTargetedAnnouncementNotification: outbox.NewAnnouncementNotificationHandler(outbox.AnnouncementNotificationHandlerConfig{DB: env.PG.OpenOutboxDB(t)}),
+	})
+	if got := announcementRecipients(t, env, uuid.MustParse(created.Announcement.Id)); !slices.Equal(got, []uuid.UUID{subscriber.ID}) {
+		t.Fatalf("notified %v, want only the Premium subscriber %s", got, subscriber.ID)
 	}
 }
 

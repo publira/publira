@@ -3,11 +3,9 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { isSignedInTenantAdmin } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { listAllSeries } from "#lib/series";
-import { listSubscriptionPlans } from "#lib/subscription-plan";
+import { listSubscriptionPlanNames } from "#lib/subscription-plan";
 import { findTenantLocales } from "#lib/tenant-locales";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -17,24 +15,12 @@ import type {
 } from "../announcement-types";
 import { AnnouncementForm } from "./announcement-form";
 
-/**
- * The plans a subscription condition can name. The API lists plans to a
- * tenant admin alone, since a plan carries its price and its subscribers, so
- * an editor's form offers any plan and says why it names none.
- */
+/** The plans a subscription condition can name, by name. */
 const readAudiencePlans = async (tenantId: string) => {
-  const locale = await getLocale(tenantId);
-
-  if (!(await isSignedInTenantAdmin(tenantId))) {
-    const t = await getMessagesFor(locale);
-
-    return {
-      message: t("admin.announcements.form.audience_plans_admin_only"),
-      plans: [],
-    };
-  }
-
-  const result = await listSubscriptionPlans(tenantId, locale);
+  const result = await listSubscriptionPlanNames(
+    tenantId,
+    await getLocale(tenantId)
+  );
 
   return result.ok
     ? { plans: result.plans }

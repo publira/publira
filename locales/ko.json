@@ -627,7 +627,6 @@
         "audience_series_placeholder": "시리즈 검색",
         "audience_series_empty": "일치하는 시리즈가 없습니다.",
         "audience_plan": "플랜",
-        "audience_plans_admin_only": "플랜은 테넌트 관리자만 볼 수 있으므로 이 조건은 모든 플랜의 구독에 해당합니다.",
         "audience_any_plan": "모든 플랜",
         "audience_plan_state": "구독 상태",
         "audience_plan_state_active": "구독 중",

@@ -312,6 +312,151 @@ func (x *ListSubscriptionPlansResponse) GetPlans() []*AdminSubscriptionPlan {
 	return nil
 }
 
+// A plan as an announcement's audience names it: by its public id, and by
+// the name the console shows for it. Nothing about what the plan costs or who
+// holds it is in it, which is what lets every member of staff read it.
+type SubscriptionPlanName struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscriptionPlanName) Reset() {
+	*x = SubscriptionPlanName{}
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscriptionPlanName) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscriptionPlanName) ProtoMessage() {}
+
+func (x *SubscriptionPlanName) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscriptionPlanName.ProtoReflect.Descriptor instead.
+func (*SubscriptionPlanName) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *SubscriptionPlanName) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *SubscriptionPlanName) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type ListSubscriptionPlanNamesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionPlanNamesRequest) Reset() {
+	*x = ListSubscriptionPlanNamesRequest{}
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionPlanNamesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionPlanNamesRequest) ProtoMessage() {}
+
+func (x *ListSubscriptionPlanNamesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionPlanNamesRequest.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionPlanNamesRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListSubscriptionPlanNamesRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+// Every plan of the tenant, unpublished ones included, in the order
+// ListSubscriptionPlans answers them.
+type ListSubscriptionPlanNamesResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Plans         []*SubscriptionPlanName `protobuf:"bytes,1,rep,name=plans,proto3" json:"plans,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionPlanNamesResponse) Reset() {
+	*x = ListSubscriptionPlanNamesResponse{}
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionPlanNamesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionPlanNamesResponse) ProtoMessage() {}
+
+func (x *ListSubscriptionPlanNamesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionPlanNamesResponse.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionPlanNamesResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListSubscriptionPlanNamesResponse) GetPlans() []*SubscriptionPlanName {
+	if x != nil {
+		return x.Plans
+	}
+	return nil
+}
+
 type GetSubscriptionPlanRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -322,7 +467,7 @@ type GetSubscriptionPlanRequest struct {
 
 func (x *GetSubscriptionPlanRequest) Reset() {
 	*x = GetSubscriptionPlanRequest{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -334,7 +479,7 @@ func (x *GetSubscriptionPlanRequest) String() string {
 func (*GetSubscriptionPlanRequest) ProtoMessage() {}
 
 func (x *GetSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -347,7 +492,7 @@ func (x *GetSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionPlanRequest.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionPlanRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{3}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetSubscriptionPlanRequest) GetTenant() *v1.TenantContext {
@@ -373,7 +518,7 @@ type GetSubscriptionPlanResponse struct {
 
 func (x *GetSubscriptionPlanResponse) Reset() {
 	*x = GetSubscriptionPlanResponse{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +530,7 @@ func (x *GetSubscriptionPlanResponse) String() string {
 func (*GetSubscriptionPlanResponse) ProtoMessage() {}
 
 func (x *GetSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +543,7 @@ func (x *GetSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionPlanResponse.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionPlanResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
@@ -454,7 +599,7 @@ type SubscriptionPlanInput struct {
 
 func (x *SubscriptionPlanInput) Reset() {
 	*x = SubscriptionPlanInput{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +611,7 @@ func (x *SubscriptionPlanInput) String() string {
 func (*SubscriptionPlanInput) ProtoMessage() {}
 
 func (x *SubscriptionPlanInput) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +624,7 @@ func (x *SubscriptionPlanInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscriptionPlanInput.ProtoReflect.Descriptor instead.
 func (*SubscriptionPlanInput) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SubscriptionPlanInput) GetName() string {
@@ -557,7 +702,7 @@ type CreateSubscriptionPlanRequest struct {
 
 func (x *CreateSubscriptionPlanRequest) Reset() {
 	*x = CreateSubscriptionPlanRequest{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -569,7 +714,7 @@ func (x *CreateSubscriptionPlanRequest) String() string {
 func (*CreateSubscriptionPlanRequest) ProtoMessage() {}
 
 func (x *CreateSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -582,7 +727,7 @@ func (x *CreateSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSubscriptionPlanRequest.ProtoReflect.Descriptor instead.
 func (*CreateSubscriptionPlanRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateSubscriptionPlanRequest) GetTenant() *v1.TenantContext {
@@ -608,7 +753,7 @@ type CreateSubscriptionPlanResponse struct {
 
 func (x *CreateSubscriptionPlanResponse) Reset() {
 	*x = CreateSubscriptionPlanResponse{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +765,7 @@ func (x *CreateSubscriptionPlanResponse) String() string {
 func (*CreateSubscriptionPlanResponse) ProtoMessage() {}
 
 func (x *CreateSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +778,7 @@ func (x *CreateSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSubscriptionPlanResponse.ProtoReflect.Descriptor instead.
 func (*CreateSubscriptionPlanResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{7}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
@@ -659,7 +804,7 @@ type UpdateSubscriptionPlanRequest struct {
 
 func (x *UpdateSubscriptionPlanRequest) Reset() {
 	*x = UpdateSubscriptionPlanRequest{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -671,7 +816,7 @@ func (x *UpdateSubscriptionPlanRequest) String() string {
 func (*UpdateSubscriptionPlanRequest) ProtoMessage() {}
 
 func (x *UpdateSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -684,7 +829,7 @@ func (x *UpdateSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSubscriptionPlanRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionPlanRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{8}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdateSubscriptionPlanRequest) GetTenant() *v1.TenantContext {
@@ -717,7 +862,7 @@ type UpdateSubscriptionPlanResponse struct {
 
 func (x *UpdateSubscriptionPlanResponse) Reset() {
 	*x = UpdateSubscriptionPlanResponse{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +874,7 @@ func (x *UpdateSubscriptionPlanResponse) String() string {
 func (*UpdateSubscriptionPlanResponse) ProtoMessage() {}
 
 func (x *UpdateSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +887,7 @@ func (x *UpdateSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSubscriptionPlanResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionPlanResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{9}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
@@ -768,7 +913,7 @@ type DeleteSubscriptionPlanRequest struct {
 
 func (x *DeleteSubscriptionPlanRequest) Reset() {
 	*x = DeleteSubscriptionPlanRequest{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -780,7 +925,7 @@ func (x *DeleteSubscriptionPlanRequest) String() string {
 func (*DeleteSubscriptionPlanRequest) ProtoMessage() {}
 
 func (x *DeleteSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -793,7 +938,7 @@ func (x *DeleteSubscriptionPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSubscriptionPlanRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSubscriptionPlanRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{10}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeleteSubscriptionPlanRequest) GetTenant() *v1.TenantContext {
@@ -818,7 +963,7 @@ type DeleteSubscriptionPlanResponse struct {
 
 func (x *DeleteSubscriptionPlanResponse) Reset() {
 	*x = DeleteSubscriptionPlanResponse{}
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -830,7 +975,7 @@ func (x *DeleteSubscriptionPlanResponse) String() string {
 func (*DeleteSubscriptionPlanResponse) ProtoMessage() {}
 
 func (x *DeleteSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_subscription_plan_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -843,7 +988,7 @@ func (x *DeleteSubscriptionPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSubscriptionPlanResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSubscriptionPlanResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{11}
+	return file_publira_admin_v1_subscription_plan_proto_rawDescGZIP(), []int{14}
 }
 
 var File_publira_admin_v1_subscription_plan_proto protoreflect.FileDescriptor
@@ -877,7 +1022,14 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\x1cListSubscriptionPlansRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"^\n" +
 	"\x1dListSubscriptionPlansResponse\x12=\n" +
-	"\x05plans\x18\x01 \x03(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x05plans\"\x87\x01\n" +
+	"\x05plans\x18\x01 \x03(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x05plans\"G\n" +
+	"\x14SubscriptionPlanName\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"[\n" +
+	" ListSubscriptionPlanNamesRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"a\n" +
+	"!ListSubscriptionPlanNamesResponse\x12<\n" +
+	"\x05plans\x18\x01 \x03(\v2&.publira.admin.v1.SubscriptionPlanNameR\x05plans\"\x87\x01\n" +
 	"\x1aGetSubscriptionPlanRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
 	"\x14subscription_plan_id\x18\x02 \x01(\tR\x12subscriptionPlanId\"Z\n" +
@@ -910,9 +1062,10 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\x1dDeleteSubscriptionPlanRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
 	"\x14subscription_plan_id\x18\x02 \x01(\tR\x12subscriptionPlanId\" \n" +
-	"\x1eDeleteSubscriptionPlanResponse2\x8d\x05\n" +
+	"\x1eDeleteSubscriptionPlanResponse2\x96\x06\n" +
 	"\x1cAdminSubscriptionPlanService\x12z\n" +
-	"\x15ListSubscriptionPlans\x12..publira.admin.v1.ListSubscriptionPlansRequest\x1a/.publira.admin.v1.ListSubscriptionPlansResponse\"\x00\x12t\n" +
+	"\x15ListSubscriptionPlans\x12..publira.admin.v1.ListSubscriptionPlansRequest\x1a/.publira.admin.v1.ListSubscriptionPlansResponse\"\x00\x12\x86\x01\n" +
+	"\x19ListSubscriptionPlanNames\x122.publira.admin.v1.ListSubscriptionPlanNamesRequest\x1a3.publira.admin.v1.ListSubscriptionPlanNamesResponse\"\x00\x12t\n" +
 	"\x13GetSubscriptionPlan\x12,.publira.admin.v1.GetSubscriptionPlanRequest\x1a-.publira.admin.v1.GetSubscriptionPlanResponse\"\x00\x12}\n" +
 	"\x16CreateSubscriptionPlan\x12/.publira.admin.v1.CreateSubscriptionPlanRequest\x1a0.publira.admin.v1.CreateSubscriptionPlanResponse\"\x00\x12}\n" +
 	"\x16UpdateSubscriptionPlan\x12/.publira.admin.v1.UpdateSubscriptionPlanRequest\x1a0.publira.admin.v1.UpdateSubscriptionPlanResponse\"\x00\x12}\n" +
@@ -930,54 +1083,61 @@ func file_publira_admin_v1_subscription_plan_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_subscription_plan_proto_rawDescData
 }
 
-var file_publira_admin_v1_subscription_plan_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_admin_v1_subscription_plan_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_publira_admin_v1_subscription_plan_proto_goTypes = []any{
-	(*AdminSubscriptionPlan)(nil),          // 0: publira.admin.v1.AdminSubscriptionPlan
-	(*ListSubscriptionPlansRequest)(nil),   // 1: publira.admin.v1.ListSubscriptionPlansRequest
-	(*ListSubscriptionPlansResponse)(nil),  // 2: publira.admin.v1.ListSubscriptionPlansResponse
-	(*GetSubscriptionPlanRequest)(nil),     // 3: publira.admin.v1.GetSubscriptionPlanRequest
-	(*GetSubscriptionPlanResponse)(nil),    // 4: publira.admin.v1.GetSubscriptionPlanResponse
-	(*SubscriptionPlanInput)(nil),          // 5: publira.admin.v1.SubscriptionPlanInput
-	(*CreateSubscriptionPlanRequest)(nil),  // 6: publira.admin.v1.CreateSubscriptionPlanRequest
-	(*CreateSubscriptionPlanResponse)(nil), // 7: publira.admin.v1.CreateSubscriptionPlanResponse
-	(*UpdateSubscriptionPlanRequest)(nil),  // 8: publira.admin.v1.UpdateSubscriptionPlanRequest
-	(*UpdateSubscriptionPlanResponse)(nil), // 9: publira.admin.v1.UpdateSubscriptionPlanResponse
-	(*DeleteSubscriptionPlanRequest)(nil),  // 10: publira.admin.v1.DeleteSubscriptionPlanRequest
-	(*DeleteSubscriptionPlanResponse)(nil), // 11: publira.admin.v1.DeleteSubscriptionPlanResponse
-	(v1.SubscriptionInterval)(0),           // 12: publira.types.v1.SubscriptionInterval
-	(v1.SubscriptionPlanScope)(0),          // 13: publira.types.v1.SubscriptionPlanScope
-	(*v1.TenantContext)(nil),               // 14: publira.types.v1.TenantContext
+	(*AdminSubscriptionPlan)(nil),             // 0: publira.admin.v1.AdminSubscriptionPlan
+	(*ListSubscriptionPlansRequest)(nil),      // 1: publira.admin.v1.ListSubscriptionPlansRequest
+	(*ListSubscriptionPlansResponse)(nil),     // 2: publira.admin.v1.ListSubscriptionPlansResponse
+	(*SubscriptionPlanName)(nil),              // 3: publira.admin.v1.SubscriptionPlanName
+	(*ListSubscriptionPlanNamesRequest)(nil),  // 4: publira.admin.v1.ListSubscriptionPlanNamesRequest
+	(*ListSubscriptionPlanNamesResponse)(nil), // 5: publira.admin.v1.ListSubscriptionPlanNamesResponse
+	(*GetSubscriptionPlanRequest)(nil),        // 6: publira.admin.v1.GetSubscriptionPlanRequest
+	(*GetSubscriptionPlanResponse)(nil),       // 7: publira.admin.v1.GetSubscriptionPlanResponse
+	(*SubscriptionPlanInput)(nil),             // 8: publira.admin.v1.SubscriptionPlanInput
+	(*CreateSubscriptionPlanRequest)(nil),     // 9: publira.admin.v1.CreateSubscriptionPlanRequest
+	(*CreateSubscriptionPlanResponse)(nil),    // 10: publira.admin.v1.CreateSubscriptionPlanResponse
+	(*UpdateSubscriptionPlanRequest)(nil),     // 11: publira.admin.v1.UpdateSubscriptionPlanRequest
+	(*UpdateSubscriptionPlanResponse)(nil),    // 12: publira.admin.v1.UpdateSubscriptionPlanResponse
+	(*DeleteSubscriptionPlanRequest)(nil),     // 13: publira.admin.v1.DeleteSubscriptionPlanRequest
+	(*DeleteSubscriptionPlanResponse)(nil),    // 14: publira.admin.v1.DeleteSubscriptionPlanResponse
+	(v1.SubscriptionInterval)(0),              // 15: publira.types.v1.SubscriptionInterval
+	(v1.SubscriptionPlanScope)(0),             // 16: publira.types.v1.SubscriptionPlanScope
+	(*v1.TenantContext)(nil),                  // 17: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_subscription_plan_proto_depIdxs = []int32{
-	12, // 0: publira.admin.v1.AdminSubscriptionPlan.interval:type_name -> publira.types.v1.SubscriptionInterval
-	13, // 1: publira.admin.v1.AdminSubscriptionPlan.scope:type_name -> publira.types.v1.SubscriptionPlanScope
-	14, // 2: publira.admin.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 0: publira.admin.v1.AdminSubscriptionPlan.interval:type_name -> publira.types.v1.SubscriptionInterval
+	16, // 1: publira.admin.v1.AdminSubscriptionPlan.scope:type_name -> publira.types.v1.SubscriptionPlanScope
+	17, // 2: publira.admin.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 3: publira.admin.v1.ListSubscriptionPlansResponse.plans:type_name -> publira.admin.v1.AdminSubscriptionPlan
-	14, // 4: publira.admin.v1.GetSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 5: publira.admin.v1.GetSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
-	13, // 6: publira.admin.v1.SubscriptionPlanInput.scope:type_name -> publira.types.v1.SubscriptionPlanScope
-	14, // 7: publira.admin.v1.CreateSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5,  // 8: publira.admin.v1.CreateSubscriptionPlanRequest.plan:type_name -> publira.admin.v1.SubscriptionPlanInput
-	0,  // 9: publira.admin.v1.CreateSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
-	14, // 10: publira.admin.v1.UpdateSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5,  // 11: publira.admin.v1.UpdateSubscriptionPlanRequest.plan:type_name -> publira.admin.v1.SubscriptionPlanInput
-	0,  // 12: publira.admin.v1.UpdateSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
-	14, // 13: publira.admin.v1.DeleteSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 14: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlans:input_type -> publira.admin.v1.ListSubscriptionPlansRequest
-	3,  // 15: publira.admin.v1.AdminSubscriptionPlanService.GetSubscriptionPlan:input_type -> publira.admin.v1.GetSubscriptionPlanRequest
-	6,  // 16: publira.admin.v1.AdminSubscriptionPlanService.CreateSubscriptionPlan:input_type -> publira.admin.v1.CreateSubscriptionPlanRequest
-	8,  // 17: publira.admin.v1.AdminSubscriptionPlanService.UpdateSubscriptionPlan:input_type -> publira.admin.v1.UpdateSubscriptionPlanRequest
-	10, // 18: publira.admin.v1.AdminSubscriptionPlanService.DeleteSubscriptionPlan:input_type -> publira.admin.v1.DeleteSubscriptionPlanRequest
-	2,  // 19: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlans:output_type -> publira.admin.v1.ListSubscriptionPlansResponse
-	4,  // 20: publira.admin.v1.AdminSubscriptionPlanService.GetSubscriptionPlan:output_type -> publira.admin.v1.GetSubscriptionPlanResponse
-	7,  // 21: publira.admin.v1.AdminSubscriptionPlanService.CreateSubscriptionPlan:output_type -> publira.admin.v1.CreateSubscriptionPlanResponse
-	9,  // 22: publira.admin.v1.AdminSubscriptionPlanService.UpdateSubscriptionPlan:output_type -> publira.admin.v1.UpdateSubscriptionPlanResponse
-	11, // 23: publira.admin.v1.AdminSubscriptionPlanService.DeleteSubscriptionPlan:output_type -> publira.admin.v1.DeleteSubscriptionPlanResponse
-	19, // [19:24] is the sub-list for method output_type
-	14, // [14:19] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	17, // 4: publira.admin.v1.ListSubscriptionPlanNamesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 5: publira.admin.v1.ListSubscriptionPlanNamesResponse.plans:type_name -> publira.admin.v1.SubscriptionPlanName
+	17, // 6: publira.admin.v1.GetSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 7: publira.admin.v1.GetSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
+	16, // 8: publira.admin.v1.SubscriptionPlanInput.scope:type_name -> publira.types.v1.SubscriptionPlanScope
+	17, // 9: publira.admin.v1.CreateSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,  // 10: publira.admin.v1.CreateSubscriptionPlanRequest.plan:type_name -> publira.admin.v1.SubscriptionPlanInput
+	0,  // 11: publira.admin.v1.CreateSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
+	17, // 12: publira.admin.v1.UpdateSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,  // 13: publira.admin.v1.UpdateSubscriptionPlanRequest.plan:type_name -> publira.admin.v1.SubscriptionPlanInput
+	0,  // 14: publira.admin.v1.UpdateSubscriptionPlanResponse.plan:type_name -> publira.admin.v1.AdminSubscriptionPlan
+	17, // 15: publira.admin.v1.DeleteSubscriptionPlanRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 16: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlans:input_type -> publira.admin.v1.ListSubscriptionPlansRequest
+	4,  // 17: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlanNames:input_type -> publira.admin.v1.ListSubscriptionPlanNamesRequest
+	6,  // 18: publira.admin.v1.AdminSubscriptionPlanService.GetSubscriptionPlan:input_type -> publira.admin.v1.GetSubscriptionPlanRequest
+	9,  // 19: publira.admin.v1.AdminSubscriptionPlanService.CreateSubscriptionPlan:input_type -> publira.admin.v1.CreateSubscriptionPlanRequest
+	11, // 20: publira.admin.v1.AdminSubscriptionPlanService.UpdateSubscriptionPlan:input_type -> publira.admin.v1.UpdateSubscriptionPlanRequest
+	13, // 21: publira.admin.v1.AdminSubscriptionPlanService.DeleteSubscriptionPlan:input_type -> publira.admin.v1.DeleteSubscriptionPlanRequest
+	2,  // 22: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlans:output_type -> publira.admin.v1.ListSubscriptionPlansResponse
+	5,  // 23: publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlanNames:output_type -> publira.admin.v1.ListSubscriptionPlanNamesResponse
+	7,  // 24: publira.admin.v1.AdminSubscriptionPlanService.GetSubscriptionPlan:output_type -> publira.admin.v1.GetSubscriptionPlanResponse
+	10, // 25: publira.admin.v1.AdminSubscriptionPlanService.CreateSubscriptionPlan:output_type -> publira.admin.v1.CreateSubscriptionPlanResponse
+	12, // 26: publira.admin.v1.AdminSubscriptionPlanService.UpdateSubscriptionPlan:output_type -> publira.admin.v1.UpdateSubscriptionPlanResponse
+	14, // 27: publira.admin.v1.AdminSubscriptionPlanService.DeleteSubscriptionPlan:output_type -> publira.admin.v1.DeleteSubscriptionPlanResponse
+	22, // [22:28] is the sub-list for method output_type
+	16, // [16:22] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_subscription_plan_proto_init() }
@@ -985,14 +1145,14 @@ func file_publira_admin_v1_subscription_plan_proto_init() {
 	if File_publira_admin_v1_subscription_plan_proto != nil {
 		return
 	}
-	file_publira_admin_v1_subscription_plan_proto_msgTypes[5].OneofWrappers = []any{}
+	file_publira_admin_v1_subscription_plan_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_subscription_plan_proto_rawDesc), len(file_publira_admin_v1_subscription_plan_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

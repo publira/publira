@@ -2,7 +2,10 @@ package adminapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"maps"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
@@ -459,5 +463,59 @@ func TestDBSubscriptionPlanNamesTheStoreProductsItIsSoldAs(t *testing.T) {
 		products.SubscriptionPlans[0].Id != created.Id || products.SubscriptionPlans[0].GooglePlayProductId != "plan_monthly" ||
 		products.SubscriptionPlans[1].Id != other.Id || products.SubscriptionPlans[1].AppStoreProductId != "plan_monthly" {
 		t.Fatalf("ListTenantStoreProducts plans = %v, want both plans with their products in the order they were created", products.SubscriptionPlans)
+	}
+}
+
+// Every member of staff may read the tenant's plans by name, unpublished ones
+// included and in the order they were created, and what goes over the wire
+// is each plan's public id and name: nothing it costs, nothing Stripe calls
+// it, and nobody who holds it.
+func TestDBListSubscriptionPlanNamesAnswersThePlansByNameAlone(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAADMIN01", "admin@tenant-a.example.com")
+	auditor := admin.as(env.PG.SeedTenantUser(t, admin.Tenant.ID, "TAAUDITOR01", "auditor@tenant-a.example.com", "Tenant A Auditor", auth.RoleTenantAuditor))
+	monthly := env.PG.SeedSubscriptionPlan(t, admin.Tenant.ID, testutil.SubscriptionPlanSeed{Name: "Monthly", Published: true})
+	yearly := env.PG.SeedSubscriptionPlan(t, admin.Tenant.ID, testutil.SubscriptionPlanSeed{Name: "Yearly"})
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "READER01", "reader@tenant-a.example.com", "Reader")
+	env.PG.SeedSubscription(t, admin.Tenant.ID, reader.ID, monthly.ID, testutil.SubscriptionSeed{})
+	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBADMIN01", "admin@tenant-b.example.com")
+	env.PG.SeedSubscriptionPlan(t, other.Tenant.ID, testutil.SubscriptionPlanSeed{Name: "Another tenant's plan"})
+
+	client := publiraadminv1connect.NewAdminSubscriptionPlanServiceClient(connect.NewClient(connecthttp.NewTransport(env.Server.Client(), env.Server.URL)))
+	res, err := client.ListSubscriptionPlanNames(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.ListSubscriptionPlanNamesRequest{Tenant: auditor.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListSubscriptionPlanNames: %v", err)
+	}
+	want := []*publiraadminv1.SubscriptionPlanName{{PublicId: monthly.PublicID, Name: "Monthly"}, {PublicId: yearly.PublicID, Name: "Yearly"}}
+	if !slices.EqualFunc(res.Plans, want, func(a, b *publiraadminv1.SubscriptionPlanName) bool { return proto.Equal(a, b) }) {
+		t.Fatalf("plans = %v, want %v", res.Plans, want)
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
+		env.Server.URL+publiraadminv1connect.AdminSubscriptionPlanServiceListSubscriptionPlanNamesProcedure,
+		strings.NewReader(`{"tenant":{"tenant_id":"`+admin.Tenant.ID.String()+`"}}`))
+	if err != nil {
+		t.Fatalf("build the request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+auditor.token())
+	raw, err := env.Server.Client().Do(req)
+	if err != nil {
+		t.Fatalf("call ListSubscriptionPlanNames: %v", err)
+	}
+	defer raw.Body.Close() //nolint:errcheck
+	var answer struct {
+		Plans []map[string]json.RawMessage `json:"plans"`
+	}
+	if err := json.NewDecoder(raw.Body).Decode(&answer); err != nil {
+		t.Fatalf("decode the answer: %v", err)
+	}
+	for _, plan := range answer.Plans {
+		keys := slices.Sorted(maps.Keys(plan))
+		if !slices.Equal(keys, []string{"name", "publicId"}) {
+			t.Fatalf("a plan went over the wire with %v, want its publicId and name alone", keys)
+		}
 	}
 }

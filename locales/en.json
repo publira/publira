@@ -627,7 +627,6 @@
         "audience_series_placeholder": "Search series",
         "audience_series_empty": "No matching series.",
         "audience_plan": "Plan",
-        "audience_plans_admin_only": "Only a tenant admin can see the plans, so this condition matches a subscription to any plan.",
         "audience_any_plan": "Any plan",
         "audience_plan_state": "Subscription state",
         "audience_plan_state_active": "Holds it",

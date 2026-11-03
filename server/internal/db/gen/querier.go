@@ -3188,6 +3188,9 @@ type Querier interface {
 	ListSitemapEntriesAsc(ctx context.Context, arg ListSitemapEntriesAscParams) ([]ListSitemapEntriesAscRow, error)
 	// The backward direction of ListSitemapEntriesAsc.
 	ListSitemapEntriesDesc(ctx context.Context, arg ListSitemapEntriesDescParams) ([]ListSitemapEntriesDescRow, error)
+	// Every plan of the tenant by its public id and name alone, in the order
+	// ListSubscriptionPlansForTenant reads them.
+	ListSubscriptionPlanNamesForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListSubscriptionPlanNamesForTenantRow, error)
 	// The labels and series the plans name, each row one of the two.
 	ListSubscriptionPlanTargetsForTenant(ctx context.Context, arg ListSubscriptionPlanTargetsForTenantParams) ([]ListSubscriptionPlanTargetsForTenantRow, error)
 	// Every plan of the tenant, in the order they were created, with how many

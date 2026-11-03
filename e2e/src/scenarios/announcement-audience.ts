@@ -3,7 +3,7 @@
  *
  * A targeted announcement notifies the readers its conditions select, so the
  * audience spec posts into a tenant of its own, where two readers are told
- * apart by whether they follow its one series.
+ * apart by whether they follow its one series and by the plan they hold.
  */
 
 export const ANNOUNCEMENT_AUDIENCE_SCENARIO = "760_announcement_audience";
@@ -29,7 +29,10 @@ export const ANNOUNCEMENT_AUDIENCE_FOLLOWER = {
   publicId: "AudcFLWRAAA1",
 } as const;
 
-/** The reader who does not follow it. Password hash is `memberpass`. */
+/**
+ * The reader who does not follow it, and holds {@link ANNOUNCEMENT_AUDIENCE_PLAN}.
+ * Password hash is `memberpass`.
+ */
 export const ANNOUNCEMENT_AUDIENCE_READER = {
   email: "audience-reader@example.com",
   name: "Audience E2E Reader",
@@ -41,4 +44,10 @@ export const ANNOUNCEMENT_AUDIENCE_READER = {
 export const ANNOUNCEMENT_AUDIENCE_SERIES = {
   publicId: "AudcSERSAAA1",
   title: "Audience Series",
+} as const;
+
+/** The plan the reader holds, the first of the tenant's two. */
+export const ANNOUNCEMENT_AUDIENCE_PLAN = {
+  name: "Audience Premium",
+  publicId: "AudcPLANAAA1",
 } as const;

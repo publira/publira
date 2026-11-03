@@ -29,6 +29,16 @@ WHERE sp.tenant_id = $1
 ORDER BY sp.created_at ASC,
     sp.id ASC;
 
+-- name: ListSubscriptionPlanNamesForTenant :many
+-- Every plan of the tenant by its public id and name alone, in the order
+-- ListSubscriptionPlansForTenant reads them.
+SELECT sp.public_id,
+    sp.name
+FROM subscription_plans sp
+WHERE sp.tenant_id = $1
+ORDER BY sp.created_at ASC,
+    sp.id ASC;
+
 -- name: GetSubscriptionPlanByIDForTenant :one
 SELECT sp.id,
     sp.public_id,
