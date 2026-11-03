@@ -203,9 +203,9 @@ describe("checkPage", () => {
           "",
           "タブには **(未追加)** と表示されます。",
           "",
-          "**理由(任意)**に入力します。`**/*.md`を対象にします。",
+          "**理由 (任意)**に入力します。`**/*.md`を対象にします。",
           "",
-          "**理由(任意)** に入力します。",
+          "**理由 (任意)** に入力します。",
           "",
           "```bash",
           "ls **/*.md",
@@ -248,20 +248,24 @@ describe("checkPage", () => {
     );
   });
 
-  it("leaves a parenthesis in screen text, in bold or in 「」, as the catalog writes it", () => {
+  it("reports a half-width parenthesis in screen text, in bold or in 「」, as well", () => {
     assert.deepEqual(
       linesOf(
         VALID,
         [
           "**理由(任意)** に入力します。",
           "",
-          "タブには「**(未追加)**」と表示されます。",
+          "**理由 (任意)** に入力します。",
           "",
           "「保存済み(非表示)」と表示されます。",
+          "",
+          "「保存済み (非表示)」と表示されます。",
+          "",
+          "タブには「**(未追加)**」と表示されます。",
         ],
         /half-width parenthesis/u
       ),
-      []
+      [8, 12]
     );
   });
 

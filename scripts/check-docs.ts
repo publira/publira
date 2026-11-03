@@ -58,6 +58,7 @@ import { gfm } from "micromark-extension-gfm";
 import { Temporal } from "temporal-polyfill";
 import { parse as parseYaml } from "yaml";
 
+import { gluedParentheses } from "./half-width-parentheses.ts";
 import { isJsonObject, isJsonString } from "./json-value.ts";
 import type { JsonObject, JsonValue } from "./json-value.ts";
 
@@ -259,9 +260,6 @@ const checkKeys = (record: JsonObject, translated: boolean): string[] => {
   ];
 };
 
-/** What a half-width parenthesis in prose is set off from by a space. */
-const WORD = /[\p{L}\p{N}]/u;
-
 /**
  * The trees whose prose sets a half-width parenthesis off with a space, as the
  * `AGENTS.md` at each one's root says. Korean attaches a particle straight to
@@ -271,32 +269,6 @@ const SPACED_PARENTHESES = new Set([`${DOCS}/ja`]);
 
 const spacesParentheses = (file: string): boolean =>
   SPACED_PARENTHESES.has(treeOf(file));
-
-/**
- * The positions in a run of prose where a half-width parenthesis touches a
- * letter or a digit on its outer side, as `表示されます(任意)` does. Text
- * quoted in 「」 is screen text and keeps the catalog's characters, so a
- * parenthesis inside it is left alone.
- */
-const gluedParentheses = (chars: readonly string[]): number[] => {
-  let quoted = 0;
-
-  return chars.flatMap((char, index) => {
-    if (char === "「") {
-      quoted += 1;
-    } else if (char === "」") {
-      quoted = Math.max(quoted - 1, 0);
-    }
-
-    if (quoted > 0 || (char !== "(" && char !== ")")) {
-      return [];
-    }
-
-    const outside = chars[char === "(" ? index - 1 : index + 1];
-
-    return outside && WORD.test(outside) ? [index] : [];
-  });
-};
 
 const GLUED_PARENTHESIS =
   "A half-width parenthesis touches a letter or a digit outside it. Set it off with a space on its outer side, unless punctuation is there.";
@@ -581,10 +553,7 @@ interface Glyph {
 
 /**
  * The characters a reader sees in a run of phrasing content, each with its
- * line. Inline code stands as one word, since its own parentheses are code. A
- * bold label is screen text and keeps the catalog's characters, so its
- * parentheses are masked, while its letters still count beside a parenthesis
- * outside it.
+ * line. Inline code stands as one word, since its own parentheses are code.
  */
 const glyphsOf = (node: Nodes): Glyph[] => {
   const line = node.position?.start.line ?? 1;
@@ -621,15 +590,7 @@ const glyphsOf = (node: Nodes): Glyph[] => {
     return [];
   }
 
-  const glyphs = node.children.flatMap(glyphsOf);
-
-  return node.type === "strong"
-    ? glyphs.map((glyph) =>
-        glyph.char === "(" || glyph.char === ")"
-          ? { ...glyph, char: " " }
-          : glyph
-      )
-    : glyphs;
+  return node.children.flatMap(glyphsOf);
 };
 
 /**

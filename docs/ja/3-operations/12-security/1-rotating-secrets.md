@@ -2,7 +2,7 @@
 title: シークレットのローテーション
 description: シークレットの暗号化キー、データベースのロールのパスワード、署名キーとトークンを、それらが守るデータを失わずに入れ替える手順を説明します。
 published: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-03
 source_updated: 2026-10-21
 ---
 
@@ -79,7 +79,7 @@ docker compose run --rm publiractl db reseal
 
 ![パスワードを保存済みのSMTPのパスワード欄。パスワードは伏せて表示され、その下に「変更する」があります。](./rotating-secrets-smtp-password.png)
 
-![アクセスキーを保存済みのストレージの認証情報。アクセスキーIDのほか、シークレットが「保存済み(非表示)」と表示され、「アクセスキーを置き換える」があります。](./rotating-secrets-replace-access-key.png)
+![アクセスキーを保存済みのストレージの認証情報。アクセスキーIDのほか、シークレットが「保存済み (非表示)」と表示され、「アクセスキーを置き換える」があります。](./rotating-secrets-replace-access-key.png)
 
 ## データベースのロールのパスワードのローテーション
 
