@@ -114,6 +114,8 @@ export interface SignupInput {
 export interface NotificationPreferenceCells {
   announcementsEmailEnabled: boolean;
   announcementsInboxEnabled: boolean;
+  announcementsMobilePushEnabled: boolean;
+  announcementsWebPushEnabled: boolean;
   commentsEmailEnabled: boolean;
   commentsInboxEnabled: boolean;
   followedCreatorsEmailEnabled: boolean;
@@ -136,11 +138,16 @@ type RawNotificationPreferences = Pick<
   keyof NotificationPreferenceCells
 >;
 
-/** What a reader who has saved nothing reads: every cell on. */
+/**
+ * What a reader who has saved nothing reads: every cell on, except the
+ * announcement push cells, which the server starts off.
+ */
 export const UNSAVED_NOTIFICATION_PREFERENCE_CELLS: NotificationPreferenceCells =
   {
     announcementsEmailEnabled: true,
     announcementsInboxEnabled: true,
+    announcementsMobilePushEnabled: false,
+    announcementsWebPushEnabled: false,
     commentsEmailEnabled: true,
     commentsInboxEnabled: true,
     followedCreatorsEmailEnabled: true,
@@ -154,7 +161,8 @@ export const UNSAVED_NOTIFICATION_PREFERENCE_CELLS: NotificationPreferenceCells 
   };
 
 /**
- * A response without the message reads every cell on, which is what the server
+ * A response without the message reads as
+ * {@link UNSAVED_NOTIFICATION_PREFERENCE_CELLS}, which is what the server
  * answers for a reader who has saved nothing.
  */
 const toNotificationPreferenceCells = (

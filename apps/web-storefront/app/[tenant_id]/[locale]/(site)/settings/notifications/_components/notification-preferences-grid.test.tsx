@@ -11,6 +11,8 @@ import { NotificationPreferencesGrid } from "./notification-preferences-grid";
 const ALL_ON: NotificationPreferenceCells = {
   announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  announcementsMobilePushEnabled: true,
+  announcementsWebPushEnabled: true,
   commentsEmailEnabled: true,
   commentsInboxEnabled: true,
   followedCreatorsEmailEnabled: true,
@@ -57,6 +59,10 @@ describe("NotificationPreferencesGrid", () => {
     const followed = row("New episodes of series and episodes you follow");
     expect(within(followed).getAllByRole("switch")).toHaveLength(4);
 
+    const announcements = row("Announcements");
+    expect(within(announcements).getAllByRole("switch")).toHaveLength(4);
+    expect(within(announcements).queryByText("Not available")).toBeNull();
+
     const comments = row("Your comments");
     expect(within(comments).getAllByRole("switch")).toHaveLength(2);
     expect(within(comments).getAllByText("Not available")).toHaveLength(2);
@@ -68,6 +74,8 @@ describe("NotificationPreferencesGrid", () => {
     expect(submitted()).toEqual({
       announcementsEmailEnabled: "on",
       announcementsInboxEnabled: "on",
+      announcementsMobilePushEnabled: "on",
+      announcementsWebPushEnabled: "on",
       commentsEmailEnabled: "on",
       followedCreatorsEmailEnabled: "on",
       followedCreatorsInboxEnabled: "on",
@@ -142,6 +150,30 @@ describe("NotificationPreferencesGrid", () => {
       expect(isOn(cell(category, "Email"))).toBe(false);
       expect(isOn(cell(category, "Inbox"))).toBe(true);
     }
+  });
+
+  it("turns the announcement push cells on with their columns, starting from off", async () => {
+    await renderGrid({
+      ...ALL_ON,
+      announcementsMobilePushEnabled: false,
+      announcementsWebPushEnabled: false,
+    });
+
+    const browser = screen.getByRole("button", { name: "Browser" });
+    expect(pressed(browser)).toBe("mixed");
+    expect(isOn(cell("Announcements", "Browser"))).toBe(false);
+    expect(isOn(cell("Announcements", "Mobile app"))).toBe(false);
+
+    fireEvent.click(browser);
+    expect(pressed(browser)).toBe("true");
+    expect(isOn(cell("Announcements", "Browser"))).toBe(true);
+    expect(isOn(cell("Announcements", "Mobile app"))).toBe(false);
+
+    fireEvent.click(browser);
+    expect(isOn(cell("Announcements", "Browser"))).toBe(false);
+    expect(
+      isOn(cell("New episodes of series and episodes you follow", "Browser"))
+    ).toBe(false);
   });
 
   it("moves one cell without touching its row or column", async () => {
