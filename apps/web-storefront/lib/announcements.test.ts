@@ -561,6 +561,22 @@ describe("web-storefront announcement page for a reader", () => {
     expect(mockGetAnnouncement).toHaveBeenCalledTimes(1);
   });
 
+  it("reports an unreachable API on the reader's own read as a failure, not as a missing announcement", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockRejectedValueOnce(
+        new ConnectError("upstream is down", Code.Unavailable)
+      );
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+
   it("throws a session the reader's own read rejects, so the page can send them to sign in", async () => {
     const { getAnnouncementForReader } = await importAnnouncements();
     mockGetAnnouncement

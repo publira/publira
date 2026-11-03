@@ -260,10 +260,13 @@ const toAnnouncementDetail = (
  * Like the list read, this hands a verdict across the cache boundary rather
  * than the caught error. `"unauthenticated"` is kept apart from a bug so the
  * caller can send the reader back through sign-in instead of to an error
- * screen.
+ * screen, and `"unavailable"` — a failure the API classified, such as an
+ * unreachable API — apart from a missing row, so the page can say the read
+ * failed instead of that the announcement does not exist.
  */
 type CachedGetMyAnnouncementResult =
   | { failure: "unauthenticated" | "unexpected" }
+  | { failure: "unavailable"; message: string }
   | { value: MyAnnouncementDetail | null };
 
 const readMyAnnouncement = async (
@@ -314,10 +317,62 @@ const readMyAnnouncement = async (
       return { failure: "unexpected" };
     }
 
-    // A missing row, and any other failure the API classified, both answer
-    // "nothing to open": the action that asked simply does not navigate.
+    if (isMissingResourceRpcError(error)) {
+      return { value: null };
+    }
+
+    const t = await getMessagesFor(locale);
+
+    return {
+      failure: "unavailable",
+      message: rpcErrorMessage(
+        error,
+        t("storefront.announcements.read_failed"),
+        { locale }
+      ),
+    };
+  }
+};
+
+const readMyAnnouncementFor = async (
+  tenantId: string,
+  announcementId: string,
+  locale: Locale,
+  sessionId?: string
+): Promise<CachedGetMyAnnouncementResult> => {
+  const parsed = announcementInputSchema.safeParse({
+    announcementId,
+    tenantId,
+  });
+
+  if (!parsed.success) {
+    // Same null as a missing row: a malformed id is not a distinct outcome.
     return { value: null };
   }
+
+  return readMyAnnouncement(
+    parsed.data.tenantId,
+    parsed.data.announcementId,
+    locale,
+    await resolveAccessToken(sessionId)
+  );
+};
+
+/**
+ * Rebuilt here, outside the cache scope, so the `Code` that sends the reader
+ * back through sign-in survives a production build.
+ */
+const throwMyAnnouncementFailure = (
+  failure: "unauthenticated" | "unexpected"
+): never => {
+  if (failure === "unauthenticated") {
+    throw new ConnectError(
+      "announcement read rejected the session",
+      Code.Unauthenticated
+    );
+  }
+
+  throw new Error("Could not read the announcement.");
 };
 
 /**
@@ -333,35 +388,24 @@ export const getMyAnnouncement = async (
   locale: Locale,
   sessionId?: string
 ): Promise<MyAnnouncementDetail | null> => {
-  const parsed = announcementInputSchema.safeParse({
-    announcementId,
+  const result = await readMyAnnouncementFor(
     tenantId,
-  });
-
-  if (!parsed.success) {
-    // Same null as a missing row: a malformed id is not a distinct outcome.
-    return null;
-  }
-
-  const result = await readMyAnnouncement(
-    parsed.data.tenantId,
-    parsed.data.announcementId,
+    announcementId,
     locale,
-    await resolveAccessToken(sessionId)
+    sessionId
   );
 
   if ("value" in result) {
     return result.value;
   }
 
-  if (result.failure === "unauthenticated") {
-    throw new ConnectError(
-      "announcement read rejected the session",
-      Code.Unauthenticated
-    );
+  // A read the API could not answer leaves the action that asked nothing to
+  // open, the same as a missing row: it simply does not navigate.
+  if (result.failure === "unavailable") {
+    return null;
   }
 
-  throw new Error("Could not read the announcement.");
+  return throwMyAnnouncementFailure(result.failure);
 };
 
 /**
@@ -433,8 +477,10 @@ export const getAnnouncement = async (
  *
  * The shared read keeps every public announcement on one cache entry, so only
  * a targeted one — or an id that is no announcement at all — costs a signed-in
- * reader the private round trip. A rejected session and an unexpected failure
- * of that second read throw as {@link getMyAnnouncement} documents.
+ * reader the private round trip. A failure the API classified is `ok: false`
+ * from either read, so an outage is never told to the reader as a missing
+ * announcement; a rejected session and an unexpected failure of the second
+ * read throw as {@link getMyAnnouncement} documents.
  */
 export const getAnnouncementForReader = async (
   tenantId: string,
@@ -448,10 +494,17 @@ export const getAnnouncementForReader = async (
     return shared;
   }
 
-  return {
-    ok: true,
-    value: await getMyAnnouncement(tenantId, announcementId, locale),
-  };
+  const result = await readMyAnnouncementFor(tenantId, announcementId, locale);
+
+  if ("value" in result) {
+    return { ok: true, value: result.value };
+  }
+
+  if (result.failure === "unavailable") {
+    return { message: result.message, ok: false };
+  }
+
+  return throwMyAnnouncementFailure(result.failure);
 };
 
 export const markAnnouncementAsRead = async (
