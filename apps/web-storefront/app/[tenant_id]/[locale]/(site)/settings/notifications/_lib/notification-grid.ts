@@ -24,6 +24,8 @@ const NOTIFICATION_CELLS: Record<
   announcements: {
     email: "announcementsEmailEnabled",
     inbox: "announcementsInboxEnabled",
+    mobilePush: "announcementsMobilePushEnabled",
+    webPush: "announcementsWebPushEnabled",
   },
   comments: { email: "commentsEmailEnabled", inbox: "commentsInboxEnabled" },
   followedCreators: {

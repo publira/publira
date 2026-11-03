@@ -120,7 +120,10 @@ const webPushEndpoint = (): string => webPushDevices("d.endpoint");
 const FOLLOWED_EPISODES = "New episodes of series and episodes you follow";
 const FOLLOWED_CREATORS = "New episodes by authors you follow";
 
-/** Every switch of the notification grid, as its row and column name it. */
+/**
+ * Every switch of the notification grid that a reader who has saved nothing
+ * finds on, as its row and column name it.
+ */
 const NOTIFICATION_CELLS = [
   [FOLLOWED_EPISODES, "Inbox"],
   [FOLLOWED_EPISODES, "Browser"],
@@ -136,6 +139,12 @@ const NOTIFICATION_CELLS = [
   ["Announcements", "Email"],
 ] as const;
 
+/** The switches that reader finds off: the announcement push cells. */
+const ANNOUNCEMENT_PUSH_CELLS = [
+  ["Announcements", "Browser"],
+  ["Announcements", "Mobile app"],
+] as const;
+
 const notificationCell = (
   page: Page,
   category: string,
@@ -146,20 +155,29 @@ const notificationCell = (
     .getByRole("switch", { name: channel });
 
 /**
- * Turn one cell of the notification grid off. The grid is a Client Component
- * the server already drew, so a press that lands before it hydrates reaches no
- * listener; the switch is pressed again only while it still reports itself on,
- * so a retry never turns back on a cell that did move.
+ * Turn one cell of the notification grid on or off. The grid is a Client
+ * Component the server already drew, so a press that lands before it hydrates
+ * reaches no listener; the switch is pressed again only while it still reports
+ * the other state, so a retry never moves back a cell that did move.
  */
-const turnCellOff = async (cell: Locator): Promise<void> => {
+const setCell = async (cell: Locator, on: boolean): Promise<void> => {
   await expect(async () => {
-    if ((await cell.getAttribute("aria-checked")) === "true") {
+    if ((await cell.getAttribute("aria-checked")) !== String(on)) {
       await cell.click();
     }
 
-    await expect(cell).not.toBeChecked({ timeout: 1000 });
+    await expect(cell).toBeChecked({ checked: on, timeout: 1000 });
   }).toPass({ timeout: 15_000 });
 };
+
+/** What the server stores for this member's announcement push cells. */
+const announcementPushSettings = (): string =>
+  querySql(`
+    SELECT s.announcements_web_push_enabled || ' ' || s.announcements_mobile_push_enabled
+    FROM user_notification_settings s
+    JOIN users u ON u.id = s.user_id
+    WHERE u.public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';
+  `);
 
 /**
  * The member area: My Page and the four `/settings` tabs.
@@ -361,12 +379,15 @@ test.describe("web-storefront member settings", () => {
   }) => {
     await signIn(page, "/settings/notifications");
 
-    await Promise.all(
-      NOTIFICATION_CELLS.map(([category, channel]) =>
+    await Promise.all([
+      ...NOTIFICATION_CELLS.map(([category, channel]) =>
         expect(notificationCell(page, category, channel)).toBeChecked()
-      )
-    );
-    await turnCellOff(notificationCell(page, "Announcements", "Inbox"));
+      ),
+      ...ANNOUNCEMENT_PUSH_CELLS.map(([category, channel]) =>
+        expect(notificationCell(page, category, channel)).not.toBeChecked()
+      ),
+    ]);
+    await setCell(notificationCell(page, "Announcements", "Inbox"), false);
     await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlash(
@@ -379,13 +400,46 @@ test.describe("web-storefront member settings", () => {
     await expect(
       notificationCell(page, "Announcements", "Inbox")
     ).not.toBeChecked();
-    await Promise.all(
-      NOTIFICATION_CELLS.flatMap(([category, channel]) =>
+    await Promise.all([
+      ...NOTIFICATION_CELLS.flatMap(([category, channel]) =>
         category === "Announcements" && channel === "Inbox"
           ? []
           : [expect(notificationCell(page, category, channel)).toBeChecked()]
-      )
+      ),
+      ...ANNOUNCEMENT_PUSH_CELLS.map(([category, channel]) =>
+        expect(notificationCell(page, category, channel)).not.toBeChecked()
+      ),
+    ]);
+  });
+
+  test("the announcement Browser cell saves on, for every device the account signs in on", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings/notifications");
+
+    const announcementsBrowser = notificationCell(
+      page,
+      "Announcements",
+      "Browser"
     );
+
+    await setCell(announcementsBrowser, true);
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expectFlash(
+      page,
+      "status",
+      "Your notification settings have been updated."
+    );
+
+    await page.goto(storefrontUrl("/settings/notifications"));
+    await expect(announcementsBrowser).toBeChecked();
+    await expect(
+      notificationCell(page, "Announcements", "Mobile app")
+    ).not.toBeChecked();
+    // The cell is the account's, not this browser's: it is stored on the row
+    // the app's account screen reads and writes too.
+    expect(announcementPushSettings()).toBe("true false");
   });
 
   test("the email column saves one cell off and leaves the rest of the column as it was", async ({
@@ -402,7 +456,7 @@ test.describe("web-storefront member settings", () => {
         expect(notificationCell(page, category, channel)).toBeChecked()
       )
     );
-    await turnCellOff(notificationCell(page, "Your comments", "Email"));
+    await setCell(notificationCell(page, "Your comments", "Email"), false);
     await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlash(
@@ -436,17 +490,20 @@ test.describe("web-storefront member settings", () => {
 
     const episodes = notificationCell(page, FOLLOWED_EPISODES, "Browser");
     const creators = notificationCell(page, FOLLOWED_CREATORS, "Browser");
+    const announcements = notificationCell(page, "Announcements", "Browser");
 
-    await turnCellOff(episodes);
+    await setCell(episodes, false);
     await expect(creators).toBeChecked();
 
     await browserColumn.click();
     await expect(episodes).toBeChecked();
     await expect(creators).toBeChecked();
+    await expect(announcements).toBeChecked();
 
     await browserColumn.click();
     await expect(episodes).not.toBeChecked();
     await expect(creators).not.toBeChecked();
+    await expect(announcements).not.toBeChecked();
     await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlash(
@@ -458,6 +515,7 @@ test.describe("web-storefront member settings", () => {
     await page.goto(storefrontUrl("/settings/notifications"));
     await expect(episodes).not.toBeChecked();
     await expect(creators).not.toBeChecked();
+    await expect(announcements).not.toBeChecked();
     await expect(
       notificationCell(page, FOLLOWED_EPISODES, "Inbox")
     ).toBeChecked();

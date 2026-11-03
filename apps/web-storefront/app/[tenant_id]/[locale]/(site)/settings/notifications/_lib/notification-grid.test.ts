@@ -13,6 +13,8 @@ import {
 const ALL_ON: NotificationPreferenceCells = {
   announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  announcementsMobilePushEnabled: true,
+  announcementsWebPushEnabled: true,
   commentsEmailEnabled: true,
   commentsInboxEnabled: true,
   followedCreatorsEmailEnabled: true,
@@ -27,8 +29,11 @@ const ALL_ON: NotificationPreferenceCells = {
 
 describe("notification grid", () => {
   it("has no cell where the server delivers nothing", () => {
-    expect(notificationCell("announcements", "webPush")).toBeUndefined();
+    expect(notificationCell("comments", "webPush")).toBeUndefined();
     expect(notificationCell("comments", "mobilePush")).toBeUndefined();
+    expect(notificationCell("announcements", "webPush")).toBe(
+      "announcementsWebPushEnabled"
+    );
     expect(notificationCell("followedCreators", "webPush")).toBe(
       "followedCreatorsWebPushEnabled"
     );
@@ -40,7 +45,9 @@ describe("notification grid", () => {
       "commentsEmailEnabled",
       "commentsInboxEnabled",
     ]);
+    expect(rowCells("announcements")).toHaveLength(4);
     expect(columnCells("webPush").toSorted()).toEqual([
+      "announcementsWebPushEnabled",
       "followedCreatorsWebPushEnabled",
       "followedEpisodesWebPushEnabled",
     ]);
@@ -56,6 +63,7 @@ describe("notification grid", () => {
       cellGroupState(
         {
           ...ALL_ON,
+          announcementsMobilePushEnabled: false,
           followedCreatorsMobilePushEnabled: false,
           followedEpisodesMobilePushEnabled: false,
         },

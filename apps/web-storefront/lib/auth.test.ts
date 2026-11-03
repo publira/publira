@@ -117,9 +117,11 @@ const importAuth = () => import("./auth");
 const DROPPED_ENTRY = { expire: 0, revalidate: 0, stale: 0 };
 
 /** The notification grid of a reader who has saved nothing. */
-const NOTIFICATION_CELLS_ON = {
+const NOTIFICATION_CELLS_UNSAVED = {
   announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  announcementsMobilePushEnabled: false,
+  announcementsWebPushEnabled: false,
   commentsEmailEnabled: true,
   commentsInboxEnabled: true,
   followedCreatorsEmailEnabled: true,
@@ -1314,7 +1316,7 @@ describe("web-storefront auth", () => {
     mockGetNotificationSettings.mockResolvedValueOnce({
       emailNotificationsEnabled: true,
       preferences: {
-        ...NOTIFICATION_CELLS_ON,
+        ...NOTIFICATION_CELLS_UNSAVED,
         commentsEmailEnabled: false,
         commentsInboxEnabled: false,
         followedCreatorsWebPushEnabled: false,
@@ -1322,14 +1324,14 @@ describe("web-storefront auth", () => {
     });
 
     await expect(getNotificationSettings("TENANT001")).resolves.toEqual({
-      ...NOTIFICATION_CELLS_ON,
+      ...NOTIFICATION_CELLS_UNSAVED,
       commentsEmailEnabled: false,
       commentsInboxEnabled: false,
       followedCreatorsWebPushEnabled: false,
     });
   });
 
-  it("getNotificationSettings: reads every cell on when the response carries none", async () => {
+  it("getNotificationSettings: reads the unsaved grid, announcement push cells off, when the response carries none", async () => {
     const { getNotificationSettings } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("session_abc");
     mockGetNotificationSettings.mockResolvedValueOnce({
@@ -1337,7 +1339,7 @@ describe("web-storefront auth", () => {
     });
 
     await expect(getNotificationSettings("TENANT001")).resolves.toEqual(
-      NOTIFICATION_CELLS_ON
+      NOTIFICATION_CELLS_UNSAVED
     );
   });
 
@@ -1346,9 +1348,10 @@ describe("web-storefront auth", () => {
     mockResolveAccessToken.mockResolvedValueOnce("session_abc");
 
     const preferences = {
-      ...NOTIFICATION_CELLS_ON,
+      ...NOTIFICATION_CELLS_UNSAVED,
       announcementsEmailEnabled: false,
       announcementsInboxEnabled: false,
+      announcementsWebPushEnabled: true,
     };
 
     mockUpdateNotificationSettings.mockResolvedValueOnce({

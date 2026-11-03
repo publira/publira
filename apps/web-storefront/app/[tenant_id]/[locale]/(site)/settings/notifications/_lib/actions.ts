@@ -54,6 +54,8 @@ const updateNotificationSettingsFormSchema = async (locale: Locale) => {
   return z.object({
     announcementsEmailEnabled: switchSchema,
     announcementsInboxEnabled: switchSchema,
+    announcementsMobilePushEnabled: switchSchema,
+    announcementsWebPushEnabled: switchSchema,
     commentsEmailEnabled: switchSchema,
     commentsInboxEnabled: switchSchema,
     followedCreatorsEmailEnabled: switchSchema,
@@ -86,6 +88,8 @@ export const updateNotificationSettingsAction = async (
     toFormDataInput(formData, {
       announcementsEmailEnabled: "value",
       announcementsInboxEnabled: "value",
+      announcementsMobilePushEnabled: "value",
+      announcementsWebPushEnabled: "value",
       commentsEmailEnabled: "value",
       commentsInboxEnabled: "value",
       followedCreatorsEmailEnabled: "value",
