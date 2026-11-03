@@ -13,7 +13,7 @@ The `publiractl` commands here are run as on [The Platform Console and publiract
 
 Every account belongs to one tenant: a reader who signs up on two tenants' sites has two accounts, one in each. An account is a **user** of its tenant. A user who also holds a console role is a **member** of the tenant's staff, and can sign in to its console.
 
-Three things follow from this:
+This has the following consequences:
 
 - Making someone staff never moves their account. A reader of the tenant who is given a role signs in to the console with the address and password they already read with.
 - Taking someone's role away keeps their account. They stay a reader of the tenant, and can be given a role again later.

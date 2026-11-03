@@ -104,7 +104,7 @@ Do the setup below with the provider's test keys first, as [Testing before going
 In the Stripe Dashboard:
 
 1. Copy the **secret key** from the API keys page. A test key starts with `sk_test_`, a live key with `sk_live_`.
-2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these seven events, and the four more that [Subscription plans](./5-subscription-plans.md#before-you-start) lists if the tenant sells subscription plans:
+2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these events, and the ones [Subscription plans](./5-subscription-plans.md#before-you-start) lists as well if the tenant sells subscription plans:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

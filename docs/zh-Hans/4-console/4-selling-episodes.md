@@ -105,7 +105,7 @@ source_updated: 2026-11-03
 在Stripe控制台中：
 
 1. 从API密钥页面复制**secret key**。测试密钥以`sk_test_`开头，正式密钥以`sk_live_`开头。
-2. 添加一个Webhook端点。其URL是选择Stripe后控制台在**支付设置**下显示的**Webhook URL**，即租户自己网站域名上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。选择以下七个事件；如果租户销售订阅方案，还要加上[订阅方案](./5-subscription-plans.md#开始之前)列出的另外四个事件：
+2. 添加一个Webhook端点。其URL是选择Stripe后控制台在**支付设置**下显示的**Webhook URL**，即租户自己网站域名上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。选择以下事件；如果租户销售订阅方案，还要加上[订阅方案](./5-subscription-plans.md#开始之前)列出的事件：
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

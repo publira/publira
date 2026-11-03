@@ -105,7 +105,7 @@ source_updated: 2026-11-03
 Stripe Dashboard에서 다음을 진행합니다.
 
 1. API 키 페이지에서 **secret key**를 복사합니다. 테스트 키는 `sk_test_`로, 라이브 키는 `sk_live_`로 시작합니다.
-2. 웹훅 엔드포인트를 추가합니다. URL은 Stripe를 고른 뒤 콘솔의 **결제 설정**에 표시되는 **웹훅 URL**로, 테넌트 자체 사이트 도메인의 `https://<tenant-domain>/api/v1/webhook/payment/stripe`입니다. 다음 일곱 가지 이벤트를 선택하고, 테넌트가 구독 플랜을 판매한다면 [구독 플랜](./5-subscription-plans.md#시작하기-전에)에 나열된 네 가지 이벤트도 추가로 선택합니다.
+2. 웹훅 엔드포인트를 추가합니다. URL은 Stripe를 고른 뒤 콘솔의 **결제 설정**에 표시되는 **웹훅 URL**로, 테넌트 자체 사이트 도메인의 `https://<tenant-domain>/api/v1/webhook/payment/stripe`입니다. 다음 이벤트를 선택하고, 테넌트가 구독 플랜을 판매한다면 [구독 플랜](./5-subscription-plans.md#시작하기-전에)에 나열된 이벤트도 추가로 선택합니다.
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

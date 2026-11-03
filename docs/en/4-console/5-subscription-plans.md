@@ -2,7 +2,7 @@
 title: Subscription plans
 description: Sell readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, and see what a subscriber does on the site.
 published: 2026-10-25
-updated: 2026-11-01
+updated: 2026-11-03
 ---
 
 A subscription plan lets a reader pay every period, through Stripe, and read every episode the plan covers without buying each one. Selling one takes three things that have to agree, the same three a sale of an episode takes: a recurring Price in the tenant's Stripe account, a plan in the tenant console that names it, and the webhook through which Stripe tells the install that a reader subscribed, paid, renewed, fell behind, or canceled. Stripe bills the reader, but only the webhook opens the plan's episodes to them and closes them again, so a setup with any of the three wrong takes the reader's money and leaves the episodes locked, or leaves them open to a reader who has stopped paying. This page walks through all three in that order, and ends with a test subscription that proves they agree.
@@ -15,14 +15,14 @@ Every plan is sold through Stripe on the site, and a tenant that takes payments 
 
 The tenant takes payments through Stripe, with **Payment settings** on **Payments** › **Payment methods** showing **Ready**, as [Selling episodes](./4-selling-episodes.md#stripe) describes. The console reads every plan's Price from the Stripe account of the secret key saved there, so a plan cannot be saved until it is.
 
-Stripe's webhook endpoint needs four events beside the seven a sale of an episode needs:
+Stripe's webhook endpoint needs these events beside the ones a sale of an episode needs:
 
 - `customer.subscription.updated`, sent when a subscription renews, falls behind on a payment, is set to cancel, or changes plan.
 - `customer.subscription.deleted`, sent when a subscription ends.
 - `invoice.payment_failed`, sent when Stripe fails to collect a renewal.
 - `invoice.paid`, sent when Stripe is paid a subscription's invoice, the first one and every renewal.
 
-Without the first three, a subscription is recorded when its checkout is paid and never follows Stripe afterwards: its episodes close when the period paid for ends, even for a reader whose renewal went through, and a reader who cancels keeps reading until that day. Without `invoice.paid`, no payment is recorded, so the plans' income is in no revenue figure and on no royalty statement, as [What a payment pays the Authors](#what-a-payment-pays-the-authors) describes. A payment made before the event was added is not recorded afterwards. Add them to the endpoint in test mode, and again to the live-mode endpoint before going live.
+Without `customer.subscription.updated`, `customer.subscription.deleted`, and `invoice.payment_failed`, a subscription is recorded when its checkout is paid and never follows Stripe afterwards: its episodes close when the period paid for ends, even for a reader whose renewal went through, and a reader who cancels keeps reading until that day. Without `invoice.paid`, no payment is recorded, so the plans' income is in no revenue figure and on no royalty statement, as [What a payment pays the Authors](#what-a-payment-pays-the-authors) describes. A payment made before the event was added is not recorded afterwards. Add them to the endpoint in test mode, and again to the live-mode endpoint before going live.
 
 ## Creating the Price in Stripe
 
@@ -121,7 +121,7 @@ The deliveries listed for the webhook endpoint in the Stripe Dashboard show the 
 
 Test the whole setup in Stripe's test mode before readers can subscribe. Only a subscription shows that the webhook works, and only a cancellation shows that it follows Stripe afterwards.
 
-1. Set up Stripe with its **test** secret key, and add all eleven events to the test-mode endpoint, as above. Check that **Payment settings** shows **Ready**.
+1. Set up Stripe with its **test** secret key, as above, and add to the test-mode endpoint every event a sale of an episode needs and every one this page lists. Check that **Payment settings** shows **Ready**.
 2. In test mode, create the recurring Price, and save the customer portal's settings.
 3. Create a series for the test, shown on **Web and app** or **Web only** and published now, with a paid episode in it, published now and sold on the web, as [Testing before going live](./4-selling-episodes.md#testing-before-going-live) describes for a sale.
 4. Create a plan with the test Price that opens that series, with **Publish** checked.
@@ -130,4 +130,4 @@ Test the whole setup in Stripe's test mode before readers can subscribe. Only a 
 7. Back on **My Page**, wait for **Your plan** to show the plan and when it renews, then open the episode: it reads without a purchase. If the plan does not appear within a minute, read the delivery in the Stripe Dashboard, as [When a subscription does not follow Stripe](#when-a-subscription-does-not-follow-stripe) describes.
 8. Choose **Manage billing**, and cancel the subscription in the portal. Back on **My Page**, **Your plan** shows the cancellation: the day it ends, or that it has ended if the portal cancels at once. Cancel the subscription in the Stripe Dashboard as well, if it is still running, and reload the episode: it is locked again.
 
-When the test passes, uncheck **Publish** on the test plan and set the test series' **Shown on** to **Not shown anywhere**. The test plan now has a subscriber in its history, so it cannot be deleted; it stays in the list unpublished. Then replace the test secret key with the live one, add the live-mode endpoint with all eleven events, enter its signing secret, and save. Create the plan's Price again in live mode, save the customer portal's settings in live mode, and create the plans readers will subscribe to with the live Prices.
+When the test passes, uncheck **Publish** on the test plan and set the test series' **Shown on** to **Not shown anywhere**. The test plan now has a subscriber in its history, so it cannot be deleted; it stays in the list unpublished. Then replace the test secret key with the live one, add the live-mode endpoint with the same events, enter its signing secret, and save. Create the plan's Price again in live mode, save the customer portal's settings in live mode, and create the plans readers will subscribe to with the live Prices.
