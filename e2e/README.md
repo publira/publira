@@ -117,11 +117,12 @@ Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenan
 
 ### Groups
 
-Every project belongs to one of seven groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). An eighth, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
+Every project belongs to one of eight groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). A ninth, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
-| `screenshots` | `screenshots-storefront`, `screenshots-admin`, `screenshots-platform`, `docs-screenshots-setup`, `docs-screenshots` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
+| `screenshots` | `screenshots-storefront`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
+| `docs-screenshots` | `docs-screenshots-setup`, `docs-screenshots` | The same as `screenshots`, apart from it so that CI shards it across two stacks without running the baseline in each. |
 | `main` | `web-storefront`, `web-platform`, `catalog-search`, `platform-search-settings`, `tablet-storefront`, `tablet-platform` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
 | `admin` | `web-admin`, `tablet-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, `docs-screenshots-first-operator`, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
@@ -305,11 +306,11 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, the locale catalogs, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
 - **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
-- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. The `tracing` entry runs its stack with `PUBLIRA_E2E_TRACING=on`; every other one traces nothing. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
-- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`. When the `screenshots` entry passes, it uploads its app logs alone, as `e2e-logs-screenshots`.
+- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`) and for `docs-screenshots`, and three for `admin`. The `tracing` entry runs its stack with `PUBLIRA_E2E_TRACING=on`; every other one traces nothing. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
+- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`. When a `screenshots` or `docs-screenshots` entry passes, it uploads its app logs alone, such as `e2e-logs-screenshots` or `e2e-logs-docs-screenshots-1`.
 - Every entry also uploads a Playwright blob report, `e2e-blob-<entry>`. When an entry fails, **Test / E2E Report** merges them into one HTML report, `e2e-report`, whose tests carry the tag of the group they ran in.
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
-- The `screenshots` entry renders in the browser image compose builds.
+- The `screenshots` and `docs-screenshots` entries render in the browser image compose builds.
 - The required branch check is the final **Summary** job, as with all CI jobs; it reports the matrix as one `Test / E2E` result.
 
 Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts`, `tests/platform.search-settings.spec.ts` and the Platform Console screen it drives, the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
