@@ -118,7 +118,7 @@ describe("notificationDisplay", () => {
         "ja"
       )
     ).resolves.toEqual({
-      description: "「Episode 1」(Series A)を公開しました。",
+      description: "「Series A」の「Episode 1」を公開しました。",
       href: undefined,
       title: "エピソードが公開されました",
     });
