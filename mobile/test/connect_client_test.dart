@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,7 @@ import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/unknown_enum.dart';
+import 'package:publira/tenant/tenant_availability.dart';
 
 import 'support/connect_fixture_server.dart';
 import 'support/proto_response.dart';
@@ -359,6 +362,259 @@ void main() {
     );
   });
 
+  group('a server-streaming call', () {
+    final ready = pb.DataExport(
+      state: pb.DataExportState.DATA_EXPORT_STATE_READY,
+    );
+    final member = ConnectCallContext(
+      tenantId: ConnectFixtureServer.defaultTenantId,
+      accessToken: ConnectFixtureServer.memberAccessToken,
+    );
+
+    test('yields every message the stream carries, in order', () async {
+      server
+        ..memberDataExport = ready
+        ..dataExportArchive = [
+          [1, 2, 3],
+          [4, 5],
+        ];
+      final client = ConnectClient(baseUrl: server.baseUrl);
+
+      final pieces = await _download(client, member).toList();
+
+      expect(
+        [for (final piece in pieces) piece.data],
+        [
+          [1, 2, 3],
+          [4, 5],
+        ],
+      );
+      final sent = server.requestsTo('DownloadMyDataExport').single;
+      expect(sent.headers['content-type'], 'application/connect+proto');
+      expect(
+        sent.headers['x-publira-tenant-id'],
+        ConnectFixtureServer.defaultTenantId,
+      );
+      expect(
+        sent.decodeEnveloped(pb.DownloadMyDataExportRequest()),
+        pb.DownloadMyDataExportRequest(),
+      );
+    });
+
+    test('throws a refusal sent before the first message', () async {
+      final client = ConnectClient(baseUrl: server.baseUrl);
+
+      expect(
+        _download(client, member).toList(),
+        throwsA(
+          isA<ConnectException>()
+              .having((error) => error.code, 'code', 'not_found')
+              .having(
+                (error) => error.message,
+                'message',
+                'no data export is ready',
+              ),
+        ),
+      );
+    });
+
+    test('throws a refusal sent after the messages it follows', () async {
+      server
+        ..memberDataExport = ready
+        ..dataExportArchive = [
+          [1, 2, 3],
+        ]
+        ..dataExportStreamError = {
+          'code': 'failed_precondition',
+          'message': 'the tenant is suspended',
+          'details': [ConnectFixtureServer.errorInfoDetail('TENANT_SUSPENDED')],
+        };
+      final availability = TenantAvailability(check: () async {});
+      final client = ConnectClient(
+        baseUrl: server.baseUrl,
+        availability: availability,
+      );
+      final pieces = <List<int>>[];
+
+      await expectLater(
+        _download(
+          client,
+          member,
+        ).map((piece) => piece.data).forEach(pieces.add),
+        throwsA(
+          isA<ConnectException>().having((error) => error.reasons, 'reasons', [
+            tenantSuspendedReason,
+          ]),
+        ),
+      );
+      expect(pieces, [
+        [1, 2, 3],
+      ]);
+      expect(availability.suspended, isTrue);
+    });
+
+    test('reads a stream cut off before its end as unavailable', () async {
+      server
+        ..memberDataExport = ready
+        ..dataExportArchive = [
+          [1],
+        ]
+        ..dataExportStreamCutOff = true;
+      final client = ConnectClient(baseUrl: server.baseUrl);
+
+      expect(
+        _download(client, member).toList(),
+        throwsA(
+          isA<ConnectException>().having(
+            (error) => error.code,
+            'code',
+            'unavailable',
+          ),
+        ),
+      );
+    });
+
+    test('reads a message split across any number of pieces', () async {
+      final body = [
+        ..._envelope(
+          0,
+          pb.DownloadMyDataExportResponse(data: [7, 8, 9]).writeToBuffer(),
+        ),
+        ..._envelope(2, utf8.encode('{}')),
+      ];
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient.streaming(
+          (_, _) async => http.StreamedResponse(
+            Stream.fromIterable([
+              for (final byte in body) [byte],
+            ]),
+            200,
+            headers: {'content-type': 'application/connect+proto'},
+          ),
+        ),
+      );
+
+      final pieces = await _download(client).toList();
+
+      expect(
+        [for (final piece in pieces) piece.data],
+        [
+          [7, 8, 9],
+        ],
+      );
+    });
+
+    test('carries the wait the end of the stream names', () async {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient.streaming(
+          (_, _) async => http.StreamedResponse(
+            Stream.value(
+              _envelope(
+                2,
+                utf8.encode(
+                  jsonEncode({
+                    'error': {'code': 'resource_exhausted', 'message': 'slow'},
+                    'metadata': {
+                      'retry-after': ['30'],
+                    },
+                  }),
+                ),
+              ),
+            ),
+            200,
+            headers: {'content-type': 'application/connect+proto'},
+          ),
+        ),
+      );
+
+      expect(
+        _download(client).toList(),
+        throwsA(
+          isA<ConnectException>()
+              .having((error) => error.code, 'code', 'resource_exhausted')
+              .having(
+                (error) => error.retryAfter,
+                'retryAfter',
+                const Duration(seconds: 30),
+              ),
+        ),
+      );
+    });
+
+    test('reads a refusal an edge answered with a status of its own', () async {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient((_) async {
+          return http.Response(
+            'rate limited',
+            429,
+            headers: {'retry-after': '5'},
+          );
+        }),
+      );
+
+      expect(
+        _download(client).toList(),
+        throwsA(
+          isA<ConnectException>()
+              .having((error) => error.code, 'code', 'resource_exhausted')
+              .having(
+                (error) => error.retryAfter,
+                'retryAfter',
+                const Duration(seconds: 5),
+              ),
+        ),
+      );
+    });
+
+    test('rejects a success in another codec', () async {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient((_) async => protoBytesResponse(const [])),
+      );
+
+      expect(
+        _download(client).toList(),
+        throwsA(
+          isA<ConnectException>().having(
+            (error) => error.code,
+            'code',
+            'internal',
+          ),
+        ),
+      );
+    });
+
+    test('gives up on a stream that stops arriving', () async {
+      final stalled = StreamController<List<int>>();
+      addTearDown(stalled.close);
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        timeout: const Duration(milliseconds: 50),
+        httpClient: MockClient.streaming(
+          (_, _) async => http.StreamedResponse(
+            stalled.stream,
+            200,
+            headers: {'content-type': 'application/connect+proto'},
+          ),
+        ),
+      );
+
+      expect(
+        _download(client).toList(),
+        throwsA(
+          isA<ConnectException>().having(
+            (error) => error.code,
+            'code',
+            'deadline_exceeded',
+          ),
+        ),
+      );
+    });
+  });
+
   group('errorReasonsOf', () {
     test('reads the reason of an ErrorInfo detail the API owns', () {
       expect(
@@ -666,3 +922,25 @@ Future<pb.GetMeResponse> _getMe(
   ConnectClient client, [
   ConnectCallContext? ctx,
 ]) => pb.AuthServiceApi(client).getMe(ctx, pb.GetMeRequest());
+
+/// `DownloadMyDataExport`, the server-streaming call these go through.
+Stream<pb.DownloadMyDataExportResponse> _download(
+  ConnectClient client, [
+  ConnectCallContext? ctx,
+]) => client.serverStream(
+  ctx,
+  'AuthService',
+  'DownloadMyDataExport',
+  pb.DownloadMyDataExportRequest(),
+  pb.DownloadMyDataExportResponse.new,
+);
+
+/// [payload] enveloped under [flags], as the Connect protocol's streaming
+/// form sends a message.
+Uint8List _envelope(int flags, List<int> payload) {
+  final envelope = Uint8List(5 + payload.length);
+  envelope[0] = flags;
+  ByteData.sublistView(envelope).setUint32(1, payload.length);
+  envelope.setAll(5, payload);
+  return envelope;
+}

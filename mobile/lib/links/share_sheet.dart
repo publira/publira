@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// The platform share sheet a series or an episode is handed to, and a file
@@ -19,11 +21,27 @@ abstract class ShareSheet {
     required String mimeType,
     required String title,
   });
+
+  /// Writes [bytes], as they arrive, into one file called [name], of the media
+  /// type [mimeType], and hands it to the share sheet once the last piece is
+  /// written, so a download of any size is never held in memory whole.
+  ///
+  /// A failure of [bytes] fails the call before the sheet opens, and leaves no
+  /// file behind.
+  Future<void> shareFileStream({
+    required Stream<List<int>> bytes,
+    required String name,
+    required String mimeType,
+    required String title,
+  });
 }
 
 /// [ShareSheet] backed by the `share_plus` plugin.
 class PluginShareSheet implements ShareSheet {
   const PluginShareSheet();
+
+  /// The directory of the app's cache [shareFileStream] writes into.
+  static const _streamedDirectoryName = 'shared-files';
 
   @override
   Future<void> share({
@@ -53,6 +71,45 @@ class PluginShareSheet implements ShareSheet {
       ShareParams(
         files: [XFile.fromData(bytes, mimeType: mimeType, name: name)],
         fileNameOverrides: [name],
+        title: title,
+        subject: title,
+      ),
+    );
+  }
+
+  @override
+  Future<void> shareFileStream({
+    required Stream<List<int>> bytes,
+    required String name,
+    required String mimeType,
+    required String title,
+  }) async {
+    final cache = await getTemporaryDirectory();
+    final directory = Directory('${cache.path}/$_streamedDirectoryName');
+    // Only the file shared last is kept. The app the reader picks may still be
+    // reading it after the sheet has closed, so it cannot be removed then, and
+    // the one before it is a copy the reader has already saved or sent on.
+    if (await directory.exists()) {
+      await directory.delete(recursive: true);
+    }
+    await directory.create(recursive: true);
+    final file = File('${directory.path}/$name');
+    final sink = file.openWrite();
+    try {
+      await sink.addStream(bytes);
+      await sink.close();
+    } on Object {
+      try {
+        await sink.close();
+      } on FileSystemException {
+        // The file is removed with its directory all the same.
+      }
+      await directory.delete(recursive: true);
+      rethrow;
+    }
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: mimeType, name: name)],
         title: title,
         subject: title,
       ),

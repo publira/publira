@@ -293,6 +293,81 @@ final class AppMessages {
     return _format('mobile.account.contact_description');
   }
 
+  /// `mobile.account.data_export_description`
+  String get accountDataExportDescription {
+    return _format('mobile.account.data_export_description');
+  }
+
+  /// `mobile.account.data_export_download`
+  String get accountDataExportDownload {
+    return _format('mobile.account.data_export_download');
+  }
+
+  /// `mobile.account.data_export_download_failed`
+  String get accountDataExportDownloadFailed {
+    return _format('mobile.account.data_export_download_failed');
+  }
+
+  /// `mobile.account.data_export_downloading`
+  String get accountDataExportDownloading {
+    return _format('mobile.account.data_export_downloading');
+  }
+
+  /// `mobile.account.data_export_failed`
+  String get accountDataExportFailed {
+    return _format('mobile.account.data_export_failed');
+  }
+
+  /// `mobile.account.data_export_gone`
+  String get accountDataExportGone {
+    return _format('mobile.account.data_export_gone');
+  }
+
+  /// `mobile.account.data_export_heading`
+  String get accountDataExportHeading {
+    return _format('mobile.account.data_export_heading');
+  }
+
+  /// `mobile.account.data_export_in_progress`
+  String get accountDataExportInProgress {
+    return _format('mobile.account.data_export_in_progress');
+  }
+
+  /// `mobile.account.data_export_load_failed`
+  String get accountDataExportLoadFailed {
+    return _format('mobile.account.data_export_load_failed');
+  }
+
+  /// `mobile.account.data_export_pending`
+  String get accountDataExportPending {
+    return _format('mobile.account.data_export_pending');
+  }
+
+  /// `mobile.account.data_export_ready`
+  String accountDataExportReady({required String date}) {
+    return _format('mobile.account.data_export_ready', {'date': date});
+  }
+
+  /// `mobile.account.data_export_request`
+  String get accountDataExportRequest {
+    return _format('mobile.account.data_export_request');
+  }
+
+  /// `mobile.account.data_export_request_again`
+  String get accountDataExportRequestAgain {
+    return _format('mobile.account.data_export_request_again');
+  }
+
+  /// `mobile.account.data_export_request_failed`
+  String get accountDataExportRequestFailed {
+    return _format('mobile.account.data_export_request_failed');
+  }
+
+  /// `mobile.account.data_export_storage_unavailable`
+  String get accountDataExportStorageUnavailable {
+    return _format('mobile.account.data_export_storage_unavailable');
+  }
+
   /// `mobile.account.delete`
   String get accountDelete {
     return _format('mobile.account.delete');
@@ -2714,6 +2789,25 @@ final class AppMessages {
     return _format('mobile.notifications.comment_subject_unknown');
   }
 
+  /// `mobile.notifications.data_export_ready_description`
+  String notificationsDataExportReadyDescription({required String date}) {
+    return _format('mobile.notifications.data_export_ready_description', {
+      'date': date,
+    });
+  }
+
+  /// `mobile.notifications.data_export_ready_description_unknown`
+  String get notificationsDataExportReadyDescriptionUnknown {
+    return _format(
+      'mobile.notifications.data_export_ready_description_unknown',
+    );
+  }
+
+  /// `mobile.notifications.data_export_ready_title`
+  String get notificationsDataExportReadyTitle {
+    return _format('mobile.notifications.data_export_ready_title');
+  }
+
   /// `mobile.notifications.empty`
   String get notificationsEmpty {
     return _format('mobile.notifications.empty');
@@ -4332,6 +4426,28 @@ const _jaSources = <String, String>{
   'mobile.account.change_password': 'パスワード変更',
   'mobile.account.contact': 'お問い合わせ',
   'mobile.account.contact_description': 'このサイトの運営者にメッセージを送ります。',
+  'mobile.account.data_export_description':
+      'このサイトが保持しているあなたのデータ(プロフィール、購入、フォロー、コメントなど)をZIPファイルでダウンロードできます。準備には少し時間がかかり、準備ができたら通知とメールでお知らせします。',
+  'mobile.account.data_export_download': 'データをダウンロード',
+  'mobile.account.data_export_download_failed':
+      'データをダウンロードできませんでした。もう一度お試しください。',
+  'mobile.account.data_export_downloading': 'ダウンロード中…',
+  'mobile.account.data_export_failed':
+      '前回のリクエストではデータを準備できませんでした。もう一度リクエストしてください。',
+  'mobile.account.data_export_gone': 'このデータはダウンロードできなくなりました。新しくリクエストしてください。',
+  'mobile.account.data_export_heading': 'データのダウンロード',
+  'mobile.account.data_export_in_progress': 'データはすでに準備中です。準備ができたらお知らせします。',
+  'mobile.account.data_export_load_failed': 'データのダウンロードを読み込めませんでした。',
+  'mobile.account.data_export_pending':
+      'データを準備しています。ダウンロードできるようになったら通知とメールでお知らせします。',
+  'mobile.account.data_export_ready':
+      'データの準備ができました。{\$date}までダウンロードでき、その後は削除されます。',
+  'mobile.account.data_export_request': 'データをリクエスト',
+  'mobile.account.data_export_request_again': '新しくリクエスト',
+  'mobile.account.data_export_request_failed':
+      'データをリクエストできませんでした。時間をおいて再度お試しください。',
+  'mobile.account.data_export_storage_unavailable':
+      '現在このサイトではデータを準備できません。解決しない場合はサイトにお問い合わせください。',
   'mobile.account.delete': 'アカウントを削除',
   'mobile.account.icon_alt': 'あなたのアイコン',
   'mobile.account.icon_help':
@@ -4854,6 +4970,11 @@ const _jaSources = <String, String>{
       '{\$subject}へのコメントが運営により非表示になりました。',
   'mobile.notifications.comment_hidden_title': 'コメントが非表示になりました',
   'mobile.notifications.comment_subject_unknown': 'エピソード',
+  'mobile.notifications.data_export_ready_description':
+      'ご依頼いただいたデータの準備ができました。{\$date}までにアカウント画面からダウンロードしてください。',
+  'mobile.notifications.data_export_ready_description_unknown':
+      'ご依頼いただいたデータの準備ができました。アカウント画面からダウンロードしてください。',
+  'mobile.notifications.data_export_ready_title': 'データの準備ができました',
   'mobile.notifications.empty': '通知はまだありません。フォロー中の作品のエピソードが公開されると、ここに表示されます。',
   'mobile.notifications.episode_published_description': '{\$subject}が公開されました。',
   'mobile.notifications.episode_published_subject_unknown': '新しいエピソード',
@@ -5255,6 +5376,31 @@ const _enSources = <String, String>{
   'mobile.account.contact': 'Contact',
   'mobile.account.contact_description':
       'Send a message to the people who run this site.',
+  'mobile.account.data_export_description':
+      'Get a copy of what this site keeps about you, such as your profile, purchases, follows, and comments, as a ZIP file. It takes a little while to prepare, and you are told in your notifications and by email when it is ready.',
+  'mobile.account.data_export_download': 'Download your data',
+  'mobile.account.data_export_download_failed':
+      'Could not download your data. Try again.',
+  'mobile.account.data_export_downloading': 'Downloading…',
+  'mobile.account.data_export_failed':
+      'Your last request could not be prepared. Request a copy again.',
+  'mobile.account.data_export_gone':
+      'That copy of your data is no longer available. Request a new copy.',
+  'mobile.account.data_export_heading': 'Download your data',
+  'mobile.account.data_export_in_progress':
+      'A copy of your data is already being prepared. You are told when it is ready.',
+  'mobile.account.data_export_load_failed':
+      'Could not load your data download.',
+  'mobile.account.data_export_pending':
+      'A copy of your data is being prepared. You are told in your notifications and by email when it is ready to download.',
+  'mobile.account.data_export_ready':
+      'Your copy is ready. You can download it until {\$date}, after which it is deleted.',
+  'mobile.account.data_export_request': 'Request a copy',
+  'mobile.account.data_export_request_again': 'Request a new copy',
+  'mobile.account.data_export_request_failed':
+      'Could not request a copy of your data. Please try again later.',
+  'mobile.account.data_export_storage_unavailable':
+      'Copies of your data cannot be prepared on this site right now. Contact the site if this continues.',
   'mobile.account.delete': 'Delete account',
   'mobile.account.icon_alt': 'Your icon',
   'mobile.account.icon_help':
@@ -5872,6 +6018,11 @@ const _enSources = <String, String>{
       'Your comment on {\$subject} was removed by the operator.',
   'mobile.notifications.comment_hidden_title': 'Your comment was removed',
   'mobile.notifications.comment_subject_unknown': 'an episode',
+  'mobile.notifications.data_export_ready_description':
+      'The copy of your data you asked for is ready. Download it from your account by {\$date}.',
+  'mobile.notifications.data_export_ready_description_unknown':
+      'The copy of your data you asked for is ready. Download it from your account.',
+  'mobile.notifications.data_export_ready_title': 'Your data is ready',
   'mobile.notifications.empty':
       'You have no notifications yet. When an episode you follow is published, it appears here.',
   'mobile.notifications.episode_published_description':
@@ -6318,6 +6469,27 @@ const _koSources = <String, String>{
   'mobile.account.change_password': '비밀번호 변경',
   'mobile.account.contact': '문의하기',
   'mobile.account.contact_description': '이 사이트 운영자에게 메시지를 보냅니다.',
+  'mobile.account.data_export_description':
+      '이 사이트가 보관하고 있는 내 데이터(프로필, 구매, 팔로우, 댓글 등)를 ZIP 파일로 받을 수 있습니다. 준비에 시간이 조금 걸리며, 준비되면 알림과 이메일로 알려 드립니다.',
+  'mobile.account.data_export_download': '데이터 다운로드',
+  'mobile.account.data_export_download_failed':
+      '데이터를 다운로드하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.data_export_downloading': '다운로드 중…',
+  'mobile.account.data_export_failed': '지난 요청은 데이터를 준비하지 못했습니다. 다시 요청해 주세요.',
+  'mobile.account.data_export_gone': '이 데이터는 더 이상 다운로드할 수 없습니다. 새로 요청해 주세요.',
+  'mobile.account.data_export_heading': '데이터 다운로드',
+  'mobile.account.data_export_in_progress': '데이터를 이미 준비하고 있습니다. 준비되면 알려 드립니다.',
+  'mobile.account.data_export_load_failed': '데이터 다운로드를 불러오지 못했습니다.',
+  'mobile.account.data_export_pending':
+      '데이터를 준비하고 있습니다. 다운로드할 수 있게 되면 알림과 이메일로 알려 드립니다.',
+  'mobile.account.data_export_ready':
+      '데이터가 준비되었습니다. {\$date}까지 다운로드할 수 있으며, 그 이후에는 삭제됩니다.',
+  'mobile.account.data_export_request': '데이터 요청',
+  'mobile.account.data_export_request_again': '새로 요청',
+  'mobile.account.data_export_request_failed':
+      '데이터를 요청하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.account.data_export_storage_unavailable':
+      '지금은 이 사이트에서 데이터를 준비할 수 없습니다. 계속되면 사이트에 문의해 주세요.',
   'mobile.account.delete': '계정 삭제',
   'mobile.account.icon_alt': '내 아이콘',
   'mobile.account.icon_help':
@@ -6853,6 +7025,11 @@ const _koSources = <String, String>{
       '{\$subject}에 남긴 댓글이 운영자에 의해 숨김 처리되었습니다.',
   'mobile.notifications.comment_hidden_title': '댓글이 숨김 처리되었습니다',
   'mobile.notifications.comment_subject_unknown': '에피소드',
+  'mobile.notifications.data_export_ready_description':
+      '요청하신 데이터가 준비되었습니다. {\$date}까지 계정 화면에서 다운로드해 주세요.',
+  'mobile.notifications.data_export_ready_description_unknown':
+      '요청하신 데이터가 준비되었습니다. 계정 화면에서 다운로드해 주세요.',
+  'mobile.notifications.data_export_ready_title': '데이터가 준비되었습니다',
   'mobile.notifications.empty': '아직 알림이 없습니다. 팔로우 중인 작품의 에피소드가 공개되면 여기에 표시됩니다.',
   'mobile.notifications.episode_published_description':
       '{\$subject}이(가) 공개되었습니다.',
@@ -7240,6 +7417,23 @@ const _zhHansSources = <String, String>{
   'mobile.account.change_password': '变更密码',
   'mobile.account.contact': '联系我们',
   'mobile.account.contact_description': '向本站点的运营者发送消息。',
+  'mobile.account.data_export_description':
+      '以ZIP文件获取此网站保存的您的数据，包括个人资料、购买记录、关注和评论等。准备需要一些时间，准备好后会通过通知和邮件告诉您。',
+  'mobile.account.data_export_download': '下载您的数据',
+  'mobile.account.data_export_download_failed': '无法下载您的数据。请重试。',
+  'mobile.account.data_export_downloading': '正在下载…',
+  'mobile.account.data_export_failed': '上次申请的数据未能准备好。请重新申请。',
+  'mobile.account.data_export_gone': '这份数据已无法下载。请重新申请。',
+  'mobile.account.data_export_heading': '下载您的数据',
+  'mobile.account.data_export_in_progress': '您的数据已在准备中。准备好后会通知您。',
+  'mobile.account.data_export_load_failed': '无法加载数据下载。',
+  'mobile.account.data_export_pending': '正在准备您的数据。可以下载时会通过通知和邮件告诉您。',
+  'mobile.account.data_export_ready': '您的数据已准备好。您可以在{\$date}之前下载，之后将被删除。',
+  'mobile.account.data_export_request': '申请数据',
+  'mobile.account.data_export_request_again': '重新申请',
+  'mobile.account.data_export_request_failed': '无法申请您的数据。请稍后再试。',
+  'mobile.account.data_export_storage_unavailable':
+      '此网站目前无法准备您的数据。如果问题持续，请联系网站。',
   'mobile.account.delete': '注销账户',
   'mobile.account.icon_alt': '您的头像',
   'mobile.account.icon_help':
@@ -7725,6 +7919,11 @@ const _zhHansSources = <String, String>{
       '您在{\$subject}下的评论已被运营方隐藏。',
   'mobile.notifications.comment_hidden_title': '您的评论已被隐藏',
   'mobile.notifications.comment_subject_unknown': '某个章节',
+  'mobile.notifications.data_export_ready_description':
+      '您申请的数据已准备好。请在{\$date}之前到账户页面下载。',
+  'mobile.notifications.data_export_ready_description_unknown':
+      '您申请的数据已准备好。请到账户页面下载。',
+  'mobile.notifications.data_export_ready_title': '您的数据已准备好',
   'mobile.notifications.empty': '您还没有收到任何通知。您关注的作品有新章节发布时，会显示在这里。',
   'mobile.notifications.episode_published_description': '{\$subject}现已上线。',
   'mobile.notifications.episode_published_subject_unknown': '新章节',
@@ -8074,6 +8273,23 @@ const _zhHantSources = <String, String>{
   'mobile.account.change_password': '變更密碼',
   'mobile.account.contact': '聯絡我們',
   'mobile.account.contact_description': '向本網站的營運者傳送訊息。',
+  'mobile.account.data_export_description':
+      '以ZIP檔案取得此網站保存的您的資料，包括個人資料、購買記錄、追蹤和留言等。準備需要一些時間，準備好後會透過通知和電子郵件告訴您。',
+  'mobile.account.data_export_download': '下載您的資料',
+  'mobile.account.data_export_download_failed': '無法下載您的資料。請重試。',
+  'mobile.account.data_export_downloading': '正在下載…',
+  'mobile.account.data_export_failed': '上次申請的資料未能準備好。請重新申請。',
+  'mobile.account.data_export_gone': '這份資料已無法下載。請重新申請。',
+  'mobile.account.data_export_heading': '下載您的資料',
+  'mobile.account.data_export_in_progress': '您的資料已在準備中。準備好後會通知您。',
+  'mobile.account.data_export_load_failed': '無法載入資料下載。',
+  'mobile.account.data_export_pending': '正在準備您的資料。可以下載時會透過通知和電子郵件告訴您。',
+  'mobile.account.data_export_ready': '您的資料已準備好。您可以在{\$date}之前下載，之後將會刪除。',
+  'mobile.account.data_export_request': '申請資料',
+  'mobile.account.data_export_request_again': '重新申請',
+  'mobile.account.data_export_request_failed': '無法申請您的資料。請稍後再試。',
+  'mobile.account.data_export_storage_unavailable':
+      '此網站目前無法準備您的資料。如果問題持續，請聯絡網站。',
   'mobile.account.delete': '刪除帳戶',
   'mobile.account.icon_alt': '您的頭像',
   'mobile.account.icon_help':
@@ -8561,6 +8777,11 @@ const _zhHantSources = <String, String>{
       '您在{\$subject}下的留言已被營運方隱藏。',
   'mobile.notifications.comment_hidden_title': '您的留言已被隱藏',
   'mobile.notifications.comment_subject_unknown': '某個章節',
+  'mobile.notifications.data_export_ready_description':
+      '您申請的資料已準備好。請在{\$date}之前到帳戶頁面下載。',
+  'mobile.notifications.data_export_ready_description_unknown':
+      '您申請的資料已準備好。請到帳戶頁面下載。',
+  'mobile.notifications.data_export_ready_title': '您的資料已準備好',
   'mobile.notifications.empty': '您還沒有收到任何通知。您追蹤的作品有新章節發布時，會顯示在這裡。',
   'mobile.notifications.episode_published_description': '{\$subject}現已上線。',
   'mobile.notifications.episode_published_subject_unknown': '新章節',

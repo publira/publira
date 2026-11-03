@@ -45,6 +45,10 @@ const legalPageAgreementRequiredReason = 'LEGAL_PAGE_AGREEMENT_REQUIRED';
 /// `failed_precondition`, while the platform has no object store.
 const storageNotConfiguredReason = 'STORAGE_NOT_CONFIGURED';
 
+/// The ErrorInfo reason the API refuses a request for the reader's archive
+/// with, under `failed_precondition`, while one of theirs is still pending.
+const dataExportInProgressReason = 'DATA_EXPORT_IN_PROGRESS';
+
 /// The ErrorInfo reason the API refuses an icon change with, under
 /// `failed_precondition`, that the tenant's reader icon policy does not allow.
 const readerIconNotAllowedReason = 'READER_ICON_NOT_ALLOWED';

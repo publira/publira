@@ -562,7 +562,14 @@
           "DownloadMyDataExport"
         ]
       },
-      "exception": "Not in the app yet: #5020."
+      "mobile": {
+        "routes": ["/account"],
+        "rpcs": [
+          "RequestMyDataExport",
+          "GetMyDataExport",
+          "DownloadMyDataExport"
+        ]
+      }
     },
     {
       "name": "An Author's own pages: figures and closed statements",
