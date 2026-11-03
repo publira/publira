@@ -592,7 +592,11 @@ test.describe("a tenant that asks readers first", () => {
     ]);
     expect(beacons).toHaveLength(1);
     expect(await storedCookie(context, CONSENT_COOKIE)).toBe("granted");
-    expect(await storedCookie(context, VIEW_ACTOR_COOKIE)).toBeDefined();
+    // The beacon is counted when its request is sent, and the cookie is stored
+    // only once its response arrives.
+    await expect
+      .poll(() => storedCookie(context, VIEW_ACTOR_COOKIE))
+      .toBeDefined();
 
     const reloaded = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
     await page.reload();
