@@ -120,6 +120,9 @@ services:
     labels: *run-dir-label
     environment:
       discovery.type: single-node
+      # Past the flood-stage watermark OpenSearch blocks every write to the
+      # index, which would turn the runner's free disk into a test result.
+      cluster.routing.allocation.disk.threshold_enabled: "false"
       DISABLE_SECURITY_PLUGIN: "true"
       DISABLE_INSTALL_DEMO_CONFIG: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
