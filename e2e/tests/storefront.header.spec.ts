@@ -281,31 +281,38 @@ test.describe("web-storefront header at a desktop width", () => {
       banner.getByRole("button", { name: "Account menu" }),
     ];
 
-    const boxes = await Promise.all(
-      controls.map(async (control) => {
-        await expect(control).toBeVisible();
+    await Promise.all(controls.map((control) => expect(control).toBeVisible()));
 
-        const box = await control.boundingBox();
+    // The bell and the account menu stream in over a placeholder sized for
+    // signing in and signing up, which the static shell draws before it can
+    // know there is a session, so the theme and language buttons move once
+    // they arrive. All four boxes are read again, together, until the row they
+    // describe is the settled one.
+    await expect(async () => {
+      const boxes = await Promise.all(
+        controls.map(async (control) => {
+          const box = await control.boundingBox();
 
-        if (!box) {
-          throw new Error("a header control has no box");
-        }
+          if (!box) {
+            throw new Error("a header control has no box");
+          }
 
-        return box;
-      })
-    );
-
-    // Theme → language, language → bell, bell → account menu.
-    const gaps = boxes
-      .slice(1)
-      .map((box, index) =>
-        Math.round(
-          box.x - ((boxes[index]?.x ?? 0) + (boxes[index]?.width ?? 0))
-        )
+          return box;
+        })
       );
 
-    expect(gaps[0]).toBeGreaterThan(0);
-    expect(gaps).toEqual(gaps.map(() => gaps[0]));
+      // Theme → language, language → bell, bell → account menu.
+      const gaps = boxes
+        .slice(1)
+        .map((box, index) =>
+          Math.round(
+            box.x - ((boxes[index]?.x ?? 0) + (boxes[index]?.width ?? 0))
+          )
+        );
+
+      expect(gaps[0]).toBeGreaterThan(0);
+      expect(gaps).toEqual(gaps.map(() => gaps[0]));
+    }).toPass();
   });
 
   test("links to the labels and the genres, and to neither flat list", async ({
