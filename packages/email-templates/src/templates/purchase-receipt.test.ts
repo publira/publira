@@ -261,7 +261,7 @@ describe("PurchaseReceiptEmail", () => {
     const html = await render("ja");
 
     expect(html).toContain("ご購入ありがとうございます");
-    expect(html).toContain("購入価格は￥500(JPY)です。");
+    expect(html).toContain("購入価格は￥500 (JPY) です。");
     expect(html).toContain("購入日時は2030/01/15 21:00です。");
     expect(html).toContain("有効期限は2030/01/17 21:00です。");
   });

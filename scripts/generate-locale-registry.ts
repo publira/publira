@@ -21,6 +21,10 @@ import { renderDartMessages } from "./dart-messages.ts";
 import { renderGoCurrencyFormats } from "./go-currency.ts";
 import { renderGoDateTimeFormats } from "./go-datetime.ts";
 import { renderGoLocales, renderGoMessages } from "./go-messages.ts";
+import {
+  catalogGluedParentheses,
+  spacesParentheses,
+} from "./half-width-parentheses.ts";
 import { isJsonObject, isJsonString } from "./json-value.ts";
 import type { JsonValue } from "./json-value.ts";
 
@@ -60,8 +64,10 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
  * render time, so a leaf `messageformat` rejects — or one that calls a
  * function some reader of the catalog does not implement — would only fail
  * once the screen that shows it renders. A Japanese or Chinese leaf also writes no space between
- * CJK text and a Latin or digit run, which the renderer draws. Returns the
- * parsed catalog for the generators that read it.
+ * CJK text and a Latin or digit run, which the renderer draws, and a Japanese
+ * leaf sets a half-width parenthesis off with a space where a letter or a digit
+ * would touch it, as `docs/ja/` does. Returns the parsed catalog for the
+ * generators that read it.
  */
 const checkCatalog = (code: string): CatalogTree => {
   const catalogPath = `locales/${code}.json`;
@@ -72,6 +78,7 @@ const checkCatalog = (code: string): CatalogTree => {
 
   const problems: string[] = [];
   const spacingIsRendered = leavesSpacingToRenderer(code);
+  const parenthesesAreSpaced = spacesParentheses(code);
 
   const checkMessage = (message: string, key: string) => {
     const problem = catalogMessageError(message);
@@ -84,6 +91,14 @@ const checkCatalog = (code: string): CatalogTree => {
       for (const excerpt of cjkLatinSpaces(message)) {
         problems.push(
           `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
+        );
+      }
+    }
+
+    if (parenthesesAreSpaced) {
+      for (const excerpt of catalogGluedParentheses(message)) {
+        problems.push(
+          `  ${key}: a half-width parenthesis without a space on its outer side in ${JSON.stringify(excerpt)}`
         );
       }
     }

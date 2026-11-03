@@ -652,7 +652,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
 				"シリーズ「The Lighthouse Keeper」\n\nエピソード「Episode 1」\n\n" +
-				"購入価格は$4.99(USD)です。\n\n" +
+				"購入価格は$4.99 (USD) です。\n\n" +
 				"購入日時は2030/01/15 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
@@ -714,7 +714,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
 				"シリーズ「The Lighthouse Keeper」\n\n残りのエピソード12話\n\n" +
-				"購入価格は￥2,700(JPY)です。\n\n" +
+				"購入価格は￥2,700 (JPY) です。\n\n" +
 				"購入日時は2030/01/15 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
@@ -750,7 +750,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
 				"500ポイント\n\n" +
-				"購入価格は￥500(JPY)です。\n\n" +
+				"購入価格は￥500 (JPY) です。\n\n" +
 				"購入日時は2030/01/15 21:00です。\n\n" +
 				"利用期限は2030/07/14 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +

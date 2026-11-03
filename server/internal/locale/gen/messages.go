@@ -6,21 +6,21 @@ package gen
 // namespaces, keyed by the message key and then by locale code.
 var Messages = map[string]map[string]string{
 	"checkout.bundle_discount": {
-		"ja":      "まとめ買い割引({$percent :integer}%)",
+		"ja":      "まとめ買い割引 ({$percent :integer}%)",
 		"en":      "Bundle discount ({$percent :integer}%)",
 		"ko":      "묶음 할인 ({$percent :integer}%)",
 		"zh-Hans": "打包优惠（{$percent :integer}%）",
 		"zh-Hant": "打包優惠（{$percent :integer}%）",
 	},
 	"checkout.coin_pack_line_item": {
-		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}(うちボーナス{$bonus})}}",
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name} (うちボーナス{$bonus})}}",
 		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
 		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
 		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
 		"zh-Hant": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
 	},
 	"checkout.rental_line_item": {
-		"ja":      "{$episode_title}(レンタル、{$hours :integer}時間)",
+		"ja":      "{$episode_title} (レンタル、{$hours :integer}時間)",
 		"en":      ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
 		"ko":      "{$episode_title} (대여, {$hours :integer}시간)",
 		"zh-Hans": "{$episode_title}（租借，{$hours :integer}小时）",
@@ -566,14 +566,14 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "查看已購買",
 	},
 	"email.purchase_receipt.amount": {
-		"ja":      "購入価格は{$amount}({$currency})です。",
+		"ja":      "購入価格は{$amount} ({$currency}) です。",
 		"en":      "Price paid: {$amount} ({$currency})",
 		"ko":      "구매 가격: {$amount} ({$currency})",
 		"zh-Hans": "支付金额：{$amount}（{$currency}）",
 		"zh-Hant": "支付金額：{$amount}（{$currency}）",
 	},
 	"email.purchase_receipt.coin_pack": {
-		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}(うちボーナス{$bonus})}}",
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name} (うちボーナス{$bonus})}}",
 		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (including {$bonus} bonus)}}",
 		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (보너스 {$bonus} 포함)}}",
 		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含赠送{$bonus}）}}",
