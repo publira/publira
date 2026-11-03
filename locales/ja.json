@@ -6534,7 +6534,7 @@
       "episode_published_title": "新しいエピソードが公開されました",
       "episode_subject": "「{$episode_title}」",
       "episode_subject_series": "「{$series_title}」のエピソード",
-      "episode_subject_with_series": "「{$episode_title}」({$series_title})",
+      "episode_subject_with_series": "「{$series_title}」の「{$episode_title}」",
       "failed": "通知一覧を表示できませんでした。もう一度お試しください。",
       "mark_all_read": "すべて既読にする",
       "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",

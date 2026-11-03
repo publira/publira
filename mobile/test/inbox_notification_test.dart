@@ -142,6 +142,27 @@ void main() {
       );
     });
 
+    test('names the series before its episode in Japanese', () {
+      final ja = AppMessages.forLocale(const Locale('ja'))!;
+      final published = notification(
+        InboxNotificationKind.episodePublished,
+        '{"series_title":"Seed Series","episode_title":"Episode 1"}',
+      );
+      final approved = notification(
+        InboxNotificationKind.commentApproved,
+        '{"series_title":"Seed Series","episode_title":"Episode 1"}',
+      );
+
+      expect(
+        ja.notificationDescription(published),
+        '「Seed Series」の「Episode 1」が公開されました。',
+      );
+      expect(
+        ja.notificationDescription(approved),
+        '「Seed Series」の「Episode 1」へのコメントが公開されました。',
+      );
+    });
+
     test('says who removed a comment', () {
       final row = notification(
         InboxNotificationKind.commentHidden,
