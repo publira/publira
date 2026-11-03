@@ -1,8 +1,8 @@
 import { generateKeyPairSync } from "node:crypto";
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsText,
@@ -38,11 +38,10 @@ for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
 
   test.describe(`web-admin sign-in documentation screenshots in ${locale}`, () => {
-    test("Apple and Google, offered", async ({ page }) => {
-      await signInAsAdmin(
+    test("Apple and Google, offered", async ({ consoleSessions, page }) => {
+      await consoleSessions.signIn(
         page,
         SIGN_IN_PROVIDERS_ADMIN,
-        SIGN_IN_PATH,
         WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL
       );
       await setDocsLocale(page, WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL, locale);

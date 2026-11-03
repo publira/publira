@@ -1,7 +1,9 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { selectOption, signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
+import { selectOption } from "../src/admin";
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsField,
@@ -17,6 +19,7 @@ import {
   ANALYTICS_ADMIN,
   ANALYTICS_WEEK,
 } from "../src/scenarios/admin-analytics";
+import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
 import { ROYALTIES_ADMIN, ROYALTIES_SALES } from "../src/scenarios/royalties";
@@ -54,10 +57,11 @@ const SERIES = "SeedSERSAAA1";
 /** Sign in as the seed tenant's admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsSeedAdmin(page, path);
+  await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
 };
@@ -65,13 +69,13 @@ const openScreen = async (
 /** The same on the subscriptions tenant's console. */
 const openSubscriptionPlans = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsAdmin(
+  await consoleSessions.signIn(
     page,
     STOREFRONT_SUBSCRIPTIONS_ADMIN,
-    path,
     WEB_ADMIN_SUBSCRIPTIONS_BASE_URL
   );
   await setDocsLocale(page, WEB_ADMIN_SUBSCRIPTIONS_BASE_URL, locale);
@@ -81,13 +85,13 @@ const openSubscriptionPlans = async (
 /** The same on the royalty tenant's console. */
 const openRoyalties = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsAdmin(
+  await consoleSessions.signIn(
     page,
     ROYALTIES_ADMIN,
-    path,
     WEB_ADMIN_ROYALTIES_BASE_URL
   );
   await setDocsLocale(page, WEB_ADMIN_ROYALTIES_BASE_URL, locale);
@@ -101,8 +105,16 @@ for (const locale of DOCS_LOCALES) {
     test.describe("selling episodes", () => {
       const sellingPage = "console/selling-episodes";
 
-      test("an episode's price and reading period", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}/episodes/new`);
+      test("an episode's price and reading period", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/series/${SERIES}/episodes/new`
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -126,8 +138,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("an episode's rental price and rental period", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}/episodes/new`);
+      test("an episode's rental price and rental period", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/series/${SERIES}/episodes/new`
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -153,9 +173,15 @@ for (const locale of DOCS_LOCALES) {
         ["payjp-settings", "PAY.JP", "payjp"],
       ] as const) {
         test(`the payment settings, with ${provider} chosen`, async ({
+          consoleSessions,
           page,
         }) => {
-          await openScreen(page, locale, "/integrations/payment");
+          await openScreen(
+            page,
+            consoleSessions,
+            locale,
+            "/integrations/payment"
+          );
           const settings = docsSection(page, t("admin.settings.payment.title"));
           // The provider's own name, which no catalog translates.
           await selectOption(
@@ -185,8 +211,13 @@ for (const locale of DOCS_LOCALES) {
         ["in-app-purchase", "admin.settings.store_payment.title"],
         ["store-products", "admin.settings.store_products.title"],
       ] as const) {
-        test(`the ${subject} section`, async ({ page }) => {
-          await openScreen(page, locale, "/integrations/payment");
+        test(`the ${subject} section`, async ({ consoleSessions, page }) => {
+          await openScreen(
+            page,
+            consoleSessions,
+            locale,
+            "/integrations/payment"
+          );
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -201,8 +232,13 @@ for (const locale of DOCS_LOCALES) {
     test.describe("subscription plans", () => {
       const plansPage = "console/subscription-plans";
 
-      test("the list of plans", async ({ page }) => {
-        await openSubscriptionPlans(page, locale, "/subscription-plans");
+      test("the list of plans", async ({ consoleSessions, page }) => {
+        await openSubscriptionPlans(
+          page,
+          consoleSessions,
+          locale,
+          "/subscription-plans"
+        );
         await expect(
           page.getByRole("cell", {
             exact: true,
@@ -218,9 +254,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a plan of a label", async ({ page }) => {
+      test("a plan of a label", async ({ consoleSessions, page }) => {
         await openSubscriptionPlans(
           page,
+          consoleSessions,
           locale,
           `/subscription-plans/${DOCS_SUBSCRIPTION_PLANS.yearly.publicId}`
         );
@@ -243,15 +280,15 @@ for (const locale of DOCS_LOCALES) {
       const reportsPage = "console/reports-and-royalties";
 
       test("the dashboard, with a draft and a scheduled episode", async ({
+        consoleSessions,
         page,
       }) => {
         // On the moderation tenant, whose series
         // `db/seeds/scenarios/450_docs_publishing.sql` gives an episode in
         // each of the two states the publishing queue lists.
-        await signInAsAdmin(
+        await consoleSessions.signIn(
           page,
           COMMENT_MODERATION_ADMIN,
-          "/",
           WEB_ADMIN_COMMENT_MODERATION_BASE_URL
         );
         await setDocsLocale(
@@ -273,9 +310,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("Episodes' read-through, below the dates it covers", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/analytics/episodes");
+        await openScreen(page, consoleSessions, locale, "/analytics/episodes");
 
         // From the figures down: the line above them names the last 28 days,
         // which move with the day the shot is taken.
@@ -290,14 +328,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Cohorts, with the Funnel below it", async ({ page }) => {
+      test("Cohorts, with the Funnel below it", async ({
+        consoleSessions,
+        page,
+      }) => {
         // Tall enough for the funnel below the cohort table.
         await page.setViewportSize({ height: 1400, width: 1280 });
         const path = `/analytics/cohorts?from=${ANALYTICS_WEEK.from}&to=${ANALYTICS_WEEK.to}`;
-        await signInAsAdmin(
+        await consoleSessions.signIn(
           page,
           ANALYTICS_ADMIN,
-          path,
           WEB_ADMIN_ANALYTICS_BASE_URL
         );
         await setDocsLocale(page, WEB_ADMIN_ANALYTICS_BASE_URL, locale);
@@ -314,11 +354,12 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("an open month", async ({ page }) => {
+      test("an open month", async ({ consoleSessions, page }) => {
         // Tall enough for the month's lines below its totals.
         await page.setViewportSize({ height: 1400, width: 1280 });
         await openRoyalties(
           page,
+          consoleSessions,
           locale,
           `/royalties?period=${ROYALTIES_SALES.period}`
         );
@@ -334,9 +375,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("closing a month", async ({ page }) => {
+      test("closing a month", async ({ consoleSessions, page }) => {
         await openRoyalties(
           page,
+          consoleSessions,
           locale,
           `/royalties?period=${ROYALTIES_SALES.period}`
         );
@@ -352,8 +394,13 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the closed statements", async ({ page }) => {
-        await openRoyalties(page, locale, "/royalties/statements");
+      test("the closed statements", async ({ consoleSessions, page }) => {
+        await openRoyalties(
+          page,
+          consoleSessions,
+          locale,
+          "/royalties/statements"
+        );
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -363,10 +410,15 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a closed month's statement", async ({ page }) => {
+      test("a closed month's statement", async ({ consoleSessions, page }) => {
         // December 2025, which `db/seeds/scenarios/460_docs_royalties.sql`
         // closes on a fixed day.
-        await openRoyalties(page, locale, "/royalties/statements/2025-12");
+        await openRoyalties(
+          page,
+          consoleSessions,
+          locale,
+          "/royalties/statements/2025-12"
+        );
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -376,8 +428,13 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("how months are closed", async ({ page }) => {
-        await openRoyalties(page, locale, "/royalties/settings");
+      test("how months are closed", async ({ consoleSessions, page }) => {
+        await openRoyalties(
+          page,
+          consoleSessions,
+          locale,
+          "/royalties/settings"
+        );
 
         await expectDocsScreenshot(page, {
           element: [

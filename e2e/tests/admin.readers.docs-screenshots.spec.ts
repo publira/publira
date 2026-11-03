@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
-import { test } from "@playwright/test";
 
-import { signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsScreenHeader,
@@ -11,6 +11,7 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
+import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import {
   CONTACT_WORKFLOW_ADMIN,
@@ -40,23 +41,28 @@ test.use({ baseURL: WEB_ADMIN_BASE_URL });
 /** The seed tenant's reader, who holds no role on its staff. */
 const READER = "SeedMMBRAAA1";
 
+interface Tenant {
+  baseUrl: string;
+  credentials: { email: string; password: string };
+}
+
+const seedTenant: Tenant = {
+  baseUrl: WEB_ADMIN_BASE_URL,
+  credentials: SEED_ADMIN,
+};
+
 /**
- * Sign in to the console at `baseUrl` and open `path` in `locale`; the seed
- * tenant's admin unless `credentials` name another tenant's.
+ * Sign in to `tenant`'s console as its admin and open `path` in `locale`; the
+ * seed tenant's unless another is named.
  */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string,
-  tenant?: {
-    baseUrl: string;
-    credentials: { email: string; password: string };
-  }
+  { baseUrl, credentials }: Tenant = seedTenant
 ): Promise<void> => {
-  await (tenant
-    ? signInAsAdmin(page, tenant.credentials, path, tenant.baseUrl)
-    : signInAsSeedAdmin(page, path));
-  const baseUrl = tenant?.baseUrl ?? WEB_ADMIN_BASE_URL;
+  await consoleSessions.signIn(page, credentials, baseUrl);
   await setDocsLocale(page, baseUrl, locale);
   await page.goto(`${baseUrl}${path}`);
 };
@@ -75,8 +81,11 @@ for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
 
   test.describe(`web-admin readers documentation screenshots in ${locale}`, () => {
-    test("the reader list, with its search", async ({ page }) => {
-      await openScreen(page, locale, "/readers");
+    test("the reader list, with its search", async ({
+      consoleSessions,
+      page,
+    }) => {
+      await openScreen(page, consoleSessions, locale, "/readers");
 
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -86,8 +95,8 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("a reader's page", async ({ page }) => {
-      await openScreen(page, locale, `/readers/${READER}`);
+    test("a reader's page", async ({ consoleSessions, page }) => {
+      await openScreen(page, consoleSessions, locale, `/readers/${READER}`);
 
       await expectDocsScreenshot(page, {
         element: [
@@ -100,8 +109,14 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the reported comments", async ({ page }) => {
-      await openScreen(page, locale, "/comments", moderationTenant);
+    test("the reported comments", async ({ consoleSessions, page }) => {
+      await openScreen(
+        page,
+        consoleSessions,
+        locale,
+        "/comments",
+        moderationTenant
+      );
 
       await expectDocsScreenshot(page, {
         element: [
@@ -114,8 +129,17 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the comment list, with a comment in each state", async ({ page }) => {
-      await openScreen(page, locale, "/comments", moderationTenant);
+    test("the comment list, with a comment in each state", async ({
+      consoleSessions,
+      page,
+    }) => {
+      await openScreen(
+        page,
+        consoleSessions,
+        locale,
+        "/comments",
+        moderationTenant
+      );
 
       await expectDocsScreenshot(page, {
         element: [
@@ -130,8 +154,14 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the contact messages", async ({ page }) => {
-      await openScreen(page, locale, "/contact-messages", helpDeskTenant);
+    test("the contact messages", async ({ consoleSessions, page }) => {
+      await openScreen(
+        page,
+        consoleSessions,
+        locale,
+        "/contact-messages",
+        helpDeskTenant
+      );
 
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -141,9 +171,13 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("a contact message, assigned and annotated", async ({ page }) => {
+    test("a contact message, assigned and annotated", async ({
+      consoleSessions,
+      page,
+    }) => {
       await openScreen(
         page,
+        consoleSessions,
         locale,
         `/contact-messages/${CONTACT_WORKFLOW_IN_PROGRESS.publicId}`,
         helpDeskTenant
@@ -160,8 +194,8 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the access tickets", async ({ page }) => {
-      await openScreen(page, locale, "/access-tickets");
+    test("the access tickets", async ({ consoleSessions, page }) => {
+      await openScreen(page, consoleSessions, locale, "/access-tickets");
 
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -171,8 +205,8 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the form that issues a ticket", async ({ page }) => {
-      await openScreen(page, locale, "/access-tickets/new");
+    test("the form that issues a ticket", async ({ consoleSessions, page }) => {
+      await openScreen(page, consoleSessions, locale, "/access-tickets/new");
 
       await expectDocsScreenshot(page, {
         element: [

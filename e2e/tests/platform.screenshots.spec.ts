@@ -1,8 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import { test } from "../src/console-sessions";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { SEED_PLATFORM_SUPER_ADMIN } from "../src/scenarios/platform-tenants";
 import { expectScreenshot, SCREENSHOT_VIEWPORTS } from "../src/screenshots";
+import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 /**
  * What the operator console looks like, at a phone width, a tablet width, and a desktop width.
@@ -44,9 +46,13 @@ test.describe("web-platform signed-out screenshots", () => {
 test.describe("web-platform screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
-      test.beforeEach(async ({ page }) => {
+      test.beforeEach(async ({ consoleSessions, page }) => {
         await page.setViewportSize(viewport);
-        await signInAsSeedPlatformSuperAdmin(page, "/");
+        await consoleSessions.signIn(
+          page,
+          SEED_PLATFORM_SUPER_ADMIN,
+          WEB_PLATFORM_BASE_URL
+        );
       });
 
       test("the dashboard", async ({ page }) => {

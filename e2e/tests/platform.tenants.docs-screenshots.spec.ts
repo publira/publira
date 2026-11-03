@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsScreen,
@@ -10,13 +12,13 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 import {
   DOCS_PLATFORM_READER,
   DOCS_PLATFORM_SUSPENDED_READER,
   DOCS_PLATFORM_SUSPENDED_TENANT,
   DOCS_PLATFORM_TENANT,
 } from "../src/scenarios/docs-platform";
+import { SEED_PLATFORM_SUPER_ADMIN } from "../src/scenarios/platform-tenants";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 /**
@@ -34,10 +36,15 @@ test.use({ baseURL: WEB_PLATFORM_BASE_URL });
 /** Sign in as the seeded super admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsSeedPlatformSuperAdmin(page, path);
+  await consoleSessions.signIn(
+    page,
+    SEED_PLATFORM_SUPER_ADMIN,
+    WEB_PLATFORM_BASE_URL
+  );
   await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
   await page.goto(path);
 };
@@ -50,8 +57,8 @@ for (const locale of DOCS_LOCALES) {
 
   test.describe(`web-platform tenant documentation screenshots in ${locale}`, () => {
     test.describe("tenants", () => {
-      test("the create form", async ({ page }) => {
-        await openScreen(page, locale, "/tenants/new");
+      test("the create form", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/tenants/new");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.locator("main form")],
@@ -61,8 +68,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a tenant's profile and domain settings", async ({ page }) => {
-        await openScreen(page, locale, TENANT_PATH);
+      test("a tenant's profile and domain settings", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, TENANT_PATH);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -75,8 +85,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Suspend at the top of a tenant's page", async ({ page }) => {
-        await openScreen(page, locale, TENANT_PATH);
+      test("Suspend at the top of a tenant's page", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, TENANT_PATH);
 
         await expectDocsScreenshot(page, {
           element: docsScreenHeader(page),
@@ -86,9 +99,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a suspended tenant", async ({ page }) => {
+      test("a suspended tenant", async ({ consoleSessions, page }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/tenants/${DOCS_PLATFORM_SUSPENDED_TENANT.publicId}`
         );
@@ -104,8 +118,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the dashboard's tenant counts", async ({ page }) => {
-        await openScreen(page, locale, "/");
+      test("the dashboard's tenant counts", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/");
 
         await expectDocsScreenshot(page, {
           element: page.locator("main dl").filter({
@@ -119,8 +136,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("a tenant's staff", () => {
-      test("inviting a tenant admin", async ({ page }) => {
-        await openScreen(page, locale, MEMBERS_PATH);
+      test("inviting a tenant admin", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -134,9 +151,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("the invitations, with the role each one grants", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, MEMBERS_PATH);
+        await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.tenants.invitations_title")),
@@ -146,8 +164,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("adding an existing user", async ({ page }) => {
-        await openScreen(page, locale, MEMBERS_PATH);
+      test("adding an existing user", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.tenants.add_member")),
@@ -157,8 +175,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the members, with Change role and Remove", async ({ page }) => {
-        await openScreen(page, locale, MEMBERS_PATH);
+      test("the members, with Change role and Remove", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.tenants.members_list_title")),
@@ -170,9 +191,13 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("users", () => {
-      test("the user list narrowed to one tenant", async ({ page }) => {
+      test("the user list narrowed to one tenant", async ({
+        consoleSessions,
+        page,
+      }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/users?tenant_id=${DOCS_PLATFORM_TENANT.publicId}`
         );
@@ -189,9 +214,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a reader's page", async ({ page }) => {
+      test("a reader's page", async ({ consoleSessions, page }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/users/${DOCS_PLATFORM_READER.publicId}`
         );
@@ -204,9 +230,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a suspended reader's page", async ({ page }) => {
+      test("a suspended reader's page", async ({ consoleSessions, page }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/users/${DOCS_PLATFORM_SUSPENDED_READER.publicId}`
         );
