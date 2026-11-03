@@ -20,4 +20,8 @@ A screen element is named by its label in that locale's catalog, `locales/<local
 
 Japanese pages are written in the polite form, with no space between Japanese and Latin letters, digits, or inline code. Parentheses in prose are half-width. A colon, full-width or not, is an English device and is not used; the sentence says the same thing in Japanese. An enumeration inside a sentence joins its items with と, や, or 、, one way per list, and never with 中黒. A 読点 marks a pause the reader needs to parse the sentence, not every clause, and a sentence that needs many of them is split instead. Screen text quoted from `locales/ja.json` keeps the catalog's own characters.
 
+Korean pages are written in 합니다체, with standard Korean word spacing. A particle attaches directly to a Latin word or inline code, in the form its pronunciation takes (`` `publiractl`은 ``, `S3를`). Punctuation and parentheses are half-width, as `locales/ko.json` writes them.
+
+Chinese pages, Simplified and Traditional alike, put no space between Chinese and Latin letters, digits, or inline code, as their catalogs do. Punctuation in prose is full-width, parentheses and colons included. The reader is addressed as 您, as the catalogs address them. Simplified Chinese quotes with “” and uses the terms of mainland China, such as 服务器, 数据库, and 默认. Traditional Chinese quotes with 「」 and uses the terms of Taiwan, such as 伺服器, 資料庫, and 預設, which `locales/zh-Hant.json` uses too.
+
 `pnpm docs:check` checks the shape a translation keeps — the pages and images it mirrors, the `source_updated` it records, and the links and anchors it resolves. Whether its text says what the English page says is a review judgement.
