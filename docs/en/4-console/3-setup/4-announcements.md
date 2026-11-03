@@ -101,6 +101,6 @@ A banner stays up until you take it down, unless you give it an end:
 - **Stop showing at**, under the banner checkbox, takes it down at that time, in the tenant's time zone. It must be in the future.
 - **Stop showing**, in the **Banner** column of the list, takes it down at once.
 
-![The Announcements list: Create an announcement at the top, and three announcements addressed to Everyone and marked Delivered in their Status column, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
+![The Announcements list: Create an announcement at the top, and three announcements addressed to Everyone and marked Delivered in their Status column, each delivered to 2 readers and the two newest opened by 1, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
 
 Either way the announcement stays on the **Announcements** page and in readers' notifications. Only the banner goes.

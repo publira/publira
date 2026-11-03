@@ -139,9 +139,18 @@ const columnCell = async (
   row: Locator,
   header: string
 ): Promise<Locator> => {
-  const headers = await page.getByRole("columnheader").allTextContents();
+  // Each header's copy streams in behind a skeleton, so the headers are read
+  // only once the one asked for is there.
+  await expect(
+    page.getByRole("columnheader", { exact: true, name: header })
+  ).toBeVisible();
 
-  return row.getByRole("cell").nth(headers.indexOf(header));
+  const headers = await page.getByRole("columnheader").allTextContents();
+  const index = headers.indexOf(header);
+
+  expect(index, `the column headed ${header}`).toBeGreaterThanOrEqual(0);
+
+  return row.getByRole("cell").nth(index);
 };
 
 /**

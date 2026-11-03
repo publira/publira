@@ -585,8 +585,8 @@
         "link": "リンク先",
         "audience": "配信先",
         "status": "状態",
-        "delivered": "配信人数",
-        "opened": "既読人数"
+        "delivered": "配信",
+        "opened": "既読"
       },
       "delivery": {
         "everyone": "全員に送信",

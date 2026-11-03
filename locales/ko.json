@@ -585,8 +585,8 @@
         "link": "링크",
         "audience": "받는 사람",
         "status": "상태",
-        "delivered": "발송 인원",
-        "opened": "열람 인원"
+        "delivered": "발송",
+        "opened": "열람"
       },
       "delivery": {
         "everyone": "모두에게 발송",

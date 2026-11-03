@@ -585,8 +585,8 @@
         "link": "链接",
         "audience": "接收对象",
         "status": "状态",
-        "delivered": "投放人数",
-        "opened": "已读人数"
+        "delivered": "投放",
+        "opened": "已读"
       },
       "delivery": {
         "everyone": "发送给所有人",

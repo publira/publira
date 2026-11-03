@@ -376,12 +376,12 @@ const AnnouncementListBody = ({
               <Message message="admin.announcements.columns.status" />
             </Suspense>
           </Table.Head>
-          <Table.Head className="w-24 text-right">
+          <Table.Head className="text-right whitespace-nowrap">
             <Suspense fallback={<SkeletonLine className="ml-auto h-4 w-16" />}>
               <Message message="admin.announcements.columns.delivered" />
             </Suspense>
           </Table.Head>
-          <Table.Head className="w-24 text-right">
+          <Table.Head className="text-right whitespace-nowrap">
             <Suspense fallback={<SkeletonLine className="ml-auto h-4 w-16" />}>
               <Message message="admin.announcements.columns.opened" />
             </Suspense>

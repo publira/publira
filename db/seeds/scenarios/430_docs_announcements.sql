@@ -5,7 +5,9 @@
 -- list shows none of them. Three announcements are written into the banner
 -- tenant, BnnrTNNTAAA1, which 200_announcement_banner.sql creates and this file
 -- needs first; the newest is still shown as the site banner, and the change of
--- terms was sent to everyone.
+-- terms was sent to everyone. Each was delivered to both of the tenant's
+-- accounts, and its member opened two of them, so the Delivered and Opened
+-- columns count something.
 --
 -- Every date is a literal, for the reason 160_screenshot_baseline.sql gives.
 --
@@ -14,6 +16,14 @@
 -- it runs, which deletes every announcement of the tenant, these included.
 
 BEGIN;
+
+DELETE FROM notifications
+WHERE notification_type = 'announcement_posted'
+    AND subject_key IN (
+        'announcement:018f1090-0003-7000-8000-000000000001',
+        'announcement:018f1090-0003-7000-8000-000000000002',
+        'announcement:018f1090-0003-7000-8000-000000000003'
+    );
 
 DELETE FROM announcements
 WHERE id IN (
@@ -107,5 +117,35 @@ SELECT
     a.created_at
 FROM announcements a
 WHERE a.id = '018f1090-0003-7000-8000-000000000001'::uuid;
+
+-- The rows the worker's fan-out writes when each goes out: one per account of
+-- the tenant, filed under the category its delivery answers to.
+INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, payload, category, created_at)
+SELECT
+    uuidv7(),
+    a.tenant_id,
+    u.id,
+    'announcement_posted',
+    'announcement:' || a.id::text,
+    jsonb_build_object('announcement_title', tr.title),
+    CASE a.delivery WHEN 'everyone' THEN 'everyone' ELSE 'announcements' END,
+    a.delivered_at
+FROM announcements a
+JOIN announcement_translations tr ON tr.announcement_id = a.id AND tr.locale = 'en'
+JOIN users u ON u.tenant_id = a.tenant_id
+WHERE a.id IN (
+    '018f1090-0003-7000-8000-000000000001'::uuid,
+    '018f1090-0003-7000-8000-000000000002'::uuid,
+    '018f1090-0003-7000-8000-000000000003'::uuid
+);
+
+INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
+SELECT a.id, a.tenant_id, u.id, a.delivered_at + interval '1 hour'
+FROM announcements a
+JOIN users u ON u.tenant_id = a.tenant_id AND u.public_id = 'BnnrMMBRAAA1'
+WHERE a.id IN (
+    '018f1090-0003-7000-8000-000000000001'::uuid,
+    '018f1090-0003-7000-8000-000000000002'::uuid
+);
 
 COMMIT;
