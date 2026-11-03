@@ -28,10 +28,10 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 
 | プロセス | ポート | `/readyz`で確認するもの |
 | --- | --- | --- |
-| `publira server` | `8000`(`PUBLIRA_PUBLIC_API_ADDR`) | `db.public`、`db.admin`、`db.platform`の3つのデータベースログイン。`--role`を指定した場合は、そのロールが使うログインです。[リードレプリカ](../2-deployments/7-scaling-out.md#レプリカから読み取る)を設定している場合は`db.public.replica`も確認します |
-| `publira worker` | `8003`(`PUBLIRA_WORKER_ADDR`) | `db.outbox`、`db.ticker`、`db.content_stats`の3つのデータベースログイン。`--queue`を指定した場合は、そのキューが使うログインです。`maintenance`キューを受け持ち、[リードレプリカ](../2-deployments/7-scaling-out.md#日次の再構築)を設定している場合は`db.content_stats.replica`も確認します。また、ジョブキューが動き出すまでは準備ができていないと応答します |
-| `web-storefront`、`web-admin`、`web-platform` | `PORT`(リポジトリでビルドしたイメージでは`3000`、`4000`、`4100`) | `api`は、`PUBLIRA_GRPC_URL`のホストにある`publira server`の`/readyz`を確認します。`web-admin`で`PUBLIRA_PUBLIC_GRPC_URL`を設定している場合は、`public-api`がそのホストで同じ確認をします。`redis`は`PNCH_REDIS_URL`の共有キャッシュにpingを送ります。共有キャッシュを無効にしている間は常に成功します |
-| `email-renderer` | `8080`(`PORT`) | なし。ほかのサービスに依存しないので、起動していれば常に準備ができています |
+| `publira server` | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | `db.public`、`db.admin`、`db.platform`の3つのデータベースログイン。`--role`を指定した場合は、そのロールが使うログインです。[リードレプリカ](../2-deployments/7-scaling-out.md#レプリカから読み取る)を設定している場合は`db.public.replica`も確認します |
+| `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | `db.outbox`、`db.ticker`、`db.content_stats`の3つのデータベースログイン。`--queue`を指定した場合は、そのキューが使うログインです。`maintenance`キューを受け持ち、[リードレプリカ](../2-deployments/7-scaling-out.md#日次の再構築)を設定している場合は`db.content_stats.replica`も確認します。また、ジョブキューが動き出すまでは準備ができていないと応答します |
+| `web-storefront`、`web-admin`、`web-platform` | `PORT` (リポジトリでビルドしたイメージでは`3000`、`4000`、`4100`) | `api`は、`PUBLIRA_GRPC_URL`のホストにある`publira server`の`/readyz`を確認します。`web-admin`で`PUBLIRA_PUBLIC_GRPC_URL`を設定している場合は、`public-api`がそのホストで同じ確認をします。`redis`は`PNCH_REDIS_URL`の共有キャッシュにpingを送ります。共有キャッシュを無効にしている間は常に成功します |
+| `email-renderer` | `8080` (`PORT`) | なし。ほかのサービスに依存しないので、起動していれば常に準備ができています |
 
 `publira server --with-worker`で動かすプロセスは、表の最初の2行の両方のポートで、それぞれの行のチェックに応答します。2つのプロセスを監視するときと同じように監視してください。
 
@@ -50,7 +50,7 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 }
 ```
 
-`status`は、すべてのチェックに通れば`ok`、1つでも失敗すれば`unavailable`、ワーカーのジョブキューがまだ動き出していない間は`starting`になります。失敗したチェックには`error`が付きます。`error`が示すのは失敗の種類(`timeout`、`dependency_failed`、`not configured`)だけで、ホスト名や接続文字列は含まないので、このレスポンスは誰に見せても問題ありません。失敗の理由そのものは、チェック名を含む`readiness check failed`という行としてプロセスのログに出力されます。
+`status`は、すべてのチェックに通れば`ok`、1つでも失敗すれば`unavailable`、ワーカーのジョブキューがまだ動き出していない間は`starting`になります。失敗したチェックには`error`が付きます。`error`が示すのは失敗の種類 (`timeout`、`dependency_failed`、`not configured`) だけで、ホスト名や接続文字列は含まないので、このレスポンスは誰に見せても問題ありません。失敗の理由そのものは、チェック名を含む`readiness check failed`という行としてプロセスのログに出力されます。
 
 各チェックの制限時間は2秒です。`publira server`と`publira worker`はチェックを1つずつ順番に実行するので、すべてのログインが応答しないときはレスポンスにおよそ6秒かかります。Webアプリはチェックを並行して実行し、およそ2秒以内に応答します。
 
@@ -94,9 +94,9 @@ time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b
 {"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
 ```
 
-どのレコードにも`time`、`level`(`DEBUG`、`INFO`、`WARN`、`ERROR`のいずれか)、`msg`があります。トレース対象のリクエストやジョブの処理中に出力されたレコードには`trace_id`と`span_id`も付くので、トレースのバックエンドで該当のトレースをたどれます。それ以外の項目は出力元によって異なります。アウトボックスのレコードには対象のエントリー(`event_id`、`event_type`、`attempts`)が、メンテナンスジョブのレコードには実行(`job_kind`、`job_id`、`attempt`)が示され、失敗には`error`が付きます。
+どのレコードにも`time`、`level` (`DEBUG`、`INFO`、`WARN`、`ERROR`のいずれか)、`msg`があります。トレース対象のリクエストやジョブの処理中に出力されたレコードには`trace_id`と`span_id`も付くので、トレースのバックエンドで該当のトレースをたどれます。それ以外の項目は出力元によって異なります。アウトボックスのレコードには対象のエントリー (`event_id`、`event_type`、`attempts`) が、メンテナンスジョブのレコードには実行 (`job_kind`、`job_id`、`attempt`) が示され、失敗には`error`が付きます。
 
-`PUBLIRA_LOG_LEVEL`は、書き出すレコードの最も低いレベルを`debug`、`info`(既定)、`warn`、`error`のいずれかで指定します。`warn`にすると、利用の多い環境で日常的に出る`INFO`のレコードが省かれ、問題を示すレコードはすべて残ります。監査ログの`audit`のレコードと、サインインの試行ごとの`audit auth`のレコードは、誰が何をしたかの記録でありプロセスの状態を示すものではないため、レベルの指定にかかわらず`INFO`で書き出されます。どちらの変数も、想定外の値を指定するとプロセスは起動せず、その変数の名前を示すメッセージを出力します。
+`PUBLIRA_LOG_LEVEL`は、書き出すレコードの最も低いレベルを`debug`、`info` (既定)、`warn`、`error`のいずれかで指定します。`warn`にすると、利用の多い環境で日常的に出る`INFO`のレコードが省かれ、問題を示すレコードはすべて残ります。監査ログの`audit`のレコードと、サインインの試行ごとの`audit auth`のレコードは、誰が何をしたかの記録でありプロセスの状態を示すものではないため、レベルの指定にかかわらず`INFO`で書き出されます。どちらの変数も、想定外の値を指定するとプロセスは起動せず、その変数の名前を示すメッセージを出力します。
 
 Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーンテキストの出力を使います。失敗は`[web-storefront] getTenantSiteInfo failed`のようにアプリ名で始まる行で出力され、準備状態のチェックの失敗は`health check api failed`と出力されます。
 
@@ -107,7 +107,7 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 | レコード | プロセス | 意味 |
 | --- | --- | --- |
 | `outbox event dead` | `publira worker` | メール、プッシュ通知、キャッシュの再検証のいずれかが完全に断念されました。どれなのかは`event_type`でわかります。影響は[断念されたエントリーの確認](./10-scheduled-jobs.md#断念されたエントリーの確認)を参照してください |
-| `outbox event retry scheduled`の繰り返し | `publira worker` | エントリーの送信先(SMTPサーバー、`email-renderer`、Webアプリ)で障害が起きています。エントリーはおよそ9分間再試行されたあと、deadになります |
+| `outbox event retry scheduled`の繰り返し | `publira worker` | エントリーの送信先 (SMTPサーバー、`email-renderer`、Webアプリ) で障害が起きています。エントリーはおよそ9分間再試行されたあと、deadになります |
 | `episode publish failed after all retries` | `publira worker` | 予約したエピソードが**予約済み**のまま残りました。[予約公開](./10-scheduled-jobs.md#予約公開)で説明しているとおり、テナントの管理者とすべてのオペレーターにも通知されます |
 | `auditlog: queue is full; dropping entry`、`auditlog: failed to persist; dropping entry` | `publira server` | テナントまたはプラットフォームの監査ログのエントリーが失われました |
 | `readiness check failed` | `publira server`、`publira worker` | 示されたチェックが失敗しました。理由は`error`フィールドでわかります |
@@ -122,14 +122,14 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 
 エクスポートの方法は`OTEL_METRICS_EXPORTER`で選びます。
 
-- `otlp`(既定値)では、60秒ごとに`OTEL_EXPORTER_OTLP_ENDPOINT`へメトリクスを送ります。トレースと同じコレクターのアドレスです。
+- `otlp` (既定値) では、60秒ごとに`OTEL_EXPORTER_OTLP_ENDPOINT`へメトリクスを送ります。トレースと同じコレクターのアドレスです。
 - `prometheus`では、Prometheusが収集できるよう、ポート`9464`の`/metrics`でメトリクスを公開します。あわせて`OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`も設定してください。既定値の`localhost`では、コンテナの外から到達できません。Kubernetesの同じPodで動かすなど、`publira server`と`publira worker`がネットワーク名前空間を共有する場合は、それぞれに別の`OTEL_EXPORTER_PROMETHEUS_PORT`を設定してください。
 
 [Docker Compose](../2-deployments/3-docker-compose.md)の構成では、`.env`に`PUBLIRA_METRICS_ENABLED`、`OTEL_METRICS_EXPORTER`、`OTEL_EXPORTER_PROMETHEUS_HOST`を設定し、`docker compose up -d`をもう一度実行します。`.env`の値は`server`に渡されます。その他の変数と記録される項目の一覧は、[メトリクスのリファレンス](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry)にあります。各プロセスは1つの`service.name`で報告します。`publira server`は`publira-api-server`、`publira worker`は`publira-worker`です。`publira server --with-worker`で動かすプロセスは、すべてを`publira-api-server`で報告します。Composeファイルの`server`はこの形で動いています。
 
 ### アウトボックス
 
-ワーカーのメトリクスは、アウトボックスの状況を表します。[アウトボックスの説明](./10-scheduled-jobs.md#アウトボックスメールプッシュ通知キャッシュの再検証)のとおり、メール、プッシュ通知、キャッシュの再検証はすべてアウトボックスを通じて送られます。各メトリクスには、エントリーの種類が`outbox.event_type`として付きます。
+ワーカーのメトリクスは、アウトボックスの状況を表します。[アウトボックスの説明](./10-scheduled-jobs.md#アウトボックス-メールプッシュ通知キャッシュの再検証)のとおり、メール、プッシュ通知、キャッシュの再検証はすべてアウトボックスを通じて送られます。各メトリクスには、エントリーの種類が`outbox.event_type`として付きます。
 
 | メトリクス | 数えるもの | 見るべき点 |
 | --- | --- | --- |
@@ -138,7 +138,7 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 | `publira.outbox.events.claimed` | ワーカーが送信のためにエントリーを取り出した回数。再試行や再開でエントリーを取り出すたびにもう一度数えるので、すべてのエントリーが送れていても`done`より速く増えます | — |
 | `publira.outbox.events.done` | 送信できたエントリー | — |
 | `publira.outbox.events.resumed` | 多数の読者へのプッシュ通知のように、処理の一部を終えたあと、残りを後で続けるために戻されたエントリー | — |
-| `publira.outbox.handler.duration` | 1回の試行にかかった時間(秒) | 増えている場合は、SMTPサーバー、`email-renderer`、Webアプリのいずれかが遅くなっています |
+| `publira.outbox.handler.duration` | 1回の試行にかかった時間 (秒) | 増えている場合は、SMTPサーバー、`email-renderer`、Webアプリのいずれかが遅くなっています |
 
 これらのカウンターが示すのはワーカーが行った処理で、まだ待っているエントリーではありません。送信を止めたワーカーは何も報告せず、その`/readyz`も異常に気づきません。`/readyz`が確認するのはデータベースログインで、エントリーが処理されているかどうかではないからです。待っているエントリーを確認するには、データベースの[管理用ログイン](../2-deployments/2-installing.md#サービスを用意する)で`psql`から接続し、実行予定時刻を過ぎても送られていないエントリーと、取り出されたまま終わっていないエントリーを数えます。
 

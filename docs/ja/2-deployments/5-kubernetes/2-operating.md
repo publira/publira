@@ -20,7 +20,7 @@ GatewayにHTTPSリスナーを2つ追加します。テナントのドメイン�
 
 ### Ingressの場合
 
-テナントのドメインを`web-storefront`のIngressの`tls`エントリーとルールに、管理画面のホストを`web-admin`のIngressの`tls`エントリーとルールに追加し、両方を`api-not-found`の`tls`エントリーとルールにも追加します。[Ingressを使う場合](./1-edge.md#ingressを使う場合)で定義したYAMLアンカー(`&storefront-paths`、`&admin-paths`、`&not-found-paths`)を使えば、新しいルールでも`paths: *storefront-paths`のようにパスを使い回せます。`tls`エントリーが変わると、cert-managerが新しいホスト名の証明書を発行します。
+テナントのドメインを`web-storefront`のIngressの`tls`エントリーとルールに、管理画面のホストを`web-admin`のIngressの`tls`エントリーとルールに追加し、両方を`api-not-found`の`tls`エントリーとルールにも追加します。[Ingressを使う場合](./1-edge.md#ingressを使う場合)で定義したYAMLアンカー (`&storefront-paths`、`&admin-paths`、`&not-found-paths`) を使えば、新しいルールでも`paths: *storefront-paths`のようにパスを使い回せます。`tls`エントリーが変わると、cert-managerが新しいホスト名の証明書を発行します。
 
 ## テナントのドメインから管理画面の認証情報を切り離す
 

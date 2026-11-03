@@ -77,8 +77,8 @@ Caddyの`rate_limit`ブロックには[`caddy-ratelimit`](https://github.com/mho
 | --- | --- |
 | `web-storefront` | `web-storefront`の待ち受けているポート |
 | `web-admin` | `web-admin`の待ち受けているポート |
-| `web-platform` | `web-platform`の待ち受けているポート(動かす場合) |
-| `api` | `publira server`のポート`8000`(`PUBLIRA_PUBLIC_API_ADDR`で別のポートを指定したならそのポート) |
+| `web-platform` | `web-platform`の待ち受けているポート (動かす場合) |
+| `api` | `publira server`のポート`8000` (`PUBLIRA_PUBLIC_API_ADDR`で別のポートを指定したならそのポート) |
 
 ## ホスト名のリスト
 
@@ -89,7 +89,7 @@ Caddyの`rate_limit`ブロックには[`caddy-ratelimit`](https://github.com/mho
 | `PUBLIRA_EDGE_SITE_HOSTS` | 全テナントのドメイン | `web-storefront` |
 | `PUBLIRA_EDGE_ADMIN_HOSTS` | 全テナントの管理画面のホスト | `web-admin` |
 | `PUBLIRA_EDGE_PLATFORM_HOSTS` | プラットフォーム管理画面のホスト | `web-platform` |
-| `PUBLIRA_EDGE_IMAGE_HOSTS` | 全テナントの画像ホスト | `publira server`(`/images`だけ) |
+| `PUBLIRA_EDGE_IMAGE_HOSTS` | 全テナントの画像ホスト | `publira server` (`/images`だけ) |
 
 ```text
 PUBLIRA_EDGE_SITE_HOSTS=comics.example.com manga.example.org
@@ -130,7 +130,7 @@ Traefikは前段から届いたこの3つをすべて信頼し、Webアプリは
 
 | 構成 | 前段のアドレスを書く場所 |
 | --- | --- |
-| Traefik | `traefik.yaml`の`web`エントリーポイント(前段が別のエントリーポイントに接続するならそのエントリーポイント)の`forwardedHeaders.trustedIPs`。同じアドレスを、Traefikのプロセスの環境の`PUBLIRA_EDGE_TRUSTED_PROXIES`にもスペース区切りで設定します。`dynamic/routes.yaml`はこの変数を読み、前段の伝えた地域を引き継ぎ、前段が伝えたアドレスで読者ごとのリクエストを数えます |
+| Traefik | `traefik.yaml`の`web`エントリーポイント (前段が別のエントリーポイントに接続するならそのエントリーポイント) の`forwardedHeaders.trustedIPs`。同じアドレスを、Traefikのプロセスの環境の`PUBLIRA_EDGE_TRUSTED_PROXIES`にもスペース区切りで設定します。`dynamic/routes.yaml`はこの変数を読み、前段の伝えた地域を引き継ぎ、前段が伝えたアドレスで読者ごとのリクエストを数えます |
 | nginx | `default.conf.template`の先頭近くの`set_real_ip_from`と、その下の`real_ip_header`と`real_ip_recursive`。`set_real_ip_from`はアドレスか範囲ごとに1行ずつ書きます。その下の`geo`ブロックにも、同じアドレスを末尾が` 1;`の行で1つずつ書きます |
 | Caddy | Caddyのプロセスの環境の`PUBLIRA_EDGE_TRUSTED_PROXIES`に、アドレスをスペース区切りで設定します。Caddyfileのグローバルオプションの`trusted_proxies static`がこれを読みます |
 | Docker Composeの構成 | `.env`の`PUBLIRA_EDGE_TRUSTED_PROXIES`。[CDNやロードバランサーを前に置く場合](../3-docker-compose.md#cdnやロードバランサーを前に置く場合)で説明しています |

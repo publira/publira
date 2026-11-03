@@ -259,13 +259,62 @@ const checkKeys = (record: JsonObject, translated: boolean): string[] => {
   ];
 };
 
-const checkText = (record: JsonObject): string[] =>
+/** What a half-width parenthesis in prose is set off from by a space. */
+const WORD = /[\p{L}\p{N}]/u;
+
+/**
+ * The trees whose prose sets a half-width parenthesis off with a space, as the
+ * `AGENTS.md` at each one's root says. Korean attaches a particle straight to
+ * one, and Chinese uses full-width parentheses.
+ */
+const SPACED_PARENTHESES = new Set([`${DOCS}/ja`]);
+
+const spacesParentheses = (file: string): boolean =>
+  SPACED_PARENTHESES.has(treeOf(file));
+
+/**
+ * The positions in a run of prose where a half-width parenthesis touches a
+ * letter or a digit on its outer side, as `表示されます(任意)` does. Text
+ * quoted in 「」 is screen text and keeps the catalog's characters, so a
+ * parenthesis inside it is left alone.
+ */
+const gluedParentheses = (chars: readonly string[]): number[] => {
+  let quoted = 0;
+
+  return chars.flatMap((char, index) => {
+    if (char === "「") {
+      quoted += 1;
+    } else if (char === "」") {
+      quoted = Math.max(quoted - 1, 0);
+    }
+
+    if (quoted > 0 || (char !== "(" && char !== ")")) {
+      return [];
+    }
+
+    const outside = chars[char === "(" ? index - 1 : index + 1];
+
+    return outside && WORD.test(outside) ? [index] : [];
+  });
+};
+
+const GLUED_PARENTHESIS =
+  "A half-width parenthesis touches a letter or a digit outside it. Set it off with a space on its outer side, unless punctuation is there.";
+
+const checkText = (record: JsonObject, spaced: boolean): string[] =>
   ["title", "description"].flatMap((key) => {
     const value = record[key];
 
-    return key in record &&
-      (!isJsonString(value) || value.trim() === "" || value.includes("\n"))
-      ? [`\`${key}\` is not a single line of text.`]
+    if (!(key in record)) {
+      return [];
+    }
+
+    if (!isJsonString(value) || value.trim() === "" || value.includes("\n")) {
+      return [`\`${key}\` is not a single line of text.`];
+    }
+
+    return spaced && gluedParentheses([...value]).length > 0
+      ? [`\`${key}\`: ${GLUED_PARENTHESIS}`]
       : [];
   });
 
@@ -388,7 +437,7 @@ const checkFrontmatter = (
   return {
     findings: [
       ...checkKeys(values, translated),
-      ...checkText(values),
+      ...checkText(values, spacesParentheses(file)),
       ...checkDates(values),
       ...messages,
     ].map((message) => ({ file, line: 1, message })),
@@ -525,6 +574,64 @@ export const headingAnchors = (source: string): string[] => {
   return anchors;
 };
 
+interface Glyph {
+  char: string;
+  line: number;
+}
+
+/**
+ * The characters a reader sees in a run of phrasing content, each with its
+ * line. Inline code stands as one word, since its own parentheses are code. A
+ * bold label is screen text and keeps the catalog's characters, so its
+ * parentheses are masked, while its letters still count beside a parenthesis
+ * outside it.
+ */
+const glyphsOf = (node: Nodes): Glyph[] => {
+  const line = node.position?.start.line ?? 1;
+
+  if (node.type === "text") {
+    let current = line;
+
+    return [...node.value].map((char) => {
+      const glyph = { char, line: current };
+
+      if (char === "\n") {
+        current += 1;
+      }
+
+      return glyph;
+    });
+  }
+
+  if (node.type === "inlineCode") {
+    return [{ char: "x", line }];
+  }
+
+  if (node.type === "break") {
+    return [{ char: "\n", line }];
+  }
+
+  if (
+    node.type !== "strong" &&
+    node.type !== "emphasis" &&
+    node.type !== "delete" &&
+    node.type !== "link" &&
+    node.type !== "linkReference"
+  ) {
+    return [];
+  }
+
+  const glyphs = node.children.flatMap(glyphsOf);
+
+  return node.type === "strong"
+    ? glyphs.map((glyph) =>
+        glyph.char === "(" || glyph.char === ")"
+          ? { ...glyph, char: " " }
+          : glyph
+      )
+    : glyphs;
+};
+
 /** What {@link checkPage} finds in a page, and what it leaves to the tree. */
 export interface CheckedPage {
   findings: Finding[];
@@ -573,6 +680,7 @@ export const checkPage = (file: string, source: string): CheckedPage => {
   );
 
   const tree = parseMarkdown(source);
+  const spaced = spacesParentheses(file);
   visit(tree, (node) => {
     const line = node.position?.start.line ?? 1;
 
@@ -599,6 +707,15 @@ export const checkPage = (file: string, source: string): CheckedPage => {
       });
     }
 
+    if (
+      spaced &&
+      (node.type === "image" || node.type === "imageReference") &&
+      node.alt &&
+      gluedParentheses([...node.alt]).length > 0
+    ) {
+      findings.push({ file, line, message: GLUED_PARENTHESIS });
+    }
+
     // CommonMark does not close `**` between punctuation and a letter, nor
     // open it between a letter and punctuation, and a CJK character counts as
     // a letter, so a bold label ending in `)` that runs straight into Japanese
@@ -608,8 +725,25 @@ export const checkPage = (file: string, source: string): CheckedPage => {
         file,
         line,
         message:
-          "A `**` is left as text, so a reader sees the asterisks instead of bold. A `**` with punctuation on its inner side opens or closes only with a space or punctuation on its outer side: reword so one is there, or put the bold label in brackets such as 「」.",
+          "A `**` is left as text, so a reader sees the asterisks instead of bold. A `**` with punctuation on its inner side opens or closes only with a space or punctuation on its outer side, so set a bold label that starts or ends with a parenthesis off with a space.",
       });
+    }
+
+    if (
+      spaced &&
+      (node.type === "heading" ||
+        node.type === "paragraph" ||
+        node.type === "tableCell")
+    ) {
+      const glyphs = node.children.flatMap(glyphsOf);
+
+      const lines = gluedParentheses(glyphs.map(({ char }) => char)).map(
+        (index) => glyphs[index]?.line ?? line
+      );
+
+      for (const glued of new Set(lines)) {
+        findings.push({ file, line: glued, message: GLUED_PARENTHESIS });
+      }
     }
   });
 

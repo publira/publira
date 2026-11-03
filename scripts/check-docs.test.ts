@@ -27,6 +27,21 @@ const messages = (source: string): string[] =>
     (finding) => finding.message
   );
 
+// The lines of the findings whose message matches, in a page of docs/ja/. The
+// cases that read it are Japanese prose: a CJK character beside `**` or a
+// parenthesis is the behaviour under test.
+const linesOf = (
+  frontmatter: string[],
+  body: string[],
+  message: RegExp
+): number[] =>
+  checkPage(
+    "docs/ja/1-page.md",
+    page([...frontmatter, "source_updated: 2026-10-04"], body)
+  )
+    .findings.filter((finding) => message.test(finding.message))
+    .map((finding) => finding.line ?? 0);
+
 describe("checkPage", () => {
   it("accepts a page with every required key", () => {
     assert.deepEqual(messages(page(VALID)), []);
@@ -179,32 +194,99 @@ describe("checkPage", () => {
     assert.match(reported[0]?.message ?? "", /no alt text/u);
   });
 
-  // A CJK character is what CommonMark reads as a letter here, so the case is
-  // Japanese prose.
   it("reports a `**` that opens or closes no bold, and not one that does or sits in code", () => {
-    const reported = checkPage(
-      "docs/ja/1-page.md",
-      page(
-        [...VALID, "source_updated: 2026-10-04"],
+    assert.deepEqual(
+      linesOf(
+        VALID,
         [
           "タブには**(未追加)**と表示されます。",
           "",
-          "タブには「**(未追加)**」と表示されます。",
+          "タブには **(未追加)** と表示されます。",
           "",
           "**理由(任意)**に入力します。`**/*.md`を対象にします。",
+          "",
+          "**理由(任意)** に入力します。",
           "",
           "```bash",
           "ls **/*.md",
           "```",
-        ]
-      )
-    ).findings;
-
-    assert.deepEqual(
-      reported.map((finding) => finding.line),
+        ],
+        /`\*\*` is left as text/u
+      ),
       [8, 12]
     );
-    assert.match(reported[0]?.message ?? "", /`\*\*` is left as text/u);
+  });
+
+  it("reports a half-width parenthesis a letter or a digit touches outside it", () => {
+    assert.deepEqual(
+      linesOf(
+        VALID,
+        [
+          "乱数(16進数)です。",
+          "",
+          "乱数 (16進数) です。",
+          "",
+          "乱数 (16進数)、または`base64` (標準)。",
+          "",
+          "`k1`(上のキーのID)",
+          "",
+          "[Amazon ECS(Fargate)](./1-page.md)の手順です。",
+          "",
+          "[Amazon ECS (Fargate)](./1-page.md) の手順です。",
+          "",
+          "| 項目 | 説明 |",
+          "| --- | --- |",
+          "| 乱数(16進数) | なし |",
+          "",
+          "## アウトボックス(メール)",
+          "",
+          "![「有効期限(日数)」の欄と、保存ボタン(青)がある。](./1-page.png)",
+        ],
+        /half-width parenthesis/u
+      ),
+      [8, 14, 16, 22, 24, 26]
+    );
+  });
+
+  it("leaves a parenthesis in screen text, in bold or in 「」, as the catalog writes it", () => {
+    assert.deepEqual(
+      linesOf(
+        VALID,
+        [
+          "**理由(任意)** に入力します。",
+          "",
+          "タブには「**(未追加)**」と表示されます。",
+          "",
+          "「保存済み(非表示)」と表示されます。",
+        ],
+        /half-width parenthesis/u
+      ),
+      []
+    );
+  });
+
+  it("leaves the parentheses of a tree that does not space them", () => {
+    const source = page(
+      [...VALID, "source_updated: 2026-10-04"],
+      ["이유(선택)에 입력합니다."]
+    );
+
+    assert.deepEqual(checkPage("docs/ko/1-page.md", source).findings, []);
+  });
+
+  it("reports a half-width parenthesis a letter touches in the title or the description", () => {
+    assert.deepEqual(
+      linesOf(
+        [
+          "title: Amazon ECS(Fargate)",
+          "description: Amazon ECS (Fargate) で動かします。",
+          "published: 2026-10-04",
+        ],
+        ["## 概要"],
+        /half-width parenthesis/u
+      ),
+      [1]
+    );
   });
 
   it("does not read a `#` inside a code block as a heading", () => {
