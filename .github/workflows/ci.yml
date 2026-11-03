@@ -262,6 +262,8 @@ jobs:
               - *docs_excluded
               - 'mobile/**'
               - 'e2e/compose.yaml'
+              # The image the server runs in.
+              - 'e2e/server/**'
               - 'e2e/scripts/db-setup.sh'
               - 'e2e/scripts/down.sh'
               - 'e2e/scripts/lib.sh'
@@ -341,6 +343,7 @@ jobs:
               - 'db/query/platform_search.sql'
               - 'infra/docker/opensearch/**'
               - 'e2e/compose.yaml'
+              - 'e2e/server/**'
               - 'e2e/scripts/**'
               - 'e2e/Taskfile.yaml'
               - 'e2e/playwright.config.ts'
@@ -373,6 +376,7 @@ jobs:
               - 'scripts/storage-init.sh'
               - 'scripts/storage-seed.sh'
               - 'e2e/compose.yaml'
+              - 'e2e/server/**'
               - 'e2e/scripts/**'
               - 'e2e/Taskfile.yaml'
               - 'e2e/playwright.config.ts'
