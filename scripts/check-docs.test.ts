@@ -179,6 +179,34 @@ describe("checkPage", () => {
     assert.match(reported[0]?.message ?? "", /no alt text/u);
   });
 
+  // A CJK character is what CommonMark reads as a letter here, so the case is
+  // Japanese prose.
+  it("reports a `**` that opens or closes no bold, and not one that does or sits in code", () => {
+    const reported = checkPage(
+      "docs/ja/1-page.md",
+      page(
+        [...VALID, "source_updated: 2026-10-04"],
+        [
+          "タブには**(未追加)**と表示されます。",
+          "",
+          "タブには「**(未追加)**」と表示されます。",
+          "",
+          "**理由(任意)**に入力します。`**/*.md`を対象にします。",
+          "",
+          "```bash",
+          "ls **/*.md",
+          "```",
+        ]
+      )
+    ).findings;
+
+    assert.deepEqual(
+      reported.map((finding) => finding.line),
+      [8, 12]
+    );
+    assert.match(reported[0]?.message ?? "", /`\*\*` is left as text/u);
+  });
+
   it("does not read a `#` inside a code block as a heading", () => {
     assert.deepEqual(
       messages(page(VALID, ["```bash", "# A shell comment", "```"])),

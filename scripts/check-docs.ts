@@ -598,6 +598,19 @@ export const checkPage = (file: string, source: string): CheckedPage => {
           "The image has no alt text. Say what it shows in the brackets, for a reader who cannot see it.",
       });
     }
+
+    // CommonMark does not close `**` between punctuation and a letter, nor
+    // open it between a letter and punctuation, and a CJK character counts as
+    // a letter, so a bold label ending in `)` that runs straight into Japanese
+    // prose is left as asterisks on the page.
+    if (node.type === "text" && node.value.includes("**")) {
+      findings.push({
+        file,
+        line,
+        message:
+          "A `**` is left as text, so a reader sees the asterisks instead of bold. A `**` with punctuation on its inner side opens or closes only with a space or punctuation on its outer side: reword so one is there, or put the bold label in brackets such as 「」.",
+      });
+    }
   });
 
   return { findings, links: collectLinks(tree), redirects, revision };
