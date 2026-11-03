@@ -2,6 +2,7 @@
 title: 兩步驟驗證
 description: 要求租戶工作人員與平台主控台營運人員使用兩步驟驗證，並復原遺失第二驗證要素的帳戶。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-10-21
 ---
 
@@ -33,7 +34,7 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 每位營運人員都可以用相同的方式，從**帳戶設定**上的**兩步驟驗證**，以驗證器應用程式和十組復原碼保護自己的平台主控台帳戶，如[營運人員自己的帳戶](../1-platform-console.md#營運人員自己的帳戶)所述。
 
-無論角色為何，您都可以要求每位營運人員使用它：在**政策**下的**安全性**上勾選**要求Platform Console的所有營運人員使用兩步驟驗證**，然後選擇**儲存安全性政策**，或執行：
+無論角色為何，您都可以要求每位營運人員使用它：在**政策**下的**安全性**上勾選**要求平台主控台的所有營運人員使用兩步驟驗證**，然後選擇**儲存安全性政策**，或執行：
 
 ```bash
 publiractl policy set --mfa-required-for-platform-operator

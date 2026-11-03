@@ -2,6 +2,7 @@
 title: 租戶主控台
 description: 出版社工作人員用來經營網站的主控台、誰可以使用其中哪些部分，以及如何登入。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-11-02
 ---
 
@@ -35,11 +36,11 @@ source_updated: 2026-11-02
 
 ## 本節內容
 
-- [發布作品](./1-catalog/index.md)：從空的作品目錄到讀者可以開啟的第一個章節，以及構成作品目錄的系列、章節、品牌、作者、作者角色與類型。
+- [發布作品](./1-catalog/index.md)：從空的作品目錄到讀者可以開啟的第一個章節，以及構成作品目錄的系列、章節、書系、作者、作者角色與類型。
 - [讀者、留言與諮詢](./2-readers/index.md)：暫停與刪除讀者的帳戶、處理留言的審核與檢舉佇列、回覆諮詢，以及以閱讀券向讀者開放付費章節。
 - [設定租戶](./3-setup/index.md)：透過設定、品牌形象、頁面、公告、活動橫幅、成員、郵件伺服器、稽核記錄與您自己的帳戶，讓新租戶成為具有出版社風格、法律頁面與工作人員的網站。
 - [販售章節](./4-selling-episodes.md)：為章節定價、透過Stripe或PAY.JP收款、章節在哪裡販售、應用程式內購買、退款，以及正式上線前測試設定。
-- [訂閱方案](./5-subscription-plans.md)：向讀者販售透過Stripe按期計費、開放整個作品目錄、部分品牌或部分系列的方案，它在Stripe中所需的Price與webhook事件，以及訂閱者在網站上會做什麼。
+- [訂閱方案](./5-subscription-plans.md)：向讀者販售透過Stripe按期計費、開放整個作品目錄、部分書系或部分系列的方案，它在Stripe中所需的Price與webhook事件，以及訂閱者在網站上會做什麼。
 - [報表與版稅](./6-reports-and-royalties.md)：儀表板與分析畫面計算的項目、每位作者的版稅如何計算、將一個月結算為明細，以及匯出為CSV。
 - [使用Apple與Google登入](./7-sign-in.md)：讓讀者以Apple或Google帳戶登入網站與應用程式，以及為此需要在Apple與Google的主控台中建立什麼。
 - [Google代碼](./8-google-tag.md)：以Google Analytics或Google Tag Manager評估網站成效、代碼可以從哪三個地方載入，以及要在Google Tag Manager中為閘道設定什麼。

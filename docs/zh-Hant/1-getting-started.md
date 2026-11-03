@@ -2,6 +2,7 @@
 title: 快速入門
 description: Publira是什麼、由誰營運，以及該從哪裡開始閱讀。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-10-22
 ---
 
@@ -26,5 +27,5 @@ Publira是讓出版社以自有品牌經營的漫畫販售與發行平台。出�
 
 - [部署](./2-deployments/index.md)說明安裝實例由哪些部分組成，以及如何讓它開始提供服務。
 - [營運](./3-operations/index.md)說明安裝實例開始提供服務後的營運工作：新增租戶、授予其工作人員存取權，以及平台主控台的營運人員。
-- [租戶主控台](./4-console/index.md)說明出版社工作人員用來經營網站的主控台，並從[發布作品](./4-console/1-catalog/index.md)開始：系列、其章節，以及系列所掛名的品牌與作者。
+- [租戶主控台](./4-console/index.md)說明出版社工作人員用來經營網站的主控台，並從[發布作品](./4-console/1-catalog/index.md)開始：系列、其章節，以及系列所掛名的書系與作者。
 - [行動應用程式](./5-mobile-app/index.md)說明如何建置租戶自有的iOS與Android應用程式，並在App Store與Google Play上架。
