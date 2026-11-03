@@ -36,12 +36,36 @@ abstract class ShareSheet {
   });
 }
 
+/// Resolves the app's cache, which [PluginShareSheet.shareFileStream] writes
+/// into. Injected so a test can point one at a temporary directory instead.
+typedef ShareCacheResolver = Future<Directory> Function();
+
+/// Opens the platform share sheet on [params]. Injected so a test can stand in
+/// for the plugin.
+typedef SharePresenter = Future<void> Function(ShareParams params);
+
+Future<void> _presentWithPlugin(ShareParams params) =>
+    SharePlus.instance.share(params);
+
 /// [ShareSheet] backed by the `share_plus` plugin.
 class PluginShareSheet implements ShareSheet {
-  const PluginShareSheet();
+  const PluginShareSheet({
+    this._cache = getTemporaryDirectory,
+    this._present = _presentWithPlugin,
+  });
+
+  final ShareCacheResolver _cache;
+  final SharePresenter _present;
 
   /// The directory of the app's cache [shareFileStream] writes into.
   static const _streamedDirectoryName = 'shared-files';
+
+  /// The directories of the [shareFileStream] calls still writing or sharing,
+  /// which a call starting meanwhile leaves alone. A screen that hands over a
+  /// download can be disposed while it is under way and offer another, and
+  /// the two must not remove or overwrite each other's file.
+  static final _inUse = <String>{};
+  static var _calls = 0;
 
   @override
   Future<void> share({
@@ -52,7 +76,7 @@ class PluginShareSheet implements ShareSheet {
     // The plugin will not take a URI and a message together, so the canonical
     // address rides in the text a recipient pastes, under the wording the
     // catalog wrote for this work.
-    return SharePlus.instance.share(
+    return _present(
       ShareParams(text: '$text\n$url', title: title, subject: title),
     );
   }
@@ -67,7 +91,7 @@ class PluginShareSheet implements ShareSheet {
     // The plugin writes data it is handed into the temporary directory under
     // a name of its own unless one is given here; the file's own name is read
     // on the web only.
-    return SharePlus.instance.share(
+    return _present(
       ShareParams(
         files: [XFile.fromData(bytes, mimeType: mimeType, name: name)],
         fileNameOverrides: [name],
@@ -84,35 +108,49 @@ class PluginShareSheet implements ShareSheet {
     required String mimeType,
     required String title,
   }) async {
-    final cache = await getTemporaryDirectory();
-    final directory = Directory('${cache.path}/$_streamedDirectoryName');
-    // Only the file shared last is kept. The app the reader picks may still be
-    // reading it after the sheet has closed, so it cannot be removed then, and
-    // the one before it is a copy the reader has already saved or sent on.
-    if (await directory.exists()) {
-      await directory.delete(recursive: true);
-    }
-    await directory.create(recursive: true);
-    final file = File('${directory.path}/$name');
-    final sink = file.openWrite();
-    try {
-      await sink.addStream(bytes);
-      await sink.close();
-    } on Object {
-      try {
-        await sink.close();
-      } on FileSystemException {
-        // The file is removed with its directory all the same.
-      }
-      await directory.delete(recursive: true);
-      rethrow;
-    }
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path, mimeType: mimeType, name: name)],
-        title: title,
-        subject: title,
-      ),
+    final root = Directory('${(await _cache()).path}/$_streamedDirectoryName');
+    // Named, and claimed, before anything is created or removed, so no call
+    // can take this one's directory for one left behind.
+    final directory = Directory(
+      '${root.path}/${DateTime.now().microsecondsSinceEpoch}-${_calls++}',
     );
+    _inUse.add(directory.path);
+    try {
+      // Only the files of the calls still under way and of the one shared last
+      // are kept. The app the reader picks may still be reading a file after
+      // the sheet has closed, so it cannot be removed then, and an older one is
+      // a copy the reader has already saved or sent on.
+      if (await root.exists()) {
+        await for (final entry in root.list()) {
+          if (!_inUse.contains(entry.path)) {
+            await entry.delete(recursive: true);
+          }
+        }
+      }
+      await directory.create(recursive: true);
+      final file = File('${directory.path}/$name');
+      final sink = file.openWrite();
+      try {
+        await sink.addStream(bytes);
+        await sink.close();
+      } on Object {
+        try {
+          await sink.close();
+        } on FileSystemException {
+          // The file is removed with its directory all the same.
+        }
+        await directory.delete(recursive: true);
+        rethrow;
+      }
+      await _present(
+        ShareParams(
+          files: [XFile(file.path, mimeType: mimeType, name: name)],
+          title: title,
+          subject: title,
+        ),
+      );
+    } finally {
+      _inUse.remove(directory.path);
+    }
   }
 }
