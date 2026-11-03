@@ -74,6 +74,18 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
       updated_at = NOW();
 "
 
+# A reader may ask for one archive of their data an hour and a day. The member
+# settings suite asks once per attempt, so a retry, or a second run against the
+# same stack, would be refused before it reached what it asserts.
+e2e_log "widening the data export limit of the platform policy"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
+  UPDATE platform_policy_config
+  SET data_export_limit_per_hour = 100,
+      data_export_limit_per_day = 100,
+      revision = revision + 1,
+      updated_at = NOW();
+"
+
 # No disposable-domain list ships with the server, so the stack names the one
 # the sign-in-provider stand-in serves, as an operator names a maintained list.
 # A tenant refuses nothing from it until it switches the list on, which only

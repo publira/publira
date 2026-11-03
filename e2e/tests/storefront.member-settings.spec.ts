@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { Locator, Page } from "@playwright/test";
@@ -72,6 +73,29 @@ const emailChangeSection = (page: Page) =>
 const passwordChangeSection = (page: Page) =>
   page.getByRole("region", { name: "Change password" });
 
+/** The section of `/settings` that asks for and downloads the reader's data. */
+const dataExportSection = (page: Page) =>
+  page.getByRole("region", { name: "Download your data" });
+
+/** The four bytes every ZIP file opens with: `PK\x03\x04`. */
+const ZIP_SIGNATURE = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
+/**
+ * A request the worker has taken up and is still building. The claim is fresh,
+ * so no worker takes the request over until it grows stale, a quarter of an
+ * hour on: that is what holds the section on its pending state for as long as
+ * the test looks, where a request made from the screen could be built in the
+ * worker's next pass, between the click and the read.
+ */
+const insertClaimedDataExport = (): void => {
+  querySql(`
+    INSERT INTO user_data_exports (id, tenant_id, user_id, claimed_at)
+    SELECT gen_random_uuid(), u.tenant_id, u.id, NOW()
+    FROM users u
+    WHERE u.public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';
+  `);
+};
+
 const emailChangeTokenCount = (): string =>
   querySql(`
     SELECT COUNT(*)
@@ -142,7 +166,7 @@ const turnCellOff = async (cell: Locator): Promise<void> => {
  *
  * Every test here rewrites the account it signs in as — the display name, the
  * notification preferences, the follow list, the password, the browser this
- * reader has registered for push — so the suite owns a member no other spec
+ * reader has registered for push, the archives of their data — so the suite owns a member no other spec
  * signs in as, and re-applies its scenario afterwards to put the starting
  * values back. `mode: "serial"` stops a failed write from being read back as a
  * pass by the test after it. The password test re-applies that scenario itself
@@ -269,6 +293,67 @@ test.describe("web-storefront member settings", () => {
       page.getByRole("button", { name: "Upload icon" })
     ).toBeVisible();
     expect(memberField("icon_image_id")).toBe("");
+  });
+
+  test("the basic settings screen asks for the reader's data and downloads it once the worker has built it", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings");
+
+    const section = dataExportSection(page);
+    await section.getByRole("button", { name: "Request a copy" }).click();
+    await expectFlash(
+      page,
+      "status",
+      "Your request was received. You are told when your data is ready to download."
+    );
+
+    // The worker looks for requests every ten seconds, and the section reads
+    // the request afresh on every load.
+    const download = section.getByRole("link", { name: "Download your data" });
+    await expect(async () => {
+      await page.reload();
+      await expect(download).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 60_000 });
+    await expect(
+      section.getByText(/^Your copy is ready\. You can download it until /u)
+    ).toBeVisible();
+
+    // Streamed through the storefront's Route Handler, which reads it from the
+    // API: the bucket the archive is kept in is never named to the browser.
+    const [archive] = await Promise.all([
+      page.waitForEvent("download"),
+      download.click(),
+    ]);
+
+    expect(archive.suggestedFilename()).toBe("data-export.zip");
+    const bytes = await readFile(await archive.path());
+    expect(bytes.subarray(0, ZIP_SIGNATURE.length)).toEqual(ZIP_SIGNATURE);
+
+    // The inbox tells the reader, and takes them back to the section. The
+    // notice is written by the outbox drain after the archive is recorded, so
+    // it can land a few seconds after the download is offered.
+    const notice = page
+      .getByRole("main")
+      .getByRole("link", { name: "Your data is ready" });
+
+    await expect(async () => {
+      await page.goto(storefrontUrl("/notifications"));
+      await expect(notice).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
+    await notice.click();
+    await expect(page).toHaveURL(/\/settings$/u);
+    await expect(download).toBeVisible();
+
+    // While a request is being built, the section says so and offers no way to
+    // ask again, since the API would refuse a second open request.
+    insertClaimedDataExport();
+    await page.reload();
+    await expect(
+      section.getByText(/^A copy of your data is being prepared\./u)
+    ).toBeVisible();
+    await expect(section.getByRole("button")).toHaveCount(0);
+    await expect(download).toBeHidden();
   });
 
   test("the notification grid saves one cell off and leaves every other cell as it was", async ({

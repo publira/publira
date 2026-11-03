@@ -551,6 +551,18 @@
       }
     },
     {
+      "name": "Asking for an archive of everything the site keeps about the reader, and downloading it",
+      "web": {
+        "routes": ["[locale]/(site)/settings", "api/v1/my/data-export"],
+        "rpcs": [
+          "RequestMyDataExport",
+          "GetMyDataExport",
+          "DownloadMyDataExport"
+        ]
+      },
+      "exception": "Not in the app yet: #5020."
+    },
+    {
       "name": "An Author's own pages: figures and closed statements",
       "web": {
         "routes": [

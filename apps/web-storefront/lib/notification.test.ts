@@ -30,6 +30,10 @@ vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
 }));
 
+vi.mock("./tenant", () => ({
+  getTenantDisplayTimeZone: () => Promise.resolve("Asia/Tokyo"),
+}));
+
 const notification = (id: string, createdAt: string) => ({
   createdAt,
   id,

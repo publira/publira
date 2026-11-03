@@ -8,6 +8,7 @@ import {
 
 const JA = "ja" as const;
 const EN = "en" as const;
+const TIME_ZONE = "Asia/Tokyo";
 
 describe("parseNotificationPayload", () => {
   it("Extract only known fields", () => {
@@ -76,7 +77,8 @@ describe("notificationDisplay", () => {
           series_id: "SR01",
           series_title: "Series A",
         },
-        EN
+        EN,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description: "“Episode 1” (Series A) is now available.",
@@ -94,7 +96,8 @@ describe("notificationDisplay", () => {
           series_id: "SR01",
           series_title: "Work A",
         },
-        JA
+        JA,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description: "「Chapter 1」(Work A)が公開されました。",
@@ -113,7 +116,8 @@ describe("notificationDisplay", () => {
           series_id: "SR01",
           series_title: "Series A",
         },
-        EN
+        EN,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description:
@@ -134,7 +138,8 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "comment_hidden",
         { ...payload, hidden_reason: "staff" as const },
-        EN
+        EN,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description: "Your comment on “Episode 1” was removed by the operator.",
@@ -146,7 +151,8 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "comment_hidden",
         { ...payload, hidden_reason: "auto_reports" as const },
-        EN
+        EN,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description:
@@ -156,7 +162,7 @@ describe("notificationDisplay", () => {
     });
 
     await expect(
-      notificationDisplay("comment_hidden", payload, EN)
+      notificationDisplay("comment_hidden", payload, EN, TIME_ZONE)
     ).resolves.toEqual({
       description: "Your comment on “Episode 1” was removed.",
       href: "/series/SR01/episodes/EP01",
@@ -166,7 +172,7 @@ describe("notificationDisplay", () => {
 
   it("still words a comment row when the payload carries no title", async () => {
     await expect(
-      notificationDisplay("comment_approved", {}, JA)
+      notificationDisplay("comment_approved", {}, JA, TIME_ZONE)
     ).resolves.toEqual({
       description: "エピソードへのコメントが公開されました。",
       href: undefined,
@@ -179,7 +185,8 @@ describe("notificationDisplay", () => {
       notificationDisplay(
         "announcement_posted",
         { announcement_title: "Scheduled maintenance" },
-        EN
+        EN,
+        TIME_ZONE
       )
     ).resolves.toEqual({
       description: "“Scheduled maintenance” was posted by the operator.",
@@ -190,7 +197,12 @@ describe("notificationDisplay", () => {
 
   it("keeps the announcement row on the inbox when the payload carries no title", async () => {
     await expect(
-      notificationDisplay("announcement_posted", { series_id: "SR01" }, EN)
+      notificationDisplay(
+        "announcement_posted",
+        { series_id: "SR01" },
+        EN,
+        TIME_ZONE
+      )
     ).resolves.toEqual({
       description: "The operator posted a new announcement.",
       href: "/announcements",
@@ -198,9 +210,48 @@ describe("notificationDisplay", () => {
     });
   });
 
+  it("names the day a ready archive expires, in the tenant's zone, and opens the account settings", async () => {
+    await expect(
+      notificationDisplay(
+        "data_export_ready",
+        parseNotificationPayload(
+          JSON.stringify({ expires_at: "2026-11-09T18:00:00Z" })
+        ),
+        EN,
+        TIME_ZONE
+      )
+    ).resolves.toEqual({
+      description:
+        "The copy of your data you asked for is ready. Download it from your account settings by Nov 10, 2026.",
+      href: "/settings",
+      title: "Your data is ready",
+    });
+  });
+
+  it("still words a ready archive whose payload carries no expiry it can read", async () => {
+    await expect(
+      notificationDisplay(
+        "data_export_ready",
+        parseNotificationPayload(JSON.stringify({ expires_at: "next week" })),
+        EN,
+        TIME_ZONE
+      )
+    ).resolves.toEqual({
+      description:
+        "The copy of your data you asked for is ready. Download it from your account settings.",
+      href: "/settings",
+      title: "Your data is ready",
+    });
+  });
+
   it("Don't drop unknown types and make them generic", async () => {
     await expect(
-      notificationDisplay("episode_publish_failed", { series_id: "SR01" }, EN)
+      notificationDisplay(
+        "episode_publish_failed",
+        { series_id: "SR01" },
+        EN,
+        TIME_ZONE
+      )
     ).resolves.toEqual({
       description: "No further details.",
       href: "/series/SR01",

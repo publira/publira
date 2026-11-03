@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatPlainDate } from "@publira/utils";
+import { formatDate, formatPlainDate } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -8,6 +9,7 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { deleteMe, getMe, listMyIdentities } from "#lib/auth";
 import {
   clearPublicSessionCookie,
@@ -15,6 +17,7 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { getMyDataExport } from "#lib/data-export";
 import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
@@ -22,12 +25,17 @@ import {
   getTenantReaderIconChoice,
   offersReaderIconField,
 } from "#lib/reader-icon-policy";
-import { getTenantAgeVerification, getTenantSignInClients } from "#lib/tenant";
+import {
+  getTenantAgeVerification,
+  getTenantDisplayTimeZone,
+  getTenantSignInClients,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 import { AccountIconField } from "./_components/account-icon-field";
 import { updateProfileAction } from "./_lib/actions";
+import { requestDataExportAction } from "./_lib/data-export-actions";
 import {
   buildSettingsPath,
   parseDeleteAccountForm,
@@ -35,6 +43,17 @@ import {
 import { DeleteAccountModal } from "./delete-account-modal";
 
 const SETTINGS_RETURN_TO = "/settings";
+
+/**
+ * The Route Handler that streams the reader's archive. It sits outside the
+ * locale tree, so the language a refusal is worded in goes in the query. The
+ * link is a plain navigation: the archive arrives as an attachment and the
+ * sign-in redirect as a page, which a `download` attribute would save as a
+ * file instead.
+ */
+const DATA_EXPORT_DOWNLOAD_PATH = "/api/v1/my/data-export";
+
+const DATA_EXPORT_HEADING_ID = "data-export-heading";
 
 const deleteAccountAction = async (formData: FormData): Promise<void> => {
   "use server";
@@ -285,6 +304,121 @@ const DeleteAccountControl = async () => {
   );
 };
 
+/** The form that asks for an archive, under the label its state gives it. */
+const RequestDataExportForm = ({
+  children,
+  tenantId,
+  variant,
+}: {
+  children: string;
+  tenantId: string;
+  variant?: "outline";
+}) => (
+  <form action={requestDataExportAction}>
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <Button type="submit" variant={variant}>
+      {children}
+    </Button>
+  </form>
+);
+
+/**
+ * Where the reader's latest request for their archive stands: nothing asked
+ * for yet, being prepared, or ready to download until the day it is deleted.
+ * A ready archive can be asked for again, for a copy of what has changed
+ * since; one being prepared cannot, since the API refuses a second request
+ * while one is open.
+ */
+const DataExportControl = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const [dataExport, t, timeZone] = await Promise.all([
+    withPublicSessionReauth(
+      locale,
+      SETTINGS_RETURN_TO,
+      () => getMyDataExport(tenantId),
+      tenantId
+    ),
+    getMessagesFor(locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+
+  if (dataExport?.state === "pending") {
+    return (
+      <p className="text-sm">{t("storefront.settings.data_export_pending")}</p>
+    );
+  }
+
+  if (dataExport?.state === "ready") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm">
+          {t("storefront.settings.data_export_ready", {
+            date: formatDate(dataExport.expiresAt, {
+              fallback: "-",
+              locale,
+              timeZone,
+            }),
+          })}
+        </p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <RequestDataExportForm tenantId={tenantId} variant="outline">
+            {t("storefront.settings.data_export_request_again")}
+          </RequestDataExportForm>
+          <LinkButton
+            href={`${DATA_EXPORT_DOWNLOAD_PATH}?${new URLSearchParams({ locale })}`}
+          >
+            {t("storefront.settings.data_export_download")}
+          </LinkButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {dataExport?.state === "failed" ? (
+        <p className="text-sm">{t("storefront.settings.data_export_failed")}</p>
+      ) : null}
+      <div className="flex justify-end">
+        <RequestDataExportForm tenantId={tenantId}>
+          {t("storefront.settings.data_export_request")}
+        </RequestDataExportForm>
+      </div>
+    </div>
+  );
+};
+
+const DataExportSection = () => (
+  <section
+    aria-labelledby={DATA_EXPORT_HEADING_ID}
+    className="border border-border bg-card p-6"
+  >
+    <h2 className="mb-2 text-lg font-semibold" id={DATA_EXPORT_HEADING_ID}>
+      <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+        <Message message="storefront.settings.data_export_heading" />
+      </Suspense>
+    </h2>
+    <p className="mb-4 text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message="storefront.settings.data_export_description" />
+      </Suspense>
+    </p>
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+          <Message message="storefront.settings.data_export_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={<SkeletonLine className="h-9 w-full" />}>
+        <DataExportControl />
+      </Suspense>
+    </SectionErrorBoundary>
+  </section>
+);
+
 const DeleteSection = () => (
   <section className="border border-destructive/40 bg-destructive/5 p-6">
     <h2 className="mb-2 text-lg font-semibold text-destructive">
@@ -310,6 +444,7 @@ const BasicSettingsPage = () => (
     <Suspense fallback={<ProfileSectionFallback />}>
       <ProfileSection />
     </Suspense>
+    <DataExportSection />
     <DeleteSection />
   </div>
 );
