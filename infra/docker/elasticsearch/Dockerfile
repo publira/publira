@@ -21,4 +21,4 @@
 #     -t publira/elasticsearch:local \
 #     .
 
-FROM elasticsearch:9.5.5@sha256:52ffd9f66c98b7826a25da2ef7cac6186ecec158d8fb371bff325ad00b6eca93
+FROM elasticsearch:9.5.5@sha256:764a939891119d97e130b4d5da196c330afb2338382ada9e1b9b7943ce6707df
