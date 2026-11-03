@@ -672,10 +672,10 @@ packages:
     dependency: "direct main"
     description:
       name: passkeys_android
-      sha256: "92e7607612a6cf6fc8c6590384ffc25f98e9cad1154b17c84d6ccf251ba25c31"
+      sha256: "2b070609a4278a07e653b4404f2cc2e525718c3fc19bd2b4dc52f09083f0705b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.14.1"
+    version: "2.15.0"
   passkeys_darwin:
     dependency: "direct main"
     description:
