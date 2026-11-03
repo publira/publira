@@ -3,7 +3,10 @@ import {
   ConnectError,
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
+import { cacheTag } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { tenantAnnouncementsTag } from "./cache-tags";
 
 const {
   mockGetAnnouncement,
@@ -226,6 +229,7 @@ describe("web-storefront announcements", () => {
         locale: "ja",
         title: "Announcement",
       },
+      locales: ["en", "ja"],
     });
 
     await expect(
@@ -237,6 +241,7 @@ describe("web-storefront announcements", () => {
       isRead: false,
       linkUrl: "/series/S001",
       locale: "ja",
+      publishedLocales: ["en", "ja"],
       title: "Announcement",
     });
     expect(mockGetAnnouncement).toHaveBeenCalledWith(
@@ -454,6 +459,149 @@ describe("web-storefront announcement page", () => {
       message: "Could not load the announcement. Please try again later.",
       ok: false,
     });
+  });
+});
+
+const notFoundError = () =>
+  new ConnectError("announcement not found", Code.NotFound);
+
+describe("web-storefront announcement page for a reader", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveAccessToken.mockResolvedValue("sid_001");
+  });
+
+  it("serves a public announcement from the shared read without asking with the session", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement.mockResolvedValueOnce({
+      announcement: rawItem,
+      locales: ["en"],
+    });
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toMatchObject({ ok: true, value: { id: announcementId } });
+    expect(mockGetAnnouncement).toHaveBeenCalledTimes(1);
+    expect(mockGetAnnouncement).toHaveBeenCalledWith({
+      announcementId,
+      locale: "en",
+      tenant: { tenantId },
+    });
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("reads a targeted announcement again with the session when the shared read answers nothing", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockResolvedValueOnce({
+        announcement: { ...rawItem, isRead: true },
+        locales: ["en", "ja"],
+      });
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        body: "Body",
+        createdAt: "2026-04-05T10:00:00Z",
+        id: announcementId,
+        isRead: true,
+        linkUrl: "/series/S001",
+        locale: "en",
+        publishedLocales: ["en", "ja"],
+        title: "Announcement",
+      },
+    });
+    expect(mockGetAnnouncement).toHaveBeenNthCalledWith(1, {
+      announcementId,
+      locale: "en",
+      tenant: { tenantId },
+    });
+    expect(mockGetAnnouncement).toHaveBeenNthCalledWith(
+      2,
+      { announcementId, locale: "en", tenant: { tenantId } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("answers null to a visitor with no session without a second read", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(notFoundError());
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", false)
+    ).resolves.toEqual({ ok: true, value: null });
+    expect(mockGetAnnouncement).toHaveBeenCalledTimes(1);
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("answers null to a signed-in reader the announcement was not sent to", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockRejectedValueOnce(notFoundError());
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toEqual({ ok: true, value: null });
+    expect(mockGetAnnouncement).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a failed shared read without trying the reader's own", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("handler panicked", Code.Internal)
+    );
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockGetAnnouncement).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an unreachable API on the reader's own read as a failure, not as a missing announcement", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockRejectedValueOnce(
+        new ConnectError("upstream is down", Code.Unavailable)
+      );
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+
+  it("throws a session the reader's own read rejects, so the page can send them to sign in", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockRejectedValueOnce(
+        new ConnectError("session expired", Code.Unauthenticated)
+      );
+
+    await expect(
+      getAnnouncementForReader(tenantId, announcementId, "en", true)
+    ).rejects.toSatisfy(isUnauthenticatedRpcError);
+  });
+
+  it("tags both reads with the announcements tag, so a mark-read reaches the page", async () => {
+    const { getAnnouncementForReader } = await importAnnouncements();
+    mockGetAnnouncement
+      .mockRejectedValueOnce(notFoundError())
+      .mockResolvedValueOnce({ announcement: rawItem, locales: ["en"] });
+
+    await getAnnouncementForReader(tenantId, announcementId, "en", true);
+
+    expect(vi.mocked(cacheTag).mock.calls).toEqual([
+      [tenantAnnouncementsTag(tenantId)],
+      [tenantAnnouncementsTag(tenantId)],
+    ]);
   });
 });
 

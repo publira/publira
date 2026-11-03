@@ -248,6 +248,7 @@ services:
         social.localhost
         subs.localhost
         tag-docs.localhost
+        targeted.localhost
         team.localhost
         verify.localhost
         waitfree.localhost

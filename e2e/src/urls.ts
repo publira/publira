@@ -218,6 +218,18 @@ export const WEB_ADMIN_ANNOUNCEMENT_AUDIENCE_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the targeted announcement tenant from the scenario seed
+ * `db/seeds/scenarios/770_targeted_announcements.sql`.
+ *
+ * A targeted announcement is listed only to the readers it was delivered to,
+ * so it is read in a tenant no other spec counts the list or the bell of.
+ */
+export const WEB_STOREFRONT_TARGETED_ANNOUNCEMENTS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_TARGETED_ANNOUNCEMENTS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "targeted.localhost")
+);
+
+/**
  * Public site of the agreement tenant from the scenario seed
  * `db/seeds/scenarios/500_legal_page_agreement.sql`.
  *

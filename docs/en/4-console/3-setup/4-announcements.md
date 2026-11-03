@@ -2,7 +2,7 @@
 title: Announcements
 description: Tell every reader of the site, or the readers a set of conditions selects, something at once, and keep the most important announcement in a banner above every page.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 **Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to readers' notifications. An announcement can also be addressed only to the readers a set of conditions selects, such as the followers of one series; see [Choosing who receives it](#choosing-who-receives-it). One of them at a time can also be shown as a banner above every page of the site and the app.
@@ -76,11 +76,11 @@ An announcement with conditions reaches each reader it selects as their notifica
 
 - shown as a site banner, which every visitor sees;
 - sent with **Send to everyone**, since a notice every reader must see is not one a condition may keep from some of them;
-- listed on the **Announcements** page, or in the app, to a visitor who is not signed in or to a signed-in reader it was not delivered to.
+- listed on the **Announcements** page, or in the app, to a visitor who is not signed in or to a signed-in reader it was not delivered to, and its own page shows them **Page not found**.
 
 ## What readers see
 
-- **On the site**, the **Announcements** page in the header lists every announcement addressed to everyone, newest first, and anyone can read it. A signed-in reader also sees there the announcements with conditions that were delivered to them. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
+- **On the site**, the **Announcements** page in the header lists every announcement addressed to everyone, newest first, and anyone can read it. A signed-in reader also sees there, among the others, the announcements with conditions that were delivered to them, and opens them like any other while signed in. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
 - **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**. An announcement with conditions reaches only the readers it selects.
 - **By email**, every reader with a confirmed address whose notification settings take announcements by email gets a mail with the announcement's title and a link to the **Announcements** page, and every reader with a confirmed address gets it for an announcement sent with **Send to everyone**.
 - **As a push notification**, a reader whose notification settings take announcements as browser notifications gets one in their browser, and a reader whose settings take them on the phone gets one from the app. The notification's title is the announcement's title in the reader's language, and opening it shows the announcement. Both settings start off, so a reader who has saved nothing receives none, and **Send to everyone** does not override them.
