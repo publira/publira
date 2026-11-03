@@ -75,18 +75,9 @@ class PlatformPasskeyAuthenticator implements PasskeyAuthenticator {
 
 /// The registration the plugin makes from the creation options the API
 /// answers with.
-///
-/// The plugin reads every credential it is told to exclude as carrying a list
-/// of transports, which the WebAuthn JSON leaves out for a credential that
-/// reported none, so an absent one is read as empty.
 @visibleForTesting
-RegisterRequestType registerRequestFromOptions(String creationOptionsJson) {
-  final options = _object(jsonDecode(creationOptionsJson));
-  return RegisterRequestType.fromJson({
-    ...options,
-    'excludeCredentials': _descriptors(options['excludeCredentials']),
-  });
-}
+RegisterRequestType registerRequestFromOptions(String creationOptionsJson) =>
+    RegisterRequestType.fromJson(_object(jsonDecode(creationOptionsJson)));
 
 /// The assertion the plugin asks for from the request options the API
 /// answers with.
@@ -97,13 +88,10 @@ RegisterRequestType registerRequestFromOptions(String creationOptionsJson) {
 @visibleForTesting
 AuthenticateRequestType authenticateRequestFromOptions(
   String requestOptionsJson,
-) {
-  final options = _object(jsonDecode(requestOptionsJson));
-  return AuthenticateRequestType.fromJson({
-    ...options,
-    'allowCredentials': _descriptors(options['allowCredentials']),
-  }, preferImmediatelyAvailableCredentials: false);
-}
+) => AuthenticateRequestType.fromJson(
+  _object(jsonDecode(requestOptionsJson)),
+  preferImmediatelyAvailableCredentials: false,
+);
 
 Map<String, dynamic> _object(Object? json) {
   if (json is! Map<String, dynamic>) {
@@ -111,12 +99,6 @@ Map<String, dynamic> _object(Object? json) {
   }
   return json;
 }
-
-List<Map<String, dynamic>> _descriptors(Object? json) => [
-  if (json is List)
-    for (final descriptor in json.whereType<Map<String, dynamic>>())
-      {'transports': const <String>[], ...descriptor},
-];
 
 /// What a [PlatformException] from either implementation means for the
 /// reader.
