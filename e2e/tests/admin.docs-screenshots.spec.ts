@@ -610,101 +610,111 @@ for (const locale of DOCS_LOCALES) {
           subject: "email-address",
         });
       });
-
-      test("turning two-step verification on, and signing in with it", async ({
-        page,
-      }) => {
-        // Every attempt starts with two-step verification off: one that got
-        // as far as turning it on leaves the account stopping at the code,
-        // and its retry would never reach the settings. Applying the file
-        // again changes nothing another shot shows, only this account's
-        // enrollment.
-        applyScenarioSql(ADMIN_MFA_SETTINGS_SCENARIO);
-        await signInAsAdmin(
-          page,
-          ADMIN_MFA_SETTINGS_ADMIN,
-          "/settings/account"
-        );
-        await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
-        await page.goto("/settings/account");
-        const card = docsSection(page, t("admin.settings.mfa.title"));
-
-        await expectDocsScreenshot(page, {
-          element: card,
-          locale,
-          page: "console/setup/your-account",
-          subject: "two-step",
-        });
-
-        await card
-          .getByRole("button", {
-            exact: true,
-            name: t("admin.settings.mfa.enable_submit"),
-          })
-          .click();
-
-        const qrCode = page.getByRole("img", {
-          name: t("admin.auth.mfa.enroll_qr_label"),
-        });
-
-        const setupKey = page.getByText(/^[A-Z2-7]{16,}$/u);
-        await expect(setupKey).toBeVisible();
-        const setupKeyText = await setupKey.textContent();
-        const secret = setupKeyText?.trim() ?? "";
-
-        // The QR code and the key are drawn for this setup alone, so they are
-        // covered over: no other run shows the same ones.
-        await expectDocsScreenshot(page, {
-          element: card,
-          locale,
-          mask: [qrCode, setupKey],
-          page: "console/setup/your-account",
-          subject: "two-step-setup",
-        });
-
-        await page
-          .getByLabel(t("admin.auth.mfa.code_label"))
-          .fill(totpCode(secret));
-        await page
-          .getByRole("button", {
-            name: t("admin.auth.mfa.enroll_confirm_submit"),
-          })
-          .click();
-        const recoveryCodes = page.getByRole("listitem").getByRole("code");
-        await expect(recoveryCodes).toHaveCount(10);
-        // The codes arrive with the submission's answer, ahead of the
-        // refreshed card that swaps the setup form for the two forms of a
-        // factor that is on, which is the card the image shows.
-        await expect(
-          card.getByRole("button", {
-            exact: true,
-            name: t("admin.settings.mfa.disable_submit"),
-          })
-        ).toBeVisible();
-
-        await expectDocsScreenshot(page, {
-          element: card,
-          locale,
-          mask: [recoveryCodes],
-          page: "console/setup/your-account",
-          subject: "recovery-codes",
-        });
-
-        // Signed out, signing in again stops at the code. The sign-in helpers
-        // find the form by its English copy, so the language waits until then.
-        await page.context().clearCookies();
-        await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, "/");
-        await expect(page).toHaveURL(/\/mfa/u);
-        await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
-        await page.reload();
-
-        await expectDocsScreenshot(page, {
-          element: page.getByRole("main"),
-          locale,
-          page: "console",
-          subject: "two-step-code",
-        });
-      });
     });
   });
 }
+
+/**
+ * Turning two-step verification on enrolls the account
+ * `370_admin_mfa_settings.sql` keeps for it, the same account in every locale,
+ * so every locale's copy of the test runs in order on one worker rather than
+ * beside the others.
+ */
+test.describe("web-admin two-step verification documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    test(`turning two-step verification on, and signing in with it, in ${locale}`, async ({
+      page,
+    }) => {
+      // Every attempt starts with two-step verification off: one that got
+      // as far as turning it on leaves the account stopping at the code,
+      // and its retry would never reach the settings. Applying the file
+      // again changes nothing another shot shows, only this account's
+      // enrollment.
+      applyScenarioSql(ADMIN_MFA_SETTINGS_SCENARIO);
+      await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, "/settings/account");
+      await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
+      await page.goto("/settings/account");
+      const card = docsSection(page, t("admin.settings.mfa.title"));
+
+      await expectDocsScreenshot(page, {
+        element: card,
+        locale,
+        page: "console/setup/your-account",
+        subject: "two-step",
+      });
+
+      await card
+        .getByRole("button", {
+          exact: true,
+          name: t("admin.settings.mfa.enable_submit"),
+        })
+        .click();
+
+      const qrCode = page.getByRole("img", {
+        name: t("admin.auth.mfa.enroll_qr_label"),
+      });
+
+      const setupKey = page.getByText(/^[A-Z2-7]{16,}$/u);
+      await expect(setupKey).toBeVisible();
+      const setupKeyText = await setupKey.textContent();
+      const secret = setupKeyText?.trim() ?? "";
+
+      // The QR code and the key are drawn for this setup alone, so they are
+      // covered over: no other run shows the same ones.
+      await expectDocsScreenshot(page, {
+        element: card,
+        locale,
+        mask: [qrCode, setupKey],
+        page: "console/setup/your-account",
+        subject: "two-step-setup",
+      });
+
+      await page
+        .getByLabel(t("admin.auth.mfa.code_label"))
+        .fill(totpCode(secret));
+      await page
+        .getByRole("button", {
+          name: t("admin.auth.mfa.enroll_confirm_submit"),
+        })
+        .click();
+      const recoveryCodes = page.getByRole("listitem").getByRole("code");
+      await expect(recoveryCodes).toHaveCount(10);
+      // The codes arrive with the submission's answer, ahead of the
+      // refreshed card that swaps the setup form for the two forms of a
+      // factor that is on, which is the card the image shows.
+      await expect(
+        card.getByRole("button", {
+          exact: true,
+          name: t("admin.settings.mfa.disable_submit"),
+        })
+      ).toBeVisible();
+
+      await expectDocsScreenshot(page, {
+        element: card,
+        locale,
+        mask: [recoveryCodes],
+        page: "console/setup/your-account",
+        subject: "recovery-codes",
+      });
+
+      // Signed out, signing in again stops at the code. The sign-in helpers
+      // find the form by its English copy, so the language waits until then.
+      await page.context().clearCookies();
+      await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, "/");
+      await expect(page).toHaveURL(/\/mfa/u);
+      await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
+      await page.reload();
+
+      await expectDocsScreenshot(page, {
+        element: page.getByRole("main"),
+        locale,
+        page: "console",
+        subject: "two-step-code",
+      });
+    });
+  }
+});

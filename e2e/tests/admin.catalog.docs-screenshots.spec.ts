@@ -627,48 +627,6 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      // No seeded episode has a cover of its own, and a tab without one shows
-      // none of the four shapes, so the shot uploads one first. It does so on
-      // the moderation tenant's draft, which no other shot shows and which
-      // `450_docs_publishing.sql` writes afresh, cover gone, on the next run.
-      test("the cover image tab, with the episode's own cover", async ({
-        consoleSessions,
-        page,
-      }) => {
-        const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${DOCS_DRAFT_EPISODE}?tab=eye-catch`;
-        await openModerationScreen(page, consoleSessions, locale, path);
-
-        await page
-          .locator('input[name="eye_catch_image"]')
-          .setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
-        await page
-          .getByRole("button", {
-            name: t("admin.series.episodes.eye_catch.update"),
-          })
-          .click();
-        await expect(
-          page.getByRole("status").filter({
-            hasText: t("admin.series.episodes.eye_catch.updated"),
-          })
-        ).toBeVisible({
-          // Uploading a whole eye-catch crops and encodes twelve images.
-          timeout: 60_000,
-        });
-        // The reload drops the notice and the picked file's preview, so the
-        // tab shows what was stored, as it does when it is opened.
-        await page.reload();
-
-        await expectDocsScreenshot(page, {
-          element: [
-            docsScreenHeader(page),
-            docsSection(page, t("admin.eye_catch.aspect.title")),
-          ],
-          locale,
-          page: "console/catalog/episodes",
-          subject: "cover-image",
-        });
-      });
-
       test("Shown on and Sold on, on the episode's edit screen", async ({
         consoleSessions,
         page,
@@ -910,3 +868,57 @@ for (const locale of DOCS_LOCALES) {
     });
   });
 }
+
+/**
+ * No seeded episode has a cover of its own, and a tab without one shows none
+ * of the four shapes, so the shot uploads one first. It does so on the
+ * moderation tenant's draft, which no other shot shows and which
+ * `450_docs_publishing.sql` writes afresh, cover gone, on the next run. Every
+ * locale uploads to the same draft, so every locale's copy of the test runs in
+ * order on one worker rather than beside the others.
+ */
+test.describe("web-admin episode cover documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    test(`the cover image tab, with the episode's own cover, in ${locale}`, async ({
+      consoleSessions,
+      page,
+    }) => {
+      const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${DOCS_DRAFT_EPISODE}?tab=eye-catch`;
+      await openModerationScreen(page, consoleSessions, locale, path);
+
+      await page
+        .locator('input[name="eye_catch_image"]')
+        .setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
+      await page
+        .getByRole("button", {
+          name: t("admin.series.episodes.eye_catch.update"),
+        })
+        .click();
+      await expect(
+        page.getByRole("status").filter({
+          hasText: t("admin.series.episodes.eye_catch.updated"),
+        })
+      ).toBeVisible({
+        // Uploading a whole eye-catch crops and encodes twelve images.
+        timeout: 60_000,
+      });
+      // The reload drops the notice and the picked file's preview, so the
+      // tab shows what was stored, as it does when it is opened.
+      await page.reload();
+
+      await expectDocsScreenshot(page, {
+        element: [
+          docsScreenHeader(page),
+          docsSection(page, t("admin.eye_catch.aspect.title")),
+        ],
+        locale,
+        page: "console/catalog/episodes",
+        subject: "cover-image",
+      });
+    });
+  }
+});

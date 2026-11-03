@@ -24,6 +24,11 @@ import { WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL } from "../src/urls";
  */
 test.use({ baseURL: WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL });
 
+// Every locale saves the same tenant's providers, and finds the key the locale
+// before it saved, so they run in order on one worker rather than beside each
+// other.
+test.describe.configure({ mode: "default" });
+
 const SIGN_IN_PATH = "/integrations/sign-in";
 
 // Generated per run, as the sign-in providers suite generates its own: the
