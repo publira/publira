@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockGetTenantDefaultLocale,
   mockRedirect,
   mockRequestMyDataExport,
   mockRequirePublicSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockGetTenantDefaultLocale: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
@@ -32,7 +34,7 @@ vi.mock("#lib/data-export", () => ({
 }));
 
 vi.mock("#lib/tenant", () => ({
-  getTenantDefaultLocale: () => "en",
+  getTenantDefaultLocale: mockGetTenantDefaultLocale,
 }));
 
 const { requestDataExportAction } = await import("./data-export-actions");
@@ -64,6 +66,7 @@ const settingsFlash = (
 describe("requestDataExportAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTenantDefaultLocale.mockResolvedValue("en");
     mockRequirePublicSession.mockResolvedValue("session-token");
     mockRequestMyDataExport.mockResolvedValue({ ok: true });
   });
@@ -131,10 +134,21 @@ describe("requestDataExportAction", () => {
     );
   });
 
-  it("asks nothing of the API for a form that names no tenant", async () => {
-    await expect(
-      requestDataExportAction(form({ tenantId: "not-a-tenant" }))
-    ).rejects.toThrow(/^NEXT_REDIRECT:/u);
-    expect(mockRequestMyDataExport).not.toHaveBeenCalled();
-  });
+  it.each([
+    ["names no tenant", ""],
+    ["names something that is not a tenant ID", "not-a-tenant"],
+  ])(
+    "returns a form that %s to the section without reading the tenant",
+    async (_case, tenantId) => {
+      await expect(requestDataExportAction(form({ tenantId }))).rejects.toThrow(
+        settingsFlash(
+          "error",
+          "Could not request a copy of your data. Please try again later.",
+          "/en"
+        )
+      );
+      expect(mockGetTenantDefaultLocale).not.toHaveBeenCalled();
+      expect(mockRequestMyDataExport).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -15,6 +15,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { requestMyDataExport } from "#lib/data-export";
 import type { DataExportRequestOutcome } from "#lib/data-export";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
+import { withLocalePrefix } from "#lib/locale-path";
 import { getMessagesFor } from "#lib/messages";
 
 import { buildSettingsPath } from "./settings-form";
@@ -70,17 +71,21 @@ export const requestDataExportAction = async (
     toFormDataInput(formData, { locale: "value", tenantId: "value" })
   );
 
+  // The form carries nothing a reader types, so a field that fails is one the
+  // client tampered with. A tenant ID that failed names no tenant to read the
+  // default locale of, so the locale prefix is kept, which the proxy drops
+  // again where it names the default.
   if (!parsed.success) {
     const t = await getMessagesFor(submittedLocale);
 
-    const errorPath = await buildSettingsPath(
-      submittedLocale,
-      String(formData.get("tenantId") ?? ""),
-      "error",
-      t("storefront.settings.data_export_request_failed")
-    );
+    const flash = new URLSearchParams({
+      message: t("storefront.settings.data_export_request_failed"),
+      status: "error",
+    });
 
-    redirect(errorPath);
+    redirect(
+      withLocalePrefix(submittedLocale, null, `/settings?${flash.toString()}`)
+    );
   }
 
   const { locale, tenantId } = parsed.data;
