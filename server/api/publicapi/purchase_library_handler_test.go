@@ -66,6 +66,8 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			"SERIES001",
 			"Series title",
 			"ja",
+			int32(500),
+			"",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -184,6 +186,8 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			"SERIES001",
 			"Series title",
 			"ja",
+			int32(500),
+			"",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -254,6 +258,8 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			"SERIES001",
 			"Series title",
 			"ja",
+			int32(500),
+			"",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -321,6 +327,8 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			"SERIES001",
 			"Series title",
 			"ja",
+			int32(500),
+			"",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -552,7 +560,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "tax_rate_bps", "tax_amount", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "tax_rate_bps", "tax_amount", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale", "list_price", "promotion_code",
 	})
 }
 
@@ -590,6 +598,8 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		"SERIES001",
 		"Series title",
 		"ja",
+		int32(500),
+		"",
 	)
 }
 

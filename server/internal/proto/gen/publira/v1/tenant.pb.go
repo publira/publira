@@ -360,9 +360,16 @@ type GetTenantResponse struct {
 	CreatorPagesEnabled bool `protobuf:"varint,29,opt,name=creator_pages_enabled,json=creatorPagesEnabled,proto3" json:"creator_pages_enabled,omitempty"`
 	// What the tenant states about the tax its prices include, for a client to
 	// say a price includes tax and to name who charged it on a purchase.
-	Invoice       *TenantInvoiceDetails `protobuf:"bytes,30,opt,name=invoice,proto3" json:"invoice,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Invoice *TenantInvoiceDetails `protobuf:"bytes,30,opt,name=invoice,proto3" json:"invoice,omitempty"`
+	// Whether the tenant holds a promotion code a reader could enter now or
+	// later: one neither deleted, paused, nor past its end. A client offers the
+	// code input before a checkout or a store purchase only while it is true.
+	// A code whose window has not opened, or whose limits are spent, still
+	// counts, so the input is offered no later than the code starts working;
+	// PurchaseService refuses such a code when it is entered.
+	AcceptsPromotionCodes bool `protobuf:"varint,31,opt,name=accepts_promotion_codes,json=acceptsPromotionCodes,proto3" json:"accepts_promotion_codes,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -589,6 +596,13 @@ func (x *GetTenantResponse) GetInvoice() *TenantInvoiceDetails {
 		return x.Invoice
 	}
 	return nil
+}
+
+func (x *GetTenantResponse) GetAcceptsPromotionCodes() bool {
+	if x != nil {
+		return x.AcceptsPromotionCodes
+	}
+	return false
 }
 
 // The tax a tenant's prices include and the details its invoices carry.
@@ -1451,7 +1465,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xc9\v\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\x81\f\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -1485,7 +1499,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\n" +
 	"dark_theme\x18\x1c \x01(\v2$.publira.types.v1.TenantThemePaletteR\tdarkTheme\x122\n" +
 	"\x15creator_pages_enabled\x18\x1d \x01(\bR\x13creatorPagesEnabled\x12:\n" +
-	"\ainvoice\x18\x1e \x01(\v2 .publira.v1.TenantInvoiceDetailsR\ainvoiceJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"\ainvoice\x18\x1e \x01(\v2 .publira.v1.TenantInvoiceDetailsR\ainvoice\x126\n" +
+	"\x17accepts_promotion_codes\x18\x1f \x01(\bR\x15acceptsPromotionCodesJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"\x9e\x01\n" +
 	"\x14TenantInvoiceDetails\x12%\n" +
 	"\ftax_rate_bps\x18\x01 \x01(\x05H\x00R\n" +

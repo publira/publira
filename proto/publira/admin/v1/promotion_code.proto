@@ -1,0 +1,241 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// How a promotion code takes its discount off a price.
+enum PromotionCodeDiscountKind {
+  PROMOTION_CODE_DISCOUNT_KIND_UNSPECIFIED = 0;
+  // A whole percentage of the price, from 1 to 100, the amount it comes to
+  // rounded down.
+  PROMOTION_CODE_DISCOUNT_KIND_PERCENT = 1;
+  // An amount in the minor unit of the tenant's currency.
+  PROMOTION_CODE_DISCOUNT_KIND_AMOUNT = 2;
+}
+
+// What a promotion code applies to. A code applies to the purchase of an
+// episode, its rental, and the purchase of a volume, and never to the rest of
+// a series, a subscription, a pack of coins, or a tip.
+enum PromotionCodeTargetKind {
+  PROMOTION_CODE_TARGET_KIND_UNSPECIFIED = 0;
+  // Every episode and volume of the tenant's.
+  PROMOTION_CODE_TARGET_KIND_CATALOG = 1;
+  // Every episode and volume of a series the label holds.
+  PROMOTION_CODE_TARGET_KIND_LABEL = 2;
+  // Every episode and volume of the series.
+  PROMOTION_CODE_TARGET_KIND_SERIES = 3;
+  // The volume's own sale, and not the sale of an episode it holds.
+  PROMOTION_CODE_TARGET_KIND_VOLUME = 4;
+  // The episode's own sales, and not the sale of a volume that holds it.
+  PROMOTION_CODE_TARGET_KIND_EPISODE = 5;
+}
+
+// When a promotion code works and how often it may be redeemed: the part of a
+// code a tenant may change after creating it.
+message PromotionCodeLimits {
+  // RFC 3339 instants the code works from and until, the second excluded.
+  // Empty is no bound. starts_at has to be before ends_at.
+  string starts_at = 1;
+  string ends_at = 2;
+  // How many purchases the code may discount in all, and for one reader.
+  // 0 is no limit. A limit is checked when a checkout starts, and a code is
+  // redeemed once its purchase is recorded, so checkouts started before a
+  // limit was reached may each go past it.
+  int32 max_redemptions = 3;
+  int32 max_redemptions_per_reader = 4;
+}
+
+// A promotion code the tenant hands out, which the server applies to a
+// checkout or a store purchase before the payment provider or the store is
+// reached. The code, its discount, and its target are fixed once it is
+// created; its limits can be changed, and it can be paused and resumed.
+message PromotionCode {
+  // A UUID.
+  string id = 1;
+  // As the tenant created it: 1 to 32 ASCII letters and digits. A reader's
+  // code is matched without regard to case.
+  string code = 2;
+  PromotionCodeDiscountKind discount_kind = 3;
+  // The percentage, or the amount in the minor unit of currency.
+  int32 discount_value = 4;
+  // The ISO 4217 code, in capitals, of the tenant's currency.
+  string currency = 5;
+  PromotionCodeTargetKind target_kind = 6;
+  // The label, series, volume, or episode the code applies to, a UUID; empty
+  // for the catalog.
+  string target_id = 7;
+  // The name of the label, or the title of the series, the volume, or the
+  // episode, in the tenant's default locale. Empty for the catalog, and for
+  // a target that no longer exists, which the code then applies to nothing.
+  string target_title = 8;
+  PromotionCodeLimits limits = 9;
+  // RFC 3339; set while the code is paused, which refuses it as an unknown
+  // code is refused.
+  string paused_at = 10;
+  // How many purchases the code has discounted.
+  int32 redemption_count = 11;
+  // RFC 3339.
+  string created_at = 12;
+  string updated_at = 13;
+}
+
+// One purchase a promotion code discounted.
+message PromotionCodeRedemption {
+  // A UUID.
+  string id = 1;
+  // RFC 3339; when the purchase was recorded.
+  string redeemed_at = 2;
+  // The reader who bought. Both are empty once the reader has deleted their
+  // account, which keeps the purchase but not who made it.
+  string reader_public_id = 3;
+  string reader_email = 4;
+  // The purchase, a UUID, as ListPurchases answers it.
+  string purchase_id = 5;
+  // The episode or the volume bought, one of the two UUIDs, and its title in
+  // the tenant's default locale.
+  string episode_id = 6;
+  string volume_id = 7;
+  string title = 8;
+  publira.types.v1.PurchaseKind kind = 9;
+  // The price before the code, and what the reader paid, in the minor unit
+  // of currency.
+  int32 list_price = 10;
+  int32 price = 11;
+  // The ISO 4217 code, in capitals, of the currency the reader paid in.
+  string currency = 12;
+}
+
+// Cursor pagination, newest code first, over the codes not deleted. Field
+// shape and token rules: proto/README.md.
+message ListPromotionCodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListPromotionCodesResponse {
+  repeated PromotionCode promotion_codes = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// A code the tenant has deleted is not_found.
+message GetPromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+}
+
+message GetPromotionCodeResponse {
+  PromotionCode promotion_code = 1;
+}
+
+// Creates a code. `code` has to be 1 to 32 ASCII letters and digits, and a
+// code of the tenant's that is not deleted and is spelled the same in any
+// case is already_exists. A percentage is 1 to 100; an amount is at least 1,
+// in `currency`, which has to be the tenant's, as an episode's price is
+// checked. A target other than the catalog has to name one of the tenant's
+// labels, series, volumes, or episodes. Every refusal of a field is
+// invalid_argument with a field violation naming it.
+message CreatePromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string code = 2;
+  PromotionCodeDiscountKind discount_kind = 3;
+  int32 discount_value = 4;
+  // The currency the client entered an amount in. Read for
+  // PROMOTION_CODE_DISCOUNT_KIND_AMOUNT alone.
+  string currency = 5;
+  PromotionCodeTargetKind target_kind = 6;
+  string target_id = 7;
+  PromotionCodeLimits limits = 8;
+}
+
+message CreatePromotionCodeResponse {
+  PromotionCode promotion_code = 1;
+}
+
+// Replaces a code's limits. A save that changes nothing records nothing in the
+// audit log.
+message UpdatePromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+  PromotionCodeLimits limits = 3;
+}
+
+message UpdatePromotionCodeResponse {
+  PromotionCode promotion_code = 1;
+}
+
+// Pauses a code, which refuses it until it is resumed. Pausing a paused code
+// changes nothing and records nothing.
+message PausePromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+}
+
+message PausePromotionCodeResponse {
+  PromotionCode promotion_code = 1;
+}
+
+// Resumes a paused code. Resuming a code that is not paused changes nothing
+// and records nothing.
+message ResumePromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+}
+
+message ResumePromotionCodeResponse {
+  PromotionCode promotion_code = 1;
+}
+
+// Deletes a code, which refuses it from then on and frees its name for another
+// code. The purchases it discounted and its redemptions keep naming it.
+message DeletePromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+}
+
+message DeletePromotionCodeResponse {}
+
+// Cursor pagination, newest redemption first. Field shape and token rules:
+// proto/README.md. A code the tenant has deleted is not_found.
+message ListPromotionCodeRedemptionsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string promotion_code_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListPromotionCodeRedemptionsResponse {
+  repeated PromotionCodeRedemption redemptions = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// The tenant's promotion codes. Every RPC is audited when it changes a code,
+// on the target `promotion_code`, and every one reads or writes money and the
+// readers who redeemed a code, so every one is for a tenant_admin.
+service AdminPromotionCodeService {
+  // Minimum role: tenant_admin.
+  rpc ListPromotionCodes(ListPromotionCodesRequest) returns (ListPromotionCodesResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetPromotionCode(GetPromotionCodeRequest) returns (GetPromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc CreatePromotionCode(CreatePromotionCodeRequest) returns (CreatePromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdatePromotionCode(UpdatePromotionCodeRequest) returns (UpdatePromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc PausePromotionCode(PausePromotionCodeRequest) returns (PausePromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc ResumePromotionCode(ResumePromotionCodeRequest) returns (ResumePromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeletePromotionCode(DeletePromotionCodeRequest) returns (DeletePromotionCodeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc ListPromotionCodeRedemptions(ListPromotionCodeRedemptionsRequest) returns (ListPromotionCodeRedemptionsResponse) {}
+}

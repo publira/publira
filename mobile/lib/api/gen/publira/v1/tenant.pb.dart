@@ -392,6 +392,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $0.TenantThemePalette? darkTheme,
     $core.bool? creatorPagesEnabled,
     TenantInvoiceDetails? invoice,
+    $core.bool? acceptsPromotionCodes,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -428,6 +429,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (creatorPagesEnabled != null)
       result.creatorPagesEnabled = creatorPagesEnabled;
     if (invoice != null) result.invoice = invoice;
+    if (acceptsPromotionCodes != null)
+      result.acceptsPromotionCodes = acceptsPromotionCodes;
     return result;
   }
 
@@ -481,6 +484,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     ..aOB(29, _omitFieldNames ? '' : 'creatorPagesEnabled')
     ..aOM<TenantInvoiceDetails>(30, _omitFieldNames ? '' : 'invoice',
         subBuilder: TenantInvoiceDetails.$_createMessage)
+    ..aOB(31, _omitFieldNames ? '' : 'acceptsPromotionCodes')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -819,6 +823,21 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   void clearInvoice() => $_clearField(30);
   @$pb.TagNumber(30)
   TenantInvoiceDetails ensureInvoice() => $_ensure(27);
+
+  /// Whether the tenant holds a promotion code a reader could enter now or
+  /// later: one neither deleted, paused, nor past its end. A client offers the
+  /// code input before a checkout or a store purchase only while it is true.
+  /// A code whose window has not opened, or whose limits are spent, still
+  /// counts, so the input is offered no later than the code starts working;
+  /// PurchaseService refuses such a code when it is entered.
+  @$pb.TagNumber(31)
+  $core.bool get acceptsPromotionCodes => $_getBF(28);
+  @$pb.TagNumber(31)
+  set acceptsPromotionCodes($core.bool value) => $_setBool(28, value);
+  @$pb.TagNumber(31)
+  $core.bool hasAcceptsPromotionCodes() => $_has(28);
+  @$pb.TagNumber(31)
+  void clearAcceptsPromotionCodes() => $_clearField(31);
 }
 
 /// The tax a tenant's prices include and the details its invoices carry.

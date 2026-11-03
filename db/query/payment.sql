@@ -185,10 +185,17 @@ SELECT p.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     COALESCE(str.title, '')::text AS series_title,
-    COALESCE(str.locale, '')::text AS series_title_locale
+    COALESCE(str.locale, '')::text AS series_title_locale,
+    -- The price before a promotion code's discount, which is what was paid on
+    -- a purchase no code discounted, and the tenant's code that discounted it,
+    -- empty for one discounted by none or by a code of the provider's.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
@@ -285,10 +292,17 @@ SELECT p.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     COALESCE(str.title, '')::text AS series_title,
-    COALESCE(str.locale, '')::text AS series_title_locale
+    COALESCE(str.locale, '')::text AS series_title_locale,
+    -- The price before a promotion code's discount, which is what was paid on
+    -- a purchase no code discounted, and the tenant's code that discounted it,
+    -- empty for one discounted by none or by a code of the provider's.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
@@ -362,7 +376,9 @@ INSERT INTO purchases (
     is_test,
     currency,
     kind,
-    provider_promotion_code_id
+    provider_promotion_code_id,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -377,7 +393,9 @@ VALUES (
     sqlc.arg('is_test')::boolean,
     sqlc.arg('currency')::text,
     sqlc.arg('kind')::text,
-    sqlc.narg('provider_promotion_code_id')::text
+    sqlc.narg('provider_promotion_code_id')::text,
+    sqlc.narg('list_price')::integer,
+    sqlc.narg('promotion_code_id')::uuid
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
@@ -1028,11 +1046,17 @@ SELECT p.id,
     p.revoked_at,
     p.revocation_reason,
     p.staff_refund_attempt,
-    p.staff_refund_requested_amount
+    p.staff_refund_requested_amount,
+    -- The price before a promotion code's discount, and the tenant's code
+    -- that took it, as ListMyPurchasesDesc answers them.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id

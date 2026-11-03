@@ -153,6 +153,9 @@ const (
 	// PurchaseServiceStartStorePurchaseProcedure is the procedure name of the PurchaseService's
 	// StartStorePurchase RPC.
 	PurchaseServiceStartStorePurchaseProcedure = "/publira.v1.PurchaseService/StartStorePurchase"
+	// PurchaseServicePreviewPromotionCodeProcedure is the procedure name of the PurchaseService's
+	// PreviewPromotionCode RPC.
+	PurchaseServicePreviewPromotionCodeProcedure = "/publira.v1.PurchaseService/PreviewPromotionCode"
 	// PurchaseServiceConfirmStorePurchaseProcedure is the procedure name of the PurchaseService's
 	// ConfirmStorePurchase RPC.
 	PurchaseServiceConfirmStorePurchaseProcedure = "/publira.v1.PurchaseService/ConfirmStorePurchase"
@@ -1926,6 +1929,13 @@ var (
 			Procedure:  PurchaseServiceStartStorePurchaseProcedure,
 		}
 	})
+	purchaseServicePreviewPromotionCodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("PreviewPromotionCode"),
+			Procedure:  PurchaseServicePreviewPromotionCodeProcedure,
+		}
+	})
 	purchaseServiceConfirmStorePurchaseSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -1972,6 +1982,7 @@ type PurchaseServiceClient interface {
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
+	PreviewPromotionCode(context.Context, *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
@@ -1994,6 +2005,7 @@ type PurchaseServiceHandler interface {
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
+	PreviewPromotionCode(context.Context, *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
@@ -2012,6 +2024,7 @@ func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceH
 		connect.Method{Spec: purchaseServiceListMyPurchasesSpec(), Handler: adapter.listMyPurchases},
 		connect.Method{Spec: purchaseServiceProcessPaymentWebhookSpec(), Handler: adapter.processPaymentWebhook},
 		connect.Method{Spec: purchaseServiceStartStorePurchaseSpec(), Handler: adapter.startStorePurchase},
+		connect.Method{Spec: purchaseServicePreviewPromotionCodeSpec(), Handler: adapter.previewPromotionCode},
 		connect.Method{Spec: purchaseServiceConfirmStorePurchaseSpec(), Handler: adapter.confirmStorePurchase},
 		connect.Method{Spec: purchaseServiceProcessAppStoreNotificationSpec(), Handler: adapter.processAppStoreNotification},
 		connect.Method{Spec: purchaseServiceProcessGooglePlayNotificationSpec(), Handler: adapter.processGooglePlayNotification},
@@ -2045,6 +2058,10 @@ func (UnimplementedPurchaseServiceHandler) ProcessPaymentWebhook(context.Context
 
 func (UnimplementedPurchaseServiceHandler) StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartStorePurchase is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) PreviewPromotionCode(context.Context, *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.PreviewPromotionCode is not implemented")
 }
 
 func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error) {
@@ -2114,6 +2131,14 @@ func (c *purchaseServiceClient) ProcessPaymentWebhook(ctx context.Context, req *
 func (c *purchaseServiceClient) StartStorePurchase(ctx context.Context, req *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error) {
 	var res v1.StartStorePurchaseResponse
 	if err := c.client.CallUnary(ctx, purchaseServiceStartStorePurchaseSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) PreviewPromotionCode(ctx context.Context, req *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error) {
+	var res v1.PreviewPromotionCodeResponse
+	if err := c.client.CallUnary(ctx, purchaseServicePreviewPromotionCodeSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2227,6 +2252,18 @@ func (h purchaseServiceHandler) startStorePurchase(ctx context.Context, _ connec
 		return err
 	}
 	res, err := h.svc.StartStorePurchase(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) previewPromotionCode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PreviewPromotionCodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.PreviewPromotionCode(ctx, &req)
 	if err != nil {
 		return err
 	}

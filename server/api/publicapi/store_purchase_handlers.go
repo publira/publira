@@ -12,14 +12,12 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/appstore"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -82,19 +80,24 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
-	if err != nil {
-		return nil, err
-	}
 	store := req.Store
 	if store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE && store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
+	}
+	promotionCode := promotionCodeOf(req.PromotionCode)
+	// A pack's coins are worth what was paid for them, so no code is taken
+	// off one.
+	if promotionCode != "" && packID != uuid.Nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("a coin pack takes no promotion code"), "promotion_code")
 	}
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
+	if err := s.chargePromotionCodeAttempt(ctx, tenant.ID, user.ID, promotionCode); err != nil {
 		return nil, err
 	}
 	if err := s.requireStoreSelling(ctx, tenant.ID, store); err != nil {
@@ -105,55 +108,56 @@ func (s *apiServer) StartStorePurchase(
 	}
 
 	queries := s.queriesFor(ctx)
-	episode, err := queries.GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
-		TenantID: tenant.ID,
-		ID:       episodeID,
-		Surface:  surface,
-	})
+	sale, err := s.resolveStoreEpisodeSale(ctx, tenant.ID, user.ID, episodeID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
-		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
-	}
-	if episode.Price <= 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes are not sold")
-	}
-	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
-	if err != nil {
-		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
-	}
-	if !soldHere {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not sold in the app")
-	}
-	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
 		return nil, err
 	}
-	// A store sells the permanent copy alone, which an active rental does not
-	// stand in the way of.
-	held, err := queries.GetActiveEpisodePurchaseKinds(ctx, dbmodels.GetActiveEpisodePurchaseKindsParams{
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		EpisodeID: episode.ID,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
-	}
-	if held.HoldsPurchase {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
-	}
-
-	// The campaign open now sets the price, as it does at the web checkout. The
-	// intent keeps it, so a campaign ending before the store confirms the
-	// purchase does not change what it is recorded at.
-	price := episode.Price
-	if episode.CampaignPrice.Valid {
-		price = episode.CampaignPrice.Int32
-	}
+	episode, price := sale.episode, sale.price
 	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
+	// A code is applied to the price in force and the intent opened at the
+	// product of the discounted price, which the tenant's store has to sell.
+	var listPrice sql.NullInt32
+	var promotionCodeID uuid.NullUUID
+	if promotionCode != "" {
+		applied, err := s.applyPromotionCode(ctx, queries, tenant.ID, user.ID, promotionCode, promotionSale{episodeID: episode.ID, price: price})
+		if err != nil {
+			return nil, err
+		}
+		// Nothing is left to pay, so the store sells nothing and the purchase
+		// is recorded at once.
+		if applied.price == 0 {
+			granted, err := s.grantPurchaseWithPromotionCode(ctx, tenant.ID, user.ID, promotionCode, grantedSale{
+				episodeID:          episode.ID,
+				kind:               paymentprovider.KindPurchase,
+				listPrice:          price,
+				readingPeriodHours: sale.readingPeriodHours,
+				currency:           currency,
+			})
+			if err != nil {
+				return nil, err
+			}
+			readerLocale, err := readerLocaleOf("", tenant)
+			if err != nil {
+				return nil, err
+			}
+			purchase, err := s.myPurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, readerLocale, "", granted.ID)
+			if err != nil {
+				return nil, err
+			}
+			return noStorePrivateResponse(ctx, &publirav1.StartStorePurchaseResponse{Purchase: purchase}), nil
+		}
+		if err := s.requireStoreProduct(ctx, tenant.ID, applied.price); err != nil {
+			return nil, err
+		}
+		listPrice = sql.NullInt32{Int32: applied.listPrice, Valid: true}
+		promotionCodeID = uuid.NullUUID{UUID: applied.id, Valid: true}
+		price = applied.price
+	}
+	// The intent keeps the price, so a campaign ending before the store
+	// confirms the purchase does not change what it is recorded at.
 	intent, err := queries.OpenStorePurchaseIntent(ctx, dbmodels.OpenStorePurchaseIntentParams{
 		ID:        uuid.Must(uuid.NewV7()),
 		TenantID:  tenant.ID,
@@ -165,6 +169,8 @@ func (s *apiServer) StartStorePurchase(
 		// The terms the payment sheet opens on, which the purchase keeps however
 		// long the confirmation takes to arrive.
 		ReadingPeriodHours: episode.ReadingPeriodHours,
+		ListPrice:          listPrice,
+		PromotionCodeID:    promotionCodeID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to open a store purchase intent", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
@@ -351,6 +357,8 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		seriesPublicID:     row.SeriesPublicID.String,
 		seriesTitle:        row.SeriesTitle,
 		seriesLocale:       row.SeriesTitleLocale,
+		listPrice:          row.ListPrice,
+		promotionCode:      row.PromotionCode,
 	}, coinName, time.Now())
 	if err != nil {
 		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
@@ -514,6 +522,8 @@ func createStorePurchase(ctx context.Context, txq *dbmodels.Queries, intent dbmo
 		StoreTransactionID: transaction.transactionID,
 		IsTest:             transaction.isTest,
 		Kind:               intent.Kind,
+		ListPrice:          intent.ListPrice,
+		PromotionCodeID:    intent.PromotionCodeID,
 	})
 }
 
@@ -562,6 +572,9 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	purchase, err := createStorePurchase(ctx, txq, intent, transaction)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record a store purchase", err, "tenant_id", tenantID.String(), "store", transaction.store)
+	}
+	if err := recordPromotionCodeRedemption(ctx, txq, purchase); err != nil {
+		return nil, s.internalDBError(ctx, "failed to record a promotion code redemption", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
 	}
 	refunded, err := storepurchase.ApplyHeldRefund(ctx, txq, tenantID, purchase.ID, transaction.store, transaction.transactionID)
 	if err != nil {

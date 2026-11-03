@@ -30,10 +30,14 @@ SELECT
 -- the month, with the month's sales of that episode. It is what a close
 -- writes and what a preview shows, so the two cannot disagree.
 --
--- A sale of a volume or of the rest of a series is a sale of each episode in
--- it, at the part of its price purchase_episode_parts says that episode
--- accounts for, and with the part of its refund
--- episode_part_of_purchase_amount gives that episode. The parts are narrowed
+-- A sale is credited at its royalty basis, purchase_royalty_basis: the price
+-- before a promotion code's discount, the tenant having chosen the promotion,
+-- and what was paid for a sale no code discounted. A refund takes back the
+-- share of that basis purchase_royalty_refunded_amount gives, the share of
+-- the payment returned. A sale of a volume or of the rest of a series is a
+-- sale of each episode in it, at the part of its basis purchase_episode_parts
+-- says that episode accounts for (royalty_price), and with the part of its
+-- refund episode_part_of_purchase_amount gives that episode. The parts are narrowed
 -- to the month as well, by their own purchased_at: the join on purchase_id
 -- alone is not pushed into the branches of the view's union, and each branch
 -- would read the purchases of every month the tenant ever sold in.
@@ -75,10 +79,10 @@ SELECT
     r.public_id AS role_public_id,
     r.name AS role_name,
     count(*)::integer AS sale_count,
-    sum(pp.price)::bigint AS gross_amount,
+    sum(pp.royalty_price)::bigint AS gross_amount,
     sum(part.refunded_amount)::bigint AS refunded_amount,
     ec.share_bps,
-    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount,
+    ((sum(pp.royalty_price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount,
     p.tax_rate_bps
 FROM purchases p
 JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
@@ -86,7 +90,11 @@ JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
     AND pp.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND pp.purchased_at < sqlc.arg('ends_at')::timestamptz
 CROSS JOIN LATERAL (
-    SELECT episode_part_of_purchase_amount(COALESCE(p.refunded_amount, 0), pp.price, p.price_at_purchase) AS refunded_amount
+    SELECT episode_part_of_purchase_amount(
+        purchase_royalty_refunded_amount(COALESCE(p.refunded_amount, 0), p.list_price, p.price_at_purchase),
+        pp.royalty_price,
+        purchase_royalty_basis(p.list_price, p.price_at_purchase)
+    ) AS refunded_amount
 ) part
 JOIN episodes e ON e.tenant_id = pp.tenant_id AND e.id = pp.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -114,13 +122,13 @@ ORDER BY 1, str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_i
 
 -- name: GetRoyaltySalesTotalsForPeriod :one
 -- Totals the month's sales once each, however many episodes and creators a
--- sale is credited to. The month, the refund rule, and the currency are
--- those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
+-- sale is credited to. The month, the refund rule, the currency, and the
+-- royalty basis are those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
 -- out: its money is the price of the purchases its coins paid for, which
 -- are counted here.
 SELECT
-    COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
-    COALESCE(sum(COALESCE(p.refunded_amount, 0)), 0)::bigint AS total_refunded
+    COALESCE(sum(purchase_royalty_basis(p.list_price, p.price_at_purchase)), 0)::bigint AS total_gross,
+    COALESCE(sum(purchase_royalty_refunded_amount(COALESCE(p.refunded_amount, 0), p.list_price, p.price_at_purchase)), 0)::bigint AS total_refunded
 FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
@@ -478,8 +486,8 @@ SELECT
     p.id AS purchase_id,
     sqlc.arg('statement_id')::uuid AS statement_id,
     1 AS sale_count,
-    p.price_at_purchase AS gross_amount,
-    COALESCE(p.refunded_amount, 0) AS refunded_amount
+    purchase_royalty_basis(p.list_price, p.price_at_purchase) AS gross_amount,
+    purchase_royalty_refunded_amount(COALESCE(p.refunded_amount, 0), p.list_price, p.price_at_purchase) AS refunded_amount
 FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL

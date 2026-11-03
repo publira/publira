@@ -68,11 +68,16 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "kind")
 	}
 
+	promotionCode := promotionCodeOf(req.PromotionCode)
+
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
+	if err := s.chargePromotionCodeAttempt(ctx, tenant.ID, user.ID, promotionCode); err != nil {
 		return nil, err
 	}
 	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
@@ -98,61 +103,42 @@ func (s *apiServer) StartEpisodeCheckout(
 	}
 
 	// The checkout page names the episode in the reader's language.
-	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
-		TenantID: tenant.ID,
-		ID:       episodeID,
-		Surface:  surface,
-		Locale:   readerLocale,
-	})
+	sale, err := s.resolveEpisodeSale(ctx, tenant.ID, user.ID, episodeID, surface, kind, readerLocale)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
-		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
-	}
-	if episode.Price <= 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes do not require checkout")
-	}
-	price, readingPeriodHours := episode.Price, episode.ReadingPeriodHours.Int32
-	// A campaign cuts the price of the permanent copy alone; the rental keeps
-	// its own. The price charged is the one in force now, which the checkout
-	// carries to the notification that confirms it, so a campaign ending
-	// before the reader pays does not change what they are charged.
-	if kind == paymentprovider.KindPurchase && episode.CampaignPrice.Valid {
-		price = episode.CampaignPrice.Int32
-	}
-	if kind == paymentprovider.KindRental {
-		if !episode.RentalPrice.Valid || !episode.RentalPeriodHours.Valid {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not rented")
-		}
-		price, readingPeriodHours = episode.RentalPrice.Int32, episode.RentalPeriodHours.Int32
-	}
-	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
-	if err != nil {
-		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
-	}
-	if !soldHere {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not sold on this surface")
-	}
-	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
 		return nil, err
 	}
+	episode, price, readingPeriodHours := sale.episode, sale.price, sale.readingPeriodHours
+	var applied appliedPromotionCode
+	if promotionCode != "" {
+		if applied, err = s.applyPromotionCode(ctx, s.queriesFor(ctx), tenant.ID, user.ID, promotionCode, promotionSale{episodeID: episode.ID, price: price}); err != nil {
+			return nil, err
+		}
+	}
 
-	held, err := s.queriesFor(ctx).GetActiveEpisodePurchaseKinds(ctx, dbmodels.GetActiveEpisodePurchaseKindsParams{
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		EpisodeID: episode.ID,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
+	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
+	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+		locale, err := locale.Resolve(tenant.DefaultLocale)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+		}
+		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
+		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
-	// A reader who holds the permanent copy has nothing left to buy, while
-	// one who holds a rental may still buy the permanent copy.
-	if held.HoldsPurchase {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
-	}
-	if kind == paymentprovider.KindRental && held.HoldsRental {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already rented")
+	// A code that takes the whole price off leaves nothing for a provider to
+	// charge, so the purchase is recorded here and the reader is sent where a
+	// paid checkout would have returned them.
+	if applied.id != uuid.Nil && applied.price == 0 {
+		if _, err := s.grantPurchaseWithPromotionCode(ctx, tenant.ID, user.ID, promotionCode, grantedSale{
+			episodeID:          episode.ID,
+			kind:               kind,
+			listPrice:          price,
+			readingPeriodHours: readingPeriodHours,
+			currency:           config.Currency,
+		}); err != nil {
+			return nil, err
+		}
+		return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: successURL}, nil
 	}
 
 	lineItemName := episode.Title
@@ -165,16 +151,6 @@ func (s *apiServer) StartEpisodeCheckout(
 		if err != nil {
 			return nil, s.internalError(ctx, "failed to name the rental line item", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
-	}
-	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
-	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
-	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
-		locale, err := locale.Resolve(tenant.DefaultLocale)
-		if err != nil {
-			return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
-		}
-		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
-		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
 	checkout := paymentprovider.CheckoutRequest{
 		Purchase: paymentprovider.Purchase{
@@ -190,6 +166,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		SuccessURL:   successURL,
 		CancelURL:    cancelURL,
 	}
+	applied.discount(&checkout)
 	expiredCheckoutID, err := s.queriesFor(ctx).GetExpiredCheckoutID(ctx, dbmodels.GetExpiredCheckoutIDParams{
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
@@ -361,6 +338,10 @@ type purchasePageRow struct {
 	seriesPublicID string
 	seriesTitle    string
 	seriesLocale   string
+	// listPrice is the price before a promotion code's discount, and
+	// promotionCode the tenant's code that took it, empty for none.
+	listPrice     int32
+	promotionCode string
 }
 
 func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
@@ -399,6 +380,8 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			seriesPublicID:              row.SeriesPublicID.String,
 			seriesTitle:                 row.SeriesTitle,
 			seriesLocale:                row.SeriesTitleLocale,
+			listPrice:                   row.ListPrice,
+			promotionCode:               row.PromotionCode,
 		})
 	}
 	return mapped
@@ -440,6 +423,8 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			seriesPublicID:              row.SeriesPublicID.String,
 			seriesTitle:                 row.SeriesTitle,
 			seriesLocale:                row.SeriesTitleLocale,
+			listPrice:                   row.ListPrice,
+			promotionCode:               row.PromotionCode,
 		})
 	}
 	return mapped
@@ -517,6 +502,8 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 		RefundedAt:      refundedAt,
 		RevokedAt:       revokedAt,
 		CoinsSpent:      row.coinsSpent,
+		ListPrice:       row.listPrice,
+		PromotionCode:   row.promotionCode,
 	}
 	// A purchase paid with coins records what its coins were worth, and what
 	// a refund of their pack took back of that, as the tenant's sale. The
@@ -524,6 +511,7 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 	if row.coinsSpent > 0 {
 		item.PriceAtPurchase = 0
 		item.RefundedAmount = 0
+		item.ListPrice = 0
 	} else if row.taxAmount.Valid && row.taxRateBps.Valid {
 		item.TaxRateBps = new(row.taxRateBps.Int32)
 		item.TaxAmount = new(row.taxAmount.Int32)
@@ -1303,6 +1291,7 @@ func (s *apiServer) createPurchase(
 	if event.PromotionCodeID != "" {
 		promotionCodeID = sql.NullString{String: event.PromotionCodeID, Valid: true}
 	}
+	listPrice, tenantPromotionCodeID := purchaseListPrice(event)
 	// A reader can pay two checkouts of the same episode: one started before an
 	// editor changed its price or reading period, and one started after. Both
 	// are recorded, because each took a payment. A redelivery of a checkout
@@ -1349,6 +1338,8 @@ func (s *apiServer) createPurchase(
 			IsTest:                  event.Test,
 			Currency:                purchase.Currency,
 			ProviderPromotionCodeID: promotionCodeID,
+			ListPrice:               listPrice,
+			PromotionCodeID:         tenantPromotionCodeID,
 		})
 	default:
 		expiresAt := readingPeriodExpiry(purchase.ReadingPeriodHours, time.Now().UTC())
@@ -1366,6 +1357,8 @@ func (s *apiServer) createPurchase(
 			IsTest:                  event.Test,
 			Currency:                purchase.Currency,
 			ProviderPromotionCodeID: promotionCodeID,
+			ListPrice:               listPrice,
+			PromotionCodeID:         tenantPromotionCodeID,
 		})
 	}
 	switch {
@@ -1373,6 +1366,11 @@ func (s *apiServer) createPurchase(
 	case err != nil:
 		return fmt.Errorf("create purchase: %w", err)
 	default:
+		// The code is redeemed with the purchase it discounted, so a checkout
+		// the reader abandoned spent none of its limits.
+		if err := recordPromotionCodeRedemption(ctx, queries, created); err != nil {
+			return fmt.Errorf("record the promotion code redemption: %w", err)
+		}
 		// What each episode of a volume accounts for is written down as the
 		// purchase is, so that what a statement credits for the sale stays put
 		// however the volume and its episodes' prices change afterwards.
@@ -1428,6 +1426,23 @@ func (s *apiServer) createPurchase(
 		return fmt.Errorf("commit purchase: %w", err)
 	}
 	return nil
+}
+
+// purchaseListPrice answers what a completed checkout records as the price
+// before a promotion code's discount, and the tenant's code that took it.
+// A checkout the tenant's own code discounted carries both; one discounted by
+// a code entered on the provider's page was started at its list price, which
+// it records too, so that its royalties are paid on that price as well. A
+// checkout no code discounted records neither.
+func purchaseListPrice(event paymentprovider.PurchaseCompleted) (sql.NullInt32, uuid.NullUUID) {
+	purchase := event.Purchase
+	if purchase.PromotionCodeID != uuid.Nil {
+		return sql.NullInt32{Int32: purchase.ListPrice, Valid: true}, uuid.NullUUID{UUID: purchase.PromotionCodeID, Valid: true}
+	}
+	if event.AmountPaid != purchase.Price {
+		return sql.NullInt32{Int32: purchase.Price, Valid: true}, uuid.NullUUID{}
+	}
+	return sql.NullInt32{}, uuid.NullUUID{}
 }
 
 // enqueuePurchaseReceipt queues the receipt of a purchase just recorded. The

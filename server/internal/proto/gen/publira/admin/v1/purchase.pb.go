@@ -104,7 +104,8 @@ type AdminPurchase struct {
 	// with coins it is what the coins spent were worth: each coin its part of
 	// what the pack it came from was paid, the pack's bonus coins counting as
 	// much as the rest, and a coin granted without a payment nothing. That is
-	// the sale a royalty statement pays on.
+	// the sale a royalty statement pays on, except on a purchase a promotion
+	// code discounted, which it pays on list_price.
 	Price int64 `protobuf:"varint,10,opt,name=price,proto3" json:"price,omitempty"`
 	// The ISO 4217 code, in capitals, of the currency the reader paid in.
 	Currency string `protobuf:"bytes,11,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -168,7 +169,17 @@ type AdminPurchase struct {
 	// to its Authors, which names the episode and opens nothing. A purchase of
 	// a volume, of the rest of a series, or of a pack is PURCHASE_KIND_PURCHASE.
 	// A tip is refunded as a sale is.
-	Kind          v1.PurchaseKind `protobuf:"varint,31,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
+	Kind v1.PurchaseKind `protobuf:"varint,31,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
+	// The price before a promotion code took its discount off, in the minor
+	// unit of currency: what the purchase would have been sold at, and what a
+	// royalty statement credits it at. Equal to price on a purchase no code
+	// discounted. The discount is list_price less price.
+	ListPrice int64 `protobuf:"varint,32,opt,name=list_price,json=listPrice,proto3" json:"list_price,omitempty"`
+	// The tenant's promotion code that discounted the purchase, as it was
+	// created (PromotionCode.code). Empty on a purchase no code of the tenant's
+	// discounted, including one discounted by a code entered on Stripe's
+	// checkout page, whose list_price is above its price all the same.
+	PromotionCode string `protobuf:"bytes,33,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -418,6 +429,20 @@ func (x *AdminPurchase) GetKind() v1.PurchaseKind {
 		return x.Kind
 	}
 	return v1.PurchaseKind(0)
+}
+
+func (x *AdminPurchase) GetListPrice() int64 {
+	if x != nil {
+		return x.ListPrice
+	}
+	return 0
+}
+
+func (x *AdminPurchase) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:
@@ -1052,7 +1077,8 @@ var File_publira_admin_v1_purchase_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xcb\t\n" +
+	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x91\n" +
+	"\n" +
 	"\rAdminPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1094,7 +1120,10 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"taxRateBps\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"tax_amount\x18\x1e \x01(\x03H\x01R\ttaxAmount\x88\x01\x01\x122\n" +
-	"\x04kind\x18\x1f \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kindB\x0f\n" +
+	"\x04kind\x18\x1f \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x12\x1d\n" +
+	"\n" +
+	"list_price\x18  \x01(\x03R\tlistPrice\x12%\n" +
+	"\x0epromotion_code\x18! \x01(\tR\rpromotionCodeB\x0f\n" +
 	"\r_tax_rate_bpsB\r\n" +
 	"\v_tax_amount\"\xbe\x02\n" +
 	"\x14ListPurchasesRequest\x127\n" +

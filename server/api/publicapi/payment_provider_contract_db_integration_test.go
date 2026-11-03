@@ -161,6 +161,16 @@ func (c *contractTenant) OpensEpisode(t *testing.T) bool {
 
 func (c *contractTenant) SalesGross(t *testing.T) int64 {
 	t.Helper()
+	return c.salesTotals(t).TotalGross
+}
+
+func (c *contractTenant) SalesRefunded(t *testing.T) int64 {
+	t.Helper()
+	return c.salesTotals(t).TotalRefunded
+}
+
+func (c *contractTenant) salesTotals(t *testing.T) dbmodels.GetRoyaltySalesTotalsForPeriodRow {
+	t.Helper()
 	now := time.Now().UTC()
 	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	totals, err := dbmodels.New(c.harness.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
@@ -172,7 +182,46 @@ func (c *contractTenant) SalesGross(t *testing.T) int64 {
 	if err != nil {
 		t.Fatalf("GetRoyaltySalesTotalsForPeriod: %v", err)
 	}
-	return totals.TotalGross
+	return totals
+}
+
+func (c *contractTenant) DiscountedPurchase(t *testing.T) paymentprovider.Purchase {
+	t.Helper()
+	codeID := uuid.Must(uuid.NewV7())
+	if _, err := c.harness.pg.DB.ExecContext(context.Background(),
+		`INSERT INTO promotion_codes (id, tenant_id, code, discount_kind, discount_value, target_kind, target_id)
+		VALUES ($1, $2, 'CONTRACT20', 'percent', 20, 'episode', $3)`,
+		codeID, c.purchase.TenantID, c.purchase.EpisodeID,
+	); err != nil {
+		t.Fatalf("create a promotion code: %v", err)
+	}
+	purchase := c.purchase
+	purchase.Price = 400
+	purchase.ListPrice = 500
+	purchase.PromotionCodeID = codeID
+	return purchase
+}
+
+func (c *contractTenant) Redemptions(t *testing.T) int {
+	t.Helper()
+	var count int
+	if err := c.harness.pg.DB.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1`, c.purchase.TenantID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count redemptions: %v", err)
+	}
+	return count
+}
+
+func (c *contractTenant) ListPrice(t *testing.T) int32 {
+	t.Helper()
+	var price sql.NullInt32
+	if err := c.harness.pg.DB.QueryRowContext(context.Background(),
+		`SELECT list_price FROM purchases WHERE tenant_id = $1`, c.purchase.TenantID,
+	).Scan(&price); err != nil {
+		t.Fatalf("read list price: %v", err)
+	}
+	return price.Int32
 }
 
 func (c *contractTenant) RefundedAmount(t *testing.T) int32 {

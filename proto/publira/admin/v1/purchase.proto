@@ -42,7 +42,8 @@ message AdminPurchase {
   // with coins it is what the coins spent were worth: each coin its part of
   // what the pack it came from was paid, the pack's bonus coins counting as
   // much as the rest, and a coin granted without a payment nothing. That is
-  // the sale a royalty statement pays on.
+  // the sale a royalty statement pays on, except on a purchase a promotion
+  // code discounted, which it pays on list_price.
   int64 price = 10;
   // The ISO 4217 code, in capitals, of the currency the reader paid in.
   string currency = 11;
@@ -107,6 +108,16 @@ message AdminPurchase {
   // a volume, of the rest of a series, or of a pack is PURCHASE_KIND_PURCHASE.
   // A tip is refunded as a sale is.
   publira.types.v1.PurchaseKind kind = 31;
+  // The price before a promotion code took its discount off, in the minor
+  // unit of currency: what the purchase would have been sold at, and what a
+  // royalty statement credits it at. Equal to price on a purchase no code
+  // discounted. The discount is list_price less price.
+  int64 list_price = 32;
+  // The tenant's promotion code that discounted the purchase, as it was
+  // created (PromotionCode.code). Empty on a purchase no code of the tenant's
+  // discounted, including one discounted by a code entered on Stripe's
+  // checkout page, whose list_price is above its price all the same.
+  string promotion_code = 33;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:

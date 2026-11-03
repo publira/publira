@@ -94,6 +94,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.CoinPayment }),
 	minuteDayFlags("purchase_checkout", "purchase-checkout", "purchases of an episode, a volume, or a coin pack one reader starts, on the web or through the app's store", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PurchaseCheckout }),
+	minuteDayFlags("promotion_code_attempt", "promotion-code-attempt", "promotion codes one reader has looked up, quoted or entered at a purchase", false,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PromotionCodeAttempt }),
 	minuteDayFlags("login_attempts_per_account", "login-attempts-per-account", "sign-in attempts for one address", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),
 	hourDayFlags("login_attempts_per_source", "login-attempts-per-source", "failed sign-ins from one source", false,
@@ -226,6 +228,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Subscription checkouts per reader:\t%s\n", perMinute(p.SubscriptionCheckout))
 		fmt.Fprintf(&b, "Coin payments per reader:\t%s\n", perMinute(p.CoinPayment))
 		fmt.Fprintf(&b, "Purchase checkouts per reader:\t%s\n", perMinute(p.PurchaseCheckout))
+		fmt.Fprintf(&b, "Promotion code attempts per reader:\t%s\n", perMinute(p.PromotionCodeAttempt))
 		fmt.Fprintf(&b, "Sign-in attempts per address:\t%s\n", perMinute(p.LoginAttemptsPerAccount))
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
 		fmt.Fprintf(&b, "Data exports per reader:\t%s\n", perHour(p.DataExport))

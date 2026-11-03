@@ -117,6 +117,12 @@ func (s *apiServer) GetTenant(
 	if err != nil {
 		return nil, err
 	}
+	// Failed rather than answered as false, which web-storefront would cache
+	// as a tenant whose readers have no code to enter.
+	acceptsPromotionCodes, err := queries.TenantHasLivePromotionCode(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read whether the tenant holds a promotion code", err, "tenant_id", tenant.ID.String())
+	}
 	var acceptsAppStorePayments, acceptsGooglePlayPayments bool
 	if appPurchaseRoute == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
 		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
@@ -203,6 +209,7 @@ func (s *apiServer) GetTenant(
 		DefaultLocale:             defaultLocale,
 		SupportedLocales:          supportedLocales,
 		AcceptsPayments:           acceptsPayments,
+		AcceptsPromotionCodes:     acceptsPromotionCodes,
 		Currency:                  currency,
 		AgeVerification:           ageVerification,
 		CommentMode:               commentMode,

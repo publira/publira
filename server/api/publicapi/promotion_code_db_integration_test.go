@@ -1,0 +1,559 @@
+package publicapi
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
+
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
+	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformpolicy"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/testutil"
+)
+
+// promotionCodeEnv is a tenant taking payments through Stripe, with an episode
+// at 500 that is rented at 200, another at 400, and a volume of the two at
+// 900, and a reader signed in to buy them.
+type promotionCodeEnv struct {
+	pg       *testutil.PostgresEnv
+	tenant   testutil.Tenant
+	reader   testutil.TenantUser
+	token    string
+	episode  testutil.Episode
+	other    testutil.Episode
+	volume   testutil.Volume
+	checkout *capturingCheckoutProvider
+	client   publirav1connect.PurchaseServiceClient
+	tenants  publirav1connect.TenantServiceClient
+}
+
+func newPromotionCodeEnv(t *testing.T, guards readerGuards) *promotionCodeEnv {
+	t.Helper()
+	pg := testutil.StartIsolatedPostgres(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	encryptor := newPublicTestEncryptor(t)
+	tenant := pg.SeedTenant(t, "PROMOCODE001", "promo-code.example.com", "Promo tenant")
+	reader := pg.SeedEndUser(t, tenant.ID, "PROMOREADER1", "promo-reader@example.com", "Promo reader")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "PROMOSERIES1", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "PROMOEPISOD1",
+		Title:       "Promo episode",
+		Price:       500,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+	})
+	other := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "PROMOEPISOD2",
+		Title:       "Other episode",
+		Price:       400,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+		OrderIndex:  2,
+	})
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE episode_listings SET rental_price = 200, rental_period_hours = 48 WHERE episode_id = $1`, episode.ID); err != nil {
+		t.Fatalf("rent the episode: %v", err)
+	}
+	volume := pg.SeedVolume(t, tenant.ID, series.ID, testutil.VolumeSeed{
+		PublicID:   "PROMOVOLUME1",
+		Title:      "Promo volume",
+		Price:      900,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{episode.ID, other.ID},
+	})
+	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default()).Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+
+	db := pg.OpenPublicDB(t)
+	checkout := newCapturingCheckoutProvider()
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard(), nil)
+	server.paymentProviders = paymentprovider.NewRegistry(checkout)
+	ts := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(ts.Close)
+	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
+	return &promotionCodeEnv{
+		pg:       pg,
+		tenant:   tenant,
+		reader:   reader,
+		token:    tokenFor(t, tenant, reader),
+		episode:  episode,
+		other:    other,
+		volume:   volume,
+		checkout: checkout,
+		client:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(transport)),
+		tenants:  publirav1connect.NewTenantServiceClient(connect.NewClient(transport)),
+	}
+}
+
+func (e *promotionCodeEnv) ctx() context.Context {
+	return testutil.WithBearer(context.Background(), e.token)
+}
+
+// promotionCodeSeed is a promotion_codes row a case starts from; the zero
+// value of each optional column leaves it NULL.
+type promotionCodeSeed struct {
+	code                    string
+	kind                    string
+	value                   int32
+	targetKind              string
+	targetID                uuid.NullUUID
+	startsAt                sql.NullTime
+	endsAt                  sql.NullTime
+	maxRedemptions          sql.NullInt32
+	maxRedemptionsPerReader sql.NullInt32
+	paused                  bool
+	deleted                 bool
+}
+
+func seedPromotionCode(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, seed promotionCodeSeed) uuid.UUID {
+	t.Helper()
+	if seed.targetKind == "" {
+		seed.targetKind = "catalog"
+	}
+	id := uuid.Must(uuid.NewV7())
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO promotion_codes (id, tenant_id, code, discount_kind, discount_value, target_kind, target_id,
+			starts_at, ends_at, max_redemptions, max_redemptions_per_reader, paused_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+			CASE WHEN $12 THEN now() END, CASE WHEN $13 THEN now() END)
+	`, id, tenantID, seed.code, seed.kind, seed.value, seed.targetKind, seed.targetID,
+		seed.startsAt, seed.endsAt, seed.maxRedemptions, seed.maxRedemptionsPerReader, seed.paused, seed.deleted); err != nil {
+		t.Fatalf("seed promotion code %s: %v", seed.code, err)
+	}
+	return id
+}
+
+// redeem records a purchase of the other episode by userID that redeemed the
+// code, as one confirmed earlier would have.
+func (e *promotionCodeEnv) redeem(t *testing.T, codeID, userID uuid.UUID) {
+	t.Helper()
+	purchaseID := uuid.Must(uuid.NewV7())
+	if _, err := e.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, list_price, promotion_code_id, currency)
+		VALUES ($1, $2, $3, $4, 300, 400, $5, $6)
+	`, purchaseID, e.tenant.ID, userID, e.other.ID, codeID, e.pg.TenantCurrency(t, e.tenant.ID)); err != nil {
+		t.Fatalf("seed a purchase that redeemed the code: %v", err)
+	}
+	if _, err := e.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO promotion_code_redemptions (id, tenant_id, promotion_code_id, user_id, purchase_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, uuid.Must(uuid.NewV7()), e.tenant.ID, codeID, userID, purchaseID); err != nil {
+		t.Fatalf("seed a redemption: %v", err)
+	}
+}
+
+func (e *promotionCodeEnv) count(t *testing.T, query string, args ...any) int {
+	t.Helper()
+	var n int
+	if err := e.pg.DB.QueryRowContext(context.Background(), query, args...).Scan(&n); err != nil {
+		t.Fatalf("count %q: %v", query, err)
+	}
+	return n
+}
+
+func assertPromotionCodeRefusal(t *testing.T, label string, err error, want string) {
+	t.Helper()
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("%s = %v, want failed_precondition with %s", label, err, want)
+	}
+	if reason, _ := errorInfoReason(err); reason != want {
+		t.Fatalf("%s reason = %q, want %q", label, reason, want)
+	}
+}
+
+// A code is quoted against the sale the reader is about to start, at the
+// price that sale charges now, and matched whatever its case; each code that
+// cannot be applied is refused with the reason a client tells the reader.
+func TestDBPreviewPromotionCodeQuotesTheSaleAndRefusesWithAReason(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	tenantID := env.tenant.ID
+	hourAgo := sql.NullTime{Time: time.Now().Add(-time.Hour), Valid: true}
+	inAnHour := sql.NullTime{Time: time.Now().Add(time.Hour), Valid: true}
+	one := sql.NullInt32{Int32: 1, Valid: true}
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "Spring20", kind: "percent", value: 20})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "YEN150", kind: "amount", value: 150, targetKind: "episode", targetID: uuid.NullUUID{UUID: env.episode.ID, Valid: true}})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "PAUSED", kind: "percent", value: 10, paused: true})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "DELETED", kind: "percent", value: 10, deleted: true})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "SOON", kind: "percent", value: 10, startsAt: inAnHour})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "OVER", kind: "percent", value: 10, startsAt: sql.NullTime{Time: time.Now().Add(-2 * time.Hour), Valid: true}, endsAt: hourAgo})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "OTHERONLY", kind: "percent", value: 10, targetKind: "episode", targetID: uuid.NullUUID{UUID: env.other.ID, Valid: true}})
+	seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "VOLUMEONLY", kind: "percent", value: 10, targetKind: "volume", targetID: uuid.NullUUID{UUID: env.volume.ID, Valid: true}})
+	someoneElse := env.pg.SeedEndUser(t, tenantID, "PROMOREADER2", "someone@example.com", "Someone")
+	spent := seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "SPENT", kind: "percent", value: 10, maxRedemptions: one})
+	env.redeem(t, spent, someoneElse.ID)
+	mine := seedPromotionCode(t, env.pg, tenantID, promotionCodeSeed{code: "ONCEEACH", kind: "percent", value: 10, maxRedemptionsPerReader: one})
+	env.redeem(t, mine, env.reader.ID)
+	// Another tenant's code of the same name is not this tenant's.
+	elsewhere := env.pg.SeedTenant(t, "PROMOCODE002", "promo-elsewhere.example.com", "Elsewhere")
+	seedPromotionCode(t, env.pg, elsewhere.ID, promotionCodeSeed{code: "ELSEWHERE", kind: "percent", value: 50})
+
+	preview := func(req *publirav1.PreviewPromotionCodeRequest) (*publirav1.PreviewPromotionCodeResponse, error) {
+		req.Tenant = tenantContext(env.tenant)
+		return env.client.PreviewPromotionCode(env.ctx(), req)
+	}
+	for _, tc := range []struct {
+		name                           string
+		req                            *publirav1.PreviewPromotionCodeRequest
+		listPrice, discountAmount, pay int32
+	}{
+		{name: "a percentage of the permanent copy", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", EpisodeId: env.episode.ID.String()}, listPrice: 500, discountAmount: 100, pay: 400},
+		{name: "a percentage of the rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "spring20", EpisodeId: env.episode.ID.String(), Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL}, listPrice: 200, discountAmount: 40, pay: 160},
+		{name: "a percentage of the volume", req: &publirav1.PreviewPromotionCodeRequest{Code: " Spring20 ", VolumeId: env.volume.ID.String()}, listPrice: 900, discountAmount: 180, pay: 720},
+		{name: "an amount of the episode it names", req: &publirav1.PreviewPromotionCodeRequest{Code: "YEN150", EpisodeId: env.episode.ID.String()}, listPrice: 500, discountAmount: 150, pay: 350},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := preview(tc.req)
+			if err != nil {
+				t.Fatalf("PreviewPromotionCode: %v", err)
+			}
+			if res.ListPrice != tc.listPrice || res.DiscountAmount != tc.discountAmount || res.Price != tc.pay || res.Currency == "" {
+				t.Fatalf("quote = %+v, want %d less %d is %d", res, tc.listPrice, tc.discountAmount, tc.pay)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name string
+		req  *publirav1.PreviewPromotionCodeRequest
+		want string
+	}{
+		{name: "an unknown code", req: &publirav1.PreviewPromotionCodeRequest{Code: "NOSUCHCODE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code no code could be", req: &publirav1.PreviewPromotionCodeRequest{Code: "NO-SUCH-CODE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "another tenant's code", req: &publirav1.PreviewPromotionCodeRequest{Code: "ELSEWHERE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a paused code", req: &publirav1.PreviewPromotionCodeRequest{Code: "PAUSED"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a deleted code", req: &publirav1.PreviewPromotionCodeRequest{Code: "DELETED"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code not started", req: &publirav1.PreviewPromotionCodeRequest{Code: "SOON"}, want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code ended", req: &publirav1.PreviewPromotionCodeRequest{Code: "OVER"}, want: rpcerrors.ReasonPromotionCodeExpired},
+		{name: "a code of another episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "OTHERONLY"}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
+		{name: "a code of a volume holding the episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "VOLUMEONLY"}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
+		{name: "a code redeemed as often as it may be", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPENT"}, want: rpcerrors.ReasonPromotionCodeExhausted},
+		{name: "a code the reader redeemed", req: &publirav1.PreviewPromotionCodeRequest{Code: "ONCEEACH"}, want: rpcerrors.ReasonPromotionCodeAlreadyRedeemed},
+		{name: "a store purchase of a rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL, Store: true}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.req.EpisodeId == "" {
+				tc.req.EpisodeId = env.episode.ID.String()
+			}
+			_, err := preview(tc.req)
+			assertPromotionCodeRefusal(t, "PreviewPromotionCode", err, tc.want)
+		})
+	}
+
+	if _, err := env.client.PreviewPromotionCode(context.Background(), &publirav1.PreviewPromotionCodeRequest{
+		Tenant:    tenantContext(env.tenant),
+		Code:      "SPRING20",
+		EpisodeId: env.episode.ID.String(),
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("PreviewPromotionCode without a session = %v, want unauthenticated", err)
+	}
+}
+
+// A checkout started with a code charges the discounted price with Stripe's
+// own codes closed, and the purchase its webhook confirms records the list
+// price, what was paid, and the code, and redeems it once however often the
+// webhook is delivered. A checkout started without a code is the request it
+// was before codes existed.
+func TestDBACheckoutWithAPromotionCodeChargesTheDiscountAndRedeemsItOnce(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	codeID := seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "Spring20", kind: "percent", value: 20})
+
+	if _, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{
+		Tenant:    tenantContext(env.tenant),
+		EpisodeId: env.episode.ID.String(),
+	}); err != nil {
+		t.Fatalf("StartEpisodeCheckout without a code: %v", err)
+	}
+	if plain := env.checkout.input; plain.Purchase.Price != 500 || plain.Purchase.ListPrice != 0 || plain.Purchase.PromotionCodeID != uuid.Nil || plain.DisallowProviderCodes {
+		t.Fatalf("checkout without a code = %+v, want 500 and nothing of a code", plain)
+	}
+
+	res, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{
+		Tenant:        tenantContext(env.tenant),
+		EpisodeId:     env.episode.ID.String(),
+		PromotionCode: "spring20",
+	})
+	if err != nil {
+		t.Fatalf("StartEpisodeCheckout with a code: %v", err)
+	}
+	if res.CheckoutUrl != env.checkout.url {
+		t.Fatalf("checkout url = %q, want the provider's", res.CheckoutUrl)
+	}
+	discounted := env.checkout.input
+	if discounted.Purchase.Price != 400 || discounted.Purchase.ListPrice != 500 || discounted.Purchase.PromotionCodeID != codeID || !discounted.DisallowProviderCodes {
+		t.Fatalf("checkout with a code = %+v, want 400 off 500 with the code and Stripe's codes closed", discounted)
+	}
+	if got := env.count(t, `SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1`, env.tenant.ID); got != 0 {
+		t.Fatalf("redemptions after the checkout started = %d, want none until it is paid", got)
+	}
+
+	payload, headers := stripetest.NewFixture(t).CheckoutCompleted(t, stripeFixtureCredentials, paymentprovidertest.Checkout{
+		CheckoutID: "cs_promotion_code",
+		PaymentID:  "pi_promotion_code",
+		Purchase:   discounted.Purchase,
+	})
+	for range 2 {
+		if _, err := env.client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(env.tenant.ID.String(), payload, headers)); err != nil {
+			t.Fatalf("ProcessPaymentWebhook: %v", err)
+		}
+	}
+	var paid, listPrice int32
+	var recordedCode uuid.NullUUID
+	if err := env.pg.DB.QueryRowContext(context.Background(), `
+		SELECT price_at_purchase, list_price, promotion_code_id FROM purchases WHERE tenant_id = $1
+	`, env.tenant.ID).Scan(&paid, &listPrice, &recordedCode); err != nil {
+		t.Fatalf("read the purchase: %v", err)
+	}
+	if paid != 400 || listPrice != 500 || recordedCode.UUID != codeID {
+		t.Fatalf("purchase = paid %d of %d with code %v, want 400 of 500 with %s", paid, listPrice, recordedCode, codeID)
+	}
+	if got := env.count(t, `SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1 AND promotion_code_id = $2 AND user_id = $3`, env.tenant.ID, codeID, env.reader.ID); got != 1 {
+		t.Fatalf("redemptions = %d, want 1", got)
+	}
+
+	library, err := env.client.ListMyPurchases(env.ctx(), &publirav1.ListMyPurchasesRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(library.Purchases) != 1 || library.Purchases[0].PriceAtPurchase != 400 || library.Purchases[0].ListPrice != 500 || library.Purchases[0].PromotionCode != "Spring20" {
+		t.Fatalf("library = %+v, want the purchase at 400 of 500 with Spring20", library.Purchases)
+	}
+}
+
+// A code that takes the whole price off opens no checkout: the purchase is
+// recorded at once with no provider, the reader is sent where a paid checkout
+// would have returned them, and the code is redeemed. A second attempt finds
+// the episode bought. A volume a code took the whole price off is credited at
+// its price, spread over its episodes.
+func TestDBACodeThatTakesTheWholePriceOffRecordsThePurchaseAtOnce(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	codeID := seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "FREE", kind: "percent", value: 100})
+
+	res, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{
+		Tenant:        tenantContext(env.tenant),
+		EpisodeId:     env.episode.ID.String(),
+		PromotionCode: "free",
+	})
+	if err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	if !strings.Contains(res.CheckoutUrl, "/episodes/"+env.episode.PublicID) || !strings.Contains(res.CheckoutUrl, "checkout=success") {
+		t.Fatalf("checkout url = %q, want the episode's success return", res.CheckoutUrl)
+	}
+	if env.checkout.input.IdempotencyKey != "" {
+		t.Fatalf("the provider was asked for a checkout %+v", env.checkout.input)
+	}
+	var paid, listPrice int32
+	var provider sql.NullString
+	if err := env.pg.DB.QueryRowContext(context.Background(), `
+		SELECT price_at_purchase, list_price, provider FROM purchases WHERE tenant_id = $1 AND episode_id = $2
+	`, env.tenant.ID, env.episode.ID).Scan(&paid, &listPrice, &provider); err != nil {
+		t.Fatalf("read the purchase: %v", err)
+	}
+	if paid != 0 || listPrice != 500 || provider.Valid {
+		t.Fatalf("purchase = paid %d of %d through %v, want 0 of 500 through no provider", paid, listPrice, provider)
+	}
+	opens, err := dbmodels.New(env.pg.DB).UserHasEpisodeContentAccess(context.Background(), dbmodels.UserHasEpisodeContentAccessParams{
+		TenantID:  env.tenant.ID,
+		UserID:    env.reader.ID,
+		EpisodeID: env.episode.ID,
+	})
+	if err != nil || !opens {
+		t.Fatalf("UserHasEpisodeContentAccess = %v, %v, want the granted purchase to open the episode", opens, err)
+	}
+	if _, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{
+		Tenant:        tenantContext(env.tenant),
+		EpisodeId:     env.episode.ID.String(),
+		PromotionCode: "FREE",
+	}); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("a second free checkout = %v, want already_exists", err)
+	}
+
+	if _, err := env.client.StartVolumeCheckout(env.ctx(), &publirav1.StartVolumeCheckoutRequest{
+		Tenant:        tenantContext(env.tenant),
+		VolumeId:      env.volume.ID.String(),
+		PromotionCode: "FREE",
+	}); err != nil {
+		t.Fatalf("StartVolumeCheckout: %v", err)
+	}
+	var parts, royaltyParts int64
+	if err := env.pg.DB.QueryRowContext(context.Background(), `
+		SELECT COALESCE(sum(vpe.price), 0), COALESCE(sum(vpe.royalty_price), 0)
+		FROM volume_purchase_episodes vpe
+		JOIN purchases p ON p.tenant_id = vpe.tenant_id AND p.id = vpe.purchase_id
+		WHERE p.tenant_id = $1 AND p.volume_id = $2
+	`, env.tenant.ID, env.volume.ID).Scan(&parts, &royaltyParts); err != nil {
+		t.Fatalf("read the volume's parts: %v", err)
+	}
+	if parts != 0 || royaltyParts != 900 {
+		t.Fatalf("volume parts = paid %d, credited %d, want 0 and the list price of 900", parts, royaltyParts)
+	}
+	if got := env.count(t, `SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1 AND promotion_code_id = $2`, env.tenant.ID, codeID); got != 2 {
+		t.Fatalf("redemptions = %d, want one for the episode and one for the volume", got)
+	}
+	if got := env.count(t, `SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = 'purchase_receipt'`, env.tenant.ID); got != 2 {
+		t.Fatalf("receipts queued = %d, want one per granted purchase", got)
+	}
+}
+
+// Each lookup of a code spends the reader's allowance for codes before the
+// code is read, whether it is a quote or a checkout, so a reader past it is
+// refused even a code that would work.
+func TestDBAReaderPastThePromotionCodeLimitIsRefusedBeforeTheCodeIsRead(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
+	}))
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "SPRING20", kind: "percent", value: 20})
+
+	for _, code := range []string{"GUESS1", "GUESS2"} {
+		_, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: code, EpisodeId: env.episode.ID.String()})
+		assertPromotionCodeRefusal(t, fmt.Sprintf("PreviewPromotionCode(%s)", code), err, rpcerrors.ReasonPromotionCodeInvalid)
+	}
+	if _, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "SPRING20", EpisodeId: env.episode.ID.String()}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a third lookup = %v, want resource_exhausted", err)
+	}
+	if _, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{Tenant: tenantContext(env.tenant), EpisodeId: env.episode.ID.String(), PromotionCode: "SPRING20"}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a checkout with a code past the limit = %v, want resource_exhausted", err)
+	}
+	// A checkout without a code spends none of it.
+	if _, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{Tenant: tenantContext(env.tenant), EpisodeId: env.episode.ID.String()}); err != nil {
+		t.Fatalf("a checkout without a code: %v", err)
+	}
+}
+
+// GetTenant offers the code input while the tenant holds a code that is
+// neither paused, deleted, nor past its end.
+func TestDBGetTenantAcceptsPromotionCodesWhileOneIsLive(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	accepts := func() bool {
+		t.Helper()
+		res, err := env.tenants.GetTenant(context.Background(), &publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)})
+		if err != nil {
+			t.Fatalf("GetTenant: %v", err)
+		}
+		return res.AcceptsPromotionCodes
+	}
+	if accepts() {
+		t.Fatal("a tenant with no code accepts codes")
+	}
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "PAUSED", kind: "percent", value: 10, paused: true})
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "OVER", kind: "percent", value: 10, endsAt: sql.NullTime{Time: time.Now().Add(-time.Hour), Valid: true}})
+	if accepts() {
+		t.Fatal("a tenant whose codes are paused or ended accepts codes")
+	}
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "SOON", kind: "percent", value: 10, startsAt: sql.NullTime{Time: time.Now().Add(time.Hour), Valid: true}})
+	if !accepts() {
+		t.Fatal("a tenant with a code about to start does not accept codes")
+	}
+}
+
+// In the app, a code opens the intent at the store product of the discounted
+// price, which the store products list; the purchase the store confirms
+// records the list price and the code and redeems it. A code that takes the
+// whole price off is answered with the purchase, and the store sells nothing.
+func TestDBAStorePurchaseWithAPromotionCodeOpensTheIntentAtTheDiscountedProduct(t *testing.T) {
+	t.Parallel()
+
+	env := newStorePurchaseEnv(t)
+	codeID := seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "APP100", kind: "amount", value: 100})
+
+	prices, err := dbmodels.New(env.pg.DB).ListTenantStoreProductPrices(context.Background(), env.tenant.ID)
+	if err != nil {
+		t.Fatalf("ListTenantStoreProductPrices: %v", err)
+	}
+	listed := map[int32]bool{}
+	for _, row := range prices {
+		listed[row.Price] = true
+	}
+	if !listed[300] || !listed[200] {
+		t.Fatalf("store product prices = %+v, want the price of 300 and its discounted 200", prices)
+	}
+
+	intent, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
+		Tenant:        tenantContext(env.tenant),
+		EpisodeId:     env.episode.ID.String(),
+		Store:         publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+		PromotionCode: "app100",
+	})
+	if err != nil {
+		t.Fatalf("StartStorePurchase: %v", err)
+	}
+	if intent.ProductId != "episode_200" || intent.Purchase != nil {
+		t.Fatalf("intent = %+v, want episode_200", intent)
+	}
+	transaction := env.appStoreTransaction("2000000000000099", intent)
+	env.appStore.transactions[transaction.TransactionID] = transaction
+	purchase, err := env.confirmAppStore(t, env.token, transaction)
+	if err != nil {
+		t.Fatalf("ConfirmStorePurchase: %v", err)
+	}
+	if purchase.PriceAtPurchase != 200 || purchase.ListPrice != 300 || purchase.PromotionCode != "APP100" {
+		t.Fatalf("purchase = %+v, want 200 of 300 with APP100", purchase)
+	}
+	if got := env.count(t, `SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1 AND promotion_code_id = $2`, env.tenant.ID, codeID); got != 1 {
+		t.Fatalf("redemptions = %d, want 1", got)
+	}
+
+	// The store sells no product at a price the products do not list.
+	asOwner := rpcmiddleware.WithTenantQueries(context.Background(), dbmodels.New(env.pg.DB))
+	if err := env.server.requireStoreProduct(asOwner, env.tenant.ID, 200); err != nil {
+		t.Fatalf("requireStoreProduct(200) = %v, want the listed price accepted", err)
+	}
+	if err := env.server.requireStoreProduct(asOwner, env.tenant.ID, 123); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("requireStoreProduct(123) = %v, want failed_precondition", err)
+	} else if reason, _ := errorInfoReason(err); reason != rpcerrors.ReasonPromotionCodeNoStoreProduct {
+		t.Fatalf("requireStoreProduct(123) reason = %q, want %q", reason, rpcerrors.ReasonPromotionCodeNoStoreProduct)
+	}
+
+	var seriesID uuid.UUID
+	if err := env.pg.DB.QueryRowContext(context.Background(), `SELECT series_id FROM episodes WHERE id = $1`, env.episode.ID).Scan(&seriesID); err != nil {
+		t.Fatalf("read the episode's series: %v", err)
+	}
+	other := env.pg.SeedEpisode(t, env.tenant.ID, seriesID, testutil.EpisodeSeed{
+		PublicID:   "STOREEPISOD2",
+		Title:      "Store Episode 2",
+		Status:     testutil.EpisodeStatusPublished,
+		Price:      100,
+		OrderIndex: 2,
+	})
+	granted, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
+		Tenant:        tenantContext(env.tenant),
+		EpisodeId:     other.ID.String(),
+		Store:         publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+		PromotionCode: "APP100",
+	})
+	if err != nil {
+		t.Fatalf("StartStorePurchase of an episode the code makes free: %v", err)
+	}
+	if granted.IntentId != "" || granted.ProductId != "" || granted.Purchase == nil || granted.Purchase.PriceAtPurchase != 0 || granted.Purchase.ListPrice != 100 {
+		t.Fatalf("answer = %+v, want the purchase granted at 0 of 100 and no intent", granted)
+	}
+}

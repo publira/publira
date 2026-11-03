@@ -173,6 +173,12 @@ type Policy struct {
 	// repeat. A reader buying a series one episode at a time starts a purchase
 	// per episode, so its day is wider than the other checkouts'.
 	PurchaseCheckout MinuteDay
+	// PromotionCodeAttempt bounds how often one reader may have a promotion
+	// code looked up: a quote of one, and every checkout or store purchase
+	// started with one. A code is a secret the tenant handed out, so what this
+	// bounds is how fast one account can guess at a tenant's codes, and it is
+	// narrower than the checkouts it rides on.
+	PromotionCodeAttempt MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -252,6 +258,7 @@ func Defaults() Policy {
 		SubscriptionCheckout:      MinuteDay{PerMinute: 10, PerDay: 50},
 		CoinPayment:               MinuteDay{PerMinute: 20, PerDay: 500},
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
+		PromotionCodeAttempt:      MinuteDay{PerMinute: 5, PerDay: 30},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 		DataExport:                HourDay{PerHour: 1, PerDay: 1},
@@ -295,6 +302,7 @@ func (p Policy) Validate() error {
 		{"subscription_checkout", "per_minute", p.SubscriptionCheckout.PerMinute, p.SubscriptionCheckout.PerDay},
 		{"coin_payment", "per_minute", p.CoinPayment.PerMinute, p.CoinPayment.PerDay},
 		{"purchase_checkout", "per_minute", p.PurchaseCheckout.PerMinute, p.PurchaseCheckout.PerDay},
+		{"promotion_code_attempt", "per_minute", p.PromotionCodeAttempt.PerMinute, p.PromotionCodeAttempt.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 		{"data_export", "per_hour", p.DataExport.PerHour, p.DataExport.PerDay},
@@ -389,6 +397,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		SubscriptionCheckout:      MinuteDay{PerMinute: int(config.SubscriptionCheckoutLimitPerMinute), PerDay: int(config.SubscriptionCheckoutLimitPerDay)},
 		CoinPayment:               MinuteDay{PerMinute: int(config.CoinPaymentLimitPerMinute), PerDay: int(config.CoinPaymentLimitPerDay)},
 		PurchaseCheckout:          MinuteDay{PerMinute: int(config.PurchaseCheckoutLimitPerMinute), PerDay: int(config.PurchaseCheckoutLimitPerDay)},
+		PromotionCodeAttempt:      MinuteDay{PerMinute: int(config.PromotionCodeAttemptLimitPerMinute), PerDay: int(config.PromotionCodeAttemptLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DataExport:                HourDay{PerHour: int(config.DataExportLimitPerHour), PerDay: int(config.DataExportLimitPerDay)},
@@ -451,6 +460,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		CoinPaymentLimitPerDay:                  int32(policy.CoinPayment.PerDay),
 		PurchaseCheckoutLimitPerMinute:          int32(policy.PurchaseCheckout.PerMinute),
 		PurchaseCheckoutLimitPerDay:             int32(policy.PurchaseCheckout.PerDay),
+		PromotionCodeAttemptLimitPerMinute:      int32(policy.PromotionCodeAttempt.PerMinute),
+		PromotionCodeAttemptLimitPerDay:         int32(policy.PromotionCodeAttempt.PerDay),
 		AnonymousReadPublicApiLimitPer10Seconds: int32(policy.AnonymousReads.PublicAPI),
 		AnonymousReadSearchLimitPer10Seconds:    int32(policy.AnonymousReads.Search),
 		AnonymousReadImagesLimitPer10Seconds:    int32(policy.AnonymousReads.Images),

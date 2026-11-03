@@ -59,6 +59,12 @@ const (
 	// MetadataKind is absent on a checkout started before an episode had
 	// two sales, which sold the permanent copy.
 	MetadataKind = "kind"
+	// MetadataListPrice and MetadataPromotionCodeID are present together on a
+	// checkout the tenant's own promotion code discounted: the price before
+	// the discount, and the code. MetadataPrice is the discounted price the
+	// session charges, PAY.JP taking no discount of its own.
+	MetadataListPrice       = "list_price"
+	MetadataPromotionCodeID = "promotion_code_id"
 
 	// MetadataRefundKey is the metadata key a refund of an amount carries the
 	// idempotency key it was requested under in.
@@ -224,6 +230,10 @@ func sessionMetadata(purchase paymentprovider.Purchase) (map[string]payjpv2.Chec
 	}
 	if purchase.Kind != "" {
 		values[MetadataKind] = string(purchase.Kind)
+	}
+	if purchase.PromotionCodeID != uuid.Nil {
+		values[MetadataListPrice] = strconv.FormatInt(int64(purchase.ListPrice), 10)
+		values[MetadataPromotionCodeID] = purchase.PromotionCodeID.String()
 	}
 	metadata := make(map[string]payjpv2.CheckoutSessionCreateRequest_Metadata_AdditionalProperties, len(values))
 	for key, value := range values {
@@ -715,6 +725,10 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
 		}
 	}
+	listPrice, promotionCodeID, err := parsePromotionCodeMetadata(metadata, value, price, (sellsVolume || sellsEpisode) && kind != paymentprovider.KindTip)
+	if err != nil {
+		return paymentprovider.Purchase{}, err
+	}
 	var coins, bonusCoins, expiryDays int64
 	if sellsCoinPack {
 		parseCount := func(key string) (int64, error) {
@@ -750,8 +764,37 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 		CoinExpiryDays:     int32(expiryDays),
 		Kind:               kind,
 		Price:              int32(price),
+		ListPrice:          listPrice,
+		PromotionCodeID:    promotionCodeID,
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil
+}
+
+// parsePromotionCodeMetadata reads the tenant's promotion code a checkout was
+// discounted by, and the price before it, which a checkout carries together
+// or not at all, through value, which reads one metadata string. A code
+// applies to the sale of an episode or a volume alone, never to a tip, and
+// never raises a price.
+func parsePromotionCodeMetadata(metadata map[string]json.RawMessage, value func(string) (string, bool), price int64, takesCodes bool) (int32, uuid.UUID, error) {
+	_, hasCode := metadata[MetadataPromotionCodeID]
+	_, hasList := metadata[MetadataListPrice]
+	if !hasCode && !hasList {
+		return 0, uuid.Nil, nil
+	}
+	codeValue, codeOK := value(MetadataPromotionCodeID)
+	listValue, listOK := value(MetadataListPrice)
+	if !codeOK || !listOK || !takesCodes {
+		return 0, uuid.Nil, errors.New("invalid promotion code metadata")
+	}
+	codeID, err := uuid.Parse(codeValue)
+	if err != nil || codeID == uuid.Nil {
+		return 0, uuid.Nil, errors.New("invalid promotion code metadata")
+	}
+	listPrice, err := strconv.ParseInt(listValue, 10, 32)
+	if err != nil || listPrice < price {
+		return 0, uuid.Nil, errors.New("invalid list price metadata")
+	}
+	return int32(listPrice), codeID, nil
 }
 
 func countTrue(values ...bool) int {

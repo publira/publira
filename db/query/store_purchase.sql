@@ -11,7 +11,9 @@ INSERT INTO store_purchase_intents (
     price,
     product_id,
     reading_period_hours,
-    currency
+    currency,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     sqlc.arg('id'),
@@ -21,11 +23,18 @@ VALUES (
     sqlc.arg('price'),
     sqlc.arg('product_id'),
     sqlc.narg('reading_period_hours'),
-    sqlc.arg('currency')
+    sqlc.arg('currency'),
+    sqlc.narg('list_price')::integer,
+    sqlc.narg('promotion_code_id')::uuid
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
-SET product_id = EXCLUDED.product_id
+SET product_id = EXCLUDED.product_id,
+    -- The product names the price, so an intent answered again is sold at the
+    -- price it was opened at; the code that brought the price there is the one
+    -- the reader asked with last, which the purchase records.
+    list_price = EXCLUDED.list_price,
+    promotion_code_id = EXCLUDED.promotion_code_id
 RETURNING *;
 
 -- name: OpenStoreTipIntent :one
@@ -130,7 +139,9 @@ INSERT INTO purchases (
     store_transaction_id,
     is_test,
     currency,
-    kind
+    kind,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     sqlc.arg('id'),
@@ -145,7 +156,9 @@ VALUES (
     sqlc.arg('is_test'),
     sqlc.arg('currency'),
     -- The intent's: the permanent copy, or a tip to the episode's Authors.
-    sqlc.arg('kind')::text
+    sqlc.arg('kind')::text,
+    sqlc.narg('list_price')::integer,
+    sqlc.narg('promotion_code_id')::uuid
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
 RETURNING *;
@@ -176,9 +189,12 @@ SELECT p.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     COALESCE(str.title, '')::text AS series_title,
-    COALESCE(str.locale, '')::text AS series_title_locale
+    COALESCE(str.locale, '')::text AS series_title_locale,
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id AND ct.purchase_id = p.id
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id AND pc.id = p.promotion_code_id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
     LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id AND cp.id = p.coin_pack_id

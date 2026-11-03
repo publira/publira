@@ -894,6 +894,8 @@ type PlatformPolicyConfig struct {
 	AnonymousReadImagesLimitPer10Seconds    int32     `json:"anonymous_read_images_limit_per_10_seconds"`
 	DataExportLimitPerHour                  int32     `json:"data_export_limit_per_hour"`
 	DataExportLimitPerDay                   int32     `json:"data_export_limit_per_day"`
+	PromotionCodeAttemptLimitPerMinute      int32     `json:"promotion_code_attempt_limit_per_minute"`
+	PromotionCodeAttemptLimitPerDay         int32     `json:"promotion_code_attempt_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1040,6 +1042,34 @@ type PlatformWebpushConfig struct {
 	UpdatedAt                time.Time      `json:"updated_at"`
 }
 
+type PromotionCode struct {
+	ID                      uuid.UUID     `json:"id"`
+	TenantID                uuid.UUID     `json:"tenant_id"`
+	Code                    string        `json:"code"`
+	DiscountKind            string        `json:"discount_kind"`
+	DiscountValue           int32         `json:"discount_value"`
+	TargetKind              string        `json:"target_kind"`
+	TargetID                uuid.NullUUID `json:"target_id"`
+	StartsAt                sql.NullTime  `json:"starts_at"`
+	EndsAt                  sql.NullTime  `json:"ends_at"`
+	MaxRedemptions          sql.NullInt32 `json:"max_redemptions"`
+	MaxRedemptionsPerReader sql.NullInt32 `json:"max_redemptions_per_reader"`
+	PausedAt                sql.NullTime  `json:"paused_at"`
+	DeletedAt               sql.NullTime  `json:"deleted_at"`
+	CreatedByUserID         uuid.NullUUID `json:"created_by_user_id"`
+	CreatedAt               time.Time     `json:"created_at"`
+	UpdatedAt               time.Time     `json:"updated_at"`
+}
+
+type PromotionCodeRedemption struct {
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	PromotionCodeID uuid.UUID     `json:"promotion_code_id"`
+	UserID          uuid.NullUUID `json:"user_id"`
+	PurchaseID      uuid.UUID     `json:"purchase_id"`
+	RedeemedAt      time.Time     `json:"redeemed_at"`
+}
+
 type PublishedEpisodeSurface struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 	SeriesID  uuid.UUID `json:"series_id"`
@@ -1083,14 +1113,17 @@ type Purchase struct {
 	StaffRefundRequestedAmount sql.NullInt32  `json:"staff_refund_requested_amount"`
 	TaxRateBps                 sql.NullInt32  `json:"tax_rate_bps"`
 	TaxAmount                  sql.NullInt32  `json:"tax_amount"`
+	ListPrice                  sql.NullInt32  `json:"list_price"`
+	PromotionCodeID            uuid.NullUUID  `json:"promotion_code_id"`
 }
 
 type PurchaseEpisodePart struct {
-	TenantID    uuid.UUID `json:"tenant_id"`
-	PurchaseID  uuid.UUID `json:"purchase_id"`
-	EpisodeID   uuid.UUID `json:"episode_id"`
-	Price       int32     `json:"price"`
-	PurchasedAt time.Time `json:"purchased_at"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	PurchaseID   uuid.UUID `json:"purchase_id"`
+	EpisodeID    uuid.UUID `json:"episode_id"`
+	Price        int32     `json:"price"`
+	PurchasedAt  time.Time `json:"purchased_at"`
+	RoyaltyPrice int32     `json:"royalty_price"`
 }
 
 type ReaderDailyActivity struct {
@@ -1446,6 +1479,8 @@ type StorePurchaseIntent struct {
 	BonusCoins         sql.NullInt32 `json:"bonus_coins"`
 	CoinExpiryDays     sql.NullInt32 `json:"coin_expiry_days"`
 	Kind               string        `json:"kind"`
+	ListPrice          sql.NullInt32 `json:"list_price"`
+	PromotionCodeID    uuid.NullUUID `json:"promotion_code_id"`
 }
 
 type StoreSubscriptionIntent struct {
@@ -2264,12 +2299,13 @@ type VolumeEpisode struct {
 }
 
 type VolumePurchaseEpisode struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	PurchaseID uuid.UUID `json:"purchase_id"`
-	EpisodeID  uuid.UUID `json:"episode_id"`
-	Position   int32     `json:"position"`
-	ListPrice  int32     `json:"list_price"`
-	Price      int32     `json:"price"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	PurchaseID   uuid.UUID     `json:"purchase_id"`
+	EpisodeID    uuid.UUID     `json:"episode_id"`
+	Position     int32         `json:"position"`
+	ListPrice    int32         `json:"list_price"`
+	Price        int32         `json:"price"`
+	RoyaltyPrice sql.NullInt32 `json:"royalty_price"`
 }
 
 type VolumePurchaseSurface struct {

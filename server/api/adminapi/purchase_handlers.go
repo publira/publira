@@ -120,6 +120,8 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		TaxRateBps:            optional(row.TaxRateBps),
 		TaxAmount:             optionalInt64(sql.NullInt64{Int64: int64(row.TaxAmount.Int32), Valid: row.TaxAmount.Valid}),
 		Kind:                  kind,
+		ListPrice:             int64(row.ListPrice),
+		PromotionCode:         row.PromotionCode,
 	}, nil
 }
 

@@ -146,6 +146,13 @@ message GetTenantResponse {
   // What the tenant states about the tax its prices include, for a client to
   // say a price includes tax and to name who charged it on a purchase.
   TenantInvoiceDetails invoice = 30;
+  // Whether the tenant holds a promotion code a reader could enter now or
+  // later: one neither deleted, paused, nor past its end. A client offers the
+  // code input before a checkout or a store purchase only while it is true.
+  // A code whose window has not opened, or whose limits are spent, still
+  // counts, so the input is offered no later than the code starts working;
+  // PurchaseService refuses such a code when it is entered.
+  bool accepts_promotion_codes = 31;
 }
 
 // The tax a tenant's prices include and the details its invoices carry.

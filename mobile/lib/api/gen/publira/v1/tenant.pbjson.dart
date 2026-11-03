@@ -238,6 +238,13 @@ const GetTenantResponse$json = {
       '6': '.publira.v1.TenantInvoiceDetails',
       '10': 'invoice'
     },
+    {
+      '1': 'accepts_promotion_codes',
+      '3': 31,
+      '4': 1,
+      '5': 8,
+      '10': 'acceptsPromotionCodes'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -274,7 +281,8 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'gcIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlUglkYXJrVGhlbWUS'
     'MgoVY3JlYXRvcl9wYWdlc19lbmFibGVkGB0gASgIUhNjcmVhdG9yUGFnZXNFbmFibGVkEjoKB2'
     'ludm9pY2UYHiABKAsyIC5wdWJsaXJhLnYxLlRlbmFudEludm9pY2VEZXRhaWxzUgdpbnZvaWNl'
-    'SgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2U=');
+    'EjYKF2FjY2VwdHNfcHJvbW90aW9uX2NvZGVzGB8gASgIUhVhY2NlcHRzUHJvbW90aW9uQ29kZX'
+    'NKBAgQEBFKBAgREBJSCnRlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
 
 @$core.Deprecated('Use tenantInvoiceDetailsDescriptor instead')
 const TenantInvoiceDetails$json = {
