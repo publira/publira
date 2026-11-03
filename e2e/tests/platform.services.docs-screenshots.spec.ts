@@ -38,9 +38,10 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
  * an SMTP password that are saved, and a search engine whose index failed to
  * build. A test that needs one saves it, takes its shots, and puts the row
  * `task e2e:db` saved back however it ended. The key it saves is the one the
- * stack already signs with, so the images keep loading meanwhile. The files
- * of this project run beside one another and the tests of one file in order,
- * so no other shot photographs these screens while a test has changed them.
+ * stack already signs with, so the images keep loading meanwhile. Each of the
+ * three is on a screen of its own, and every test of that screen, in every
+ * locale, is in one group that runs in order on one worker, so no other shot
+ * photographs the screen while a test has changed it.
  */
 test.use({ baseURL: WEB_PLATFORM_BASE_URL });
 
@@ -71,17 +72,19 @@ const openScreen = async (
   await page.goto(path);
 };
 
-for (const locale of DOCS_LOCALES) {
-  const t = (key: string): string => docsText(locale, key);
+test.describe("web-platform object storage documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
 
-  /** The two kinds of credential on the storage screen, and what each holds. */
-  const credentials = (page: Page) =>
-    page.getByRole("group", {
-      name: t("platform.storage.credentials.legend"),
-    });
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
 
-  test.describe(`web-platform service documentation screenshots in ${locale}`, () => {
-    test.describe("object storage", () => {
+    /** The two kinds of credential on the storage screen, and what each holds. */
+    const credentials = (page: Page) =>
+      page.getByRole("group", {
+        name: t("platform.storage.credentials.legend"),
+      });
+
+    test.describe(`in ${locale}`, () => {
       test("the bucket's settings", async ({ consoleSessions, page }) => {
         await openScreen(page, consoleSessions, locale, "/services/storage");
 
@@ -213,8 +216,16 @@ for (const locale of DOCS_LOCALES) {
         }
       });
     });
+  }
+});
 
-    test.describe("email", () => {
+test.describe("web-platform email documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    test.describe(`in ${locale}`, () => {
       test("the platform's SMTP account", async ({ consoleSessions, page }) => {
         await openScreen(page, consoleSessions, locale, "/services/email");
 
@@ -299,8 +310,16 @@ for (const locale of DOCS_LOCALES) {
         }
       });
     });
+  }
+});
 
-    test.describe("search", () => {
+test.describe("web-platform search documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    test.describe(`in ${locale}`, () => {
       test("moving to OpenSearch", async ({ consoleSessions, page }) => {
         await openScreen(page, consoleSessions, locale, "/services/search");
 
@@ -390,7 +409,13 @@ for (const locale of DOCS_LOCALES) {
         }
       });
     });
+  }
+});
 
+for (const locale of DOCS_LOCALES) {
+  const t = (key: string): string => docsText(locale, key);
+
+  test.describe(`web-platform service documentation screenshots in ${locale}`, () => {
     test("Web Push", async ({ consoleSessions, page }) => {
       await openScreen(page, consoleSessions, locale, "/services/webpush");
 

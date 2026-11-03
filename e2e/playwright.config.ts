@@ -308,8 +308,13 @@ const docsScreenshotProjects: PlaywrightTestProject[] = [
     name: "docs-screenshots-setup",
     testMatch: [docsScreenshotSetup],
   },
+  // Test by test rather than file by file: the files are very unequal, and
+  // the longest of them would bound the project, and the shard that holds it.
+  // A test that saves a state another shot could photograph is in a group
+  // that runs every locale's copy of it in order, on one worker.
   {
     dependencies: ["docs-screenshots-setup"],
+    fullyParallel: true,
     name: "docs-screenshots",
     snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
     testIgnore: [docsScreenshotSetup, docsFirstOperatorSpecs, docsCoinsSpecs],
@@ -869,9 +874,10 @@ export default defineConfig({
     timeout: 15_000,
   },
   forbidOnly: isCi,
-  // File-level parallelism only. Tests in one file stay in order so shared
-  // seed accounts and in-file afterEach cleanup do not race. Specs that stop
-  // a process are kept off this pool by the isolated projects below.
+  // File-level parallelism only, but for `docs-screenshots`. Tests in one
+  // file stay in order so shared seed accounts and in-file afterEach cleanup
+  // do not race. Specs that stop a process are kept off this pool by the
+  // isolated projects below.
   fullyParallel: false,
   projects: [
     ...selectedProjects.map((project) => ({
