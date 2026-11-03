@@ -669,6 +669,13 @@ for (const locale of DOCS_LOCALES) {
               name: t("admin.series.episodes.credits_action"),
             })
             .click();
+          // The dialog opens on a line saying the episodes are loading, and
+          // lays out its form once they arrive.
+          await expect(
+            page.getByRole("dialog").getByRole("button", {
+              name: t("admin.series.episodes.credits.apply"),
+            })
+          ).toBeVisible();
 
           await expectDocsScreenshot(page, {
             element: page.getByRole("dialog"),
