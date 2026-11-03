@@ -632,6 +632,42 @@ const glyphsOf = (node: Nodes): Glyph[] => {
     : glyphs;
 };
 
+/**
+ * A finding for each line of a node's prose, or of an image's alt text, where
+ * a half-width parenthesis touches a letter or a digit outside it.
+ */
+const checkParentheses = (
+  file: string,
+  node: Nodes,
+  line: number
+): Finding[] => {
+  if (node.type === "image" || node.type === "imageReference") {
+    return node.alt && gluedParentheses([...node.alt]).length > 0
+      ? [{ file, line, message: GLUED_PARENTHESIS }]
+      : [];
+  }
+
+  if (
+    node.type !== "heading" &&
+    node.type !== "paragraph" &&
+    node.type !== "tableCell"
+  ) {
+    return [];
+  }
+
+  const glyphs = node.children.flatMap(glyphsOf);
+
+  const lines = gluedParentheses(glyphs.map(({ char }) => char)).map(
+    (index) => glyphs[index]?.line ?? line
+  );
+
+  return [...new Set(lines)].map((glued) => ({
+    file,
+    line: glued,
+    message: GLUED_PARENTHESIS,
+  }));
+};
+
 /** What {@link checkPage} finds in a page, and what it leaves to the tree. */
 export interface CheckedPage {
   findings: Finding[];
@@ -707,15 +743,6 @@ export const checkPage = (file: string, source: string): CheckedPage => {
       });
     }
 
-    if (
-      spaced &&
-      (node.type === "image" || node.type === "imageReference") &&
-      node.alt &&
-      gluedParentheses([...node.alt]).length > 0
-    ) {
-      findings.push({ file, line, message: GLUED_PARENTHESIS });
-    }
-
     // CommonMark does not close `**` between punctuation and a letter, nor
     // open it between a letter and punctuation, and a CJK character counts as
     // a letter, so a bold label ending in `)` that runs straight into Japanese
@@ -729,21 +756,8 @@ export const checkPage = (file: string, source: string): CheckedPage => {
       });
     }
 
-    if (
-      spaced &&
-      (node.type === "heading" ||
-        node.type === "paragraph" ||
-        node.type === "tableCell")
-    ) {
-      const glyphs = node.children.flatMap(glyphsOf);
-
-      const lines = gluedParentheses(glyphs.map(({ char }) => char)).map(
-        (index) => glyphs[index]?.line ?? line
-      );
-
-      for (const glued of new Set(lines)) {
-        findings.push({ file, line: glued, message: GLUED_PARENTHESIS });
-      }
+    if (spaced) {
+      findings.push(...checkParentheses(file, node, line));
     }
   });
 
