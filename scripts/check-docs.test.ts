@@ -429,6 +429,15 @@ describe("scan", () => {
     assert.deepEqual(await findings(), []);
   });
 
+  it("passes the writing guide at a tree's root, and reports one deeper", async () => {
+    await translate();
+    await write("docs/ja/AGENTS.md", "# Japanese pages\n");
+    await write("docs/ja/CLAUDE.md", "@AGENTS.md\n");
+    await write("docs/ja/2-deployments/AGENTS.md", "# Deployments\n");
+
+    assert.deepEqual(await findings(), ["docs/ja/2-deployments/AGENTS.md"]);
+  });
+
   it("reports a tree named after no locale the UI ships", async () => {
     await write("docs/jp/1-getting-started.md");
 

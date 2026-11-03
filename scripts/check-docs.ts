@@ -40,6 +40,7 @@
  */
 
 import { execFile } from "node:child_process";
+import type { Dirent } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -81,6 +82,22 @@ const SUBJECT = /^[a-z\d]+(?:-[a-z\d]+)*$/u;
 const PAGE_EXTENSION = ".md";
 
 const INDEX = "index.md";
+
+/**
+ * The guide to writing in a tree's language, and the file that loads it for
+ * Claude Code, which a tree may keep at its root. The website publishes only
+ * the `<n>-<slug>` pages, `index.md`, and images, so neither is a page, and a
+ * translation owes `docs/en/` no counterpart of its guide.
+ */
+const AGENT_GUIDES = new Set(["AGENTS.md", "CLAUDE.md"]);
+
+/** The entries of a directory that are part of its tree: all but a root's guide. */
+const treeEntries = (entries: Dirent[], root: boolean): Dirent[] =>
+  root
+    ? entries.filter(
+        (entry) => !(entry.isFile() && AGENT_GUIDES.has(entry.name))
+      )
+    : entries;
 
 const IMAGE_EXTENSIONS = new Set([
   ".avif",
@@ -854,9 +871,10 @@ const checkDirectory = async (
   directory: string,
   root = false
 ): Promise<{ findings: Finding[]; images: string[]; pages: string[] }> => {
-  const entries = await readdir(path.join(repository, directory), {
-    withFileTypes: true,
-  });
+  const entries = treeEntries(
+    await readdir(path.join(repository, directory), { withFileTypes: true }),
+    root
+  );
 
   const findings: Finding[] = [];
   const pages: string[] = [];

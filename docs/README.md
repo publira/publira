@@ -33,7 +33,7 @@ docs/
       1-overview.md
 ```
 
-- Every file and directory under a locale's tree is named `<n>-<slug>` (a page adds `.md`), except `index.md` and images.
+- Every file and directory under a locale's tree is named `<n>-<slug>` (a page adds `.md`), except `index.md`, images, and the `AGENTS.md` at the tree's root, with the `CLAUDE.md` that loads it, which says how pages are written in that tree's language and is not published.
   - `<n>` is a positive integer without a leading zero. It orders the entry among its siblings and is left out of the URL. Numbers are unique among siblings, and gaps are allowed, so an entry can be inserted without renaming its neighbours.
   - `<slug>` is lowercase ASCII letters and digits, in words joined by `-`. It is the entry's URL segment, so it is unique among siblings too.
 - `index.md` is the page of its directory. Every directory under a locale's tree has one, so every URL prefix resolves to a page and the directory has a title in the navigation.
