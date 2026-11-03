@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -470,8 +471,8 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 }
 
 // createStorePurchase records the purchase of the episode or the pack an
-// intent was opened for, on the terms it was opened on, and grants the coins
-// of a pack. A pack's coins expire the tenant's expiry_days after the
+// intent was opened for, or the tip, on the terms it was opened on, and grants
+// the coins of a pack. A pack's coins expire the tenant's expiry_days after the
 // purchase, as the intent keeps them.
 func createStorePurchase(ctx context.Context, txq *dbmodels.Queries, intent dbmodels.StorePurchaseIntent, transaction storeTransaction) (dbmodels.Purchase, error) {
 	if intent.CoinPackID.Valid {
@@ -495,6 +496,7 @@ func createStorePurchase(ctx context.Context, txq *dbmodels.Queries, intent dbmo
 			expiryDays: intent.CoinExpiryDays.Int32,
 		})
 	}
+	// A tip's intent has no reading period, so its purchase never expires.
 	var expiresAt sql.NullTime
 	if hours := intent.ReadingPeriodHours.Int32; intent.ReadingPeriodHours.Valid && hours > 0 {
 		now := time.Now().UTC()
@@ -511,6 +513,7 @@ func createStorePurchase(ctx context.Context, txq *dbmodels.Queries, intent dbmo
 		Store:              transaction.store,
 		StoreTransactionID: transaction.transactionID,
 		IsTest:             transaction.isTest,
+		Kind:               intent.Kind,
 	})
 }
 
@@ -571,8 +574,9 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	if err := txq.ConsumeStorePurchaseIntent(ctx, dbmodels.ConsumeStorePurchaseIntentParams{TenantID: tenantID, ID: intent.ID}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to consume a store purchase intent", err, "tenant_id", tenantID.String())
 	}
-	// The engagement events are an episode's, and a pack is not one.
-	if purchase.EpisodeID.Valid {
+	// The engagement events are an episode's, and a pack is not one, nor is a
+	// tip a purchase of the episode it names.
+	if purchase.EpisodeID.Valid && purchase.Kind != string(paymentprovider.KindTip) {
 		if _, err := txq.ProjectPurchaseContentEventByID(ctx, dbmodels.ProjectPurchaseContentEventByIDParams{
 			ID:         uuid.Must(uuid.NewV7()),
 			TenantID:   tenantID,

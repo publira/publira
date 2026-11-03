@@ -298,6 +298,37 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a tip checkout names its kind and episode", func(t *testing.T) {
+		tip := checkout
+		tip.CheckoutID = "checkout_contract_tip"
+		tip.Purchase.Kind = paymentprovider.KindTip
+		tip.Purchase.Price = 300
+		tip.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, tip)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != tip.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, tip.Purchase)
+		}
+	})
+
+	t.Run("a tip that names a period is malformed", func(t *testing.T) {
+		bounded := checkout
+		bounded.CheckoutID = "checkout_contract_bounded_tip"
+		bounded.Purchase.Kind = paymentprovider.KindTip
+		bounded.Purchase.ReadingPeriodHours = 24
+		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
 	t.Run("a volume checkout names its volume and no episode", func(t *testing.T) {
 		volume := checkout
 		volume.CheckoutID = "checkout_contract_volume"

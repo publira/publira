@@ -106,8 +106,8 @@ func (d Declaration) Missing(c Credentials) []string {
 	return missing
 }
 
-// Kind is which of an episode's two sales a purchase is, spelled as
-// purchases.kind stores it.
+// Kind is which of an episode's two sales a purchase is, or a tip to its
+// Authors, spelled as purchases.kind stores it.
 type Kind string
 
 const (
@@ -116,13 +116,19 @@ const (
 	KindPurchase Kind = "purchase"
 	// KindRental is the rental, which always expires.
 	KindRental Kind = "rental"
+	// KindTip is a tip to the Authors of an episode, which opens nothing and
+	// so has no reading period.
+	KindTip Kind = "tip"
 )
 
 // ParseKind answers the kind a checkout's metadata names, beside the reading
 // period the same metadata names. Empty is [KindPurchase], what a checkout
 // started before kinds existed sold; anything else it does not know is an
 // error. So is a rental without a positive period: recorded, it would be a
-// purchase that never expires, sold at the rental's price.
+// purchase that never expires, sold at the rental's price. A tip with a
+// period is one too, since it opens nothing for the period to bound. A tip
+// is of an episode, which the checks of the other things a checkout sells
+// refuse it for.
 func ParseKind(value string, readingPeriodHours int64) (Kind, error) {
 	switch Kind(value) {
 	case "", KindPurchase:
@@ -132,6 +138,11 @@ func ParseKind(value string, readingPeriodHours int64) (Kind, error) {
 			return "", errors.New("a rental names no reading period")
 		}
 		return KindRental, nil
+	case KindTip:
+		if readingPeriodHours != 0 {
+			return "", errors.New("a tip names no reading period")
+		}
+		return KindTip, nil
 	}
 	return "", fmt.Errorf("unknown purchase kind %q", value)
 }
@@ -211,8 +222,9 @@ type Purchase struct {
 	Coins          int32     `json:",omitzero"`
 	BonusCoins     int32     `json:",omitzero"`
 	CoinExpiryDays int32     `json:",omitzero"`
-	// Kind is which of the episode's sales the checkout is for, and always
-	// [KindPurchase] for a volume, a series bundle, and a pack.
+	// Kind is which of the episode's sales the checkout is for, or [KindTip]
+	// for a tip to its Authors, and always [KindPurchase] for a volume, a
+	// series bundle, and a pack.
 	Kind Kind
 	// Price is the episode's, the volume's, or the pack's price at the time of
 	// checkout, or what a series bundle charges once its discount is taken

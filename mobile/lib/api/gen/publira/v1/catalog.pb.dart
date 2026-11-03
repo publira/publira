@@ -1594,6 +1594,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     EpisodeNeighbor? nextFreeEpisode,
     $core.Iterable<$core.String>? publishedLocales,
     $core.Iterable<$0.EpisodeImage>? previewPages,
+    $core.Iterable<$core.int>? tipAmounts,
   }) {
     final result = GetEpisodeDetailResponse._();
     if (episode != null) result.episode = episode;
@@ -1609,6 +1610,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     if (publishedLocales != null)
       result.publishedLocales.addAll(publishedLocales);
     if (previewPages != null) result.previewPages.addAll(previewPages);
+    if (tipAmounts != null) result.tipAmounts.addAll(tipAmounts);
     return result;
   }
 
@@ -1648,6 +1650,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     ..pPS(11, _omitFieldNames ? '' : 'publishedLocales')
     ..pPM<$0.EpisodeImage>(12, _omitFieldNames ? '' : 'previewPages',
         subBuilder: $0.EpisodeImage.$_createMessage)
+    ..p<$core.int>(13, _omitFieldNames ? '' : 'tipAmounts', $pb.PbFieldType.K3)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1816,6 +1819,17 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   /// the reader's own on one it does.
   @$pb.TagNumber(12)
   $pb.PbList<$0.EpisodeImage> get previewPages => $_getList(11);
+
+  /// The amounts a reader may tip the episode's Authors, in the minor unit of
+  /// the tenant's currency, in ascending order: one to six of them while the
+  /// tenant takes tips, and empty while it does not. They are the tenant's,
+  /// the same on every episode and for every reader, so a reader the episode
+  /// credits, whom StartTipCheckout refuses, is answered them too; such a
+  /// reader is told apart by entitlement_source. A tip is paid on the site
+  /// through StartTipCheckout, and in an app that sells through the stores as
+  /// the product `tip_` followed by the amount, through StartStoreTip.
+  @$pb.TagNumber(13)
+  $pb.PbList<$core.int> get tipAmounts => $_getList(12);
 }
 
 /// A creator that currently has at least one published series.
@@ -9774,6 +9788,7 @@ class StartSeriesRemainderCheckoutResponse extends $pb.GeneratedMessage {
 /// One purchase belonging to the signed-in reader. `is_active` is evaluated by
 /// the API at read time: a purchase is active until it is revoked or its
 /// expiry passes, and one without an expiry stays active until it is revoked.
+/// A tip (PURCHASE_KIND_TIP) opens nothing, and is never active.
 ///
 /// A purchase is of one episode, of one volume, or of the rest of a series:
 /// exactly one of `episode`, `volume`, and `series_bundle` is set, and `series`
@@ -10002,9 +10017,10 @@ class MyPurchase extends $pb.GeneratedMessage {
   @$pb.TagNumber(11)
   void clearRevokedAt() => $_clearField(11);
 
-  /// Which of the episode's sales the reader bought, never unspecified. A
-  /// rental always carries expires_at. A purchase of a volume or of the rest of
-  /// a series is always PURCHASE_KIND_PURCHASE.
+  /// Which of the episode's sales the reader bought, or PURCHASE_KIND_TIP for a
+  /// tip to its Authors, never unspecified. A rental always carries expires_at.
+  /// A purchase of a volume or of the rest of a series is always
+  /// PURCHASE_KIND_PURCHASE.
   @$pb.TagNumber(12)
   $0.PurchaseKind get kind => $_getN(11);
   @$pb.TagNumber(12)
@@ -10667,8 +10683,389 @@ class StartStorePurchaseResponse extends $pb.GeneratedMessage {
   void clearProductId() => $_clearField(2);
 }
 
+/// Starts a provider checkout of a tip to the Authors of an episode, at one of
+/// the tenant's tip amounts (GetEpisodeDetailResponse.tip_amounts), and answers
+/// the URL of the provider's checkout page. The tip is recorded by the
+/// provider's webhook alone, as a purchase of kind PURCHASE_KIND_TIP that opens
+/// nothing; a royalty statement splits it among the episode's credited Authors
+/// by their shares, on lines of their own.
+///
+/// A guest is unauthenticated. An amount that is not one of the tenant's, a
+/// tenant that takes no tips, and an episode the calling surface does not list
+/// as published are failed_precondition. A reader whose account is linked to
+/// an Author the episode credits is permission_denied with the ErrorInfo reason
+/// READER_CREDITED_ON_EPISODE. CLIENT_MOBILE is refused as StartEpisodeCheckout
+/// refuses it while the app sells through the stores, where a tip is
+/// StartStoreTip instead. A reader may tip the same episode again and again,
+/// and a tip is not refused for any purchase the reader holds or lacks.
+///
+/// The storefront is returned to the episode page with `tip` in the query,
+/// `success` or `cancelled`; the app to `/{locale}/checkout/return` with
+/// `episode`, `tip`, and `status`.
+class StartTipCheckoutRequest extends $pb.GeneratedMessage {
+  factory StartTipCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? episodeId,
+    $core.int? amount,
+    StartEpisodeCheckoutRequest_Client? client,
+    $core.String? locale,
+  }) {
+    final result = StartTipCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (episodeId != null) result.episodeId = episodeId;
+    if (amount != null) result.amount = amount;
+    if (client != null) result.client = client;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  StartTipCheckoutRequest._();
+
+  factory StartTipCheckoutRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartTipCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory StartTipCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartTipCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartTipCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartTipCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'episodeId')
+    ..aI(3, _omitFieldNames ? '' : 'amount')
+    ..aE<StartEpisodeCheckoutRequest_Client>(4, _omitFieldNames ? '' : 'client',
+        enumValues: StartEpisodeCheckoutRequest_Client.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartTipCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartTipCheckoutRequest copyWith(
+          void Function(StartTipCheckoutRequest) updates) =>
+      super.copyWith((message) => updates(message as StartTipCheckoutRequest))
+          as StartTipCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartTipCheckoutRequest() / StartTipCheckoutRequest.new instead')
+  static StartTipCheckoutRequest create() => StartTipCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() => StartTipCheckoutRequest._();
+  @$core.override
+  StartTipCheckoutRequest createEmptyInstance() => StartTipCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartTipCheckoutRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartTipCheckoutRequest>(
+          StartTipCheckoutRequest.$_createMessage);
+  static StartTipCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get episodeId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set episodeId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEpisodeId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEpisodeId() => $_clearField(2);
+
+  /// The amount to give, in the minor unit of the tenant's currency.
+  @$pb.TagNumber(3)
+  $core.int get amount => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set amount($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAmount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAmount() => $_clearField(3);
+
+  /// Where the provider returns the reader, and the surface the episode has to
+  /// be published on. Unspecified is the storefront.
+  @$pb.TagNumber(4)
+  StartEpisodeCheckoutRequest_Client get client => $_getN(3);
+  @$pb.TagNumber(4)
+  set client(StartEpisodeCheckoutRequest_Client value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClient() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClient() => $_clearField(4);
+
+  /// The reader's locale. The episode title on the checkout page is that of the
+  /// translation in this locale, else the tenant's default locale's, else the
+  /// oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
+}
+
+class StartTipCheckoutResponse extends $pb.GeneratedMessage {
+  factory StartTipCheckoutResponse({
+    $core.String? checkoutUrl,
+  }) {
+    final result = StartTipCheckoutResponse._();
+    if (checkoutUrl != null) result.checkoutUrl = checkoutUrl;
+    return result;
+  }
+
+  StartTipCheckoutResponse._();
+
+  factory StartTipCheckoutResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartTipCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory StartTipCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartTipCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartTipCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartTipCheckoutResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'checkoutUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartTipCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartTipCheckoutResponse copyWith(
+          void Function(StartTipCheckoutResponse) updates) =>
+      super.copyWith((message) => updates(message as StartTipCheckoutResponse))
+          as StartTipCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartTipCheckoutResponse() / StartTipCheckoutResponse.new instead')
+  static StartTipCheckoutResponse create() => StartTipCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() => StartTipCheckoutResponse._();
+  @$core.override
+  StartTipCheckoutResponse createEmptyInstance() =>
+      StartTipCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartTipCheckoutResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartTipCheckoutResponse>(
+          StartTipCheckoutResponse.$_createMessage);
+  static StartTipCheckoutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get checkoutUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set checkoutUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCheckoutUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCheckoutUrl() => $_clearField(1);
+}
+
+/// Opens the reader's intent to tip the Authors of an episode through the store
+/// the app sells through, as StartStorePurchase opens one to buy an episode,
+/// and answers it with the store product the amount is sold as. The app buys
+/// that product as a consumable with the intent as the transaction's account
+/// token, and hands the transaction to ConfirmStorePurchase, which records the
+/// tip.
+///
+/// It is refused as StartTipCheckout refuses a tip, and as StartStorePurchase
+/// refuses a store the app does not sell through. Asking again for the same
+/// episode and amount answers the same intent until a confirmation consumes
+/// it.
+class StartStoreTipRequest extends $pb.GeneratedMessage {
+  factory StartStoreTipRequest({
+    $0.TenantContext? tenant,
+    InAppPurchaseStore? store,
+    $core.String? episodeId,
+    $core.int? amount,
+  }) {
+    final result = StartStoreTipRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (store != null) result.store = store;
+    if (episodeId != null) result.episodeId = episodeId;
+    if (amount != null) result.amount = amount;
+    return result;
+  }
+
+  StartStoreTipRequest._();
+
+  factory StartStoreTipRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreTipRequest()..mergeFromBuffer(data, registry);
+  factory StartStoreTipRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreTipRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartStoreTipRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartStoreTipRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aE<InAppPurchaseStore>(2, _omitFieldNames ? '' : 'store',
+        enumValues: InAppPurchaseStore.values)
+    ..aOS(3, _omitFieldNames ? '' : 'episodeId')
+    ..aI(4, _omitFieldNames ? '' : 'amount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreTipRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreTipRequest copyWith(void Function(StartStoreTipRequest) updates) =>
+      super.copyWith((message) => updates(message as StartStoreTipRequest))
+          as StartStoreTipRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartStoreTipRequest() / StartStoreTipRequest.new instead')
+  static StartStoreTipRequest create() => StartStoreTipRequest._();
+  static $pb.GeneratedMessage $_createMessage() => StartStoreTipRequest._();
+  @$core.override
+  StartStoreTipRequest createEmptyInstance() => StartStoreTipRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartStoreTipRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartStoreTipRequest>(
+          StartStoreTipRequest.$_createMessage);
+  static StartStoreTipRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The store the app is about to charge through. Required.
+  @$pb.TagNumber(2)
+  InAppPurchaseStore get store => $_getN(1);
+  @$pb.TagNumber(2)
+  set store(InAppPurchaseStore value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStore() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get episodeId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set episodeId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEpisodeId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEpisodeId() => $_clearField(3);
+
+  /// The amount to give, in the minor unit of the tenant's currency.
+  @$pb.TagNumber(4)
+  $core.int get amount => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set amount($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAmount() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAmount() => $_clearField(4);
+}
+
+class StartStoreTipResponse extends $pb.GeneratedMessage {
+  factory StartStoreTipResponse({
+    $core.String? intentId,
+    $core.String? productId,
+  }) {
+    final result = StartStoreTipResponse._();
+    if (intentId != null) result.intentId = intentId;
+    if (productId != null) result.productId = productId;
+    return result;
+  }
+
+  StartStoreTipResponse._();
+
+  factory StartStoreTipResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreTipResponse()..mergeFromBuffer(data, registry);
+  factory StartStoreTipResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreTipResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartStoreTipResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartStoreTipResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'intentId')
+    ..aOS(2, _omitFieldNames ? '' : 'productId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreTipResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreTipResponse copyWith(
+          void Function(StartStoreTipResponse) updates) =>
+      super.copyWith((message) => updates(message as StartStoreTipResponse))
+          as StartStoreTipResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartStoreTipResponse() / StartStoreTipResponse.new instead')
+  static StartStoreTipResponse create() => StartStoreTipResponse._();
+  static $pb.GeneratedMessage $_createMessage() => StartStoreTipResponse._();
+  @$core.override
+  StartStoreTipResponse createEmptyInstance() => StartStoreTipResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartStoreTipResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartStoreTipResponse>(
+          StartStoreTipResponse.$_createMessage);
+  static StartStoreTipResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get intentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set intentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasIntentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIntentId() => $_clearField(1);
+
+  /// The store product the amount is sold as: `tip_` followed by the amount,
+  /// such as `tip_300`.
+  @$pb.TagNumber(2)
+  $core.String get productId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set productId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProductId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProductId() => $_clearField(2);
+}
+
 /// Hands a transaction the store charged to the server, which verifies it with
-/// the store and records it as a purchase.
+/// the store and records it as a purchase, or as a tip when the intent it names
+/// was opened by StartStoreTip.
 ///
 /// The transaction's account token has to name an open intent the caller
 /// opened, for the product the transaction bought, in the tenant's own app:
@@ -12030,6 +12427,14 @@ class PurchaseServiceApi {
               'ProcessGooglePlayNotification',
               request,
               ProcessGooglePlayNotificationResponse());
+  $async.Future<StartTipCheckoutResponse> startTipCheckout(
+          $pb.ClientContext? ctx, StartTipCheckoutRequest request) =>
+      _client.invoke<StartTipCheckoutResponse>(ctx, 'PurchaseService',
+          'StartTipCheckout', request, StartTipCheckoutResponse());
+  $async.Future<StartStoreTipResponse> startStoreTip(
+          $pb.ClientContext? ctx, StartStoreTipRequest request) =>
+      _client.invoke<StartStoreTipResponse>(ctx, 'PurchaseService',
+          'StartStoreTip', request, StartStoreTipResponse());
 }
 
 /// Wait-for-free: the reader's own tickets on a series that offers the rule

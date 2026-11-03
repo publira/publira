@@ -1332,7 +1332,10 @@ type TenantStoreProduct struct {
 	Currency string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
 	// The pack the product sells, set on the product of a pack and unset on one
 	// of a price. Its name in each store is the tenant's to set.
-	CoinPack      *CoinPack `protobuf:"bytes,5,opt,name=coin_pack,json=coinPack,proto3" json:"coin_pack,omitempty"`
+	CoinPack *CoinPack `protobuf:"bytes,5,opt,name=coin_pack,json=coinPack,proto3" json:"coin_pack,omitempty"`
+	// True on the product of a tip amount (TenantTipSettings.amounts), whose ID
+	// is `tip_` followed by the amount, and false on every other.
+	Tip           bool `protobuf:"varint,6,opt,name=tip,proto3" json:"tip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1402,6 +1405,13 @@ func (x *TenantStoreProduct) GetCoinPack() *CoinPack {
 	return nil
 }
 
+func (x *TenantStoreProduct) GetTip() bool {
+	if x != nil {
+		return x.Tip
+	}
+	return false
+}
+
 type ListTenantStoreProductsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1448,11 +1458,12 @@ func (x *ListTenantStoreProductsRequest) GetTenant() *v1.TenantContext {
 
 type ListTenantStoreProductsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The products of prices, ordered by price, and then the product of every
-	// pack the tenant has not retired, in the order it sells them, on sale or
-	// not, so a pack's product can exist before the pack goes on sale. Only paid
-	// episodes the app may show and sell are counted. The packs are listed
-	// whether or not coins are turned on.
+	// The products of prices, ordered by price, then the product of each tip
+	// amount while the tenant takes tips, in ascending order, and then the
+	// product of every pack the tenant has not retired, in the order it sells
+	// them, on sale or not, so a pack's product can exist before the pack goes on
+	// sale. Only paid episodes the app may show and sell are counted. The packs
+	// are listed whether or not coins are turned on.
 	Products []*TenantStoreProduct `protobuf:"bytes,1,rep,name=products,proto3" json:"products,omitempty"`
 	// Every subscription plan of the tenant, in the order it was created,
 	// published or not and whether or not it names a store product yet, so the
@@ -1604,14 +1615,15 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\vgoogle_play\x18\x04 \x01(\v21.publira.admin.v1.GooglePlayPaymentSettingsUpdateR\n" +
 	"googlePlay\"t\n" +
 	"(UpdateTenantStorePaymentSettingsResponse\x12H\n" +
-	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings\"\xc3\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings\"\xd5\x01\n" +
 	"\x12TenantStoreProduct\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x14\n" +
 	"\x05price\x18\x02 \x01(\x05R\x05price\x12#\n" +
 	"\repisode_count\x18\x03 \x01(\x05R\fepisodeCount\x12\x1a\n" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x127\n" +
-	"\tcoin_pack\x18\x05 \x01(\v2\x1a.publira.admin.v1.CoinPackR\bcoinPack\"Y\n" +
+	"\tcoin_pack\x18\x05 \x01(\v2\x1a.publira.admin.v1.CoinPackR\bcoinPack\x12\x10\n" +
+	"\x03tip\x18\x06 \x01(\bR\x03tip\"Y\n" +
 	"\x1eListTenantStoreProductsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xbb\x01\n" +
 	"\x1fListTenantStoreProductsResponse\x12@\n" +

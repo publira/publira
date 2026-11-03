@@ -113,6 +113,13 @@
       "subject": "{$tenant_name} 구매 완료",
       "tax": "포함된 세금 ({$rate}%): {$amount}",
       "test_notice": "결제 제공자의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
+      "tip": "팁을 보낸 에피소드: {$episode_title}",
+      "tip_amount": "팁 금액: {$amount} ({$currency})",
+      "tip_given_at": "보낸 일시: {$purchased_at}",
+      "tip_heading": "팁을 보내 주셔서 감사합니다",
+      "tip_intro": "{$tenant_name}에서 보내신 팁 내역을 알려 드립니다.",
+      "tip_preview": "{$title} 작가에게 팁을 보내 주셔서 감사합니다.",
+      "tip_subject": "{$tenant_name} 팁 전송 완료",
       "volume": "권: {$volume_title}"
     },
     "reader_announcement_posted": {
@@ -273,7 +280,8 @@
   "checkout": {
     "bundle_discount": "묶음 할인 ({$percent :integer}%)",
     "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
-    "rental_line_item": "{$episode_title} (대여, {$hours :integer}시간)"
+    "rental_line_item": "{$episode_title} (대여, {$hours :integer}시간)",
+    "tip_line_item": "{$episode_title} 작가에게 보내는 팁"
   },
   "errors": {
     "disallowed_value": "허용되지 않는 값입니다.",
@@ -368,6 +376,7 @@
         "tenant_site_copy": "공개 사이트 표시 설정",
         "tenant_site_verification": "검색 엔진 소유권 확인",
         "tenant_timezone": "시간대",
+        "tenant_tip_settings": "팁",
         "user": "사용자",
         "volume": "권"
       },
@@ -531,6 +540,7 @@
         "tenant_payment_settings_updated": "결제 설정 변경",
         "tenant_purchase_settings_updated": "판매 위치 변경",
         "tenant_tax_settings_updated": "세금 및 청구서 변경",
+        "tenant_tip_settings_updated": "팁 설정 변경",
         "tenant_fcm_credentials_saved": "Firebase 인증 정보 저장",
         "tenant_fcm_credentials_deleted": "Firebase 인증 정보 삭제",
         "tenant_mobile_app_association_updated": "앱 링크 변경",

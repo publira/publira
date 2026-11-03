@@ -162,6 +162,12 @@ const (
 	// PurchaseServiceProcessGooglePlayNotificationProcedure is the procedure name of the
 	// PurchaseService's ProcessGooglePlayNotification RPC.
 	PurchaseServiceProcessGooglePlayNotificationProcedure = "/publira.v1.PurchaseService/ProcessGooglePlayNotification"
+	// PurchaseServiceStartTipCheckoutProcedure is the procedure name of the PurchaseService's
+	// StartTipCheckout RPC.
+	PurchaseServiceStartTipCheckoutProcedure = "/publira.v1.PurchaseService/StartTipCheckout"
+	// PurchaseServiceStartStoreTipProcedure is the procedure name of the PurchaseService's
+	// StartStoreTip RPC.
+	PurchaseServiceStartStoreTipProcedure = "/publira.v1.PurchaseService/StartStoreTip"
 	// WaitFreeServiceGetMyTicketStateProcedure is the procedure name of the WaitFreeService's
 	// GetMyTicketState RPC.
 	WaitFreeServiceGetMyTicketStateProcedure = "/publira.v1.WaitFreeService/GetMyTicketState"
@@ -1941,6 +1947,20 @@ var (
 			Procedure:  PurchaseServiceProcessGooglePlayNotificationProcedure,
 		}
 	})
+	purchaseServiceStartTipCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("StartTipCheckout"),
+			Procedure:  PurchaseServiceStartTipCheckoutProcedure,
+		}
+	})
+	purchaseServiceStartStoreTipSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("StartStoreTip"),
+			Procedure:  PurchaseServiceStartStoreTipProcedure,
+		}
+	})
 )
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.
@@ -1955,6 +1975,8 @@ type PurchaseServiceClient interface {
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
+	StartTipCheckout(context.Context, *v1.StartTipCheckoutRequest) (*v1.StartTipCheckoutResponse, error)
+	StartStoreTip(context.Context, *v1.StartStoreTipRequest) (*v1.StartStoreTipResponse, error)
 }
 
 // NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. Multiple
@@ -1975,6 +1997,8 @@ type PurchaseServiceHandler interface {
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
 	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 	ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error)
+	StartTipCheckout(context.Context, *v1.StartTipCheckoutRequest) (*v1.StartTipCheckoutResponse, error)
+	StartStoreTip(context.Context, *v1.StartStoreTipRequest) (*v1.StartStoreTipResponse, error)
 }
 
 // RegisterPurchaseServiceHandler registers svc as the publira.v1.PurchaseService implementation on
@@ -1991,6 +2015,8 @@ func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceH
 		connect.Method{Spec: purchaseServiceConfirmStorePurchaseSpec(), Handler: adapter.confirmStorePurchase},
 		connect.Method{Spec: purchaseServiceProcessAppStoreNotificationSpec(), Handler: adapter.processAppStoreNotification},
 		connect.Method{Spec: purchaseServiceProcessGooglePlayNotificationSpec(), Handler: adapter.processGooglePlayNotification},
+		connect.Method{Spec: purchaseServiceStartTipCheckoutSpec(), Handler: adapter.startTipCheckout},
+		connect.Method{Spec: purchaseServiceStartStoreTipSpec(), Handler: adapter.startStoreTip},
 	)
 }
 
@@ -2031,6 +2057,14 @@ func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.C
 
 func (UnimplementedPurchaseServiceHandler) ProcessGooglePlayNotification(context.Context, *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessGooglePlayNotification is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) StartTipCheckout(context.Context, *v1.StartTipCheckoutRequest) (*v1.StartTipCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartTipCheckout is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) StartStoreTip(context.Context, *v1.StartStoreTipRequest) (*v1.StartStoreTipResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartStoreTip is not implemented")
 }
 
 type purchaseServiceClient struct {
@@ -2104,6 +2138,22 @@ func (c *purchaseServiceClient) ProcessAppStoreNotification(ctx context.Context,
 func (c *purchaseServiceClient) ProcessGooglePlayNotification(ctx context.Context, req *v1.ProcessGooglePlayNotificationRequest) (*v1.ProcessGooglePlayNotificationResponse, error) {
 	var res v1.ProcessGooglePlayNotificationResponse
 	if err := c.client.CallUnary(ctx, purchaseServiceProcessGooglePlayNotificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) StartTipCheckout(ctx context.Context, req *v1.StartTipCheckoutRequest) (*v1.StartTipCheckoutResponse, error) {
+	var res v1.StartTipCheckoutResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceStartTipCheckoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) StartStoreTip(ctx context.Context, req *v1.StartStoreTipRequest) (*v1.StartStoreTipResponse, error) {
+	var res v1.StartStoreTipResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceStartStoreTipSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2213,6 +2263,30 @@ func (h purchaseServiceHandler) processGooglePlayNotification(ctx context.Contex
 		return err
 	}
 	res, err := h.svc.ProcessGooglePlayNotification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) startTipCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartTipCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartTipCheckout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) startStoreTip(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartStoreTipRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartStoreTip(ctx, &req)
 	if err != nil {
 		return err
 	}

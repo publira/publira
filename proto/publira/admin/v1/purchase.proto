@@ -102,6 +102,11 @@ message AdminPurchase {
   // records its tax alike; the store issued its receipt.
   optional int32 tax_rate_bps = 29;
   optional int64 tax_amount = 30;
+  // Which of the episode's sales was bought, or PURCHASE_KIND_TIP for a tip
+  // to its Authors, which names the episode and opens nothing. A purchase of
+  // a volume, of the rest of a series, or of a pack is PURCHASE_KIND_PURCHASE.
+  // A tip is refunded as a sale is.
+  publira.types.v1.PurchaseKind kind = 31;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:

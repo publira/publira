@@ -301,6 +301,36 @@ var emailCopyCases = []struct {
 				"episode_title":               "Episode 1",
 				"expires_at":                  "2030-01-17T12:00:00Z",
 				"is_test":                     false,
+				"is_tip":                      false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a tip",
+		subjects: map[string]string{"en": "Aoto Press tip receipt", "ja": "Aoto Pressチップ受付完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":                      int64(300),
+				"currency":                    "JPY",
+				"episode_title":               "Episode 1",
+				"expires_at":                  "",
+				"is_test":                     false,
+				"is_tip":                      true,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -329,6 +359,7 @@ var emailCopyCases = []struct {
 				"episode_title":               "Episode 1",
 				"expires_at":                  "",
 				"is_test":                     false,
+				"is_tip":                      false,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -357,6 +388,7 @@ var emailCopyCases = []struct {
 				"episode_title":               "Episode 1",
 				"expires_at":                  "",
 				"is_test":                     false,
+				"is_tip":                      false,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -385,6 +417,7 @@ var emailCopyCases = []struct {
 				"episode_title":               "Episode 1",
 				"expires_at":                  "",
 				"is_test":                     true,
+				"is_tip":                      false,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -413,6 +446,7 @@ var emailCopyCases = []struct {
 				"episode_title":               "",
 				"expires_at":                  "",
 				"is_test":                     false,
+				"is_tip":                      false,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -441,6 +475,7 @@ var emailCopyCases = []struct {
 				"episode_title":               "",
 				"expires_at":                  "",
 				"is_test":                     false,
+				"is_tip":                      false,
 				"library_url":                 "https://reader.example.test/my/library",
 				"purchased_at":                copyPurchasedAt,
 				"series_title":                "The Lighthouse Keeper",
@@ -664,6 +699,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 		currency     string
 		expiresAt    string
 		isTest       bool
+		isTip        bool
 		episodeTitle string
 		volumeTitle  string
 		bundleCount  int64
@@ -770,6 +806,38 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"This email was sent by Aoto Press.",
 		},
 		{
+			name:         "in English for a tip",
+			locale:       "en",
+			amount:       300,
+			currency:     "JPY",
+			isTip:        true,
+			episodeTitle: "Episode 1",
+			wantText: "Aoto Press\n\nThank you for your tip\n\n" +
+				"Here is the receipt for your tip on Aoto Press.\n\n" +
+				"Series: The Lighthouse Keeper\n\nTip for the Authors of: Episode 1\n\n" +
+				"Amount given: ¥300 (JPY)\n\n" +
+				"Given: Jan 15, 2030, 9:00 PM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:         "in Japanese for a tip",
+			locale:       "ja",
+			amount:       300,
+			currency:     "JPY",
+			isTip:        true,
+			episodeTitle: "Episode 1",
+			wantText: "Aoto Press\n\nチップをありがとうございます\n\n" +
+				"Aoto Pressで贈られたチップの内容をお知らせします。\n\n" +
+				"シリーズ「The Lighthouse Keeper」\n\n著者にチップを贈ったエピソード「Episode 1」\n\n" +
+				"チップの金額は￥300 (JPY) です。\n\n" +
+				"贈った日時は2030/01/15 21:00です。\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+		{
 			name:        "in English for a volume",
 			locale:      "en",
 			amount:      1500,
@@ -862,6 +930,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 					"episode_title":               testCase.episodeTitle,
 					"expires_at":                  testCase.expiresAt,
 					"is_test":                     testCase.isTest,
+					"is_tip":                      testCase.isTip,
 					"library_url":                 "https://reader.example.test/my/library",
 					"purchased_at":                copyPurchasedAt,
 					"series_title":                "The Lighthouse Keeper",
@@ -1096,6 +1165,7 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 			"episode_title": "Episode 1",
 			"expires_at":    "",
 			"is_test":       false,
+			"is_tip":        false,
 			"library_url":   "https://reader.example.test/my/library",
 			"purchased_at":  copyPurchasedAt,
 			"series_title":  "The Lighthouse Keeper",

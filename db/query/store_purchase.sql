@@ -28,6 +28,36 @@ UPDATE
 SET product_id = EXCLUDED.product_id
 RETURNING *;
 
+-- name: OpenStoreTipIntent :one
+-- Opens the reader's intent to tip the Authors of an episode as a store
+-- product, or answers the one already open for the same episode and amount,
+-- as OpenStorePurchaseIntent does for a purchase. The product names the
+-- amount, so a tip and a purchase of the episode never share an intent.
+INSERT INTO store_purchase_intents (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price,
+    product_id,
+    currency,
+    kind
+)
+VALUES (
+    sqlc.arg('id'),
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('episode_id')::uuid,
+    sqlc.arg('price'),
+    sqlc.arg('product_id'),
+    sqlc.arg('currency'),
+    'tip'
+)
+ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
+UPDATE
+SET product_id = EXCLUDED.product_id
+RETURNING *;
+
 -- name: OpenStoreCoinPackPurchaseIntent :one
 -- Opens the reader's intent to buy a pack as a store product, or answers the
 -- one already open for the same pack and product, as
@@ -99,7 +129,8 @@ INSERT INTO purchases (
     store,
     store_transaction_id,
     is_test,
-    currency
+    currency,
+    kind
 )
 VALUES (
     sqlc.arg('id'),
@@ -112,7 +143,9 @@ VALUES (
     sqlc.arg('store')::text,
     sqlc.arg('store_transaction_id')::text,
     sqlc.arg('is_test'),
-    sqlc.arg('currency')
+    sqlc.arg('currency'),
+    -- The intent's: the permanent copy, or a tip to the episode's Authors.
+    sqlc.arg('kind')::text
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
 RETURNING *;

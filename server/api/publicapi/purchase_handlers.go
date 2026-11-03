@@ -490,8 +490,8 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 	}
 	expiresAt := ""
 	// A revoked purchase opens nothing, so the library must not offer it as
-	// one the reader can still open.
-	isActive := !row.revokedAt.Valid
+	// one the reader can still open, and neither does a tip.
+	isActive := !row.revokedAt.Valid && kind != publirattypesv1.PurchaseKind_PURCHASE_KIND_TIP
 	if row.expiresAt.Valid {
 		expiresAt = row.expiresAt.Time.UTC().Format(time.RFC3339)
 		isActive = isActive && row.expiresAt.Time.After(now)
@@ -1411,8 +1411,9 @@ func (s *apiServer) createPurchase(
 	}
 
 	// The engagement events are an episode's, and a volume or the rest of a
-	// series is not one, so a purchase of either projects none.
-	if purchase.EpisodeID != uuid.Nil {
+	// series is not one, so a purchase of either projects none. A tip is no
+	// purchase of the episode it names, so it projects none either.
+	if purchase.EpisodeID != uuid.Nil && purchase.Kind != paymentprovider.KindTip {
 		_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
 			ID:                 uuid.Must(uuid.NewV7()),
 			TenantID:           tenantID,

@@ -53,8 +53,11 @@ func royaltyCloseModeToProto(mode string) publiraadminv1.RoyaltyCloseMode {
 }
 
 func royaltyLineSourceToProto(source royalties.Source) publiraadminv1.RoyaltyLineSource {
-	if source == royalties.SourceSubscription {
+	switch source {
+	case royalties.SourceSubscription:
 		return publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SUBSCRIPTION
+	case royalties.SourceTip:
+		return publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_TIP
 	}
 	return publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SALE
 }
@@ -211,7 +214,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			RefundedAmount:  row.RefundedAmount,
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
-			Source:          publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SALE,
+			Source:          royaltyLineSourceToProto(royalties.Source(row.Source)),
 			TaxRateBps:      optional(row.TaxRateBps),
 			TaxAmount:       optionalInt64(royalties.LineTax(row.TaxRateBps, row.PayoutAmount)),
 		})

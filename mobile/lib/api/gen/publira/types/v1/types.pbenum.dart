@@ -404,14 +404,22 @@ class PurchaseKind extends $pb.ProtobufEnum {
   static const PurchaseKind PURCHASE_KIND_RENTAL =
       PurchaseKind._(2, _omitEnumNames ? '' : 'PURCHASE_KIND_RENTAL');
 
+  /// A tip to the Authors of the episode, at one of the tenant's tip amounts
+  /// (GetEpisodeDetailResponse.tip_amounts), which opens nothing and never
+  /// expires. It is never a kind a checkout of the episode asks for: a tip is
+  /// started by StartTipCheckout or StartStoreTip.
+  static const PurchaseKind PURCHASE_KIND_TIP =
+      PurchaseKind._(3, _omitEnumNames ? '' : 'PURCHASE_KIND_TIP');
+
   static const $core.List<PurchaseKind> values = <PurchaseKind>[
     PURCHASE_KIND_UNSPECIFIED,
     PURCHASE_KIND_PURCHASE,
     PURCHASE_KIND_RENTAL,
+    PURCHASE_KIND_TIP,
   ];
 
   static final $core.List<PurchaseKind?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 2);
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
   static PurchaseKind? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

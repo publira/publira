@@ -832,6 +832,12 @@ const integrationActionName = (action: string) => {
       );
     }
 
+    case "tenant_tip_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_tip_settings_updated" />
+      );
+    }
+
     case "tenant_fcm_credentials_saved": {
       return (
         <Message message="admin.audit.actions.tenant_fcm_credentials_saved" />
@@ -1045,6 +1051,7 @@ const settingTargetMessages = {
   tenant_site_verification: "admin.audit.targets.tenant_site_verification",
   tenant_tax_settings: "admin.audit.targets.tenant_tax_settings",
   tenant_timezone: "admin.audit.targets.tenant_timezone",
+  tenant_tip_settings: "admin.audit.targets.tenant_tip_settings",
 } as const satisfies Record<string, AdminMessageKey>;
 
 const isSettingTarget = (

@@ -70,6 +70,12 @@ export const purchaseReceiptDataSchema = z
     invoice_registration_number: z.string().trim().default(""),
     /** Whether the purchase was paid in the payment provider's test mode. */
     is_test: z.boolean({ error: "is_test must be a boolean" }),
+    /**
+     * Whether the purchase is a tip to the Authors of the episode
+     * `episode_title` names, which the receipt words as a tip rather than as
+     * a purchase. Left out by a server that predates tips.
+     */
+    is_tip: z.boolean({ error: "is_tip must be a boolean" }).default(false),
     library_url: httpUrlField("library_url"),
     purchased_at: instantField("purchased_at"),
     series_bundle_episode_count: z
@@ -116,6 +122,9 @@ export const purchaseReceiptDataSchema = z
   })
   .refine((data) => data.coin_pack_coins > 0 || data.coin_name === "", {
     error: "coin_name names the coins of a pack, and nothing else",
+  })
+  .refine((data) => !data.is_tip || data.episode_title !== "", {
+    error: "a tip names the episode whose Authors it went to",
   });
 
 export type PurchaseReceiptData = z.output<typeof purchaseReceiptDataSchema>;
@@ -168,9 +177,13 @@ export const purchaseReceiptPreview = (
   data: PurchaseReceiptData,
   messages: Messages
 ): string =>
-  emailMessage(messages, "email.purchase_receipt.preview", {
-    title: purchasedTitle(data),
-  });
+  emailMessage(
+    messages,
+    data.is_tip
+      ? "email.purchase_receipt.tip_preview"
+      : "email.purchase_receipt.preview",
+    { title: purchasedTitle(data) }
+  );
 
 const PurchasedItem = ({
   data,
@@ -184,6 +197,12 @@ const PurchasedItem = ({
       bonus: data.coin_pack_bonus_coins,
       coin_name: data.coin_name,
       count: data.coin_pack_coins + data.coin_pack_bonus_coins,
+    });
+  }
+
+  if (data.is_tip) {
+    return emailMessage(messages, "email.purchase_receipt.tip", {
+      episode_title: data.episode_title,
     });
   }
 
@@ -214,7 +233,8 @@ const PurchasedItem = ({
  * says until when its coins can be spent, which a prepaid instrument has to
  * state. A purchase that recorded a tax rate states the tax its price
  * includes, and the tenant's legal name and registration number each have a
- * line where the tenant has entered them.
+ * line where the tenant has entered them. A tip to the Authors of an episode
+ * is worded as a tip throughout, since the reader bought nothing.
  */
 export const PurchaseReceiptEmail = ({
   data,
@@ -229,12 +249,21 @@ export const PurchaseReceiptEmail = ({
     preview={purchaseReceiptPreview(data, messages)}
   >
     <EmailHeading>
-      {emailMessage(messages, "email.purchase_receipt.heading")}
+      {emailMessage(
+        messages,
+        data.is_tip
+          ? "email.purchase_receipt.tip_heading"
+          : "email.purchase_receipt.heading"
+      )}
     </EmailHeading>
     <EmailIntro>
-      {emailMessage(messages, "email.purchase_receipt.intro", {
-        tenant_name: data.tenant_name,
-      })}
+      {emailMessage(
+        messages,
+        data.is_tip
+          ? "email.purchase_receipt.tip_intro"
+          : "email.purchase_receipt.intro",
+        { tenant_name: data.tenant_name }
+      )}
     </EmailIntro>
     {data.is_test ? (
       <EmailMeta>
@@ -252,10 +281,16 @@ export const PurchaseReceiptEmail = ({
       <PurchasedItem data={data} messages={messages} />
     </EmailDetail>
     <EmailDetail>
-      {emailMessage(messages, "email.purchase_receipt.amount", {
-        amount: formatPrice(data.amount, { currency: data.currency, locale }),
-        currency: data.currency,
-      })}
+      {emailMessage(
+        messages,
+        data.is_tip
+          ? "email.purchase_receipt.tip_amount"
+          : "email.purchase_receipt.amount",
+        {
+          amount: formatPrice(data.amount, { currency: data.currency, locale }),
+          currency: data.currency,
+        }
+      )}
     </EmailDetail>
     {data.tax_rate_bps > 0 ? (
       <EmailDetail>
@@ -269,9 +304,15 @@ export const PurchaseReceiptEmail = ({
       </EmailDetail>
     ) : null}
     <EmailDetail>
-      {emailMessage(messages, "email.purchase_receipt.purchased_at", {
-        purchased_at: formatDateTime(data.purchased_at, { locale, timeZone }),
-      })}
+      {emailMessage(
+        messages,
+        data.is_tip
+          ? "email.purchase_receipt.tip_given_at"
+          : "email.purchase_receipt.purchased_at",
+        {
+          purchased_at: formatDateTime(data.purchased_at, { locale, timeZone }),
+        }
+      )}
     </EmailDetail>
     {data.expires_at === "" ? null : (
       <EmailDetail>

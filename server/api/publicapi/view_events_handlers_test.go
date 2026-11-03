@@ -442,6 +442,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		}))
 	expectNoEpisodeEyeCatches(mock, tenantID)
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	recorded := forbidEpisodeViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

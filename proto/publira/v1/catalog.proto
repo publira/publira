@@ -393,6 +393,15 @@ message GetEpisodeDetailResponse {
   // is the same for every reader on a series the age rule does not cover and
   // the reader's own on one it does.
   repeated publira.types.v1.EpisodeImage preview_pages = 12;
+  // The amounts a reader may tip the episode's Authors, in the minor unit of
+  // the tenant's currency, in ascending order: one to six of them while the
+  // tenant takes tips, and empty while it does not. They are the tenant's,
+  // the same on every episode and for every reader, so a reader the episode
+  // credits, whom StartTipCheckout refuses, is answered them too; such a
+  // reader is told apart by entitlement_source. A tip is paid on the site
+  // through StartTipCheckout, and in an app that sells through the stores as
+  // the product `tip_` followed by the amount, through StartStoreTip.
+  repeated int32 tip_amounts = 13;
 }
 
 // A creator that currently has at least one published series.
@@ -1798,6 +1807,7 @@ message StartSeriesRemainderCheckoutResponse {
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
 // the API at read time: a purchase is active until it is revoked or its
 // expiry passes, and one without an expiry stays active until it is revoked.
+// A tip (PURCHASE_KIND_TIP) opens nothing, and is never active.
 //
 // A purchase is of one episode, of one volume, or of the rest of a series:
 // exactly one of `episode`, `volume`, and `series_bundle` is set, and `series`
@@ -1830,9 +1840,10 @@ message MyPurchase {
   // bank, or refunded by staff, which revokes it before the provider reports
   // the refund. A purchase revoked here is never active.
   string revoked_at = 11;
-  // Which of the episode's sales the reader bought, never unspecified. A
-  // rental always carries expires_at. A purchase of a volume or of the rest of
-  // a series is always PURCHASE_KIND_PURCHASE.
+  // Which of the episode's sales the reader bought, or PURCHASE_KIND_TIP for a
+  // tip to its Authors, never unspecified. A rental always carries expires_at.
+  // A purchase of a volume or of the rest of a series is always
+  // PURCHASE_KIND_PURCHASE.
   publira.types.v1.PurchaseKind kind = 12;
   // The volume bought, set on a purchase of a volume. It carries the id, the
   // public_id, the title, and the order_index, and none of the volume's
@@ -1959,8 +1970,73 @@ message StartStorePurchaseResponse {
   string product_id = 2;
 }
 
+// Starts a provider checkout of a tip to the Authors of an episode, at one of
+// the tenant's tip amounts (GetEpisodeDetailResponse.tip_amounts), and answers
+// the URL of the provider's checkout page. The tip is recorded by the
+// provider's webhook alone, as a purchase of kind PURCHASE_KIND_TIP that opens
+// nothing; a royalty statement splits it among the episode's credited Authors
+// by their shares, on lines of their own.
+//
+// A guest is unauthenticated. An amount that is not one of the tenant's, a
+// tenant that takes no tips, and an episode the calling surface does not list
+// as published are failed_precondition. A reader whose account is linked to
+// an Author the episode credits is permission_denied with the ErrorInfo reason
+// READER_CREDITED_ON_EPISODE. CLIENT_MOBILE is refused as StartEpisodeCheckout
+// refuses it while the app sells through the stores, where a tip is
+// StartStoreTip instead. A reader may tip the same episode again and again,
+// and a tip is not refused for any purchase the reader holds or lacks.
+//
+// The storefront is returned to the episode page with `tip` in the query,
+// `success` or `cancelled`; the app to `/{locale}/checkout/return` with
+// `episode`, `tip`, and `status`.
+message StartTipCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // The amount to give, in the minor unit of the tenant's currency.
+  int32 amount = 3;
+  // Where the provider returns the reader, and the surface the episode has to
+  // be published on. Unspecified is the storefront.
+  StartEpisodeCheckoutRequest.Client client = 4;
+  // The reader's locale. The episode title on the checkout page is that of the
+  // translation in this locale, else the tenant's default locale's, else the
+  // oldest one. Empty means the tenant's default locale.
+  string locale = 5;
+}
+
+message StartTipCheckoutResponse {
+  string checkout_url = 1;
+}
+
+// Opens the reader's intent to tip the Authors of an episode through the store
+// the app sells through, as StartStorePurchase opens one to buy an episode,
+// and answers it with the store product the amount is sold as. The app buys
+// that product as a consumable with the intent as the transaction's account
+// token, and hands the transaction to ConfirmStorePurchase, which records the
+// tip.
+//
+// It is refused as StartTipCheckout refuses a tip, and as StartStorePurchase
+// refuses a store the app does not sell through. Asking again for the same
+// episode and amount answers the same intent until a confirmation consumes
+// it.
+message StartStoreTipRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The store the app is about to charge through. Required.
+  InAppPurchaseStore store = 2;
+  string episode_id = 3;
+  // The amount to give, in the minor unit of the tenant's currency.
+  int32 amount = 4;
+}
+
+message StartStoreTipResponse {
+  string intent_id = 1;
+  // The store product the amount is sold as: `tip_` followed by the amount,
+  // such as `tip_300`.
+  string product_id = 2;
+}
+
 // Hands a transaction the store charged to the server, which verifies it with
-// the store and records it as a purchase.
+// the store and records it as a purchase, or as a tip when the intent it names
+// was opened by StartStoreTip.
 //
 // The transaction's account token has to name an open intent the caller
 // opened, for the product the transaction bought, in the tenant's own app:
@@ -2054,6 +2130,8 @@ service PurchaseService {
   rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}
   rpc ProcessAppStoreNotification(ProcessAppStoreNotificationRequest) returns (ProcessAppStoreNotificationResponse) {}
   rpc ProcessGooglePlayNotification(ProcessGooglePlayNotificationRequest) returns (ProcessGooglePlayNotificationResponse) {}
+  rpc StartTipCheckout(StartTipCheckoutRequest) returns (StartTipCheckoutResponse) {}
+  rpc StartStoreTip(StartStoreTipRequest) returns (StartStoreTipResponse) {}
 }
 
 message GetMyTicketStateRequest {

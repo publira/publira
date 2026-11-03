@@ -46,6 +46,7 @@ func TestRecordRefundWaitsForTheConfirmationOfTheSameTransaction(t *testing.T) {
 		Currency:           "JPY",
 		Store:              storepurchase.StoreAppStore,
 		StoreTransactionID: transactionID,
+		Kind:               "purchase",
 	})
 	if err != nil {
 		t.Fatalf("CreateStorePurchase: %v", err)

@@ -213,14 +213,25 @@ func basisPointsAsPercent(bps int64) string {
 // of the rest of a series how many episodes it bought. A purchase of a pack of
 // coins names no series, since it is of none: it says how many of the tenant's
 // coins it bought, under the tenant's word for them, and until when they can
-// be spent, which a prepaid instrument has to state.
+// be spent, which a prepaid instrument has to state. A tip to the Authors of an
+// episode is worded as a tip throughout, since the reader bought nothing.
 func purchaseReceiptCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	libraryURL := c.value("library_url")
-	c.setSubject("email.purchase_receipt.subject", map[string]any{"tenant_name": brand})
+	tip := c.flag("is_tip")
+	if tip {
+		c.setSubject("email.purchase_receipt.tip_subject", map[string]any{"tenant_name": brand})
+	} else {
+		c.setSubject("email.purchase_receipt.subject", map[string]any{"tenant_name": brand})
+	}
 	c.from(brand)
-	c.line("email.purchase_receipt.heading", nil)
-	c.line("email.purchase_receipt.intro", map[string]any{"tenant_name": brand})
+	if tip {
+		c.line("email.purchase_receipt.tip_heading", nil)
+		c.line("email.purchase_receipt.tip_intro", map[string]any{"tenant_name": brand})
+	} else {
+		c.line("email.purchase_receipt.heading", nil)
+		c.line("email.purchase_receipt.intro", map[string]any{"tenant_name": brand})
+	}
 	if c.flag("is_test") {
 		c.line("email.purchase_receipt.test_notice", nil)
 	}
@@ -229,6 +240,8 @@ func purchaseReceiptCopy(c *emailComposer) {
 		c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
 	}
 	switch count := c.integer("series_bundle_episode_count"); {
+	case tip:
+		c.line("email.purchase_receipt.tip", map[string]any{"episode_title": c.value("episode_title")})
 	case coins > 0:
 		c.line("email.purchase_receipt.coin_pack", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins + bonusCoins), "bonus": int(bonusCoins)})
 	case c.value("volume_title") != "":
@@ -238,11 +251,19 @@ func purchaseReceiptCopy(c *emailComposer) {
 	default:
 		c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
 	}
-	c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	if tip {
+		c.line("email.purchase_receipt.tip_amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	} else {
+		c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	}
 	if rate := c.integer("tax_rate_bps"); rate > 0 {
 		c.line("email.purchase_receipt.tax", map[string]any{"amount": c.price("tax_amount", "currency"), "rate": basisPointsAsPercent(rate)})
 	}
-	c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
+	if tip {
+		c.line("email.purchase_receipt.tip_given_at", map[string]any{"purchased_at": c.instant("purchased_at")})
+	} else {
+		c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
+	}
 	if c.value("expires_at") != "" {
 		c.line("email.purchase_receipt.expires_at", map[string]any{"expires_at": c.instant("expires_at")})
 	}

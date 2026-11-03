@@ -21,6 +21,10 @@
 -- it was paid. A payment belongs to no series, so only the totals and the
 -- days count it.
 --
+-- A tip is a purchase too, counted among them at what the reader gave, and
+-- tip_amount is the part of gross_amount tips account for. It is read from
+-- idx_purchases_tenant_purchased_at_tips, which holds the tips alone.
+--
 -- The tax of a purchase is the tax what the tenant kept of it includes, at
 -- the rate the purchase recorded: tax_included of its price less what went
 -- back on it, which is the tax_amount it recorded while nothing has gone back,
@@ -67,7 +71,17 @@ SELECT
             AND sp.currency = sqlc.arg('currency')::text
             AND sp.paid_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
             AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
-    )::bigint AS subscription_tax_amount
+    )::bigint AS subscription_tax_amount,
+    (
+        SELECT COALESCE(sum(tp.price_at_purchase), 0)
+        FROM purchases tp
+        WHERE tp.tenant_id = sqlc.arg('tenant_id')
+            AND tp.kind = 'tip'
+            AND NOT tp.is_test
+            AND tp.currency = sqlc.arg('currency')::text
+            AND tp.purchased_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+            AND tp.purchased_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    )::bigint AS tip_amount
 FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND NOT p.is_test
@@ -109,6 +123,19 @@ subscriptions AS (
         AND sp.paid_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
         AND sp.paid_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
     GROUP BY 1
+),
+tips AS (
+    SELECT
+        (tp.purchased_at AT TIME ZONE sqlc.arg('time_zone')::text)::date AS tip_date,
+        sum(tp.price_at_purchase)::bigint AS tip_amount
+    FROM purchases tp
+    WHERE tp.tenant_id = sqlc.arg('tenant_id')
+        AND tp.kind = 'tip'
+        AND NOT tp.is_test
+        AND tp.currency = sqlc.arg('currency')::text
+        AND tp.purchased_at >= (sqlc.arg('start_date')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+        AND tp.purchased_at < ((sqlc.arg('end_date')::date + 1)::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    GROUP BY 1
 )
 SELECT
     d.day::date AS sale_date,
@@ -118,7 +145,8 @@ SELECT
     COALESCE(sub.subscription_amount, 0)::bigint AS subscription_amount,
     COALESCE(sub.subscription_refunded_amount, 0)::bigint AS subscription_refunded_amount,
     COALESCE(s.tax_amount, 0)::bigint AS tax_amount,
-    COALESCE(sub.subscription_tax_amount, 0)::bigint AS subscription_tax_amount
+    COALESCE(sub.subscription_tax_amount, 0)::bigint AS subscription_tax_amount,
+    COALESCE(t.tip_amount, 0)::bigint AS tip_amount
 FROM generate_series(
     sqlc.arg('start_date')::date::timestamp,
     sqlc.arg('end_date')::date::timestamp,
@@ -126,6 +154,7 @@ FROM generate_series(
 ) AS d(day)
 LEFT JOIN sales s ON s.sale_date = d.day::date
 LEFT JOIN subscriptions sub ON sub.paid_date = d.day::date
+LEFT JOIN tips t ON t.tip_date = d.day::date
 ORDER BY d.day;
 
 -- name: ListSeriesRevenueDesc :many
@@ -140,6 +169,7 @@ WITH parts AS (
         p.price_at_purchase,
         purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at) AS returned_amount,
         p.tax_rate_bps,
+        p.kind,
         sum(pp.price)::integer AS price
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
@@ -161,7 +191,8 @@ revenue AS (
         count(*)::bigint AS purchase_count,
         sum(parts.price)::bigint AS gross_amount,
         sum(episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase))::bigint AS refunded_amount,
-        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount
+        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount,
+        COALESCE(sum(parts.price) FILTER (WHERE parts.kind = 'tip'), 0)::bigint AS tip_amount
     FROM parts
     GROUP BY parts.series_id
 )
@@ -173,7 +204,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN series s ON s.tenant_id = sqlc.arg('tenant_id') AND s.id = r.series_id
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
@@ -206,6 +238,7 @@ WITH parts AS (
         p.price_at_purchase,
         purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at) AS returned_amount,
         p.tax_rate_bps,
+        p.kind,
         sum(pp.price)::integer AS price
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
@@ -227,7 +260,8 @@ revenue AS (
         count(*)::bigint AS purchase_count,
         sum(parts.price)::bigint AS gross_amount,
         sum(episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase))::bigint AS refunded_amount,
-        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount
+        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount,
+        COALESCE(sum(parts.price) FILTER (WHERE parts.kind = 'tip'), 0)::bigint AS tip_amount
     FROM parts
     GROUP BY parts.series_id
 )
@@ -239,7 +273,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN series s ON s.tenant_id = sqlc.arg('tenant_id') AND s.id = r.series_id
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
@@ -285,7 +320,8 @@ WITH revenue AS (
                 p.price_at_purchase
             ),
             p.tax_rate_bps
-        )), 0)::bigint AS tax_amount
+        )), 0)::bigint AS tax_amount,
+        COALESCE(sum(pp.price) FILTER (WHERE p.kind = 'tip'), 0)::bigint AS tip_amount
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
         AND pp.purchase_id = p.id
@@ -309,7 +345,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN episodes e ON e.tenant_id = sqlc.arg('tenant_id') AND e.id = r.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -355,7 +392,8 @@ WITH revenue AS (
                 p.price_at_purchase
             ),
             p.tax_rate_bps
-        )), 0)::bigint AS tax_amount
+        )), 0)::bigint AS tax_amount,
+        COALESCE(sum(pp.price) FILTER (WHERE p.kind = 'tip'), 0)::bigint AS tip_amount
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
         AND pp.purchase_id = p.id
@@ -379,7 +417,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN episodes e ON e.tenant_id = sqlc.arg('tenant_id') AND e.id = r.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et

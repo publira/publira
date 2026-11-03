@@ -490,6 +490,10 @@ func (x *ListEpisodeReadThroughResponse) GetTimeZone() string {
 // Stripe was paid it, and what went back on it is taken off that day too. A
 // payment belongs to no series, so it is counted on a day row and in the
 // totals only.
+//
+// A tip to the Authors of an episode is a purchase of that episode, counted
+// among the purchases at what the reader gave, and tip_amount is the part of
+// gross_amount tips account for.
 type RevenueStatsRow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
@@ -525,8 +529,10 @@ type RevenueStatsRow struct {
 	// The tax the subscription payments include, worked out the same way on
 	// what the tenant kept of each.
 	SubscriptionTaxAmount int64 `protobuf:"varint,13,opt,name=subscription_tax_amount,json=subscriptionTaxAmount,proto3" json:"subscription_tax_amount,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Of gross_amount, what was given as tips.
+	TipAmount     int64 `protobuf:"varint,14,opt,name=tip_amount,json=tipAmount,proto3" json:"tip_amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RevenueStatsRow) Reset() {
@@ -650,6 +656,13 @@ func (x *RevenueStatsRow) GetSubscriptionTaxAmount() int64 {
 	return 0
 }
 
+func (x *RevenueStatsRow) GetTipAmount() int64 {
+	if x != nil {
+		return x.TipAmount
+	}
+	return 0
+}
+
 // The same figures over the whole period, each purchase counted once
 // whatever its episodes.
 type RevenueStatsTotals struct {
@@ -662,6 +675,7 @@ type RevenueStatsTotals struct {
 	SubscriptionRefundedAmount int64                  `protobuf:"varint,6,opt,name=subscription_refunded_amount,json=subscriptionRefundedAmount,proto3" json:"subscription_refunded_amount,omitempty"`
 	TaxAmount                  int64                  `protobuf:"varint,7,opt,name=tax_amount,json=taxAmount,proto3" json:"tax_amount,omitempty"`
 	SubscriptionTaxAmount      int64                  `protobuf:"varint,8,opt,name=subscription_tax_amount,json=subscriptionTaxAmount,proto3" json:"subscription_tax_amount,omitempty"`
+	TipAmount                  int64                  `protobuf:"varint,9,opt,name=tip_amount,json=tipAmount,proto3" json:"tip_amount,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -748,6 +762,13 @@ func (x *RevenueStatsTotals) GetTaxAmount() int64 {
 func (x *RevenueStatsTotals) GetSubscriptionTaxAmount() int64 {
 	if x != nil {
 		return x.SubscriptionTaxAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetTipAmount() int64 {
+	if x != nil {
+		return x.TipAmount
 	}
 	return 0
 }
@@ -2257,7 +2278,7 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x0eprevious_token\x18\x06 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
 	"next_token\x18\a \x01(\tR\tnextToken\x12\x1b\n" +
-	"\ttime_zone\x18\b \x01(\tR\btimeZone\"\x9f\x04\n" +
+	"\ttime_zone\x18\b \x01(\tR\btimeZone\"\xbe\x04\n" +
 	"\x0fRevenueStatsRow\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12!\n" +
@@ -2274,7 +2295,9 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x1csubscription_refunded_amount\x18\v \x01(\x03R\x1asubscriptionRefundedAmount\x12\x1d\n" +
 	"\n" +
 	"tax_amount\x18\f \x01(\x03R\ttaxAmount\x126\n" +
-	"\x17subscription_tax_amount\x18\r \x01(\x03R\x15subscriptionTaxAmount\"\xf0\x02\n" +
+	"\x17subscription_tax_amount\x18\r \x01(\x03R\x15subscriptionTaxAmount\x12\x1d\n" +
+	"\n" +
+	"tip_amount\x18\x0e \x01(\x03R\ttipAmount\"\x8f\x03\n" +
 	"\x12RevenueStatsTotals\x12%\n" +
 	"\x0epurchase_count\x18\x01 \x01(\x03R\rpurchaseCount\x12!\n" +
 	"\fgross_amount\x18\x02 \x01(\x03R\vgrossAmount\x12'\n" +
@@ -2285,7 +2308,9 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x1csubscription_refunded_amount\x18\x06 \x01(\x03R\x1asubscriptionRefundedAmount\x12\x1d\n" +
 	"\n" +
 	"tax_amount\x18\a \x01(\x03R\ttaxAmount\x126\n" +
-	"\x17subscription_tax_amount\x18\b \x01(\x03R\x15subscriptionTaxAmount\"\xf4\x01\n" +
+	"\x17subscription_tax_amount\x18\b \x01(\x03R\x15subscriptionTaxAmount\x12\x1d\n" +
+	"\n" +
+	"tip_amount\x18\t \x01(\x03R\ttipAmount\"\xf4\x01\n" +
 	"\x16GetRevenueStatsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -21,7 +22,7 @@ import (
 // tenantPurchaseSettingsRevalidateTags names the public caches that carry the
 // settings: the tenant read with the store listings, and the series detail
 // every cached episode read is tagged with, whose episodes carry where they
-// may be bought.
+// may be bought and the amounts a reader may tip in.
 func tenantPurchaseSettingsRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
@@ -49,6 +50,35 @@ func normalizeStoreURL(value string) (sql.NullString, error) {
 	return sql.NullString{String: trimmed, Valid: true}, nil
 }
 
+// maxTipAmounts is how many amounts a tenant may offer a reader to tip in,
+// which tenant_config_tip_amounts_check holds the column to as well.
+const maxTipAmounts = 6
+
+// normalizeTipSettings checks the tips a request asks for and answers their
+// amounts in ascending order, which is the order a reader is offered them in.
+func normalizeTipSettings(tips *publiraadminv1.TenantTipSettings) ([]int32, error) {
+	amounts := slices.Clone(tips.GetAmounts())
+	if len(amounts) > maxTipAmounts {
+		return nil, fmt.Errorf("at most %d tip amounts may be offered", maxTipAmounts)
+	}
+	if tips.GetEnabled() && len(amounts) == 0 {
+		return nil, errors.New("tips need at least one amount to be on")
+	}
+	slices.Sort(amounts)
+	for i, amount := range amounts {
+		if amount <= 0 {
+			return nil, errors.New("a tip amount must be above 0")
+		}
+		if i > 0 && amounts[i-1] == amount {
+			return nil, errors.New("a tip amount must not be repeated")
+		}
+	}
+	if amounts == nil {
+		amounts = []int32{}
+	}
+	return amounts, nil
+}
+
 func tenantPurchaseSettingsFromConfig(config dbmodels.TenantConfig) (*publiraadminv1.TenantPurchaseSettings, error) {
 	availability, err := protomapper.SurfaceAvailabilityFromStored(config.PurchaseAvailability)
 	if err != nil {
@@ -58,6 +88,10 @@ func tenantPurchaseSettingsFromConfig(config dbmodels.TenantConfig) (*publiraadm
 		PurchaseAvailability: availability,
 		AppStoreUrl:          config.AppStoreUrl.String,
 		GooglePlayUrl:        config.GooglePlayUrl.String,
+		Tips: &publiraadminv1.TenantTipSettings{
+			Enabled: config.TipsEnabled,
+			Amounts: config.TipAmounts,
+		},
 	}, nil
 }
 
@@ -81,6 +115,7 @@ func (s *adminServer) GetTenantPurchaseSettings(
 			return &publiraadminv1.GetTenantPurchaseSettingsResponse{
 				Settings: &publiraadminv1.TenantPurchaseSettings{
 					PurchaseAvailability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_ALL,
+					Tips:                 &publiraadminv1.TenantTipSettings{Amounts: []int32{}},
 				},
 			}, nil
 		}
@@ -120,6 +155,15 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "settings.google_play_url")
 	}
+	// A client that predates tips sends none, and leaves the tenant's as they
+	// are rather than turning them off.
+	var tipAmounts []int32
+	if requested.GetTips() != nil {
+		tipAmounts, err = normalizeTipSettings(requested.GetTips())
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "settings.tips.amounts")
+		}
+	}
 
 	var updated dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
@@ -127,24 +171,43 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 		if err != nil {
 			return nil, err
 		}
-		if current.PurchaseAvailability == availability &&
-			current.AppStoreUrl == appStoreURL &&
-			current.GooglePlayUrl == googlePlayURL {
-			updated = current
+		updated = current
+		changed := false
+		if current.PurchaseAvailability != availability ||
+			current.AppStoreUrl != appStoreURL ||
+			current.GooglePlayUrl != googlePlayURL {
+			row, err := s.queriesFor(txCtx).UpsertTenantPurchaseSettings(txCtx, dbmodels.UpsertTenantPurchaseSettingsParams{
+				TenantID:             tenant.ID,
+				PurchaseAvailability: availability,
+				AppStoreUrl:          appStoreURL,
+				GooglePlayUrl:        googlePlayURL,
+			})
+			if err != nil {
+				return nil, s.internalDBError(ctx, "failed to update tenant purchase settings", err, "tenant_id", tenant.ID.String())
+			}
+			updated = row
+			changed = true
+			if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_purchase_settings_updated", "tenant_purchase_settings"); err != nil {
+				return nil, err
+			}
+		}
+		if tipAmounts != nil && (current.TipsEnabled != requested.GetTips().GetEnabled() || !slices.Equal(current.TipAmounts, tipAmounts)) {
+			row, err := s.queriesFor(txCtx).UpsertTenantTipSettings(txCtx, dbmodels.UpsertTenantTipSettingsParams{
+				TenantID:    tenant.ID,
+				TipsEnabled: requested.GetTips().GetEnabled(),
+				TipAmounts:  tipAmounts,
+			})
+			if err != nil {
+				return nil, s.internalDBError(ctx, "failed to update tenant tip settings", err, "tenant_id", tenant.ID.String())
+			}
+			updated = row
+			changed = true
+			if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_tip_settings_updated", "tenant_tip_settings"); err != nil {
+				return nil, err
+			}
+		}
+		if !changed {
 			return nil, nil
-		}
-		row, err := s.queriesFor(txCtx).UpsertTenantPurchaseSettings(txCtx, dbmodels.UpsertTenantPurchaseSettingsParams{
-			TenantID:             tenant.ID,
-			PurchaseAvailability: availability,
-			AppStoreUrl:          appStoreURL,
-			GooglePlayUrl:        googlePlayURL,
-		})
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to update tenant purchase settings", err, "tenant_id", tenant.ID.String())
-		}
-		updated = row
-		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_purchase_settings_updated", "tenant_purchase_settings"); err != nil {
-			return nil, err
 		}
 		return tenantPurchaseSettingsRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

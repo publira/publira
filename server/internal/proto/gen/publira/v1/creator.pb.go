@@ -31,6 +31,8 @@ const (
 	CreatorStatementLineSource_CREATOR_STATEMENT_LINE_SOURCE_SALE CreatorStatementLineSource = 1
 	// The parts of the month's subscription payments shared to the episode.
 	CreatorStatementLineSource_CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION CreatorStatementLineSource = 2
+	// The tips readers gave the episode's Authors.
+	CreatorStatementLineSource_CREATOR_STATEMENT_LINE_SOURCE_TIP CreatorStatementLineSource = 3
 )
 
 // Enum value maps for CreatorStatementLineSource.
@@ -39,11 +41,13 @@ var (
 		0: "CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED",
 		1: "CREATOR_STATEMENT_LINE_SOURCE_SALE",
 		2: "CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION",
+		3: "CREATOR_STATEMENT_LINE_SOURCE_TIP",
 	}
 	CreatorStatementLineSource_value = map[string]int32{
 		"CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED":  0,
 		"CREATOR_STATEMENT_LINE_SOURCE_SALE":         1,
 		"CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION": 2,
+		"CREATOR_STATEMENT_LINE_SOURCE_TIP":          3,
 	}
 )
 
@@ -1522,11 +1526,12 @@ const file_publira_v1_creator_proto_rawDesc = "" +
 	"\bcomments\x18\x01 \x03(\v2#.publira.v1.MyCreatorEpisodeCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken*\xa3\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken*\xca\x01\n" +
 	"\x1aCreatorStatementLineSource\x12-\n" +
 	")CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"CREATOR_STATEMENT_LINE_SOURCE_SALE\x10\x01\x12.\n" +
-	"*CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION\x10\x022\xbb\x04\n" +
+	"*CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION\x10\x02\x12%\n" +
+	"!CREATOR_STATEMENT_LINE_SOURCE_TIP\x10\x032\xbb\x04\n" +
 	"\x0eCreatorService\x12Y\n" +
 	"\x0eListMyCreators\x12!.publira.v1.ListMyCreatorsRequest\x1a\".publira.v1.ListMyCreatorsResponse\"\x00\x12b\n" +
 	"\x11GetMyCreatorStats\x12$.publira.v1.GetMyCreatorStatsRequest\x1a%.publira.v1.GetMyCreatorStatsResponse\"\x00\x12t\n" +

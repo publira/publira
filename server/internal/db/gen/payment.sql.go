@@ -534,6 +534,9 @@ SELECT
     p.tax_amount,
     tc.invoice_legal_name,
     tc.invoice_registration_number,
+    -- A tip names the episode whose Authors it went to, as a purchase of the
+    -- episode does, and the receipt says which of the two it was.
+    p.kind,
     -- What was bought: an episode, a volume, a series bundle, or a pack of
     -- coins. The title of each of the others is empty, and the episode count
     -- is that of the bundle, 0 on any other purchase.
@@ -602,6 +605,7 @@ type GetPurchaseReceiptForTenantRow struct {
 	TaxAmount                 sql.NullInt32  `json:"tax_amount"`
 	InvoiceLegalName          sql.NullString `json:"invoice_legal_name"`
 	InvoiceRegistrationNumber sql.NullString `json:"invoice_registration_number"`
+	Kind                      string         `json:"kind"`
 	EpisodeTitle              string         `json:"episode_title"`
 	VolumeTitle               string         `json:"volume_title"`
 	SeriesBundleEpisodeCount  int32          `json:"series_bundle_episode_count"`
@@ -631,6 +635,7 @@ func (q *Queries) GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurcha
 		&i.TaxAmount,
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
+		&i.Kind,
 		&i.EpisodeTitle,
 		&i.VolumeTitle,
 		&i.SeriesBundleEpisodeCount,
@@ -663,6 +668,61 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 		&i.CredentialsEncrypted,
 		&i.CredentialHints,
 		&i.Currency,
+	)
+	return i, err
+}
+
+const GetTippableEpisodeForTenant = `-- name: GetTippableEpisodeForTenant :one
+SELECT e.id,
+    e.public_id,
+    et.title,
+    s.public_id AS series_public_id
+FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
+    JOIN series s ON s.id = e.series_id
+WHERE e.id = $2
+    AND e.tenant_id = $3
+    AND s.tenant_id = $3
+    AND EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $4::text
+    )
+LIMIT 1
+`
+
+type GetTippableEpisodeForTenantParams struct {
+	Locale   string    `json:"locale"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Surface  string    `json:"surface"`
+}
+
+type GetTippableEpisodeForTenantRow struct {
+	ID             uuid.UUID `json:"id"`
+	PublicID       string    `json:"public_id"`
+	Title          string    `json:"title"`
+	SeriesPublicID string    `json:"series_public_id"`
+}
+
+// The episode a reader asks to tip the Authors of: one published on the
+// calling surface, priced or free, since a tip is given for an episode read
+// rather than bought. Its title is in the reader's locale, as the checkout
+// page names it.
+func (q *Queries) GetTippableEpisodeForTenant(ctx context.Context, arg GetTippableEpisodeForTenantParams) (GetTippableEpisodeForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTippableEpisodeForTenant,
+		arg.Locale,
+		arg.ID,
+		arg.TenantID,
+		arg.Surface,
+	)
+	var i GetTippableEpisodeForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.SeriesPublicID,
 	)
 	return i, err
 }
@@ -1529,6 +1589,7 @@ SELECT p.id,
     p.provider_payment_id,
     p.store,
     p.is_test,
+    p.kind,
     p.refunded_amount,
     p.refunded_at,
     p.revoked_at,
@@ -1593,6 +1654,7 @@ type ListPurchasesForTenantByIDsRow struct {
 	ProviderPaymentID           sql.NullString `json:"provider_payment_id"`
 	Store                       sql.NullString `json:"store"`
 	IsTest                      bool           `json:"is_test"`
+	Kind                        string         `json:"kind"`
 	RefundedAmount              sql.NullInt32  `json:"refunded_amount"`
 	RefundedAt                  sql.NullTime   `json:"refunded_at"`
 	RevokedAt                   sql.NullTime   `json:"revoked_at"`
@@ -1647,6 +1709,7 @@ func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurch
 			&i.ProviderPaymentID,
 			&i.Store,
 			&i.IsTest,
+			&i.Kind,
 			&i.RefundedAmount,
 			&i.RefundedAt,
 			&i.RevokedAt,

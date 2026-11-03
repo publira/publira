@@ -218,7 +218,7 @@ message UpdateTenantEpisodeReviewSettingsResponse {
 }
 
 // Where this tenant's episodes may be bought unless a series or an episode
-// states otherwise, and the store listings of its app.
+// states otherwise, the store listings of its app, and the tips it takes.
 message TenantPurchaseSettings {
   // Never SURFACE_AVAILABILITY_UNSPECIFIED on a read: a tenant that has chosen
   // nothing sells on both surfaces.
@@ -226,6 +226,21 @@ message TenantPurchaseSettings {
   // An https:// URL, or empty where the app has no listing in that store.
   string app_store_url = 2;
   string google_play_url = 3;
+  // Always set on a read. On an update, unset leaves the tenant's tips as
+  // they are, which is what a client that does not know them sends.
+  TenantTipSettings tips = 4;
+}
+
+// Whether readers may tip the Authors of an episode, and the amounts they may
+// give. A tip is paid on the site through the tenant's payment provider, and
+// in an app that sells through the stores as the product `tip_` followed by
+// the amount (ListTenantStoreProducts).
+message TenantTipSettings {
+  bool enabled = 1;
+  // In the minor unit of the tenant's currency, each above 0: none to six of
+  // them, and at least one while enabled. A read answers them in ascending
+  // order, and an update stores them so, refusing a repeat.
+  repeated int32 amounts = 2;
 }
 
 message GetTenantPurchaseSettingsRequest {
@@ -238,8 +253,11 @@ message GetTenantPurchaseSettingsResponse {
 
 message UpdateTenantPurchaseSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // Every field is written. SURFACE_AVAILABILITY_UNSPECIFIED stores both
-  // surfaces, and a store URL that is not an https:// URL is invalid_argument.
+  // Every field is written but `tips`, which is written when it is set.
+  // SURFACE_AVAILABILITY_UNSPECIFIED stores both surfaces, and a store URL that
+  // is not an https:// URL is invalid_argument, as are tips that break the
+  // rules TenantTipSettings states. A change to the tips is recorded in the
+  // audit log apart from a change to the rest.
   TenantPurchaseSettings settings = 2;
 }
 

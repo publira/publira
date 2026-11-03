@@ -113,6 +113,13 @@
       "subject": "{$tenant_name} purchase receipt",
       "tax": "Tax included ({$rate}%): {$amount}",
       "test_notice": "This was a purchase in the payment provider's test mode. No money was charged.",
+      "tip": "Tip for the Authors of: {$episode_title}",
+      "tip_amount": "Amount given: {$amount} ({$currency})",
+      "tip_given_at": "Given: {$purchased_at}",
+      "tip_heading": "Thank you for your tip",
+      "tip_intro": "Here is the receipt for your tip on {$tenant_name}.",
+      "tip_preview": "Thank you for tipping the Authors of {$title}.",
+      "tip_subject": "{$tenant_name} tip receipt",
       "volume": "Volume: {$volume_title}"
     },
     "reader_announcement_posted": {
@@ -273,7 +280,8 @@
   "checkout": {
     "bundle_discount": "Bundle discount ({$percent :integer}%)",
     "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
-    "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}"
+    "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
+    "tip_line_item": "Tip for the Authors of {$episode_title}"
   },
   "errors": {
     "disallowed_value": "This value is not allowed. Choose another.",
@@ -368,6 +376,7 @@
         "tenant_site_copy": "Public site display",
         "tenant_site_verification": "Search engine verification",
         "tenant_timezone": "Time zone",
+        "tenant_tip_settings": "Tips",
         "user": "User",
         "volume": "Volume"
       },
@@ -531,6 +540,7 @@
         "tenant_payment_settings_updated": "Payment settings updated",
         "tenant_purchase_settings_updated": "Where episodes are sold updated",
         "tenant_tax_settings_updated": "Tax and invoices updated",
+        "tenant_tip_settings_updated": "Tip settings updated",
         "tenant_fcm_credentials_saved": "Firebase credentials saved",
         "tenant_fcm_credentials_deleted": "Firebase credentials removed",
         "tenant_mobile_app_association_updated": "App links updated",

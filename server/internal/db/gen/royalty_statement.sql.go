@@ -493,7 +493,7 @@ func (q *Queries) InsertRoyaltyStatementPurchases(ctx context.Context, arg Inser
 const ListRoyaltyAdjustmentLinesForPeriod = `-- name: ListRoyaltyAdjustmentLinesForPeriod :many
 WITH carried AS (
     SELECT
-        'sale'::text AS source,
+        (CASE WHEN p.kind = 'tip' THEN 'tip' ELSE 'sale' END)::text AS source,
         u.tenant_id,
         u.statement_id,
         u.period,
@@ -507,7 +507,7 @@ WITH carried AS (
     WHERE u.tenant_id = $1
         AND u.currency = $2::text
         AND u.period < $3::date
-    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id, p.tax_rate_bps
+    GROUP BY 1, u.tenant_id, u.statement_id, u.period, u.episode_id, p.tax_rate_bps
     UNION ALL
     SELECT
         'subscription'::text AS source,
@@ -664,8 +664,8 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 // A refund of a subscription payment is carried the same way, to the
 // subscription line of each episode the payment was shared to, by the part
 // royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
-// reaches the episode's line of sales alone. A line closed before lines had
-// a source is one of sales.
+// reaches the episode's line of sales alone, and a refund of a tip its line
+// of tips. A line closed before lines had a source is one of sales.
 //
 // A refund reaches the line of the tax rate its purchase or payment recorded,
 // since a month whose rate changed has a line per rate, and the adjustment
@@ -726,6 +726,7 @@ func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg L
 
 const ListRoyaltyLinesForPeriod = `-- name: ListRoyaltyLinesForPeriod :many
 SELECT
+    (CASE WHEN p.kind = 'tip' THEN 'tip' ELSE 'sale' END)::text AS source,
     ec.creator_id,
     c.public_id AS creator_public_id,
     c.name AS creator_name,
@@ -767,13 +768,14 @@ WHERE p.tenant_id = $3
     AND p.purchased_at >= $1::timestamptz
     AND p.purchased_at < $2::timestamptz
 GROUP BY
+    1,
     s.id, s.public_id, str.title,
     e.id, e.public_id, et.title, e.order_index,
     ec.creator_id, c.public_id, c.name,
     ec.role_id, r.public_id, r.name,
     ec.display_order, ec.share_bps,
     p.tax_rate_bps
-ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST, p.tax_rate_bps NULLS FIRST
+ORDER BY 1, str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST, p.tax_rate_bps NULLS FIRST
 `
 
 type ListRoyaltyLinesForPeriodParams struct {
@@ -784,6 +786,7 @@ type ListRoyaltyLinesForPeriodParams struct {
 }
 
 type ListRoyaltyLinesForPeriodRow struct {
+	Source          string         `json:"source"`
 	CreatorID       uuid.UUID      `json:"creator_id"`
 	CreatorPublicID string         `json:"creator_public_id"`
 	CreatorName     string         `json:"creator_name"`
@@ -829,6 +832,10 @@ type ListRoyaltyLinesForPeriodRow struct {
 // floored per line over the month's sum, which keeps the rounding loss to one
 // minor unit of the currency per line.
 //
+// A tip is split among the episode's credits as a sale is, on a line of its
+// own: source is `tip` on the line of the month's tips to a credit and `sale`
+// on the line of its sales, and the lines of sales come first.
+//
 // A credit's sales are cut into one line per tax rate the purchases recorded,
 // so a line's payout includes tax at one rate, the line's, which the close
 // works out from the payout. Sales made without a rate are a line of their
@@ -849,6 +856,7 @@ func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyalty
 	for rows.Next() {
 		var i ListRoyaltyLinesForPeriodRow
 		if err := rows.Scan(
+			&i.Source,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,

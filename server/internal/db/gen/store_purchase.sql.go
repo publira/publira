@@ -101,7 +101,8 @@ INSERT INTO purchases (
     store,
     store_transaction_id,
     is_test,
-    currency
+    currency,
+    kind
 )
 VALUES (
     $1,
@@ -114,7 +115,9 @@ VALUES (
     $7::text,
     $8::text,
     $9,
-    $10
+    $10,
+    -- The intent's: the permanent copy, or a tip to the episode's Authors.
+    $11::text
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
 RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount
@@ -131,6 +134,7 @@ type CreateStorePurchaseParams struct {
 	StoreTransactionID string       `json:"store_transaction_id"`
 	IsTest             bool         `json:"is_test"`
 	Currency           string       `json:"currency"`
+	Kind               string       `json:"kind"`
 }
 
 // Records a verified store transaction. A transaction is sold once, so a
@@ -147,6 +151,7 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		arg.StoreTransactionID,
 		arg.IsTest,
 		arg.Currency,
+		arg.Kind,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -369,7 +374,7 @@ func (q *Queries) HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnapplie
 }
 
 const LockStorePurchaseIntent = `-- name: LockStorePurchaseIntent :one
-SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
+SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days, kind
 FROM store_purchase_intents
 WHERE tenant_id = $1
     AND id = $2
@@ -402,6 +407,7 @@ func (q *Queries) LockStorePurchaseIntent(ctx context.Context, arg LockStorePurc
 		&i.Coins,
 		&i.BonusCoins,
 		&i.CoinExpiryDays,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -460,7 +466,7 @@ VALUES (
 ON CONFLICT (tenant_id, user_id, coin_pack_id, product_id) WHERE consumed_at IS NULL AND coin_pack_id IS NOT NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
-RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days, kind
 `
 
 type OpenStoreCoinPackPurchaseIntentParams struct {
@@ -509,6 +515,7 @@ func (q *Queries) OpenStoreCoinPackPurchaseIntent(ctx context.Context, arg OpenS
 		&i.Coins,
 		&i.BonusCoins,
 		&i.CoinExpiryDays,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -537,7 +544,7 @@ VALUES (
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
-RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days, kind
 `
 
 type OpenStorePurchaseIntentParams struct {
@@ -582,6 +589,79 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		&i.Coins,
 		&i.BonusCoins,
 		&i.CoinExpiryDays,
+		&i.Kind,
+	)
+	return i, err
+}
+
+const OpenStoreTipIntent = `-- name: OpenStoreTipIntent :one
+INSERT INTO store_purchase_intents (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price,
+    product_id,
+    currency,
+    kind
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4::uuid,
+    $5,
+    $6,
+    $7,
+    'tip'
+)
+ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
+UPDATE
+SET product_id = EXCLUDED.product_id
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days, kind
+`
+
+type OpenStoreTipIntentParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	Price     int32     `json:"price"`
+	ProductID string    `json:"product_id"`
+	Currency  string    `json:"currency"`
+}
+
+// Opens the reader's intent to tip the Authors of an episode as a store
+// product, or answers the one already open for the same episode and amount,
+// as OpenStorePurchaseIntent does for a purchase. The product names the
+// amount, so a tip and a purchase of the episode never share an intent.
+func (q *Queries) OpenStoreTipIntent(ctx context.Context, arg OpenStoreTipIntentParams) (StorePurchaseIntent, error) {
+	row := q.db.QueryRowContext(ctx, OpenStoreTipIntent,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.Price,
+		arg.ProductID,
+		arg.Currency,
+	)
+	var i StorePurchaseIntent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.Price,
+		&i.ProductID,
+		&i.ReadingPeriodHours,
+		&i.CreatedAt,
+		&i.ConsumedAt,
+		&i.Currency,
+		&i.CoinPackID,
+		&i.Coins,
+		&i.BonusCoins,
+		&i.CoinExpiryDays,
+		&i.Kind,
 	)
 	return i, err
 }

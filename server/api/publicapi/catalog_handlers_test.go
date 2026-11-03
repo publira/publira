@@ -896,6 +896,7 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoEpisodeEyeCatches(mock, tenantID)
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1119,6 +1120,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				expectEpisodePreviewImagesLookup(mock, normalEpisodeID)
 				expectNoEpisodeEyeCatches(mock, tenantID)
 				expectNoSavedPlatformPolicy(mock)
+				expectNoTenantTipAmounts(mock, tenantID)
 			}
 
 			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -1344,6 +1346,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 
 			expectNoEpisodeEyeCatches(mock, tenantID)
 			expectNoSavedPlatformPolicy(mock)
+			expectNoTenantTipAmounts(mock, tenantID)
 			resp, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: "EPISODE001",
@@ -1425,6 +1428,7 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoEpisodeEyeCatches(mock, tenantID)
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE002",
@@ -1480,6 +1484,7 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoEpisodeEyeCatches(mock, tenantID)
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1531,6 +1536,7 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoEpisodeEyeCatches(mock, tenantID)
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1591,6 +1597,7 @@ func TestCatalogGetEpisodeDetailAnswersWithoutTheEyeCatchWhenItsReadFails(t *tes
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantTipAmounts(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",

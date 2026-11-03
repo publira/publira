@@ -1,7 +1,8 @@
-// Package storeproduct names the consumable product a store sells an episode
-// or a pack of coins as. An episode's product is a price tier rather than an
-// episode, so a tenant creates one per price in App Store Connect and the Play
-// Console, under the same ID in both, and one more per pack.
+// Package storeproduct names the consumable product a store sells an episode,
+// a pack of coins, or a tip as. An episode's product is a price tier rather
+// than an episode, so a tenant creates one per price in App Store Connect and
+// the Play Console, under the same ID in both, one more per pack, and one per
+// tip amount.
 package storeproduct
 
 import (
@@ -16,6 +17,15 @@ import (
 // and the store sets what each storefront charges for the product.
 func ProductID(price int32) string {
 	return "episode_" + strconv.FormatInt(int64(price), 10)
+}
+
+// TipProductID is the product a tip of amount, in the minor unit of the tenant
+// currency, is bought as. Like an episode's, it names an amount rather than an
+// episode, so one product serves a tip of that amount to any episode's
+// Authors, and it is apart from the episode products, so a tip and a purchase
+// at the same price are never confused.
+func TipProductID(amount int32) string {
+	return "tip_" + strconv.FormatInt(int64(amount), 10)
 }
 
 // CoinPackProductID is the product a pack of a tenant's coins is bought as,

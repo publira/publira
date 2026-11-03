@@ -189,7 +189,8 @@ type Computation struct {
 	// one whose sales they count.
 	Currency string
 	Totals   Totals
-	Lines    []dbmodels.ListRoyaltyLinesForPeriodRow
+	// Lines are the month's own lines of sales, then its lines of tips.
+	Lines []dbmodels.ListRoyaltyLinesForPeriodRow
 	// SubscriptionLines share the month's subscription payments. A statement
 	// lists them after Lines.
 	SubscriptionLines []dbmodels.ListRoyaltySubscriptionLinesForPeriodRow
@@ -615,6 +616,8 @@ const (
 	// SourceSubscription is the parts of subscription payments shared to an
 	// episode.
 	SourceSubscription Source = "subscription"
+	// SourceTip is the tips readers gave the Authors of an episode.
+	SourceTip Source = "tip"
 )
 
 // LineSource reads the source a stored line records, which is empty on a line
@@ -663,8 +666,9 @@ func (line statementLine) withTax(rateBps sql.NullInt32, tax sql.NullInt64) stat
 	return line
 }
 
-// statementLinesJSON numbers the month's own lines of sales first, its
-// subscription lines after them, and its adjustment lines last.
+// statementLinesJSON numbers the month's own lines of sales first, its lines of
+// tips and then its subscription lines after them, and its adjustment lines
+// last.
 func statementLinesJSON(computation Computation) (json.RawMessage, error) {
 	lines := make([]statementLine, 0, len(computation.Lines)+len(computation.SubscriptionLines)+len(computation.Adjustments))
 	for _, row := range computation.Lines {
@@ -682,7 +686,7 @@ func statementLinesJSON(computation Computation) (json.RawMessage, error) {
 			RefundedAmount: row.RefundedAmount,
 			ShareBps:       row.ShareBps,
 			PayoutAmount:   row.PayoutAmount,
-			Source:         SourceSale,
+			Source:         Source(row.Source),
 		}.withTax(row.TaxRateBps, LineTax(row.TaxRateBps, row.PayoutAmount))
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String
