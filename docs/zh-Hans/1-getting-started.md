@@ -2,6 +2,7 @@
 title: 入门
 description: Publira是什么、由谁运行，以及从哪里开始阅读。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-10-22
 ---
 
@@ -26,5 +27,5 @@ Publira是一个供出版社以自有品牌运营的漫画销售与发行平台�
 
 - [部署](./2-deployments/index.md)介绍安装实例由哪些部分组成，以及如何让它投入使用。
 - [运营](./3-operations/index.md)介绍安装实例投入使用后的运行：添加租户、为其工作人员授予访问权限，以及平台控制台的运营人员。
-- [租户控制台](./4-console/index.md)介绍出版社工作人员用来运营网站的控制台，首先是[发布作品](./4-console/1-catalog/index.md)：系列、系列中的章节，以及作品所属的品牌和作者。
+- [租户控制台](./4-console/index.md)介绍出版社工作人员用来运营网站的控制台，首先是[发布作品](./4-console/1-catalog/index.md)：系列、系列中的章节，以及作品所属的书系和作者。
 - [移动应用](./5-mobile-app/index.md)介绍如何构建租户自己的iOS和Android应用，并在App Store和Google Play上发布。

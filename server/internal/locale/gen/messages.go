@@ -646,7 +646,7 @@ var Messages = map[string]map[string]string{
 		"ja":      "残りのエピソード{$count :integer}話",
 		"en":      ".input {$count :integer}\n.match $count\none {{Remaining episodes: {$count} episode}}\n* {{Remaining episodes: {$count} episodes}}",
 		"ko":      "남은 에피소드: {$count :integer}화",
-		"zh-Hans": "剩余章节：{$count :integer}话",
+		"zh-Hans": "剩余章节：{$count :integer}章",
 		"zh-Hant": "剩餘章節：{$count :integer}章",
 	},
 	"email.purchase_receipt.subject": {
@@ -1374,7 +1374,7 @@ var Messages = map[string]map[string]string{
 		"ja":      "{$sender_name}としてサインインしている読者からの送信です。",
 		"en":      "Signed in as {$sender_name}.",
 		"ko":      "로그인한 계정: {$sender_name}",
-		"zh-Hans": "登录账号：{$sender_name}",
+		"zh-Hans": "登录账户：{$sender_name}",
 		"zh-Hant": "登入帳戶：{$sender_name}",
 	},
 	"email.staff_contact_message_notice.subject": {

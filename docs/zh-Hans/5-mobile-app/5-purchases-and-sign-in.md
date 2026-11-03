@@ -2,6 +2,7 @@
 title: 应用内购买和登录
 description: 租户的应用通过App Store和Google Play销售章节，以及让读者通过Apple、Google和通行密钥登录所需的内容。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-11-01
 ---
 
@@ -60,8 +61,8 @@ App Store和Google Play各自都有关于应用如何销售数字内容的规则
 - 在创建商品之前，先把App Bundle上传到测试轨道。对于尚未上传过使用Google Play结算的构建的应用，Play Console可能会拒绝创建商品，而每个Publira构建都使用Google Play结算。
 - 把列出的商品创建为一次性商品。
 - 把每个方案的商品创建为订阅，并为它设置一个自动续订的基础方案，使用方案的计费周期和价格。请激活基础方案，否则该商品无法购买。
-- 在Google Cloud中创建一个启用了Google Play Android Developer API的服务账号，并在**应用内购买**的**Google Play**部分中填写其**服务账号密钥（JSON）**。然后在Play Console的**Users and permissions**中邀请控制台显示的**服务账号**，并授予应用的两项权限：**View financial data, orders, and cancellation survey responses**，安装实例用它验证每笔购买并读取退款；以及**Manage orders and subscriptions**，安装实例用它消耗每笔购买。安装实例无法验证的购买不会打开读者付费购买的章节，无法消耗的购买会在三天后被Google退款。
-- 让Google Play把实时开发者通知发送给安装实例，这样Google一报告退款就会收回章节，而不是在一小时内才收回。在Google Cloud中创建一个Pub/Sub主题，并为`google-play-developer-notifications@system.gserviceaccount.com`授予该主题上的**Pub/Sub Publisher**角色。为该主题添加一个推送订阅，其端点为控制台显示的**Google Play实时开发者通知URL**，开启身份验证，并以控制台显示的**服务账号**作为推送所用的账号；创建它需要该账号上的**Service Account User**角色。然后在Play Console的**Monetization setup**中指定该主题，并从那里发送一条测试通知。以其他账号身份进行身份验证或发送到其他URL的推送，安装实例都会拒绝。
+- 在Google Cloud中创建一个启用了Google Play Android Developer API的服务账户，并在**应用内购买**的**Google Play**部分中填写其**服务账户密钥（JSON）**。然后在Play Console的**Users and permissions**中邀请控制台显示的**服务账户**，并授予应用的两项权限：**View financial data, orders, and cancellation survey responses**，安装实例用它验证每笔购买并读取退款；以及**Manage orders and subscriptions**，安装实例用它消耗每笔购买。安装实例无法验证的购买不会打开读者付费购买的章节，无法消耗的购买会在三天后被Google退款。
+- 让Google Play把实时开发者通知发送给安装实例，这样Google一报告退款就会收回章节，而不是在一小时内才收回。在Google Cloud中创建一个Pub/Sub主题，并为`google-play-developer-notifications@system.gserviceaccount.com`授予该主题上的**Pub/Sub Publisher**角色。为该主题添加一个推送订阅，其端点为控制台显示的**Google Play实时开发者通知URL**，开启身份验证，并以控制台显示的**服务账户**作为推送所用的账户；创建它需要该账户上的**Service Account User**角色。然后在Play Console的**Monetization setup**中指定该主题，并从那里发送一条测试通知。以其他账户身份进行身份验证或发送到其他URL的推送，安装实例都会拒绝。
 
 开启**使用App Store**和**使用Google Play**，把应用的销售方式选为**应用内购买**，然后选择**保存应用内购买设置**。只有当某个商店就绪时（已开启、有密钥，且其应用已在**应用链接**中指定），控制台才允许这一选择。
 

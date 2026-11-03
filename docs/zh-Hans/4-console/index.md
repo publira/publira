@@ -2,6 +2,7 @@
 title: 租户控制台
 description: 出版社工作人员用来运营网站的控制台、谁可以使用其中哪些部分，以及如何登录。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-11-02
 ---
 
@@ -35,11 +36,11 @@ source_updated: 2026-11-02
 
 ## 本章内容
 
-- [发布作品](./1-catalog/index.md)：从空的作品目录到读者可以打开的第一个章节，以及构成作品目录的系列、章节、品牌、作者、作者角色和题材。
+- [发布作品](./1-catalog/index.md)：从空的作品目录到读者可以打开的第一个章节，以及构成作品目录的系列、章节、书系、作者、作者角色和题材。
 - [读者、评论和咨询](./2-readers/index.md)：暂停和删除读者账户、处理评论审核和举报队列、回复咨询，以及用阅读券向读者开放付费章节。
 - [设置租户](./3-setup/index.md)：通过设置、品牌、页面、公告、活动横幅、成员、邮件服务器、审计日志和您自己的账户，把新租户打造成具有出版社风格、法律页面和工作人员的网站。
 - [销售章节](./4-selling-episodes.md)：为章节定价、通过Stripe或PAY.JP收款、章节在哪里销售、应用内购买、退款，以及正式上线前测试配置。
-- [订阅方案](./5-subscription-plans.md)：通过Stripe向读者销售按周期计费的方案，开放整个作品目录、部分品牌或部分系列，它在Stripe中所需的Price和webhook事件，以及订阅者在网站上的操作。
+- [订阅方案](./5-subscription-plans.md)：通过Stripe向读者销售按周期计费的方案，开放整个作品目录、部分书系或部分系列，它在Stripe中所需的Price和webhook事件，以及订阅者在网站上的操作。
 - [报表与版税](./6-reports-and-royalties.md)：仪表盘和分析界面统计的内容、每位作者的版税如何计算、将一个月结算为结算单，以及将其导出为CSV。
 - [通过Apple和Google登录](./7-sign-in.md)：让读者用Apple或Google账户登录网站和应用，以及为此需要在Apple和Google的控制台中创建什么。
 - [Google代码](./8-google-tag.md)：用Google Analytics或Google Tag Manager统计网站数据、可以加载代码的三个位置，以及为网关在Google Tag Manager中需要设置的内容。

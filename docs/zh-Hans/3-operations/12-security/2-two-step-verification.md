@@ -2,6 +2,7 @@
 title: 两步验证
 description: 要求租户工作人员和平台控制台运营人员使用两步验证，以及恢复丢失了第二因素的账户。
 published: 2026-11-03
+updated: 2026-11-03
 source_updated: 2026-10-21
 ---
 
@@ -33,7 +34,7 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 每位运营人员都可以用同样的方式，在**账户设置**的**两步验证**中，用身份验证器应用和十个恢复码保护自己的平台控制台账户，详见[运营人员自己的账户](../1-platform-console.md#运营人员自己的账户)。
 
-您可以要求每位运营人员都使用它，无论其角色如何：在**策略**下的**安全**中勾选**要求Platform Console的所有运营人员使用两步验证**，然后选择**保存安全策略**，或者运行：
+您可以要求每位运营人员都使用它，无论其角色如何：在**策略**下的**安全**中勾选**要求平台控制台的所有运营人员使用两步验证**，然后选择**保存安全策略**，或者运行：
 
 ```bash
 publiractl policy set --mfa-required-for-platform-operator
