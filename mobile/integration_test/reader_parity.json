@@ -417,6 +417,17 @@
       ]
     },
     {
+      "name": "Targeted announcements, listed and opened by the readers they were sent to",
+      "web": {
+        "routes": [
+          "[locale]/(site)/announcements",
+          "[locale]/(site)/announcements/[announcement_id]"
+        ],
+        "rpcs": ["ListAnnouncements", "GetAnnouncement"]
+      },
+      "exception": "Not in the app yet: #4908."
+    },
+    {
       "name": "A page the tenant published",
       "web": {
         "routes": ["[locale]/(site)/page/[...slug]"],

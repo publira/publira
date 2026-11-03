@@ -211,6 +211,51 @@ const announcementInputSchema = z.object({
   tenantId: tenantIdSchema,
 });
 
+/** One announcement as its own page shows it. */
+export interface AnnouncementDetail {
+  id: string;
+  title: string;
+  body: string;
+  linkUrl: string;
+  createdAt: string;
+  /** The locale of the translation that was served. */
+  locale: Locale;
+  /** Every locale the announcement has a translation in, the served one included. */
+  publishedLocales: readonly Locale[];
+}
+
+/** The detail as the reader it was read for sees it, with their read state. */
+export interface MyAnnouncementDetail extends AnnouncementDetail {
+  isRead: boolean;
+}
+
+/**
+ * The generated `AnnouncementItem` fields a detail keeps. The read state is
+ * left out: {@link getAnnouncement} is read without a session.
+ */
+type AnnouncementDetailFields = Pick<
+  AnnouncementItem,
+  "body" | "createdAt" | "id" | "linkUrl" | "locale" | "title"
+>;
+
+const toAnnouncementDetail = (
+  item: AnnouncementDetailFields,
+  locales: readonly string[] | undefined,
+  requestedLocale: Locale
+): AnnouncementDetail => {
+  const servedLocale = servedLocaleFrom(item.locale, requestedLocale);
+
+  return {
+    body: item.body,
+    createdAt: item.createdAt,
+    id: item.id,
+    linkUrl: item.linkUrl,
+    locale: servedLocale,
+    publishedLocales: publishedLocalesFrom(locales, servedLocale),
+    title: item.title,
+  };
+};
+
 /**
  * Like the list read, this hands a verdict across the cache boundary rather
  * than the caught error. `"unauthenticated"` is kept apart from a bug so the
@@ -219,7 +264,7 @@ const announcementInputSchema = z.object({
  */
 type CachedGetMyAnnouncementResult =
   | { failure: "unauthenticated" | "unexpected" }
-  | { value: MemberAnnouncementItem | null };
+  | { value: MyAnnouncementDetail | null };
 
 const readMyAnnouncement = async (
   tenantId: string,
@@ -248,7 +293,16 @@ const readMyAnnouncement = async (
       return { value: null };
     }
 
-    return { value: mapAnnouncementItem(response.announcement, locale) };
+    return {
+      value: {
+        ...toAnnouncementDetail(
+          response.announcement,
+          response.locales,
+          locale
+        ),
+        isRead: response.announcement.isRead,
+      },
+    };
   } catch (error) {
     dropFailedCacheEntry();
 
@@ -278,7 +332,7 @@ export const getMyAnnouncement = async (
   announcementId: string,
   locale: Locale,
   sessionId?: string
-): Promise<MemberAnnouncementItem | null> => {
+): Promise<MyAnnouncementDetail | null> => {
   const parsed = announcementInputSchema.safeParse({
     announcementId,
     tenantId,
@@ -310,55 +364,16 @@ export const getMyAnnouncement = async (
   throw new Error("Could not read the announcement.");
 };
 
-/** One announcement as its own page shows it. */
-export interface AnnouncementDetail {
-  id: string;
-  title: string;
-  body: string;
-  linkUrl: string;
-  createdAt: string;
-  /** The locale of the translation that was served. */
-  locale: Locale;
-  /** Every locale the announcement has a translation in, the served one included. */
-  publishedLocales: readonly Locale[];
-}
-
-/**
- * The generated `AnnouncementItem` fields {@link getAnnouncement} keeps. The
- * read state is left out: the page is read without a session.
- */
-type AnnouncementDetailFields = Pick<
-  AnnouncementItem,
-  "body" | "createdAt" | "id" | "linkUrl" | "locale" | "title"
->;
-
-const toAnnouncementDetail = (
-  item: AnnouncementDetailFields,
-  locales: readonly string[] | undefined,
-  requestedLocale: Locale
-): AnnouncementDetail => {
-  const servedLocale = servedLocaleFrom(item.locale, requestedLocale);
-
-  return {
-    body: item.body,
-    createdAt: item.createdAt,
-    id: item.id,
-    linkUrl: item.linkUrl,
-    locale: servedLocale,
-    publishedLocales: publishedLocalesFrom(locales, servedLocale),
-    title: item.title,
-  };
-};
-
 /**
  * One announcement in `locale`, else the tenant default's translation, else
  * its oldest — the page `/announcements/<id>` shows.
  *
  * It names no reader, so one entry serves every visitor: an announcement is the
  * tenant's word to everyone who opens the site, and read state belongs to the
- * list. A missing, malformed, or other-tenant id is `ok: true` with `null`; a
- * failed read is `ok: false`, a value rather than a throw because a `"use
- * cache"` fill that throws fails the whole request.
+ * list. A missing, malformed, or other-tenant id is `ok: true` with `null`, and
+ * so is a targeted announcement, which the API answers only to the readers it
+ * was sent to; a failed read is `ok: false`, a value rather than a throw
+ * because a `"use cache"` fill that throws fails the whole request.
  */
 export const getAnnouncement = async (
   tenantId: string,
@@ -408,6 +423,35 @@ export const getAnnouncement = async (
       "storefront.announcements.read_failed"
     );
   }
+};
+
+/**
+ * The announcement `/announcements/<id>` shows to whoever opened it: the
+ * shared {@link getAnnouncement} first, and the reader's own
+ * {@link getMyAnnouncement} only when that answers nothing and `signedIn` says
+ * there is a session to ask with.
+ *
+ * The shared read keeps every public announcement on one cache entry, so only
+ * a targeted one — or an id that is no announcement at all — costs a signed-in
+ * reader the private round trip. A rejected session and an unexpected failure
+ * of that second read throw as {@link getMyAnnouncement} documents.
+ */
+export const getAnnouncementForReader = async (
+  tenantId: string,
+  announcementId: string,
+  locale: Locale,
+  signedIn: boolean
+): Promise<CachedReadResult<AnnouncementDetail | null>> => {
+  const shared = await getAnnouncement(tenantId, announcementId, locale);
+
+  if (!shared.ok || shared.value || !signedIn) {
+    return shared;
+  }
+
+  return {
+    ok: true,
+    value: await getMyAnnouncement(tenantId, announcementId, locale),
+  };
 };
 
 export const markAnnouncementAsRead = async (

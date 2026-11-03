@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -6,6 +7,7 @@ import {
   routeParamString,
 } from "@publira/utils/route-params";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -13,7 +15,9 @@ import { z } from "zod";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
-import { getAnnouncement } from "#lib/announcements";
+import { getAnnouncementForReader } from "#lib/announcements";
+import { withPublicSessionReauth } from "#lib/auth-session";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { toSafeOperatorLinkUrl } from "#lib/operator-link";
@@ -30,6 +34,30 @@ export const generateStaticParams = () =>
 const announcementDetailParamsSchema = z.object({
   announcement_id: routeParamString(),
 });
+
+/**
+ * The announcement as the visitor who opened it may see it. A public one is the
+ * shared read; a targeted one is read again with the session, only when its
+ * cookie is there, so it opens for the readers it was sent to and is
+ * `notFound()` for everyone else — raised by the caller, outside both cached
+ * reads. A session the API rejects sends the reader to sign in again and back
+ * to this page.
+ */
+const readAnnouncement = async (
+  tenantId: string,
+  announcementId: string,
+  locale: Locale
+) => {
+  const cookieStore = await cookies();
+  const signedIn = Boolean(cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value);
+
+  return withPublicSessionReauth(
+    locale,
+    `/announcements/${announcementId}`,
+    () => getAnnouncementForReader(tenantId, announcementId, locale, signedIn),
+    tenantId
+  );
+};
 
 export const generateMetadata = async (
   props: PageProps<"/[tenant_id]/[locale]/announcements/[announcement_id]">
@@ -52,7 +80,7 @@ export const generateMetadata = async (
   const { announcement_id } = parsedParams;
 
   const [result, t] = await Promise.all([
-    getAnnouncement(tenantId, announcement_id, locale),
+    readAnnouncement(tenantId, announcement_id, locale),
     getMessagesFor(locale),
   ]);
 
@@ -106,7 +134,7 @@ const AnnouncementDetailBody = async (
   }
 
   const [result, timeZone] = await Promise.all([
-    getAnnouncement(tenantId, parsedParams.announcement_id, locale),
+    readAnnouncement(tenantId, parsedParams.announcement_id, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
