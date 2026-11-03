@@ -668,6 +668,8 @@
       "unpin_failed": "배너를 내리지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "edit_title": "예약한 공지사항 편집",
       "edit_description": "발송되기 전까지는 공지사항의 모든 내용을 변경하거나 삭제할 수 있습니다.",
+      "edit_unavailable_title": "공지사항을 편집 화면에서 열 수 없습니다",
+      "edit_unavailable_description": "사이트의 언어를 불러오지 못했습니다. 이대로 저장하면 다른 언어의 번역이 삭제됩니다. 잠시 후 다시 시도해 주세요.",
       "edit_action": "편집",
       "delete_action": "삭제",
       "deleting": "삭제하는 중…",

@@ -668,6 +668,8 @@
       "unpin_failed": "Could not take the banner down. Please try again later.",
       "edit_title": "Edit the scheduled announcement",
       "edit_description": "Anything in the announcement can change until it goes out, or it can be deleted.",
+      "edit_unavailable_title": "Could not open the announcement for editing",
+      "edit_unavailable_description": "The site's languages could not be read, and saving without them would delete the announcement's other translations. Please try again later.",
       "edit_action": "Edit",
       "delete_action": "Delete",
       "deleting": "Deleting…",

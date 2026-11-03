@@ -1,3 +1,8 @@
+import * as SectionError from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
 import { isSignedInTenantAdmin } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -41,6 +46,11 @@ const readAudiencePlans = async (tenantId: string) => {
  * languages, its time zone, and the series and plans the audience conditions
  * pick from. A list that cannot be read leaves its control empty with the
  * reason beside it, and the rest of the form usable.
+ *
+ * The languages are the exception on edit. Without them the form takes the
+ * default language alone, and a save replaces every translation with what it
+ * posts, so it would delete the others: the edit screen says it cannot open
+ * instead.
  */
 export const AnnouncementFormData = async ({
   action,
@@ -61,6 +71,25 @@ export const AnnouncementFormData = async ({
       listAllSeries(),
       readAudiencePlans(tenantId),
     ]);
+
+  if (announcement && !tenantLocales) {
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.announcements.edit_unavailable_title" />
+            </Suspense>
+          </SectionError.Title>
+          <SectionError.Description>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.announcements.edit_unavailable_description" />
+            </Suspense>
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
 
   return (
     <AnnouncementForm

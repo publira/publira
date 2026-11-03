@@ -668,6 +668,8 @@
       "unpin_failed": "バナーの掲出を止められませんでした。時間をおいて再試行してください。",
       "edit_title": "予約したお知らせを編集",
       "edit_description": "配信されるまでは、お知らせのどこでも変更でき、削除もできます。",
+      "edit_unavailable_title": "お知らせを編集画面で開けませんでした",
+      "edit_unavailable_description": "サイトの言語を読み込めませんでした。このまま保存すると、ほかの言語の翻訳が削除されてしまいます。時間をおいて再試行してください。",
       "edit_action": "編集",
       "delete_action": "削除",
       "deleting": "削除中…",

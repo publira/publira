@@ -668,6 +668,8 @@
       "unpin_failed": "無法撤下橫幅。請稍後再試。",
       "edit_title": "編輯已預約的公告",
       "edit_description": "在發送之前，公告的任何內容都可以修改，也可以刪除。",
+      "edit_unavailable_title": "無法開啟公告的編輯頁面",
+      "edit_unavailable_description": "無法讀取網站的語言。在這種情況下儲存會刪除公告的其他語言翻譯。請稍後再試。",
       "edit_action": "編輯",
       "delete_action": "刪除",
       "deleting": "正在刪除…",

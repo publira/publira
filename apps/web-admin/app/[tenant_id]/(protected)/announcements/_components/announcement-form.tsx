@@ -134,15 +134,10 @@ const AnnouncementTranslations = ({
   tabsLabel: string;
   tenantLocales: TenantLocales | null;
 }) => {
+  // Only a create gets here without the languages: a save would replace every
+  // translation with this one, so the edit screen does not open the form.
   if (!tenantLocales) {
-    // The API names the default language's translation as the announcement's
-    // own title and body, which is the one this single tab writes.
-    return (
-      <AnnouncementTranslationFields
-        initial={announcement}
-        placeholders={placeholders}
-      />
-    );
+    return <AnnouncementTranslationFields placeholders={placeholders} />;
   }
 
   const { defaultLocale, supportedLocales } = tenantLocales;

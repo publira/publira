@@ -668,6 +668,8 @@
       "unpin_failed": "无法撤下横幅。请稍后再试。",
       "edit_title": "编辑已预约的公告",
       "edit_description": "在投放之前，公告的任何内容都可以修改，也可以删除。",
+      "edit_unavailable_title": "无法打开公告的编辑页面",
+      "edit_unavailable_description": "无法读取站点的语言。在这种情况下保存会删除公告的其他语言翻译。请稍后再试。",
       "edit_action": "编辑",
       "delete_action": "删除",
       "deleting": "正在删除…",
