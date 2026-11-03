@@ -25,8 +25,10 @@ const _readAheadRows = 5;
 /// It is the screen at `/announcements`, read from the announcement RPCs of
 /// `AuthService`: the same list the site shows at its own `/announcements`.
 ///
-/// A visitor reads the same list as a signed-in reader. What a session adds
-/// is read state: the unread marks, and the controls that set them.
+/// A visitor reads every announcement addressed to everyone. What a session
+/// adds is read state, the unread marks and the controls that set them, and
+/// the announcements with conditions delivered to that reader, among the
+/// others by when they went out.
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({super.key});
 
@@ -75,8 +77,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   var _started = false;
 
   /// Reads the list again whenever the reader or the locale changes: read
-  /// state belongs to whoever holds the session, and the text to the language
-  /// it is asked for in.
+  /// state and the announcements delivered to one reader belong to whoever
+  /// holds the session, and the text to the language it is asked for in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

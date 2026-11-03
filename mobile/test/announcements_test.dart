@@ -8,6 +8,7 @@ import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/announcement_failure.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/announcement.dart';
@@ -80,6 +81,7 @@ void main() {
     WidgetTester tester, {
     String initialLocation = AppRoutes.catalog,
     AuthSession? session = fakeSession,
+    AuthController? auth,
     ValueListenable<String?>? tenantDefaultLocale,
     ValueListenable<List<String>?>? tenantSupportedLocales,
   }) async {
@@ -92,7 +94,7 @@ void main() {
           details: fixtureDetails(),
           episodes: fixtureEpisodes(),
         ),
-        auth: fakeAuthController(session: session),
+        auth: auth ?? fakeAuthController(session: session),
         announcements: AnnouncementBoard(
           repository: repository,
           dismissed: dismissed,
@@ -639,6 +641,131 @@ void main() {
         tester,
         find.byKey(const ValueKey('announcement-not-found')),
       );
+    });
+  });
+
+  group('a targeted announcement', () {
+    const anotherReader = AuthSession(
+      accessToken: 'another-access-token',
+      userPublicId: 'SeedMMBRAAA2',
+      userName: 'Another Member',
+    );
+
+    late FakeAuthRepository accounts;
+    late AuthController auth;
+
+    Finder row(String id) => find.byKey(ValueKey('announcement-row-$id'));
+
+    setUp(() {
+      accounts = FakeAuthRepository();
+      auth = fakeAuthController(repository: accounts);
+      repository
+        ..announcements = [
+          announcement('a-1', isRead: true),
+          announcement('t-1'),
+          announcement('a-2', isRead: true),
+        ]
+        ..pinnedId = null
+        ..audiences = {
+          't-1': {fakeSession.accessToken},
+        }
+        ..accessToken = () => auth.accessToken;
+    });
+
+    Future<void> signIn(AuthSession session) {
+      accounts.session = session;
+      return auth.signIn(email: 'member@example.com', password: 'password');
+    }
+
+    testWidgets('is listed among the public ones once its reader signs in, '
+        'and gone once they sign out', (tester) async {
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.announcements,
+        auth: auth,
+      );
+      await pumpUntilRouteSettled(tester, row('a-1'));
+      expect(row('t-1'), findsNothing);
+
+      await signIn(fakeSession);
+      await pumpUntilFound(tester, row('t-1'));
+      expect(unreadDot('t-1'), findsOneWidget);
+      expect(row('a-1'), findsOneWidget);
+      expect(row('a-2'), findsOneWidget);
+      expect(
+        tester.getTopLeft(row('a-1')).dy,
+        lessThan(tester.getTopLeft(row('t-1')).dy),
+      );
+      expect(
+        tester.getTopLeft(row('t-1')).dy,
+        lessThan(tester.getTopLeft(row('a-2')).dy),
+      );
+
+      await auth.signOut();
+      await pumpUntilTrue(
+        tester,
+        () => row('t-1').evaluate().isEmpty && row('a-1').evaluate().isNotEmpty,
+      );
+      expect(row('a-2'), findsOneWidget);
+    });
+
+    testWidgets('opens for its reader and is marked read', (tester) async {
+      await signIn(fakeSession);
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.announcements,
+        auth: auth,
+      );
+      await pumpUntilRouteSettled(tester, row('t-1'));
+
+      await tester.tap(row('t-1'));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('announcement-t-1')),
+      );
+
+      expect(find.text('Body of t-1'), findsOneWidget);
+      await pumpUntilTrue(tester, () => repository.marked.isNotEmpty);
+      expect(repository.marked, ['t-1']);
+    });
+
+    testWidgets('is not listed to a reader it was not delivered to', (
+      tester,
+    ) async {
+      await signIn(anotherReader);
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.announcements,
+        auth: auth,
+      );
+      await pumpUntilRouteSettled(tester, row('a-1'));
+
+      expect(row('t-1'), findsNothing);
+      expect(row('a-2'), findsOneWidget);
+    });
+
+    testWidgets('is not found, rather than a sign-in, once another reader '
+        'holds the session', (tester) async {
+      await signIn(fakeSession);
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.announcementPath('t-1'),
+        auth: auth,
+      );
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('announcement-t-1')),
+      );
+
+      await auth.signOut();
+      await signIn(anotherReader);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('announcement-not-found')),
+      );
+
+      expect(find.text('Body of t-1'), findsNothing);
+      expect(find.byKey(const ValueKey('announcement-sign-in')), findsNothing);
     });
   });
 
