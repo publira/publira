@@ -305,7 +305,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, the locale catalogs, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
 - **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
 - **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. The `tracing` entry runs its stack with `PUBLIRA_E2E_TRACING=on`; every other one traces nothing. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
-- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.
+- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`. When the `screenshots` entry passes, it uploads its app logs alone, as `e2e-logs-screenshots`.
 - Every entry also uploads a Playwright blob report, `e2e-blob-<entry>`. When an entry fails, **Test / E2E Report** merges them into one HTML report, `e2e-report`, whose tests carry the tag of the group they ran in.
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
 - The `screenshots` entry renders in the browser image compose builds.

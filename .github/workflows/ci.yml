@@ -1430,6 +1430,19 @@ jobs:
             e2e/.run/logs/
           if-no-files-found: ignore
 
+      # A screen that takes long to settle still passes, and leaves no failure
+      # artifact behind. The blob report says which step waited; the apps'
+      # logs are what say whether the server or the browser was the one taking
+      # the time.
+      - name: Upload / E2E app logs
+        if: success() && matrix.id == 'screenshots'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-logs-${{ matrix.id }}
+          path: e2e/.run/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
       # On success too: the report job merges every entry's blob, and an entry
       # that passed cannot tell whether another one failed.
       - name: Upload / E2E blob report
