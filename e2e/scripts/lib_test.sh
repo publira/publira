@@ -453,21 +453,22 @@ cleanup_groups
 stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-docker.XXXXXX")"
 cat > "${stub_dir}/docker" << 'STUB'
 #!/usr/bin/env bash
-# Answers the two `docker ps` queries lib.sh makes. STUB_STACK_PRESENT=1 gives
-# the compose project containers, whose run-directory label is
-# STUB_STACK_RUN_DIR — empty for containers these scripts did not create.
-# STUB_PORT_PROJECT is the compose project publishing the queried port.
+# Answers the two `docker ps` queries lib.sh makes.
+# PUBLIRA_STUB_STACK_PRESENT=1 gives the compose project containers, whose
+# run-directory label is PUBLIRA_STUB_STACK_RUN_DIR — empty for containers these
+# scripts did not create. PUBLIRA_STUB_PORT_PROJECT is the compose project
+# publishing the queried port.
 set -euo pipefail
 for arg in "$@"; do
   if [[ "${arg}" == publish=* ]]; then
-    if [[ -n "${STUB_PORT_PROJECT:-}" ]]; then
-      printf '%s\n' "${STUB_PORT_PROJECT}"
+    if [[ -n "${PUBLIRA_STUB_PORT_PROJECT:-}" ]]; then
+      printf '%s\n' "${PUBLIRA_STUB_PORT_PROJECT}"
     fi
     exit 0
   fi
 done
-if [[ "${STUB_STACK_PRESENT:-0}" == "1" ]]; then
-  printf '%s\n' "${STUB_STACK_RUN_DIR:-}"
+if [[ "${PUBLIRA_STUB_STACK_PRESENT:-0}" == "1" ]]; then
+  printf '%s\n' "${PUBLIRA_STUB_STACK_RUN_DIR:-}"
 fi
 STUB
 chmod +x "${stub_dir}/docker"
@@ -724,7 +725,7 @@ release_stack_lease() {
     ' bash "${LIB}" > /dev/null 2>&1 || true
 }
 
-if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
+if acquire_with_stub "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR="${lease_a}" \
   > "${lock_err}" 2>&1; then
   fail "acquire took the project while another run's stack was up"
   release_stack_lease "${lease_b}"
@@ -735,7 +736,7 @@ else
   fail "foreign stack refusal does not name the owner and the way out: $(cat "${lock_err}")"
 fi
 
-if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 > "${lock_err}" 2>&1; then
+if acquire_with_stub "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 > "${lock_err}" 2>&1; then
   fail "acquire took the project while unlabelled containers were up"
   release_stack_lease "${lease_b}"
 elif grep -q "did not create" "${lock_err}" && grep -q "task e2e:down" "${lock_err}"; then
@@ -744,7 +745,7 @@ else
   fail "unlabelled stack refusal does not point at teardown: $(cat "${lock_err}")"
 fi
 
-if acquire_with_stub "${lease_b}" STUB_PORT_PROJECT="${stack_project}-other" \
+if acquire_with_stub "${lease_b}" PUBLIRA_STUB_PORT_PROJECT="${stack_project}-other" \
   > "${lock_err}" 2>&1; then
   fail "acquire took the project while another one published its Postgres port"
   release_stack_lease "${lease_b}"
@@ -754,7 +755,7 @@ else
   fail "port refusal does not name the port and its project: $(cat "${lock_err}")"
 fi
 
-if acquire_with_stub "${lease_a}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
+if acquire_with_stub "${lease_a}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR="${lease_a}" \
   > "${lock_err}" 2>&1; then
   pass "the run that owns the stack acquires after its lease holder is gone"
   release_stack_lease "${lease_a}"
