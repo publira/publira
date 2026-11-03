@@ -88,6 +88,8 @@ An announcement with conditions reaches each reader it selects as their notifica
 
 A reader sees each announcement in their language: on the site, the one they browse in, and in the app, the one the app is shown in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
 
+Once an announcement has gone out, the list shows how far it reached. The **Delivered** column counts the readers it was delivered to: every reader with an account for an announcement to everyone, or the readers its conditions selected when it went out. A reader whose notification settings keep announcements out of their notifications is counted too. The **Opened** column counts the readers who have opened it, on the site or in the app. Both columns show — while the announcement is scheduled, and **Delivered** can read 0 for a moment after it goes out, until its readers have been notified.
+
 ## The site banner
 
 An announcement created with **Show as a site banner** is shown above the header of every page of the site, to every visitor, signed in or not, and at the top of the app's catalog screen. On the site its link leads to the announcement's **Link**, or to the announcement's own page when it has none. A visitor can close it, and it then stays closed in that browser.
@@ -99,6 +101,6 @@ A banner stays up until you take it down, unless you give it an end:
 - **Stop showing at**, under the banner checkbox, takes it down at that time, in the tenant's time zone. It must be in the future.
 - **Stop showing**, in the **Banner** column of the list, takes it down at once.
 
-![The Announcements list: Create an announcement at the top, and three announcements addressed to Everyone and marked Delivered in their Status column, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
+![The Announcements list: Create an announcement at the top, and three announcements addressed to Everyone and marked Delivered in their Status column, each delivered to 2 readers and the two newest opened by 1, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column, and the change of terms marked Sent to everyone in its Notification column.](./announcements-list.png)
 
 Either way the announcement stays on the **Announcements** page and in readers' notifications. Only the banner goes.

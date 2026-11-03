@@ -584,7 +584,9 @@
         "banner": "Banner",
         "link": "Link",
         "audience": "Audience",
-        "status": "Status"
+        "status": "Status",
+        "delivered": "Delivered",
+        "opened": "Opened"
       },
       "delivery": {
         "everyone": "Sent to everyone",

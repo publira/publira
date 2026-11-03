@@ -121,9 +121,11 @@ describe("announcement lib", () => {
         {
           body: "Announcement body",
           createdAt: "2026-04-04T00:00:00Z",
+          deliveredCount: 1200n,
           delivery: AnnouncementDelivery.EVERYONE,
           id: "n1",
           linkUrl: "/series/S001",
+          openedCount: 37n,
           title: "Announcement title",
           translations: [
             { body: "", locale: "en", title: "" },
@@ -147,9 +149,11 @@ describe("announcement lib", () => {
         createdAt: "2026-04-04T00:00:00Z",
         deliverAt: "",
         deliveredAt: "",
+        deliveredCount: 1200,
         delivery: "everyone",
         id: "n1",
         linkUrl: "/series/S001",
+        openedCount: 37,
         title: "Announcement title",
         translatedLocales: ["ja", "en"],
         translations: [
