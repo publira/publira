@@ -792,9 +792,8 @@ const tracingProjects: PlaywrightTestProject[] = [
  */
 const groups = {
   admin: adminProjects,
-  // Its own group rather than the screenshot baseline's, so that CI can shard
-  // it: a sharded project's dependencies run in full in every shard, and the
-  // baseline projects would be run again on every runner.
+  // Apart from `screenshots`, so that CI shards it without running the
+  // baseline again in every shard.
   "docs-screenshots": docsScreenshotProjects,
   exclusive: exclusiveProjects,
   main: mainProjects,

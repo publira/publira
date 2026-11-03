@@ -1267,30 +1267,14 @@ jobs:
     # passing run out of a 30-minute limit.
     timeout-minutes: 45
     # One runner and one stack per entry: a group is a set of Playwright
-    # projects that may share a stack (`e2e/playwright.config.ts`), and the
-    # ordering one needs never reaches another's stack. Every entry starts
-    # from what Test / E2E Build built once.
+    # projects that may share a stack (`e2e/playwright.config.ts`). Every
+    # entry starts from what Test / E2E Build built once.
     #
-    # `main` and `admin` are sharded. Their files already run beside each
-    # other on one stack, so a subset of them on a fresh stack is no less
-    # isolated; the other groups order their projects or measure the machine.
-    # Playwright splits by test count rather than duration, which is why
-    # web-admin, whose tests are the slow ones, is a group apart. By the
-    # per-file durations of a run that sharded the two together three ways
-    # (44 minutes of tests across the three; 7.2 minutes of wall clock in the
-    # slowest, which held 18), `main` in two shards holds at most 8.4 minutes
-    # of tests and `admin` in three at most 11.1, while a fourth `admin`
-    # shard would end below `exclusive`, the next longest entry.
-    #
-    # `docs-screenshots` is sharded too, and the screenshot baseline before it
-    # on one stack is an entry of its own: a sharded project's dependencies run
-    # in full in every shard, and the baseline is 1.5 minutes of wall clock in
-    # front of the documentation's. As one entry the two took 10.2 minutes,
-    # 7.2 of them Playwright, against 8.4 for the longest `main` entry. A file
-    # runs on one worker, and `admin.catalog.docs-screenshots.spec.ts`, 5.1
-    # minutes of tests, bounds the shard that holds it whatever the split; two
-    # shards put it beside `admin.docs-screenshots.spec.ts` and leave the
-    # other files, 6.9 minutes of tests, to the second.
+    # Only groups whose files already run beside each other are sharded.
+    # Playwright splits by test count rather than duration, which is why the
+    # slow web-admin tests are a group apart, and runs a sharded project's
+    # dependencies in every shard, which is why the screenshot baseline is
+    # not in `docs-screenshots`.
     strategy:
       fail-fast: false
       matrix:

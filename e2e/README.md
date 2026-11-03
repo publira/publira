@@ -122,7 +122,7 @@ Every project belongs to one of eight groups, and CI runs each group as a job of
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
 | `screenshots` | `screenshots-storefront`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
-| `docs-screenshots` | `docs-screenshots-setup`, `docs-screenshots` | The same as `screenshots`. It is a group apart so that CI can shard it across two stacks: a sharded project's dependencies run in full in every shard, and would take the baseline projects along. |
+| `docs-screenshots` | `docs-screenshots-setup`, `docs-screenshots` | The same as `screenshots`, apart from it so that CI shards it across two stacks without running the baseline in each. |
 | `main` | `web-storefront`, `web-platform`, `catalog-search`, `platform-search-settings`, `tablet-storefront`, `tablet-platform` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
 | `admin` | `web-admin`, `tablet-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, `docs-screenshots-first-operator`, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
