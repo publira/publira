@@ -2,8 +2,8 @@
 title: 플랫폼 기본값과 정책
 description: 모든 테넌트가 물려받는 기본값, 보안 제한, 커뮤니티 제한, 보존 기간과, 테넌트가 스스로 변경할 수 있는 것을 정합니다.
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-04
+source_updated: 2026-11-04
 ---
 
 설치 환경은 어느 테넌트에도 속하지 않는 몇 가지 설정으로 운영됩니다. 새 테넌트가 처음에 사용하는 언어, 시간대, 통화, 독자 한 명이나 주소 하나가 플랫폼에 과도한 부하를 주지 않도록 하는 제한, 그리고 만료되는 레코드를 얼마나 오래 보관하는지입니다. 이 페이지에서는 각 그룹이 무엇을 막는지, 어떻게 변경하는지, 그리고 테넌트의 관리자가 자기 테넌트에 대해 어느 부분을 변경할 수 있는지 설명합니다.
@@ -93,7 +93,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 
 ![보안의 요청 제한: 비밀번호 확인, 주소당과 요청 출처당 메일 요청, 인앱 결제 확정, 기다리면 무료 이용권 사용을 각각 1분 또는 1시간당과 1일당으로 설정합니다.](./platform-policies-rate-limits.png)
 
-이런 종류의 제한이 아홉 가지 더 있지만, 아직 보안 페이지에 필드가 없습니다. 개정된 버전에 동의하라는 요청을 받은 독자 한 명이 자기 테넌트의 이용 약관과 개인정보 처리방침에 보내는 동의는 `publiractl policy set --legal-page-agreement-per-minute`와 `--legal-page-agreement-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 Apple이나 Google 계정을 자기 계정에 연결하는 요청은 `--identity-link-per-minute`와 `--identity-link-per-day`로 설정하지 않으면 1분에 5회, 1일에 20회입니다. 독자 한 명이 아이콘을 업로드, 선택, 삭제하는 횟수는 `--icon-change-per-minute`와 `--icon-change-per-day`로 설정하지 않으면 1분에 5회, 1일에 20회입니다. 독자 한 명이 패스키 등록이나 패스키로 요청 확인을 시작하거나, 패스키의 이름을 바꾸거나 삭제하는 횟수는 `--passkey-per-minute`와 `--passkey-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 시작하는 시리즈 나머지 일괄 결제는 `--series-remainder-checkout-per-minute`와 `--series-remainder-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 사이트의 결제나 테넌트 앱의 스토어를 통해 시작하는 구독은 합쳐서 세며, `--subscription-checkout-per-minute`와 `--subscription-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 코인으로 결제하는 에피소드는 `--coin-payment-per-minute`와 `--coin-payment-per-day`로 설정하지 않으면 1분에 20회, 1일에 500회입니다. 독자 한 명이 웹이나 앱의 스토어를 통해 시작하는 에피소드, 권, 코인 팩 구매는 합쳐서 세며, `--purchase-checkout-per-minute`와 `--purchase-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 100회입니다. 그리고 [독자 계정](../4-console/2-readers/1-accounts.md#독자가-내려받는-자신의-데이터)에서 설명하는, 독자 한 명이 요청하는 자기 데이터 사본은 각 요청이 설치 환경이 그 독자에 대해 보관하는 모든 레코드를 읽으므로, `--data-export-per-hour`와 `--data-export-per-day`로 설정하지 않으면 1시간에 1회, 1일에 1회입니다. 보안 페이지를 저장해도 이 값들은 설정된 그대로 유지됩니다.
+이런 종류의 제한이 열 가지 더 있지만, 아직 보안 페이지에 필드가 없습니다. 개정된 버전에 동의하라는 요청을 받은 독자 한 명이 자기 테넌트의 이용 약관과 개인정보 처리방침에 보내는 동의는 `publiractl policy set --legal-page-agreement-per-minute`와 `--legal-page-agreement-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 Apple이나 Google 계정을 자기 계정에 연결하는 요청은 `--identity-link-per-minute`와 `--identity-link-per-day`로 설정하지 않으면 1분에 5회, 1일에 20회입니다. 독자 한 명이 아이콘을 업로드, 선택, 삭제하는 횟수는 `--icon-change-per-minute`와 `--icon-change-per-day`로 설정하지 않으면 1분에 5회, 1일에 20회입니다. 독자 한 명이 패스키 등록이나 패스키로 요청 확인을 시작하거나, 패스키의 이름을 바꾸거나 삭제하는 횟수는 `--passkey-per-minute`와 `--passkey-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 시작하는 시리즈 나머지 일괄 결제는 `--series-remainder-checkout-per-minute`와 `--series-remainder-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 사이트의 결제나 테넌트 앱의 스토어를 통해 시작하는 구독은 합쳐서 세며, `--subscription-checkout-per-minute`와 `--subscription-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 50회입니다. 독자 한 명이 코인으로 결제하는 에피소드는 `--coin-payment-per-minute`와 `--coin-payment-per-day`로 설정하지 않으면 1분에 20회, 1일에 500회입니다. 독자 한 명이 웹이나 앱의 스토어를 통해 시작하는 에피소드, 권, 코인 팩 구매는 합쳐서 세며, `--purchase-checkout-per-minute`와 `--purchase-checkout-per-day`로 설정하지 않으면 1분에 10회, 1일에 100회입니다. 독자 한 명이 조회하는 프로모션 코드는, 코드가 얼마를 할인하는지 묻는 것과 코드로 구매를 시작하는 것을 합쳐서 세며, `--promotion-code-attempt-per-minute`와 `--promotion-code-attempt-per-day`로 설정하지 않으면 1분에 5회, 1일에 30회입니다. 코드는 테넌트가 나눠 준 비밀이고, 이 제한이 한 계정이 코드를 추측할 수 있는 속도를 정하기 때문입니다. 그리고 [독자 계정](../4-console/2-readers/1-accounts.md#독자가-내려받는-자신의-데이터)에서 설명하는, 독자 한 명이 요청하는 자기 데이터 사본은 각 요청이 설치 환경이 그 독자에 대해 보관하는 모든 레코드를 읽으므로, `--data-export-per-hour`와 `--data-export-per-day`로 설정하지 않으면 1시간에 1회, 1일에 1회입니다. 보안 페이지를 저장해도 이 값들은 설정된 그대로 유지됩니다.
 
 초대는 각각 요청 하나로 셉니다. **테넌트 생성**의 **초기 관리자 이메일** 주소도 모두 해당하며, 이 주소들은 테넌트가 생성되기 전에 모두 셉니다. 하나라도 제한을 넘으면 테넌트는 생성되지 않고 메일도 보내지 않습니다. `publiractl`은 어떤 양식도 거치지 않으므로 이 제한들의 횟수에 포함되지 않습니다.
 

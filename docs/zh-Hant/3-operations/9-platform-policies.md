@@ -2,8 +2,8 @@
 title: 平台預設值與政策
 description: 選擇所有租戶沿用的預設值、安全性限制、社群限制與保留期限，以及租戶可以自行變更的部分。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-04
+source_updated: 2026-11-04
 ---
 
 安裝實例依靠少數幾項不屬於任何租戶的設定運作：新租戶起始時的語言、時區和貨幣，防止單一讀者或單一地址壓垮平台的限制，以及會過期的記錄要保留多久。本頁說明每一組設定防範什麼、如何變更，以及租戶的管理員可以為自己的租戶變更哪些部分。
@@ -93,7 +93,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 
 ![「安全性」上的速率限制：密碼驗證、每個地址與每個來源的郵件請求、應用程式內購買確認，以及等免費券使用，各自有每分鐘或每小時以及每天的值。](./platform-policies-rate-limits.png)
 
-另外還有九項同類的限制，在「安全性」頁面上尚無欄位：單一讀者在被要求同意修訂版本時，對其租戶的服務條款和隱私權政策送出的同意，除非以`publiractl policy set --legal-page-agreement-per-minute`和`--legal-page-agreement-per-day`設定，否則為每分鐘10次、每天50次；單一讀者將Apple或Google帳戶連結到自己帳戶的請求，除非以`--identity-link-per-minute`和`--identity-link-per-day`設定，否則為每分鐘5次、每天20次；單一讀者上傳、選擇或移除圖示的次數，除非以`--icon-change-per-minute`和`--icon-change-per-day`設定，否則為每分鐘5次、每天20次；單一讀者開始註冊通行金鑰或以通行金鑰確認請求，或重新命名或移除通行金鑰的次數，除非以`--passkey-per-minute`和`--passkey-per-day`設定，否則為每分鐘10次、每天50次；單一讀者開始購買系列其餘部分的結帳，除非以`--series-remainder-checkout-per-minute`和`--series-remainder-checkout-per-day`設定，否則為每分鐘10次、每天50次；單一讀者開始的訂閱，無論是透過網站上的結帳還是租戶應用程式中的商店，都合併計算，除非以`--subscription-checkout-per-minute`和`--subscription-checkout-per-day`設定，否則為每分鐘10次、每天50次；單一讀者以代幣購買的章節，除非以`--coin-payment-per-minute`和`--coin-payment-per-day`設定，否則為每分鐘20次、每天500次；單一讀者開始購買章節、卷或代幣包的次數，無論是在網頁上還是透過應用程式的商店，都合併計算，除非以`--purchase-checkout-per-minute`和`--purchase-checkout-per-day`設定，否則為每分鐘10次、每天100次；以及單一讀者索取自己資料副本的次數（如[讀者帳戶](../4-console/2-readers/1-accounts.md#讀者下載的個人資料)所述），除非以`--data-export-per-hour`和`--data-export-per-day`設定，否則為每小時1次、每天1次，因為每次都會讀取安裝實例保存的該讀者的所有記錄。儲存「安全性」頁面時，這些限制會保留其目前的設定值。
+另外還有十項同類的限制，在「安全性」頁面上尚無欄位：單一讀者在被要求同意修訂版本時，對其租戶的服務條款和隱私權政策送出的同意，除非以`publiractl policy set --legal-page-agreement-per-minute`和`--legal-page-agreement-per-day`設定，否則為每分鐘10次、每天50次；單一讀者將Apple或Google帳戶連結到自己帳戶的請求，除非以`--identity-link-per-minute`和`--identity-link-per-day`設定，否則為每分鐘5次、每天20次；單一讀者上傳、選擇或移除圖示的次數，除非以`--icon-change-per-minute`和`--icon-change-per-day`設定，否則為每分鐘5次、每天20次；單一讀者開始註冊通行金鑰或以通行金鑰確認請求，或重新命名或移除通行金鑰的次數，除非以`--passkey-per-minute`和`--passkey-per-day`設定，否則為每分鐘10次、每天50次；單一讀者開始購買系列其餘部分的結帳，除非以`--series-remainder-checkout-per-minute`和`--series-remainder-checkout-per-day`設定，否則為每分鐘10次、每天50次；單一讀者開始的訂閱，無論是透過網站上的結帳還是租戶應用程式中的商店，都合併計算，除非以`--subscription-checkout-per-minute`和`--subscription-checkout-per-day`設定，否則為每分鐘10次、每天50次；單一讀者以代幣購買的章節，除非以`--coin-payment-per-minute`和`--coin-payment-per-day`設定，否則為每分鐘20次、每天500次；單一讀者開始購買章節、卷或代幣包的次數，無論是在網頁上還是透過應用程式的商店，都合併計算，除非以`--purchase-checkout-per-minute`和`--purchase-checkout-per-day`設定，否則為每分鐘10次、每天100次；單一讀者查詢促銷代碼的次數，無論是詢問代碼可以折抵多少，還是以代碼開始購買，都合併計算，除非以`--promotion-code-attempt-per-minute`和`--promotion-code-attempt-per-day`設定，否則為每分鐘5次、每天30次，因為代碼是租戶發出的秘密，而這項限制決定了一個帳戶能以多快的速度猜測代碼；以及單一讀者索取自己資料副本的次數（如[讀者帳戶](../4-console/2-readers/1-accounts.md#讀者下載的個人資料)所述），除非以`--data-export-per-hour`和`--data-export-per-day`設定，否則為每小時1次、每天1次，因為每次都會讀取安裝實例保存的該讀者的所有記錄。儲存「安全性」頁面時，這些限制會保留其目前的設定值。
 
 每一份邀請都算作一次請求，包括**建立租戶**上的每一個**初始管理員的電子郵件地址**，這些地址會在建立租戶之前全部計算：只要有一個超過限制，就不會建立租戶，也不會寄出任何郵件。`publiractl`不經由任何表單寄送，不計入這些限制中的任何一項。
 
