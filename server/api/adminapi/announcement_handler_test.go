@@ -42,6 +42,8 @@ func announcementColumns() *sqlmock.Rows {
 		"audience",
 		"deliver_at",
 		"delivered_at",
+		"delivered_count",
+		"opened_count",
 	})
 }
 
@@ -66,6 +68,8 @@ func addAnnouncementRow(
 		nil,
 		sql.NullTime{},
 		sql.NullTime{Time: createdAt, Valid: true},
+		int64(0),
+		int64(0),
 	)
 }
 

@@ -112,7 +112,8 @@ func announcementCreatedReason(delivery string, targeted bool) string {
 
 // mapAdminAnnouncement answers one announcement as the console lists it: the
 // title and body of its translation in the tenant default locale, beside every
-// translation it has, and the audience it was addressed to, nil for everyone.
+// translation it has, the audience it was addressed to, nil for everyone, and
+// how many readers it was delivered to and how many opened it.
 func mapAdminAnnouncement(
 	row dbmodels.ListAnnouncementsForTenantDescRow,
 	translations []dbmodels.AnnouncementTranslation,
@@ -127,18 +128,20 @@ func mapAdminAnnouncement(
 		})
 	}
 	return &publiraadminv1.AdminAnnouncement{
-		Id:           row.ID.String(),
-		Title:        row.Title,
-		Body:         row.Body,
-		LinkUrl:      row.LinkUrl.String,
-		CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
-		Pinned:       row.Pinned,
-		PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
-		Translations: items,
-		Delivery:     announcementDeliveryToProto(row.Delivery),
-		Audience:     audience,
-		DeliverAt:    formatAnnouncementInstant(row.DeliverAt),
-		DeliveredAt:  formatAnnouncementInstant(row.DeliveredAt),
+		Id:             row.ID.String(),
+		Title:          row.Title,
+		Body:           row.Body,
+		LinkUrl:        row.LinkUrl.String,
+		CreatedAt:      row.CreatedAt.UTC().Format(time.RFC3339),
+		Pinned:         row.Pinned,
+		PinnedUntil:    formatPinnedUntil(row.PinnedUntil),
+		Translations:   items,
+		Delivery:       announcementDeliveryToProto(row.Delivery),
+		Audience:       audience,
+		DeliverAt:      formatAnnouncementInstant(row.DeliverAt),
+		DeliveredAt:    formatAnnouncementInstant(row.DeliveredAt),
+		DeliveredCount: row.DeliveredCount,
+		OpenedCount:    row.OpenedCount,
 	}
 }
 
@@ -663,7 +666,8 @@ func (s *adminServer) deliverAnnouncementNow(
 	return s.reval.Record(ctx, txq, tenantID, pinnedannouncements.RevalidateTags(tenantID))
 }
 
-// announcementAnswer answers a row just written as the console lists it.
+// announcementAnswer answers a row just written as the console lists it. The
+// worker has delivered it to nobody yet, so both counts are 0.
 func (s *adminServer) announcementAnswer(
 	ctx context.Context,
 	tenant dbmodels.Tenant,

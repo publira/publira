@@ -315,6 +315,35 @@ func TestATemporaryTableDoesNotStandInForWhatASecurityDefinerFunctionTouches(t *
 		}
 	})
 
+	// A temporary table that took a body's place would answer the count of its
+	// own rows, which the console's role made up.
+	t.Run("announcement delivery counts", func(t *testing.T) {
+		announcementID := uuid.Must(uuid.NewV7())
+		mustExec(t, ctx, pg.DB, "INSERT INTO announcements (id, tenant_id, announcement_type, delivered_at) VALUES ($1, $2, 'announcement', now())", announcementID, tenantID)
+		conn := scopedConn(t, ctx, pg.OpenAdminDB(t), tenantID, uuid.Nil)
+		shadow(t, ctx, conn, "notifications", "announcement_reads")
+		if _, err := conn.ExecContext(ctx, `
+			INSERT INTO pg_temp.notifications (id, tenant_id, user_id, notification_type, subject_key, payload, category)
+			VALUES (uuidv7(), $1, $2, 'announcement_posted', 'announcement:' || $3::text, '{}', 'announcements')
+		`, tenantID, readerID, announcementID); err != nil {
+			t.Fatalf("make up a notification: %v", err)
+		}
+		if _, err := conn.ExecContext(ctx, `
+			INSERT INTO pg_temp.announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)
+		`, announcementID, tenantID, readerID); err != nil {
+			t.Fatalf("make up a read: %v", err)
+		}
+		var delivered, opened int64
+		if err := conn.QueryRowContext(ctx,
+			"SELECT count_announcement_deliveries($1), count_announcement_opens($1)", announcementID,
+		).Scan(&delivered, &opened); err != nil {
+			t.Fatalf("count deliveries and opens as publira_admin: %v", err)
+		}
+		if delivered != 0 || opened != 0 {
+			t.Errorf("delivered, opened = %d, %d, want the 0 rows of public.notifications and public.announcement_reads", delivered, opened)
+		}
+	})
+
 	t.Run("brand mark image policy", func(t *testing.T) {
 		imageID := uuid.Must(uuid.NewV7())
 		mustExec(t, ctx, pg.DB, "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", imageID, tenantID)

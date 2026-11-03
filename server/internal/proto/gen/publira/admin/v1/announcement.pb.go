@@ -450,7 +450,12 @@ type AdminAnnouncement struct {
 	// RFC 3339 instant it went out: shown to readers and its notification
 	// queued. Empty while it is scheduled, which is the one time it can be
 	// edited or deleted.
-	DeliveredAt   string `protobuf:"bytes,15,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
+	DeliveredAt string `protobuf:"bytes,15,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
+	// The readers its notification was written for. 0 until the worker has
+	// delivered it, which is a moment after delivered_at is set.
+	DeliveredCount int64 `protobuf:"varint,16,opt,name=delivered_count,json=deliveredCount,proto3" json:"delivered_count,omitempty"`
+	// The readers who have opened it.
+	OpenedCount   int64 `protobuf:"varint,17,opt,name=opened_count,json=openedCount,proto3" json:"opened_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -567,6 +572,20 @@ func (x *AdminAnnouncement) GetDeliveredAt() string {
 		return x.DeliveredAt
 	}
 	return ""
+}
+
+func (x *AdminAnnouncement) GetDeliveredCount() int64 {
+	if x != nil {
+		return x.DeliveredCount
+	}
+	return 0
+}
+
+func (x *AdminAnnouncement) GetOpenedCount() int64 {
+	if x != nil {
+		return x.OpenedCount
+	}
+	return 0
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1696,7 +1715,7 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\x06Locale\x12\x16\n" +
 	"\x06locale\x18\x01 \x01(\tR\x06locale\x1a\x15\n" +
 	"\x13HasMobilePushDeviceB\v\n" +
-	"\tcondition\"\xa5\x04\n" +
+	"\tcondition\"\xf1\x04\n" +
 	"\x11AdminAnnouncement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -1712,7 +1731,9 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\baudience\x18\r \x01(\v2&.publira.admin.v1.AnnouncementAudienceR\baudience\x12\x1d\n" +
 	"\n" +
 	"deliver_at\x18\x0e \x01(\tR\tdeliverAt\x12!\n" +
-	"\fdelivered_at\x18\x0f \x01(\tR\vdeliveredAtJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
+	"\fdelivered_at\x18\x0f \x01(\tR\vdeliveredAt\x12'\n" +
+	"\x0fdelivered_count\x18\x10 \x01(\x03R\x0edeliveredCount\x12!\n" +
+	"\fopened_count\x18\x11 \x01(\x03R\vopenedCountJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
 	"\x18ListAnnouncementsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
