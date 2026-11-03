@@ -1,6 +1,7 @@
 import { LinkButton } from "@publira/ui-components/button";
 import * as FigureLine from "@publira/ui-components/figure-line";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import * as SectionError from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate, formatPlainYearMonth, formatPrice } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -11,7 +12,8 @@ import { z } from "zod";
 
 import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
-import { PageLoadError } from "#components/page-load-error";
+import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLogin } from "#lib/auth-session";
 import {
   creatorIdParamSchema,
@@ -23,13 +25,15 @@ import { getMyCreatorStatement, listMyCreators } from "#lib/creator-pages";
 import { cursorTokenSchema } from "#lib/cursor-token";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorHeading } from "../../../_components/creator-heading";
 import { formatCount } from "../../../_lib/figures";
-import { StatementLines } from "./_components/statement-lines";
+import {
+  StatementLines,
+  StatementLinesSkeleton,
+} from "./_components/statement-lines";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "creator_id", "period");
@@ -58,37 +62,7 @@ const searchParamsSchema = z.object({ token: cursorTokenSchema });
 const statementCsvPath = (creatorId: string, period: string): string =>
   `/api/v1/my/creators/${creatorId}/statements/${period}/csv`;
 
-const LinesPaginationNav = async ({ children }: { children: ReactNode }) => {
-  const t = await getMessages();
-
-  return (
-    <ListPagination.Root
-      aria-label={t("storefront.my_creator.lines_pagination_aria")}
-    >
-      {children}
-    </ListPagination.Root>
-  );
-};
-
-const StatementPageSkeleton = () => (
-  <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <section className="border border-border bg-card p-6">
-      <SkeletonLine className="h-4 w-32" />
-      <SkeletonLine className="mt-2 h-6 w-56" />
-    </section>
-    <Skeleton className="h-64 w-full" />
-  </div>
-);
-
-/**
- * The Author's part of one closed month: what it sums to, and the lines that
- * name them, with the download of those lines. The month's lines for other
- * Authors and its totals are never read, so nothing here can show them.
- */
-const StatementPageContent = async ({
-  params,
-  searchParams,
-}: StatementPageProps) => {
+const resolveRequest = async ({ params, searchParams }: StatementPageProps) => {
   const [rawParams, resolvedSearchParams, tenantId, locale] = await Promise.all(
     [params, searchParams, getTenantId(), getLocale()]
   );
@@ -101,159 +75,445 @@ const StatementPageContent = async ({
 
   const { creator_id: creatorId, period } = parsed.data;
   const { token } = searchParamsSchema.parse(resolvedSearchParams);
-  const returnTo = creatorStatementHref(creatorId, period, token);
 
-  const [creators, result, timeZone, t] = await Promise.all([
-    listMyCreators(tenantId, locale),
-    getMyCreatorStatement(tenantId, { creatorId, locale, period, token }),
-    getTenantDisplayTimeZone(tenantId),
-    getMessagesFor(locale),
-  ]);
+  return { creatorId, locale, period, tenantId, token };
+};
 
-  const requiresSignIn = [creators, result].some(
-    (read) => !read.ok && !read.missing && read.requiresSignIn
-  );
+/**
+ * The Author the path names, out of those the account is linked to; any other
+ * Author is not found. The heading and the back link both read it.
+ */
+const readCreator = async (props: StatementPageProps) => {
+  const { creatorId, locale, period, tenantId, token } =
+    await resolveRequest(props);
 
-  if (requiresSignIn) {
-    await redirectToLogin(locale, returnTo, tenantId);
-  }
+  const result = await listMyCreators(tenantId, locale);
 
-  if ((!creators.ok && creators.missing) || (!result.ok && result.missing)) {
+  if (!result.ok && result.missing) {
     notFound();
   }
 
-  if (!creators.ok) {
-    return <PageLoadError description={creators.message} />;
-  }
-
   if (!result.ok) {
-    return <PageLoadError description={result.message} />;
+    if (result.requiresSignIn) {
+      await redirectToLogin(
+        locale,
+        creatorStatementHref(creatorId, period, token),
+        tenantId
+      );
+    }
+
+    return { message: result.message, ok: false as const };
   }
 
-  const creator = creators.value.creators.find(({ id }) => id === creatorId);
+  const creator = result.value.creators.find(({ id }) => id === creatorId);
 
   if (!creator) {
     notFound();
   }
 
-  const { lines, nextToken, previousToken, statement } = result.value;
-  const { currency } = statement;
-  const month = formatPlainYearMonth(statement.period, { locale });
+  return { ok: true as const, value: creator };
+};
+
+/**
+ * The Author's part of the closed month the path names, with one page of the
+ * lines that make it up. The API answers `missing` for an Author the account
+ * is not linked to as well, so the statement needs no Author read of its own.
+ * Every section that shows part of it reads it here.
+ */
+const readStatement = async (props: StatementPageProps) => {
+  const request = await resolveRequest(props);
+  const { creatorId, locale, period, tenantId, token } = request;
+
+  const result = await getMyCreatorStatement(tenantId, {
+    creatorId,
+    locale,
+    period,
+    token,
+  });
+
+  if (!result.ok && result.missing) {
+    notFound();
+  }
+
+  if (!result.ok) {
+    if (result.requiresSignIn) {
+      await redirectToLogin(
+        locale,
+        creatorStatementHref(creatorId, period, token),
+        tenantId
+      );
+    }
+
+    return { message: result.message, ok: false as const };
+  }
+
+  return { ok: true as const, request, value: result.value };
+};
+
+const StatementAuthor = async (props: StatementPageProps) => {
+  const creator = await readCreator(props);
+
+  if (!creator.ok) {
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="storefront.my_creator.load_error" />
+            </Suspense>
+          </SectionError.Title>
+          <SectionError.Description>{creator.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
 
   return (
-    <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="grid gap-4 border border-border bg-card p-6">
-        <CreatorHeading creator={creator}>
-          <p className="text-sm text-muted-foreground">{creator.name}</p>
-          <h1 className="text-xl font-semibold">
-            {t("storefront.my_creator.statement_title", { period: month })}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("storefront.my_creator.statement_closed_at", {
-              currency,
-              date: formatDate(statement.closedAt, { locale, timeZone }),
-            })}
-          </p>
-        </CreatorHeading>
-        <FigureLine.Root>
-          <FigureLine.Figure>
-            <FigureLine.Label>
-              {t("storefront.my_creator.sales")}
-            </FigureLine.Label>
-            <FigureLine.Value>
-              {formatCount(statement.saleCount, locale)}
-            </FigureLine.Value>
-          </FigureLine.Figure>
-          <FigureLine.Figure>
-            <FigureLine.Label>
-              {t("storefront.my_creator.gross")}
-            </FigureLine.Label>
-            <FigureLine.Value>
-              {formatPrice(statement.grossAmount, { currency, locale })}
-            </FigureLine.Value>
-          </FigureLine.Figure>
-          <FigureLine.Figure>
-            <FigureLine.Label>
-              {t("storefront.my_creator.refunded")}
-            </FigureLine.Label>
-            <FigureLine.Value>
-              {formatPrice(statement.refundedAmount, { currency, locale })}
-            </FigureLine.Value>
-          </FigureLine.Figure>
-          <FigureLine.Figure>
-            <FigureLine.Label>
-              {t("storefront.my_creator.payout")}
-            </FigureLine.Label>
-            <FigureLine.Value>
-              {formatPrice(statement.payoutAmount, { currency, locale })}
-            </FigureLine.Value>
-          </FigureLine.Figure>
-        </FigureLine.Root>
-      </section>
-
-      <section className="grid gap-4 border border-border bg-card p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {t("storefront.my_creator.lines_heading")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("storefront.my_creator.lines_description")}
-            </p>
-          </div>
-          {lines.length > 0 ? (
-            <LinkButton
-              className="shrink-0"
-              href={`${statementCsvPath(creatorId, period)}?${new URLSearchParams({ locale })}`}
-              variant="outline"
-            >
-              {t("storefront.my_creator.download_csv")}
-            </LinkButton>
-          ) : null}
-        </div>
-        <StatementLines currency={currency} lines={lines} locale={locale} />
-        {previousToken || nextToken ? (
-          <Suspense fallback={<ListPagination.Skeleton />}>
-            <LinesPaginationNav>
-              <ListPagination.Step
-                href={
-                  previousToken
-                    ? creatorStatementHref(creatorId, period, previousToken)
-                    : ""
-                }
-              >
-                {t("storefront.common.previous_page")}
-              </ListPagination.Step>
-              <ListPagination.Step
-                href={
-                  nextToken
-                    ? creatorStatementHref(creatorId, period, nextToken)
-                    : ""
-                }
-              >
-                {t("storefront.common.next_page")}
-              </ListPagination.Step>
-            </LinesPaginationNav>
-          </Suspense>
-        ) : null}
-      </section>
-
-      <p>
-        <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
-          href={creatorPageHref(creatorId)}
-        >
-          {t("storefront.my_creator.back_to_creator", { name: creator.name })}
-        </LocaleLink>
-      </p>
-    </div>
+    <CreatorHeading creator={creator.value}>
+      <p className="font-medium">{creator.value.name}</p>
+    </CreatorHeading>
   );
 };
 
+/**
+ * The month comes from the path, which the statement is read by, so the
+ * heading does not wait on that read.
+ */
+const StatementTitle = async (props: StatementPageProps) => {
+  const { locale, period } = await resolveRequest(props);
+
+  return (
+    <Message
+      message="storefront.my_creator.statement_title"
+      values={{ period: formatPlainYearMonth(period, { locale }) }}
+    />
+  );
+};
+
+/** A failed read is reported once, by {@link StatementFigures}. */
+const StatementClosedAt = async (props: StatementPageProps) => {
+  const result = await readStatement(props);
+
+  if (!result.ok) {
+    return null;
+  }
+
+  const { locale, tenantId } = result.request;
+  const { statement } = result.value;
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+        <Message
+          message="storefront.my_creator.statement_closed_at"
+          values={{
+            currency: statement.currency,
+            date: formatDate(statement.closedAt, { locale, timeZone }),
+          }}
+        />
+      </Suspense>
+    </p>
+  );
+};
+
+/** What the month sums to for the Author. */
+const StatementFigures = async (props: StatementPageProps) => {
+  const result = await readStatement(props);
+
+  if (!result.ok) {
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="storefront.my_creator.statement_error" />
+            </Suspense>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
+
+  const { locale } = result.request;
+  const { statement } = result.value;
+  const { currency } = statement;
+
+  return (
+    <FigureLine.Root>
+      <FigureLine.Figure>
+        <FigureLine.Label>
+          <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+            <Message message="storefront.my_creator.sales" />
+          </Suspense>
+        </FigureLine.Label>
+        <FigureLine.Value>
+          {formatCount(statement.saleCount, locale)}
+        </FigureLine.Value>
+      </FigureLine.Figure>
+      <FigureLine.Figure>
+        <FigureLine.Label>
+          <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+            <Message message="storefront.my_creator.gross" />
+          </Suspense>
+        </FigureLine.Label>
+        <FigureLine.Value>
+          {formatPrice(statement.grossAmount, { currency, locale })}
+        </FigureLine.Value>
+      </FigureLine.Figure>
+      <FigureLine.Figure>
+        <FigureLine.Label>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="storefront.my_creator.refunded" />
+          </Suspense>
+        </FigureLine.Label>
+        <FigureLine.Value>
+          {formatPrice(statement.refundedAmount, { currency, locale })}
+        </FigureLine.Value>
+      </FigureLine.Figure>
+      <FigureLine.Figure>
+        <FigureLine.Label>
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="storefront.my_creator.payout" />
+          </Suspense>
+        </FigureLine.Label>
+        <FigureLine.Value>
+          {formatPrice(statement.payoutAmount, { currency, locale })}
+        </FigureLine.Value>
+      </FigureLine.Figure>
+    </FigureLine.Root>
+  );
+};
+
+/**
+ * What stands in for {@link StatementFigures}. Its labels name nothing the
+ * statement says, so it writes them into the same geometry around a
+ * placeholder for each figure.
+ */
+const StatementFiguresSkeleton = () => (
+  <FigureLine.Root>
+    <FigureLine.Figure>
+      <FigureLine.Label>
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="storefront.my_creator.sales" />
+        </Suspense>
+      </FigureLine.Label>
+      <FigureLine.Value>
+        <SkeletonLine className="h-7 w-12" />
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="storefront.my_creator.gross" />
+        </Suspense>
+      </FigureLine.Label>
+      <FigureLine.Value>
+        <SkeletonLine className="h-7 w-20" />
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="storefront.my_creator.refunded" />
+        </Suspense>
+      </FigureLine.Label>
+      <FigureLine.Value>
+        <SkeletonLine className="h-7 w-20" />
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="storefront.my_creator.payout" />
+        </Suspense>
+      </FigureLine.Label>
+      <FigureLine.Value>
+        <SkeletonLine className="h-7 w-20" />
+      </FigureLine.Value>
+    </FigureLine.Figure>
+  </FigureLine.Root>
+);
+
+/** Offered only for a month with lines to download. */
+const StatementDownload = async (props: StatementPageProps) => {
+  const result = await readStatement(props);
+
+  if (!result.ok || result.value.lines.length === 0) {
+    return null;
+  }
+
+  const { creatorId, locale, period } = result.request;
+
+  return (
+    <LinkButton
+      className="shrink-0"
+      href={`${statementCsvPath(creatorId, period)}?${new URLSearchParams({ locale })}`}
+      variant="outline"
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <Message message="storefront.my_creator.download_csv" />
+      </Suspense>
+    </LinkButton>
+  );
+};
+
+const LinesPaginationNav = async ({ children }: { children: ReactNode }) => {
+  const t = await getMessages();
+
+  return (
+    <ListPagination.Root
+      aria-label={t("storefront.my_creator.lines_pagination_aria")}
+    >
+      {children}
+    </ListPagination.Root>
+  );
+};
+
+/** A failed read is reported once, by {@link StatementFigures}. */
+const StatementLinesSection = async (props: StatementPageProps) => {
+  const result = await readStatement(props);
+
+  if (!result.ok) {
+    return null;
+  }
+
+  const { creatorId, locale, period } = result.request;
+  const { lines, nextToken, previousToken, statement } = result.value;
+
+  return (
+    <>
+      <StatementLines
+        currency={statement.currency}
+        lines={lines}
+        locale={locale}
+      />
+      {previousToken || nextToken ? (
+        <Suspense fallback={<ListPagination.Skeleton />}>
+          <LinesPaginationNav>
+            <ListPagination.Step
+              href={
+                previousToken
+                  ? creatorStatementHref(creatorId, period, previousToken)
+                  : ""
+              }
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="storefront.common.previous_page" />
+              </Suspense>
+            </ListPagination.Step>
+            <ListPagination.Step
+              href={
+                nextToken
+                  ? creatorStatementHref(creatorId, period, nextToken)
+                  : ""
+              }
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="storefront.common.next_page" />
+              </Suspense>
+            </ListPagination.Step>
+          </LinesPaginationNav>
+        </Suspense>
+      ) : null}
+    </>
+  );
+};
+
+const StatementBackLink = async (props: StatementPageProps) => {
+  const creator = await readCreator(props);
+
+  if (!creator.ok) {
+    return null;
+  }
+
+  return (
+    <LocaleLink
+      className="text-sm text-primary underline underline-offset-4"
+      href={creatorPageHref(creator.value.id)}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+        <Message
+          message="storefront.my_creator.back_to_creator"
+          values={{ name: creator.value.name }}
+        />
+      </Suspense>
+    </LocaleLink>
+  );
+};
+
+/**
+ * The Author's part of one closed month: what it sums to, and the lines that
+ * name them, with the download of those lines. The month's lines for other
+ * Authors and its totals are never read, so nothing here can show them.
+ */
 const StatementPage = (props: StatementPageProps) => (
-  <Suspense fallback={<StatementPageSkeleton />}>
-    <StatementPageContent {...props} />
-  </Suspense>
+  <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <section className="grid gap-4 border border-border bg-card p-6">
+      <Suspense fallback={<SkeletonLine className="h-14 w-48" />}>
+        <StatementAuthor {...props} />
+      </Suspense>
+      <div className="grid gap-1">
+        <h1 className="text-xl font-semibold">
+          <Suspense fallback={<SkeletonLine className="h-6 w-48" />}>
+            <StatementTitle {...props} />
+          </Suspense>
+        </h1>
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <StatementClosedAt {...props} />
+        </Suspense>
+      </div>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="storefront.my_creator.statement_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<StatementFiguresSkeleton />}>
+          <StatementFigures {...props} />
+        </Suspense>
+      </SectionErrorBoundary>
+    </section>
+
+    <section className="grid gap-4 border border-border bg-card p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">
+            <Suspense fallback={<SkeletonLine className="h-6 w-20" />}>
+              <Message message="storefront.my_creator.lines_heading" />
+            </Suspense>
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="storefront.my_creator.lines_description" />
+            </Suspense>
+          </p>
+        </div>
+        <Suspense fallback={null}>
+          <StatementDownload {...props} />
+        </Suspense>
+      </div>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="storefront.my_creator.statement_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<StatementLinesSkeleton />}>
+          <StatementLinesSection {...props} />
+        </Suspense>
+      </SectionErrorBoundary>
+    </section>
+
+    <p>
+      <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+        <StatementBackLink {...props} />
+      </Suspense>
+    </p>
+  </div>
 );
 
 export default StatementPage;
