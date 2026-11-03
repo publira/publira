@@ -57,6 +57,24 @@ message ListSubscriptionPlansResponse {
   repeated AdminSubscriptionPlan plans = 1;
 }
 
+// A plan as an announcement's audience names it: by its public id, and by
+// the name the console shows for it. Nothing about what the plan costs or who
+// holds it is in it, which is what lets every member of staff read it.
+message SubscriptionPlanName {
+  string public_id = 1;
+  string name = 2;
+}
+
+message ListSubscriptionPlanNamesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every plan of the tenant, unpublished ones included, in the order
+// ListSubscriptionPlans answers them.
+message ListSubscriptionPlanNamesResponse {
+  repeated SubscriptionPlanName plans = 1;
+}
+
 message GetSubscriptionPlanRequest {
   publira.types.v1.TenantContext tenant = 1;
   string subscription_plan_id = 2;
@@ -149,6 +167,8 @@ message DeleteSubscriptionPlanResponse {}
 service AdminSubscriptionPlanService {
   // Minimum role: tenant_admin.
   rpc ListSubscriptionPlans(ListSubscriptionPlansRequest) returns (ListSubscriptionPlansResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListSubscriptionPlanNames(ListSubscriptionPlanNamesRequest) returns (ListSubscriptionPlanNamesResponse) {}
   // Minimum role: tenant_admin.
   rpc GetSubscriptionPlan(GetSubscriptionPlanRequest) returns (GetSubscriptionPlanResponse) {}
   // Minimum role: tenant_admin.

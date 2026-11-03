@@ -28,6 +28,9 @@ const (
 	// AdminSubscriptionPlanServiceListSubscriptionPlansProcedure is the procedure name of the
 	// AdminSubscriptionPlanService's ListSubscriptionPlans RPC.
 	AdminSubscriptionPlanServiceListSubscriptionPlansProcedure = "/publira.admin.v1.AdminSubscriptionPlanService/ListSubscriptionPlans"
+	// AdminSubscriptionPlanServiceListSubscriptionPlanNamesProcedure is the procedure name of the
+	// AdminSubscriptionPlanService's ListSubscriptionPlanNames RPC.
+	AdminSubscriptionPlanServiceListSubscriptionPlanNamesProcedure = "/publira.admin.v1.AdminSubscriptionPlanService/ListSubscriptionPlanNames"
 	// AdminSubscriptionPlanServiceGetSubscriptionPlanProcedure is the procedure name of the
 	// AdminSubscriptionPlanService's GetSubscriptionPlan RPC.
 	AdminSubscriptionPlanServiceGetSubscriptionPlanProcedure = "/publira.admin.v1.AdminSubscriptionPlanService/GetSubscriptionPlan"
@@ -48,6 +51,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_subscription_plan_proto.Services().ByName("AdminSubscriptionPlanService").Methods().ByName("ListSubscriptionPlans"),
 			Procedure:  AdminSubscriptionPlanServiceListSubscriptionPlansProcedure,
+		}
+	})
+	adminSubscriptionPlanServiceListSubscriptionPlanNamesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_subscription_plan_proto.Services().ByName("AdminSubscriptionPlanService").Methods().ByName("ListSubscriptionPlanNames"),
+			Procedure:  AdminSubscriptionPlanServiceListSubscriptionPlanNamesProcedure,
 		}
 	})
 	adminSubscriptionPlanServiceGetSubscriptionPlanSpec = sync.OnceValue(func() connect.Spec {
@@ -85,6 +95,8 @@ var (
 type AdminSubscriptionPlanServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListSubscriptionPlans(context.Context, *v1.ListSubscriptionPlansRequest) (*v1.ListSubscriptionPlansResponse, error)
+	// Minimum role: tenant_auditor.
+	ListSubscriptionPlanNames(context.Context, *v1.ListSubscriptionPlanNamesRequest) (*v1.ListSubscriptionPlanNamesResponse, error)
 	// Minimum role: tenant_admin.
 	GetSubscriptionPlan(context.Context, *v1.GetSubscriptionPlanRequest) (*v1.GetSubscriptionPlanResponse, error)
 	// Minimum role: tenant_admin.
@@ -107,6 +119,8 @@ func NewAdminSubscriptionPlanServiceClient(client *connect.Client) AdminSubscrip
 type AdminSubscriptionPlanServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListSubscriptionPlans(context.Context, *v1.ListSubscriptionPlansRequest) (*v1.ListSubscriptionPlansResponse, error)
+	// Minimum role: tenant_auditor.
+	ListSubscriptionPlanNames(context.Context, *v1.ListSubscriptionPlanNamesRequest) (*v1.ListSubscriptionPlanNamesResponse, error)
 	// Minimum role: tenant_admin.
 	GetSubscriptionPlan(context.Context, *v1.GetSubscriptionPlanRequest) (*v1.GetSubscriptionPlanResponse, error)
 	// Minimum role: tenant_admin.
@@ -123,6 +137,7 @@ func RegisterAdminSubscriptionPlanServiceHandler(server *connect.Server, svc Adm
 	adapter := adminSubscriptionPlanServiceHandler{svc: svc}
 	server.Register(
 		connect.Method{Spec: adminSubscriptionPlanServiceListSubscriptionPlansSpec(), Handler: adapter.listSubscriptionPlans},
+		connect.Method{Spec: adminSubscriptionPlanServiceListSubscriptionPlanNamesSpec(), Handler: adapter.listSubscriptionPlanNames},
 		connect.Method{Spec: adminSubscriptionPlanServiceGetSubscriptionPlanSpec(), Handler: adapter.getSubscriptionPlan},
 		connect.Method{Spec: adminSubscriptionPlanServiceCreateSubscriptionPlanSpec(), Handler: adapter.createSubscriptionPlan},
 		connect.Method{Spec: adminSubscriptionPlanServiceUpdateSubscriptionPlanSpec(), Handler: adapter.updateSubscriptionPlan},
@@ -135,6 +150,10 @@ type UnimplementedAdminSubscriptionPlanServiceHandler struct{}
 
 func (UnimplementedAdminSubscriptionPlanServiceHandler) ListSubscriptionPlans(context.Context, *v1.ListSubscriptionPlansRequest) (*v1.ListSubscriptionPlansResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlans is not implemented")
+}
+
+func (UnimplementedAdminSubscriptionPlanServiceHandler) ListSubscriptionPlanNames(context.Context, *v1.ListSubscriptionPlanNamesRequest) (*v1.ListSubscriptionPlanNamesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlanNames is not implemented")
 }
 
 func (UnimplementedAdminSubscriptionPlanServiceHandler) GetSubscriptionPlan(context.Context, *v1.GetSubscriptionPlanRequest) (*v1.GetSubscriptionPlanResponse, error) {
@@ -160,6 +179,14 @@ type adminSubscriptionPlanServiceClient struct {
 func (c *adminSubscriptionPlanServiceClient) ListSubscriptionPlans(ctx context.Context, req *v1.ListSubscriptionPlansRequest) (*v1.ListSubscriptionPlansResponse, error) {
 	var res v1.ListSubscriptionPlansResponse
 	if err := c.client.CallUnary(ctx, adminSubscriptionPlanServiceListSubscriptionPlansSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSubscriptionPlanServiceClient) ListSubscriptionPlanNames(ctx context.Context, req *v1.ListSubscriptionPlanNamesRequest) (*v1.ListSubscriptionPlanNamesResponse, error) {
+	var res v1.ListSubscriptionPlanNamesResponse
+	if err := c.client.CallUnary(ctx, adminSubscriptionPlanServiceListSubscriptionPlanNamesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -207,6 +234,18 @@ func (h adminSubscriptionPlanServiceHandler) listSubscriptionPlans(ctx context.C
 		return err
 	}
 	res, err := h.svc.ListSubscriptionPlans(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSubscriptionPlanServiceHandler) listSubscriptionPlanNames(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListSubscriptionPlanNamesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListSubscriptionPlanNames(ctx, &req)
 	if err != nil {
 		return err
 	}

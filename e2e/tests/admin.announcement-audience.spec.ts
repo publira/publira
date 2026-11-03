@@ -10,6 +10,8 @@ import {
 import {
   ANNOUNCEMENT_AUDIENCE_EDITOR,
   ANNOUNCEMENT_AUDIENCE_FOLLOWER,
+  ANNOUNCEMENT_AUDIENCE_PLAN,
+  ANNOUNCEMENT_AUDIENCE_READER,
   ANNOUNCEMENT_AUDIENCE_SCENARIO,
   ANNOUNCEMENT_AUDIENCE_SERIES,
   ANNOUNCEMENT_AUDIENCE_TENANT,
@@ -227,6 +229,38 @@ test.describe("admin announcement audience and schedule", () => {
     await expect
       .poll(() => notifiedUserPublicIds(title), { timeout: 30_000 })
       .toEqual([ANNOUNCEMENT_AUDIENCE_FOLLOWER.publicId]);
+  });
+
+  test("an editor picks a plan by its name, and the announcement reaches the plan's subscriber and nobody else", async ({
+    page,
+  }) => {
+    const title = `E2E plan audience ${uniqueSuffix()}`;
+
+    await signInAsEditor(page, "/announcements/new");
+    await fillAnnouncement(page, title);
+    await page
+      .getByRole("radio", { name: "Readers who match all of these conditions" })
+      .click();
+    await addCondition(page, "Subscription");
+
+    await pickOption(
+      conditionRow(page, "Subscription").getByRole("combobox", {
+        name: "Plan",
+      }),
+      ANNOUNCEMENT_AUDIENCE_PLAN.name
+    );
+    await expect(
+      page.getByText("Reaches 1 reader", { exact: true })
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Deliver the announcement" })
+      .click();
+    await expect(page).toHaveURL(/\/announcements\/?$/u);
+
+    await expect
+      .poll(() => notifiedUserPublicIds(title), { timeout: 30_000 })
+      .toEqual([ANNOUNCEMENT_AUDIENCE_READER.publicId]);
   });
 
   test("removing every condition opens Send to everyone and the banner again", async ({

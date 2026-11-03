@@ -354,6 +354,28 @@ func (s *adminServer) ListSubscriptionPlans(
 	return &publiraadminv1.ListSubscriptionPlansResponse{Plans: plans}, nil
 }
 
+func (s *adminServer) ListSubscriptionPlanNames(
+	ctx context.Context,
+	req *publiraadminv1.ListSubscriptionPlanNamesRequest,
+) (*publiraadminv1.ListSubscriptionPlanNamesResponse, error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queriesFor(ctx).ListSubscriptionPlanNamesForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list subscription plan names", err, "tenant_id", tenant.ID.String())
+	}
+	plans := make([]*publiraadminv1.SubscriptionPlanName, 0, len(rows))
+	for _, row := range rows {
+		plans = append(plans, &publiraadminv1.SubscriptionPlanName{PublicId: row.PublicID, Name: row.Name})
+	}
+	return &publiraadminv1.ListSubscriptionPlanNamesResponse{Plans: plans}, nil
+}
+
 func (s *adminServer) GetSubscriptionPlan(
 	ctx context.Context,
 	req *publiraadminv1.GetSubscriptionPlanRequest,

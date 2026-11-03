@@ -627,7 +627,6 @@
         "audience_series_placeholder": "搜索系列",
         "audience_series_empty": "没有匹配的系列。",
         "audience_plan": "套餐",
-        "audience_plans_admin_only": "只有租户管理员可以查看套餐，因此该条件适用于任意套餐的订阅。",
         "audience_any_plan": "任意套餐",
         "audience_plan_state": "订阅状态",
         "audience_plan_state_active": "正在订阅",

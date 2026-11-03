@@ -10,9 +10,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnnouncementItem } from "../announcement-types";
 import { AnnouncementFormData } from "./announcement-form-data";
 
-const { mockFindTenantLocales } = vi.hoisted(() => ({
-  mockFindTenantLocales: vi.fn(),
-}));
+const { mockFindTenantLocales, mockListSubscriptionPlanNames } = vi.hoisted(
+  () => ({
+    mockFindTenantLocales: vi.fn(),
+    mockListSubscriptionPlanNames: vi.fn(),
+  })
+);
 
 vi.mock("#lib/tenant-locales", () => ({
   findTenantLocales: mockFindTenantLocales,
@@ -27,19 +30,10 @@ vi.mock("#lib/series", () => ({
 }));
 
 vi.mock("#lib/subscription-plan", () => ({
-  listSubscriptionPlans: () => Promise.resolve({ ok: true, plans: [] }),
-}));
-
-vi.mock("#lib/auth-session", () => ({
-  isSignedInTenantAdmin: () => Promise.resolve(true),
+  listSubscriptionPlanNames: mockListSubscriptionPlanNames,
 }));
 
 vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
-
-vi.mock("#lib/messages", () => ({
-  getMessagesFor: () =>
-    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
-}));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
@@ -47,10 +41,22 @@ vi.mock("#components/message", () => ({
 }));
 
 // The form itself is the subject of its own tests; here it only says it was
-// rendered and for which announcement.
+// rendered, for which announcement, and with which plans.
 vi.mock("./announcement-form", () => ({
-  AnnouncementForm: ({ announcement }: { announcement?: { id: string } }) => (
-    <p>Form for {announcement?.id ?? "a new announcement"}</p>
+  AnnouncementForm: ({
+    announcement,
+    plans,
+    plansErrorMessage,
+  }: {
+    announcement?: { id: string };
+    plans: readonly { name: string }[];
+    plansErrorMessage?: string;
+  }) => (
+    <>
+      <p>Form for {announcement?.id ?? "a new announcement"}</p>
+      <p>Plans: {plans.map(({ name }) => name).join(", ")}</p>
+      {plansErrorMessage ? <p>{plansErrorMessage}</p> : null}
+    </>
   ),
 }));
 
@@ -82,6 +88,7 @@ const scheduled: AnnouncementItem = {
 };
 
 beforeEach(() => {
+  mockListSubscriptionPlanNames.mockResolvedValue({ ok: true, plans: [] });
   mockFindTenantLocales.mockResolvedValue({
     defaultLocale: "en",
     supportedLocales: ["en", "ja"],
@@ -133,5 +140,45 @@ describe("AnnouncementFormData", () => {
     );
 
     expect(screen.getByText("Form for a new announcement")).toBeDefined();
+  });
+
+  // The plans are read by name alone, which every member of staff may read,
+  // so the form offers them whoever writes the announcement.
+  it("offers the subscription condition every plan of the tenant by name", async () => {
+    mockListSubscriptionPlanNames.mockResolvedValue({
+      ok: true,
+      plans: [
+        { name: "Monthly pass", publicId: "PLAN0001" },
+        { name: "Yearly pass", publicId: "PLAN0002" },
+      ],
+    });
+
+    render(
+      await AnnouncementFormData({ action: vi.fn(), tenantId: "TENANT001" })
+    );
+
+    expect(mockListSubscriptionPlanNames).toHaveBeenCalledWith(
+      "TENANT001",
+      "en"
+    );
+    expect(screen.getByText("Plans: Monthly pass, Yearly pass")).toBeDefined();
+  });
+
+  it("leaves the plan select empty with the reason beside it when the plans cannot be read", async () => {
+    mockListSubscriptionPlanNames.mockResolvedValue({
+      message: "Could not load the subscription plans.",
+      ok: false,
+      plans: [],
+      requiresSignIn: false,
+    });
+
+    render(
+      await AnnouncementFormData({ action: vi.fn(), tenantId: "TENANT001" })
+    );
+
+    expect(screen.getByText("Form for a new announcement")).toBeDefined();
+    expect(
+      screen.getByText("Could not load the subscription plans.")
+    ).toBeDefined();
   });
 });

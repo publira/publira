@@ -55,7 +55,7 @@ An announcement can be addressed to the readers who meet a set of conditions ins
 
 - **Follows series**: the reader follows the **Series** you pick.
 - **Bought an episode of series**: the reader holds a purchase of an episode of the **Series** you pick, bought on its own, in a volume, or in a bundle. A purchase that was refunded or revoked does not count.
-- **Subscription**: the reader's subscription to the **Plan** you pick, or to **Any plan**, is live (**Holds it**: in its trial, active, or with a renewal payment past due), or the reader has had one that ended and holds no live one (**Had one that ended**). Only a Tenant admin can see the plans, so an Editor's form offers **Any plan** alone.
+- **Subscription**: the reader's subscription to the **Plan** you pick, or to **Any plan**, is live (**Holds it**: in its trial, active, or with a renewal payment past due), or the reader has had one that ended and holds no live one (**Had one that ended**).
 - **Has never bought anything**: the reader has never bought anything from the site. A purchase made in the payment provider's test mode does not count.
 - **Has not read for**: the reader has opened no episode for at least the number of **Days** you enter, or has never opened one.
 - **Signed up within**: the reader signed up no more than the number of **Days** you enter ago.

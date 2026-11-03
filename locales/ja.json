@@ -627,7 +627,6 @@
         "audience_series_placeholder": "シリーズを検索",
         "audience_series_empty": "一致するシリーズがありません。",
         "audience_plan": "プラン",
-        "audience_plans_admin_only": "プランを確認できるのはテナント管理者だけのため、この条件はすべてのプランのサブスクリプションに当てはまります。",
         "audience_any_plan": "すべてのプラン",
         "audience_plan_state": "契約の状態",
         "audience_plan_state_active": "契約中",

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/subscription_plan.proto.
  */
 export const file_publira_admin_v1_subscription_plan: GenFile = /*@__PURE__*/
-  fileDesc("CihwdWJsaXJhL2FkbWluL3YxL3N1YnNjcmlwdGlvbl9wbGFuLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIt4DChVBZG1pblN1YnNjcmlwdGlvblBsYW4SCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFwoPc3RyaXBlX3ByaWNlX2lkGAUgASgJEhQKDHByaWNlX2Ftb3VudBgGIAEoBRIQCghjdXJyZW5jeRgHIAEoCRI4CghpbnRlcnZhbBgIIAEoDjImLnB1YmxpcmEudHlwZXMudjEuU3Vic2NyaXB0aW9uSW50ZXJ2YWwSFgoOaW50ZXJ2YWxfY291bnQYCSABKAUSNgoFc2NvcGUYCiABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYCyADKAkSEgoKc2VyaWVzX2lkcxgMIAMoCRIRCglwdWJsaXNoZWQYDSABKAgSGAoQc3Vic2NyaWJlcl9jb3VudBgOIAEoBRISCgpjcmVhdGVkX2F0GA8gASgJEhIKCnVwZGF0ZWRfYXQYECABKAkSHAoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYESABKAkSHgoWZ29vZ2xlX3BsYXlfcHJvZHVjdF9pZBgSIAEoCSJPChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXCh1MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZRI2CgVwbGFucxgBIAMoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuImsKGkdldFN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCSJUChtHZXRTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2USNQoEcGxhbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuIsECChVTdWJzY3JpcHRpb25QbGFuSW5wdXQSDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIXCg9zdHJpcGVfcHJpY2VfaWQYAyABKAkSNgoFc2NvcGUYBCABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYBSADKAkSEgoKc2VyaWVzX2lkcxgGIAMoCRIRCglwdWJsaXNoZWQYByABKAgSIQoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYCCABKAlIAIgBARIjChZnb29nbGVfcGxheV9wcm9kdWN0X2lkGAkgASgJSAGIAQFCFwoVX2FwcF9zdG9yZV9wcm9kdWN0X2lkQhkKF19nb29nbGVfcGxheV9wcm9kdWN0X2lkIocBCh1DcmVhdGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSNQoEcGxhbhgCIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuU3Vic2NyaXB0aW9uUGxhbklucHV0IlcKHkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZRI1CgRwbGFuGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5BZG1pblN1YnNjcmlwdGlvblBsYW4ipQEKHVVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCRI1CgRwbGFuGAMgASgLMicucHVibGlyYS5hZG1pbi52MS5TdWJzY3JpcHRpb25QbGFuSW5wdXQiVwoeVXBkYXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlEjUKBHBsYW4YASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiJuCh1EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHAoUc3Vic2NyaXB0aW9uX3BsYW5faWQYAiABKAkiIAoeRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlMo0FChxBZG1pblN1YnNjcmlwdGlvblBsYW5TZXJ2aWNlEnoKFUxpc3RTdWJzY3JpcHRpb25QbGFucxIuLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2UiABJ0ChNHZXRTdWJzY3JpcHRpb25QbGFuEiwucHVibGlyYS5hZG1pbi52MS5HZXRTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuR2V0U3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgASfQoWQ3JlYXRlU3Vic2NyaXB0aW9uUGxhbhIvLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU3Vic2NyaXB0aW9uUGxhblJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZSIAEn0KFlVwZGF0ZVN1YnNjcmlwdGlvblBsYW4SLy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5VcGRhdGVTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2UiABJ9ChZEZWxldGVTdWJzY3JpcHRpb25QbGFuEi8ucHVibGlyYS5hZG1pbi52MS5EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CihwdWJsaXJhL2FkbWluL3YxL3N1YnNjcmlwdGlvbl9wbGFuLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIt4DChVBZG1pblN1YnNjcmlwdGlvblBsYW4SCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFwoPc3RyaXBlX3ByaWNlX2lkGAUgASgJEhQKDHByaWNlX2Ftb3VudBgGIAEoBRIQCghjdXJyZW5jeRgHIAEoCRI4CghpbnRlcnZhbBgIIAEoDjImLnB1YmxpcmEudHlwZXMudjEuU3Vic2NyaXB0aW9uSW50ZXJ2YWwSFgoOaW50ZXJ2YWxfY291bnQYCSABKAUSNgoFc2NvcGUYCiABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYCyADKAkSEgoKc2VyaWVzX2lkcxgMIAMoCRIRCglwdWJsaXNoZWQYDSABKAgSGAoQc3Vic2NyaWJlcl9jb3VudBgOIAEoBRISCgpjcmVhdGVkX2F0GA8gASgJEhIKCnVwZGF0ZWRfYXQYECABKAkSHAoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYESABKAkSHgoWZ29vZ2xlX3BsYXlfcHJvZHVjdF9pZBgSIAEoCSJPChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXCh1MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZRI2CgVwbGFucxgBIAMoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuIjcKFFN1YnNjcmlwdGlvblBsYW5OYW1lEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJIlMKIExpc3RTdWJzY3JpcHRpb25QbGFuTmFtZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJaCiFMaXN0U3Vic2NyaXB0aW9uUGxhbk5hbWVzUmVzcG9uc2USNQoFcGxhbnMYASADKAsyJi5wdWJsaXJhLmFkbWluLnYxLlN1YnNjcmlwdGlvblBsYW5OYW1lImsKGkdldFN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCSJUChtHZXRTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2USNQoEcGxhbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuIsECChVTdWJzY3JpcHRpb25QbGFuSW5wdXQSDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIXCg9zdHJpcGVfcHJpY2VfaWQYAyABKAkSNgoFc2NvcGUYBCABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYBSADKAkSEgoKc2VyaWVzX2lkcxgGIAMoCRIRCglwdWJsaXNoZWQYByABKAgSIQoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYCCABKAlIAIgBARIjChZnb29nbGVfcGxheV9wcm9kdWN0X2lkGAkgASgJSAGIAQFCFwoVX2FwcF9zdG9yZV9wcm9kdWN0X2lkQhkKF19nb29nbGVfcGxheV9wcm9kdWN0X2lkIocBCh1DcmVhdGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSNQoEcGxhbhgCIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuU3Vic2NyaXB0aW9uUGxhbklucHV0IlcKHkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZRI1CgRwbGFuGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5BZG1pblN1YnNjcmlwdGlvblBsYW4ipQEKHVVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCRI1CgRwbGFuGAMgASgLMicucHVibGlyYS5hZG1pbi52MS5TdWJzY3JpcHRpb25QbGFuSW5wdXQiVwoeVXBkYXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlEjUKBHBsYW4YASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiJuCh1EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHAoUc3Vic2NyaXB0aW9uX3BsYW5faWQYAiABKAkiIAoeRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlMpYGChxBZG1pblN1YnNjcmlwdGlvblBsYW5TZXJ2aWNlEnoKFUxpc3RTdWJzY3JpcHRpb25QbGFucxIuLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2UiABKGAQoZTGlzdFN1YnNjcmlwdGlvblBsYW5OYW1lcxIyLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5OYW1lc1JlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLkxpc3RTdWJzY3JpcHRpb25QbGFuTmFtZXNSZXNwb25zZSIAEnQKE0dldFN1YnNjcmlwdGlvblBsYW4SLC5wdWJsaXJhLmFkbWluLnYxLkdldFN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5HZXRTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2UiABJ9ChZDcmVhdGVTdWJzY3JpcHRpb25QbGFuEi8ucHVibGlyYS5hZG1pbi52MS5DcmVhdGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgASfQoWVXBkYXRlU3Vic2NyaXB0aW9uUGxhbhIvLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlU3Vic2NyaXB0aW9uUGxhblJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZSIAEn0KFkRlbGV0ZVN1YnNjcmlwdGlvblBsYW4SLy5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * A subscription plan is a recurring Price on the tenant's Stripe account and
@@ -183,6 +183,69 @@ export const ListSubscriptionPlansResponseSchema: GenMessage<ListSubscriptionPla
   messageDesc(file_publira_admin_v1_subscription_plan, 2);
 
 /**
+ * A plan as an announcement's audience names it: by its public id, and by
+ * the name the console shows for it. Nothing about what the plan costs or who
+ * holds it is in it, which is what lets every member of staff read it.
+ *
+ * @generated from message publira.admin.v1.SubscriptionPlanName
+ */
+export type SubscriptionPlanName = Message<"publira.admin.v1.SubscriptionPlanName"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.SubscriptionPlanName.
+ * Use `create(SubscriptionPlanNameSchema)` to create a new message.
+ */
+export const SubscriptionPlanNameSchema: GenMessage<SubscriptionPlanName> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_subscription_plan, 3);
+
+/**
+ * @generated from message publira.admin.v1.ListSubscriptionPlanNamesRequest
+ */
+export type ListSubscriptionPlanNamesRequest = Message<"publira.admin.v1.ListSubscriptionPlanNamesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListSubscriptionPlanNamesRequest.
+ * Use `create(ListSubscriptionPlanNamesRequestSchema)` to create a new message.
+ */
+export const ListSubscriptionPlanNamesRequestSchema: GenMessage<ListSubscriptionPlanNamesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_subscription_plan, 4);
+
+/**
+ * Every plan of the tenant, unpublished ones included, in the order
+ * ListSubscriptionPlans answers them.
+ *
+ * @generated from message publira.admin.v1.ListSubscriptionPlanNamesResponse
+ */
+export type ListSubscriptionPlanNamesResponse = Message<"publira.admin.v1.ListSubscriptionPlanNamesResponse"> & {
+  /**
+   * @generated from field: repeated publira.admin.v1.SubscriptionPlanName plans = 1;
+   */
+  plans: SubscriptionPlanName[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ListSubscriptionPlanNamesResponse.
+ * Use `create(ListSubscriptionPlanNamesResponseSchema)` to create a new message.
+ */
+export const ListSubscriptionPlanNamesResponseSchema: GenMessage<ListSubscriptionPlanNamesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_subscription_plan, 5);
+
+/**
  * @generated from message publira.admin.v1.GetSubscriptionPlanRequest
  */
 export type GetSubscriptionPlanRequest = Message<"publira.admin.v1.GetSubscriptionPlanRequest"> & {
@@ -202,7 +265,7 @@ export type GetSubscriptionPlanRequest = Message<"publira.admin.v1.GetSubscripti
  * Use `create(GetSubscriptionPlanRequestSchema)` to create a new message.
  */
 export const GetSubscriptionPlanRequestSchema: GenMessage<GetSubscriptionPlanRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 3);
+  messageDesc(file_publira_admin_v1_subscription_plan, 6);
 
 /**
  * @generated from message publira.admin.v1.GetSubscriptionPlanResponse
@@ -219,7 +282,7 @@ export type GetSubscriptionPlanResponse = Message<"publira.admin.v1.GetSubscript
  * Use `create(GetSubscriptionPlanResponseSchema)` to create a new message.
  */
 export const GetSubscriptionPlanResponseSchema: GenMessage<GetSubscriptionPlanResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 4);
+  messageDesc(file_publira_admin_v1_subscription_plan, 7);
 
 /**
  * The fields a plan is saved with, which CreateSubscriptionPlan and
@@ -306,7 +369,7 @@ export type SubscriptionPlanInput = Message<"publira.admin.v1.SubscriptionPlanIn
  * Use `create(SubscriptionPlanInputSchema)` to create a new message.
  */
 export const SubscriptionPlanInputSchema: GenMessage<SubscriptionPlanInput> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 5);
+  messageDesc(file_publira_admin_v1_subscription_plan, 8);
 
 /**
  * A tenant that already holds 20 plans is failed_precondition with the
@@ -331,7 +394,7 @@ export type CreateSubscriptionPlanRequest = Message<"publira.admin.v1.CreateSubs
  * Use `create(CreateSubscriptionPlanRequestSchema)` to create a new message.
  */
 export const CreateSubscriptionPlanRequestSchema: GenMessage<CreateSubscriptionPlanRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 6);
+  messageDesc(file_publira_admin_v1_subscription_plan, 9);
 
 /**
  * @generated from message publira.admin.v1.CreateSubscriptionPlanResponse
@@ -348,7 +411,7 @@ export type CreateSubscriptionPlanResponse = Message<"publira.admin.v1.CreateSub
  * Use `create(CreateSubscriptionPlanResponseSchema)` to create a new message.
  */
 export const CreateSubscriptionPlanResponseSchema: GenMessage<CreateSubscriptionPlanResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 7);
+  messageDesc(file_publira_admin_v1_subscription_plan, 10);
 
 /**
  * Replaces every field of the plan with `plan`, but a store product ID the
@@ -381,7 +444,7 @@ export type UpdateSubscriptionPlanRequest = Message<"publira.admin.v1.UpdateSubs
  * Use `create(UpdateSubscriptionPlanRequestSchema)` to create a new message.
  */
 export const UpdateSubscriptionPlanRequestSchema: GenMessage<UpdateSubscriptionPlanRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 8);
+  messageDesc(file_publira_admin_v1_subscription_plan, 11);
 
 /**
  * @generated from message publira.admin.v1.UpdateSubscriptionPlanResponse
@@ -398,7 +461,7 @@ export type UpdateSubscriptionPlanResponse = Message<"publira.admin.v1.UpdateSub
  * Use `create(UpdateSubscriptionPlanResponseSchema)` to create a new message.
  */
 export const UpdateSubscriptionPlanResponseSchema: GenMessage<UpdateSubscriptionPlanResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 9);
+  messageDesc(file_publira_admin_v1_subscription_plan, 12);
 
 /**
  * Removes a plan nobody has ever subscribed to. One a subscription names, in
@@ -427,7 +490,7 @@ export type DeleteSubscriptionPlanRequest = Message<"publira.admin.v1.DeleteSubs
  * Use `create(DeleteSubscriptionPlanRequestSchema)` to create a new message.
  */
 export const DeleteSubscriptionPlanRequestSchema: GenMessage<DeleteSubscriptionPlanRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 10);
+  messageDesc(file_publira_admin_v1_subscription_plan, 13);
 
 /**
  * @generated from message publira.admin.v1.DeleteSubscriptionPlanResponse
@@ -440,7 +503,7 @@ export type DeleteSubscriptionPlanResponse = Message<"publira.admin.v1.DeleteSub
  * Use `create(DeleteSubscriptionPlanResponseSchema)` to create a new message.
  */
 export const DeleteSubscriptionPlanResponseSchema: GenMessage<DeleteSubscriptionPlanResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_subscription_plan, 11);
+  messageDesc(file_publira_admin_v1_subscription_plan, 14);
 
 /**
  * @generated from service publira.admin.v1.AdminSubscriptionPlanService
@@ -455,6 +518,16 @@ export const AdminSubscriptionPlanService: GenService<{
     methodKind: "unary";
     input: typeof ListSubscriptionPlansRequestSchema;
     output: typeof ListSubscriptionPlansResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_auditor.
+   *
+   * @generated from rpc publira.admin.v1.AdminSubscriptionPlanService.ListSubscriptionPlanNames
+   */
+  listSubscriptionPlanNames: {
+    methodKind: "unary";
+    input: typeof ListSubscriptionPlanNamesRequestSchema;
+    output: typeof ListSubscriptionPlanNamesResponseSchema;
   },
   /**
    * Minimum role: tenant_admin.

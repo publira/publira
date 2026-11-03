@@ -627,7 +627,6 @@
         "audience_series_placeholder": "搜尋系列",
         "audience_series_empty": "沒有相符的系列。",
         "audience_plan": "方案",
-        "audience_plans_admin_only": "只有租戶管理員可以查看方案，因此此條件適用於任何方案的訂閱。",
         "audience_any_plan": "任何方案",
         "audience_plan_state": "訂閱狀態",
         "audience_plan_state_active": "訂閱中",

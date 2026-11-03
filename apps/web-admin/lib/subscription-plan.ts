@@ -41,6 +41,16 @@ export type ListSubscriptionPlansResult =
       requiresSignIn: boolean;
     };
 
+export type ListSubscriptionPlanNamesResult =
+  | { ok: true; plans: Pick<SubscriptionPlanItem, "name" | "publicId">[] }
+  | {
+      ok: false;
+      message: string;
+      plans: Pick<SubscriptionPlanItem, "name" | "publicId">[];
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
 /**
  * `notFound: true` is the "there is nothing to show here" failure the edit
  * screen turns into `notFound()`, carrying no message for the same reason
@@ -326,6 +336,79 @@ export const listSubscriptionPlans = async (
 ): Promise<ListSubscriptionPlansResult> =>
   settleCachedRead(
     await listSubscriptionPlansForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
+
+const listSubscriptionPlanNamesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<CachedRead<ListSubscriptionPlanNamesResult>> => {
+  "use cache: private";
+  cacheTag(subscriptionPlansCacheTag(tenantId));
+
+  const t = await getMessagesFor(locale);
+
+  if (!sessionId) {
+    dropFailedCacheEntry();
+
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      plans: [],
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response =
+      await apiClient.subscriptionPlans.listSubscriptionPlanNames(
+        { tenant: { tenantId } },
+        withSessionHeaders(sessionId)
+      );
+
+    return {
+      ok: true,
+      plans: (response.plans ?? []).map((plan) => ({
+        name: plan.name ?? "",
+        publicId: plan.publicId ?? "",
+      })),
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.subscription_plans.list_failed"),
+        { locale }
+      ),
+      ok: false,
+      plans: [],
+      requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
+  }
+};
+
+/**
+ * Every plan of the tenant by its name and public id alone, in the order
+ * {@link listSubscriptionPlans} answers them, for a control that names a plan.
+ *
+ * `ListSubscriptionPlanNames` admits every member of staff, since it answers
+ * nothing a plan costs or who holds it, so an editor's announcement form can
+ * offer the plans too. Filed under the plan tag, so a renamed, added, or
+ * deleted plan is offered as it now is.
+ */
+export const listSubscriptionPlanNames = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListSubscriptionPlanNamesResult> =>
+  settleCachedRead(
+    await listSubscriptionPlanNamesForSession(
       tenantId,
       locale,
       await getAccessToken()
