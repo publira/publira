@@ -563,9 +563,9 @@
     },
     "announcements": {
       "title": "공지사항",
-      "page_description": "사이트를 여는 모든 사람에게 발송한 공지사항을 확인할 수 있습니다.",
+      "page_description": "사이트를 여는 모든 사람이나 조건에 맞는 독자에게 발송한 공지사항을 확인하고, 발송을 예약한 공지사항을 변경할 수 있습니다.",
       "new_title": "공지사항 작성",
-      "new_description": "제목, 본문, 링크를 지정해 공지사항을 모두에게 발송합니다.",
+      "new_description": "공지사항을 작성하고 받을 사람과 발송 시각을 정한 뒤 발송하거나 예약합니다.",
       "back_to_list": "목록으로 돌아가기",
       "list_error": "공지사항 목록을 표시할 수 없습니다",
       "empty_title": "아직 공지사항이 없습니다.",
@@ -582,7 +582,9 @@
         "body": "본문",
         "delivery": "알림",
         "banner": "배너",
-        "link": "링크"
+        "link": "링크",
+        "audience": "받는 사람",
+        "status": "상태"
       },
       "delivery": {
         "everyone": "모두에게 발송",
@@ -604,7 +606,42 @@
         "pinned_until": "게시 종료 일시",
         "pinned_until_description": "시각은 {$time_zone} 기준입니다. 비워 두면 직접 내릴 때까지 계속 게시합니다.",
         "send_to_everyone": "모두에게 발송",
-        "send_to_everyone_description": "공지사항 알림을 끈 독자에게도 알립니다. 약관 변경이나 장애처럼 모든 독자가 반드시 알아야 하는 공지사항에만 사용하세요."
+        "send_to_everyone_description": "공지사항 알림을 끈 독자에게도 알립니다. 약관 변경이나 장애처럼 모든 독자가 반드시 알아야 하는 공지사항에만 사용하세요.",
+        "audience": "받는 사람",
+        "audience_everyone": "사이트를 여는 모든 사람",
+        "audience_targeted": "아래 조건을 모두 충족하는 독자",
+        "audience_targeted_description": "발송 시점에 모든 조건을 충족하는 독자에게만 전달됩니다.",
+        "audience_add": "조건 추가",
+        "audience_remove": "빼기",
+        "audience_condition": {
+          "follows_series": "시리즈를 팔로우함",
+          "bought_series_episode": "시리즈의 에피소드를 구매함",
+          "subscription": "구독",
+          "never_purchased": "구매한 적 없음",
+          "last_read_days_ago": "읽지 않은 기간",
+          "signed_up_within_days": "가입 후 기간",
+          "locale": "언어",
+          "has_mobile_push_device": "앱 푸시 알림을 등록함"
+        },
+        "audience_series": "시리즈",
+        "audience_series_placeholder": "시리즈 검색",
+        "audience_series_empty": "일치하는 시리즈가 없습니다.",
+        "audience_plan": "플랜",
+        "audience_plans_admin_only": "플랜은 테넌트 관리자만 볼 수 있으므로 이 조건은 모든 플랜의 구독에 해당합니다.",
+        "audience_any_plan": "모든 플랜",
+        "audience_plan_state": "구독 상태",
+        "audience_plan_state_active": "구독 중",
+        "audience_plan_state_ended": "구독이 종료됨",
+        "audience_days": "일수",
+        "audience_reach": "독자 {$count}명에게 전달됩니다",
+        "audience_reach_pending": "독자 수를 세는 중…",
+        "audience_reach_failed": "독자 수를 세지 못했습니다. 공지사항은 그대로 발송할 수 있습니다.",
+        "targeted_notice": "조건을 지정한 공지사항은 해당 독자의 알림으로만 전달되므로 모두에게 발송하거나 사이트 배너로 게시할 수 없습니다.",
+        "deliver_at": "발송 일시",
+        "deliver_at_description": "시각은 {$time_zone} 기준입니다. 비워 두면 바로 발송합니다.",
+        "submit_schedule": "공지사항 발송 예약",
+        "save": "저장",
+        "saving": "저장하는 중…"
       },
       "validation": {
         "body_required": "본문은 필수입니다.",
@@ -614,12 +651,42 @@
         "locale_invalid": "지원하는 언어를 선택하세요.",
         "link_invalid": "링크는 / 또는 http(s)://로 시작해야 합니다.",
         "pinned_until_invalid": "게시를 종료할 일시를 올바르게 입력해 주세요.",
-        "pinned_until_future": "게시 종료 일시는 미래의 시각이어야 합니다."
+        "pinned_until_future": "게시 종료 일시는 미래의 시각이어야 합니다.",
+        "deliver_at_invalid": "발송 일시를 올바르게 입력해 주세요.",
+        "deliver_at_future": "발송 일시는 미래의 시각이어야 합니다.",
+        "pinned_until_after_deliver_at": "게시 종료 일시는 발송 일시보다 뒤여야 합니다.",
+        "audience_condition_required": "조건을 하나 이상 추가하거나 받는 사람을 모두로 정해 주세요.",
+        "audience_condition_duplicate": "같은 조건은 한 번만 쓸 수 있습니다.",
+        "audience_condition_invalid": "목록에서 조건을 선택하세요.",
+        "audience_series_required": "시리즈를 선택하세요.",
+        "audience_days_range": "일수는 1부터 3650까지 입력해 주세요.",
+        "audience_targeted_broadcast": "조건을 지정한 공지사항은 모두에게 발송하거나 사이트 배너로 게시할 수 없습니다."
       },
       "banner_showing": "게시 중",
       "banner_showing_until": "{$until}까지 게시",
       "unpin_action": "게시 중지",
-      "unpin_failed": "배너를 내리지 못했습니다. 잠시 후 다시 시도해 주세요."
+      "unpin_failed": "배너를 내리지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "edit_title": "예약한 공지사항 편집",
+      "edit_description": "발송되기 전까지는 공지사항의 모든 내용을 변경하거나 삭제할 수 있습니다.",
+      "edit_unavailable_title": "공지사항을 편집 화면에서 열 수 없습니다",
+      "edit_unavailable_description": "사이트의 언어를 불러오지 못했습니다. 이대로 저장하면 다른 언어의 번역이 삭제됩니다. 잠시 후 다시 시도해 주세요.",
+      "edit_action": "편집",
+      "delete_action": "삭제",
+      "deleting": "삭제하는 중…",
+      "delete_confirm": "이 예약한 공지사항을 삭제할까요?",
+      "delete_confirm_description": "아직 발송되지 않아 어떤 독자도 보지 않았습니다. 삭제하면 되돌릴 수 없습니다.",
+      "delete_confirm_action": "삭제",
+      "delete_failed": "공지사항을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "update_failed": "공지사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "already_delivered": "이 공지사항은 이미 발송되어 변경하거나 삭제할 수 없습니다.",
+      "audience": {
+        "everyone": "모두",
+        "targeted": "조건 {$count}개"
+      },
+      "status": {
+        "scheduled": "{$at} 발송 예정",
+        "delivered": "{$at} 발송됨"
+      }
     },
     "campaign_banners": {
       "title": "캠페인 배너",

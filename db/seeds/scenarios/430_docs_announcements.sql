@@ -65,6 +65,8 @@ inserted AS (
         announcement_type,
         link_url,
         created_at,
+        deliver_at,
+        delivered_at,
         pinned,
         pinned_until,
         delivery
@@ -74,6 +76,10 @@ inserted AS (
         t.id,
         'announcement',
         a.link_url,
+        a.created_at,
+        -- Each went out when it was written; the list's Status column shows
+        -- the instant, which would otherwise be the moment the file ran.
+        a.created_at,
         a.created_at,
         a.pinned,
         a.pinned_until,

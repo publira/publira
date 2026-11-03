@@ -214,6 +214,7 @@ services:
         analytics.localhost
         announce.localhost
         app-links.localhost
+        audience.localhost
         aset.localhost
         banner.localhost
         bilingual.localhost
@@ -258,6 +259,7 @@ services:
         admin.analytics.localhost
         admin.announce.localhost
         admin.app-links.localhost
+        admin.audience.localhost
         admin.aset.localhost
         admin.banner.localhost
         admin.bilingual.localhost

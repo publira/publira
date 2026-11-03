@@ -1,11 +1,13 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import * as ActionForm from "@publira/ui-components/action-form";
+import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -23,8 +25,9 @@ import type {
 
 type AnnouncementManagerProps = CursorPageHrefs & {
   /**
-   * Whether the operator may take a banner down, which a tenant auditor may
-   * not: the banner's state is shown to them without the control.
+   * Whether the operator may take a banner down or edit a scheduled
+   * announcement, which a tenant auditor may not: the state is shown to them
+   * without the controls.
    */
   canEdit: boolean;
   listErrorMessage?: string;
@@ -101,6 +104,106 @@ const DeliveryLabel = ({
 };
 
 /**
+ * Who the announcement is addressed to: everyone, or how many conditions select
+ * its readers. Each branch names its key inside the `<Message>` it returns.
+ */
+const AudienceLabel = ({ audience }: Pick<AnnouncementItem, "audience">) => {
+  if (!audience) {
+    return <Message message="admin.announcements.audience.everyone" />;
+  }
+
+  return (
+    <Message
+      message="admin.announcements.audience.targeted"
+      values={{ count: audience.length }}
+    />
+  );
+};
+
+/**
+ * Whether the announcement has gone out, and when it did or will. Each branch
+ * names its key inside the `<Message>` it returns.
+ */
+const StatusLabel = ({
+  announcement,
+  locale,
+  timeZone,
+}: {
+  announcement: AnnouncementItem;
+  locale: Locale;
+  timeZone: string;
+}) => {
+  if (announcement.deliveredAt) {
+    return (
+      <Message
+        message="admin.announcements.status.delivered"
+        values={{
+          at: formatAnnouncementDateTime(
+            announcement.deliveredAt,
+            locale,
+            timeZone
+          ),
+        }}
+      />
+    );
+  }
+
+  return (
+    <Message
+      message="admin.announcements.status.scheduled"
+      values={{
+        at: formatAnnouncementDateTime(
+          announcement.deliverAt,
+          locale,
+          timeZone
+        ),
+      }}
+    />
+  );
+};
+
+/**
+ * The status column of one row, and the link that edits a scheduled
+ * announcement. One that has gone out is what its readers were pointed at, so
+ * it has no such link.
+ */
+const StatusCell = ({
+  announcement,
+  canEdit,
+  locale,
+  timeZone,
+}: {
+  announcement: AnnouncementItem;
+  canEdit: boolean;
+  locale: Locale;
+  timeZone: string;
+}) => (
+  <div className="grid gap-2">
+    <span>
+      <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+        <StatusLabel
+          announcement={announcement}
+          locale={locale}
+          timeZone={timeZone}
+        />
+      </Suspense>
+    </span>
+    {canEdit && !announcement.deliveredAt ? (
+      <LinkButton
+        className="justify-self-start"
+        render={<Link href={`/announcements/${announcement.id}/edit`} />}
+        size="sm"
+        variant="outline"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="admin.announcements.edit_action" />
+        </Suspense>
+      </LinkButton>
+    ) : null}
+  </div>
+);
+
+/**
  * The banner column of one row: what it says now, and the control that takes it
  * down. Only a pinned announcement has either — an ordinary one is a row in the
  * list and nothing else.
@@ -171,8 +274,6 @@ const TranslatedLocales = ({ locales }: { locales: readonly Locale[] }) => {
 const AnnouncementListBody = ({
   announcements,
   canEdit,
-  emptyDescription,
-  emptyTitle,
   hasPageLinks,
   itemLabel,
   listErrorMessage,
@@ -180,12 +281,10 @@ const AnnouncementListBody = ({
   tenantId,
   timeZone,
 }: {
-  /** The empty state's copy, resolved by the async parent. */
   announcements: AnnouncementItem[];
   canEdit: boolean;
-  emptyDescription: string;
-  emptyTitle: string;
   hasPageLinks: boolean;
+  /** The list's name, an interpolated value rather than a node. */
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
@@ -215,8 +314,16 @@ const AnnouncementListBody = ({
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
         <EmptyState.Heading>
-          <EmptyState.Title>{emptyTitle}</EmptyState.Title>
-          <EmptyState.Description>{emptyDescription}</EmptyState.Description>
+          <EmptyState.Title>
+            <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+              <Message message="admin.announcements.empty_title" />
+            </Suspense>
+          </EmptyState.Title>
+          <EmptyState.Description>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.announcements.empty_description" />
+            </Suspense>
+          </EmptyState.Description>
         </EmptyState.Heading>
       </CursorPageEmptyState>
     );
@@ -244,6 +351,16 @@ const AnnouncementListBody = ({
           <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.body" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-32">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.announcements.columns.audience" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-44">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.announcements.columns.status" />
             </Suspense>
           </Table.Head>
           <Table.Head className="w-40">
@@ -281,6 +398,19 @@ const AnnouncementListBody = ({
             </Table.Cell>
             <Table.Cell>{excerpt(announcement.body, 72)}</Table.Cell>
             <Table.Cell>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <AudienceLabel audience={announcement.audience} />
+              </Suspense>
+            </Table.Cell>
+            <Table.Cell>
+              <StatusCell
+                announcement={announcement}
+                canEdit={canEdit}
+                locale={locale}
+                timeZone={timeZone}
+              />
+            </Table.Cell>
+            <Table.Cell>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <DeliveryLabel delivery={announcement.delivery} />
               </Suspense>
@@ -302,6 +432,10 @@ const AnnouncementListBody = ({
   );
 };
 
+/**
+ * Awaits the catalog for the list's name and the pager's `aria-label`, which
+ * are an interpolated value and an attribute rather than nodes.
+ */
 export const AnnouncementManager = async ({
   canEdit,
   listErrorMessage,
@@ -326,8 +460,6 @@ export const AnnouncementManager = async ({
       <AnnouncementListBody
         announcements={announcements}
         canEdit={canEdit}
-        emptyDescription={t("admin.announcements.empty_description")}
-        emptyTitle={t("admin.announcements.empty_title")}
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.announcements.title")}
         listErrorMessage={listErrorMessage}
@@ -339,9 +471,12 @@ export const AnnouncementManager = async ({
       {showPagination ? (
         <PaginationFooter.Root>
           <PaginationFooter.Description>
-            {t("admin.announcements.pagination_description", {
-              count: pageSize,
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message
+                message="admin.announcements.pagination_description"
+                values={{ count: pageSize }}
+              />
+            </Suspense>
           </PaginationFooter.Description>
           <PaginationFooter.Controls
             aria-label={t("admin.announcements.pagination_aria")}

@@ -1,17 +1,26 @@
-import { AnnouncementDelivery } from "@publira/api-client/admin/announcement";
+import {
+  AnnouncementDelivery,
+  SubscriptionState,
+} from "@publira/api-client/admin/announcement";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockCacheLife,
+  mockCountAnnouncementAudienceApi,
+  mockDeleteAnnouncementApi,
   mockGetSessionId,
   mockListAnnouncementsApi,
   mockCreateAnnouncementsApi,
+  mockUpdateAnnouncementApi,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
+  mockCountAnnouncementAudienceApi: vi.fn(),
   mockCreateAnnouncementsApi: vi.fn(),
+  mockDeleteAnnouncementApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockListAnnouncementsApi: vi.fn(),
+  mockUpdateAnnouncementApi: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -21,8 +30,11 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     announcement: {
+      countAnnouncementAudience: mockCountAnnouncementAudienceApi,
       createAnnouncement: mockCreateAnnouncementsApi,
+      deleteAnnouncement: mockDeleteAnnouncementApi,
       listAnnouncements: mockListAnnouncementsApi,
+      updateAnnouncement: mockUpdateAnnouncementApi,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -130,13 +142,20 @@ describe("announcement lib", () => {
     expect(result.ok).toBe(true);
     expect(result.announcements).toEqual([
       {
+        audience: null,
         body: "Announcement body",
         createdAt: "2026-04-04T00:00:00Z",
+        deliverAt: "",
+        deliveredAt: "",
         delivery: "everyone",
         id: "n1",
         linkUrl: "/series/S001",
         title: "Announcement title",
         translatedLocales: ["ja", "en"],
+        translations: [
+          { body: "", locale: "en", title: "" },
+          { body: "", locale: "ja", title: "" },
+        ],
       },
     ]);
   });
@@ -247,6 +266,8 @@ describe("announcement lib", () => {
 
     const result = await createAnnouncement(
       {
+        audience: null,
+        deliverAt: "",
         delivery: "everyone",
         linkUrl: "",
         pinned: false,
@@ -268,6 +289,8 @@ describe("announcement lib", () => {
     expect(mockCreateAnnouncementsApi).toHaveBeenCalledOnce();
     expect(mockCreateAnnouncementsApi).toHaveBeenCalledWith(
       {
+        audience: undefined,
+        deliverAt: "",
         delivery: AnnouncementDelivery.EVERYONE,
         linkUrl: "",
         pinned: false,
@@ -284,5 +307,237 @@ describe("announcement lib", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("sends every condition of a targeted audience and the time it goes out at", async () => {
+    mockCreateAnnouncementsApi.mockResolvedValue({
+      announcement: { id: "n1" },
+    });
+
+    const { createAnnouncement } = await import("./announcement");
+
+    await createAnnouncement(
+      {
+        audience: [
+          { seriesPublicId: "SERIES001", type: "follows_series" },
+          { planPublicId: "", state: "ended", type: "subscription" },
+          { days: 30, type: "last_read_days_ago" },
+          { locale: "ja", type: "locale" },
+          { type: "has_mobile_push_device" },
+        ],
+        deliverAt: "2099-06-01T00:00:00Z",
+        delivery: "preferred",
+        linkUrl: "",
+        pinned: false,
+        pinnedUntil: "",
+        tenantId: "TENANT001",
+        translations: [{ body: "Body", locale: "", title: "Title" }],
+      },
+      "en"
+    );
+
+    expect(mockCreateAnnouncementsApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience: {
+          conditions: [
+            {
+              condition: {
+                case: "followsSeries",
+                value: { seriesPublicId: "SERIES001" },
+              },
+            },
+            {
+              condition: {
+                case: "subscription",
+                value: { planPublicId: "", state: SubscriptionState.ENDED },
+              },
+            },
+            {
+              condition: { case: "lastReadDaysAgo", value: { days: 30 } },
+            },
+            { condition: { case: "locale", value: { locale: "ja" } } },
+            { condition: { case: "hasMobilePushDevice", value: {} } },
+          ],
+        },
+        deliverAt: "2099-06-01T00:00:00Z",
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("reads a stored audience and the times an announcement goes and went out at", async () => {
+    mockListAnnouncementsApi.mockResolvedValue({
+      announcements: [
+        {
+          ...announcement("n1", "2026-04-04T00:00:00Z"),
+          audience: {
+            conditions: [
+              {
+                condition: {
+                  case: "boughtSeriesEpisode",
+                  value: { seriesPublicId: "SERIES001" },
+                },
+              },
+              {
+                condition: {
+                  case: "subscription",
+                  value: {
+                    planPublicId: "PLAN001",
+                    state: SubscriptionState.ACTIVE,
+                  },
+                },
+              },
+              { condition: { case: "neverPurchased", value: {} } },
+              {
+                condition: { case: "signedUpWithinDays", value: { days: 7 } },
+              },
+              // A code this build serves no catalog for.
+              { condition: { case: "locale", value: { locale: "xx" } } },
+            ],
+          },
+          deliverAt: "2099-06-01T00:00:00Z",
+          deliveredAt: "",
+        },
+        announcement("n2", "2026-04-01T00:00:00Z"),
+      ],
+    });
+
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001", "en", {});
+
+    expect(result.announcements.map(({ audience }) => audience)).toEqual([
+      [
+        { seriesPublicId: "SERIES001", type: "bought_series_episode" },
+        { planPublicId: "PLAN001", state: "active", type: "subscription" },
+        { type: "never_purchased" },
+        { days: 7, type: "signed_up_within_days" },
+      ],
+      null,
+    ]);
+    expect(result.announcements[0]).toMatchObject({
+      deliverAt: "2099-06-01T00:00:00Z",
+      deliveredAt: "",
+    });
+  });
+
+  it("finds one announcement on a later page of the list for its edit screen", async () => {
+    mockListAnnouncementsApi
+      .mockResolvedValueOnce({
+        announcements: [announcement("n3", "2026-06-01T00:00:00Z")],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        announcements: [announcement("n2", "2026-05-01T00:00:00Z")],
+        nextToken: "page-3",
+      });
+
+    const { getAnnouncement } = await import("./announcement");
+
+    const result = await getAnnouncement(
+      { announcementId: "n2", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ announcement: { id: "n2" }, ok: true });
+    // The walk stops at the page that holds it.
+    expect(mockListAnnouncementsApi).toHaveBeenCalledTimes(2);
+    expect(mockListAnnouncementsApi).toHaveBeenLastCalledWith(
+      expect.objectContaining({ token: "page-2" }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("answers no announcement when the list ends without it", async () => {
+    mockListAnnouncementsApi.mockResolvedValue({
+      announcements: [announcement("n1", "2026-06-01T00:00:00Z")],
+    });
+
+    const { getAnnouncement } = await import("./announcement");
+
+    await expect(
+      getAnnouncement({ announcementId: "n9", tenantId: "TENANT001" }, "en")
+    ).resolves.toEqual({ announcement: null, ok: true });
+  });
+
+  it("says a save came too late once the announcement has gone out", async () => {
+    mockUpdateAnnouncementApi.mockRejectedValue(
+      new ConnectError("already delivered", Code.FailedPrecondition)
+    );
+
+    const { updateAnnouncement } = await import("./announcement");
+
+    const result = await updateAnnouncement(
+      {
+        announcementId: "n1",
+        audience: null,
+        deliverAt: "",
+        delivery: "preferred",
+        linkUrl: "",
+        pinned: false,
+        pinnedUntil: "",
+        tenantId: "TENANT001",
+        translations: [{ body: "Body", locale: "", title: "Title" }],
+      },
+      "en"
+    );
+
+    expect(mockUpdateAnnouncementApi).toHaveBeenCalledWith(
+      expect.objectContaining({ announcementId: "n1", deliverAt: "" }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      message:
+        "The announcement has already gone out, so it can no longer be changed or deleted.",
+      ok: false,
+    });
+  });
+
+  it("deletes a scheduled announcement by its id", async () => {
+    mockDeleteAnnouncementApi.mockResolvedValue({});
+
+    const { deleteAnnouncement } = await import("./announcement");
+
+    await expect(
+      deleteAnnouncement({ announcementId: "n1", tenantId: "TENANT001" }, "en")
+    ).resolves.toEqual({ ok: true });
+    expect(mockDeleteAnnouncementApi).toHaveBeenCalledWith(
+      { announcementId: "n1", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("counts the readers an audience selects, and reports a failure as one", async () => {
+    mockCountAnnouncementAudienceApi.mockResolvedValueOnce({
+      readerCount: 12n,
+    });
+
+    const { countAnnouncementAudience } = await import("./announcement");
+
+    const input = {
+      audience: [{ type: "never_purchased" as const }],
+      tenantId: "TENANT001",
+    };
+
+    await expect(countAnnouncementAudience(input)).resolves.toEqual({
+      ok: true,
+      readerCount: 12,
+    });
+    expect(mockCountAnnouncementAudienceApi).toHaveBeenCalledWith(
+      {
+        audience: {
+          conditions: [{ condition: { case: "neverPurchased", value: {} } }],
+        },
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+
+    mockCountAnnouncementAudienceApi.mockRejectedValueOnce(
+      new ConnectError("down", Code.Unavailable)
+    );
+
+    await expect(countAnnouncementAudience(input)).resolves.toEqual({
+      ok: false,
+    });
   });
 });

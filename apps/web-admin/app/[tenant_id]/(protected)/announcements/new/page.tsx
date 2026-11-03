@@ -15,10 +15,8 @@ import { isSignedInTenantEditor } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
-import { findTenantLocales } from "#lib/tenant-locales";
-import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import { AnnouncementForm } from "../_components/announcement-form";
+import { AnnouncementFormData } from "../_components/announcement-form-data";
 import { createAnnouncementAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -50,23 +48,12 @@ const AnnouncementFormSkeleton = () => (
   </div>
 );
 
-const AnnouncementFormData = async () => {
-  const tenantId = await getTenantId();
-
-  const [tenantLocales, timeZone] = await Promise.all([
-    findTenantLocales(tenantId),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
-
-  return (
-    <AnnouncementForm
-      action={createAnnouncementAction}
-      tenantId={tenantId}
-      tenantLocales={tenantLocales}
-      timeZone={timeZone}
-    />
-  );
-};
+const NewAnnouncementFormData = async () => (
+  <AnnouncementFormData
+    action={createAnnouncementAction}
+    tenantId={await getTenantId()}
+  />
+);
 
 const NewAnnouncementPage = () => (
   <ConsolePage.Root>
@@ -98,7 +85,7 @@ const NewAnnouncementPage = () => (
         </ConsolePage.Header>
         <ConsolePage.Content>
           <Suspense fallback={<AnnouncementFormSkeleton />}>
-            <AnnouncementFormData />
+            <NewAnnouncementFormData />
           </Suspense>
         </ConsolePage.Content>
       </TenantEditorRoute>

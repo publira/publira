@@ -9,6 +9,8 @@ interface InstantInputProps {
   initialValue?: string;
   /** The field the Action reads the instant from; the wall clock is `<name>_local`. */
   name: string;
+  /** Called with the wall clock as typed, empty once it is cleared. */
+  onValueChange?: (localValue: string) => void;
   /** Whether the wall clock has to be filled in before the form submits. */
   required?: boolean;
   step?: number;
@@ -29,6 +31,7 @@ interface InstantInputProps {
 export const InstantInput = ({
   initialValue = "",
   name,
+  onValueChange,
   required,
   step,
   timeZone,
@@ -49,7 +52,10 @@ export const InstantInput = ({
       />
       <Input
         name={`${name}_local`}
-        onChange={(event) => setLocalValue(event.currentTarget.value)}
+        onChange={(event) => {
+          setLocalValue(event.currentTarget.value);
+          onValueChange?.(event.currentTarget.value);
+        }}
         required={required}
         step={step}
         type="datetime-local"
