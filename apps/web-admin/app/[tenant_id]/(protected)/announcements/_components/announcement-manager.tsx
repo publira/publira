@@ -1,4 +1,4 @@
-import { getLocaleLabel } from "@publira/i18n";
+import { getLocaleLabel, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
@@ -55,6 +55,19 @@ const formatAnnouncementDateTime = (
   locale: Locale,
   timeZone: string
 ): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
+
+/**
+ * A count of readers once the announcement has gone out, and a dash while it is
+ * scheduled: 0 then would read as an announcement nobody was sent.
+ */
+const readerCountOf = (
+  announcement: AnnouncementItem,
+  value: number,
+  locale: Locale
+): string =>
+  announcement.deliveredAt
+    ? new Intl.NumberFormat(toIntlLocale(locale)).format(value)
+    : "—";
 
 /**
  * Whether the site is showing this announcement as a banner, and until when.
@@ -363,6 +376,16 @@ const AnnouncementListBody = ({
               <Message message="admin.announcements.columns.status" />
             </Suspense>
           </Table.Head>
+          <Table.Head className="w-24 text-right">
+            <Suspense fallback={<SkeletonLine className="ml-auto h-4 w-16" />}>
+              <Message message="admin.announcements.columns.delivered" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-24 text-right">
+            <Suspense fallback={<SkeletonLine className="ml-auto h-4 w-16" />}>
+              <Message message="admin.announcements.columns.opened" />
+            </Suspense>
+          </Table.Head>
           <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.columns.delivery" />
@@ -409,6 +432,12 @@ const AnnouncementListBody = ({
                 locale={locale}
                 timeZone={timeZone}
               />
+            </Table.Cell>
+            <Table.Cell className="text-right tabular-nums">
+              {readerCountOf(announcement, announcement.deliveredCount, locale)}
+            </Table.Cell>
+            <Table.Cell className="text-right tabular-nums">
+              {readerCountOf(announcement, announcement.openedCount, locale)}
             </Table.Cell>
             <Table.Cell>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>

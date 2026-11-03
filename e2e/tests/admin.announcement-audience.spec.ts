@@ -133,6 +133,54 @@ const announcementRow = (page: Page, title: string): Locator =>
     has: page.getByRole("cell", { exact: true, name: title }),
   });
 
+/** The cell of `row` under the column headed `header`. */
+const columnCell = async (
+  page: Page,
+  row: Locator,
+  header: string
+): Promise<Locator> => {
+  const headers = await page.getByRole("columnheader").allTextContents();
+
+  return row.getByRole("cell").nth(headers.indexOf(header));
+};
+
+/**
+ * Reloads the list until the row titled `title` reports `delivered` and
+ * `opened`. The list the redirect lands on was read before the worker wrote
+ * the notification rows, and the counts are read again only with the list.
+ */
+const expectReaderCounts = async (
+  page: Page,
+  title: string,
+  delivered: string,
+  opened: string
+) => {
+  await expect(async () => {
+    await page.reload();
+
+    const row = announcementRow(page, title);
+
+    await expect(await columnCell(page, row, "Delivered")).toHaveText(
+      delivered,
+      { timeout: 1000 }
+    );
+    await expect(await columnCell(page, row, "Opened")).toHaveText(opened, {
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 30_000 });
+};
+
+/** Records `userPublicId` opening the announcement titled `title`, as the storefront does. */
+const openAnnouncementAs = (title: string, userPublicId: string) =>
+  runSql(`
+    INSERT INTO announcement_reads (announcement_id, tenant_id, user_id)
+    SELECT at.announcement_id, at.tenant_id, u.id
+    FROM announcement_translations at
+    JOIN users u ON u.tenant_id = at.tenant_id
+    WHERE at.title = ${quoteSqlLiteral(title)}
+      AND u.public_id = ${quoteSqlLiteral(userPublicId)};
+  `);
+
 /**
  * Targeted and scheduled announcements, posted by a tenant editor: the
  * audience conditions on `/announcements/new` and the readers they reach, and a
@@ -229,6 +277,10 @@ test.describe("admin announcement audience and schedule", () => {
     await expect
       .poll(() => notifiedUserPublicIds(title), { timeout: 30_000 })
       .toEqual([ANNOUNCEMENT_AUDIENCE_FOLLOWER.publicId]);
+
+    // The list counts the one reader it reached, and that reader opening it.
+    openAnnouncementAs(title, ANNOUNCEMENT_AUDIENCE_FOLLOWER.publicId);
+    await expectReaderCounts(page, title, "1", "1");
   });
 
   test("an editor picks a plan by its name, and the announcement reaches the plan's subscriber and nobody else", async ({
@@ -315,6 +367,9 @@ test.describe("admin announcement audience and schedule", () => {
       deliverAt: tomorrow,
       deliveredAt: "",
     });
+    // Nobody has been sent it yet, so there is nothing to count.
+    await expect(await columnCell(page, row, "Delivered")).toHaveText("—");
+    await expect(await columnCell(page, row, "Opened")).toHaveText("—");
 
     await row.getByRole("link", { name: "Edit" }).click();
     await expect(
@@ -345,6 +400,7 @@ test.describe("admin announcement audience and schedule", () => {
     await expect
       .poll(() => notifiedUserPublicIds(title).length, { timeout: 30_000 })
       .toBe(3);
+    await expectReaderCounts(page, title, "3", "0");
   });
 
   test("a scheduled announcement is deleted from its edit screen", async ({

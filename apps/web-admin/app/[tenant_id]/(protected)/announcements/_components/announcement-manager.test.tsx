@@ -50,9 +50,11 @@ const announcement = (id: string): AnnouncementItem => ({
   createdAt: "2026-06-01T00:00:00Z",
   deliverAt: "2026-06-01T00:00:00Z",
   deliveredAt: "2026-06-01T00:00:00Z",
+  deliveredCount: 3,
   delivery: "preferred",
   id,
   linkUrl: "/series/S001",
+  openedCount: 1,
   pinned: false,
   pinnedUntil: "",
   title: "Scheduled maintenance",
@@ -61,6 +63,12 @@ const announcement = (id: string): AnnouncementItem => ({
     { body: "Announcement body", locale: "en", title: "Scheduled maintenance" },
   ],
 });
+
+/** The text of every cell of `row`, in column order. */
+const cellsOf = (row: HTMLElement) =>
+  within(row)
+    .getAllByRole("cell")
+    .map(({ textContent }) => textContent);
 
 afterEach(() => {
   cleanup();
@@ -328,4 +336,42 @@ describe("AnnouncementManager", () => {
       ).toBeNull();
     }
   );
+
+  it("counts the readers a delivered announcement reached and those who opened it, and neither while it is scheduled", async () => {
+    render(
+      await AnnouncementManager({
+        announcements: [
+          { ...announcement("n1"), deliveredCount: 1200, openedCount: 37 },
+          {
+            ...announcement("n2"),
+            deliverAt: "2026-07-01T09:00:00Z",
+            deliveredAt: "",
+            deliveredCount: 0,
+            openedCount: 0,
+          },
+        ],
+        canEdit: true,
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map(({ textContent }) => textContent);
+
+    const delivered = headers.indexOf("Delivered");
+    const opened = headers.indexOf("Opened");
+    const [, sent, scheduled] = screen.getAllByRole("row");
+
+    expect([cellsOf(sent)[delivered], cellsOf(sent)[opened]]).toEqual([
+      "1,200",
+      "37",
+    ]);
+    expect([cellsOf(scheduled)[delivered], cellsOf(scheduled)[opened]]).toEqual(
+      ["—", "—"]
+    );
+  });
 });

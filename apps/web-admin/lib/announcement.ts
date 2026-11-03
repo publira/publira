@@ -263,9 +263,11 @@ type RawAnnouncement = Pick<
   | "createdAt"
   | "deliverAt"
   | "deliveredAt"
+  | "deliveredCount"
   | "delivery"
   | "id"
   | "linkUrl"
+  | "openedCount"
   | "pinned"
   | "pinnedUntil"
   | "title"
@@ -289,9 +291,11 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => {
     createdAt: item.createdAt,
     deliverAt: item.deliverAt ?? "",
     deliveredAt: item.deliveredAt ?? "",
+    deliveredCount: Number(item.deliveredCount ?? 0),
     delivery: deliveryValues[item.delivery] ?? "preferred",
     id: item.id,
     linkUrl: item.linkUrl,
+    openedCount: Number(item.openedCount ?? 0),
     pinned: item.pinned,
     pinnedUntil: item.pinnedUntil,
     title: item.title,

@@ -88,6 +88,8 @@ An announcement with conditions reaches each reader it selects as their notifica
 
 A reader sees each announcement in their language: on the site, the one they browse in, and in the app, the one the app is shown in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
 
+Once an announcement has gone out, the list shows how far it reached. The **Delivered** column counts the readers it was delivered to: every reader with an account for an announcement to everyone, or the readers its conditions selected when it went out. A reader whose notification settings keep announcements out of their notifications is counted too. The **Opened** column counts the readers who have opened it, on the site or in the app. Both columns show — while the announcement is scheduled, and **Delivered** can read 0 for a moment after it goes out, until its readers have been notified.
+
 ## The site banner
 
 An announcement created with **Show as a site banner** is shown above the header of every page of the site, to every visitor, signed in or not, and at the top of the app's catalog screen. On the site its link leads to the announcement's **Link**, or to the announcement's own page when it has none. A visitor can close it, and it then stays closed in that browser.
