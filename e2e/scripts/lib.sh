@@ -87,6 +87,11 @@ export PUBLIRA_E2E_STRIPE_BASE_URL="${PUBLIRA_E2E_STRIPE_BASE_URL:-http://127.0.
 # The stand-in for Google's tag gateway, which a spec reads what the storefront
 # forwarded from.
 export PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_BASE_URL="${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}}"
+# The image `publira server` runs in and the container it runs as, named after
+# the compose project the way compose names the browser's, so a second stack
+# runs a server of its own.
+export PUBLIRA_E2E_SERVER_IMAGE="${COMPOSE_PROJECT_NAME}-server"
+export PUBLIRA_E2E_SERVER_CONTAINER="${COMPOSE_PROJECT_NAME}-server"
 # Built from the port like the rest, so a second stack's screenshot projects
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
@@ -676,6 +681,12 @@ start_process_group() {
   # this shell rather than reported back over whatever it prints next.
   disown "%%"
   write_pid "${name}" "${pid}"
+}
+
+# A server container outlives a `docker run` that was killed rather than
+# stopped, still holding its name and its port.
+remove_server_container() {
+  docker rm --force "${PUBLIRA_E2E_SERVER_CONTAINER}" > /dev/null 2>&1 || true
 }
 
 # A zombie still answers `kill -0`, and one nobody reaps would keep a finished

@@ -10,6 +10,10 @@
 # stopping it takes the tenant and platform consoles down with the tenant site
 # — which is why the specs that do it run one after another rather than beside
 # each other.
+#
+# The binary is the one built on the host, run inside the image
+# `e2e/server/Dockerfile` describes, so the libvips that converts every image a
+# screenshot draws is that image's and not the host's.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -41,27 +45,38 @@ start_server() {
     exit 1
   fi
 
+  e2e_log "building the server image ${PUBLIRA_E2E_SERVER_IMAGE}"
+  docker build --quiet --tag "${PUBLIRA_E2E_SERVER_IMAGE}" "${PUBLIRA_E2E_DIR}/server" > /dev/null
+
+  # A container a killed run left behind holds the name and the port.
+  remove_server_container
+
+  # Every other setting the server reads, lib.sh has already exported.
+  export PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_E2E_PUBLIC_API_PORT}"
+
+  # The environment a process on the host would have inherited, as far as the
+  # server reads it: its own settings, the AWS SDK's, and OpenTelemetry's.
+  local -a env_args=()
+  local name
+  while read -r name; do
+    case "${name}" in
+      PUBLIRA_* | AWS_* | OTEL_*) env_args+=(--env "${name}") ;;
+    esac
+  done < <(compgen -e)
+
+  # Host networking, as for the edge and the browser: every address the server
+  # dials is on the host's loopback, and the edge reaches it on the same port.
+  # `docker run` stays in the foreground and passes SIGTERM on to the server,
+  # so the process group stop_pid_file stops is the server's own.
   e2e_log "starting server (:${PUBLIRA_E2E_PUBLIC_API_PORT})"
   start_process_group "server" "${REPO_ROOT}/server" "${LOG_DIR}/server.log" \
-    env \
-    PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
-    PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
-    PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
-    PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_E2E_PUBLIC_API_PORT}" \
-    PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
-    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
-    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN:-}" \
-    PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN:-}" \
-    PUBLIRA_WEB_STOREFRONT_INTERNAL_URL="${PUBLIRA_WEB_STOREFRONT_INTERNAL_URL:-}" \
-    PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL:-}" \
-    PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL:-}" \
-    PUBLIRA_SIGN_IN_APPLE_KEYS_URL="${PUBLIRA_SIGN_IN_APPLE_KEYS_URL}" \
-    PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL="${PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL}" \
-    PUBLIRA_STRIPE_API_URL="${PUBLIRA_STRIPE_API_URL}" \
-    AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
-    AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
-    "${bin}" server
+    docker run --rm \
+    --name "${PUBLIRA_E2E_SERVER_CONTAINER}" \
+    --network host \
+    --user "$(id -u):$(id -g)" \
+    --volume "${bin}:/usr/local/bin/publira:ro" \
+    "${env_args[@]}" \
+    "${PUBLIRA_E2E_SERVER_IMAGE}" server
 }
 
 wait_server_ready() {
@@ -100,6 +115,7 @@ case "${1:-}" in
   stop)
     ensure_run_dirs
     stop_pid_file "server"
+    remove_server_container
     wait_server_stopped
     ;;
   *)

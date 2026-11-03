@@ -12,4 +12,5 @@ status=0
 for app in web-platform web-admin web-storefront worker email-renderer server sign-in-provider stripe google-tag-gateway; do
   stop_pid_file "${app}" || status=1
 done
+remove_server_container
 exit "${status}"
