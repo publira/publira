@@ -332,7 +332,9 @@ REVOKE EXECUTE ON FUNCTION
     public.series_follows_record_change(),
     public.creator_follows_record_change(),
     public.tenant_image_shown_by_brand_mark(uuid, uuid),
-    public.count_announcement_audience(jsonb)
+    public.count_announcement_audience(jsonb),
+    public.count_announcement_deliveries(uuid),
+    public.count_announcement_opens(uuid)
 FROM PUBLIC;
 
 -- tenant_image_shown_by_brand_mark is called from the restrictive policy on
@@ -345,6 +347,14 @@ GRANT EXECUTE ON FUNCTION public.tenant_image_shown_by_brand_mark(uuid, uuid) TO
 -- count_announcement_audience is the console's: an editor sees how many readers
 -- an audience reaches before delivering to it.
 GRANT EXECUTE ON FUNCTION public.count_announcement_audience(jsonb) TO publira_admin;
+
+-- count_announcement_deliveries and count_announcement_opens are the console's
+-- too: the announcement list shows how many readers each one was delivered to
+-- and how many opened it.
+GRANT EXECUTE ON FUNCTION
+    public.count_announcement_deliveries(uuid),
+    public.count_announcement_opens(uuid)
+TO publira_admin;
 
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It

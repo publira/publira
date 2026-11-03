@@ -743,7 +743,9 @@ SELECT
     n.delivery,
     n.audience,
     n.deliver_at,
-    n.delivered_at
+    n.delivered_at,
+    count_announcement_deliveries(n.id)::bigint AS delivered_count,
+    count_announcement_opens(n.id)::bigint AS opened_count
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -785,6 +787,8 @@ type ListAnnouncementsForTenantAscRow struct {
 	Audience         *json.RawMessage `json:"audience"`
 	DeliverAt        sql.NullTime     `json:"deliver_at"`
 	DeliveredAt      sql.NullTime     `json:"delivered_at"`
+	DeliveredCount   int64            `json:"delivered_count"`
+	OpenedCount      int64            `json:"opened_count"`
 }
 
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
@@ -817,6 +821,8 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 			&i.Audience,
 			&i.DeliverAt,
 			&i.DeliveredAt,
+			&i.DeliveredCount,
+			&i.OpenedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -846,7 +852,9 @@ SELECT
     n.delivery,
     n.audience,
     n.deliver_at,
-    n.delivered_at
+    n.delivered_at,
+    count_announcement_deliveries(n.id)::bigint AS delivered_count,
+    count_announcement_opens(n.id)::bigint AS opened_count
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -888,6 +896,8 @@ type ListAnnouncementsForTenantDescRow struct {
 	Audience         *json.RawMessage `json:"audience"`
 	DeliverAt        sql.NullTime     `json:"deliver_at"`
 	DeliveredAt      sql.NullTime     `json:"delivered_at"`
+	DeliveredCount   int64            `json:"delivered_count"`
+	OpenedCount      int64            `json:"opened_count"`
 }
 
 // Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -895,7 +905,9 @@ type ListAnnouncementsForTenantDescRow struct {
 // scanned in reverse. The handler flips ASC rows back into display order.
 // A parameterized ORDER BY cannot be read in index order, so each scan
 // direction gets its own query. Each row carries the title and body of its
-// translation in the tenant default locale, else its oldest.
+// translation in the tenant default locale, else its oldest, and how many
+// readers it was delivered to and how many opened it, which the console's role
+// can count only through the functions: it reads none of those rows.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForTenantDesc,
@@ -927,6 +939,8 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 			&i.Audience,
 			&i.DeliverAt,
 			&i.DeliveredAt,
+			&i.DeliveredCount,
+			&i.OpenedCount,
 		); err != nil {
 			return nil, err
 		}

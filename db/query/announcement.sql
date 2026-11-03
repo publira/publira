@@ -132,7 +132,9 @@ LIMIT sqlc.arg('limit');
 -- scanned in reverse. The handler flips ASC rows back into display order.
 -- A parameterized ORDER BY cannot be read in index order, so each scan
 -- direction gets its own query. Each row carries the title and body of its
--- translation in the tenant default locale, else its oldest.
+-- translation in the tenant default locale, else its oldest, and how many
+-- readers it was delivered to and how many opened it, which the console's role
+-- can count only through the functions: it reads none of those rows.
 -- cursor rules: proto/README.md.
 -- name: ListAnnouncementsForTenantDesc :many
 SELECT
@@ -149,7 +151,9 @@ SELECT
     n.delivery,
     n.audience,
     n.deliver_at,
-    n.delivered_at
+    n.delivered_at,
+    count_announcement_deliveries(n.id)::bigint AS delivered_count,
+    count_announcement_opens(n.id)::bigint AS opened_count
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')
@@ -182,7 +186,9 @@ SELECT
     n.delivery,
     n.audience,
     n.deliver_at,
-    n.delivered_at
+    n.delivered_at,
+    count_announcement_deliveries(n.id)::bigint AS delivered_count,
+    count_announcement_opens(n.id)::bigint AS opened_count
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')

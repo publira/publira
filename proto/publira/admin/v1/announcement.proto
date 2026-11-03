@@ -136,6 +136,11 @@ message AdminAnnouncement {
   // queued. Empty while it is scheduled, which is the one time it can be
   // edited or deleted.
   string delivered_at = 15;
+  // The readers its notification was written for. 0 until the worker has
+  // delivered it, which is a moment after delivered_at is set.
+  int64 delivered_count = 16;
+  // The readers who have opened it.
+  int64 opened_count = 17;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

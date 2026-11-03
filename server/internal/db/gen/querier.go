@@ -1867,7 +1867,9 @@ type Querier interface {
 	// scanned in reverse. The handler flips ASC rows back into display order.
 	// A parameterized ORDER BY cannot be read in index order, so each scan
 	// direction gets its own query. Each row carries the title and body of its
-	// translation in the tenant default locale, else its oldest.
+	// translation in the tenant default locale, else its oldest, and how many
+	// readers it was delivered to and how many opened it, which the console's role
+	// can count only through the functions: it reads none of those rows.
 	// cursor rules: proto/README.md.
 	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
 	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
