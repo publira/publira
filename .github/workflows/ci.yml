@@ -1281,11 +1281,23 @@ jobs:
     # slowest, which held 18), `main` in two shards holds at most 8.4 minutes
     # of tests and `admin` in three at most 11.1, while a fourth `admin`
     # shard would end below `exclusive`, the next longest entry.
+    #
+    # `docs-screenshots` is sharded too, and the screenshot baseline before it
+    # on one stack is an entry of its own: a sharded project's dependencies run
+    # in full in every shard, and the baseline is 1.5 minutes of wall clock in
+    # front of the documentation's. As one entry the two took 10.2 minutes,
+    # 7.2 of them Playwright, against 8.4 for the longest `main` entry. A file
+    # runs on one worker, and `admin.catalog.docs-screenshots.spec.ts`, 5.1
+    # minutes of tests, bounds the shard that holds it whatever the split; two
+    # shards put it beside `admin.docs-screenshots.spec.ts` and leave the
+    # other files, 6.9 minutes of tests, to the second.
     strategy:
       fail-fast: false
       matrix:
         include:
           - { id: screenshots, group: screenshots, shard: 1/1 }
+          - { id: docs-screenshots-1, group: docs-screenshots, shard: 1/2 }
+          - { id: docs-screenshots-2, group: docs-screenshots, shard: 2/2 }
           - { id: main-1, group: main, shard: 1/2 }
           - { id: main-2, group: main, shard: 2/2 }
           - { id: admin-1, group: admin, shard: 1/3 }
@@ -1435,7 +1447,7 @@ jobs:
       # logs are what say whether the server or the browser was the one taking
       # the time.
       - name: Upload / E2E app logs
-        if: success() && matrix.id == 'screenshots'
+        if: success() && (matrix.group == 'screenshots' || matrix.group == 'docs-screenshots')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-${{ matrix.id }}

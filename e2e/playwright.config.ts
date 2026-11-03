@@ -286,6 +286,9 @@ const screenshotProjects: PlaywrightTestProject[] = [
       baseURL: WEB_PLATFORM_BASE_URL,
     },
   },
+];
+
+const docsScreenshotProjects: PlaywrightTestProject[] = [
   // Both consoles, in every locale `docs/` has a tree for: each spec names its
   // console's `baseURL` and loops over the locales itself. The image path is
   // `docs/<locale>/<page directory>/<page slug>-<subject>.png`, which
@@ -776,6 +779,7 @@ const tracingProjects: PlaywrightTestProject[] = [
  * that group's projects alone.
  *
  * The `dependencies` between groups only order work on one shared stack: the
+ * screenshot baseline before the documentation's scenario tenants, the
  * screenshot projects before the publishing suites, the outage and
  * deployment-wide suites after the parallel ones, the timing suite after
  * everything. A group run drops them, since another group's projects are not
@@ -788,6 +792,10 @@ const tracingProjects: PlaywrightTestProject[] = [
  */
 const groups = {
   admin: adminProjects,
+  // Its own group rather than the screenshot baseline's, so that CI can shard
+  // it: a sharded project's dependencies run in full in every shard, and the
+  // baseline projects would be run again on every runner.
+  "docs-screenshots": docsScreenshotProjects,
   exclusive: exclusiveProjects,
   main: mainProjects,
   performance: performanceProjects,
@@ -834,6 +842,7 @@ const selectedProjects =
   groupName === undefined
     ? [
         ...screenshotProjects,
+        ...docsScreenshotProjects,
         ...mainProjects,
         ...adminProjects,
         ...exclusiveProjects,
