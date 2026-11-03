@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsField,
@@ -12,7 +13,7 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
-import { SEED_CATALOG } from "../src/scenarios/admin-publish";
+import { SEED_ADMIN, SEED_CATALOG } from "../src/scenarios/admin-publish";
 import {
   COMMENT_MODERATION_ADMIN,
   COMMENT_MODERATION_EPISODE,
@@ -57,10 +58,11 @@ const DOCS_DRAFT_EPISODE = "DocsEPSDAAA2";
 /** Sign in as the seed tenant's admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsSeedAdmin(page, path);
+  await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
 };
@@ -72,13 +74,13 @@ const openScreen = async (
  */
 const openModerationScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsAdmin(
+  await consoleSessions.signIn(
     page,
     COMMENT_MODERATION_ADMIN,
-    path,
     WEB_ADMIN_COMMENT_MODERATION_BASE_URL
   );
   await setDocsLocale(page, WEB_ADMIN_COMMENT_MODERATION_BASE_URL, locale);
@@ -90,9 +92,10 @@ for (const locale of DOCS_LOCALES) {
 
   test.describe(`web-admin catalog documentation screenshots in ${locale}`, () => {
     test("the sidebar's Catalog group, for Publishing works", async ({
+      consoleSessions,
       page,
     }) => {
-      await openScreen(page, locale, "/series");
+      await openScreen(page, consoleSessions, locale, "/series");
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
@@ -108,9 +111,10 @@ for (const locale of DOCS_LOCALES) {
 
     test.describe("series", () => {
       test("the series list, with its filters and row actions", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/series");
+        await openScreen(page, consoleSessions, locale, "/series");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
@@ -121,8 +125,8 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test.describe("the series form", () => {
-        test.beforeEach(async ({ page }) => {
-          await openScreen(page, locale, "/series/new");
+        test.beforeEach(async ({ consoleSessions, page }) => {
+          await openScreen(page, consoleSessions, locale, "/series/new");
           await expect(
             page.getByRole("heading", {
               level: 1,
@@ -297,8 +301,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the language tabs above the series form", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}`);
+      test("the language tabs above the series form", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -315,8 +322,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the cover image tab, with its four shapes", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}?tab=eye-catch`);
+      test("the cover image tab, with its four shapes", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/series/${SERIES}?tab=eye-catch`
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -329,8 +344,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Free if you wait, below the series form", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}`);
+      test("Free if you wait, below the series form", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.series.wait_free.title")),
@@ -341,9 +359,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("Free after publication, below Free if you wait", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, `/series/${SERIES}`);
+        await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.series.free_after.title")),
@@ -357,9 +376,15 @@ for (const locale of DOCS_LOCALES) {
         const volumesPath = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/volumes`;
 
         test("the Volumes tab, with a volume on sale and one that is not", async ({
+          consoleSessions,
           page,
         }) => {
-          await openModerationScreen(page, locale, volumesPath);
+          await openModerationScreen(
+            page,
+            consoleSessions,
+            locale,
+            volumesPath
+          );
 
           await expectDocsScreenshot(page, {
             element: [
@@ -377,10 +402,12 @@ for (const locale of DOCS_LOCALES) {
         });
 
         test("the episodes of a volume that has been on sale", async ({
+          consoleSessions,
           page,
         }) => {
           await openModerationScreen(
             page,
+            consoleSessions,
             locale,
             `${volumesPath}/DocsVOLMAAA1`
           );
@@ -396,9 +423,13 @@ for (const locale of DOCS_LOCALES) {
           });
         });
 
-        test("the bookstore links of a volume", async ({ page }) => {
+        test("the bookstore links of a volume", async ({
+          consoleSessions,
+          page,
+        }) => {
           await openModerationScreen(
             page,
+            consoleSessions,
             locale,
             `${volumesPath}/DocsVOLMAAA1`
           );
@@ -414,9 +445,10 @@ for (const locale of DOCS_LOCALES) {
           });
         });
 
-        test("the sale of a volume", async ({ page }) => {
+        test("the sale of a volume", async ({ consoleSessions, page }) => {
           await openModerationScreen(
             page,
+            consoleSessions,
             locale,
             `${volumesPath}/DocsVOLMAAA1`
           );
@@ -436,10 +468,11 @@ for (const locale of DOCS_LOCALES) {
       const editPath = `${episodesPath}/${EPISODE}`;
 
       test("the episode list, with an episode in each state", async ({
+        consoleSessions,
         page,
       }) => {
         const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes`;
-        await openModerationScreen(page, locale, path);
+        await openModerationScreen(page, consoleSessions, locale, path);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -458,11 +491,17 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("the publishing calendar, with a month's scheduled episode", async ({
+        consoleSessions,
         page,
       }) => {
         // The month the moderation tenant's scheduled episode is due in,
         // years ahead, so no day of it is marked as today on any run.
-        await openModerationScreen(page, locale, "/calendar?month=2030-01");
+        await openModerationScreen(
+          page,
+          consoleSessions,
+          locale,
+          "/calendar?month=2030-01"
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -475,8 +514,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates an episode", async ({ page }) => {
-        await openScreen(page, locale, `${episodesPath}/new`);
+      test("the form that creates an episode", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, `${episodesPath}/new`);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -501,9 +543,10 @@ for (const locale of DOCS_LOCALES) {
         ["publishing-settings", "admin.series.episodes.schedule_title"],
       ] as const) {
         test(`the ${subject} section of the episode's edit screen`, async ({
+          consoleSessions,
           page,
         }) => {
-          await openScreen(page, locale, editPath);
+          await openScreen(page, consoleSessions, locale, editPath);
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -517,9 +560,15 @@ for (const locale of DOCS_LOCALES) {
       // A free episode has no preview pages to set, so the section is taken on
       // the paid one, where every field of it shows.
       test("the price and reading period section of a paid episode's edit screen", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, `${episodesPath}/${PAID_EPISODE}`);
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `${episodesPath}/${PAID_EPISODE}`
+        );
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.series.episodes.pricing.title")),
@@ -530,9 +579,15 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("the campaign prices section of a paid episode's edit screen", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, `${episodesPath}/${PAID_EPISODE}`);
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `${episodesPath}/${PAID_EPISODE}`
+        );
 
         await expectDocsScreenshot(page, {
           element: docsSection(
@@ -545,8 +600,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the preview on the episode's edit screen", async ({ page }) => {
-        await openScreen(page, locale, editPath);
+      test("the preview on the episode's edit screen", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, editPath);
 
         const preview = docsSection(
           page,
@@ -574,10 +632,11 @@ for (const locale of DOCS_LOCALES) {
       // the moderation tenant's draft, which no other shot shows and which
       // `450_docs_publishing.sql` writes afresh, cover gone, on the next run.
       test("the cover image tab, with the episode's own cover", async ({
+        consoleSessions,
         page,
       }) => {
         const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${DOCS_DRAFT_EPISODE}?tab=eye-catch`;
-        await openModerationScreen(page, locale, path);
+        await openModerationScreen(page, consoleSessions, locale, path);
 
         await page
           .locator('input[name="eye_catch_image"]')
@@ -611,9 +670,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("Shown on and Sold on, on the episode's edit screen", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, editPath);
+        await openScreen(page, consoleSessions, locale, editPath);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -630,8 +690,8 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test.describe("the episode list's dialogs", () => {
-        test.beforeEach(async ({ page }) => {
-          await openScreen(page, locale, episodesPath);
+        test.beforeEach(async ({ consoleSessions, page }) => {
+          await openScreen(page, consoleSessions, locale, episodesPath);
           // Three episodes, as an editor about to change their credits, or
           // put them on sale, together would pick them. Nothing is saved.
           // The first is Select all on this page.
@@ -697,8 +757,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("labels", () => {
-      test("the label list", async ({ page }) => {
-        await openScreen(page, locale, "/labels");
+      test("the label list", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/labels");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
@@ -708,8 +768,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates a label", async ({ page }) => {
-        await openScreen(page, locale, "/labels/new");
+      test("the form that creates a label", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/labels/new");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -722,8 +785,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a label's page, with its two tabs", async ({ page }) => {
-        await openScreen(page, locale, `/labels/${SEED_CATALOG.labelPublicId}`);
+      test("a label's page, with its two tabs", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/labels/${SEED_CATALOG.labelPublicId}`
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -738,8 +809,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("Authors and Author roles", () => {
-      test("the Author list", async ({ page }) => {
-        await openScreen(page, locale, "/creators");
+      test("the Author list", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/creators");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
@@ -749,8 +820,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates an Author", async ({ page }) => {
-        await openScreen(page, locale, "/creators/new");
+      test("the form that creates an Author", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/creators/new");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -763,9 +837,13 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the reader accounts linked to an Author", async ({ page }) => {
+      test("the reader accounts linked to an Author", async ({
+        consoleSessions,
+        page,
+      }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/creators/${SEED_CATALOG.creatorPublicId}`
         );
@@ -778,8 +856,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the Author roles", async ({ page }) => {
-        await openScreen(page, locale, "/creator-roles");
+      test("the Author roles", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/creator-roles");
 
         await expectDocsScreenshot(page, {
           element: docsScreen(page),
@@ -789,8 +867,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the credits on a series", async ({ page }) => {
-        await openScreen(page, locale, `/series/${SERIES}`);
+      test("the credits on a series", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -803,8 +881,8 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the genre list", async ({ page }) => {
-      await openScreen(page, locale, "/genres");
+    test("the genre list", async ({ consoleSessions, page }) => {
+      await openScreen(page, consoleSessions, locale, "/genres");
 
       await expectDocsScreenshot(page, {
         element: docsScreen(page),
@@ -814,8 +892,11 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("a genre's name in each language", async ({ page }) => {
-      await openScreen(page, locale, `/genres/${GENRE}`);
+    test("a genre's name in each language", async ({
+      consoleSessions,
+      page,
+    }) => {
+      await openScreen(page, consoleSessions, locale, `/genres/${GENRE}`);
       await expect(
         page.getByRole("group", { name: t("admin.genres.form.name") })
       ).toBeVisible();

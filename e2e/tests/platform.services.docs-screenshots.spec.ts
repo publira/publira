@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   querySql,
   restorePlatformSettingsRow,
@@ -18,13 +20,13 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 import {
   platformEmailSettingsTag,
   platformSearchSettingsTag,
   platformStorageSettingsTag,
   revalidatePlatformTags,
 } from "../src/revalidate";
+import { SEED_PLATFORM_SUPER_ADMIN } from "../src/scenarios/platform-tenants";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 /**
@@ -56,10 +58,15 @@ const UNREACHABLE_ENGINE_URL = "http://127.0.0.1:9";
 /** Sign in as the seeded super admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsSeedPlatformSuperAdmin(page, path);
+  await consoleSessions.signIn(
+    page,
+    SEED_PLATFORM_SUPER_ADMIN,
+    WEB_PLATFORM_BASE_URL
+  );
   await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
   await page.goto(path);
 };
@@ -75,8 +82,8 @@ for (const locale of DOCS_LOCALES) {
 
   test.describe(`web-platform service documentation screenshots in ${locale}`, () => {
     test.describe("object storage", () => {
-      test("the bucket's settings", async ({ page }) => {
-        await openScreen(page, locale, "/services/storage");
+      test("the bucket's settings", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/services/storage");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -97,8 +104,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the two kinds of credential", async ({ page }) => {
-        await openScreen(page, locale, "/services/storage");
+      test("the two kinds of credential", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/services/storage");
 
         await expectDocsScreenshot(page, {
           element: credentials(page),
@@ -108,8 +115,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a connection test that fails", async ({ page }) => {
-        await openScreen(page, locale, "/services/storage");
+      test("a connection test that fails", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/services/storage");
 
         await page
           .getByRole("textbox", {
@@ -144,11 +154,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a saved access key", async ({ page }) => {
+      test("a saved access key", async ({ consoleSessions, page }) => {
         const saved = snapshotPlatformSettingsRow("platform_storage_config");
 
         try {
-          await openScreen(page, locale, "/services/storage");
+          await openScreen(page, consoleSessions, locale, "/services/storage");
           await page
             .getByRole("radio", {
               name: t("platform.storage.credentials.access_key"),
@@ -205,8 +215,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("email", () => {
-      test("the platform's SMTP account", async ({ page }) => {
-        await openScreen(page, locale, "/services/email");
+      test("the platform's SMTP account", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/services/email");
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.settings.smtp_card_title")),
@@ -216,8 +226,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the SMTP connection test", async ({ page }) => {
-        await openScreen(page, locale, "/services/email");
+      test("the SMTP connection test", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/services/email");
 
         await page
           .getByRole("button", { name: t("platform.settings.smtp_test") })
@@ -235,11 +245,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a saved password", async ({ page }) => {
+      test("a saved password", async ({ consoleSessions, page }) => {
         const saved = snapshotPlatformSettingsRow("platform_smtp_config");
 
         try {
-          await openScreen(page, locale, "/services/email");
+          await openScreen(page, consoleSessions, locale, "/services/email");
           await page
             .getByRole("textbox", { name: t("platform.settings.username") })
             .fill("mailer");
@@ -291,8 +301,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("search", () => {
-      test("moving to OpenSearch", async ({ page }) => {
-        await openScreen(page, locale, "/services/search");
+      test("moving to OpenSearch", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/services/search");
 
         await page.getByRole("radio", { name: /^OpenSearch/u }).check();
         await expect(
@@ -310,6 +320,7 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("an index that failed to build, and the text analysis", async ({
+        consoleSessions,
         page,
       }) => {
         // An install that never left PostgreSQL has no row at all, which is
@@ -340,7 +351,7 @@ for (const locale of DOCS_LOCALES) {
             .not.toBe("");
           await revalidatePlatformTags([platformSearchSettingsTag]);
 
-          await openScreen(page, locale, "/services/search");
+          await openScreen(page, consoleSessions, locale, "/services/search");
 
           const failedAt = page.getByText(
             docsTextPattern(locale, "platform.search.status.failed_at")
@@ -380,8 +391,8 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("Web Push", async ({ page }) => {
-      await openScreen(page, locale, "/services/webpush");
+    test("Web Push", async ({ consoleSessions, page }) => {
+      await openScreen(page, consoleSessions, locale, "/services/webpush");
 
       await expectDocsScreenshot(page, {
         element: [

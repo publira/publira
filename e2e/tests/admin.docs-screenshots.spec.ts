@@ -1,11 +1,9 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import {
-  signInAsAdmin,
-  signInAsAnnouncementBannerAdmin,
-  signInAsSeedAdmin,
-} from "../src/admin";
+import { signInAsAdmin } from "../src/admin";
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import { applyScenarioSql } from "../src/db";
 import {
   DOCS_LOCALES,
@@ -20,6 +18,8 @@ import {
   ADMIN_MFA_SETTINGS_ADMIN,
   ADMIN_MFA_SETTINGS_SCENARIO,
 } from "../src/scenarios/admin-mfa-settings";
+import { SEED_ADMIN } from "../src/scenarios/admin-publish";
+import { ANNOUNCEMENT_BANNER_ADMIN } from "../src/scenarios/announcement-banner";
 import { CONTACT_WORKFLOW_EDITOR } from "../src/scenarios/contact-workflow";
 import { totpCode } from "../src/totp";
 import {
@@ -54,10 +54,11 @@ const PAGE_ID = "018f1000-0001-7000-8000-000000000001";
 /** Sign in as the seed tenant's admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsSeedAdmin(page, path);
+  await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
 };
@@ -65,10 +66,15 @@ const openScreen = async (
 /** The same on the banner tenant's console, which holds the announcements. */
 const openBannerTenant = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string
 ): Promise<void> => {
-  await signInAsAnnouncementBannerAdmin(page, path);
+  await consoleSessions.signIn(
+    page,
+    ANNOUNCEMENT_BANNER_ADMIN,
+    WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL
+  );
   await setDocsLocale(page, WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL, locale);
   await page.goto(`${WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL}${path}`);
 };
@@ -96,12 +102,13 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test("a Tenant admin's sidebar, for Roles on the console's overview", async ({
+      consoleSessions,
       page,
     }) => {
       // Tall enough for the whole sidebar, which scrolls inside itself at the
       // project's height.
       await page.setViewportSize({ height: 1400, width: 1280 });
-      await openScreen(page, locale, "/");
+      await openScreen(page, consoleSessions, locale, "/");
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
@@ -115,9 +122,12 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the sidebar groups the setup pages are in", async ({ page }) => {
+    test("the sidebar groups the setup pages are in", async ({
+      consoleSessions,
+      page,
+    }) => {
       await page.setViewportSize({ height: 1400, width: 1280 });
-      await openScreen(page, locale, "/");
+      await openScreen(page, consoleSessions, locale, "/");
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
@@ -132,8 +142,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("settings", () => {
-      test("the General tab", async ({ page }) => {
-        await openScreen(page, locale, "/settings");
+      test("the General tab", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/settings");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -146,12 +156,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a card as an Editor sees it", async ({ page }) => {
+      test("a card as an Editor sees it", async ({ consoleSessions, page }) => {
         // The help desk tenant has an Editor, and the seed tenant none.
-        await signInAsAdmin(
+        await consoleSessions.signIn(
           page,
           CONTACT_WORKFLOW_EDITOR,
-          "/settings",
           WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL
         );
         await setDocsLocale(page, WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL, locale);
@@ -180,8 +189,8 @@ for (const locale of DOCS_LOCALES) {
           "admin.settings.site_verification.title",
         ],
       ] as const) {
-        test(`the ${subject} card`, async ({ page }) => {
-          await openScreen(page, locale, "/settings");
+        test(`the ${subject} card`, async ({ consoleSessions, page }) => {
+          await openScreen(page, consoleSessions, locale, "/settings");
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -197,9 +206,10 @@ for (const locale of DOCS_LOCALES) {
         ["retention-periods", "admin.settings.policy.retention.title"],
       ] as const) {
         test(`the ${subject} form on Limits and retention`, async ({
+          consoleSessions,
           page,
         }) => {
-          await openScreen(page, locale, "/settings/policy");
+          await openScreen(page, consoleSessions, locale, "/settings/policy");
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -214,8 +224,16 @@ for (const locale of DOCS_LOCALES) {
         ["reader-icon-policy", "admin.settings.reader_icons.policy.title"],
         ["reader-icon-presets", "admin.settings.reader_icons.presets.title"],
       ] as const) {
-        test(`the ${subject} card on Reader icons`, async ({ page }) => {
-          await openScreen(page, locale, "/settings/reader-icons");
+        test(`the ${subject} card on Reader icons`, async ({
+          consoleSessions,
+          page,
+        }) => {
+          await openScreen(
+            page,
+            consoleSessions,
+            locale,
+            "/settings/reader-icons"
+          );
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -228,8 +246,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("branding", () => {
-      test("the logo and the icon", async ({ page }) => {
-        await openScreen(page, locale, "/branding");
+      test("the logo and the icon", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/branding");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -246,8 +264,8 @@ for (const locale of DOCS_LOCALES) {
         ["colors", "admin.settings.theme.groups.brand.title"],
         ["typefaces", "admin.settings.theme.typefaces.title"],
       ] as const) {
-        test(`the theme's ${subject}`, async ({ page }) => {
-          await openScreen(page, locale, "/branding");
+        test(`the theme's ${subject}`, async ({ consoleSessions, page }) => {
+          await openScreen(page, consoleSessions, locale, "/branding");
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -258,8 +276,8 @@ for (const locale of DOCS_LOCALES) {
         });
       }
 
-      test("the theme's preview", async ({ page }) => {
-        await openScreen(page, locale, "/branding");
+      test("the theme's preview", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/branding");
         await page
           .getByRole("tab", { name: t("admin.settings.theme.tabs.preview") })
           .click();
@@ -272,8 +290,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the theme's dark palette", async ({ page }) => {
-        await openScreen(page, locale, "/branding");
+      test("the theme's dark palette", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/branding");
         await page
           .getByRole("tab", { name: t("admin.settings.theme.tabs.dark") })
           .click();
@@ -286,8 +304,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the brand marks", async ({ page }) => {
-        await openScreen(page, locale, "/branding");
+      test("the brand marks", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/branding");
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.settings.brand_marks.title")),
@@ -298,9 +316,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("the guidelines a brand mark is uploaded under", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/branding");
+        await openScreen(page, consoleSessions, locale, "/branding");
         await docsSection(page, t("admin.settings.brand_marks.title"))
           .getByRole("button", { name: t("admin.settings.brand_marks.upload") })
           .first()
@@ -316,8 +335,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("pages", () => {
-      test("the page list", async ({ page }) => {
-        await openScreen(page, locale, "/pages");
+      test("the page list", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/pages");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -327,8 +346,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates a page", async ({ page }) => {
-        await openScreen(page, locale, "/pages/new");
+      test("the form that creates a page", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/pages/new");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -341,8 +363,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a page's edit screen, with its languages", async ({ page }) => {
-        await openScreen(page, locale, `/pages/${PAGE_ID}`);
+      test("a page's edit screen, with its languages", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, `/pages/${PAGE_ID}`);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -355,8 +380,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("a page's versions", async ({ page }) => {
-        await openScreen(page, locale, `/pages/${PAGE_ID}`);
+      test("a page's versions", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, `/pages/${PAGE_ID}`);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.pages.workspace.versions_title")),
@@ -369,9 +394,10 @@ for (const locale of DOCS_LOCALES) {
 
     test.describe("announcements", () => {
       test("the announcement list, with its Banner column", async ({
+        consoleSessions,
         page,
       }) => {
-        await openBannerTenant(page, locale, "/announcements");
+        await openBannerTenant(page, consoleSessions, locale, "/announcements");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("row").last()],
@@ -381,8 +407,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates an announcement", async ({ page }) => {
-        await openBannerTenant(page, locale, "/announcements/new");
+      test("the form that creates an announcement", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openBannerTenant(
+          page,
+          consoleSessions,
+          locale,
+          "/announcements/new"
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -399,8 +433,11 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("campaign banners", () => {
-      test("the banner list, with a row in each standing", async ({ page }) => {
-        await openScreen(page, locale, "/campaign-banners");
+      test("the banner list, with a row in each standing", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/campaign-banners");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -413,8 +450,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the form that creates a banner", async ({ page }) => {
-        await openScreen(page, locale, "/campaign-banners/new");
+      test("the form that creates a banner", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          "/campaign-banners/new"
+        );
 
         await expectDocsScreenshot(page, {
           element: [
@@ -436,8 +481,8 @@ for (const locale of DOCS_LOCALES) {
         ["list", "admin.members.list_title"],
         ["invitations", "admin.members.invitations_title"],
       ] as const) {
-        test(`the ${subject} section`, async ({ page }) => {
-          await openScreen(page, locale, "/members");
+        test(`the ${subject} section`, async ({ consoleSessions, page }) => {
+          await openScreen(page, consoleSessions, locale, "/members");
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
@@ -450,8 +495,11 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("email", () => {
-      test("the tenant's own SMTP server, turned on", async ({ page }) => {
-        await openScreen(page, locale, "/integrations/email");
+      test("the tenant's own SMTP server, turned on", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/integrations/email");
         await page
           .getByRole("checkbox", {
             name: t("admin.settings.email.override"),
@@ -466,10 +514,10 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the connection test", async ({ page }) => {
+      test("the connection test", async ({ consoleSessions, page }) => {
         // Tall enough for the dialog and the form behind it.
         await page.setViewportSize({ height: 1400, width: 1280 });
-        await openScreen(page, locale, "/integrations/email");
+        await openScreen(page, consoleSessions, locale, "/integrations/email");
         await page
           .getByRole("checkbox", {
             name: t("admin.settings.email.override"),
@@ -487,8 +535,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("receiving replies, turned on", async ({ page }) => {
-        await openScreen(page, locale, "/integrations/email");
+      test("receiving replies, turned on", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/integrations/email");
 
         const inbound = docsSection(
           page,
@@ -510,11 +561,15 @@ for (const locale of DOCS_LOCALES) {
       });
     });
 
-    test("the audit log, with its filters", async ({ page }) => {
+    test("the audit log, with its filters", async ({
+      consoleSessions,
+      page,
+    }) => {
       // The seeded entries alone: the spec that turns on two-step
       // verification adds entries of its own, dated today.
       await openScreen(
         page,
+        consoleSessions,
         locale,
         "/audit-logs?from=2026-04-01&to=2026-04-30"
       );
@@ -528,8 +583,8 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("your account", () => {
-      test("the account menu", async ({ page }) => {
-        await openScreen(page, locale, "/");
+      test("the account menu", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/");
 
         const trigger = page.getByRole("button", {
           name: docsTextPattern(locale, "admin.shell.account_menu"),
@@ -545,8 +600,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("changing your email address", async ({ page }) => {
-        await openScreen(page, locale, "/settings/account");
+      test("changing your email address", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/settings/account");
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("admin.settings.email_change.title")),

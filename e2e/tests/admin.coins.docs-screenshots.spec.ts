@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
 import { setTenantCoinsAllowed } from "../src/coins";
+import { test } from "../src/console-sessions";
 import { applyScenarioSql } from "../src/db";
 import {
   DOCS_LOCALES,
@@ -67,11 +67,10 @@ for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
 
   test.describe(`web-admin coins documentation screenshots in ${locale}`, () => {
-    test.beforeEach(async ({ page }) => {
-      await signInAsAdmin(
+    test.beforeEach(async ({ consoleSessions, page }) => {
+      await consoleSessions.signIn(
         page,
         STOREFRONT_COINS_ADMIN,
-        COINS_PATH,
         WEB_ADMIN_COINS_BASE_URL
       );
       await setDocsLocale(page, WEB_ADMIN_COINS_BASE_URL, locale);

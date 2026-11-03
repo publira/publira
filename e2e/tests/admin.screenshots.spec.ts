@@ -1,8 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsSeedAdmin } from "../src/admin";
+import { test } from "../src/console-sessions";
+import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import { expectScreenshot, SCREENSHOT_VIEWPORTS } from "../src/screenshots";
+import { WEB_ADMIN_BASE_URL } from "../src/urls";
 
 /**
  * What the tenant console looks like, at a phone width, a tablet width, and a desktop width.
@@ -42,9 +44,9 @@ test.describe("web-admin signed-out screenshots", () => {
 test.describe("web-admin screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {
-      test.beforeEach(async ({ page }) => {
+      test.beforeEach(async ({ consoleSessions, page }) => {
         await page.setViewportSize(viewport);
-        await signInAsSeedAdmin(page, "/");
+        await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
       });
 
       test("the dashboard", async ({ page }) => {

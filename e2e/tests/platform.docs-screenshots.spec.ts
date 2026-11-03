@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
+import type { ConsoleSessions } from "../src/console-sessions";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsField,
@@ -11,7 +13,6 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
-import { signInAsPlatformOperator } from "../src/platform";
 import {
   DOCS_PLATFORM_AUDITOR,
   DOCS_PLATFORM_OPERATOR,
@@ -39,11 +40,12 @@ test.use({ baseURL: WEB_PLATFORM_BASE_URL });
 /** Sign in as `credentials` and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
+  consoleSessions: ConsoleSessions,
   locale: string,
   path: string,
   credentials: { email: string; password: string } = SEED_PLATFORM_SUPER_ADMIN
 ): Promise<void> => {
-  await signInAsPlatformOperator(page, credentials, path);
+  await consoleSessions.signIn(page, credentials, WEB_PLATFORM_BASE_URL);
   await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
   await page.goto(path);
 };
@@ -72,10 +74,12 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("a change made from the command line in the audit log", async ({
+        consoleSessions,
         page,
       }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/audit-logs?tenant_id=${DOCS_PLATFORM_TENANT.publicId}&action=tenant_created`
         );
@@ -90,8 +94,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the operator list", async ({ page }) => {
-        await openScreen(page, locale, "/operators");
+      test("the operator list", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/operators");
 
         await expect(
           page.getByText(DOCS_PLATFORM_AUDITOR.name, { exact: true })
@@ -105,8 +109,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("adding an operator", async ({ page }) => {
-        await openScreen(page, locale, "/operators/new");
+      test("adding an operator", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/operators/new");
 
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.locator("main form")],
@@ -117,10 +121,12 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("an operator's page, for changing their role and suspending them", async ({
+        consoleSessions,
         page,
       }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/operators/${DOCS_PLATFORM_AUDITOR.publicId}`
         );
@@ -136,8 +142,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the account menu", async ({ page }) => {
-        await openScreen(page, locale, "/");
+      test("the account menu", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/");
 
         const button = page.getByRole("button", {
           name: docsTextPattern(locale, "platform.shell.account_menu"),
@@ -159,8 +165,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("changing an operator's own email address", async ({ page }) => {
-        await openScreen(page, locale, "/account");
+      test("changing an operator's own email address", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/account");
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.settings.email_change_title")),
@@ -170,8 +179,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("an operator's own two-step verification", async ({ page }) => {
-        await openScreen(page, locale, "/account");
+      test("an operator's own two-step verification", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/account");
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.settings.mfa.title")),
@@ -183,8 +195,11 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("platform defaults and policies", () => {
-      test("where the settings are in the sidebar", async ({ page }) => {
-        await openScreen(page, locale, "/general");
+      test("where the settings are in the sidebar", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/general");
 
         const sidebar = page.getByRole("navigation").first();
         await expectDocsScreenshot(page, {
@@ -200,8 +215,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("General settings", async ({ page }) => {
-        await openScreen(page, locale, "/general");
+      test("General settings", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/general");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -215,9 +230,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("requiring two-step verification of tenant administrators", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/policies/security");
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -232,9 +248,10 @@ for (const locale of DOCS_LOCALES) {
       });
 
       test("requiring two-step verification of platform operators", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/policies/security");
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -250,8 +267,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("allowing tenants to issue coins", async ({ page }) => {
-        await openScreen(page, locale, "/policies/security");
+      test("allowing tenants to issue coins", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -265,8 +285,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the rate limits on Security", async ({ page }) => {
-        await openScreen(page, locale, "/policies/security");
+      test("the rate limits on Security", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -285,8 +305,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the sign-in attempt limits on Security", async ({ page }) => {
-        await openScreen(page, locale, "/policies/security");
+      test("the sign-in attempt limits on Security", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -302,8 +325,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the anonymous read limits on Security", async ({ page }) => {
-        await openScreen(page, locale, "/policies/security");
+      test("the anonymous read limits on Security", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -317,8 +343,11 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the disposable email domain list", async ({ page }) => {
-        await openScreen(page, locale, "/policies/security");
+      test("the disposable email domain list", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: docsField(
@@ -332,8 +361,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Community limits", async ({ page }) => {
-        await openScreen(page, locale, "/policies/community");
+      test("Community limits", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/community");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -348,8 +377,8 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Retention defaults", async ({ page }) => {
-        await openScreen(page, locale, "/policies/retention");
+      test("Retention defaults", async ({ consoleSessions, page }) => {
+        await openScreen(page, consoleSessions, locale, "/policies/retention");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -366,9 +395,16 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test("an episode that could not be published, under Notifications", async ({
+      consoleSessions,
       page,
     }) => {
-      await openScreen(page, locale, "/notifications", DOCS_PLATFORM_OPERATOR);
+      await openScreen(
+        page,
+        consoleSessions,
+        locale,
+        "/notifications",
+        DOCS_PLATFORM_OPERATOR
+      );
 
       await expect(
         page
@@ -386,9 +422,10 @@ for (const locale of DOCS_LOCALES) {
 
     test.describe("securing an install", () => {
       test("requiring two-step verification and saving the policy", async ({
+        consoleSessions,
         page,
       }) => {
-        await openScreen(page, locale, "/policies/security");
+        await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
           element: [
@@ -407,9 +444,13 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the audit log narrowed to one tenant", async ({ page }) => {
+      test("the audit log narrowed to one tenant", async ({
+        consoleSessions,
+        page,
+      }) => {
         await openScreen(
           page,
+          consoleSessions,
           locale,
           `/audit-logs?tenant_id=${DOCS_PLATFORM_TENANT.publicId}`
         );

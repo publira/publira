@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
   docsField,
@@ -44,11 +44,10 @@ for (const locale of DOCS_LOCALES) {
     });
 
   test.describe(`web-admin Google tag documentation screenshots in ${locale}`, () => {
-    test.beforeEach(async ({ page }) => {
-      await signInAsAdmin(
+    test.beforeEach(async ({ consoleSessions, page }) => {
+      await consoleSessions.signIn(
         page,
         DOCS_GOOGLE_TAG_ADMIN,
-        GOOGLE_TAG_PATH,
         WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL
       );
       await setDocsLocale(page, WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL, locale);
