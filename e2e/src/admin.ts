@@ -409,6 +409,34 @@ export const episodeFormFields = (page: Page): EpisodeFormFields => ({
 });
 
 /**
+ * Type `instant` into the episode's publication time, once the form can post
+ * it.
+ *
+ * The form posts the instant in a hidden `publish_at` field React writes from
+ * the wall clock. A wall clock typed before the form hydrates is put back by
+ * hydration and never reaches that field, so the save that follows reports
+ * success and posts no time. The fill is repeated until the hidden field has
+ * moved off the value the page opened with.
+ */
+export const fillPublishAt = async (
+  page: Page,
+  instant: Temporal.Instant
+): Promise<void> => {
+  const field = episodeFormFields(page).publishAt;
+
+  const posted = field.locator(
+    "xpath=preceding-sibling::input[@name='publish_at'][1]"
+  );
+
+  const opened = await posted.inputValue();
+
+  await expect(async () => {
+    await field.fill(toSeedTenantDateTimeLocal(instant));
+    await expect(posted).not.toHaveValue(opened, { timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+/**
  * Fill and submit the episode create form. Resolves after redirect to the
  * edit URL.
  */

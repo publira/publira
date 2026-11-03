@@ -1,9 +1,8 @@
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { episodeFormFields, signInAsAdmin } from "../src/admin";
+import { fillPublishAt, signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
-import { toSeedTenantDateTimeLocal } from "../src/scenarios/admin-publish";
 import {
   EPISODE_REVIEW_ADMIN,
   EPISODE_REVIEW_AUDITOR,
@@ -103,9 +102,7 @@ test.describe("episode review in the console", () => {
     await expect(
       editor.getByText(/This tenant requires review/u)
     ).toBeVisible();
-    await episodeFormFields(editor).publishAt.fill(
-      toSeedTenantDateTimeLocal(Temporal.Now.instant().add({ hours: 24 * 30 }))
-    );
+    await fillPublishAt(editor, Temporal.Now.instant().add({ hours: 24 * 30 }));
     await editor
       .getByRole("button", { name: "Update publication date and time" })
       .click();
