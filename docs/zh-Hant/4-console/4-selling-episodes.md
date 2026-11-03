@@ -3,7 +3,7 @@ title: 販售章節
 description: 為章節定價、透過Stripe或PAY.JP收款、選擇章節的販售位置，以及處理退款。
 published: 2026-11-03
 updated: 2026-11-03
-source_updated: 2026-11-02
+source_updated: 2026-11-03
 ---
 
 要在網站上販售章節，必須讓三件事彼此一致：租戶主控台中章節的價格、付款服務商的帳戶，以及付款服務商用來通知安裝實例讀者已付款的Webhook。向讀者收款的是付款服務商，但只有Webhook才會讓章節可以閱讀，因此三者中任何一項設定有誤，就會收了讀者的錢，章節卻仍然鎖定。本頁依設定的順序逐一說明這三項，最後以一次測試購買確認三者一致。
@@ -105,7 +105,7 @@ source_updated: 2026-11-02
 在Stripe控制台中：
 
 1. 從API金鑰頁面複製**secret key**。測試金鑰以`sk_test_`開頭，正式金鑰以`sk_live_`開頭。
-2. 新增Webhook端點。其URL是選擇Stripe後，主控台在**付款設定**下顯示的**Webhook URL**，也就是租戶自己網站網域上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。選取以下七個事件；若租戶販售訂閱方案，再加上[訂閱方案](./5-subscription-plans.md#開始之前)列出的另外三個：
+2. 新增Webhook端點。其URL是選擇Stripe後，主控台在**付款設定**下顯示的**Webhook URL**，也就是租戶自己網站網域上的`https://<tenant-domain>/api/v1/webhook/payment/stripe`。選取以下七個事件；若租戶販售訂閱方案，再加上[訂閱方案](./5-subscription-plans.md#開始之前)列出的另外四個：
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`

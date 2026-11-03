@@ -2,8 +2,8 @@
 title: Googleタグ
 description: Google AnalyticsやGoogle Tag Managerでサイトを計測するための設定です。タグの読み込み元と、読者に先に同意を求めるかどうかを選び、それぞれに必要なGoogle側の設定をします。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-27
+updated: 2026-11-03
+source_updated: 2026-11-03
 ---
 
 **外部連携** › **Googleタグ**でIDを入力すると、テナントのサイトがGoogleタグを読み込みます。測定IDを入力すればGoogle Analytics 4のタグが、コンテナIDを入力すればGoogle Tag Managerのタグが読み込まれ、両方を入力することもできます。このページはテナント管理者向けに、入力するIDと、3種類のタグの読み込み元、それぞれに必要なGoogle AnalyticsとGoogle Tag Managerの設定、タグを動かす前に読者に尋ねるかどうかを説明します。
@@ -88,7 +88,7 @@ Googleの[設定ガイド](https://developers.google.com/tag-platform/tag-manage
 
 ##### パスの応答
 
-サイトのドメインと**ゲートウェイのパス**を当てはめた`https://comics.example.com/<gateway path>/healthy`をブラウザーで開きます。ゲートウェイがGoogleに接続できていれば`ok`と表示されます。Googleが案内しているもう1つの確認`?validate_geo=healthy`は、Publiraが読者の国と地域を転送しないので`ok`になりません。
+サイトのドメインと**ゲートウェイのパス**を当てはめた`https://comics.example.com/<gateway path>/healthy`をブラウザーで開きます。ゲートウェイがGoogleに接続できていれば`ok`と表示されます。Googleが案内しているもう1つの確認`?validate_geo=healthy`が`ok`になるのは、前述のとおり、Publiraの前にあるリバースプロキシやCDNが読者の国と地域を判定している場合だけです。判定していない構成では`ok`にならず、ゲートウェイを経由したトラフィックは地域なしでレポートされます。
 
 ##### ヒットの経路
 
