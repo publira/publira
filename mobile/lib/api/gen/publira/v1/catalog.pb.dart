@@ -9228,11 +9228,13 @@ class RecordContentViewResponse extends $pb.GeneratedMessage {
 /// not offered on it, so a reader never takes two discounts. A code that takes
 /// the whole price off opens no checkout: the purchase is recorded at once,
 /// and checkout_url is the URL the provider would have returned the reader to
-/// on success. A code is refused as PreviewPromotionCode refuses one, and its
-/// lookup spends the reader's allowance for promotion codes, on top of the one
-/// for checkouts, before the code is read. The code is redeemed when the
-/// purchase is recorded, so a checkout the reader abandons spends none of its
-/// limits.
+/// on success. A code is refused as failed_precondition with an ErrorInfo
+/// reason: one PreviewPromotionCode fails a call with, or
+/// PROMOTION_CODE_NOT_APPLICABLE when it does not apply to the episode. Its
+/// lookup spends one from the reader's allowance for promotion codes, on top
+/// of the one for checkouts, before the code is read. The code is redeemed
+/// when the purchase is recorded, so a checkout the reader abandons spends
+/// none of its limits.
 ///
 /// `client` also names the surface the checkout is started from: CLIENT_MOBILE
 /// is the app, and every other value the storefront. An episode that surface
@@ -10818,32 +10820,35 @@ class StartStorePurchaseResponse extends $pb.GeneratedMessage {
   MyPurchase ensurePurchase() => $_ensure(2);
 }
 
-/// Quotes what one of the tenant's promotion codes takes off the sale a reader
-/// is about to start, without starting it or spending the code: the permanent
-/// copy or the rental of an episode (`episode_id` and `kind`), or a volume
-/// (`volume_id`), exactly one of the two. The price the code is taken off is
-/// the one the checkout would charge now, a campaign's while one is open on the
-/// permanent copy. `store` asks for the price of the app's store purchase,
-/// which sells the permanent copy of an episode alone, and checks that the
-/// tenant's store sells the discounted price.
+/// Quotes what one of the tenant's promotion codes takes off the sales a
+/// reader is about to start, without starting any of them or spending the
+/// code: up to 100 sales in one call, each the permanent copy or the rental
+/// of an episode, or a volume (PromotionCodeSale). The price the code is
+/// taken off is the one the checkout would charge now, a campaign's while one
+/// is open on the permanent copy. `store` asks for the price of the app's
+/// store purchase, which sells the permanent copy of an episode alone, and
+/// checks that the tenant's store sells the discounted price.
 ///
-/// Signed-in readers only. Every call spends the reader's allowance for
-/// promotion codes before the code is read, and a reader past it is
-/// resource_exhausted. The sale is refused as the checkout would refuse it:
-/// not_found for an episode or a volume the surface does not sell, and
-/// already_exists for one the reader holds. A code that cannot be applied is
+/// Signed-in readers only. One call is one lookup of the code, however many
+/// sales it carries: it spends one from the reader's allowance for promotion
+/// codes before the code is read, and a reader past it is
+/// resource_exhausted. A series' volumes are quoted together for that one
+/// lookup, and the permanent copy and the rental of an episode alike.
+///
+/// A refusal that belongs to the code fails the whole call as
 /// failed_precondition with an ErrorInfo reason:
 ///
 /// - PROMOTION_CODE_INVALID: no code of the tenant's is spelled so, or it is
 ///   deleted, paused, or its window has not opened yet.
 /// - PROMOTION_CODE_EXPIRED: its window has closed.
-/// - PROMOTION_CODE_NOT_APPLICABLE: it does not apply to what is being bought,
-///   or it is entered on a store purchase of a rental or a volume.
 /// - PROMOTION_CODE_EXHAUSTED: it has been redeemed as often as it may be.
 /// - PROMOTION_CODE_ALREADY_REDEEMED: the reader has redeemed it as often as
 ///   one reader may.
-/// - PROMOTION_CODE_NO_STORE_PRODUCT: with `store`, the tenant's store sells no
-///   product at the discounted price.
+///
+/// The last two are told only of a code that applies to one of the sales, so
+/// a code none of them takes is answered as not applying to each. A refusal
+/// that belongs to one sale is answered on its quote
+/// (PromotionCodeQuote.refusal), and the other sales are still quoted.
 ///
 /// A code's limits are counted when it is quoted and again when a checkout
 /// starts, but a code is redeemed only once the purchase is recorded, so
@@ -10852,18 +10857,14 @@ class PreviewPromotionCodeRequest extends $pb.GeneratedMessage {
   factory PreviewPromotionCodeRequest({
     $0.TenantContext? tenant,
     $core.String? code,
-    $core.String? episodeId,
-    $0.PurchaseKind? kind,
-    $core.String? volumeId,
+    $core.Iterable<PromotionCodeSale>? sales,
     StartEpisodeCheckoutRequest_Client? client,
     $core.bool? store,
   }) {
     final result = PreviewPromotionCodeRequest._();
     if (tenant != null) result.tenant = tenant;
     if (code != null) result.code = code;
-    if (episodeId != null) result.episodeId = episodeId;
-    if (kind != null) result.kind = kind;
-    if (volumeId != null) result.volumeId = volumeId;
+    if (sales != null) result.sales.addAll(sales);
     if (client != null) result.client = client;
     if (store != null) result.store = store;
     return result;
@@ -10885,13 +10886,11 @@ class PreviewPromotionCodeRequest extends $pb.GeneratedMessage {
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'code')
-    ..aOS(3, _omitFieldNames ? '' : 'episodeId')
-    ..aE<$0.PurchaseKind>(4, _omitFieldNames ? '' : 'kind',
-        enumValues: $0.PurchaseKind.values)
-    ..aOS(5, _omitFieldNames ? '' : 'volumeId')
-    ..aE<StartEpisodeCheckoutRequest_Client>(6, _omitFieldNames ? '' : 'client',
+    ..pPM<PromotionCodeSale>(3, _omitFieldNames ? '' : 'sales',
+        subBuilder: PromotionCodeSale.$_createMessage)
+    ..aE<StartEpisodeCheckoutRequest_Client>(4, _omitFieldNames ? '' : 'client',
         enumValues: StartEpisodeCheckoutRequest_Client.values)
-    ..aOB(7, _omitFieldNames ? '' : 'store')
+    ..aOB(5, _omitFieldNames ? '' : 'store')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10943,69 +10942,128 @@ class PreviewPromotionCodeRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearCode() => $_clearField(2);
 
+  /// The sales to quote, 1 to 100 of them. They are quoted in this order, and
+  /// a sale named twice is quoted twice.
   @$pb.TagNumber(3)
-  $core.String get episodeId => $_getSZ(2);
-  @$pb.TagNumber(3)
-  set episodeId($core.String value) => $_setString(2, value);
-  @$pb.TagNumber(3)
-  $core.bool hasEpisodeId() => $_has(2);
-  @$pb.TagNumber(3)
-  void clearEpisodeId() => $_clearField(3);
+  $pb.PbList<PromotionCodeSale> get sales => $_getList(2);
+
+  /// The surface the sales would be started from, as on StartEpisodeCheckout.
+  /// `store` is always the app.
+  @$pb.TagNumber(4)
+  StartEpisodeCheckoutRequest_Client get client => $_getN(3);
+  @$pb.TagNumber(4)
+  set client(StartEpisodeCheckoutRequest_Client value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClient() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClient() => $_clearField(4);
+
+  /// The sales are purchases through the app's store, as StartStorePurchase
+  /// starts them.
+  @$pb.TagNumber(5)
+  $core.bool get store => $_getBF(4);
+  @$pb.TagNumber(5)
+  set store($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStore() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStore() => $_clearField(5);
+}
+
+/// One sale a promotion code is quoted against: the permanent copy or the
+/// rental of an episode (`episode_id` and `kind`), or a volume (`volume_id`),
+/// exactly one of the two.
+class PromotionCodeSale extends $pb.GeneratedMessage {
+  factory PromotionCodeSale({
+    $core.String? episodeId,
+    $0.PurchaseKind? kind,
+    $core.String? volumeId,
+  }) {
+    final result = PromotionCodeSale._();
+    if (episodeId != null) result.episodeId = episodeId;
+    if (kind != null) result.kind = kind;
+    if (volumeId != null) result.volumeId = volumeId;
+    return result;
+  }
+
+  PromotionCodeSale._();
+
+  factory PromotionCodeSale.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PromotionCodeSale()..mergeFromBuffer(data, registry);
+  factory PromotionCodeSale.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PromotionCodeSale()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PromotionCodeSale',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: PromotionCodeSale.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'episodeId')
+    ..aE<$0.PurchaseKind>(2, _omitFieldNames ? '' : 'kind',
+        enumValues: $0.PurchaseKind.values)
+    ..aOS(3, _omitFieldNames ? '' : 'volumeId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PromotionCodeSale clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PromotionCodeSale copyWith(void Function(PromotionCodeSale) updates) =>
+      super.copyWith((message) => updates(message as PromotionCodeSale))
+          as PromotionCodeSale;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PromotionCodeSale() / PromotionCodeSale.new instead')
+  static PromotionCodeSale create() => PromotionCodeSale._();
+  static $pb.GeneratedMessage $_createMessage() => PromotionCodeSale._();
+  @$core.override
+  PromotionCodeSale createEmptyInstance() => PromotionCodeSale._();
+  @$core.pragma('dart2js:noInline')
+  static PromotionCodeSale getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PromotionCodeSale>(
+          PromotionCodeSale.$_createMessage);
+  static PromotionCodeSale? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get episodeId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set episodeId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEpisodeId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEpisodeId() => $_clearField(1);
 
   /// Which of the episode's sales is being bought. Unspecified is the
-  /// permanent copy.
-  @$pb.TagNumber(4)
-  $0.PurchaseKind get kind => $_getN(3);
-  @$pb.TagNumber(4)
-  set kind($0.PurchaseKind value) => $_setField(4, value);
-  @$pb.TagNumber(4)
-  $core.bool hasKind() => $_has(3);
-  @$pb.TagNumber(4)
-  void clearKind() => $_clearField(4);
+  /// permanent copy. Left unspecified with `volume_id`.
+  @$pb.TagNumber(2)
+  $0.PurchaseKind get kind => $_getN(1);
+  @$pb.TagNumber(2)
+  set kind($0.PurchaseKind value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKind() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKind() => $_clearField(2);
 
-  @$pb.TagNumber(5)
-  $core.String get volumeId => $_getSZ(4);
-  @$pb.TagNumber(5)
-  set volumeId($core.String value) => $_setString(4, value);
-  @$pb.TagNumber(5)
-  $core.bool hasVolumeId() => $_has(4);
-  @$pb.TagNumber(5)
-  void clearVolumeId() => $_clearField(5);
-
-  /// The surface the sale would be started from, as on StartEpisodeCheckout.
-  /// `store` is always the app.
-  @$pb.TagNumber(6)
-  StartEpisodeCheckoutRequest_Client get client => $_getN(5);
-  @$pb.TagNumber(6)
-  set client(StartEpisodeCheckoutRequest_Client value) => $_setField(6, value);
-  @$pb.TagNumber(6)
-  $core.bool hasClient() => $_has(5);
-  @$pb.TagNumber(6)
-  void clearClient() => $_clearField(6);
-
-  /// The sale is a purchase through the app's store, as StartStorePurchase
-  /// starts it.
-  @$pb.TagNumber(7)
-  $core.bool get store => $_getBF(6);
-  @$pb.TagNumber(7)
-  set store($core.bool value) => $_setBool(6, value);
-  @$pb.TagNumber(7)
-  $core.bool hasStore() => $_has(6);
-  @$pb.TagNumber(7)
-  void clearStore() => $_clearField(7);
+  @$pb.TagNumber(3)
+  $core.String get volumeId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set volumeId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVolumeId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVolumeId() => $_clearField(3);
 }
 
 class PreviewPromotionCodeResponse extends $pb.GeneratedMessage {
   factory PreviewPromotionCodeResponse({
-    $core.int? listPrice,
-    $core.int? discountAmount,
-    $core.int? price,
+    $core.Iterable<PromotionCodeQuote>? quotes,
     $core.String? currency,
   }) {
     final result = PreviewPromotionCodeResponse._();
-    if (listPrice != null) result.listPrice = listPrice;
-    if (discountAmount != null) result.discountAmount = discountAmount;
-    if (price != null) result.price = price;
+    if (quotes != null) result.quotes.addAll(quotes);
     if (currency != null) result.currency = currency;
     return result;
   }
@@ -11023,10 +11081,9 @@ class PreviewPromotionCodeResponse extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'PreviewPromotionCodeResponse',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: PreviewPromotionCodeResponse.$_createMessage)
-    ..aI(1, _omitFieldNames ? '' : 'listPrice')
-    ..aI(2, _omitFieldNames ? '' : 'discountAmount')
-    ..aI(3, _omitFieldNames ? '' : 'price')
-    ..aOS(4, _omitFieldNames ? '' : 'currency')
+    ..pPM<PromotionCodeQuote>(1, _omitFieldNames ? '' : 'quotes',
+        subBuilder: PromotionCodeQuote.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'currency')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -11057,7 +11114,81 @@ class PreviewPromotionCodeResponse extends $pb.GeneratedMessage {
           PreviewPromotionCodeResponse.$_createMessage);
   static PreviewPromotionCodeResponse? _defaultInstance;
 
-  /// The price before the code, in the minor unit of currency.
+  /// One quote for each of PreviewPromotionCodeRequest.sales, in its order.
+  @$pb.TagNumber(1)
+  $pb.PbList<PromotionCodeQuote> get quotes => $_getList(0);
+
+  /// The ISO 4217 code, in capitals, of the tenant's currency.
+  @$pb.TagNumber(2)
+  $core.String get currency => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set currency($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCurrency() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCurrency() => $_clearField(2);
+}
+
+/// What a promotion code takes off one sale, or why it takes nothing off it.
+class PromotionCodeQuote extends $pb.GeneratedMessage {
+  factory PromotionCodeQuote({
+    $core.int? listPrice,
+    $core.int? discountAmount,
+    $core.int? price,
+    PromotionCodeQuote_Refusal? refusal,
+  }) {
+    final result = PromotionCodeQuote._();
+    if (listPrice != null) result.listPrice = listPrice;
+    if (discountAmount != null) result.discountAmount = discountAmount;
+    if (price != null) result.price = price;
+    if (refusal != null) result.refusal = refusal;
+    return result;
+  }
+
+  PromotionCodeQuote._();
+
+  factory PromotionCodeQuote.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PromotionCodeQuote()..mergeFromBuffer(data, registry);
+  factory PromotionCodeQuote.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PromotionCodeQuote()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PromotionCodeQuote',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: PromotionCodeQuote.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'listPrice')
+    ..aI(2, _omitFieldNames ? '' : 'discountAmount')
+    ..aI(3, _omitFieldNames ? '' : 'price')
+    ..aE<PromotionCodeQuote_Refusal>(4, _omitFieldNames ? '' : 'refusal',
+        enumValues: PromotionCodeQuote_Refusal.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PromotionCodeQuote clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PromotionCodeQuote copyWith(void Function(PromotionCodeQuote) updates) =>
+      super.copyWith((message) => updates(message as PromotionCodeQuote))
+          as PromotionCodeQuote;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PromotionCodeQuote() / PromotionCodeQuote.new instead')
+  static PromotionCodeQuote create() => PromotionCodeQuote._();
+  static $pb.GeneratedMessage $_createMessage() => PromotionCodeQuote._();
+  @$core.override
+  PromotionCodeQuote createEmptyInstance() => PromotionCodeQuote._();
+  @$core.pragma('dart2js:noInline')
+  static PromotionCodeQuote getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PromotionCodeQuote>(
+          PromotionCodeQuote.$_createMessage);
+  static PromotionCodeQuote? _defaultInstance;
+
+  /// The price before the code, in the minor unit of currency. 0 with
+  /// REFUSAL_NOT_SOLD, REFUSAL_HELD, and REFUSAL_READER_CREDITED.
   @$pb.TagNumber(1)
   $core.int get listPrice => $_getIZ(0);
   @$pb.TagNumber(1)
@@ -11067,7 +11198,8 @@ class PreviewPromotionCodeResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearListPrice() => $_clearField(1);
 
-  /// What the code takes off list_price, never more than it.
+  /// What the code takes off list_price, never more than it, and 0 with a
+  /// refusal.
   @$pb.TagNumber(2)
   $core.int get discountAmount => $_getIZ(1);
   @$pb.TagNumber(2)
@@ -11089,15 +11221,14 @@ class PreviewPromotionCodeResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearPrice() => $_clearField(3);
 
-  /// The ISO 4217 code, in capitals, of the tenant's currency.
   @$pb.TagNumber(4)
-  $core.String get currency => $_getSZ(3);
+  PromotionCodeQuote_Refusal get refusal => $_getN(3);
   @$pb.TagNumber(4)
-  set currency($core.String value) => $_setString(3, value);
+  set refusal(PromotionCodeQuote_Refusal value) => $_setField(4, value);
   @$pb.TagNumber(4)
-  $core.bool hasCurrency() => $_has(3);
+  $core.bool hasRefusal() => $_has(3);
   @$pb.TagNumber(4)
-  void clearCurrency() => $_clearField(4);
+  void clearRefusal() => $_clearField(4);
 }
 
 /// Starts a provider checkout of a tip to the Authors of an episode, at one of

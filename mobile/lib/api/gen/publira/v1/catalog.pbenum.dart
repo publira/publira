@@ -407,5 +407,61 @@ class StartEpisodeCheckoutRequest_Client extends $pb.ProtobufEnum {
   const StartEpisodeCheckoutRequest_Client._(super.value, super.name);
 }
 
+/// Why the code is not quoted on the sale. Unspecified is a quote.
+class PromotionCodeQuote_Refusal extends $pb.ProtobufEnum {
+  static const PromotionCodeQuote_Refusal REFUSAL_UNSPECIFIED =
+      PromotionCodeQuote_Refusal._(
+          0, _omitEnumNames ? '' : 'REFUSAL_UNSPECIFIED');
+
+  /// The code does not apply to the sale. list_price and price are what the
+  /// sale costs without it.
+  static const PromotionCodeQuote_Refusal REFUSAL_NOT_APPLICABLE =
+      PromotionCodeQuote_Refusal._(
+          1, _omitEnumNames ? '' : 'REFUSAL_NOT_APPLICABLE');
+
+  /// With `store`, the tenant's store sells no product at the discounted
+  /// price. list_price and price are what the sale costs without the code.
+  static const PromotionCodeQuote_Refusal REFUSAL_NO_STORE_PRODUCT =
+      PromotionCodeQuote_Refusal._(
+          2, _omitEnumNames ? '' : 'REFUSAL_NO_STORE_PRODUCT');
+
+  /// The surface does not sell the sale: an episode or a volume it does not
+  /// show, an episode it shows but may not sell
+  /// (Episode.purchase_availability), a free episode, the rental of an
+  /// episode that is not rented, and with `store` a rental or a volume.
+  static const PromotionCodeQuote_Refusal REFUSAL_NOT_SOLD =
+      PromotionCodeQuote_Refusal._(3, _omitEnumNames ? '' : 'REFUSAL_NOT_SOLD');
+
+  /// The reader holds what the sale would open: the permanent copy of the
+  /// episode for either of its sales, its rental for the rental, or the
+  /// volume.
+  static const PromotionCodeQuote_Refusal REFUSAL_HELD =
+      PromotionCodeQuote_Refusal._(4, _omitEnumNames ? '' : 'REFUSAL_HELD');
+
+  /// The reader's account is linked to an Author the episode, or one of the
+  /// volume's episodes, credits, as READER_CREDITED_ON_EPISODE refuses a
+  /// checkout.
+  static const PromotionCodeQuote_Refusal REFUSAL_READER_CREDITED =
+      PromotionCodeQuote_Refusal._(
+          5, _omitEnumNames ? '' : 'REFUSAL_READER_CREDITED');
+
+  static const $core.List<PromotionCodeQuote_Refusal> values =
+      <PromotionCodeQuote_Refusal>[
+    REFUSAL_UNSPECIFIED,
+    REFUSAL_NOT_APPLICABLE,
+    REFUSAL_NO_STORE_PRODUCT,
+    REFUSAL_NOT_SOLD,
+    REFUSAL_HELD,
+    REFUSAL_READER_CREDITED,
+  ];
+
+  static final $core.List<PromotionCodeQuote_Refusal?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
+  static PromotionCodeQuote_Refusal? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const PromotionCodeQuote_Refusal._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

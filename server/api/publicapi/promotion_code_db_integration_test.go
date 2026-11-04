@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,7 @@ type promotionCodeEnv struct {
 	tenant   testutil.Tenant
 	reader   testutil.TenantUser
 	token    string
+	series   testutil.Series
 	episode  testutil.Episode
 	other    testutil.Episode
 	volume   testutil.Volume
@@ -96,6 +98,7 @@ func newPromotionCodeEnv(t *testing.T, guards readerGuards) *promotionCodeEnv {
 		tenant:   tenant,
 		reader:   reader,
 		token:    tokenFor(t, tenant, reader),
+		series:   series,
 		episode:  episode,
 		other:    other,
 		volume:   volume,
@@ -181,9 +184,60 @@ func assertPromotionCodeRefusal(t *testing.T, label string, err error, want stri
 	}
 }
 
-// A code is quoted against the sale the reader is about to start, at the
-// price that sale charges now, and matched whatever its case; each code that
-// cannot be applied is refused with the reason a client tells the reader.
+// episodeSaleOf, rentalSaleOf, and volumeSaleOf name the sales PreviewPromotionCode
+// quotes.
+func episodeSaleOf(id uuid.UUID) *publirav1.PromotionCodeSale {
+	return &publirav1.PromotionCodeSale{EpisodeId: id.String()}
+}
+
+func rentalSaleOf(id uuid.UUID) *publirav1.PromotionCodeSale {
+	return &publirav1.PromotionCodeSale{EpisodeId: id.String(), Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL}
+}
+
+func volumeSaleOf(id uuid.UUID) *publirav1.PromotionCodeSale {
+	return &publirav1.PromotionCodeSale{VolumeId: id.String()}
+}
+
+// quote is what a test expects of one PromotionCodeQuote.
+type quote struct {
+	listPrice, discountAmount, price int32
+	refusal                          publirav1.PromotionCodeQuote_Refusal
+}
+
+func assertQuotes(t *testing.T, res *publirav1.PreviewPromotionCodeResponse, want ...quote) {
+	t.Helper()
+	if res.GetCurrency() == "" {
+		t.Fatalf("the response names no currency: %+v", res)
+	}
+	if len(res.GetQuotes()) != len(want) {
+		t.Fatalf("quotes = %+v, want %d of them", res.GetQuotes(), len(want))
+	}
+	for i, got := range res.GetQuotes() {
+		if (quote{got.GetListPrice(), got.GetDiscountAmount(), got.GetPrice(), got.GetRefusal()}) != want[i] {
+			t.Fatalf("quote %d = %+v, want %+v", i, got, want[i])
+		}
+	}
+}
+
+// hold records a purchase by the reader, paid without a code, of the episode
+// or the volume, one of which is uuid.Nil.
+func (e *promotionCodeEnv) hold(t *testing.T, episodeID, volumeID uuid.UUID) {
+	t.Helper()
+	if _, err := e.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, volume_id, price_at_purchase, currency)
+		VALUES ($1, $2, $3, $4, $5, 400, $6)
+	`, uuid.Must(uuid.NewV7()), e.tenant.ID, e.reader.ID,
+		uuid.NullUUID{UUID: episodeID, Valid: episodeID != uuid.Nil},
+		uuid.NullUUID{UUID: volumeID, Valid: volumeID != uuid.Nil},
+		e.pg.TenantCurrency(t, e.tenant.ID)); err != nil {
+		t.Fatalf("seed a purchase the reader holds: %v", err)
+	}
+}
+
+// A code is quoted against each sale the reader is about to start, at the
+// price that sale charges now, and matched whatever its case. A code that
+// cannot be applied at all fails the call with the reason a client tells the
+// reader, while one that does not fit a sale is answered on that sale's quote.
 func TestDBPreviewPromotionCodeQuotesTheSaleAndRefusesWithAReason(t *testing.T) {
 	t.Parallel()
 
@@ -211,61 +265,186 @@ func TestDBPreviewPromotionCodeQuotesTheSaleAndRefusesWithAReason(t *testing.T) 
 
 	preview := func(req *publirav1.PreviewPromotionCodeRequest) (*publirav1.PreviewPromotionCodeResponse, error) {
 		req.Tenant = tenantContext(env.tenant)
+		if req.Sales == nil {
+			req.Sales = []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID)}
+		}
 		return env.client.PreviewPromotionCode(env.ctx(), req)
 	}
 	for _, tc := range []struct {
-		name                           string
-		req                            *publirav1.PreviewPromotionCodeRequest
-		listPrice, discountAmount, pay int32
+		name string
+		req  *publirav1.PreviewPromotionCodeRequest
+		want quote
 	}{
-		{name: "a percentage of the permanent copy", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", EpisodeId: env.episode.ID.String()}, listPrice: 500, discountAmount: 100, pay: 400},
-		{name: "a percentage of the rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "spring20", EpisodeId: env.episode.ID.String(), Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL}, listPrice: 200, discountAmount: 40, pay: 160},
-		{name: "a percentage of the volume", req: &publirav1.PreviewPromotionCodeRequest{Code: " Spring20 ", VolumeId: env.volume.ID.String()}, listPrice: 900, discountAmount: 180, pay: 720},
-		{name: "an amount of the episode it names", req: &publirav1.PreviewPromotionCodeRequest{Code: "YEN150", EpisodeId: env.episode.ID.String()}, listPrice: 500, discountAmount: 150, pay: 350},
+		{name: "a percentage of the permanent copy", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20"}, want: quote{500, 100, 400, 0}},
+		{name: "a percentage of the rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "spring20", Sales: []*publirav1.PromotionCodeSale{rentalSaleOf(env.episode.ID)}}, want: quote{200, 40, 160, 0}},
+		{name: "a percentage of the volume", req: &publirav1.PreviewPromotionCodeRequest{Code: " Spring20 ", Sales: []*publirav1.PromotionCodeSale{volumeSaleOf(env.volume.ID)}}, want: quote{900, 180, 720, 0}},
+		{name: "an amount of the episode it names", req: &publirav1.PreviewPromotionCodeRequest{Code: "YEN150"}, want: quote{500, 150, 350, 0}},
+		{name: "a code of another episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "OTHERONLY"}, want: quote{500, 0, 500, publirav1.PromotionCodeQuote_REFUSAL_NOT_APPLICABLE}},
+		{name: "a code of a volume holding the episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "VOLUMEONLY"}, want: quote{500, 0, 500, publirav1.PromotionCodeQuote_REFUSAL_NOT_APPLICABLE}},
+		{name: "a store purchase of a rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Sales: []*publirav1.PromotionCodeSale{rentalSaleOf(env.episode.ID)}, Store: true}, want: quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD}},
+		{name: "a store purchase of a volume", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Sales: []*publirav1.PromotionCodeSale{volumeSaleOf(env.volume.ID)}, Store: true}, want: quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD}},
+		{name: "an episode the surface does not show", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Sales: []*publirav1.PromotionCodeSale{episodeSaleOf(uuid.Must(uuid.NewV7()))}}, want: quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD}},
+		{name: "the rental of an episode that is not rented", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Sales: []*publirav1.PromotionCodeSale{rentalSaleOf(env.other.ID)}}, want: quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := preview(tc.req)
 			if err != nil {
 				t.Fatalf("PreviewPromotionCode: %v", err)
 			}
-			if res.ListPrice != tc.listPrice || res.DiscountAmount != tc.discountAmount || res.Price != tc.pay || res.Currency == "" {
-				t.Fatalf("quote = %+v, want %d less %d is %d", res, tc.listPrice, tc.discountAmount, tc.pay)
-			}
+			assertQuotes(t, res, tc.want)
 		})
 	}
 	for _, tc := range []struct {
 		name string
-		req  *publirav1.PreviewPromotionCodeRequest
+		code string
 		want string
 	}{
-		{name: "an unknown code", req: &publirav1.PreviewPromotionCodeRequest{Code: "NOSUCHCODE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "a code no code could be", req: &publirav1.PreviewPromotionCodeRequest{Code: "NO-SUCH-CODE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "another tenant's code", req: &publirav1.PreviewPromotionCodeRequest{Code: "ELSEWHERE"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "a paused code", req: &publirav1.PreviewPromotionCodeRequest{Code: "PAUSED"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "a deleted code", req: &publirav1.PreviewPromotionCodeRequest{Code: "DELETED"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "a code not started", req: &publirav1.PreviewPromotionCodeRequest{Code: "SOON"}, want: rpcerrors.ReasonPromotionCodeInvalid},
-		{name: "a code ended", req: &publirav1.PreviewPromotionCodeRequest{Code: "OVER"}, want: rpcerrors.ReasonPromotionCodeExpired},
-		{name: "a code of another episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "OTHERONLY"}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
-		{name: "a code of a volume holding the episode", req: &publirav1.PreviewPromotionCodeRequest{Code: "VOLUMEONLY"}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
-		{name: "a code redeemed as often as it may be", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPENT"}, want: rpcerrors.ReasonPromotionCodeExhausted},
-		{name: "a code the reader redeemed", req: &publirav1.PreviewPromotionCodeRequest{Code: "ONCEEACH"}, want: rpcerrors.ReasonPromotionCodeAlreadyRedeemed},
-		{name: "a store purchase of a rental", req: &publirav1.PreviewPromotionCodeRequest{Code: "SPRING20", Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL, Store: true}, want: rpcerrors.ReasonPromotionCodeNotApplicable},
+		{name: "an unknown code", code: "NOSUCHCODE", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code no code could be", code: "NO-SUCH-CODE", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "another tenant's code", code: "ELSEWHERE", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a paused code", code: "PAUSED", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a deleted code", code: "DELETED", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code not started", code: "SOON", want: rpcerrors.ReasonPromotionCodeInvalid},
+		{name: "a code ended", code: "OVER", want: rpcerrors.ReasonPromotionCodeExpired},
+		{name: "a code redeemed as often as it may be", code: "SPENT", want: rpcerrors.ReasonPromotionCodeExhausted},
+		{name: "a code the reader redeemed", code: "ONCEEACH", want: rpcerrors.ReasonPromotionCodeAlreadyRedeemed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.req.EpisodeId == "" {
-				tc.req.EpisodeId = env.episode.ID.String()
-			}
-			_, err := preview(tc.req)
+			// Beside a sale the code would not fit, the code's own refusal
+			// still fails the call.
+			_, err := preview(&publirav1.PreviewPromotionCodeRequest{Code: tc.code, Sales: []*publirav1.PromotionCodeSale{
+				rentalSaleOf(env.other.ID),
+				episodeSaleOf(env.episode.ID),
+				volumeSaleOf(env.volume.ID),
+			}})
 			assertPromotionCodeRefusal(t, "PreviewPromotionCode", err, tc.want)
 		})
 	}
 
 	if _, err := env.client.PreviewPromotionCode(context.Background(), &publirav1.PreviewPromotionCodeRequest{
-		Tenant:    tenantContext(env.tenant),
-		Code:      "SPRING20",
-		EpisodeId: env.episode.ID.String(),
+		Tenant: tenantContext(env.tenant),
+		Code:   "SPRING20",
+		Sales:  []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID)},
 	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("PreviewPromotionCode without a session = %v, want unauthenticated", err)
+	}
+}
+
+// One call quotes the permanent copy and the rental of an episode and every
+// volume asked for, and spends one lookup of the reader's allowance for them
+// all. A sale the code does not fit, or the reader cannot start, is answered
+// on its own quote beside the others.
+func TestDBPreviewPromotionCodeQuotesSeveralSalesForOneLookup(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	third := env.pg.SeedEpisode(t, env.tenant.ID, env.series.ID, testutil.EpisodeSeed{
+		PublicID:    "PROMOEPISOD3",
+		Title:       "Third episode",
+		Price:       400,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+		OrderIndex:  3,
+	})
+	second := env.pg.SeedVolume(t, env.tenant.ID, env.series.ID, testutil.VolumeSeed{
+		PublicID:   "PROMOVOLUME2",
+		Title:      "Second volume",
+		Price:      700,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{third.ID},
+	})
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "VOLUMEONLY", kind: "percent", value: 10, targetKind: "volume", targetID: uuid.NullUUID{UUID: env.volume.ID, Valid: true}})
+	env.hold(t, env.other.ID, uuid.Nil)
+	env.hold(t, uuid.Nil, second.ID)
+
+	res, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{
+		Tenant: tenantContext(env.tenant),
+		Code:   "volumeonly",
+		Sales: []*publirav1.PromotionCodeSale{
+			episodeSaleOf(env.episode.ID),
+			rentalSaleOf(env.episode.ID),
+			volumeSaleOf(env.volume.ID),
+			volumeSaleOf(second.ID),
+			episodeSaleOf(env.other.ID),
+		},
+	})
+	if err != nil {
+		t.Fatalf("PreviewPromotionCode: %v", err)
+	}
+	notApplicable := publirav1.PromotionCodeQuote_REFUSAL_NOT_APPLICABLE
+	assertQuotes(t, res,
+		quote{500, 0, 500, notApplicable},
+		quote{200, 0, 200, notApplicable},
+		quote{900, 90, 810, 0},
+		quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_HELD},
+		quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_HELD},
+	)
+
+	// The allowance of one lookup is spent.
+	if _, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{
+		Tenant: tenantContext(env.tenant),
+		Code:   "VOLUMEONLY",
+		Sales:  []*publirav1.PromotionCodeSale{volumeSaleOf(env.volume.ID)},
+	}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a second call = %v, want resource_exhausted", err)
+	}
+}
+
+// A code is still read when no sale gets as far as it, so one that cannot be
+// applied is refused rather than answered as the sales' refusals alone.
+func TestDBPreviewPromotionCodeRefusesTheCodeWhenNoSaleReachesIt(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "SPRING20", kind: "percent", value: 20})
+	env.hold(t, env.episode.ID, uuid.Nil)
+
+	sales := []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID), rentalSaleOf(env.episode.ID)}
+	_, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "NOSUCHCODE", Sales: sales})
+	assertPromotionCodeRefusal(t, "PreviewPromotionCode(NOSUCHCODE)", err, rpcerrors.ReasonPromotionCodeInvalid)
+
+	res, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "SPRING20", Sales: sales})
+	if err != nil {
+		t.Fatalf("PreviewPromotionCode(SPRING20): %v", err)
+	}
+	held := quote{refusal: publirav1.PromotionCodeQuote_REFUSAL_HELD}
+	assertQuotes(t, res, held, held)
+}
+
+// A call names 1 to maxQuotedSales sales, each an episode or a volume.
+func TestDBPreviewPromotionCodeBoundsTheSales(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "SPRING20", kind: "percent", value: 20})
+	preview := func(sales ...*publirav1.PromotionCodeSale) (*publirav1.PreviewPromotionCodeResponse, error) {
+		return env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "SPRING20", Sales: sales})
+	}
+
+	most := slices.Repeat([]*publirav1.PromotionCodeSale{volumeSaleOf(env.volume.ID)}, maxQuotedSales)
+	res, err := preview(most...)
+	if err != nil {
+		t.Fatalf("PreviewPromotionCode of %d sales: %v", maxQuotedSales, err)
+	}
+	assertQuotes(t, res, slices.Repeat([]quote{{900, 180, 720, 0}}, maxQuotedSales)...)
+
+	for _, tc := range []struct {
+		name  string
+		sales []*publirav1.PromotionCodeSale
+	}{
+		{name: "no sale"},
+		{name: "one sale too many", sales: append(most, volumeSaleOf(env.volume.ID))},
+		{name: "an episode and a volume in one sale", sales: []*publirav1.PromotionCodeSale{{EpisodeId: env.episode.ID.String(), VolumeId: env.volume.ID.String()}}},
+		{name: "the rental of a volume", sales: []*publirav1.PromotionCodeSale{{VolumeId: env.volume.ID.String(), Kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL}}},
+		{name: "a sale naming nothing", sales: []*publirav1.PromotionCodeSale{{}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := preview(tc.sales...); connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("PreviewPromotionCode = %v, want invalid_argument", err)
+			}
+		})
 	}
 }
 
@@ -432,10 +611,10 @@ func TestDBAReaderPastThePromotionCodeLimitIsRefusedBeforeTheCodeIsRead(t *testi
 	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "SPRING20", kind: "percent", value: 20})
 
 	for _, code := range []string{"GUESS1", "GUESS2"} {
-		_, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: code, EpisodeId: env.episode.ID.String()})
+		_, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: code, Sales: []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID)}})
 		assertPromotionCodeRefusal(t, fmt.Sprintf("PreviewPromotionCode(%s)", code), err, rpcerrors.ReasonPromotionCodeInvalid)
 	}
-	if _, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "SPRING20", EpisodeId: env.episode.ID.String()}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+	if _, err := env.client.PreviewPromotionCode(env.ctx(), &publirav1.PreviewPromotionCodeRequest{Tenant: tenantContext(env.tenant), Code: "SPRING20", Sales: []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID), volumeSaleOf(env.volume.ID)}}); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a third lookup = %v, want resource_exhausted", err)
 	}
 	if _, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{Tenant: tenantContext(env.tenant), EpisodeId: env.episode.ID.String(), PromotionCode: "SPRING20"}); connect.CodeOf(err) != connect.CodeResourceExhausted {
@@ -495,6 +674,27 @@ func TestDBAStorePurchaseWithAPromotionCodeOpensTheIntentAtTheDiscountedProduct(
 	}
 	if !listed[300] || !listed[200] {
 		t.Fatalf("store product prices = %+v, want the price of 300 and its discounted 200", prices)
+	}
+
+	// The quote is the store's price, and a discounted price the store sells
+	// no product at is answered on the sale's quote.
+	quoted, err := env.client.PreviewPromotionCode(testutil.WithBearer(context.Background(), env.token), &publirav1.PreviewPromotionCodeRequest{
+		Tenant: tenantContext(env.tenant),
+		Code:   "APP100",
+		Sales:  []*publirav1.PromotionCodeSale{episodeSaleOf(env.episode.ID)},
+		Store:  true,
+	})
+	if err != nil {
+		t.Fatalf("PreviewPromotionCode of the store purchase: %v", err)
+	}
+	assertQuotes(t, quoted, quote{300, 100, 200, 0})
+	asReader := rpcmiddleware.WithTenantQueries(context.Background(), dbmodels.New(env.pg.DB))
+	unsold, err := env.server.quoteSale(asReader, dbmodels.Tenant{ID: env.tenant.ID}, env.reader.ID, "APP100", "", true, []int32{300}, quotedSale{episodeID: env.episode.ID, kind: paymentprovider.KindPurchase})
+	if err != nil {
+		t.Fatalf("quoteSale without a product at the discounted price: %v", err)
+	}
+	if got := unsold.quote; got.GetRefusal() != publirav1.PromotionCodeQuote_REFUSAL_NO_STORE_PRODUCT || got.GetListPrice() != 300 || got.GetPrice() != 300 || got.GetDiscountAmount() != 0 {
+		t.Fatalf("quote without a product at the discounted price = %+v, want 300 refused with no store product", got)
 	}
 
 	intent, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{

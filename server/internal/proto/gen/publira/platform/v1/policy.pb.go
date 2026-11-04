@@ -379,11 +379,12 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	DataExport *HourDayLimit `protobuf:"bytes,22,opt,name=data_export,json=dataExport,proto3" json:"data_export,omitempty"`
-	// How often one reader may have a promotion code looked up: by
-	// PurchaseService.PreviewPromotionCode, and by StartEpisodeCheckout,
-	// StartVolumeCheckout, and StartStorePurchase whenever they carry a code.
-	// The four share the one allowance, charged before the code is read, so it
-	// bounds how fast one account can guess at a tenant's codes.
+	// How often one reader may have a promotion code looked up. One lookup is
+	// one call: of PurchaseService.PreviewPromotionCode, however many sales it
+	// quotes, or of StartEpisodeCheckout, StartVolumeCheckout, or
+	// StartStorePurchase carrying a code. The four share the one allowance,
+	// charged before the code is read, so it bounds how fast one account can
+	// guess at a tenant's codes.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

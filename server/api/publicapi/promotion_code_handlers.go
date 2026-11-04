@@ -96,10 +96,24 @@ func noStoreProductError() error {
 // applyPromotionCode reads code on q and applies it to sale for the reader,
 // or refuses it. The reader's allowance has been charged by then.
 func (s *apiServer) applyPromotionCode(ctx context.Context, q Querier, tenantID, userID uuid.UUID, code string, sale promotionSale) (appliedPromotionCode, error) {
+	applied, refusal, err := s.quotePromotionCode(ctx, q, tenantID, userID, code, sale)
+	if err != nil {
+		return appliedPromotionCode{}, err
+	}
+	if refusal != promotioncode.Applicable {
+		return appliedPromotionCode{}, promotionCodeRefusalError(refusal)
+	}
+	return applied, nil
+}
+
+// quotePromotionCode reads code on q and applies it to sale for the reader,
+// or answers why it cannot be applied. The reader's allowance has been
+// charged by then.
+func (s *apiServer) quotePromotionCode(ctx context.Context, q Querier, tenantID, userID uuid.UUID, code string, sale promotionSale) (appliedPromotionCode, promotioncode.Refusal, error) {
 	// A code promotion_codes could not hold is answered as one it does not
 	// hold, without asking.
 	if !promotioncode.ValidCode(code) {
-		return appliedPromotionCode{}, promotionCodeRefusalError(promotioncode.Invalid)
+		return appliedPromotionCode{}, promotioncode.Invalid, nil
 	}
 	row, err := q.GetPromotionCodeByCode(ctx, dbmodels.GetPromotionCodeByCodeParams{
 		TenantID:  tenantID,
@@ -109,10 +123,10 @@ func (s *apiServer) applyPromotionCode(ctx context.Context, q Querier, tenantID,
 		VolumeID:  uuid.NullUUID{UUID: sale.volumeID, Valid: sale.volumeID != uuid.Nil},
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return appliedPromotionCode{}, promotionCodeRefusalError(promotioncode.Invalid)
+		return appliedPromotionCode{}, promotioncode.Invalid, nil
 	}
 	if err != nil {
-		return appliedPromotionCode{}, s.internalDBError(ctx, "failed to read a promotion code", err, "tenant_id", tenantID.String())
+		return appliedPromotionCode{}, promotioncode.Applicable, s.internalDBError(ctx, "failed to read a promotion code", err, "tenant_id", tenantID.String())
 	}
 	if refusal := promotioncode.Check(promotioncode.State{
 		StartsAt:                row.StartsAt,
@@ -124,7 +138,7 @@ func (s *apiServer) applyPromotionCode(ctx context.Context, q Querier, tenantID,
 		ReaderRedemptionCount:   row.ReaderRedemptionCount,
 		Applies:                 row.Applies,
 	}, time.Now()); refusal != promotioncode.Applicable {
-		return appliedPromotionCode{}, promotionCodeRefusalError(refusal)
+		return appliedPromotionCode{}, refusal, nil
 	}
 	discountAmount, price := promotioncode.Discount(row.DiscountKind, row.DiscountValue, sale.price)
 	return appliedPromotionCode{
@@ -132,7 +146,7 @@ func (s *apiServer) applyPromotionCode(ctx context.Context, q Querier, tenantID,
 		listPrice:      sale.price,
 		discountAmount: discountAmount,
 		price:          price,
-	}, nil
+	}, promotioncode.Applicable, nil
 }
 
 // episodeSale is an episode a reader may buy now, and the price and reading
@@ -307,18 +321,32 @@ func (s *apiServer) resolveStoreEpisodeSale(ctx context.Context, tenantID, userI
 }
 
 // requireStoreProduct refuses a discounted price the tenant's store sells no
-// product at: one ListTenantStoreProducts does not list, which is every
-// product the tenant was told to create. The store would charge no other
-// price, so the code cannot be applied in the app.
+// product at. The store would charge no other price, so the code cannot be
+// applied in the app.
 func (s *apiServer) requireStoreProduct(ctx context.Context, tenantID uuid.UUID, price int32) error {
-	rows, err := s.queriesFor(ctx).ListTenantStoreProductPrices(ctx, tenantID)
+	prices, err := s.storeProductPrices(ctx, tenantID)
 	if err != nil {
-		return s.internalDBError(ctx, "failed to list the tenant's store product prices", err, "tenant_id", tenantID.String())
+		return err
 	}
-	if !slices.ContainsFunc(rows, func(row dbmodels.ListTenantStoreProductPricesRow) bool { return row.Price == price }) {
+	if !slices.Contains(prices, price) {
 		return noStoreProductError()
 	}
 	return nil
+}
+
+// storeProductPrices answers the prices the tenant's store sells products at:
+// those of every product ListTenantStoreProducts lists, which is every
+// product the tenant was told to create.
+func (s *apiServer) storeProductPrices(ctx context.Context, tenantID uuid.UUID) ([]int32, error) {
+	rows, err := s.queriesFor(ctx).ListTenantStoreProductPrices(ctx, tenantID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the tenant's store product prices", err, "tenant_id", tenantID.String())
+	}
+	prices := make([]int32, len(rows))
+	for i, row := range rows {
+		prices[i] = row.Price
+	}
+	return prices, nil
 }
 
 // grantedSale is a sale a code took the whole price off, which is recorded
@@ -439,6 +467,134 @@ func recordPromotionCodeRedemption(ctx context.Context, q *dbmodels.Queries, pur
 	})
 }
 
+// maxQuotedSales is how many sales one PreviewPromotionCode call may quote:
+// enough for the volumes of a long series, while bounding the reads one
+// lookup of the reader's allowance pays for.
+const maxQuotedSales = 100
+
+// quotedSale is one sale PreviewPromotionCode is asked to quote.
+type quotedSale struct {
+	episodeID uuid.UUID
+	volumeID  uuid.UUID
+	kind      paymentprovider.Kind
+}
+
+// quotedSalesOf reads the sales a PreviewPromotionCode request names.
+func quotedSalesOf(sales []*publirav1.PromotionCodeSale) ([]quotedSale, error) {
+	if len(sales) == 0 {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("name at least one sale"), "sales")
+	}
+	if len(sales) > maxQuotedSales {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("name at most %d sales", maxQuotedSales), "sales")
+	}
+	quoted := make([]quotedSale, len(sales))
+	for i, sale := range sales {
+		field := fmt.Sprintf("sales[%d]", i)
+		kind, err := protomapper.PurchaseKindFromRequest(sale.GetKind())
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, field+".kind")
+		}
+		switch {
+		case sale.GetEpisodeId() != "" && sale.GetVolumeId() != "":
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("name an episode or a volume, not both"), field+".volume_id")
+		case sale.GetVolumeId() != "":
+			if sale.GetKind() != publirattypesv1.PurchaseKind_PURCHASE_KIND_UNSPECIFIED {
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("a volume is sold one way"), field+".kind")
+			}
+			quoted[i].volumeID, err = requestRecordID(field+".volume_id", sale.GetVolumeId())
+		default:
+			quoted[i].episodeID, err = requestRecordID(field+".episode_id", sale.GetEpisodeId())
+			quoted[i].kind = kind
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return quoted, nil
+}
+
+// saleRefusalOf answers the refusal a quote carries for the error a sale was
+// refused with as a checkout of it would be refused, and false for an error
+// that fails the whole call.
+func saleRefusalOf(err error) (publirav1.PromotionCodeQuote_Refusal, bool) {
+	switch connect.CodeOf(err) {
+	case connect.CodeNotFound, connect.CodeFailedPrecondition:
+		return publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD, true
+	case connect.CodeAlreadyExists:
+		return publirav1.PromotionCodeQuote_REFUSAL_HELD, true
+	case connect.CodePermissionDenied:
+		return publirav1.PromotionCodeQuote_REFUSAL_READER_CREDITED, true
+	default:
+		return publirav1.PromotionCodeQuote_REFUSAL_UNSPECIFIED, false
+	}
+}
+
+// promotionQuote is the quote PreviewPromotionCode answers for one sale.
+type promotionQuote struct {
+	quote *publirav1.PromotionCodeQuote
+	// codeRead is whether the code was read for the sale, which a sale the
+	// reader may not start never gets to.
+	codeRead bool
+}
+
+// quoteSale quotes code against one sale for the reader. An error is one that
+// fails the whole call: a refusal of the code itself, or a failure to read.
+func (s *apiServer) quoteSale(ctx context.Context, tenant dbmodels.Tenant, userID uuid.UUID, code, surface string, store bool, storePrices []int32, sale quotedSale) (promotionQuote, error) {
+	// A store sells the permanent copy of an episode alone.
+	if store && (sale.volumeID != uuid.Nil || sale.kind != paymentprovider.KindPurchase) {
+		return promotionQuote{quote: &publirav1.PromotionCodeQuote{Refusal: publirav1.PromotionCodeQuote_REFUSAL_NOT_SOLD}}, nil
+	}
+	var resolved promotionSale
+	var err error
+	switch {
+	case store:
+		var episode episodeSale
+		episode, err = s.resolveStoreEpisodeSale(ctx, tenant.ID, userID, sale.episodeID)
+		resolved = promotionSale{episodeID: episode.episode.ID, price: episode.price}
+	case sale.volumeID != uuid.Nil:
+		var volume dbmodels.GetPurchasableVolumeForTenantRow
+		volume, err = s.resolveVolumeSale(ctx, tenant.ID, userID, sale.volumeID, surface)
+		resolved = promotionSale{volumeID: volume.ID, price: volume.Price}
+	default:
+		var episode episodeSale
+		episode, err = s.resolveEpisodeSale(ctx, tenant.ID, userID, sale.episodeID, surface, sale.kind, tenant.DefaultLocale)
+		resolved = promotionSale{episodeID: episode.episode.ID, price: episode.price}
+	}
+	if err != nil {
+		refusal, ok := saleRefusalOf(err)
+		if !ok {
+			return promotionQuote{}, err
+		}
+		return promotionQuote{quote: &publirav1.PromotionCodeQuote{Refusal: refusal}}, nil
+	}
+
+	applied, refusal, err := s.quotePromotionCode(ctx, s.queriesFor(ctx), tenant.ID, userID, code, resolved)
+	if err != nil {
+		return promotionQuote{}, err
+	}
+	unchanged := &publirav1.PromotionCodeQuote{ListPrice: resolved.price, Price: resolved.price}
+	switch refusal {
+	case promotioncode.Applicable:
+	case promotioncode.NotApplicable:
+		unchanged.Refusal = publirav1.PromotionCodeQuote_REFUSAL_NOT_APPLICABLE
+		return promotionQuote{quote: unchanged, codeRead: true}, nil
+	default:
+		return promotionQuote{}, promotionCodeRefusalError(refusal)
+	}
+	if store && applied.price > 0 && !slices.Contains(storePrices, applied.price) {
+		unchanged.Refusal = publirav1.PromotionCodeQuote_REFUSAL_NO_STORE_PRODUCT
+		return promotionQuote{quote: unchanged, codeRead: true}, nil
+	}
+	return promotionQuote{
+		quote: &publirav1.PromotionCodeQuote{
+			ListPrice:      applied.listPrice,
+			DiscountAmount: applied.discountAmount,
+			Price:          applied.price,
+		},
+		codeRead: true,
+	}, nil
+}
+
 func (s *apiServer) PreviewPromotionCode(
 	ctx context.Context,
 	req *publirav1.PreviewPromotionCodeRequest,
@@ -447,22 +603,9 @@ func (s *apiServer) PreviewPromotionCode(
 	if code == "" {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("code is required"), "code")
 	}
-	var episodeID, volumeID uuid.UUID
-	var err error
-	switch {
-	case req.EpisodeId != "" && req.VolumeId != "":
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("name an episode or a volume, not both"), "volume_id")
-	case req.VolumeId != "":
-		volumeID, err = requestRecordID("volume_id", req.VolumeId)
-	default:
-		episodeID, err = requestRecordID("episode_id", req.EpisodeId)
-	}
+	sales, err := quotedSalesOf(req.Sales)
 	if err != nil {
 		return nil, err
-	}
-	kind, err := protomapper.PurchaseKindFromRequest(req.Kind)
-	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "kind")
 	}
 	surface, err := checkoutSurface(req.Client)
 	if err != nil {
@@ -473,6 +616,7 @@ func (s *apiServer) PreviewPromotionCode(
 	if err != nil {
 		return nil, err
 	}
+	// One lookup, however many sales the call quotes.
 	if err := s.chargePromotionCodeAttempt(ctx, tenant.ID, user.ID, code); err != nil {
 		return nil, err
 	}
@@ -480,45 +624,37 @@ func (s *apiServer) PreviewPromotionCode(
 	if err != nil {
 		return nil, err
 	}
+	var storePrices []int32
+	if req.Store {
+		if storePrices, err = s.storeProductPrices(ctx, tenant.ID); err != nil {
+			return nil, err
+		}
+	}
 
-	// A store sells the permanent copy of an episode alone.
-	if req.Store && (volumeID != uuid.Nil || kind != paymentprovider.KindPurchase) {
-		return nil, promotionCodeRefusalError(promotioncode.NotApplicable)
-	}
-	var sale promotionSale
-	switch {
-	case req.Store:
-		resolved, err := s.resolveStoreEpisodeSale(ctx, tenant.ID, user.ID, episodeID)
+	quotes := make([]*publirav1.PromotionCodeQuote, len(sales))
+	codeRead := false
+	for i, sale := range sales {
+		quoted, err := s.quoteSale(ctx, tenant, user.ID, code, surface, req.Store, storePrices, sale)
 		if err != nil {
 			return nil, err
 		}
-		sale = promotionSale{episodeID: resolved.episode.ID, price: resolved.price}
-	case volumeID != uuid.Nil:
-		volume, err := s.resolveVolumeSale(ctx, tenant.ID, user.ID, volumeID, surface)
+		quotes[i] = quoted.quote
+		codeRead = codeRead || quoted.codeRead
+	}
+	// A code no sale got as far as is still read, so one that cannot be
+	// applied to anything is refused rather than answered as the sales'
+	// refusals alone.
+	if !codeRead {
+		_, refusal, err := s.quotePromotionCode(ctx, s.queriesFor(ctx), tenant.ID, user.ID, code, promotionSale{})
 		if err != nil {
 			return nil, err
 		}
-		sale = promotionSale{volumeID: volume.ID, price: volume.Price}
-	default:
-		resolved, err := s.resolveEpisodeSale(ctx, tenant.ID, user.ID, episodeID, surface, kind, tenant.DefaultLocale)
-		if err != nil {
-			return nil, err
-		}
-		sale = promotionSale{episodeID: resolved.episode.ID, price: resolved.price}
-	}
-	applied, err := s.applyPromotionCode(ctx, s.queriesFor(ctx), tenant.ID, user.ID, code, sale)
-	if err != nil {
-		return nil, err
-	}
-	if req.Store && applied.price > 0 {
-		if err := s.requireStoreProduct(ctx, tenant.ID, applied.price); err != nil {
-			return nil, err
+		if refusal != promotioncode.Applicable && refusal != promotioncode.NotApplicable {
+			return nil, promotionCodeRefusalError(refusal)
 		}
 	}
 	return noStorePrivateResponse(ctx, &publirav1.PreviewPromotionCodeResponse{
-		ListPrice:      applied.listPrice,
-		DiscountAmount: applied.discountAmount,
-		Price:          applied.price,
-		Currency:       currency,
+		Quotes:   quotes,
+		Currency: currency,
 	}), nil
 }
