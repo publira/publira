@@ -1142,10 +1142,6 @@ const settingTargetName = (targetType: string) => {
  */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
-    case "api_key": {
-      return <Message message="admin.audit.targets.api_key" />;
-    }
-
     case "audience_stats": {
       return <Message message="admin.audit.targets.audience_stats" />;
     }
@@ -1214,6 +1210,19 @@ const tenantTargetName = (targetType: string) => {
       return <Message message="admin.audit.targets.user" />;
     }
 
+    default: {
+      return null;
+    }
+  }
+};
+
+/** The name of a target type of the tenant's API keys and webhooks. */
+const apiAccessTargetName = (targetType: string) => {
+  switch (targetType) {
+    case "api_key": {
+      return <Message message="admin.audit.targets.api_key" />;
+    }
+
     case "webhook_delivery": {
       return <Message message="admin.audit.targets.webhook_delivery" />;
     }
@@ -1232,7 +1241,8 @@ const tenantTargetName = (targetType: string) => {
 const targetTypeName = (targetType: string) =>
   catalogTargetName(targetType) ??
   settingTargetName(targetType) ??
-  tenantTargetName(targetType);
+  tenantTargetName(targetType) ??
+  apiAccessTargetName(targetType);
 
 /**
  * What the entry's target ID reads as: the language's name for the public site
