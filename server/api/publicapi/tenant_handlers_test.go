@@ -384,6 +384,7 @@ func TestGetTenantAnswersTheTaxRateAndTheInvoiceDetails(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"rate_bps", "applies_from"}).AddRow(int32(1000), now))
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -422,6 +423,7 @@ func TestGetTenantStatesNoRateAfterAChangeToNone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"rate_bps", "applies_from"}).AddRow(nil, now))
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)

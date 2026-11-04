@@ -113,6 +113,7 @@ func TestPurchaseListReportsTheTaxOfAPurchase(t *testing.T) {
 			uuid.Must(uuid.NewV7()), "EPISODE001", "Episode title", "ja", int32(3),
 			nil, nil, nil, nil, nil, nil, int32(0), nil, nil, nil, nil,
 			uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja",
+			int32(1000), "",
 		}
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
