@@ -741,9 +741,12 @@ type RoyaltyStatementLine struct {
 	Source RoyaltyLineSource `protobuf:"varint,16,opt,name=source,proto3,enum=publira.admin.v1.RoyaltyLineSource" json:"source,omitempty"`
 	// The tax rate of the sales or payments the line counts, in basis points,
 	// and the tax payout_amount includes at it: payout_amount less
-	// payout_amount without tax, rounded toward zero, so negative on an
-	// adjustment that takes a payout back. Both unset on a line of sales made
-	// without a rate, and on every line closed before statements carried tax.
+	// payout_amount without tax, rounded down. On an adjustment, the tax it
+	// takes off the line it adjusts: the tax of what that line pays after it,
+	// the line's payout and its adjustments added up, less the tax of what it
+	// paid before, so a line and its adjustments include the tax of what they
+	// pay together. Both unset on a line of sales made without a rate, and on
+	// every line closed before statements carried tax.
 	TaxRateBps    *int32 `protobuf:"varint,17,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
 	TaxAmount     *int64 `protobuf:"varint,18,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1551,8 +1554,9 @@ type ExportRoyaltyStatementResponse struct {
 	//	tax_rate_percent  a line's tax rate with two decimals, 10.00 for 1000
 	//	                  bps; empty for a line without one, and on a subtotal
 	//	tax_amount        an integer in the minor unit of currency, no currency
-	//	                  symbol: the tax the payout includes. Empty without a
-	//	                  rate
+	//	                  symbol: the line's tax_amount as RoyaltyStatementLine
+	//	                  describes it, or the sum of an Author's. Empty
+	//	                  without a rate
 	//	withholding_amount an integer in the minor unit of currency on a
 	//	                  subtotal of a statement that withheld; empty
 	//	                  otherwise

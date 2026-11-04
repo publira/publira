@@ -256,7 +256,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			AdjustedPeriod:  royalties.FormatPeriod(row.AdjustedPeriod),
 			Source:          royaltyLineSourceToProto(royalties.Source(row.Source)),
 			TaxRateBps:      optional(row.TaxRateBps),
-			TaxAmount:       optionalInt64(royalties.LineTax(row.TaxRateBps, row.PayoutAmount)),
+			TaxAmount:       optionalInt64(royalties.AdjustmentTax(row.TaxRateBps, row.CountedPayoutAmount, row.PayoutAmount)),
 		})
 	}
 

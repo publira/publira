@@ -466,3 +466,41 @@ func TestDBTaxIsRecordedOnTheEpisodesCoinsPayForAndNotOnTheirPack(t *testing.T) 
 		t.Fatalf("episode paid with coins worth 550 recorded %v and %v, want 1000 and 50", rate, tax)
 	}
 }
+
+// A line refunded over several months takes back the tax it included and no
+// more: a payout of 1,100 at 10% includes 100, a refund of 1 leaves 1,099,
+// which still includes 100, and the refund of the rest takes the 100 back.
+// Each adjustment's tax is the change in the tax of what the line pays, not
+// the tax of its own payout, which would take back 1 and then 100.
+func TestDBAdminRoyaltyAdjustmentsTakeBackTheTaxTheLineIncluded(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RTA")
+	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RTAARTIST001", Name: "Artist Person"})
+	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, artist.ID, "Artist", "series", 10000)
+	env.setTaxRateSince(t, f.admin, sql.NullInt32{Int32: 1000, Valid: true}, inRoyaltyZone(2026, time.June, 1, 0, 0, 0))
+	sale := env.seedSale(t, f, f.episode.ID, royaltySale{price: 1100, purchasedAt: inRoyaltyZone(2026, time.July, 10, 12, 0, 0)})
+
+	july := env.closeRoyalties(t, f.admin, "2026-07")
+	if july.Totals.GetTax() != 100 {
+		t.Fatalf("July tax = %v, want 100", july.Totals.Tax)
+	}
+
+	if _, err := env.PG.DB.ExecContext(context.Background(), "UPDATE purchases SET refunded_amount = 1 WHERE id = $1", sale); err != nil {
+		t.Fatalf("refund 1 of the sale: %v", err)
+	}
+	august := env.closeRoyalties(t, f.admin, "2026-08")
+	if august.Totals.Payout != -1 || august.Totals.Tax == nil || august.Totals.GetTax() != 0 {
+		t.Fatalf("August totals = %+v, want 1 paid back with no tax", august.Totals)
+	}
+
+	env.refundAfterClose(t, sale)
+	september := env.closeRoyalties(t, f.admin, "2026-09")
+	if september.Totals.Payout != -1099 || september.Totals.GetTax() != -100 {
+		t.Fatalf("September totals = %+v, want 1,099 paid back with 100 of tax", september.Totals)
+	}
+	if total := july.Totals.GetTax() + august.Totals.GetTax() + september.Totals.GetTax(); total != 0 {
+		t.Fatalf("tax over the three statements = %d, want 0 for a sale refunded in full", total)
+	}
+}

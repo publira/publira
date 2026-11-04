@@ -583,11 +583,9 @@ SELECT
     matched.gross_amount,
     matched.refunded_amount,
     l.share_bps,
-    (
-        (counted.net + matched.gross_amount - matched.refunded_amount) * l.share_bps / 10000
-        - counted.net * l.share_bps / 10000
-    )::bigint AS payout_amount,
-    l.tax_rate_bps
+    change.payout_amount,
+    l.tax_rate_bps,
+    counted.payout AS counted_payout_amount
 FROM matched
 JOIN royalty_statement_lines l ON l.tenant_id = matched.tenant_id
     AND l.statement_id = matched.statement_id
@@ -596,12 +594,19 @@ CROSS JOIN LATERAL (
     SELECT (
         l.gross_amount - l.refunded_amount
         + COALESCE(sum(a.gross_amount - a.refunded_amount), 0)
-    )::bigint AS net
+    )::bigint AS net,
+    (l.payout_amount + COALESCE(sum(a.payout_amount), 0))::bigint AS payout
     FROM royalty_statement_lines a
     WHERE a.tenant_id = l.tenant_id
         AND a.adjusted_statement_id = l.statement_id
         AND a.adjusted_line_number = l.line_number
 ) counted
+CROSS JOIN LATERAL (
+    SELECT (
+        (counted.net + matched.gross_amount - matched.refunded_amount) * l.share_bps / 10000
+        - counted.net * l.share_bps / 10000
+    )::bigint AS payout_amount
+) change
 LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
 LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
 LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
@@ -638,6 +643,7 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 	ShareBps            int32          `json:"share_bps"`
 	PayoutAmount        int64          `json:"payout_amount"`
 	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	CountedPayoutAmount int64          `json:"counted_payout_amount"`
 }
 
 // Computes the adjustment lines of one tenant month: for each line of a
@@ -663,7 +669,11 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 //
 // A refund reaches the line of the tax rate its purchase or payment recorded,
 // since a month whose rate changed has a line per rate, and the adjustment
-// takes that line's rate. A statement the previous release closed cut no line
+// takes that line's rate. counted_payout_amount is what the line has paid so
+// far, its own payout and every adjustment it has had added up, which the
+// adjustment's tax is worked out from as its payout is from the net: the tax
+// of what the line pays after the adjustment less the tax of what it paid
+// before. A statement the previous release closed cut no line
 // by rate, so a refund of a sale with a rate that finds no line of its rate
 // there reaches the credit's line with none, and the refunds of every rate
 // carried to one line are added up into one adjustment of it.
@@ -699,6 +709,7 @@ func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg L
 			&i.ShareBps,
 			&i.PayoutAmount,
 			&i.TaxRateBps,
+			&i.CountedPayoutAmount,
 		); err != nil {
 			return nil, err
 		}

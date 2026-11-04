@@ -165,17 +165,26 @@ CREATE TRIGGER subscription_payments_record_tax
 -- COLUMN: royalty_statement_lines tax_amount
 -- The rate of the sales or payments a line counts, and the tax its payout
 -- includes at that rate. A month whose rate changed has a line per rate for
--- each credit. An adjustment line has the rate of the line it adjusts. Both
--- NULL for a line of sales made without a rate, and on every line closed
--- before statements carried tax.
+-- each credit. Both NULL for a line of sales made without a rate, and on
+-- every line closed before statements carried tax.
+--
+-- An adjustment line has the rate of the line it adjusts, and its tax is what
+-- it takes off the tax that line's payout includes: the tax of the line's
+-- payout and its adjustments added up after it, less the same before it. The
+-- line and its adjustments therefore include the tax of what they pay
+-- together, which a tax worked out on each adjustment's payout alone would
+-- not: a payout of 1,100 at 10% includes 100, and adjustments of -1 and
+-- -1,099 would take 1 and 100 off it. That is why an adjustment's tax cannot
+-- be recomputed from the adjustment alone, as a line of sales' can.
 ALTER TABLE ONLY royalty_statement_lines
     ADD COLUMN tax_rate_bps integer,
     ADD COLUMN tax_amount bigint;
 
 -- CONSTRAINT: royalty_statement_lines royalty_statement_lines_tax_check
--- Recomputable from the line alone, as its payout is.
+-- A line of sales' tax is recomputable from the line alone, as its payout is;
+-- an adjustment's, like its payout, takes back and is never positive.
 ALTER TABLE ONLY royalty_statement_lines
-    ADD CONSTRAINT royalty_statement_lines_tax_check CHECK ((((tax_rate_bps IS NULL) AND (tax_amount IS NULL)) OR ((tax_rate_bps >= 1) AND (tax_rate_bps <= 10000) AND (tax_amount = tax_included(payout_amount, tax_rate_bps))))) NOT VALID;
+    ADD CONSTRAINT royalty_statement_lines_tax_check CHECK ((((tax_rate_bps IS NULL) AND (tax_amount IS NULL)) OR ((tax_rate_bps >= 1) AND (tax_rate_bps <= 10000) AND (((adjusted_statement_id IS NULL) AND (tax_amount = tax_included(payout_amount, tax_rate_bps))) OR ((adjusted_statement_id IS NOT NULL) AND (tax_amount <= 0)))))) NOT VALID;
 
 -- COLUMN: royalty_statements withholding_rate_bps
 -- The tenant's withholding rate at close, kept as the time zone is, so a

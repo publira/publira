@@ -151,6 +151,23 @@ func LineTax(rateBps sql.NullInt32, payout int64) sql.NullInt64 {
 	return sql.NullInt64{Int64: TaxIncluded(payout, rateBps.Int32), Valid: true}
 }
 
+// AdjustmentTax is the tax an adjustment takes off the line it adjusts, at
+// that line's rate: the tax of what the line pays after the adjustment, its
+// own payout and every adjustment so far added up, less the tax of what it
+// paid before. Worked out on each adjustment's payout alone, the taxes of a
+// line refunded over several months would not add up to the tax of what it
+// still pays: a payout of 1,100 at 10% includes 100, and adjustments of -1 and
+// -1,099 would take 1 and 100 off it. Invalid where the line has no rate.
+func AdjustmentTax(rateBps sql.NullInt32, countedPayout, payout int64) sql.NullInt64 {
+	if !rateBps.Valid {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{
+		Int64: TaxIncluded(countedPayout+payout, rateBps.Int32) - TaxIncluded(countedPayout, rateBps.Int32),
+		Valid: true,
+	}
+}
+
 // Withholding is what a withholding rate in basis points takes from a payout
 // less the tax it includes, rounded down, and nothing from a payout that is
 // not above its tax. Invalid where there is no rate.
@@ -517,7 +534,7 @@ func creditedLines(computation Computation) []creditedLine {
 			creatorPublicID: row.CreatorPublicID.String,
 			creatorName:     row.CreatorName,
 			payout:          row.PayoutAmount,
-			tax:             LineTax(row.TaxRateBps, row.PayoutAmount),
+			tax:             AdjustmentTax(row.TaxRateBps, row.CountedPayoutAmount, row.PayoutAmount),
 		})
 	}
 	return lines
@@ -635,14 +652,13 @@ type statementLine struct {
 	TaxAmount           *int64        `json:"tax_amount"`
 }
 
-// withTax sets the line's rate and the tax its payout includes at it, and
-// leaves both NULL for a line without a rate.
-func (line statementLine) withTax(rateBps sql.NullInt32) statementLine {
-	if rateBps.Valid {
-		rate := rateBps.Int32
-		tax := TaxIncluded(line.PayoutAmount, rate)
+// withTax sets the line's rate and its tax, and leaves both NULL for a line
+// without a rate.
+func (line statementLine) withTax(rateBps sql.NullInt32, tax sql.NullInt64) statementLine {
+	if rateBps.Valid && tax.Valid {
+		rate, amount := rateBps.Int32, tax.Int64
 		line.TaxRateBps = &rate
-		line.TaxAmount = &tax
+		line.TaxAmount = &amount
 	}
 	return line
 }
@@ -667,7 +683,7 @@ func statementLinesJSON(computation Computation) (json.RawMessage, error) {
 			ShareBps:       row.ShareBps,
 			PayoutAmount:   row.PayoutAmount,
 			Source:         SourceSale,
-		}.withTax(row.TaxRateBps)
+		}.withTax(row.TaxRateBps, LineTax(row.TaxRateBps, row.PayoutAmount))
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String
 		}
@@ -689,7 +705,7 @@ func statementLinesJSON(computation Computation) (json.RawMessage, error) {
 			ShareBps:       row.ShareBps,
 			PayoutAmount:   row.PayoutAmount,
 			Source:         SourceSubscription,
-		}.withTax(row.TaxRateBps)
+		}.withTax(row.TaxRateBps, LineTax(row.TaxRateBps, row.PayoutAmount))
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String
 		}
@@ -713,7 +729,7 @@ func statementLinesJSON(computation Computation) (json.RawMessage, error) {
 			AdjustedStatementID: uuid.NullUUID{UUID: row.AdjustedStatementID, Valid: true},
 			AdjustedLineNumber:  &row.AdjustedLineNumber,
 			Source:              Source(row.Source),
-		}.withTax(row.TaxRateBps)
+		}.withTax(row.TaxRateBps, AdjustmentTax(row.TaxRateBps, row.CountedPayoutAmount, row.PayoutAmount))
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String
 		}

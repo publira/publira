@@ -99,3 +99,20 @@ func TestSubtotalsAddUpEachCreatorsLinesInTheOrderOfTheirFirstLine(t *testing.T)
 		t.Errorf("second subtotal = %+v, want the Artist's 440 with 40 of tax and 40 withheld", got[1])
 	}
 }
+
+// An adjustment's tax is the change in the tax of what the line pays, so a
+// line and its adjustments include the tax of what they pay together.
+func TestAdjustmentTaxIsTheChangeInTheTaxOfWhatTheLinePays(t *testing.T) {
+	rate := sql.NullInt32{Int32: 1000, Valid: true}
+	first := AdjustmentTax(rate, 1100, -1)
+	second := AdjustmentTax(rate, 1099, -1099)
+	if first.Int64 != 0 || second.Int64 != -100 {
+		t.Fatalf("adjustments of -1 and -1,099 to a payout of 1,100 take %d and %d of tax, want 0 and -100", first.Int64, second.Int64)
+	}
+	if TaxIncluded(1100, 1000)+first.Int64+second.Int64 != 0 {
+		t.Fatal("a line refunded in full keeps tax")
+	}
+	if got := AdjustmentTax(sql.NullInt32{}, 1100, -1); got.Valid {
+		t.Fatalf("adjustment of a line without a rate = %v, want none", got)
+	}
+}

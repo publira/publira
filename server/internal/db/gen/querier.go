@@ -3063,7 +3063,11 @@ type Querier interface {
 	//
 	// A refund reaches the line of the tax rate its purchase or payment recorded,
 	// since a month whose rate changed has a line per rate, and the adjustment
-	// takes that line's rate. A statement the previous release closed cut no line
+	// takes that line's rate. counted_payout_amount is what the line has paid so
+	// far, its own payout and every adjustment it has had added up, which the
+	// adjustment's tax is worked out from as its payout is from the net: the tax
+	// of what the line pays after the adjustment less the tax of what it paid
+	// before. A statement the previous release closed cut no line
 	// by rate, so a refund of a sale with a rate that finds no line of its rate
 	// there reaches the credit's line with none, and the refunds of every rate
 	// carried to one line are added up into one adjustment of it.
