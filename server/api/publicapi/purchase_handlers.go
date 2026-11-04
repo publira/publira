@@ -906,7 +906,7 @@ func (s *apiServer) recordRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
-	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, tenantID, purchase.ID, purchase.RefundedAmount.Int32, purchase.RefundedAt.Valid); err != nil {
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
 		return s.internalError(ctx, "failed to queue the webhook events of a refund", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
 	}
 	if purchase.StaffRefundRequestedAmount.Valid {
@@ -1504,7 +1504,7 @@ func (s *apiServer) applyHeldRefund(
 		}
 		s.logRevokedCoins(ctx, purchase, revocation)
 	}
-	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, tenantID, purchase.ID, purchase.RefundedAmount.Int32, purchase.RefundedAt.Valid); err != nil {
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
 		return err
 	}
 	s.logger.InfoContext(ctx, "applied a refund that arrived before its purchase",

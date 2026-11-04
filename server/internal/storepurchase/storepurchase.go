@@ -116,7 +116,7 @@ func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID 
 // queueRefunded owes the tenant's webhook endpoints the refund of purchase. A
 // store refunds a purchase whole, once.
 func queueRefunded(ctx context.Context, q RefundQuerier, purchase dbmodels.Purchase) error {
-	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, q, purchase.TenantID, purchase.ID, purchase.RefundedAmount.Int32, purchase.RefundedAt.Valid); err != nil {
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, q, purchase); err != nil {
 		return fmt.Errorf("queue the webhook events of a store refund: %w", err)
 	}
 	return nil

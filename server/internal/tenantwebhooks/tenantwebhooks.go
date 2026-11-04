@@ -166,14 +166,23 @@ func QueuePurchaseCompleted(ctx context.Context, q Queries, tenantID, purchaseID
 	})
 }
 
-// QueuePurchaseRefunded owes the event of a refund just recorded on a
-// purchase. refundedTotal is the purchase's refunded total after it, which
-// tells one refund in part from the next and a notification delivered twice
-// from a second refund.
-func QueuePurchaseRefunded(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID, refundedTotal int32, fully bool) error {
-	key := fmt.Sprintf("%s:%s:%d:%t", EventPurchaseRefunded, purchaseID, refundedTotal, fully)
-	return queue(ctx, q, tenantID, EventPurchaseRefunded, key, func() (any, error) {
-		return purchaseData(ctx, q, tenantID, purchaseID)
+// QueuePurchaseRefunded owes the event of a refund just recorded on purchase,
+// the row as the write that recorded it returned it. Its refunded total tells
+// one refund in part from the next, and a notification delivered twice from a
+// second refund. The event carries the refund as that row has it rather than
+// as a later read would: a refund recorded outside a transaction can be
+// followed by another before the purchase is read again, and each event has
+// to say what its own refund left.
+func QueuePurchaseRefunded(ctx context.Context, q Queries, purchase dbmodels.Purchase) error {
+	key := fmt.Sprintf("%s:%s:%d:%t", EventPurchaseRefunded, purchase.ID, purchase.RefundedAmount.Int32, purchase.RefundedAt.Valid)
+	return queue(ctx, q, purchase.TenantID, EventPurchaseRefunded, key, func() (any, error) {
+		data, err := purchaseData(ctx, q, purchase.TenantID, purchase.ID)
+		if err != nil {
+			return nil, err
+		}
+		data.RefundedAmount = purchase.RefundedAmount.Int32
+		data.RefundedAt = formatNullTime(purchase.RefundedAt)
+		return data, nil
 	})
 }
 
