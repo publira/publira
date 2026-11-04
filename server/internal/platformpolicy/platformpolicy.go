@@ -165,8 +165,8 @@ type Policy struct {
 	// the writes one account can make the storefront repeat.
 	CoinPayment MinuteDay
 	// PurchaseCheckout bounds the purchases of an episode, a volume, or a coin
-	// pack one reader may start, on the web and through the app's store
-	// together. A checkout writes nothing, but each one asks the payment
+	// pack, and the tips, one reader may start, on the web and through the
+	// app's store together. A checkout writes nothing, but each one asks the payment
 	// provider for a checkout on the tenant's credentials, and a store
 	// purchase writes its intent on every start, so what this bounds is the
 	// provider requests and the writes one account can make the storefront

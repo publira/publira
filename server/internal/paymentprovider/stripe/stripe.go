@@ -165,7 +165,8 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	// page, except on a checkout that takes a discount of its own: Stripe
 	// takes one or the other on a session, never both. Nor on a checkout of
 	// a pack, whose coins are worth what was paid for them: a code would grant
-	// them for less, or, taking off the whole price, for nothing.
+	// them for less, or, taking off the whole price, for nothing. Nor on a
+	// tip, whose amount is the reader's own choice of what to give.
 	switch {
 	case req.Discount != nil:
 		couponID, err := createDiscountCoupon(ctx, client, currency, *req.Discount, req.IdempotencyKey)
@@ -173,7 +174,7 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 			return "", err
 		}
 		params.Discounts = []*stripego.CheckoutSessionCreateDiscountParams{{Coupon: stripego.String(couponID)}}
-	case req.Purchase.CoinPackID == uuid.Nil:
+	case req.Purchase.CoinPackID == uuid.Nil && req.Purchase.Kind != paymentprovider.KindTip:
 		params.AllowPromotionCodes = stripego.Bool(true)
 	}
 	params.SetIdempotencyKey(req.IdempotencyKey)

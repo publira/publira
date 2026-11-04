@@ -247,7 +247,7 @@ func tenantConfigColumns() []string {
 		"app_store_url", "google_play_url", "terms_page_id", "privacy_page_id",
 		"android_application_id", "android_sha256_cert_fingerprints", "ios_team_id", "ios_bundle_identifier",
 		"app_purchase_route", "reader_icon_policy", "creator_pages_enabled", "creator_pages_show_sales",
-		"episode_review_required", "invoice_legal_name", "invoice_registration_number", "withholding_rate_bps",
+		"episode_review_required", "invoice_legal_name", "invoice_registration_number", "withholding_rate_bps", "tips_enabled", "tip_amounts",
 	}
 }
 
@@ -258,7 +258,7 @@ func expectTenantConfigRead(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, now, now, commentMode, int32(3), "single", ageRule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload", false, false, false, nil, nil, nil))
+			AddRow(tenantID, now, now, commentMode, int32(3), "single", ageRule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload", false, false, false, nil, nil, nil, false, "{}"))
 }
 
 // expectTenantAgeVerification stands in for the tenant config read a rated
@@ -332,6 +332,14 @@ func expectNoTenantCommunityLimitOverrides(mock sqlmock.Sqlmock, tenantID uuid.U
 // expectNoSavedPlatformPolicy answers the platform policy read with no saved
 // row, which is the built-in policy: tenant coins not allowed. The server's
 // resolver keeps what it read, so a test server reads it once.
+// expectNoTenantTipAmounts stands in for the read of the amounts a tenant that
+// takes no tips offers, which an episode's detail makes.
+func expectNoTenantTipAmounts(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantTipAmounts)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"tip_amounts"}).AddRow("{}"))
+}
+
 func expectNoSavedPlatformPolicy(mock sqlmock.Sqlmock) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformPolicyConfig)).
 		WillReturnRows(sqlmock.NewRows([]string{"singleton"}))

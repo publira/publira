@@ -278,9 +278,9 @@ func TestDBAdminRevenueByEpisodePagesAndBindsItsTokens(t *testing.T) {
 }
 
 // The totals and the day report read a tenant's range of purchases from
-// idx_purchases_tenant_purchased_at_id_sales_tax alone, without visiting the
-// table.
-func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndex(t *testing.T) {
+// idx_purchases_tenant_purchased_at_id_sales_tax alone, and its tips from
+// idx_purchases_tenant_purchased_at_tips alone, without visiting the table.
+func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndexes(t *testing.T) {
 	t.Parallel()
 
 	env := newAdminDBEnv(t)
@@ -327,6 +327,11 @@ func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndex(t *testing.T) {
 			}
 			if !strings.Contains(plan.String(), "Index Only Scan using idx_purchases_tenant_purchased_at_id_sales_tax") {
 				t.Fatalf("%s does not scan the index alone:\n%s", name, plan.String())
+			}
+			// The tips are read from an index of their own, since the sales
+			// index does not carry the kind that tells them apart.
+			if !strings.Contains(plan.String(), "Index Only Scan using idx_purchases_tenant_purchased_at_tips") {
+				t.Fatalf("%s does not read the tips from their index alone:\n%s", name, plan.String())
 			}
 		})
 	}

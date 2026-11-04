@@ -83,6 +83,9 @@ const (
 	// episodes of its plan its subscriber first finished in that period; one
 	// whose subscriber finished none is shared to no one.
 	RoyaltyLineSource_ROYALTY_LINE_SOURCE_SUBSCRIPTION RoyaltyLineSource = 2
+	// The tips readers gave the episode's Authors, split by the credits'
+	// shares as its sales are.
+	RoyaltyLineSource_ROYALTY_LINE_SOURCE_TIP RoyaltyLineSource = 3
 )
 
 // Enum value maps for RoyaltyLineSource.
@@ -91,11 +94,13 @@ var (
 		0: "ROYALTY_LINE_SOURCE_UNSPECIFIED",
 		1: "ROYALTY_LINE_SOURCE_SALE",
 		2: "ROYALTY_LINE_SOURCE_SUBSCRIPTION",
+		3: "ROYALTY_LINE_SOURCE_TIP",
 	}
 	RoyaltyLineSource_value = map[string]int32{
 		"ROYALTY_LINE_SOURCE_UNSPECIFIED":  0,
 		"ROYALTY_LINE_SOURCE_SALE":         1,
 		"ROYALTY_LINE_SOURCE_SUBSCRIPTION": 2,
+		"ROYALTY_LINE_SOURCE_TIP":          3,
 	}
 )
 
@@ -701,8 +706,9 @@ func (x *RoyaltyStatement) GetWithholdingRateBps() int32 {
 //
 // On a subscription line, sale_count is the payments shared to the episode,
 // gross_amount the parts of them it was given, and refunded_amount the same
-// parts of their partial refunds. The month's own sales lines come first,
-// then its subscription lines, then the adjustment lines.
+// parts of their partial refunds. On a tip line, sale_count is the tips given
+// and the amounts are theirs. The month's own sales lines come first, then its
+// tip lines, then its subscription lines, then the adjustment lines.
 //
 // A line counts the sales or payments of one tax rate, the one each recorded
 // when it was made, so a month whose rate changed has a line per rate for each
@@ -1537,8 +1543,8 @@ type ExportRoyaltyStatementResponse struct {
 	//	                  adjusts; empty for a line of the month's own sales.
 	//	                  The amounts of an adjustment line are changes, zero
 	//	                  or negative, as RoyaltyStatementLine describes
-	//	source            sale or subscription, what the line credits, as
-	//	                  RoyaltyLineSource describes
+	//	source            sale, tip, or subscription, what the line credits,
+	//	                  as RoyaltyLineSource describes
 	//
 	// The IDs are the rows' internal IDs, not their public IDs, and they stay
 	// on the line after the row is deleted.
@@ -1734,11 +1740,12 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x10RoyaltyCloseMode\x12\"\n" +
 	"\x1eROYALTY_CLOSE_MODE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19ROYALTY_CLOSE_MODE_MANUAL\x10\x01\x12 \n" +
-	"\x1cROYALTY_CLOSE_MODE_AUTOMATIC\x10\x02*|\n" +
+	"\x1cROYALTY_CLOSE_MODE_AUTOMATIC\x10\x02*\x99\x01\n" +
 	"\x11RoyaltyLineSource\x12#\n" +
 	"\x1fROYALTY_LINE_SOURCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ROYALTY_LINE_SOURCE_SALE\x10\x01\x12$\n" +
-	" ROYALTY_LINE_SOURCE_SUBSCRIPTION\x10\x022\xe8\x06\n" +
+	" ROYALTY_LINE_SOURCE_SUBSCRIPTION\x10\x02\x12\x1b\n" +
+	"\x17ROYALTY_LINE_SOURCE_TIP\x10\x032\xe8\x06\n" +
 	"\x13AdminRoyaltyService\x12k\n" +
 	"\x10GetRoyaltyConfig\x12).publira.admin.v1.GetRoyaltyConfigRequest\x1a*.publira.admin.v1.GetRoyaltyConfigResponse\"\x00\x12t\n" +
 	"\x13UpdateRoyaltyConfig\x12,.publira.admin.v1.UpdateRoyaltyConfigRequest\x1a-.publira.admin.v1.UpdateRoyaltyConfigResponse\"\x00\x12\x80\x01\n" +

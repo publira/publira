@@ -193,13 +193,15 @@ const PurchaseKind$json = {
     {'1': 'PURCHASE_KIND_UNSPECIFIED', '2': 0},
     {'1': 'PURCHASE_KIND_PURCHASE', '2': 1},
     {'1': 'PURCHASE_KIND_RENTAL', '2': 2},
+    {'1': 'PURCHASE_KIND_TIP', '2': 3},
   ],
 };
 
 /// Descriptor for `PurchaseKind`. Decode as a `google.protobuf.EnumDescriptorProto`.
 final $typed_data.Uint8List purchaseKindDescriptor = $convert.base64Decode(
     'CgxQdXJjaGFzZUtpbmQSHQoZUFVSQ0hBU0VfS0lORF9VTlNQRUNJRklFRBAAEhoKFlBVUkNIQV'
-    'NFX0tJTkRfUFVSQ0hBU0UQARIYChRQVVJDSEFTRV9LSU5EX1JFTlRBTBAC');
+    'NFX0tJTkRfUFVSQ0hBU0UQARIYChRQVVJDSEFTRV9LSU5EX1JFTlRBTBACEhUKEVBVUkNIQVNF'
+    'X0tJTkRfVElQEAM=');
 
 @$core.Deprecated('Use readerIconPolicyDescriptor instead')
 const ReaderIconPolicy$json = {

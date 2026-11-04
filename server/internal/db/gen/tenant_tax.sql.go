@@ -105,7 +105,7 @@ SET invoice_legal_name = EXCLUDED.invoice_legal_name,
     invoice_registration_number = EXCLUDED.invoice_registration_number,
     withholding_rate_bps = EXCLUDED.withholding_rate_bps,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantInvoiceSettingsParams struct {
@@ -151,6 +151,8 @@ func (q *Queries) UpsertTenantInvoiceSettings(ctx context.Context, arg UpsertTen
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }

@@ -113,6 +113,13 @@
       "subject": "{$tenant_name}購入完了",
       "tax": "うち消費税 ({$rate}%) は{$amount}です。",
       "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。",
+      "tip": "著者にチップを贈ったエピソード「{$episode_title}」",
+      "tip_amount": "チップの金額は{$amount} ({$currency}) です。",
+      "tip_given_at": "贈った日時は{$purchased_at}です。",
+      "tip_heading": "チップをありがとうございます",
+      "tip_intro": "{$tenant_name}で贈られたチップの内容をお知らせします。",
+      "tip_preview": "{$title}の著者にチップを贈っていただきありがとうございます。",
+      "tip_subject": "{$tenant_name}チップ受付完了",
       "volume": "巻「{$volume_title}」"
     },
     "reader_announcement_posted": {
@@ -273,7 +280,8 @@
   "checkout": {
     "bundle_discount": "まとめ買い割引 ({$percent :integer}%)",
     "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name} (うちボーナス{$bonus})}}",
-    "rental_line_item": "{$episode_title} (レンタル、{$hours :integer}時間)"
+    "rental_line_item": "{$episode_title} (レンタル、{$hours :integer}時間)",
+    "tip_line_item": "{$episode_title}の著者へのチップ"
   },
   "errors": {
     "disallowed_value": "許可されていない値です。別の値を選んでください。",
@@ -368,6 +376,7 @@
         "tenant_site_copy": "公開サイト表示設定",
         "tenant_site_verification": "検索エンジンの所有権確認",
         "tenant_timezone": "タイムゾーン",
+        "tenant_tip_settings": "チップ",
         "user": "ユーザー",
         "volume": "巻"
       },
@@ -531,6 +540,7 @@
         "tenant_payment_settings_updated": "決済設定更新",
         "tenant_purchase_settings_updated": "販売先更新",
         "tenant_tax_settings_updated": "税と請求書更新",
+        "tenant_tip_settings_updated": "チップ設定更新",
         "tenant_fcm_credentials_saved": "Firebaseの認証情報の保存",
         "tenant_fcm_credentials_deleted": "Firebaseの認証情報の削除",
         "tenant_mobile_app_association_updated": "アプリリンク更新",

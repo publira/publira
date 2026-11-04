@@ -255,6 +255,32 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     updated_at = NOW()
 RETURNING *;
 
+-- name: UpsertTenantTipSettings :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Whether tips are
+-- on and the amounts offered are written together, since tips cannot be on
+-- without an amount to give.
+INSERT INTO tenant_config (tenant_id, tips_enabled, tip_amounts)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('tips_enabled'),
+        sqlc.arg('tip_amounts')::integer []
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET tips_enabled = EXCLUDED.tips_enabled,
+    tip_amounts = EXCLUDED.tip_amounts,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: GetTenantTipAmounts :one
+-- The amounts a reader may tip in, empty while the tenant takes no tips, so
+-- a caller offers what this answers and nothing when it is empty. A tenant
+-- with no config row takes none.
+SELECT COALESCE((
+        SELECT CASE WHEN tc.tips_enabled THEN tc.tip_amounts ELSE '{}'::integer [] END
+        FROM tenant_config tc
+        WHERE tc.tenant_id = sqlc.arg('tenant_id')
+    ), '{}'::integer [])::integer [] AS tip_amounts;
+
 -- name: LockTenantConfigByTenantID :one
 -- Serializes the writes that together decide whether the store route has a
 -- store that can sell: the store settings and the app association. A tenant

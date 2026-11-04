@@ -261,6 +261,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			nil,
 			nil,
 			nil,
+			false,
+			"{}",
 		))
 	expectSiteCopy(mock, tenantID, "ja", "ja", "© Publira", "Site description", "Tagline")
 	expectNoTaxRate(mock, tenantID)
@@ -366,7 +368,7 @@ func TestGetTenantAnswersTheTaxRateAndTheInvoiceDetails(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all",
 			nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload", false, false, false,
-			"Hoshi Shobo Ltd.", "T1234567890123", int32(1021),
+			"Hoshi Shobo Ltd.", "T1234567890123", int32(1021), false, "{}",
 		))
 	expectNoSiteCopy(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCurrentTenantTaxRate)).
@@ -1106,6 +1108,8 @@ func expectTenantConfigWithCommentMode(
 			nil,
 			nil,
 			nil,
+			false,
+			"{}",
 		))
 }
 
@@ -1269,5 +1273,5 @@ func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload", false, false, false, nil, nil, nil))
+			AddRow(tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload", false, false, false, nil, nil, nil, false, "{}"))
 }

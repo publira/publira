@@ -106,7 +106,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const CreateTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id)
 VALUES ($1)
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
@@ -137,6 +137,8 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (T
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -332,7 +334,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const GetTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -366,6 +368,8 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -520,6 +524,24 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPag
 	return i, err
 }
 
+const GetTenantTipAmounts = `-- name: GetTenantTipAmounts :one
+SELECT COALESCE((
+        SELECT CASE WHEN tc.tips_enabled THEN tc.tip_amounts ELSE '{}'::integer [] END
+        FROM tenant_config tc
+        WHERE tc.tenant_id = $1
+    ), '{}'::integer [])::integer [] AS tip_amounts
+`
+
+// The amounts a reader may tip in, empty while the tenant takes no tips, so
+// a caller offers what this answers and nothing when it is empty. A tenant
+// with no config row takes none.
+func (q *Queries) GetTenantTipAmounts(ctx context.Context, tenantID uuid.UUID) ([]int32, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantTipAmounts, tenantID)
+	var tip_amounts []int32
+	err := row.Scan(pq.Array(&tip_amounts))
+	return tip_amounts, err
+}
+
 const ListTenantsAsc = `-- name: ListTenantsAsc :many
 SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 FROM tenants
@@ -667,7 +689,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 }
 
 const LockTenantConfigByTenantID = `-- name: LockTenantConfigByTenantID :one
-SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 FROM tenant_config
 WHERE tenant_id = $1
 FOR UPDATE
@@ -704,6 +726,8 @@ func (q *Queries) LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -902,7 +926,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantAgeVerificationParams struct {
@@ -939,6 +963,8 @@ func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTen
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -972,7 +998,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -1017,6 +1043,8 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -1032,7 +1060,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET creator_pages_enabled = EXCLUDED.creator_pages_enabled,
     creator_pages_show_sales = EXCLUDED.creator_pages_show_sales,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantCreatorPageSettingsParams struct {
@@ -1072,6 +1100,8 @@ func (q *Queries) UpsertTenantCreatorPageSettings(ctx context.Context, arg Upser
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -1082,7 +1112,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET episode_review_required = EXCLUDED.episode_review_required,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantEpisodeReviewRequiredParams struct {
@@ -1119,6 +1149,8 @@ func (q *Queries) UpsertTenantEpisodeReviewRequired(ctx context.Context, arg Ups
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -1134,7 +1166,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET terms_page_id = EXCLUDED.terms_page_id,
     privacy_page_id = EXCLUDED.privacy_page_id,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantLegalPagesParams struct {
@@ -1173,6 +1205,8 @@ func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLe
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -1198,7 +1232,7 @@ SET android_application_id = EXCLUDED.android_application_id,
     ios_team_id = EXCLUDED.ios_team_id,
     ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantMobileAppAssociationParams struct {
@@ -1246,6 +1280,8 @@ func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg Upse
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }
@@ -1263,7 +1299,7 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     app_store_url = EXCLUDED.app_store_url,
     google_play_url = EXCLUDED.google_play_url,
     updated_at = NOW()
-RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
 `
 
 type UpsertTenantPurchaseSettingsParams struct {
@@ -1309,6 +1345,65 @@ func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTe
 		&i.InvoiceLegalName,
 		&i.InvoiceRegistrationNumber,
 		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
+	)
+	return i, err
+}
+
+const UpsertTenantTipSettings = `-- name: UpsertTenantTipSettings :one
+INSERT INTO tenant_config (tenant_id, tips_enabled, tip_amounts)
+VALUES (
+        $1,
+        $2,
+        $3::integer []
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET tips_enabled = EXCLUDED.tips_enabled,
+    tip_amounts = EXCLUDED.tip_amounts,
+    updated_at = NOW()
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy, creator_pages_enabled, creator_pages_show_sales, episode_review_required, invoice_legal_name, invoice_registration_number, withholding_rate_bps, tips_enabled, tip_amounts
+`
+
+type UpsertTenantTipSettingsParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	TipsEnabled bool      `json:"tips_enabled"`
+	TipAmounts  []int32   `json:"tip_amounts"`
+}
+
+// An upsert for the reason UpsertTenantCommentSettings gives. Whether tips are
+// on and the amounts offered are written together, since tips cannot be on
+// without an amount to give.
+func (q *Queries) UpsertTenantTipSettings(ctx context.Context, arg UpsertTenantTipSettingsParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, UpsertTenantTipSettings, arg.TenantID, arg.TipsEnabled, pq.Array(arg.TipAmounts))
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
+		&i.AgeVerification,
+		&i.PurchaseAvailability,
+		&i.AppStoreUrl,
+		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
+		&i.AndroidApplicationID,
+		pq.Array(&i.AndroidSha256CertFingerprints),
+		&i.IosTeamID,
+		&i.IosBundleIdentifier,
+		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
+		&i.CreatorPagesEnabled,
+		&i.CreatorPagesShowSales,
+		&i.EpisodeReviewRequired,
+		&i.InvoiceLegalName,
+		&i.InvoiceRegistrationNumber,
+		&i.WithholdingRateBps,
+		&i.TipsEnabled,
+		pq.Array(&i.TipAmounts),
 	)
 	return i, err
 }

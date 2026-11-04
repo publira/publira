@@ -1274,6 +1274,10 @@ type Querier interface {
 	// it was paid. A payment belongs to no series, so only the totals and the
 	// days count it.
 	//
+	// A tip is a purchase too, counted among them at what the reader gave, and
+	// tip_amount is the part of gross_amount tips account for. It is read from
+	// idx_purchases_tenant_purchased_at_tips, which holds the tips alone.
+	//
 	// The tax of a purchase is the tax what the tenant kept of it includes, at
 	// the rate the purchase recorded: tax_included of its price less what went
 	// back on it, which is the tax_amount it recorded while nothing has gone back,
@@ -1474,9 +1478,18 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as no code.
 	GetTenantSiteVerification(ctx context.Context, tenantID uuid.UUID) (TenantSiteVerification, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
+	// The amounts a reader may tip in, empty while the tenant takes no tips, so
+	// a caller offers what this answers and nothing when it is empty. A tenant
+	// with no config row takes none.
+	GetTenantTipAmounts(ctx context.Context, tenantID uuid.UUID) ([]int32, error)
 	// What a royalty statement closed now withholds from each Author. NULL, and
 	// no row for a tenant with no config row, withhold nothing.
 	GetTenantWithholdingRate(ctx context.Context, tenantID uuid.UUID) (sql.NullInt32, error)
+	// The episode a reader asks to tip the Authors of: one published on the
+	// calling surface, priced or free, since a tip is given for an episode read
+	// rather than bought. Its title is in the reader's locale, as the checkout
+	// page names it.
+	GetTippableEpisodeForTenant(ctx context.Context, arg GetTippableEpisodeForTenantParams) (GetTippableEpisodeForTenantRow, error)
 	// The account of the tenant that holds the inbox an address reaches, whether
 	// or not it holds it under the same tag. A tenant may already hold several
 	// such accounts; the one holding the address exactly as given answers first,
@@ -3058,8 +3071,8 @@ type Querier interface {
 	// A refund of a subscription payment is carried the same way, to the
 	// subscription line of each episode the payment was shared to, by the part
 	// royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
-	// reaches the episode's line of sales alone. A line closed before lines had
-	// a source is one of sales.
+	// reaches the episode's line of sales alone, and a refund of a tip its line
+	// of tips. A line closed before lines had a source is one of sales.
 	//
 	// A refund reaches the line of the tax rate its purchase or payment recorded,
 	// since a month whose rate changed has a line per rate, and the adjustment
@@ -3096,6 +3109,10 @@ type Querier interface {
 	// payout is
 	// floored per line over the month's sum, which keeps the rounding loss to one
 	// minor unit of the currency per line.
+	//
+	// A tip is split among the episode's credits as a sale is, on a line of its
+	// own: source is `tip` on the line of the month's tips to a credit and `sale`
+	// on the line of its sales, and the lines of sales come first.
 	//
 	// A credit's sales are cut into one line per tax rate the purchases recorded,
 	// so a line's payout includes tax at one rate, the line's, which the close
@@ -3884,6 +3901,11 @@ type Querier interface {
 	// answers the one already open for the same plan and product, so asking again
 	// adds no row. The no-op update is what makes the existing row come back.
 	OpenStoreSubscriptionIntent(ctx context.Context, arg OpenStoreSubscriptionIntentParams) (StoreSubscriptionIntent, error)
+	// Opens the reader's intent to tip the Authors of an episode as a store
+	// product, or answers the one already open for the same episode and amount,
+	// as OpenStorePurchaseIntent does for a purchase. The product names the
+	// amount, so a tip and a purchase of the episode never share an intent.
+	OpenStoreTipIntent(ctx context.Context, arg OpenStoreTipIntentParams) (StorePurchaseIntent, error)
 	// Run in the transaction that publishes the episode, by the scheduled
 	// publication job and by the console alike: an episode published while its
 	// series is not public owes its followers the announcement the fan-out cannot
@@ -4659,6 +4681,10 @@ type Querier interface {
 	UpsertTenantSignUpSettings(ctx context.Context, arg UpsertTenantSignUpSettingsParams) (TenantSignUpSetting, error)
 	UpsertTenantSiteVerification(ctx context.Context, arg UpsertTenantSiteVerificationParams) (TenantSiteVerification, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. Whether tips are
+	// on and the amounts offered are written together, since tips cannot be on
+	// without an amount to give.
+	UpsertTenantTipSettings(ctx context.Context, arg UpsertTenantTipSettingsParams) (TenantConfig, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
 	// An omitted (NULL) preference cell keeps the value the row holds, so a client

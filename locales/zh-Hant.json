@@ -113,6 +113,13 @@
       "subject": "{$tenant_name}購買成功",
       "tax": "其中稅額（{$rate}%）：{$amount}",
       "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。",
+      "tip": "打賞章節的作者：{$episode_title}",
+      "tip_amount": "打賞金額：{$amount}（{$currency}）",
+      "tip_given_at": "打賞時間：{$purchased_at}",
+      "tip_heading": "感謝您的打賞",
+      "tip_intro": "以下是您在{$tenant_name}的打賞明細。",
+      "tip_preview": "感謝您打賞{$title}的作者。",
+      "tip_subject": "{$tenant_name}打賞成功",
       "volume": "卷：{$volume_title}"
     },
     "reader_announcement_posted": {
@@ -273,7 +280,8 @@
   "checkout": {
     "bundle_discount": "打包優惠（{$percent :integer}%）",
     "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
-    "rental_line_item": "{$episode_title}（租借，{$hours :integer}小時）"
+    "rental_line_item": "{$episode_title}（租借，{$hours :integer}小時）",
+    "tip_line_item": "打賞{$episode_title}的作者"
   },
   "errors": {
     "disallowed_value": "這個值不被允許。",
@@ -368,6 +376,7 @@
         "tenant_site_copy": "公開網站呈現",
         "tenant_site_verification": "搜尋引擎擁有權驗證",
         "tenant_timezone": "時區",
+        "tenant_tip_settings": "打賞",
         "user": "使用者",
         "volume": "卷"
       },
@@ -531,6 +540,7 @@
         "tenant_payment_settings_updated": "更新了付款設定",
         "tenant_purchase_settings_updated": "更新了販售位置",
         "tenant_tax_settings_updated": "更新了稅金與發票",
+        "tenant_tip_settings_updated": "更新了打賞設定",
         "tenant_fcm_credentials_saved": "儲存了Firebase憑證",
         "tenant_fcm_credentials_deleted": "刪除了Firebase憑證",
         "tenant_mobile_app_association_updated": "更新了應用程式連結",

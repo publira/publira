@@ -1445,6 +1445,7 @@ type StorePurchaseIntent struct {
 	Coins              sql.NullInt32 `json:"coins"`
 	BonusCoins         sql.NullInt32 `json:"bonus_coins"`
 	CoinExpiryDays     sql.NullInt32 `json:"coin_expiry_days"`
+	Kind               string        `json:"kind"`
 }
 
 type StoreSubscriptionIntent struct {
@@ -1717,6 +1718,8 @@ type TenantConfig struct {
 	InvoiceLegalName               sql.NullString `json:"invoice_legal_name"`
 	InvoiceRegistrationNumber      sql.NullString `json:"invoice_registration_number"`
 	WithholdingRateBps             sql.NullInt32  `json:"withholding_rate_bps"`
+	TipsEnabled                    bool           `json:"tips_enabled"`
+	TipAmounts                     []int32        `json:"tip_amounts"`
 }
 
 type TenantConfigTranslation struct {

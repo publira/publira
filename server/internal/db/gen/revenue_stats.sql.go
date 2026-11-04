@@ -46,7 +46,17 @@ SELECT
             AND sp.currency = $2::text
             AND sp.paid_at >= ($4::date::timestamp AT TIME ZONE $3::text)
             AND sp.paid_at < (($5::date + 1)::timestamp AT TIME ZONE $3::text)
-    )::bigint AS subscription_tax_amount
+    )::bigint AS subscription_tax_amount,
+    (
+        SELECT COALESCE(sum(tp.price_at_purchase), 0)
+        FROM purchases tp
+        WHERE tp.tenant_id = $1
+            AND tp.kind = 'tip'
+            AND NOT tp.is_test
+            AND tp.currency = $2::text
+            AND tp.purchased_at >= ($4::date::timestamp AT TIME ZONE $3::text)
+            AND tp.purchased_at < (($5::date + 1)::timestamp AT TIME ZONE $3::text)
+    )::bigint AS tip_amount
 FROM purchases p
 WHERE p.tenant_id = $1
     AND NOT p.is_test
@@ -72,6 +82,7 @@ type GetRevenueTotalsRow struct {
 	SubscriptionAmount         int64 `json:"subscription_amount"`
 	SubscriptionRefundedAmount int64 `json:"subscription_refunded_amount"`
 	SubscriptionTaxAmount      int64 `json:"subscription_tax_amount"`
+	TipAmount                  int64 `json:"tip_amount"`
 }
 
 // The console's revenue statistics: what a tenant's purchases earned over a
@@ -96,6 +107,10 @@ type GetRevenueTotalsRow struct {
 // the payment was lost and otherwise its refunded_amount, taken off the day
 // it was paid. A payment belongs to no series, so only the totals and the
 // days count it.
+//
+// A tip is a purchase too, counted among them at what the reader gave, and
+// tip_amount is the part of gross_amount tips account for. It is read from
+// idx_purchases_tenant_purchased_at_tips, which holds the tips alone.
 //
 // The tax of a purchase is the tax what the tenant kept of it includes, at
 // the rate the purchase recorded: tax_included of its price less what went
@@ -127,6 +142,7 @@ func (q *Queries) GetRevenueTotals(ctx context.Context, arg GetRevenueTotalsPara
 		&i.SubscriptionAmount,
 		&i.SubscriptionRefundedAmount,
 		&i.SubscriptionTaxAmount,
+		&i.TipAmount,
 	)
 	return i, err
 }
@@ -149,7 +165,8 @@ WITH revenue AS (
                 p.price_at_purchase
             ),
             p.tax_rate_bps
-        )), 0)::bigint AS tax_amount
+        )), 0)::bigint AS tax_amount,
+        COALESCE(sum(pp.price) FILTER (WHERE p.kind = 'tip'), 0)::bigint AS tip_amount
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
         AND pp.purchase_id = p.id
@@ -173,7 +190,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN episodes e ON e.tenant_id = $1 AND e.id = r.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -223,6 +241,7 @@ type ListEpisodeRevenueAscRow struct {
 	RefundedAmount  int64     `json:"refunded_amount"`
 	NetAmount       int64     `json:"net_amount"`
 	TaxAmount       int64     `json:"tax_amount"`
+	TipAmount       int64     `json:"tip_amount"`
 }
 
 // ListEpisodeRevenueDesc walked the other way, to build a previous page. The
@@ -257,6 +276,7 @@ func (q *Queries) ListEpisodeRevenueAsc(ctx context.Context, arg ListEpisodeReve
 			&i.RefundedAmount,
 			&i.NetAmount,
 			&i.TaxAmount,
+			&i.TipAmount,
 		); err != nil {
 			return nil, err
 		}
@@ -289,7 +309,8 @@ WITH revenue AS (
                 p.price_at_purchase
             ),
             p.tax_rate_bps
-        )), 0)::bigint AS tax_amount
+        )), 0)::bigint AS tax_amount,
+        COALESCE(sum(pp.price) FILTER (WHERE p.kind = 'tip'), 0)::bigint AS tip_amount
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
         AND pp.purchase_id = p.id
@@ -313,7 +334,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN episodes e ON e.tenant_id = $1 AND e.id = r.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -363,6 +385,7 @@ type ListEpisodeRevenueDescRow struct {
 	RefundedAmount  int64     `json:"refunded_amount"`
 	NetAmount       int64     `json:"net_amount"`
 	TaxAmount       int64     `json:"tax_amount"`
+	TipAmount       int64     `json:"tip_amount"`
 }
 
 // Each episode that sold in the period, highest net first. A purchase is a
@@ -399,6 +422,7 @@ func (q *Queries) ListEpisodeRevenueDesc(ctx context.Context, arg ListEpisodeRev
 			&i.RefundedAmount,
 			&i.NetAmount,
 			&i.TaxAmount,
+			&i.TipAmount,
 		); err != nil {
 			return nil, err
 		}
@@ -443,6 +467,19 @@ subscriptions AS (
         AND sp.paid_at >= ($1::date::timestamp AT TIME ZONE $3::text)
         AND sp.paid_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
     GROUP BY 1
+),
+tips AS (
+    SELECT
+        (tp.purchased_at AT TIME ZONE $3::text)::date AS tip_date,
+        sum(tp.price_at_purchase)::bigint AS tip_amount
+    FROM purchases tp
+    WHERE tp.tenant_id = $4
+        AND tp.kind = 'tip'
+        AND NOT tp.is_test
+        AND tp.currency = $5::text
+        AND tp.purchased_at >= ($1::date::timestamp AT TIME ZONE $3::text)
+        AND tp.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+    GROUP BY 1
 )
 SELECT
     d.day::date AS sale_date,
@@ -452,7 +489,8 @@ SELECT
     COALESCE(sub.subscription_amount, 0)::bigint AS subscription_amount,
     COALESCE(sub.subscription_refunded_amount, 0)::bigint AS subscription_refunded_amount,
     COALESCE(s.tax_amount, 0)::bigint AS tax_amount,
-    COALESCE(sub.subscription_tax_amount, 0)::bigint AS subscription_tax_amount
+    COALESCE(sub.subscription_tax_amount, 0)::bigint AS subscription_tax_amount,
+    COALESCE(t.tip_amount, 0)::bigint AS tip_amount
 FROM generate_series(
     $1::date::timestamp,
     $2::date::timestamp,
@@ -460,6 +498,7 @@ FROM generate_series(
 ) AS d(day)
 LEFT JOIN sales s ON s.sale_date = d.day::date
 LEFT JOIN subscriptions sub ON sub.paid_date = d.day::date
+LEFT JOIN tips t ON t.tip_date = d.day::date
 ORDER BY d.day
 `
 
@@ -480,6 +519,7 @@ type ListRevenueByDayRow struct {
 	SubscriptionRefundedAmount int64     `json:"subscription_refunded_amount"`
 	TaxAmount                  int64     `json:"tax_amount"`
 	SubscriptionTaxAmount      int64     `json:"subscription_tax_amount"`
+	TipAmount                  int64     `json:"tip_amount"`
 }
 
 // Every day of the period in order, a day nothing sold on included, so a
@@ -509,6 +549,7 @@ func (q *Queries) ListRevenueByDay(ctx context.Context, arg ListRevenueByDayPara
 			&i.SubscriptionRefundedAmount,
 			&i.TaxAmount,
 			&i.SubscriptionTaxAmount,
+			&i.TipAmount,
 		); err != nil {
 			return nil, err
 		}
@@ -530,6 +571,7 @@ WITH parts AS (
         p.price_at_purchase,
         purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at) AS returned_amount,
         p.tax_rate_bps,
+        p.kind,
         sum(pp.price)::integer AS price
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
@@ -551,7 +593,8 @@ revenue AS (
         count(*)::bigint AS purchase_count,
         sum(parts.price)::bigint AS gross_amount,
         sum(episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase))::bigint AS refunded_amount,
-        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount
+        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount,
+        COALESCE(sum(parts.price) FILTER (WHERE parts.kind = 'tip'), 0)::bigint AS tip_amount
     FROM parts
     GROUP BY parts.series_id
 )
@@ -563,7 +606,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN series s ON s.tenant_id = $1 AND s.id = r.series_id
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
@@ -609,6 +653,7 @@ type ListSeriesRevenueAscRow struct {
 	RefundedAmount int64     `json:"refunded_amount"`
 	NetAmount      int64     `json:"net_amount"`
 	TaxAmount      int64     `json:"tax_amount"`
+	TipAmount      int64     `json:"tip_amount"`
 }
 
 // ListSeriesRevenueDesc walked the other way, to build a previous page. The
@@ -641,6 +686,7 @@ func (q *Queries) ListSeriesRevenueAsc(ctx context.Context, arg ListSeriesRevenu
 			&i.RefundedAmount,
 			&i.NetAmount,
 			&i.TaxAmount,
+			&i.TipAmount,
 		); err != nil {
 			return nil, err
 		}
@@ -662,6 +708,7 @@ WITH parts AS (
         p.price_at_purchase,
         purchase_returned_amount(p.price_at_purchase, p.refunded_amount, p.dispute_lost_at) AS returned_amount,
         p.tax_rate_bps,
+        p.kind,
         sum(pp.price)::integer AS price
     FROM purchases p
     JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
@@ -683,7 +730,8 @@ revenue AS (
         count(*)::bigint AS purchase_count,
         sum(parts.price)::bigint AS gross_amount,
         sum(episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase))::bigint AS refunded_amount,
-        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount
+        COALESCE(sum(tax_included(parts.price - episode_part_of_purchase_amount(parts.returned_amount, parts.price, parts.price_at_purchase), parts.tax_rate_bps)), 0)::bigint AS tax_amount,
+        COALESCE(sum(parts.price) FILTER (WHERE parts.kind = 'tip'), 0)::bigint AS tip_amount
     FROM parts
     GROUP BY parts.series_id
 )
@@ -695,7 +743,8 @@ SELECT
     r.gross_amount,
     r.refunded_amount,
     (r.gross_amount - r.refunded_amount)::bigint AS net_amount,
-    r.tax_amount
+    r.tax_amount,
+    r.tip_amount
 FROM revenue r
 JOIN series s ON s.tenant_id = $1 AND s.id = r.series_id
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
@@ -741,6 +790,7 @@ type ListSeriesRevenueDescRow struct {
 	RefundedAmount int64     `json:"refunded_amount"`
 	NetAmount      int64     `json:"net_amount"`
 	TaxAmount      int64     `json:"tax_amount"`
+	TipAmount      int64     `json:"tip_amount"`
 }
 
 // Each series that sold in the period, highest net first. A purchase is a sale
@@ -776,6 +826,7 @@ func (q *Queries) ListSeriesRevenueDesc(ctx context.Context, arg ListSeriesReven
 			&i.RefundedAmount,
 			&i.NetAmount,
 			&i.TaxAmount,
+			&i.TipAmount,
 		); err != nil {
 			return nil, err
 		}

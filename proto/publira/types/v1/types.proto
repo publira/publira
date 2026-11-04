@@ -792,6 +792,11 @@ enum PurchaseKind {
   // The rental, at Episode.rental_price, which opens the episode for
   // Episode.rental_period_hours.
   PURCHASE_KIND_RENTAL = 2;
+  // A tip to the Authors of the episode, at one of the tenant's tip amounts
+  // (GetEpisodeDetailResponse.tip_amounts), which opens nothing and never
+  // expires. It is never a kind a checkout of the episode asks for: a tip is
+  // started by StartTipCheckout or StartStoreTip.
+  PURCHASE_KIND_TIP = 3;
 }
 
 // What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).

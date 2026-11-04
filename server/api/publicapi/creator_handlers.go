@@ -514,8 +514,11 @@ func myCreatorStatementLineOf(row dbmodels.ListMyCreatorStatementLinesAscRow) *p
 	if row.AdjustedPeriod.Valid {
 		line.AdjustedPeriod = royalties.FormatPeriod(row.AdjustedPeriod.Time)
 	}
-	if royalties.LineSource(row.Source) == royalties.SourceSubscription {
+	switch royalties.LineSource(row.Source) {
+	case royalties.SourceSubscription:
 		line.Source = publirav1.CreatorStatementLineSource_CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION
+	case royalties.SourceTip:
+		line.Source = publirav1.CreatorStatementLineSource_CREATOR_STATEMENT_LINE_SOURCE_TIP
 	}
 	return line
 }

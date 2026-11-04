@@ -778,6 +778,7 @@ const GetEpisodeDetailResponse$json = {
       '6': '.publira.types.v1.EpisodeImage',
       '10': 'previewPages'
     },
+    {'1': 'tip_amounts', '3': 13, '4': 3, '5': 5, '10': 'tipAmounts'},
   ],
 };
 
@@ -796,7 +797,8 @@ final $typed_data.Uint8List getEpisodeDetailResponseDescriptor = $convert.base64
     'YWdlcxJHChFuZXh0X2ZyZWVfZXBpc29kZRgKIAEoCzIbLnB1YmxpcmEudjEuRXBpc29kZU5laW'
     'doYm9yUg9uZXh0RnJlZUVwaXNvZGUSKwoRcHVibGlzaGVkX2xvY2FsZXMYCyADKAlSEHB1Ymxp'
     'c2hlZExvY2FsZXMSQwoNcHJldmlld19wYWdlcxgMIAMoCzIeLnB1YmxpcmEudHlwZXMudjEuRX'
-    'Bpc29kZUltYWdlUgxwcmV2aWV3UGFnZXM=');
+    'Bpc29kZUltYWdlUgxwcmV2aWV3UGFnZXMSHwoLdGlwX2Ftb3VudHMYDSADKAVSCnRpcEFtb3Vu'
+    'dHM=');
 
 @$core.Deprecated('Use publishedCreatorDescriptor instead')
 const PublishedCreator$json = {
@@ -3421,6 +3423,100 @@ final $typed_data.Uint8List startStorePurchaseResponseDescriptor =
         'ChpTdGFydFN0b3JlUHVyY2hhc2VSZXNwb25zZRIbCglpbnRlbnRfaWQYASABKAlSCGludGVudE'
         'lkEh0KCnByb2R1Y3RfaWQYAiABKAlSCXByb2R1Y3RJZA==');
 
+@$core.Deprecated('Use startTipCheckoutRequestDescriptor instead')
+const StartTipCheckoutRequest$json = {
+  '1': 'StartTipCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'episode_id', '3': 2, '4': 1, '5': 9, '10': 'episodeId'},
+    {'1': 'amount', '3': 3, '4': 1, '5': 5, '10': 'amount'},
+    {
+      '1': 'client',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
+      '10': 'client'
+    },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `StartTipCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startTipCheckoutRequestDescriptor = $convert.base64Decode(
+    'ChdTdGFydFRpcENoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cG'
+    'VzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIdCgplcGlzb2RlX2lkGAIgASgJUgllcGlzb2Rl'
+    'SWQSFgoGYW1vdW50GAMgASgFUgZhbW91bnQSRgoGY2xpZW50GAQgASgOMi4ucHVibGlyYS52MS'
+    '5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSFgoGbG9jYWxlGAUg'
+    'ASgJUgZsb2NhbGU=');
+
+@$core.Deprecated('Use startTipCheckoutResponseDescriptor instead')
+const StartTipCheckoutResponse$json = {
+  '1': 'StartTipCheckoutResponse',
+  '2': [
+    {'1': 'checkout_url', '3': 1, '4': 1, '5': 9, '10': 'checkoutUrl'},
+  ],
+};
+
+/// Descriptor for `StartTipCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startTipCheckoutResponseDescriptor =
+    $convert.base64Decode(
+        'ChhTdGFydFRpcENoZWNrb3V0UmVzcG9uc2USIQoMY2hlY2tvdXRfdXJsGAEgASgJUgtjaGVja2'
+        '91dFVybA==');
+
+@$core.Deprecated('Use startStoreTipRequestDescriptor instead')
+const StartStoreTipRequest$json = {
+  '1': 'StartStoreTipRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {
+      '1': 'store',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.InAppPurchaseStore',
+      '10': 'store'
+    },
+    {'1': 'episode_id', '3': 3, '4': 1, '5': 9, '10': 'episodeId'},
+    {'1': 'amount', '3': 4, '4': 1, '5': 5, '10': 'amount'},
+  ],
+};
+
+/// Descriptor for `StartStoreTipRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startStoreTipRequestDescriptor = $convert.base64Decode(
+    'ChRTdGFydFN0b3JlVGlwUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLn'
+    'YxLlRlbmFudENvbnRleHRSBnRlbmFudBI0CgVzdG9yZRgCIAEoDjIeLnB1YmxpcmEudjEuSW5B'
+    'cHBQdXJjaGFzZVN0b3JlUgVzdG9yZRIdCgplcGlzb2RlX2lkGAMgASgJUgllcGlzb2RlSWQSFg'
+    'oGYW1vdW50GAQgASgFUgZhbW91bnQ=');
+
+@$core.Deprecated('Use startStoreTipResponseDescriptor instead')
+const StartStoreTipResponse$json = {
+  '1': 'StartStoreTipResponse',
+  '2': [
+    {'1': 'intent_id', '3': 1, '4': 1, '5': 9, '10': 'intentId'},
+    {'1': 'product_id', '3': 2, '4': 1, '5': 9, '10': 'productId'},
+  ],
+};
+
+/// Descriptor for `StartStoreTipResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startStoreTipResponseDescriptor = $convert.base64Decode(
+    'ChVTdGFydFN0b3JlVGlwUmVzcG9uc2USGwoJaW50ZW50X2lkGAEgASgJUghpbnRlbnRJZBIdCg'
+    'pwcm9kdWN0X2lkGAIgASgJUglwcm9kdWN0SWQ=');
+
 @$core.Deprecated('Use confirmStorePurchaseRequestDescriptor instead')
 const ConfirmStorePurchaseRequest$json = {
   '1': 'ConfirmStorePurchaseRequest',
@@ -4176,6 +4272,16 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '2': '.publira.v1.ProcessGooglePlayNotificationRequest',
       '3': '.publira.v1.ProcessGooglePlayNotificationResponse'
     },
+    {
+      '1': 'StartTipCheckout',
+      '2': '.publira.v1.StartTipCheckoutRequest',
+      '3': '.publira.v1.StartTipCheckoutResponse'
+    },
+    {
+      '1': 'StartStoreTip',
+      '2': '.publira.v1.StartStoreTipRequest',
+      '3': '.publira.v1.StartStoreTipResponse'
+    },
   ],
 };
 
@@ -4227,6 +4333,10 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       ProcessGooglePlayNotificationRequest_HeadersEntry$json,
   '.publira.v1.ProcessGooglePlayNotificationResponse':
       ProcessGooglePlayNotificationResponse$json,
+  '.publira.v1.StartTipCheckoutRequest': StartTipCheckoutRequest$json,
+  '.publira.v1.StartTipCheckoutResponse': StartTipCheckoutResponse$json,
+  '.publira.v1.StartStoreTipRequest': StartStoreTipRequest$json,
+  '.publira.v1.StartStoreTipResponse': StartStoreTipResponse$json,
 };
 
 /// Descriptor for `PurchaseService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -4249,7 +4359,10 @@ final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'RpZmljYXRpb25SZXF1ZXN0Gi8ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRp'
     'b25SZXNwb25zZRKEAQodUHJvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb24SMC5wdWJsaXJhLn'
     'YxLlByb2Nlc3NHb29nbGVQbGF5Tm90aWZpY2F0aW9uUmVxdWVzdBoxLnB1YmxpcmEudjEuUHJv'
-    'Y2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXNwb25zZQ==');
+    'Y2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXNwb25zZRJdChBTdGFydFRpcENoZWNrb3V0Ei'
+    'MucHVibGlyYS52MS5TdGFydFRpcENoZWNrb3V0UmVxdWVzdBokLnB1YmxpcmEudjEuU3RhcnRU'
+    'aXBDaGVja291dFJlc3BvbnNlElQKDVN0YXJ0U3RvcmVUaXASIC5wdWJsaXJhLnYxLlN0YXJ0U3'
+    'RvcmVUaXBSZXF1ZXN0GiEucHVibGlyYS52MS5TdGFydFN0b3JlVGlwUmVzcG9uc2U=');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

@@ -25,6 +25,18 @@ func TestProductID(t *testing.T) {
 // googlePlayProductID is what Google Play accepts as a product ID: digits,
 // lowercase letters, underscores, and periods, starting with a digit or a
 // lowercase letter.
+func TestTipProductIDIsApartFromTheEpisodeProductOfTheSamePrice(t *testing.T) {
+	if got, want := TipProductID(300), "tip_300"; got != want {
+		t.Fatalf("TipProductID(300) = %q, want %q", got, want)
+	}
+	if TipProductID(300) == ProductID(300) {
+		t.Fatal("a tip and an episode of the same price share a product")
+	}
+	if got := TipProductID(12000); !googlePlayProductID.MatchString(got) {
+		t.Fatalf("TipProductID = %q, which Google Play refuses", got)
+	}
+}
+
 var googlePlayProductID = regexp.MustCompile(`^[0-9a-z][0-9a-z_.]*$`)
 
 func TestCoinPackProductIDIsOneGooglePlayAccepts(t *testing.T) {

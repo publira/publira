@@ -96,6 +96,7 @@ func (s *adminServer) revenueByDay(ctx context.Context, report revenueReport) ([
 		row.SubscriptionRefundedAmount = day.SubscriptionRefundedAmount
 		row.TaxAmount = day.TaxAmount
 		row.SubscriptionTaxAmount = day.SubscriptionTaxAmount
+		row.TipAmount = day.TipAmount
 		rows = append(rows, row)
 	}
 	return rows, nil
@@ -117,6 +118,7 @@ func (s *adminServer) seriesRevenuePage(
 		stats.TaxAmount = row.TaxAmount
 		stats.SeriesPublicId = row.SeriesPublicID
 		stats.SeriesTitle = row.SeriesTitle
+		stats.TipAmount = row.TipAmount
 		mapped = append(mapped, revenueRankedRow{id: row.SeriesID, row: stats})
 	}
 
@@ -179,6 +181,7 @@ func (s *adminServer) episodeRevenuePage(
 		stats.SeriesTitle = row.SeriesTitle
 		stats.EpisodePublicId = row.EpisodePublicID
 		stats.EpisodeTitle = row.EpisodeTitle
+		stats.TipAmount = row.TipAmount
 		mapped = append(mapped, revenueRankedRow{id: row.EpisodeID, row: stats})
 	}
 
@@ -300,6 +303,7 @@ func (s *adminServer) GetRevenueStats(
 			SubscriptionRefundedAmount: totals.SubscriptionRefundedAmount,
 			TaxAmount:                  totals.TaxAmount,
 			SubscriptionTaxAmount:      totals.SubscriptionTaxAmount,
+			TipAmount:                  totals.TipAmount,
 		},
 	}
 

@@ -127,6 +127,8 @@ enum CreatorStatementLineSource {
   CREATOR_STATEMENT_LINE_SOURCE_SALE = 1;
   // The parts of the month's subscription payments shared to the episode.
   CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION = 2;
+  // The tips readers gave the episode's Authors.
+  CREATOR_STATEMENT_LINE_SOURCE_TIP = 3;
 }
 
 // One of the creator's lines of a closed statement, as

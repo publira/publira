@@ -13,6 +13,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/paymentprovider"
 )
 
 // EventTypePurchaseReceipt sends the reader the receipt of one purchase.
@@ -150,6 +151,7 @@ func purchaseReceiptEmailRequest(
 			"coins_expire_at":             coinsExpireAt,
 			"expires_at":                  expiresAt,
 			"is_test":                     receipt.IsTest,
+			"is_tip":                      receipt.Kind == string(paymentprovider.KindTip),
 			"library_url":                 libraryURL,
 			"purchased_at":                receipt.PurchasedAt.UTC().Format(time.RFC3339Nano),
 			"series_title":                receipt.SeriesTitle,

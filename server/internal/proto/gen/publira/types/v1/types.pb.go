@@ -629,6 +629,11 @@ const (
 	// The rental, at Episode.rental_price, which opens the episode for
 	// Episode.rental_period_hours.
 	PurchaseKind_PURCHASE_KIND_RENTAL PurchaseKind = 2
+	// A tip to the Authors of the episode, at one of the tenant's tip amounts
+	// (GetEpisodeDetailResponse.tip_amounts), which opens nothing and never
+	// expires. It is never a kind a checkout of the episode asks for: a tip is
+	// started by StartTipCheckout or StartStoreTip.
+	PurchaseKind_PURCHASE_KIND_TIP PurchaseKind = 3
 )
 
 // Enum value maps for PurchaseKind.
@@ -637,11 +642,13 @@ var (
 		0: "PURCHASE_KIND_UNSPECIFIED",
 		1: "PURCHASE_KIND_PURCHASE",
 		2: "PURCHASE_KIND_RENTAL",
+		3: "PURCHASE_KIND_TIP",
 	}
 	PurchaseKind_value = map[string]int32{
 		"PURCHASE_KIND_UNSPECIFIED": 0,
 		"PURCHASE_KIND_PURCHASE":    1,
 		"PURCHASE_KIND_RENTAL":      2,
+		"PURCHASE_KIND_TIP":         3,
 	}
 )
 
@@ -4784,11 +4791,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	" SURFACE_AVAILABILITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_ALL\x10\x01\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_WEB\x10\x02\x12\x1c\n" +
-	"\x18SURFACE_AVAILABILITY_APP\x10\x03*c\n" +
+	"\x18SURFACE_AVAILABILITY_APP\x10\x03*z\n" +
 	"\fPurchaseKind\x12\x1d\n" +
 	"\x19PURCHASE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PURCHASE_KIND_PURCHASE\x10\x01\x12\x18\n" +
-	"\x14PURCHASE_KIND_RENTAL\x10\x02*\x95\x01\n" +
+	"\x14PURCHASE_KIND_RENTAL\x10\x02\x12\x15\n" +
+	"\x11PURCHASE_KIND_TIP\x10\x03*\x95\x01\n" +
 	"\x10ReaderIconPolicy\x12\"\n" +
 	"\x1eREADER_ICON_POLICY_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19READER_ICON_POLICY_UPLOAD\x10\x01\x12\x1d\n" +

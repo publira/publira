@@ -362,13 +362,27 @@ func (s *adminServer) ListTenantStoreProducts(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the tenant's coin packs", err, "tenant_id", tenant.ID.String())
 	}
-	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows)+len(packs))
+	// The amounts the tenant takes tips in, each a product of its own, while
+	// tips are on.
+	tipAmounts, err := s.queriesFor(ctx).GetTenantTipAmounts(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant's tip amounts", err, "tenant_id", tenant.ID.String())
+	}
+	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows)+len(tipAmounts)+len(packs))
 	for _, row := range rows {
 		products = append(products, &publiraadminv1.TenantStoreProduct{
 			ProductId:    storeproduct.ProductID(row.Price),
 			Price:        row.Price,
 			EpisodeCount: row.EpisodeCount,
 			Currency:     currency,
+		})
+	}
+	for _, amount := range tipAmounts {
+		products = append(products, &publiraadminv1.TenantStoreProduct{
+			ProductId: storeproduct.TipProductID(amount),
+			Price:     amount,
+			Currency:  currency,
+			Tip:       true,
 		})
 	}
 	for _, pack := range packs {

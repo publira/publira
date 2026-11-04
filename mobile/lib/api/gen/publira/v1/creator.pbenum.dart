@@ -31,15 +31,21 @@ class CreatorStatementLineSource extends $pb.ProtobufEnum {
           2,
           _omitEnumNames ? '' : 'CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION');
 
+  /// The tips readers gave the episode's Authors.
+  static const CreatorStatementLineSource CREATOR_STATEMENT_LINE_SOURCE_TIP =
+      CreatorStatementLineSource._(
+          3, _omitEnumNames ? '' : 'CREATOR_STATEMENT_LINE_SOURCE_TIP');
+
   static const $core.List<CreatorStatementLineSource> values =
       <CreatorStatementLineSource>[
     CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED,
     CREATOR_STATEMENT_LINE_SOURCE_SALE,
     CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION,
+    CREATOR_STATEMENT_LINE_SOURCE_TIP,
   ];
 
   static final $core.List<CreatorStatementLineSource?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 2);
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
   static CreatorStatementLineSource? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

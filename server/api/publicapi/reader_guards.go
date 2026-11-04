@@ -106,12 +106,13 @@ const (
 	// An episode paid for with coins. Each payment writes a purchase and the
 	// coins it spent.
 	actionPayWithCoins readerAction = "coin_payment.pay"
-	// A purchase of an episode, a volume, or a coin pack started. A checkout
-	// writes nothing, so no row bounds it, but each one asks the payment
-	// provider for a checkout on the tenant's credentials. A store purchase
-	// writes its intent again on every start, even when it is already open.
-	// They all share the allowance, so moving from one to another, or from the
-	// web to the app, buys a reader no more requests.
+	// A purchase of an episode, a volume, or a coin pack started, or a tip to
+	// the Authors of an episode. A checkout writes nothing, so no row bounds
+	// it, but each one asks the payment provider for a checkout on the
+	// tenant's credentials. A store purchase or tip writes its intent again on
+	// every start, even when it is already open. They all share the allowance,
+	// so moving from one to another, or from the web to the app, buys a reader
+	// no more requests.
 	actionStartPurchaseCheckout readerAction = "purchase_checkout.start"
 	// An archive of what the install keeps about the reader asked for. It
 	// writes one row, but has the worker read every table that holds the

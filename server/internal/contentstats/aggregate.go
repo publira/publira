@@ -406,6 +406,8 @@ WITH episode_events AS (
 		AND ce.episode_id IS NOT NULL
 	GROUP BY ce.episode_id
 ), purchases_by_episode AS (
+	-- A tip names its episode but buys none of it, so it is no purchase here,
+	-- and it reaches no ranking through one.
 	SELECT p.episode_id AS entity_id, count(*) AS purchase_count
 	FROM purchases p
 	JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
@@ -413,6 +415,7 @@ WITH episode_events AS (
 		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
 		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
 		AND NOT p.is_test
+		AND p.kind <> 'tip'
 	GROUP BY p.episode_id
 ), published_comments AS (
 	SELECT c.episode_id AS entity_id, count(*) AS comment_count

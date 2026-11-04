@@ -91,6 +91,29 @@ WHERE e.id = sqlc.arg('id')
     )
 LIMIT 1;
 
+-- name: GetTippableEpisodeForTenant :one
+-- The episode a reader asks to tip the Authors of: one published on the
+-- calling surface, priced or free, since a tip is given for an episode read
+-- rather than bought. Its title is in the reader's locale, as the checkout
+-- page names it.
+SELECT e.id,
+    e.public_id,
+    et.title,
+    s.public_id AS series_public_id
+FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
+    JOIN series s ON s.id = e.series_id
+WHERE e.id = sqlc.arg('id')
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = sqlc.arg('surface')::text
+    )
+LIMIT 1;
+
 -- name: GetActiveEpisodePurchaseKinds :one
 -- Which of the episode's two sales the reader holds an active purchase of.
 -- Only a purchase counts: an access ticket does not stop the reader buying. A
@@ -378,6 +401,9 @@ SELECT
     p.tax_amount,
     tc.invoice_legal_name,
     tc.invoice_registration_number,
+    -- A tip names the episode whose Authors it went to, as a purchase of the
+    -- episode does, and the receipt says which of the two it was.
+    p.kind,
     -- What was bought: an episode, a volume, a series bundle, or a pack of
     -- coins. The title of each of the others is empty, and the episode count
     -- is that of the bundle, 0 on any other purchase.
@@ -996,6 +1022,7 @@ SELECT p.id,
     p.provider_payment_id,
     p.store,
     p.is_test,
+    p.kind,
     p.refunded_amount,
     p.refunded_at,
     p.revoked_at,

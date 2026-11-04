@@ -375,6 +375,10 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
   $async.Future<$1.ProcessGooglePlayNotificationResponse>
       processGooglePlayNotification($pb.ServerContext ctx,
           $1.ProcessGooglePlayNotificationRequest request);
+  $async.Future<$1.StartTipCheckoutResponse> startTipCheckout(
+      $pb.ServerContext ctx, $1.StartTipCheckoutRequest request);
+  $async.Future<$1.StartStoreTipResponse> startStoreTip(
+      $pb.ServerContext ctx, $1.StartStoreTipRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -396,6 +400,10 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
         return $1.ProcessAppStoreNotificationRequest();
       case 'ProcessGooglePlayNotification':
         return $1.ProcessGooglePlayNotificationRequest();
+      case 'StartTipCheckout':
+        return $1.StartTipCheckoutRequest();
+      case 'StartStoreTip':
+        return $1.StartStoreTipRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -429,6 +437,10 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       case 'ProcessGooglePlayNotification':
         return processGooglePlayNotification(
             ctx, request as $1.ProcessGooglePlayNotificationRequest);
+      case 'StartTipCheckout':
+        return startTipCheckout(ctx, request as $1.StartTipCheckoutRequest);
+      case 'StartStoreTip':
+        return startStoreTip(ctx, request as $1.StartStoreTipRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

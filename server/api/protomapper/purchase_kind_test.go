@@ -39,3 +39,16 @@ func TestPurchaseKindFromRequestReadsUnspecifiedAsThePermanentCopy(t *testing.T)
 		t.Fatalf("err = %v, want ErrUnknownPurchaseKind", err)
 	}
 }
+
+func TestPurchaseKindFromStoredAnswersATip(t *testing.T) {
+	kind, err := PurchaseKindFromStored(string(paymentprovider.KindTip))
+	if err != nil || kind != publirattypesv1.PurchaseKind_PURCHASE_KIND_TIP {
+		t.Fatalf("PurchaseKindFromStored(tip) = (%s, %v), want PURCHASE_KIND_TIP", kind, err)
+	}
+}
+
+func TestPurchaseKindFromRequestRefusesATip(t *testing.T) {
+	if _, err := PurchaseKindFromRequest(publirattypesv1.PurchaseKind_PURCHASE_KIND_TIP); !errors.Is(err, ErrUnknownPurchaseKind) {
+		t.Fatalf("err = %v, want ErrUnknownPurchaseKind", err)
+	}
+}

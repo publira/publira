@@ -89,6 +89,10 @@ enum RevenueGroupBy {
 // Stripe was paid it, and what went back on it is taken off that day too. A
 // payment belongs to no series, so it is counted on a day row and in the
 // totals only.
+//
+// A tip to the Authors of an episode is a purchase of that episode, counted
+// among the purchases at what the reader gave, and tip_amount is the part of
+// gross_amount tips account for.
 message RevenueStatsRow {
   // The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
   // otherwise.
@@ -123,6 +127,8 @@ message RevenueStatsRow {
   // The tax the subscription payments include, worked out the same way on
   // what the tenant kept of each.
   int64 subscription_tax_amount = 13;
+  // Of gross_amount, what was given as tips.
+  int64 tip_amount = 14;
 }
 
 // The same figures over the whole period, each purchase counted once
@@ -136,6 +142,7 @@ message RevenueStatsTotals {
   int64 subscription_refunded_amount = 6;
   int64 tax_amount = 7;
   int64 subscription_tax_amount = 8;
+  int64 tip_amount = 9;
 }
 
 message GetRevenueStatsRequest {

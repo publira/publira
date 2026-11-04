@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -62,7 +63,14 @@ func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, payments pa
 		!row.RevokedAt.Valid
 }
 
-func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) *publiraadminv1.AdminPurchase {
+// mapPurchase maps one purchase as the console shows it. A purchases.kind this
+// build does not know is an error rather than a sale, as it is in the
+// reader's library.
+func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) (*publiraadminv1.AdminPurchase, error) {
+	kind, err := protomapper.PurchaseKindFromStored(row.Kind)
+	if err != nil {
+		return nil, err
+	}
 	var seriesBundle *publirattypesv1.SeriesBundle
 	if row.SeriesBundleID.Valid {
 		seriesBundle = &publirattypesv1.SeriesBundle{
@@ -111,7 +119,8 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		RefundRequestedAmount: purchaseRefundRequestedAmount(row),
 		TaxRateBps:            optional(row.TaxRateBps),
 		TaxAmount:             optionalInt64(sql.NullInt64{Int64: int64(row.TaxAmount.Int32), Valid: row.TaxAmount.Valid}),
-	}
+		Kind:                  kind,
+	}, nil
 }
 
 // purchasePageFilter is the part of a page query that stays the same while the
@@ -410,7 +419,11 @@ func (s *adminServer) listPurchasePage(
 	}
 	purchases := make([]*publiraadminv1.AdminPurchase, 0, len(rows))
 	for _, row := range rows {
-		purchases = append(purchases, mapPurchase(row, payments))
+		purchase, err := mapPurchase(row, payments)
+		if err != nil {
+			return purchaseListPage{}, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", filter.tenantID.String(), "purchase_id", row.ID.String())
+		}
+		purchases = append(purchases, purchase)
 	}
 
 	res := purchaseListPage{purchases: purchases}
@@ -459,7 +472,11 @@ func (s *adminServer) GetPurchase(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get payment settings for get purchase", err, "tenant_id", tenant.ID.String())
 	}
-	return &publiraadminv1.GetPurchaseResponse{Purchase: mapPurchase(row, payments)}, nil
+	purchase, err := mapPurchase(row, payments)
+	if err != nil {
+		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
+	}
+	return &publiraadminv1.GetPurchaseResponse{Purchase: purchase}, nil
 }
 
 func (s *adminServer) RefundPurchase(
@@ -578,7 +595,7 @@ func (s *adminServer) refundPurchase(
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to get payment settings for refund purchase", err, "tenant_id", tenantID.String())
 		}
-		return mapPurchase(row, payments), nil
+		return s.mappedPurchase(ctx, tenantID, row, payments)
 	}
 	switch {
 	case row.RevocationReason.String == purchaseRevocationDispute:
@@ -638,7 +655,17 @@ func (s *adminServer) refundPurchase(
 	if err != nil {
 		return nil, err
 	}
-	return mapPurchase(refunded, payments), nil
+	return s.mappedPurchase(ctx, tenantID, refunded, payments)
+}
+
+// mappedPurchase is mapPurchase for a handler, which answers a kind this
+// build does not know as an internal error.
+func (s *adminServer) mappedPurchase(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) (*publiraadminv1.AdminPurchase, error) {
+	purchase, err := mapPurchase(row, payments)
+	if err != nil {
+		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", row.ID.String())
+	}
+	return purchase, nil
 }
 
 // staffRefund is a refund staff asked for, once the purchase has been found

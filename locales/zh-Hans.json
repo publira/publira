@@ -113,6 +113,13 @@
       "subject": "{$tenant_name}购买成功",
       "tax": "其中税额（{$rate}%）：{$amount}",
       "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。",
+      "tip": "打赏章节的作者：{$episode_title}",
+      "tip_amount": "打赏金额：{$amount}（{$currency}）",
+      "tip_given_at": "打赏时间：{$purchased_at}",
+      "tip_heading": "感谢您的打赏",
+      "tip_intro": "以下是您在{$tenant_name}的打赏明细。",
+      "tip_preview": "感谢您打赏{$title}的作者。",
+      "tip_subject": "{$tenant_name}打赏成功",
       "volume": "卷：{$volume_title}"
     },
     "reader_announcement_posted": {
@@ -273,7 +280,8 @@
   "checkout": {
     "bundle_discount": "打包优惠（{$percent :integer}%）",
     "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
-    "rental_line_item": "{$episode_title}（租借，{$hours :integer}小时）"
+    "rental_line_item": "{$episode_title}（租借，{$hours :integer}小时）",
+    "tip_line_item": "打赏{$episode_title}的作者"
   },
   "errors": {
     "disallowed_value": "这个值不被允许。",
@@ -368,6 +376,7 @@
         "tenant_site_copy": "公开站点展示",
         "tenant_site_verification": "搜索引擎所有权验证",
         "tenant_timezone": "时区",
+        "tenant_tip_settings": "打赏",
         "user": "用户",
         "volume": "卷"
       },
@@ -531,6 +540,7 @@
         "tenant_payment_settings_updated": "更新了支付设置",
         "tenant_purchase_settings_updated": "更新了销售位置",
         "tenant_tax_settings_updated": "更新了税费与发票",
+        "tenant_tip_settings_updated": "更新了打赏设置",
         "tenant_fcm_credentials_saved": "保存了Firebase凭据",
         "tenant_fcm_credentials_deleted": "删除了Firebase凭据",
         "tenant_mobile_app_association_updated": "更新了应用链接",

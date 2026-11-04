@@ -20,6 +20,7 @@ const data = {
   invoice_legal_name: "",
   invoice_registration_number: "",
   is_test: false,
+  is_tip: false,
   library_url: "https://aoto.example.com/my/library",
   purchased_at: "2030-01-15T12:00:00Z",
   series_bundle_episode_count: 0,
@@ -185,6 +186,23 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
   });
 
+  it("reads a receipt that says nothing of tips as one of a purchase", () => {
+    expect(
+      purchaseReceiptDataSchema.parse({ ...data, is_tip: undefined }).is_tip
+    ).toBe(false);
+  });
+
+  it("rejects a tip that names no episode", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...data,
+        episode_title: "",
+        is_tip: true,
+        volume_title: "Volume One",
+      }).success
+    ).toBe(false);
+  });
+
   // The worker of the release before sends none of the tax fields, and its
   // receipts still go out, without them.
   it("accepts a purchase whose data carries no tax or invoice details", () => {
@@ -241,6 +259,22 @@ describe("PurchaseReceiptEmail", () => {
     expect(html).toContain('href="https://aoto.example.com/my/library"');
     expect(html).toContain(data.tenant_name);
     expect(html).not.toContain("Publira");
+  });
+
+  it("words a tip as a tip to the episode's Authors", async () => {
+    const html = await render("en", {
+      amount: 300,
+      expires_at: "",
+      is_tip: true,
+    });
+
+    expect(html).toContain("Thank you for your tip");
+    expect(html).toContain("Here is the receipt for your tip on Aoto Press.");
+    expect(html).toContain("Tip for the Authors of: The First Night");
+    expect(html).toContain("Amount given: ¥300 (JPY)");
+    expect(html).toMatch(/Given: Jan 15, 2030, 9:00\sPM/u);
+    expect(html).not.toContain("Thank you for your purchase");
+    expect(html).not.toContain("Price paid");
   });
 
   it("names the volume bought in place of an episode", async () => {

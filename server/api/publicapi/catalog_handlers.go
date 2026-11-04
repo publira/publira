@@ -1348,6 +1348,11 @@ func (s *apiServer) GetEpisodeDetail(
 		return nil, err
 	}
 	setEpisodeCoinPrices(episode, coins)
+	tipAmounts, err := s.tenantTipAmounts(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	res.TipAmounts = tipAmounts
 
 	return res, nil
 }
