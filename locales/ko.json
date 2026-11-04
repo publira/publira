@@ -6853,7 +6853,8 @@
       "time_left_hours_minutes": "{$hours :integer}시간 {$minutes :integer}분 남음",
       "time_left_minutes": "{$minutes :integer}분 남음",
       "title": "구매 목록",
-      "series_bundle_title": "남은 {$count :integer}화"
+      "series_bundle_title": "남은 {$count :integer}화",
+      "tip": "팁"
     },
     "ranking": {
       "empty": "아직 집계된 랭킹이 없습니다.",
@@ -6902,6 +6903,17 @@
       "action": "공유",
       "aria": "“{$title}” 공유",
       "text": "{$title} ({$creators})"
+    },
+    "tip": {
+      "button": "작가에게 팁 보내기",
+      "sheet_title": "작가에게 팁 보내기",
+      "sheet_authors": "{$authors}에게",
+      "sheet_description": "팁은 이 에피소드에 크레딧된 작가에게 전달됩니다. 팁으로 열리는 에피소드는 없습니다.",
+      "thanks": "팁을 보내 주셔서 감사합니다. 이 에피소드의 작가에게 전달됩니다.",
+      "pending": "팁 결제를 확인하고 있습니다. 스토어에서 결제가 완료되면 기록됩니다.",
+      "cancelled": "팁 보내기를 취소했습니다. 요금은 청구되지 않았습니다.",
+      "not_sold_in_app": "지금은 앱에서 이 금액의 팁을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "start_failed": "팁 보내기를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요."
     },
     "series": {
       "age_gate": {

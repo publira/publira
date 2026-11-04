@@ -6853,7 +6853,8 @@
       "time_left_hours_minutes": "{$hours :integer} hr {$minutes :integer} min left",
       "time_left_minutes": "{$minutes :integer} min left",
       "title": "Purchases",
-      "series_bundle_title": "Remaining episodes ({$count :integer})"
+      "series_bundle_title": "Remaining episodes ({$count :integer})",
+      "tip": "Tip"
     },
     "ranking": {
       "empty": "No ranking has been computed yet.",
@@ -6902,6 +6903,17 @@
       "action": "Share",
       "aria": "Share “{$title}”",
       "text": "{$title} by {$creators}"
+    },
+    "tip": {
+      "button": "Tip the Authors",
+      "sheet_title": "Tip the Authors",
+      "sheet_authors": "To {$authors}",
+      "sheet_description": "A tip goes to the Authors credited on this episode. It does not open anything to read.",
+      "thanks": "Thank you for your tip. It goes to the Authors of this episode.",
+      "pending": "We are confirming your tip. It is recorded once the store settles the payment.",
+      "cancelled": "The tip was cancelled. You have not been charged.",
+      "not_sold_in_app": "This amount cannot be given in the app right now. Try again later.",
+      "start_failed": "Could not start the tip. Try again later."
     },
     "series": {
       "age_gate": {

@@ -30,7 +30,11 @@ enum PurchasedItem {
 
   /// A pack of the tenant's coins, which belongs to no series and opens
   /// nothing itself.
-  coinPack('coin_pack');
+  coinPack('coin_pack'),
+
+  /// A tip to the Authors of one episode, at one of the tenant's tip amounts,
+  /// which opens nothing and never expires.
+  tip('tip');
 
   const PurchasedItem(this.wireName);
 
@@ -78,7 +82,7 @@ class MyPurchase {
   final String seriesLocale;
 
   /// What the purchase bought. The episode fields are set on a purchase of an
-  /// episode alone, [volumeTitle] on one of a volume,
+  /// episode alone and on a tip, [volumeTitle] on one of a volume,
   /// [remainingEpisodeCount] on one of the rest of the series, and the coin
   /// fields on one of a pack.
   final PurchasedItem item;
@@ -157,14 +161,20 @@ class MyPurchase {
     if (revokedAt != null) {
       return MyPurchaseStatus.canceled;
     }
-    return isActive ? MyPurchaseStatus.active : MyPurchaseStatus.expired;
+    // A tip opens nothing, so the API never answers it active, and it has no
+    // reading period to run out: one neither refunded nor revoked stands as
+    // given, as a pack of coins does.
+    return isActive || item == PurchasedItem.tip
+        ? MyPurchaseStatus.active
+        : MyPurchaseStatus.expired;
   }
 }
 
 /// What the purchase library marks a purchase as, under the names the
 /// purchase history CSV writes in its `status` column.
 enum MyPurchaseStatus {
-  /// Still opens its episode.
+  /// Still opens its episode. A pack of coins and a tip open nothing, and are
+  /// this while they are neither refunded nor revoked.
   active('active'),
 
   /// Its reading period ran out.

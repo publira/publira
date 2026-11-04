@@ -189,6 +189,7 @@ class EpisodeDetail {
     this.creators = const [],
     this.readingDirection = ReadingDirection.rtl,
     this.spreadStartIndex = 1,
+    this.tipAmounts = const [],
   });
 
   final EpisodeItem episode;
@@ -276,6 +277,12 @@ class EpisodeDetail {
   /// page before it stands alone. Already resolved the same way. 1 is the
   /// cover standing alone, which is what a series nobody has set uses.
   final int spreadStartIndex;
+
+  /// The amounts a reader may tip the Authors of the episode, in the minor
+  /// unit of the tenant currency, in ascending order. They are the tenant's,
+  /// the same on every episode, and empty while it takes no tips and on a copy
+  /// read off the device.
+  final List<int> tipAmounts;
 }
 
 /// A member's reaction state for an episode, as `RatingService` reports it.

@@ -187,4 +187,45 @@ void main() {
 
     expect(rows, ['purchase-pack,,,,,1000,0,JPY,,,active,coin_pack,,1100,100']);
   });
+
+  test('names a tip as a tip, with the episode it was given on', () {
+    final rows = _rows(
+      renderPurchaseHistoryCsv([
+        // A tip opens nothing, so the API never answers it active.
+        const MyPurchase(
+          id: 'purchase-tip',
+          seriesId: 'series-1',
+          seriesTitle: 'Series',
+          item: PurchasedItem.tip,
+          episodeId: 'episode-1',
+          episodeTitle: 'Episode',
+          orderIndex: 3,
+          price: 300,
+          currency: 'JPY',
+          isActive: false,
+        ),
+        MyPurchase(
+          id: 'purchase-tip-refunded',
+          seriesId: 'series-1',
+          seriesTitle: 'Series',
+          item: PurchasedItem.tip,
+          episodeId: 'episode-1',
+          episodeTitle: 'Episode',
+          orderIndex: 3,
+          price: 300,
+          currency: 'JPY',
+          isActive: false,
+          refundedAmount: 300,
+          refundedAt: DateTime.utc(2026, 1, 11),
+          revokedAt: DateTime.utc(2026, 1, 11),
+        ),
+      ]),
+    );
+
+    expect(rows, [
+      'purchase-tip,,Series,3,Episode,300,0,JPY,,,active,tip,,,',
+      'purchase-tip-refunded,,Series,3,Episode,300,300,JPY,,'
+          '2026-01-11T00:00:00Z,refunded,tip,,,',
+    ]);
+  });
 }

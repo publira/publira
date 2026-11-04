@@ -1557,6 +1557,10 @@ class HttpCatalogRepository implements CatalogRepository {
         episode.spreadStartIndex,
         'episode.spreadStartIndex',
       ),
+      // An amount of nothing is no tip a reader could give.
+      tipAmounts: List.unmodifiable(
+        body.tipAmounts.where((amount) => amount > 0),
+      ),
     );
   }
 

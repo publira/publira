@@ -1251,7 +1251,8 @@ List<RankedSeriesItem> fixtureRankedSeries() {
 ///
 /// Each names the next free episode after it, and one [access] withholds also
 /// carries the preview of its first two pages, the way the API answers then.
-/// A locked one opens its first [previewPageCount] pages as a preview.
+/// A locked one opens its first [previewPageCount] pages as a preview. Each
+/// offers the tenant's [tipAmounts] and credits [creators].
 Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
@@ -1263,6 +1264,8 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   bool rented = false,
   EpisodeCampaign? campaign,
   String coinName = '',
+  List<int> tipAmounts = const [],
+  List<SeriesCreator> creators = const [],
 }) {
   final withheld =
       access == EpisodeAccess.locked || access == EpisodeAccess.ageRestricted;
@@ -1338,6 +1341,8 @@ Map<String, EpisodeDetail> fixtureEpisodes({
               ),
         ],
         ageRating: ageRating,
+        tipAmounts: tipAmounts,
+        creators: creators,
       );
     }
   }

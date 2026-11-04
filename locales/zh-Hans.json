@@ -6853,7 +6853,8 @@
       "time_left_hours_minutes": "剩余{$hours :integer}小时{$minutes :integer}分钟",
       "time_left_minutes": "剩余{$minutes :integer}分钟",
       "title": "已购买",
-      "series_bundle_title": "剩余的{$count :integer}章"
+      "series_bundle_title": "剩余的{$count :integer}章",
+      "tip": "打赏"
     },
     "ranking": {
       "empty": "尚未生成排行榜。",
@@ -6902,6 +6903,17 @@
       "action": "分享",
       "aria": "分享“{$title}”",
       "text": "{$title}（{$creators}）"
+    },
+    "tip": {
+      "button": "打赏作者",
+      "sheet_title": "打赏作者",
+      "sheet_authors": "致{$authors}",
+      "sheet_description": "打赏将送达本章节署名的作者。打赏不会解锁任何可阅读的内容。",
+      "thanks": "感谢您的打赏。打赏将送达本章节的作者。",
+      "pending": "我们正在确认您的打赏付款。商店完成付款后即会记录。",
+      "cancelled": "打赏已取消，未产生任何扣款。",
+      "not_sold_in_app": "目前无法在应用中打赏该金额。请稍后再试。",
+      "start_failed": "无法开始打赏。请稍后再试。"
     },
     "series": {
       "age_gate": {

@@ -3389,6 +3389,11 @@ final class AppMessages {
     return _format('mobile.purchases.time_left_minutes', {'minutes': minutes});
   }
 
+  /// `mobile.purchases.tip`
+  String get purchasesTip {
+    return _format('mobile.purchases.tip');
+  }
+
   /// `mobile.purchases.title`
   String get purchasesTitle {
     return _format('mobile.purchases.title');
@@ -4099,6 +4104,51 @@ final class AppMessages {
   /// `mobile.tenant_suspended.title`
   String get tenantSuspendedTitle {
     return _format('mobile.tenant_suspended.title');
+  }
+
+  /// `mobile.tip.button`
+  String get tipButton {
+    return _format('mobile.tip.button');
+  }
+
+  /// `mobile.tip.cancelled`
+  String get tipCancelled {
+    return _format('mobile.tip.cancelled');
+  }
+
+  /// `mobile.tip.not_sold_in_app`
+  String get tipNotSoldInApp {
+    return _format('mobile.tip.not_sold_in_app');
+  }
+
+  /// `mobile.tip.pending`
+  String get tipPending {
+    return _format('mobile.tip.pending');
+  }
+
+  /// `mobile.tip.sheet_authors`
+  String tipSheetAuthors({required String authors}) {
+    return _format('mobile.tip.sheet_authors', {'authors': authors});
+  }
+
+  /// `mobile.tip.sheet_description`
+  String get tipSheetDescription {
+    return _format('mobile.tip.sheet_description');
+  }
+
+  /// `mobile.tip.sheet_title`
+  String get tipSheetTitle {
+    return _format('mobile.tip.sheet_title');
+  }
+
+  /// `mobile.tip.start_failed`
+  String get tipStartFailed {
+    return _format('mobile.tip.start_failed');
+  }
+
+  /// `mobile.tip.thanks`
+  String get tipThanks {
+    return _format('mobile.tip.thanks');
   }
 
   /// `mobile.verify_email.expired`
@@ -5102,6 +5152,7 @@ const _jaSources = <String, String>{
   'mobile.purchases.time_left_hours_minutes':
       '残り{\$hours :integer}時間{\$minutes :integer}分',
   'mobile.purchases.time_left_minutes': '残り{\$minutes :integer}分',
+  'mobile.purchases.tip': 'チップ',
   'mobile.purchases.title': '購入済み一覧',
   'mobile.push.open': '開く',
   'mobile.ranking.empty': 'ランキングはまだ集計されていません。',
@@ -5254,6 +5305,16 @@ const _jaSources = <String, String>{
   'mobile.tag.title': 'タグ',
   'mobile.tenant_suspended.description': 'しばらく経ってから再試行してください。',
   'mobile.tenant_suspended.title': 'このアプリは現在ご利用いただけません',
+  'mobile.tip.button': '著者にチップを贈る',
+  'mobile.tip.cancelled': 'チップの手続きをキャンセルしました。料金は発生していません。',
+  'mobile.tip.not_sold_in_app': '現在、この金額のチップはアプリで贈れません。時間をおいて再試行してください。',
+  'mobile.tip.pending': 'チップの決済を確認しています。ストアで決済が完了すると記録されます。',
+  'mobile.tip.sheet_authors': '{\$authors}へ',
+  'mobile.tip.sheet_description':
+      'チップはこのエピソードにクレジットされている著者に届きます。チップで読めるエピソードは増えません。',
+  'mobile.tip.sheet_title': '著者にチップを贈る',
+  'mobile.tip.start_failed': 'チップの手続きを開始できませんでした。時間をおいて再試行してください。',
+  'mobile.tip.thanks': 'チップをありがとうございます。このエピソードの著者に届けます。',
   'mobile.verify_email.expired': 'この確認リンクは有効期限が切れています。',
   'mobile.verify_email.failed': 'メールアドレスを確認できませんでした。再試行してください。',
   'mobile.verify_email.invalid_token': 'この確認リンクは無効です。',
@@ -6177,6 +6238,7 @@ const _enSources = <String, String>{
   'mobile.purchases.time_left_hours_minutes':
       '{\$hours :integer} hr {\$minutes :integer} min left',
   'mobile.purchases.time_left_minutes': '{\$minutes :integer} min left',
+  'mobile.purchases.tip': 'Tip',
   'mobile.purchases.title': 'Purchases',
   'mobile.push.open': 'Open',
   'mobile.ranking.empty': 'No ranking has been computed yet.',
@@ -6353,6 +6415,19 @@ const _enSources = <String, String>{
   'mobile.tag.title': 'Tag',
   'mobile.tenant_suspended.description': 'Please try again a little later.',
   'mobile.tenant_suspended.title': 'This app is unavailable right now',
+  'mobile.tip.button': 'Tip the Authors',
+  'mobile.tip.cancelled': 'The tip was cancelled. You have not been charged.',
+  'mobile.tip.not_sold_in_app':
+      'This amount cannot be given in the app right now. Try again later.',
+  'mobile.tip.pending':
+      'We are confirming your tip. It is recorded once the store settles the payment.',
+  'mobile.tip.sheet_authors': 'To {\$authors}',
+  'mobile.tip.sheet_description':
+      'A tip goes to the Authors credited on this episode. It does not open anything to read.',
+  'mobile.tip.sheet_title': 'Tip the Authors',
+  'mobile.tip.start_failed': 'Could not start the tip. Try again later.',
+  'mobile.tip.thanks':
+      'Thank you for your tip. It goes to the Authors of this episode.',
   'mobile.verify_email.expired': 'This confirmation link has expired.',
   'mobile.verify_email.failed':
       'Could not confirm your email address. Try again.',
@@ -7162,6 +7237,7 @@ const _koSources = <String, String>{
   'mobile.purchases.time_left_hours_minutes':
       '{\$hours :integer}시간 {\$minutes :integer}분 남음',
   'mobile.purchases.time_left_minutes': '{\$minutes :integer}분 남음',
+  'mobile.purchases.tip': '팁',
   'mobile.purchases.title': '구매 목록',
   'mobile.push.open': '열기',
   'mobile.ranking.empty': '아직 집계된 랭킹이 없습니다.',
@@ -7316,6 +7392,16 @@ const _koSources = <String, String>{
   'mobile.tag.title': '태그',
   'mobile.tenant_suspended.description': '잠시 후 다시 시도해 주세요.',
   'mobile.tenant_suspended.title': '이 앱은 현재 이용할 수 없습니다',
+  'mobile.tip.button': '작가에게 팁 보내기',
+  'mobile.tip.cancelled': '팁 보내기를 취소했습니다. 요금은 청구되지 않았습니다.',
+  'mobile.tip.not_sold_in_app': '지금은 앱에서 이 금액의 팁을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.tip.pending': '팁 결제를 확인하고 있습니다. 스토어에서 결제가 완료되면 기록됩니다.',
+  'mobile.tip.sheet_authors': '{\$authors}에게',
+  'mobile.tip.sheet_description':
+      '팁은 이 에피소드에 크레딧된 작가에게 전달됩니다. 팁으로 열리는 에피소드는 없습니다.',
+  'mobile.tip.sheet_title': '작가에게 팁 보내기',
+  'mobile.tip.start_failed': '팁 보내기를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.tip.thanks': '팁을 보내 주셔서 감사합니다. 이 에피소드의 작가에게 전달됩니다.',
   'mobile.verify_email.expired': '이 확인 링크는 유효 기간이 지났습니다.',
   'mobile.verify_email.failed': '이메일 주소를 확인하지 못했습니다. 다시 시도해 주세요.',
   'mobile.verify_email.invalid_token': '이 확인 링크는 유효하지 않습니다.',
@@ -8040,6 +8126,7 @@ const _zhHansSources = <String, String>{
   'mobile.purchases.time_left_hours_minutes':
       '剩余{\$hours :integer}小时{\$minutes :integer}分钟',
   'mobile.purchases.time_left_minutes': '剩余{\$minutes :integer}分钟',
+  'mobile.purchases.tip': '打赏',
   'mobile.purchases.title': '已购买',
   'mobile.push.open': '打开',
   'mobile.ranking.empty': '尚未生成排行榜。',
@@ -8182,6 +8269,15 @@ const _zhHansSources = <String, String>{
   'mobile.tag.title': '标签',
   'mobile.tenant_suspended.description': '请过一段时间再试。',
   'mobile.tenant_suspended.title': '此应用目前无法使用',
+  'mobile.tip.button': '打赏作者',
+  'mobile.tip.cancelled': '打赏已取消，未产生任何扣款。',
+  'mobile.tip.not_sold_in_app': '目前无法在应用中打赏该金额。请稍后再试。',
+  'mobile.tip.pending': '我们正在确认您的打赏付款。商店完成付款后即会记录。',
+  'mobile.tip.sheet_authors': '致{\$authors}',
+  'mobile.tip.sheet_description': '打赏将送达本章节署名的作者。打赏不会解锁任何可阅读的内容。',
+  'mobile.tip.sheet_title': '打赏作者',
+  'mobile.tip.start_failed': '无法开始打赏。请稍后再试。',
+  'mobile.tip.thanks': '感谢您的打赏。打赏将送达本章节的作者。',
   'mobile.verify_email.expired': '此确认链接已失效。',
   'mobile.verify_email.failed': '无法确认您的邮箱地址。请重试。',
   'mobile.verify_email.invalid_token': '此确认链接无效。',
@@ -8898,6 +8994,7 @@ const _zhHantSources = <String, String>{
   'mobile.purchases.time_left_hours_minutes':
       '剩餘{\$hours :integer}小時{\$minutes :integer}分鐘',
   'mobile.purchases.time_left_minutes': '剩餘{\$minutes :integer}分鐘',
+  'mobile.purchases.tip': '打賞',
   'mobile.purchases.title': '已購買',
   'mobile.push.open': '開啟',
   'mobile.ranking.empty': '尚未產生排行榜。',
@@ -9040,6 +9137,15 @@ const _zhHantSources = <String, String>{
   'mobile.tag.title': '標籤',
   'mobile.tenant_suspended.description': '請過一段時間再試。',
   'mobile.tenant_suspended.title': '此應用程式目前無法使用',
+  'mobile.tip.button': '打賞作者',
+  'mobile.tip.cancelled': '打賞已取消，未產生任何扣款。',
+  'mobile.tip.not_sold_in_app': '目前無法在應用程式中打賞該金額。請稍後再試。',
+  'mobile.tip.pending': '我們正在確認您的打賞付款。商店完成付款後即會記錄。',
+  'mobile.tip.sheet_authors': '致{\$authors}',
+  'mobile.tip.sheet_description': '打賞將送達本章節署名的作者。打賞不會解鎖任何可閱讀的內容。',
+  'mobile.tip.sheet_title': '打賞作者',
+  'mobile.tip.start_failed': '無法開始打賞。請稍後再試。',
+  'mobile.tip.thanks': '感謝您的打賞。打賞將送達本章節的作者。',
   'mobile.verify_email.expired': '此確認連結已失效。',
   'mobile.verify_email.failed': '無法確認您的電子郵件地址。請重試。',
   'mobile.verify_email.invalid_token': '此確認連結無效。',

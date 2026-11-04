@@ -111,6 +111,7 @@ class EpisodeViewerScreen extends StatefulWidget {
     required this.seriesId,
     required this.episodeId,
     this.checkout,
+    this.tip,
   });
 
   final String seriesId;
@@ -119,6 +120,12 @@ class EpisodeViewerScreen extends StatefulWidget {
   /// How a checkout of this episode ended, when the browser has just handed
   /// one back.
   final CheckoutOutcome? checkout;
+
+  /// How a checkout of a tip to this episode's Authors ended, when the
+  /// browser has just handed one back. The reader is thanked for one that
+  /// went through and told that one cancelled charged nothing; neither
+  /// changes what the screen shows.
+  final CheckoutOutcome? tip;
 
   @override
   State<EpisodeViewerScreen> createState() => _EpisodeViewerScreenState();
@@ -281,6 +288,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         );
       }
       return;
+    }
+    if (!_started) {
+      _reportTip();
     }
     _started = true;
     _accessToken = accessToken;
@@ -726,6 +736,27 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         pageStore: OfflineScope.maybeOf(context),
       ),
     );
+  }
+
+  /// Tells the reader how the tip the browser handed back ended, once the
+  /// screen is up to show it.
+  void _reportTip() {
+    final tip = widget.tip;
+    if (tip == null) {
+      return;
+    }
+    final messages = AppMessages.of(context);
+    final message = switch (tip) {
+      CheckoutOutcome.success => messages.tipThanks,
+      CheckoutOutcome.cancelled => messages.tipCancelled,
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: AutospacedText(message)));
+      }
+    });
   }
 
   /// What stands where the pages would be while the episode is not the
