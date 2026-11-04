@@ -22,12 +22,18 @@ import {
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
+import {
+  PROMOTION_CODES,
+  PROMOTION_CODES_ADMIN,
+  PROMOTION_CODES_READER,
+} from "../src/scenarios/promotion-codes";
 import { ROYALTIES_ADMIN, ROYALTIES_SALES } from "../src/scenarios/royalties";
 import { STOREFRONT_SUBSCRIPTIONS_ADMIN } from "../src/scenarios/storefront-subscriptions";
 import {
   WEB_ADMIN_ANALYTICS_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
+  WEB_ADMIN_PROMOTION_CODES_BASE_URL,
   WEB_ADMIN_ROYALTIES_BASE_URL,
   WEB_ADMIN_SUBSCRIPTIONS_BASE_URL,
 } from "../src/urls";
@@ -39,7 +45,9 @@ import {
  *
  * Payment methods are photographed on the seed tenant with Stripe chosen and nothing
  * saved, which is what the form shows while a Tenant admin follows the
- * setup. The royalties are photographed on the royalty tenant of
+ * setup. The promotion codes are photographed on the tenant of
+ * `db/seeds/scenarios/790_promotion_codes.sql`, whose seeded code a reader
+ * redeemed on a fixed day. The royalties are photographed on the royalty tenant of
  * `db/seeds/scenarios/260_royalties.sql`, whose sales all fall in one past
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
@@ -64,6 +72,22 @@ const openScreen = async (
   await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
+};
+
+/** The same on the promotion codes tenant's console. */
+const openPromotionCodes = async (
+  page: Page,
+  consoleSessions: ConsoleSessions,
+  locale: string,
+  path: string
+): Promise<void> => {
+  await consoleSessions.signIn(
+    page,
+    PROMOTION_CODES_ADMIN,
+    WEB_ADMIN_PROMOTION_CODES_BASE_URL
+  );
+  await setDocsLocale(page, WEB_ADMIN_PROMOTION_CODES_BASE_URL, locale);
+  await page.goto(`${WEB_ADMIN_PROMOTION_CODES_BASE_URL}${path}`);
 };
 
 /** The same on the subscriptions tenant's console. */
@@ -227,6 +251,62 @@ for (const locale of DOCS_LOCALES) {
           });
         });
       }
+    });
+
+    test.describe("promotion codes", () => {
+      const sellingPage = "console/selling-episodes";
+
+      test("the form that creates a promotion code", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openPromotionCodes(
+          page,
+          consoleSessions,
+          locale,
+          "/promotion-codes/new"
+        );
+        await expect(
+          page.getByRole("button", {
+            name: t("admin.promotion_codes.form.submit"),
+          })
+        ).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          element: docsScreen(page),
+          locale,
+          page: sellingPage,
+          subject: "promotion-code-form",
+        });
+      });
+
+      test("a promotion code, with its redemptions", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openPromotionCodes(
+          page,
+          consoleSessions,
+          locale,
+          `/promotion-codes?code=${PROMOTION_CODES.welcome.id}`
+        );
+
+        const detail = page.getByRole("dialog", {
+          exact: true,
+          name: t("admin.promotion_codes.detail_title"),
+        });
+
+        await expect(
+          detail.getByRole("cell", { name: PROMOTION_CODES_READER.email })
+        ).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          element: detail,
+          locale,
+          page: sellingPage,
+          subject: "promotion-code-detail",
+        });
+      });
     });
 
     test.describe("subscription plans", () => {

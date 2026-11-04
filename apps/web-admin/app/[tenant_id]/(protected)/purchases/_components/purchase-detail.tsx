@@ -240,14 +240,52 @@ export const PurchaseDetail = async ({
           </>
         )}
 
-        <dt className={labelClassName}>
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="admin.purchases.columns.amount" />
-          </Suspense>
-        </dt>
-        <dd className={`${valueClassName} tabular-nums`}>
-          {formatTenantAmount(purchase.price, { currency, locale })}
-        </dd>
+        {/* A purchase a promotion code discounted was sold for less than its
+            price, and its Authors are paid on the price, so both are shown. */}
+        {purchase.listPrice === purchase.price ? (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.purchases.columns.amount" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {formatTenantAmount(purchase.price, { currency, locale })}
+            </dd>
+          </>
+        ) : (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.purchases.list_price" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {formatTenantAmount(purchase.listPrice, { currency, locale })}
+            </dd>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.purchases.paid" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {formatTenantAmount(purchase.price, { currency, locale })}
+            </dd>
+          </>
+        )}
+
+        {purchase.promotionCode ? (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.purchases.promotion_code" />
+              </Suspense>
+            </dt>
+            <dd className={valueClassName}>
+              {purchase.promotionCode.toUpperCase()}
+            </dd>
+          </>
+        ) : null}
 
         {purchase.taxRateBps !== null && purchase.taxAmount !== null ? (
           <>

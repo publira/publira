@@ -103,6 +103,10 @@
       "types": "./dist/admin/payment-reconciliation.d.mts",
       "default": "./dist/admin/payment-reconciliation.mjs"
     },
+    "./admin/promotion-code": {
+      "types": "./dist/admin/promotion-code.d.mts",
+      "default": "./dist/admin/promotion-code.mjs"
+    },
     "./admin/purchase": {
       "types": "./dist/admin/purchase.d.mts",
       "default": "./dist/admin/purchase.mjs"

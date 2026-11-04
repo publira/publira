@@ -364,6 +364,17 @@ export const WEB_ADMIN_PURCHASES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the promotion codes tenant from
+ * `db/seeds/scenarios/790_promotion_codes.sql`. A code changes what the
+ * tenant's app has to sell and whether its site takes codes, so its suite
+ * needs a console of its own.
+ */
+export const WEB_ADMIN_PROMOTION_CODES_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_PROMOTION_CODES_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.promo.localhost")
+);
+
+/**
  * Admin console of the analytics tenant from
  * `db/seeds/scenarios/690_admin_analytics.sql`. Its suite counts one week of
  * the tenant's sales, follows, and reads exactly, so none of them may come from

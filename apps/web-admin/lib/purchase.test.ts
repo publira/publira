@@ -64,6 +64,9 @@ const purchase = (
     episodeId: string;
     episodePublicId: string;
     episodeTitle: string;
+    listPrice: bigint;
+    price: bigint;
+    promotionCode: string;
     refundable: boolean;
     refundRequestedAmount: bigint;
     revocationReason: PurchaseRevocationReason;
@@ -86,7 +89,9 @@ const purchase = (
   episodeTitle: "Episode 1",
   expiresAt: "",
   id: PURCHASE_ID,
+  listPrice: 500n,
   price: 500n,
+  promotionCode: "",
   provider: "stripe",
   purchasedAt: "2026-03-01T12:00:00Z",
   readerEmail: "reader@example.com",
@@ -228,6 +233,27 @@ describe("listPurchases", () => {
       { kind: "volume", publicId: "VOLUME001", title: "Volume 1" },
       { episodeCount: 12, kind: "series_bundle" },
       { bonusCoins: 100, coinName: "Points", coins: 1000, kind: "coin_pack" },
+    ]);
+  });
+
+  it("keeps the price before a promotion code beside what the reader paid", async () => {
+    mockListPurchases.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        purchase({ listPrice: 500n, price: 450n, promotionCode: "Welcome10" }),
+        // A server of the release before promotion codes sends no list price.
+        purchase({ listPrice: 0n }),
+      ],
+    });
+
+    const { listPurchases } = await import("./purchase");
+
+    const result = await listPurchases("TENANT001", "en");
+
+    expect(result.purchases).toMatchObject([
+      { listPrice: 500, price: 450, promotionCode: "Welcome10" },
+      { listPrice: 500, price: 500, promotionCode: "" },
     ]);
   });
 

@@ -68,6 +68,7 @@ export default defineConfig({
     "src/tag-icon.tsx",
     "src/text-quote-icon.tsx",
     "src/ticket-icon.tsx",
+    "src/ticket-percent-icon.tsx",
     "src/trending-up-icon.tsx",
     "src/unfold-horizontal-icon.tsx",
     "src/user-icon.tsx",

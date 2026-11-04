@@ -28,6 +28,7 @@ import {
   ShapesIcon,
   TagIcon,
   TicketIcon,
+  TicketPercentIcon,
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
@@ -72,6 +73,7 @@ const hrefs = [
   "/royalties",
   "/purchases",
   "/reconciliation",
+  "/promotion-codes",
   "/subscription-plans",
   "/integrations/payment",
   "/coins",
@@ -421,6 +423,18 @@ export const AdminNavigation = () => (
                 <ConsoleSidebar.NavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                     <Message message="admin.nav.reconciliation_label" />
+                  </Suspense>
+                </ConsoleSidebar.NavigationItemLabel>
+              </ConsoleSidebar.NavigationItemHeading>
+            </ConsoleSidebar.NavigationItem>
+            <ConsoleSidebar.NavigationItem href="/promotion-codes">
+              <ConsoleSidebar.NavigationItemIcon>
+                <TicketPercentIcon className="size-4" />
+              </ConsoleSidebar.NavigationItemIcon>
+              <ConsoleSidebar.NavigationItemHeading>
+                <ConsoleSidebar.NavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="admin.nav.promotion_codes_label" />
                   </Suspense>
                 </ConsoleSidebar.NavigationItemLabel>
               </ConsoleSidebar.NavigationItemHeading>

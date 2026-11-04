@@ -17,6 +17,7 @@ import { COMMENT_MODERATION_SCENARIO } from "../src/scenarios/comment-moderation
 import { CONTACT_WORKFLOW_SCENARIO } from "../src/scenarios/contact-workflow";
 import { DOCS_GOOGLE_TAG_SCENARIO } from "../src/scenarios/docs-google-tag";
 import { DOCS_SUBSCRIPTION_PLANS_SCENARIO } from "../src/scenarios/docs-subscription-plans";
+import { PROMOTION_CODES_SCENARIO } from "../src/scenarios/promotion-codes";
 import { ROYALTIES_SCENARIO } from "../src/scenarios/royalties";
 import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
 import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-subscriptions";
@@ -31,8 +32,8 @@ import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-s
  * published, announcements, invitations, a closed royalty statement, the
  * Platform Console's own tenants, operators, and records, campaign banners in
  * every standing, a Google tag saved in the gateway mode, subscription plans
- * in both states, one with a subscriber, and a week of sign-ups followed for
- * the cohorts. Applying every
+ * in both states, one with a subscriber, a promotion code a reader redeemed,
+ * and a week of sign-ups followed for the cohorts. Applying every
  * file once, rather than from the specs that read them, is what lets those
  * specs run beside one another: a spec applying a file again deletes rows
  * another spec may be photographing at that moment. Nothing is reverted
@@ -57,6 +58,7 @@ const SCENARIOS = [
   STOREFRONT_SUBSCRIPTIONS_SCENARIO,
   DOCS_SUBSCRIPTION_PLANS_SCENARIO,
   ADMIN_ANALYTICS_SCENARIO,
+  PROMOTION_CODES_SCENARIO,
 ] as const;
 
 setup("the scenario tenants the documentation's screenshots show", async () => {

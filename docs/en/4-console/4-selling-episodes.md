@@ -9,7 +9,7 @@ Selling an episode on the site takes three things that have to agree: the episod
 
 The tenant's app sells either through the same provider, or through the App Store's and Google Play's own payment, which needs no provider and is verified with the stores instead. [Selling in the app](#selling-in-the-app) covers that choice, and a tenant that sells only in its app through the stores can skip the provider sections.
 
-Everything here under **Payments** › **Payment methods** is for a **Tenant admin**; an Editor or an Auditor does not see that screen. Pricing an episode is done by whoever creates it.
+Everything here under **Payments** › **Payment methods** and **Payments** › **Promotion codes** is for a **Tenant admin**; an Editor or an Auditor does not see those screens. Pricing an episode is done by whoever creates it.
 
 ## How a reader buys an episode
 
@@ -135,11 +135,11 @@ Then in the console, under **Payment settings**:
 
 Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own signing secret. When you move to live keys, add the endpoint again in live mode, and enter its signing secret together with the live secret key.
 
-#### Promotion codes
+#### Stripe promotion codes
 
-A reader can enter a promotion code on Stripe's checkout page. The codes are created in the Stripe Dashboard, under the coupons of the same account and mode as the secret key, and nothing is set in the console: every checkout of an episode or a volume takes them. A checkout of the rest of a series sold at a discount does not, since Stripe applies one discount or the other to a checkout, never both.
+A reader can also enter a promotion code on Stripe's checkout page. These codes are created in the Stripe Dashboard, under the coupons of the same account and mode as the secret key, and nothing is set in the console: every checkout of an episode or a volume takes them. A checkout of the rest of a series sold at a discount does not, and neither does a checkout started with one of the tenant's own [promotion codes](#promotion-codes), since Stripe applies one discount to a checkout, never two.
 
-The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history** and the amount a full refund returns, and the price before the code beside it, which is the sale the episode's Authors are paid royalties on: the tenant offered the promotion, so the tenant bears it. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP checkouts take no promotion code.
+The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history** and the amount a full refund returns, and the price before the code beside it, which is the sale the episode's Authors are paid royalties on: the tenant offered the promotion, so the tenant bears it. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP's checkout page takes no code of its own; the tenant's own codes work with it as with Stripe.
 
 ### PAY.JP
 
@@ -202,7 +202,7 @@ On an episode sold **App only**, the site shows the episode as sold in the app a
 
 **In-app purchase** can be chosen once at least one store is **Ready**: turned on with **Use the App Store** or **Use Google Play**, with its key entered, and with its app named under **Integrations** › **App links**.
 
-The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. While a [campaign price](./1-catalog/2-episodes.md#campaign-prices) is on sale, the price is the campaign's: an episode on sale from ¥500 to ¥300 is bought as `episode_300` and recorded at ¥300. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs, the price of every campaign that is scheduled or on sale included, and counts an episode under each of its prices. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list, which for a campaign is as soon as it is scheduled, so its product is ready before it starts.
+The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. While a [campaign price](./1-catalog/2-episodes.md#campaign-prices) is on sale, the price is the campaign's: an episode on sale from ¥500 to ¥300 is bought as `episode_300` and recorded at ¥300. A [promotion code](#promotion-codes) works the same way: an episode of ¥500 bought with a code of 10% off is bought as `episode_450`. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs, the price of every campaign that is scheduled or on sale included, and each of those prices less the discount of every code that applies to the episode and is neither paused, deleted, nor past its end, a code that has not started yet included. It counts an episode under each of its prices. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list, which for a campaign is as soon as it is scheduled and for a code as soon as it is created, so its product is ready before it starts. A code that takes the whole price off needs no product, since such a purchase is recorded without the store. The app refuses a code whose discounted price is not on the list.
 
 Each pack of your coins on sale is listed there too, as `coins_` followed by the pack's ID, with the coins and bonus coins it grants, and is created the same way, as a consumable at the pack's price. The stores show a product under the name you give it in App Store Connect and Play Console rather than one Publira sends, so name each pack's product with your word for your coins, in every language your app is listed in.
 
@@ -214,6 +214,68 @@ What each store needs, from the key the install verifies purchases with to testi
 
 An episode a reader saved in the app keeps opening on that device without a network for up to seven days after the app last opened it online, so a refund closes a saved episode within that time rather than at once, as [Offline reading](../5-mobile-app/7-offline-reading.md#paid-episodes-seven-days-without-the-install) describes. The next time the app opens it online, it is locked and deleted from the device.
 
+## Promotion codes
+
+A promotion code of the tenant's own is a word a reader enters when they buy an episode or a volume, for a discount on it. The install takes the discount off before the payment provider or the store is reached, so the provider or the store charges the discounted price without being told about the code: a code works with Stripe, PAY.JP, the App Store, and Google Play alike, and nothing is set up for it in any of them. The codes are issued under **Payments** › **Promotion codes**, which only a Tenant admin sees.
+
+### What a code holds
+
+- **Code** is what readers enter: 1 to 32 letters and digits, with no spaces. A reader can type it in any case, and the console shows it in capitals. Two codes of the tenant that are not deleted cannot be spelled the same, whatever their case.
+- The discount is **Percent off**, a whole percentage from 1 to 100 of the price, what it comes to rounded down to the smallest unit of the currency, or **Amount off**, an amount in the tenant's currency. It is taken off the price the episode or the volume sells at when the reader buys, a [campaign price](./1-catalog/2-episodes.md#campaign-prices) while one is on sale, and never takes it below zero: `100` percent, or an amount at or above the price, makes the purchase free.
+- **Applies to** is the **Whole catalog**, a label, a series, a volume, or an episode. A code applies to buying an episode, to renting one, and to buying a volume, and never to the rest of a series, a subscription plan, a pack of coins, or a tip. A code on a label or a series applies to its episodes and its volumes alike. A code on a volume applies to buying that volume, and not to its episodes bought one by one; a code on an episode applies to that episode, and not to a volume that holds it. A code whose label, series, volume, or episode is later removed applies to nothing.
+- **Starts** and **Ends** are when the code works, in the tenant's time zone. Leave either empty for no bound.
+- **Total redemptions** is how many purchases the code may discount in all, and **Per reader** how many one reader may make with it. Leave either empty for no limit.
+
+The code, its discount, and what it applies to are fixed once it is created. To change them, delete the code and create another, which can take the same name. **Starts**, **Ends**, and the two limits can be changed at any time.
+
+### Creating a code
+
+1. Open **Payments** › **Promotion codes** and choose **Create promotion code**.
+2. Enter the **Code**.
+3. Choose **Percent off** and enter the **Percentage**, or **Amount off** and enter the **Amount**.
+4. Under **Applies to**, choose what the code applies to. For a label or a series, pick it; for a volume or an episode, pick its series first, then the volume or the episode.
+5. Set **Starts**, **Ends**, **Total redemptions**, and **Per reader** if the code needs them, and choose **Create promotion code**.
+
+![The Create promotion code form: Code, the discount as Percent off or Amount off, Applies to, Starts and Ends, Total redemptions and Per reader, and Create promotion code.](./selling-episodes-promotion-code-form.png)
+
+The form refuses, and says so beside the field, a code spelled like another code of the tenant's, a code with anything but letters and digits, a percentage outside 1 to 100, an amount of zero, an **Ends** at or before **Starts**, and a label, series, volume, or episode that has been removed since the form was opened. Once created, the code opens beside the list.
+
+### Watching, pausing, and deleting a code
+
+The list shows each code, newest first, with its discount, what it applies to, when it is valid, how many purchases it has discounted against its limit, and its status:
+
+- **Active**: readers can use it.
+- **Scheduled**: its **Starts** has not come yet.
+- **Paused**: it was paused, and is refused until it is resumed.
+- **Ended**: its **Ends** has passed, whether or not it is paused.
+
+**View** opens a code beside the list with its terms, and under them **Redemptions**: every purchase it discounted, newest first, with the reader, what they bought, its **Price** before the code, what they **Paid**, and when. The title opens the purchase under **Purchases**, which shows the same **Price** and **Paid** and the **Promotion code** that was applied.
+
+![A promotion code beside the list: its status, discount, what it applies to, when it is valid, its redemptions against its limit and per reader, Edit, Pause, and Delete, and under them the redemption of a reader who paid ¥450 for a ¥500 episode.](./selling-episodes-promotion-code-detail.png)
+
+- **Edit** changes **Starts**, **Ends**, **Total redemptions**, and **Per reader**, and nothing else.
+- **Pause** refuses the code to every reader, as a code that does not exist is refused, until **Resume** opens it again. A paused code keeps its name.
+- **Delete** refuses the code from then on, once you confirm it, and frees its name for another code. The purchases it discounted and its redemptions keep its name. A deleted code cannot be restored.
+
+Creating, editing, pausing, resuming, and deleting a code are each recorded in **Audit logs**.
+
+### When a code is refused
+
+A code that does not work is refused before the reader pays, and the reader is told why:
+
+- No code of the tenant is spelled that way, or the code is deleted, paused, or has not started.
+- The code has ended.
+- The code does not apply to what the reader is buying.
+- The code has reached its **Total redemptions**, or the reader has made as many purchases with it as **Per reader** allows.
+
+### When a code is redeemed
+
+A code is redeemed when its purchase is recorded, not when the reader starts the checkout, so a checkout the reader abandons spends nothing. The limits are checked when a checkout starts, so checkouts already started when a code reaches a limit can still be completed, and the code can end up redeemed more times than its limit.
+
+A code that takes the whole price off records the purchase at once, with no payment and no payment page: the episode or the volume opens as soon as the reader confirms, and the purchase shows **No payment** under **Purchases**. There is nothing of it to refund.
+
+The episode's Authors are paid royalties on the price before the code, as [Royalties](./6-reports-and-royalties.md#what-an-author-is-owed) describes: the tenant offered the promotion, so the tenant bears it. A purchase in the app with a code is a purchase like any other, and [Selling in the app](#selling-in-the-app) describes the store products its discounted price needs.
+
 ## Refunds
 
 A purchase on the site is refunded from the console, as [Refunding from the console](#refunding-from-the-console) describes, or in the Stripe or PAY.JP dashboard. A purchase in the app is refunded by Apple or Google. Publira does not tell the reader either way.
@@ -221,7 +283,7 @@ A purchase on the site is refunded from the console, as [Refunding from the cons
 - **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
 - **A partial refund** leaves the episode open until the refunds on the payment add up to what the reader paid. It still lowers the sales the episode's Authors are paid royalties on.
 
-A purchase a [promotion code](#promotion-codes) discounted is refunded at most what the reader paid. Its Authors are paid on the price before the code, so a refund of part of it takes the same share of that price off their sales: refunding half of what the reader paid takes off half of the price before the code.
+A purchase a [promotion code](#promotion-codes) discounted, one of the tenant's or one entered on [Stripe's checkout page](#stripe-promotion-codes), is refunded at most what the reader paid. Its Authors are paid on the price before the code, so a refund of part of it takes the same share of that price off their sales: refunding half of what the reader paid takes off half of the price before the code. A purchase a code made free took no payment, so there is nothing to refund, and the console offers no refund for it.
 
 Each refund reaches the install the way its purchase did:
 

@@ -24,6 +24,7 @@ const ADMIN_ONLY_ENTRIES = [
   "Royalties",
   "Purchases",
   "Reconciliation",
+  "Promotion codes",
   "Subscription plans",
   "Payment methods",
   "Email",

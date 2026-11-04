@@ -240,6 +240,7 @@ services:
         payment.localhost
         plans.localhost
         policy.localhost
+        promo.localhost
         purchases.localhost
         reject.localhost
         rentals.localhost
@@ -285,6 +286,7 @@ services:
         admin.payment.localhost
         admin.plans.localhost
         admin.policy.localhost
+        admin.promo.localhost
         admin.purchases.localhost
         admin.reject.localhost
         admin.rentals.localhost

@@ -31,6 +31,7 @@ const sidebarEntries = [
   "Royalties",
   "Purchases",
   "Reconciliation",
+  "Promotion codes",
   "Subscription plans",
   "Payment methods",
   "Email",
