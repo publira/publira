@@ -428,6 +428,36 @@ func TestRunLeavesAStoreTestPurchaseUncounted(t *testing.T) {
 	}
 }
 
+// A tip to the Authors of an episode buys none of it, so the day it was given
+// in counts only the episode's purchase.
+func TestRunLeavesATipUncounted(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 29, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "STATSTIP0001", "tip-stats.example.com", "Tip Stats")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TIPSERIES001"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "TIPEP0001"})
+	reader := pg.SeedEndUser(t, tenant.ID, "TIPBUYER0001", "reader@tip-stats.example.com", "Reader")
+	insertPurchase(t, pg.DB, tenant.ID, reader.ID, episode.ID, statDate.Add(10*time.Hour))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, kind, price_at_purchase, purchased_at, currency)
+		VALUES ($1, $2, $3, $4, 'tip', 300, $5, 'JPY')
+	`, uuid.New(), tenant.ID, reader.ID, episode.ID, statDate.Add(11*time.Hour)); err != nil {
+		t.Fatalf("insert tip: %v", err)
+	}
+
+	if _, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	key := statKey{tenantID: tenant.ID, entityType: "episode", entityID: episode.ID}
+	if got := loadStats(t, pg.DB, statDate)[key].purchaseCount; got != 1 {
+		t.Fatalf("purchase_count = %d, want the purchase alone", got)
+	}
+}
+
 func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -485,6 +515,7 @@ func TestSourceQueriesHaveEligibleIndexes(t *testing.T) {
 		WHERE tenant_id = $1
 			AND purchased_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
 			AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+			AND kind <> 'tip'
 		GROUP BY episode_id
 	`, tenant.ID, statDate, "idx_purchases_tenant_purchased_at_id_sales_tax")
 }
