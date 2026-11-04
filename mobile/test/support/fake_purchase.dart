@@ -285,6 +285,68 @@ class FakePurchaseRepository implements PurchaseRepository {
     );
   }
 
+  /// The episode and amount of each tip [startTipCheckout] was asked for, in
+  /// order, as `episodeInternalId:amount`.
+  final List<String> tipCheckouts = <String>[];
+
+  /// The locale each call to [startTipCheckout] asked in, in order.
+  final List<String> tipCheckoutLocales = <String>[];
+
+  /// Thrown by [startTipCheckout].
+  PurchaseFailure? tipCheckoutFailure;
+
+  @override
+  Future<Uri> startTipCheckout(
+    String episodeInternalId, {
+    required int amount,
+    required String locale,
+  }) async {
+    tipCheckouts.add('$episodeInternalId:$amount');
+    tipCheckoutLocales.add(locale);
+    final failure = tipCheckoutFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return tipCheckoutUrlFor(episodeInternalId, amount);
+  }
+
+  static Uri tipCheckoutUrlFor(String episodeInternalId, int amount) =>
+      Uri.parse(
+        'https://checkout.stripe.test/c/tip/$episodeInternalId/$amount',
+      );
+
+  /// The episode and amount of each tip [startStoreTip] was asked for, in
+  /// order, as `episodeInternalId:amount`.
+  final List<String> tipIntents = <String>[];
+
+  /// Thrown by [startStoreTip].
+  PurchaseFailure? tipStartFailure;
+
+  /// Called for a tip transaction [confirmStorePurchase] records.
+  void Function(String productId)? onTipConfirmed;
+
+  /// The intent [startStoreTip] opens for a tip of [amount] to the Authors of
+  /// [episodeInternalId].
+  static String tipIntentFor(String episodeInternalId, int amount) =>
+      'tip-intent-$episodeInternalId-$amount'.toLowerCase();
+
+  @override
+  Future<StorePurchaseIntent> startStoreTip(
+    String episodeInternalId, {
+    required int amount,
+    required InAppPurchaseStore store,
+  }) async {
+    tipIntents.add('$episodeInternalId:$amount');
+    final failure = tipStartFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return StorePurchaseIntent(
+      intentId: tipIntentFor(episodeInternalId, amount),
+      productId: 'tip_$amount',
+    );
+  }
+
   /// Packs [startCoinPackStorePurchase] was asked for, in order.
   final List<String> coinPackIntents = <String>[];
 
@@ -322,6 +384,10 @@ class FakePurchaseRepository implements PurchaseRepository {
     confirmed.add(transaction);
     if (productId.startsWith('coins_')) {
       onCoinPackConfirmed?.call(productId);
+      return;
+    }
+    if (productId.startsWith('tip_')) {
+      onTipConfirmed?.call(productId);
       return;
     }
     onConfirmed?.call();

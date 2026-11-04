@@ -257,20 +257,22 @@ abstract final class AppRoutes {
   static String tagDetailPath(String slug) =>
       '/tags/${Uri.encodeComponent(slug)}';
 
-  /// The viewer, told how a checkout of the episode ended when the browser
-  /// has just handed one back.
+  /// The viewer, told how a checkout of the episode, or of a tip to its
+  /// Authors, ended when the browser has just handed one back.
   static String episodeViewerPath(
     String seriesId,
     String episodeId, {
     CheckoutOutcome? checkout,
+    CheckoutOutcome? tip,
   }) {
     final path = '/series/$seriesId/episodes/$episodeId';
-    return checkout == null
+    final query = {
+      if (checkout != null) 'checkout': checkout.wireName,
+      if (tip != null) 'tip': tip.wireName,
+    };
+    return query.isEmpty
         ? path
-        : Uri(
-            path: path,
-            queryParameters: {'checkout': checkout.wireName},
-          ).toString();
+        : Uri(path: path, queryParameters: query).toString();
   }
 
   static String episodeCommentsPath(String seriesId, String episodeId) =>
@@ -416,6 +418,7 @@ List<RouteBase> _tabRoutes() => [
           checkout: CheckoutOutcome.fromWire(
             state.uri.queryParameters['checkout'],
           ),
+          tip: CheckoutOutcome.fromWire(state.uri.queryParameters['tip']),
         ),
         // Nested for the same reason the viewer is nested under its
         // series: the comments are read once the episode has been, and
@@ -593,11 +596,13 @@ GoRouter createAppRouter({String? initialLocation}) {
                               ),
                             );
                     },
+                    // A tip's return names the amount given as `tip`.
                     builder: (context, state) => CheckoutReturnScreen(
                       episodeId: state.uri.queryParameters['episode']!,
                       outcome: CheckoutOutcome.fromWire(
                         state.uri.queryParameters['status'],
                       ),
+                      tip: (state.uri.queryParameters['tip'] ?? '').isNotEmpty,
                     ),
                   ),
                 ],

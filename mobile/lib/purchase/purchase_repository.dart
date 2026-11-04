@@ -58,10 +58,10 @@ enum AppPurchaseRoute {
 /// `publira.v1.InAppPurchaseStore` names it.
 enum InAppPurchaseStore { appStore, googlePlay }
 
-/// What the store is asked to charge for one episode or one pack of coins: the
-/// product the episode's price or the pack is sold as, and the intent the
-/// transaction carries as its account token so the server learns what it pays
-/// for.
+/// What the store is asked to charge for one episode, one pack of coins, or one
+/// tip: the product the episode's price, the pack, or the tip's amount is sold
+/// as, and the intent the transaction carries as its account token so the
+/// server learns what it pays for.
 class StorePurchaseIntent {
   const StorePurchaseIntent({required this.intentId, required this.productId});
 
@@ -275,8 +275,8 @@ class SeriesPurchaseState {
       volume.episodeIds.every(ownedEpisodeIds.contains);
 }
 
-/// Paid-episode purchase, through the public site's checkout or the store's
-/// in-app purchase as the tenant's app purchase route says.
+/// Paid-episode purchase and tips, through the public site's checkout or the
+/// store's in-app purchase as the tenant's app purchase route says.
 abstract class PurchaseRepository {
   /// Whether the tenant can take a payment in this app right now: its web
   /// checkout on the external-checkout route (`accepts_payments`), and the
@@ -377,6 +377,34 @@ abstract class PurchaseRepository {
   Future<Uri> startSeriesRemainderCheckout(
     String seriesInternalId, {
     required String locale,
+  });
+
+  /// The checkout page the signed-in reader gives the Authors of the episode
+  /// [episodeInternalId] names [amount] on, which `StartTipCheckout` with
+  /// `client: CLIENT_MOBILE` builds to return to the app. [amount] is one of
+  /// [EpisodeDetail.tipAmounts], and the page names the episode in its
+  /// translation in [locale], the reader's.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.notSold] when the tenant
+  /// takes no tips or no longer offers [amount], or sells through the store.
+  Future<Uri> startTipCheckout(
+    String episodeInternalId, {
+    required int amount,
+    required String locale,
+  });
+
+  /// Opens a tip of [amount] to the Authors of the episode
+  /// [episodeInternalId] names through [store] for the signed-in reader, and
+  /// answers the product the amount is sold as. Asking again for the same
+  /// episode and amount answers the same intent until a tip consumes it.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.notSold] when the tenant
+  /// takes no tips, no longer offers [amount], or does not sell through
+  /// [store] right now.
+  Future<StorePurchaseIntent> startStoreTip(
+    String episodeInternalId, {
+    required int amount,
+    required InAppPurchaseStore store,
   });
 
   /// Opens a purchase of the episode [episodeInternalId] names through [store]

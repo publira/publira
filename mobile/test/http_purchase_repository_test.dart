@@ -129,6 +129,79 @@ void main() {
     expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
+  test('a tip through the store names the episode and the amount', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final intent = await repository().startStoreTip(
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      amount: 300,
+      store: InAppPurchaseStore.appStore,
+    );
+    expect(intent.intentId, ConnectFixtureServer.storeTipIntentId);
+    expect(intent.productId, 'tip_300');
+    final call = server.requestsTo('StartStoreTip').single;
+    final request = call.decode(pb.StartStoreTipRequest());
+    expect(request.episodeId, ConnectFixtureServer.internalIdOf(paidEpisodeId));
+    expect(request.amount, 300);
+    expect(
+      request.store,
+      pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE,
+    );
+    expect(call.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('a tip on the web checkout is built to return to the app', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final url = await repository().startTipCheckout(
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      amount: 1000,
+      locale: 'ja',
+    );
+    expect(url, ConnectFixtureServer.tipCheckoutUrlFor(paidEpisodeId, 1000));
+    final request = server
+        .requestsTo('StartTipCheckout')
+        .single
+        .decode(pb.StartTipCheckoutRequest());
+    expect(request.amount, 1000);
+    expect(request.locale, 'ja');
+    expect(request.client, pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE);
+  });
+
+  test('a tip the tenant no longer takes is not sold', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.tipStatus = HttpStatus.badRequest;
+
+    await expectLater(
+      repository().startStoreTip(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        amount: 300,
+        store: InAppPurchaseStore.googlePlay,
+      ),
+      failsWith(PurchaseFailureKind.notSold),
+    );
+    await expectLater(
+      repository().startTipCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        amount: 300,
+        locale: 'en',
+      ),
+      failsWith(PurchaseFailureKind.notSold),
+    );
+  });
+
+  test('a guest is not sent to the API for a tip', () async {
+    await expectLater(
+      repository().startTipCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        amount: 300,
+        locale: 'en',
+      ),
+      failsWith(PurchaseFailureKind.sessionExpired),
+    );
+    expect(server.requestsTo('StartTipCheckout'), isEmpty);
+  });
+
   test('a store purchase of a pack names the pack and no episode', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
@@ -916,6 +989,26 @@ void main() {
 
       expect(rental.kind, PurchaseKind.rental);
       expect(copy.kind, PurchaseKind.purchase);
+    });
+
+    test('names a tip as a tip, with the episode it was given on', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        purchase('purchase-tip', active: false)
+          ..kind = pb.PurchaseKind.PURCHASE_KIND_TIP,
+      ];
+
+      final [tip] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(tip.item, PurchasedItem.tip);
+      expect(tip.episodeId, paidEpisodeId);
+      expect(tip.episodeTitle, 'Seed Episode 001-10');
+      expect(tip.orderIndex, 10);
+      // A tip opens nothing, so it is never active, and stands as given.
+      expect(tip.isActive, isFalse);
+      expect(tip.status, MyPurchaseStatus.active);
     });
 
     test('asks for the page size it is given', () async {

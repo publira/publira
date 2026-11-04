@@ -456,6 +456,78 @@ void main() {
       expect(router.state.uri.path, AppRoutes.accountPurchases);
     });
 
+    testWidgets('names a tip as a tip, and opens the episode it was given on', (
+      tester,
+    ) async {
+      MyPurchase tip(String id, {DateTime? refundedAt}) => MyPurchase(
+        id: id,
+        seriesId: series.id,
+        seriesTitle: series.title,
+        item: PurchasedItem.tip,
+        episodeId: paidEpisodeId,
+        episodeTitle: 'The paid episode',
+        orderIndex: series.episodeCount,
+        price: 300,
+        currency: 'JPY',
+        // A tip opens nothing, so the API never answers it active.
+        isActive: false,
+        refundedAmount: refundedAt == null ? 0 : 300,
+        purchasedAt: DateTime.utc(2026, 1, 10, 12),
+        refundedAt: refundedAt,
+        revokedAt: refundedAt,
+      );
+      purchases.pages = [
+        [
+          tip('purchase-tip'),
+          tip('purchase-tip-refunded', refundedAt: DateTime.utc(2026, 1, 11)),
+        ],
+      ];
+      await openPurchases(tester);
+      final given = find.byKey(const ValueKey('purchase-row-purchase-tip'));
+      await pumpUntilFound(tester, given);
+
+      expect(
+        find.descendant(
+          of: given,
+          matching: find.text('#${series.episodeCount} The paid episode'),
+        ),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: given, matching: find.textContaining('Tip · ')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: given, matching: find.textContaining('Paid ¥300')),
+        findsOne,
+      );
+      // A tip is not read and does not expire, so it names neither, and only
+      // a refund is marked on it.
+      expect(find.text('Readable'), findsNothing);
+      expect(find.text('Expired'), findsNothing);
+      expect(find.textContaining('No expiry'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('purchase-row-purchase-tip-refunded')),
+          matching: find.text('Refunded'),
+        ),
+        findsOne,
+      );
+
+      await tester.tap(given);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('episode-page-view')),
+      );
+
+      expect(
+        router.state.uri.path,
+        AppTab.account.locate(
+          AppRoutes.episodeViewerPath(series.id, paidEpisodeId),
+        ),
+      );
+    });
+
     testWidgets('reads the page under it as the reader nears the end', (
       tester,
     ) async {

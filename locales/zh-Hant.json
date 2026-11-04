@@ -6684,7 +6684,8 @@
       "time_left_hours_minutes": "剩餘{$hours :integer}小時{$minutes :integer}分鐘",
       "time_left_minutes": "剩餘{$minutes :integer}分鐘",
       "title": "已購買",
-      "series_bundle_title": "剩餘的{$count :integer}章"
+      "series_bundle_title": "剩餘的{$count :integer}章",
+      "tip": "打賞"
     },
     "ranking": {
       "empty": "尚未產生排行榜。",
@@ -6733,6 +6734,17 @@
       "action": "分享",
       "aria": "分享「{$title}」",
       "text": "{$title}（{$creators}）"
+    },
+    "tip": {
+      "button": "打賞作者",
+      "sheet_title": "打賞作者",
+      "sheet_authors": "致{$authors}",
+      "sheet_description": "打賞將送達本章節署名的作者。打賞不會解鎖任何可閱讀的內容。",
+      "thanks": "感謝您的打賞。打賞將送達本章節的作者。",
+      "pending": "我們正在確認您的打賞付款。商店完成付款後即會記錄。",
+      "cancelled": "打賞已取消，未產生任何扣款。",
+      "not_sold_in_app": "目前無法在應用程式中打賞該金額。請稍後再試。",
+      "start_failed": "無法開始打賞。請稍後再試。"
     },
     "series": {
       "age_gate": {

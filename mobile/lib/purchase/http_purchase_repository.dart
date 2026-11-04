@@ -380,6 +380,31 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
   }
 
+  @override
+  Future<Uri> startTipCheckout(
+    String episodeInternalId, {
+    required int amount,
+    required String locale,
+  }) async {
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.PurchaseServiceApi(_client).startTipCheckout(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.StartTipCheckoutRequest(
+          amount: amount,
+          client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+          episodeId: episodeInternalId,
+          locale: locale,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return _checkoutUrl(body.checkoutUrl);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
   /// The page a checkout or the billing portal answered, which the system
   /// browser is handed, so nothing but an https URL is.
   static Uri _checkoutUrl(String raw) {
@@ -408,6 +433,32 @@ class HttpPurchaseRepository implements PurchaseRepository {
     InAppPurchaseStore store,
   ) => _startStorePurchase(store, (request) => request.coinPackId = coinPackId);
 
+  @override
+  Future<StorePurchaseIntent> startStoreTip(
+    String episodeInternalId, {
+    required int amount,
+    required InAppPurchaseStore store,
+  }) async {
+    // Read once and sent explicitly, so the intent is opened for the reader
+    // who tapped and no one else.
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.PurchaseServiceApi(_client).startStoreTip(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.StartStoreTipRequest(
+          amount: amount,
+          episodeId: episodeInternalId,
+          store: _store(store),
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return _intent(body.intentId, body.productId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
   /// Opens an intent for what [name] writes into the request: an episode or a
   /// pack.
   Future<StorePurchaseIntent> _startStorePurchase(
@@ -428,18 +479,24 @@ class HttpPurchaseRepository implements PurchaseRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         request,
       );
-      final intentId = body.intentId.trim();
-      final productId = body.productId.trim();
-      if (intentId.isEmpty || productId.isEmpty) {
-        throw const PurchaseFailure(
-          PurchaseFailureKind.unexpected,
-          message: 'intentId and productId are required',
-        );
-      }
-      return StorePurchaseIntent(intentId: intentId, productId: productId);
+      return _intent(body.intentId, body.productId);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  /// The intent a store start answered, which names both what the
+  /// transaction carries and the product the store is asked to sell.
+  static StorePurchaseIntent _intent(String rawIntentId, String rawProductId) {
+    final intentId = rawIntentId.trim();
+    final productId = rawProductId.trim();
+    if (intentId.isEmpty || productId.isEmpty) {
+      throw const PurchaseFailure(
+        PurchaseFailureKind.unexpected,
+        message: 'intentId and productId are required',
+      );
+    }
+    return StorePurchaseIntent(intentId: intentId, productId: productId);
   }
 
   @override
@@ -492,15 +549,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
               tenant: pb.TenantContext(tenantId: tenantId),
             ),
           );
-      final intentId = body.intentId.trim();
-      final productId = body.productId.trim();
-      if (intentId.isEmpty || productId.isEmpty) {
-        throw const PurchaseFailure(
-          PurchaseFailureKind.unexpected,
-          message: 'intentId and productId are required',
-        );
-      }
-      return StorePurchaseIntent(intentId: intentId, productId: productId);
+      return _intent(body.intentId, body.productId);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -597,7 +646,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   /// A purchase names exactly one of an episode, a volume, the rest of a
   /// series, and a pack of coins. One naming none reads as an episode, which
-  /// is what every purchase was before the others existed.
+  /// is what every purchase was before the others existed. A tip names its
+  /// episode too, and is told apart by its kind.
   MyPurchase? _purchase(pb.MyPurchase purchase) {
     final episode = purchase.episode;
     final series = purchase.series;
@@ -609,10 +659,14 @@ class HttpPurchaseRepository implements PurchaseRepository {
         ? PurchasedItem.volume
         : purchase.hasSeriesBundle()
         ? PurchasedItem.remainingEpisodes
+        : purchase.kind == pb.PurchaseKind.PURCHASE_KIND_TIP
+        ? PurchasedItem.tip
         : PurchasedItem.episode;
+    final ofEpisode =
+        item == PurchasedItem.episode || item == PurchasedItem.tip;
     // A pack is of no series; everything else opens one.
     if ((item != PurchasedItem.coinPack && seriesId.isEmpty) ||
-        (item == PurchasedItem.episode && episodeId.isEmpty)) {
+        (ofEpisode && episodeId.isEmpty)) {
       return null;
     }
     return MyPurchase(
@@ -621,10 +675,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
       seriesTitle: series.title.trim(),
       seriesLocale: series.locale.trim(),
       item: item,
-      episodeId: item == PurchasedItem.episode ? episodeId : '',
-      episodeTitle: item == PurchasedItem.episode ? episode.title.trim() : '',
-      episodeLocale: item == PurchasedItem.episode ? episode.locale.trim() : '',
-      orderIndex: item == PurchasedItem.episode ? episode.orderIndex : 0,
+      episodeId: ofEpisode ? episodeId : '',
+      episodeTitle: ofEpisode ? episode.title.trim() : '',
+      episodeLocale: ofEpisode ? episode.locale.trim() : '',
+      orderIndex: ofEpisode ? episode.orderIndex : 0,
       volumeTitle: purchase.volume.title.trim(),
       remainingEpisodeCount: purchase.seriesBundle.episodeCount,
       coins: purchase.coinPack.coins,

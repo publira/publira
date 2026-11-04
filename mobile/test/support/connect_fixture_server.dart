@@ -1110,6 +1110,19 @@ class ConnectFixtureServer {
   static Uri checkoutUrlFor(String episodePublicId) =>
       Uri.parse('https://checkout.stripe.test/c/pay/$episodePublicId');
 
+  /// The Stripe page `StartTipCheckout` answers for a tip of [amount] to the
+  /// Authors of [episodePublicId].
+  static Uri tipCheckoutUrlFor(String episodePublicId, int amount) =>
+      Uri.parse('https://checkout.stripe.test/c/tip/$episodePublicId/$amount');
+
+  /// The intent `StartStoreTip` opens.
+  static const storeTipIntentId = '018f0e90-1000-7000-8000-000000000002';
+
+  /// The status and Connect code `StartTipCheckout` and `StartStoreTip`
+  /// answer a tip they would otherwise start with, so a test can refuse one.
+  int tipStatus = HttpStatus.ok;
+  String tipErrorCode = 'failed_precondition';
+
   /// Replace the whole body of the matching RPC, whichever status the RPC is
   /// answering with, so a test can send a shape the client is not expecting or
   /// an error code other than the default `unavailable`.
@@ -2375,6 +2388,32 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/StartTipCheckout')) {
+      final body = recorded.decode(pb.StartTipCheckoutRequest());
+      await _writeTip(
+        request,
+        () => pb.StartTipCheckoutResponse(
+          checkoutUrl: tipCheckoutUrlFor(
+            publicIdOf(body.episodeId),
+            body.amount,
+          ).toString(),
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/StartStoreTip')) {
+      final body = recorded.decode(pb.StartStoreTipRequest());
+      await _writeTip(
+        request,
+        () => pb.StartStoreTipResponse(
+          intentId: storeTipIntentId,
+          productId: 'tip_${body.amount}',
+        ),
+      );
+      return;
+    }
+
     if (path.endsWith('/StartStorePurchase')) {
       recorded.decode(pb.StartStorePurchaseRequest());
       await _writeStorePurchase(request, start: true);
@@ -2964,6 +3003,21 @@ class ConnectFixtureServer {
 
   /// An intent, or the confirmation of a transaction, for the signed-in
   /// member.
+  /// A tip for the signed-in member, refused with [tipStatus].
+  Future<void> _writeTip(
+    HttpRequest request,
+    GeneratedMessage Function() answer,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    if (tipStatus != HttpStatus.ok) {
+      await _writeError(request, tipStatus, tipErrorCode, 'refused');
+      return;
+    }
+    await _writeMessage(request, answer());
+  }
+
   Future<void> _writeStorePurchase(
     HttpRequest request, {
     required bool start,

@@ -457,6 +457,16 @@
       ]
     },
     {
+      "name": "Tipping the Authors at the end of an episode",
+      "web": {},
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId", "/checkout/return"],
+        "rpcs": ["StartTipCheckout", "StartStoreTip", "ConfirmStorePurchase"]
+      },
+      "sharedRecord": true,
+      "tests": ["a tip given in the browser thanks the reader"]
+    },
+    {
       "name": "Buying a volume or the rest of a series from the series page",
       "web": {
         "routes": ["[locale]/(site)/series/[series_id]"],

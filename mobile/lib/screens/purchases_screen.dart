@@ -378,11 +378,15 @@ class _PurchaseRow extends StatelessWidget {
     final expiresAt = purchase.expiresAt;
     final status = purchase.status;
     final rental = purchase.kind == PurchaseKind.rental;
-    // A pack is no reading right: it neither expires nor is read, so it says
-    // when it was bought and what was paid, and whether it was refunded.
+    // A pack and a tip are no reading right: neither expires nor is read, so
+    // each says when it was bought and what was paid, and whether it was
+    // refunded.
     final coinPack = purchase.item == PurchasedItem.coinPack;
+    final tip = purchase.item == PurchasedItem.tip;
+    final opensNothing = coinPack || tip;
     final details = <String>[
       if (rental) messages.purchasesRental,
+      if (tip) messages.purchasesTip,
       if (purchase.purchasedAt case final purchasedAt?)
         messages.purchasesPurchasedAt(
           date: messages.formatDateTime(purchasedAt),
@@ -394,7 +398,7 @@ class _PurchaseRow extends StatelessWidget {
       // A refunded or canceled purchase closed before its reading period
       // ran out, so neither the period nor its end says when it stopped.
       ...switch (status) {
-        _ when coinPack => const [],
+        _ when opensNothing => const [],
         MyPurchaseStatus.refunded || MyPurchaseStatus.canceled => const [],
         _ when expiresAt == null => [messages.purchasesNoExpiry],
         MyPurchaseStatus.active => [
@@ -411,7 +415,7 @@ class _PurchaseRow extends StatelessWidget {
     // and the rest of a series and a pack are named in the app's language,
     // a pack's coins under the tenant's word for them.
     final (title, titleLocale) = switch (purchase.item) {
-      PurchasedItem.episode => (
+      PurchasedItem.episode || PurchasedItem.tip => (
         [
           '#${messages.formatInteger(purchase.orderIndex)}',
           if (purchase.episodeTitle.isNotEmpty) purchase.episodeTitle,
@@ -442,7 +446,11 @@ class _PurchaseRow extends StatelessWidget {
       title: AutospacedText(
         title,
         locale: titleLocale,
-        style: purchase.isActive ? null : TextStyle(color: muted),
+        // A tip is never active, so it is muted by its status rather than
+        // by what the API answers.
+        style: status == MyPurchaseStatus.active
+            ? null
+            : TextStyle(color: muted),
       ),
       // Two lines rather than one joined text: the title is set in the
       // language it was served in, and the details in the app's.
@@ -460,17 +468,18 @@ class _PurchaseRow extends StatelessWidget {
             _RentalTimeLeft(purchaseId: purchase.id, expiresAt: expiresAt),
         ],
       ),
-      // A pack opens nothing to read, so only a refund or a dispute is marked
-      // on it.
-      trailing: coinPack && status == MyPurchaseStatus.active
+      // A pack and a tip open nothing to read, so only a refund or a dispute
+      // is marked on them.
+      trailing: opensNothing && status == MyPurchaseStatus.active
           ? null
           : _PurchaseState(status: status),
       // A volume and the rest of a series open several episodes, which the
-      // series lists, and a pack has nothing to open.
+      // series lists, a tip leads back to the episode it was given on, and a
+      // pack has nothing to open.
       onTap: coinPack
           ? null
           : () => context.pushInTab(
-              purchase.item == PurchasedItem.episode
+              purchase.item == PurchasedItem.episode || tip
                   ? AppRoutes.episodeViewerPath(
                       purchase.seriesId,
                       purchase.episodeId,

@@ -6684,7 +6684,8 @@
       "time_left_hours_minutes": "残り{$hours :integer}時間{$minutes :integer}分",
       "time_left_minutes": "残り{$minutes :integer}分",
       "title": "購入済み一覧",
-      "series_bundle_title": "残りの{$count :integer}話"
+      "series_bundle_title": "残りの{$count :integer}話",
+      "tip": "チップ"
     },
     "ranking": {
       "empty": "ランキングはまだ集計されていません。",
@@ -6733,6 +6734,17 @@
       "action": "共有",
       "aria": "「{$title}」を共有",
       "text": "{$title} ({$creators})"
+    },
+    "tip": {
+      "button": "著者にチップを贈る",
+      "sheet_title": "著者にチップを贈る",
+      "sheet_authors": "{$authors}へ",
+      "sheet_description": "チップはこのエピソードにクレジットされている著者に届きます。チップで読めるエピソードは増えません。",
+      "thanks": "チップをありがとうございます。このエピソードの著者に届けます。",
+      "pending": "チップの決済を確認しています。ストアで決済が完了すると記録されます。",
+      "cancelled": "チップの手続きをキャンセルしました。料金は発生していません。",
+      "not_sold_in_app": "現在、この金額のチップはアプリで贈れません。時間をおいて再試行してください。",
+      "start_failed": "チップの手続きを開始できませんでした。時間をおいて再試行してください。"
     },
     "series": {
       "age_gate": {

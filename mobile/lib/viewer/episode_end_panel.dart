@@ -4,14 +4,17 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/tip_authors_button.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
 import 'package:publira/viewer/episode_reader.dart';
 
 /// What the reader is offered once the pages run out: the next episode
 /// `GetEpisodeDetail` names, with what it costs, or, after the last published
-/// episode of a series, the news that there is none yet, and the way back to
-/// the series either way.
+/// episode of a series, the news that there is none yet, a tip to the
+/// episode's Authors where the tenant takes one, and the way back to the
+/// series either way.
 ///
 /// It is a screen of the reader past the last page rather than a page of the
 /// episode, so the counter along the bottom and the position the reader keeps
@@ -35,8 +38,9 @@ class EpisodeEndPanel extends StatelessWidget {
   /// tells a reader about to lose their connection that they can go on.
   final bool nextSavedOffline;
 
-  /// Whether the tenant takes payments. Only then is a next episode sold on
-  /// the website alone worded as sold there rather than by its price.
+  /// Whether the tenant takes payments by its app's purchase route. Only then
+  /// is a next episode sold on the website alone worded as sold there rather
+  /// than by its price, and a tip offered.
   final bool acceptsPayments;
 
   /// The ISO 4217 code of the currency a next episode's price is shown in, the
@@ -74,6 +78,15 @@ class EpisodeEndPanel extends StatelessWidget {
       ),
       _ => null,
     };
+    // A tip is given by the payment the app can take, in the tenant's
+    // currency, and the API refuses one from a reader the episode credits.
+    final currency = this.currency;
+    final tips =
+        acceptsPayments &&
+        currency != null &&
+        detail.tipAmounts.isNotEmpty &&
+        detail.entitlementSource != EpisodeEntitlementSource.creator &&
+        PurchaseScope.maybeOf(context) != null;
     return Center(
       key: const ValueKey('episode-end-panel'),
       child: SingleChildScrollView(
@@ -107,6 +120,13 @@ class EpisodeEndPanel extends StatelessWidget {
               const SizedBox(height: 24),
             ],
             EpisodeReactionControl(episode: detail.episode),
+            if (tips)
+              TipAuthorsButton(
+                episodeInternalId: detail.episode.internalId,
+                creators: detail.creators,
+                amounts: detail.tipAmounts,
+                currency: currency,
+              ),
             if (onOpenComments != null)
               OutlinedButton.icon(
                 key: const ValueKey('episode-end-comments'),

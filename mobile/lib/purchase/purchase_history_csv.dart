@@ -49,7 +49,8 @@ const _header = [
 /// UTF-8 with a byte order mark, CRLF line endings, and RFC 4180 quoting. A
 /// header row, then one row per purchase in the order given; `status` is the
 /// [MyPurchaseStatus.wireName] the library marks the purchase with, and `item`
-/// the [PurchasedItem.wireName] of what it bought. The episode columns are
+/// the [PurchasedItem.wireName] of what it bought, `tip` for a tip to the
+/// Authors of the episode its episode columns name. The episode columns are
 /// empty for a volume and for the rest of a series, which name no one
 /// episode, and `coins`, every coin a pack granted, and `bonus_coins` are
 /// empty for anything but a pack. The columns that came later are appended,
@@ -57,7 +58,9 @@ const _header = [
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
   final rows = StringBuffer(csvBom)..write(encodeCsvRow(_header));
   for (final purchase in purchases) {
-    final episode = purchase.item == PurchasedItem.episode;
+    final episode =
+        purchase.item == PurchasedItem.episode ||
+        purchase.item == PurchasedItem.tip;
     final coinPack = purchase.item == PurchasedItem.coinPack;
     rows.write(
       encodeCsvRow([

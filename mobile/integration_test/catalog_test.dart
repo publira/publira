@@ -1172,6 +1172,85 @@ void main() {
       });
     });
 
+    testApp('a tip given in the browser thanks the reader', (tester) async {
+      const total = ConnectFixtureServer.seedEpisodePageCount;
+      server
+        ..acceptsPayments = true
+        ..episodes = ConnectFixtureServer.populatedEpisodes()
+        ..episodes[ConnectFixtureServer.seedEpisodeId]!.tipAmounts.addAll([
+          300,
+          1000,
+        ]);
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      // The browser: the payment goes through and the success page hands the
+      // reader back through the app link, naming the amount given.
+      final launcher = _BrowserThatPays(() {
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/checkout/return'
+            '?episode=${ConnectFixtureServer.seedEpisodeId}&tip=300'
+            '&status=success',
+          ),
+        );
+      });
+      await withFailureScreenshot(tester, 'fixture-tip', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+          session: memberSession(),
+          checkoutLauncher: launcher,
+          incomingLinks: links,
+        );
+        await pumpUntilPagesDrawn(tester);
+        for (var page = 2; page <= total; page++) {
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('episode-next-page')),
+          );
+          await pumpUntilFound(tester, find.text('$page / $total'));
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('episode-next-page')),
+        );
+        final tip = find.byKey(const ValueKey('episode-end-tip'));
+        await pumpUntilFound(tester, tip);
+
+        await tapReachable(tester, tip);
+        final amount = find.byKey(const ValueKey('tip-amount-300'));
+        await pumpUntilFound(tester, amount);
+        await tester.pumpAndSettle();
+        await tapReachable(tester, amount);
+        await pumpUntilFound(
+          tester,
+          find.text(
+            'Thank you for your tip. It goes to the Authors of this episode.',
+          ),
+        );
+
+        expect(launcher.opened, [
+          ConnectFixtureServer.tipCheckoutUrlFor(
+            ConnectFixtureServer.seedEpisodeId,
+            300,
+          ),
+        ]);
+        final request = server
+            .requestsOf(pb.StartTipCheckoutRequest.new)
+            .single;
+        expect(request.amount, 300);
+        expect(
+          request.client,
+          pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
     testApp('a volume bought in the browser opens every episode in it', (
       tester,
     ) async {

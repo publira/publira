@@ -53,9 +53,9 @@ InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
   return InAppPurchasePlatform.instance;
 }
 
-/// Buys an episode or a pack of the tenant's coins with the store's payment
-/// sheet and hands every transaction the store reports to the server before
-/// finishing it.
+/// Buys an episode, a pack of the tenant's coins, or a tip to an episode's
+/// Authors with the store's payment sheet and hands every transaction the
+/// store reports to the server before finishing it.
 ///
 /// The transaction the store reports goes to `ConfirmStorePurchase`, and it
 /// is finished only once the server has recorded it — consumed on Google
@@ -171,6 +171,23 @@ class StorePurchaser {
   /// [StorePurchaseOutcome.purchased].
   Future<StorePurchaseOutcome> buyCoinPack(String coinPackId) =>
       _buy(() => repository.startCoinPackStorePurchase(coinPackId, store));
+
+  /// Opens the payment sheet for a tip of [amount] to the Authors of the
+  /// episode [episodeInternalId] names, as [buy] does for the episode itself.
+  /// `StartStoreTip` answers the intent and the product the amount is sold as,
+  /// `ConfirmStorePurchase` records the tip, and the transaction is consumed
+  /// so the same amount can be given again. A tip opens nothing, so nothing
+  /// waits on it but the thanks.
+  Future<StorePurchaseOutcome> buyTip(
+    String episodeInternalId, {
+    required int amount,
+  }) => _buy(
+    () => repository.startStoreTip(
+      episodeInternalId,
+      amount: amount,
+      store: store,
+    ),
+  );
 
   /// The price the store sells each of [productIds] at, formatted by the
   /// store for the reader's storefront, keyed by product ID. A product the
@@ -361,7 +378,7 @@ class StorePurchaser {
 
   /// Finishes a transaction the server has recorded. A Google Play purchase is
   /// consumed rather than acknowledged, so the same price can be bought again
-  /// for another episode, and the same pack again.
+  /// for another episode, and the same pack or tip again.
   Future<void> _finish(PurchaseDetails purchase) async {
     final addition = InAppPurchasePlatformAddition.instance;
     if (addition is InAppPurchaseAndroidPlatformAddition) {

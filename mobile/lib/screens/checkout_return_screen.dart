@@ -14,15 +14,22 @@ import 'package:publira/typography/autospaced_text.dart';
 ///
 /// Checkout returns to `/{locale}/checkout/return?episode=…&status=…` on the
 /// tenant host, with `status` either `success` or `cancelled`, and the app
-/// claims that address as a link.
+/// claims that address as a link. A checkout of a tip to the episode's Authors
+/// returns there with `tip` set to the amount, and opens the viewer told how
+/// the tip ended instead: a tip opens nothing, so there is no purchase for the
+/// viewer to confirm.
 class CheckoutReturnScreen extends StatefulWidget {
   const CheckoutReturnScreen({
     super.key,
     required this.episodeId,
     required this.outcome,
+    this.tip = false,
   });
 
   final String episodeId;
+
+  /// Whether the checkout was of a tip rather than of the episode.
+  final bool tip;
 
   /// `null` for a status the API does not send, which opens the episode as it
   /// stands.
@@ -52,7 +59,8 @@ class _CheckoutReturnScreenState extends State<CheckoutReturnScreen> {
   void didUpdateWidget(CheckoutReturnScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.episodeId != oldWidget.episodeId ||
-        widget.outcome != oldWidget.outcome) {
+        widget.outcome != oldWidget.outcome ||
+        widget.tip != oldWidget.tip) {
       _resolve();
     }
   }
@@ -88,11 +96,17 @@ class _CheckoutReturnScreenState extends State<CheckoutReturnScreen> {
     // In place of this screen, with the series behind the viewer the way any
     // other link to an episode opens.
     context.go(
-      AppRoutes.episodeViewerPath(
-        seriesId,
-        widget.episodeId,
-        checkout: widget.outcome,
-      ),
+      widget.tip
+          ? AppRoutes.episodeViewerPath(
+              seriesId,
+              widget.episodeId,
+              tip: widget.outcome,
+            )
+          : AppRoutes.episodeViewerPath(
+              seriesId,
+              widget.episodeId,
+              checkout: widget.outcome,
+            ),
     );
   }
 
