@@ -53,7 +53,21 @@ export interface PurchaseItem {
   /** The UUID GetPurchase and RefundPurchase address the purchase by. */
   id: string;
   item: PurchasedItem;
+  /**
+   * The price before a promotion code took its discount off: what the
+   * purchase would have been sold at. Equal to `price` on a purchase no code
+   * discounted.
+   */
+  listPrice: number;
+  /** What the reader paid, after any promotion code. */
   price: number;
+  /**
+   * The tenant's promotion code that discounted the purchase, as it was
+   * created, or `""`. A code entered on Stripe's checkout page is not one of
+   * the tenant's, so such a purchase names none and still has a `listPrice`
+   * above its `price`.
+   */
+  promotionCode: string;
   /** The payment provider the reader paid through, or `""`. */
   provider: string;
   purchasedAt: string;
@@ -136,7 +150,9 @@ type RawPurchase = Pick<
   | "episodeTitle"
   | "expiresAt"
   | "id"
+  | "listPrice"
   | "price"
+  | "promotionCode"
   | "provider"
   | "purchasedAt"
   | "readerEmail"
@@ -196,7 +212,11 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   expiresAt: item.expiresAt,
   id: item.id,
   item: mapPurchasedItem(item),
+  // A server of the release before promotion codes answers no list price,
+  // which is the price the reader paid.
+  listPrice: Number(item.listPrice) || Number(item.price),
   price: Number(item.price),
+  promotionCode: item.promotionCode,
   provider: item.provider,
   purchasedAt: item.purchasedAt,
   readerEmail: item.readerEmail,

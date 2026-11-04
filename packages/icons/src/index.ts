@@ -126,6 +126,8 @@ export { TextQuoteIcon } from "./text-quote-icon";
 
 export { TicketIcon } from "./ticket-icon";
 
+export { TicketPercentIcon } from "./ticket-percent-icon";
+
 export { TrendingUpIcon } from "./trending-up-icon";
 
 export type { IconProps } from "./types";

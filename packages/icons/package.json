@@ -267,6 +267,10 @@
       "types": "./dist/ticket-icon.d.mts",
       "default": "./dist/ticket-icon.mjs"
     },
+    "./ticket-percent-icon": {
+      "types": "./dist/ticket-percent-icon.d.mts",
+      "default": "./dist/ticket-percent-icon.mjs"
+    },
     "./trending-up-icon": {
       "types": "./dist/trending-up-icon.d.mts",
       "default": "./dist/trending-up-icon.mjs"

@@ -70,6 +70,12 @@ export type {
   PaymentReconciliationFinding,
 } from "../gen/publira/admin/v1/payment_reconciliation_pb.js";
 
+export type {
+  PromotionCode,
+  PromotionCodeLimits,
+  PromotionCodeRedemption,
+} from "../gen/publira/admin/v1/promotion_code_pb.js";
+
 export type { AdminPurchase } from "../gen/publira/admin/v1/purchase_pb.js";
 
 export type {

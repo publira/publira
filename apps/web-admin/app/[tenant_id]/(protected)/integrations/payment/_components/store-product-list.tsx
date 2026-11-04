@@ -149,6 +149,13 @@ export const StoreProductList = async ({
           </Table.Body>
         </Table.Root>
       ) : null}
+      {products.some((product) => !product.coinPack) ? (
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.store_products.promotion_code_prices" />
+          </Suspense>
+        </p>
+      ) : null}
       {products.some((product) => product.coinPack) ? (
         <p className="text-sm text-muted-foreground">
           {t("admin.settings.store_products.coin_pack_names")}
