@@ -3242,6 +3242,7 @@ const MyPurchase$json = {
     },
     {'1': 'list_price', '3': 20, '4': 1, '5': 5, '10': 'listPrice'},
     {'1': 'promotion_code', '3': 21, '4': 1, '5': 9, '10': 'promotionCode'},
+    {'1': 'store', '3': 22, '4': 1, '5': 9, '10': 'store'},
   ],
   '8': [
     {'1': '_tax_rate_bps'},
@@ -3266,7 +3267,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'dHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2tSCGNvaW5QYWNrEiUKDHRheF9yYXRlX2JwcxgSIA'
     'EoBUgAUgp0YXhSYXRlQnBziAEBEiIKCnRheF9hbW91bnQYEyABKAVIAVIJdGF4QW1vdW50iAEB'
     'Eh0KCmxpc3RfcHJpY2UYFCABKAVSCWxpc3RQcmljZRIlCg5wcm9tb3Rpb25fY29kZRgVIAEoCV'
-    'INcHJvbW90aW9uQ29kZUIPCg1fdGF4X3JhdGVfYnBzQg0KC190YXhfYW1vdW50');
+    'INcHJvbW90aW9uQ29kZRIUCgVzdG9yZRgWIAEoCVIFc3RvcmVCDwoNX3RheF9yYXRlX2Jwc0IN'
+    'CgtfdGF4X2Ftb3VudA==');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {

@@ -1911,6 +1911,10 @@ message MyPurchase {
   // including one discounted by a code entered on the provider's checkout
   // page.
   string promotion_code = 21;
+  // The store that charged the reader ("app_store", "google_play"), which
+  // issued their receipt in place of the tenant. Empty on every other
+  // purchase, the tenant's own checkout's and one paid with coins among them.
+  string store = 22;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

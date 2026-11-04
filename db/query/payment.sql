@@ -190,7 +190,8 @@ SELECT p.id,
     -- a purchase no code discounted, and the tenant's code that discounted it,
     -- empty for one discounted by none or by a code of the provider's.
     purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
-    COALESCE(pc.code, '')::text AS promotion_code
+    COALESCE(pc.code, '')::text AS promotion_code,
+    p.store
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -297,7 +298,8 @@ SELECT p.id,
     -- a purchase no code discounted, and the tenant's code that discounted it,
     -- empty for one discounted by none or by a code of the provider's.
     purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
-    COALESCE(pc.code, '')::text AS promotion_code
+    COALESCE(pc.code, '')::text AS promotion_code,
+    p.store
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id

@@ -343,6 +343,9 @@ type purchasePageRow struct {
 	// promotionCode the tenant's code that took it, empty for none.
 	listPrice     int32
 	promotionCode string
+	// store is the store that charged the reader, NULL for every other
+	// purchase.
+	store sql.NullString
 }
 
 func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
@@ -383,6 +386,7 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			seriesLocale:                row.SeriesTitleLocale,
 			listPrice:                   row.ListPrice,
 			promotionCode:               row.PromotionCode,
+			store:                       row.Store,
 		})
 	}
 	return mapped
@@ -426,6 +430,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			seriesLocale:                row.SeriesTitleLocale,
 			listPrice:                   row.ListPrice,
 			promotionCode:               row.PromotionCode,
+			store:                       row.Store,
 		})
 	}
 	return mapped
@@ -505,6 +510,7 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 		CoinsSpent:      row.coinsSpent,
 		ListPrice:       row.listPrice,
 		PromotionCode:   row.promotionCode,
+		Store:           row.store.String,
 	}
 	// A purchase paid with coins records what its coins were worth, and what
 	// a refund of their pack took back of that, as the tenant's sale. The
