@@ -210,6 +210,8 @@ describe("createPromotionCodeAction", () => {
         starts_at: "2026-12-02T00:00:00Z",
       },
     ],
+    ["starts_at", { starts_at: "not-a-date" }],
+    ["ends_at", { ends_at: "2026-13-01T00:00" }],
   ])(
     "refuses a bad %s beside the field, sending nothing",
     async (field, fields) => {
@@ -281,6 +283,27 @@ describe("updatePromotionCodeAction", () => {
       "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("promotion-codes-TENANT001");
+  });
+
+  it("refuses an end that names no instant rather than dropping the end", async () => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("promotion_code_id", CODE_ID);
+    formData.set("list_token", "");
+    formData.set("starts_at", "");
+    formData.set("ends_at", "not-a-date");
+    formData.set("max_redemptions", "");
+    formData.set("max_redemptions_per_reader", "");
+
+    const { updatePromotionCodeAction } = await import("./actions");
+
+    const state = await updatePromotionCodeAction(null, formData);
+
+    expect(state).toMatchObject({
+      fieldErrors: { ends_at: "Enter a valid end date and time." },
+      ok: false,
+    });
+    expect(mockUpdatePromotionCode).not.toHaveBeenCalled();
   });
 });
 

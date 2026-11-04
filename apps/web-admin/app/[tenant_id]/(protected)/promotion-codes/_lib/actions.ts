@@ -150,10 +150,12 @@ const toWindow = (
   | { fieldErrors: ActionForm.FieldErrors; ok: false } => {
   const startsAt = toInstantIsoString(input.startsAt, timeZone);
   const endsAt = toInstantIsoString(input.endsAt, timeZone);
-  const start = startsAt ? parseInstant(startsAt) : null;
-  const end = endsAt ? parseInstant(endsAt) : null;
+  const start = parseInstant(startsAt);
+  const end = parseInstant(endsAt);
 
-  if (startsAt && !start) {
+  // A value that names no instant converts to "", which reads as no bound,
+  // so it is told apart from a field left blank by what was posted.
+  if (input.startsAt.trim() && !start) {
     return {
       fieldErrors: {
         starts_at: t("admin.promotion_codes.validation.starts_at_invalid"),
@@ -162,7 +164,7 @@ const toWindow = (
     };
   }
 
-  if (endsAt && !end) {
+  if (input.endsAt.trim() && !end) {
     return {
       fieldErrors: {
         ends_at: t("admin.promotion_codes.validation.ends_at_invalid"),
