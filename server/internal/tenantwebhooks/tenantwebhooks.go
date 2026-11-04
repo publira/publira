@@ -311,24 +311,24 @@ func envelopeFor(tenant dbmodels.Tenant, eventType, key string, data any) (Envel
 }
 
 // owe writes the delivery of envelope to one endpoint and the outbox event
-// that sends it, and reports false for an event already owed to it.
+// that sends it, in one statement so that a writer outside a transaction
+// cannot leave one without the other, and reports false for an event already
+// owed to the endpoint.
 func owe(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID, envelope Envelope, payload []byte) (uuid.UUID, bool, error) {
 	id, err := q.InsertWebhookDelivery(ctx, dbmodels.InsertWebhookDeliveryParams{
-		ID:         uuid.Must(uuid.NewV7()),
-		TenantID:   tenantID,
-		EndpointID: endpointID,
-		EventType:  envelope.Type,
-		EventID:    envelope.ID,
-		Payload:    payload,
+		OutboxEventID: uuid.Must(uuid.NewV7()),
+		ID:            uuid.Must(uuid.NewV7()),
+		TenantID:      tenantID,
+		EndpointID:    endpointID,
+		EventType:     envelope.Type,
+		EventID:       envelope.ID,
+		Payload:       payload,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return uuid.Nil, false, nil
 	}
 	if err != nil {
 		return uuid.Nil, false, fmt.Errorf("owe a webhook delivery: %w", err)
-	}
-	if err := insertOutboxEvent(ctx, q, tenantID, id, OutboxEventType+":"+id.String()); err != nil {
-		return uuid.Nil, false, err
 	}
 	return id, true, nil
 }

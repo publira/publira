@@ -1816,8 +1816,11 @@ type Querier interface {
 	InsertVolumeBookstoreLinks(ctx context.Context, arg InsertVolumeBookstoreLinksParams) error
 	// Writes the volume's episodes in the order given, the first at position 0.
 	InsertVolumeEpisodes(ctx context.Context, arg InsertVolumeEpisodesParams) error
-	// Owes one endpoint one event. An event already owed to the endpoint — the
-	// same change recorded twice — inserts nothing and returns no row.
+	// Owes one endpoint one event and queues the webhook_delivery outbox event
+	// that sends it, in one statement, so neither is written without the other
+	// even on a connection outside a transaction. An event already owed to the
+	// endpoint — the same change recorded twice — writes nothing and returns no
+	// row.
 	InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error)
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt

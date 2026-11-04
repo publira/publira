@@ -502,38 +502,67 @@ func (q *Queries) GiveUpWebhookDelivery(ctx context.Context, arg GiveUpWebhookDe
 }
 
 const InsertWebhookDelivery = `-- name: InsertWebhookDelivery :one
-INSERT INTO webhook_deliveries (
+WITH delivery AS (
+    INSERT INTO webhook_deliveries (
+            id,
+            tenant_id,
+            endpoint_id,
+            event_type,
+            event_id,
+            payload
+        )
+    VALUES (
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+        ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
+    RETURNING id,
+        tenant_id
+)
+INSERT INTO outbox_events (
         id,
         tenant_id,
-        endpoint_id,
         event_type,
-        event_id,
-        payload
+        payload,
+        idempotency_key,
+        available_at
     )
-VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6
-    ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
-RETURNING id
+SELECT $1,
+    delivery.tenant_id,
+    'webhook_delivery',
+    jsonb_build_object(
+        'tenant_id',
+        delivery.tenant_id::text,
+        'delivery_id',
+        delivery.id::text
+    ),
+    'webhook_delivery:' || delivery.id::text,
+    now()
+FROM delivery ON CONFLICT (idempotency_key) DO NOTHING
+RETURNING (payload->>'delivery_id')::uuid AS delivery_id
 `
 
 type InsertWebhookDeliveryParams struct {
-	ID         uuid.UUID       `json:"id"`
-	TenantID   uuid.UUID       `json:"tenant_id"`
-	EndpointID uuid.UUID       `json:"endpoint_id"`
-	EventType  string          `json:"event_type"`
-	EventID    string          `json:"event_id"`
-	Payload    json.RawMessage `json:"payload"`
+	OutboxEventID uuid.UUID       `json:"outbox_event_id"`
+	ID            uuid.UUID       `json:"id"`
+	TenantID      uuid.UUID       `json:"tenant_id"`
+	EndpointID    uuid.UUID       `json:"endpoint_id"`
+	EventType     string          `json:"event_type"`
+	EventID       string          `json:"event_id"`
+	Payload       json.RawMessage `json:"payload"`
 }
 
-// Owes one endpoint one event. An event already owed to the endpoint — the
-// same change recorded twice — inserts nothing and returns no row.
+// Owes one endpoint one event and queues the webhook_delivery outbox event
+// that sends it, in one statement, so neither is written without the other
+// even on a connection outside a transaction. An event already owed to the
+// endpoint — the same change recorded twice — writes nothing and returns no
+// row.
 func (q *Queries) InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, InsertWebhookDelivery,
+		arg.OutboxEventID,
 		arg.ID,
 		arg.TenantID,
 		arg.EndpointID,
@@ -541,9 +570,9 @@ func (q *Queries) InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDe
 		arg.EventID,
 		arg.Payload,
 	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var delivery_id uuid.UUID
+	err := row.Scan(&delivery_id)
+	return delivery_id, err
 }
 
 const ListTenantWebhookEndpoints = `-- name: ListTenantWebhookEndpoints :many

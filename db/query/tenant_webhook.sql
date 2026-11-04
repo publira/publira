@@ -85,25 +85,52 @@ ORDER BY created_at,
     id;
 
 -- name: InsertWebhookDelivery :one
--- Owes one endpoint one event. An event already owed to the endpoint — the
--- same change recorded twice — inserts nothing and returns no row.
-INSERT INTO webhook_deliveries (
+-- Owes one endpoint one event and queues the webhook_delivery outbox event
+-- that sends it, in one statement, so neither is written without the other
+-- even on a connection outside a transaction. An event already owed to the
+-- endpoint — the same change recorded twice — writes nothing and returns no
+-- row.
+WITH delivery AS (
+    INSERT INTO webhook_deliveries (
+            id,
+            tenant_id,
+            endpoint_id,
+            event_type,
+            event_id,
+            payload
+        )
+    VALUES (
+            sqlc.arg('id'),
+            sqlc.arg('tenant_id'),
+            sqlc.arg('endpoint_id'),
+            sqlc.arg('event_type'),
+            sqlc.arg('event_id'),
+            sqlc.arg('payload')
+        ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
+    RETURNING id,
+        tenant_id
+)
+INSERT INTO outbox_events (
         id,
         tenant_id,
-        endpoint_id,
         event_type,
-        event_id,
-        payload
+        payload,
+        idempotency_key,
+        available_at
     )
-VALUES (
-        sqlc.arg('id'),
-        sqlc.arg('tenant_id'),
-        sqlc.arg('endpoint_id'),
-        sqlc.arg('event_type'),
-        sqlc.arg('event_id'),
-        sqlc.arg('payload')
-    ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
-RETURNING id;
+SELECT sqlc.arg('outbox_event_id'),
+    delivery.tenant_id,
+    'webhook_delivery',
+    jsonb_build_object(
+        'tenant_id',
+        delivery.tenant_id::text,
+        'delivery_id',
+        delivery.id::text
+    ),
+    'webhook_delivery:' || delivery.id::text,
+    now()
+FROM delivery ON CONFLICT (idempotency_key) DO NOTHING
+RETURNING (payload->>'delivery_id')::uuid AS delivery_id;
 
 -- name: GetWebhookDeliveryToSend :one
 -- A delivery with the endpoint it goes to, as the worker sends it.

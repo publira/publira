@@ -264,3 +264,37 @@ func TestWebhookDeliveryToADisabledEndpointIsGivenUp(t *testing.T) {
 		t.Fatalf("the endpoint was called %d times, want the test alone", got)
 	}
 }
+
+// A worker that does not hold the key the endpoint's secret was sealed with
+// leaves the delivery waiting without spending an attempt, so restoring the
+// key resumes it.
+func TestWebhookDeliveryWaitsForAMissingSecretKey(t *testing.T) {
+	t.Parallel()
+
+	env := newWebhookEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	receiver := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("a delivery was sent unsigned")
+	}))
+	t.Cleanup(receiver.Close)
+	deliveryID, event := env.endpoint(t, ctx, receiver.URL)
+	other, err := secretcrypto.NewManager(map[string][]byte{"other": make([]byte, 32)}, "other")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+
+	for name, cfg := range map[string]outbox.WebhookDeliveryHandlerConfig{
+		"no keys":         {DB: env.pg.DB, Client: receiver.Client()},
+		"another key set": {DB: env.pg.DB, Encryptor: other, Client: receiver.Client()},
+	} {
+		err := outbox.NewWebhookDeliveryHandler(cfg)(ctx, event)
+		if !outbox.IsBlocked(err) {
+			t.Errorf("%s: err = %v, want the delivery blocked", name, err)
+		}
+		if delivery := env.delivery(t, ctx, deliveryID); delivery.Status != tenantwebhooks.StatusPending || delivery.Attempts != 0 {
+			t.Errorf("%s: delivery = %s after %d attempts, want pending and unattempted", name, delivery.Status, delivery.Attempts)
+		}
+	}
+}

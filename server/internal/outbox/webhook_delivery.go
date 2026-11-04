@@ -92,7 +92,7 @@ func NewWebhookDeliveryHandler(cfg WebhookDeliveryHandlerConfig) Handler {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("load webhook delivery: %w", err)
+			return giveUpOnLastAttempt(ctx, queries, event, tenantID, deliveryID, fmt.Errorf("load webhook delivery: %w", err))
 		}
 		if delivery.Status == tenantwebhooks.StatusDelivered {
 			return nil
@@ -109,12 +109,15 @@ func NewWebhookDeliveryHandler(cfg WebhookDeliveryHandlerConfig) Handler {
 			}
 			return nil
 		}
+		// A key the worker does not hold is the operator's to restore, and no
+		// attempt brings it back, so the delivery waits for it without spending
+		// its budget.
 		if cfg.Encryptor == nil {
-			return errors.New("webhook delivery handler has no secret encryption keys to open the endpoint's secret with")
+			return Blocked(errors.New("webhook delivery handler has no secret encryption keys to open the endpoint's secret with"))
 		}
 		secret, err := cfg.Encryptor.DecryptString(delivery.SecretEncrypted)
 		if err != nil {
-			return fmt.Errorf("open the endpoint's webhook secret: %w", err)
+			return Blocked(fmt.Errorf("open the endpoint's webhook secret: %w", err))
 		}
 
 		status, sendErr := sendWebhook(ctx, client, delivery, secret, now())
@@ -137,10 +140,28 @@ func NewWebhookDeliveryHandler(cfg WebhookDeliveryHandlerConfig) Handler {
 			record.LastError = lastErrorValue(sendErr)
 		}
 		if err := queries.RecordWebhookDeliveryAttempt(ctx, record); err != nil {
-			return fmt.Errorf("record a webhook delivery attempt: %w", err)
+			return giveUpOnLastAttempt(ctx, queries, event, tenantID, deliveryID, fmt.Errorf("record a webhook delivery attempt: %w", err))
 		}
 		return sendErr
 	}
+}
+
+// giveUpOnLastAttempt answers herr, a failure no send was recorded for, and
+// marks the delivery dead first when it is the attempt that spends the
+// budget: the outbox event dies with it, and a delivery left pending or failed
+// would be one ResendWebhookDelivery refuses, so nothing could owe it again.
+func giveUpOnLastAttempt(ctx context.Context, queries *dbmodels.Queries, event dbmodels.OutboxEvent, tenantID, deliveryID uuid.UUID, herr error) error {
+	if int(event.Attempts)+1 < tenantwebhooks.MaxAttempts {
+		return herr
+	}
+	if err := queries.GiveUpWebhookDelivery(ctx, dbmodels.GiveUpWebhookDeliveryParams{
+		TenantID:  tenantID,
+		ID:        deliveryID,
+		LastError: lastErrorValue(herr),
+	}); err != nil {
+		return errors.Join(herr, fmt.Errorf("give up a webhook delivery: %w", err))
+	}
+	return herr
 }
 
 // sendWebhook makes one attempt at a delivery and answers the HTTP status it
