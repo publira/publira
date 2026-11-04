@@ -68,6 +68,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			"ja",
 			int32(500),
 			"",
+			nil,
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -97,7 +98,8 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 }
 
 // A purchase made at a rate carries the rate and the tax its price includes,
-// and one made without a rate carries neither.
+// and one made without a rate carries neither. A store purchase says which
+// store charged it.
 func TestPurchaseListReportsTheTaxOfAPurchase(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -106,21 +108,22 @@ func TestPurchaseListReportsTheTaxOfAPurchase(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	row := func(id uuid.UUID, purchasedAt time.Time, rate, tax any) []driver.Value {
+	row := func(id uuid.UUID, purchasedAt time.Time, rate, tax, store any) []driver.Value {
 		return []driver.Value{
 			id, "purchase", int32(1100), "JPY", nil, nil, nil, nil, purchasedAt,
 			rate, tax, int32(0),
 			uuid.Must(uuid.NewV7()), "EPISODE001", "Episode title", "ja", int32(3),
 			nil, nil, nil, nil, nil, nil, int32(0), nil, nil, nil, nil,
 			uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja",
-			int32(1000), "",
+			int32(1000), "", store,
 		}
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().
-			AddRow(row(uuid.Must(uuid.NewV7()), now, int32(1000), int32(100))...).
-			AddRow(row(uuid.Must(uuid.NewV7()), now.Add(-time.Hour), nil, nil)...))
+			AddRow(row(uuid.Must(uuid.NewV7()), now, int32(1000), int32(100), nil)...).
+			AddRow(row(uuid.Must(uuid.NewV7()), now.Add(-time.Hour), nil, nil, nil)...).
+			AddRow(row(uuid.Must(uuid.NewV7()), now.Add(-2*time.Hour), int32(1000), int32(100), "app_store")...))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
@@ -129,14 +132,22 @@ func TestPurchaseListReportsTheTaxOfAPurchase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	if len(response.Purchases) != 2 {
-		t.Fatalf("purchase count = %d, want 2", len(response.Purchases))
+	if len(response.Purchases) != 3 {
+		t.Fatalf("purchase count = %d, want 3", len(response.Purchases))
 	}
 	if got := response.Purchases[0]; got.GetTaxRateBps() != 1000 || got.GetTaxAmount() != 100 || got.TaxAmount == nil {
 		t.Fatalf("purchase made at 10%% has tax %v at %v, want 100 at 1000", got.TaxAmount, got.TaxRateBps)
 	}
 	if got := response.Purchases[1]; got.TaxRateBps != nil || got.TaxAmount != nil {
 		t.Fatalf("purchase made without a rate has tax %v at %v, want none", got.TaxAmount, got.TaxRateBps)
+	}
+	// The store charged the reader and issued their receipt, so a client names
+	// the store rather than the tenant on it.
+	if got := response.Purchases[0].Store; got != "" {
+		t.Fatalf("store of a purchase the tenant charged = %q, want empty", got)
+	}
+	if got := response.Purchases[2]; got.Store != "app_store" || got.GetTaxAmount() != 100 {
+		t.Fatalf("store purchase = %q with tax %v, want app_store with 100", got.Store, got.TaxAmount)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -189,6 +200,7 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			"ja",
 			int32(500),
 			"",
+			nil,
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -261,6 +273,7 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			"ja",
 			int32(500),
 			"",
+			nil,
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -330,6 +343,7 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			"ja",
 			int32(500),
 			"",
+			nil,
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -561,7 +575,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "tax_rate_bps", "tax_amount", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale", "list_price", "promotion_code",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "tax_rate_bps", "tax_amount", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale", "list_price", "promotion_code", "store",
 	})
 }
 
@@ -601,6 +615,7 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		"ja",
 		int32(500),
 		"",
+		nil,
 	)
 }
 

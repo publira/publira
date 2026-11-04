@@ -9860,6 +9860,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     $core.int? taxAmount,
     $core.int? listPrice,
     $core.String? promotionCode,
+    $core.String? store,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9883,6 +9884,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (taxAmount != null) result.taxAmount = taxAmount;
     if (listPrice != null) result.listPrice = listPrice;
     if (promotionCode != null) result.promotionCode = promotionCode;
+    if (store != null) result.store = store;
     return result;
   }
 
@@ -9926,6 +9928,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     ..aI(19, _omitFieldNames ? '' : 'taxAmount')
     ..aI(20, _omitFieldNames ? '' : 'listPrice')
     ..aOS(21, _omitFieldNames ? '' : 'promotionCode')
+    ..aOS(22, _omitFieldNames ? '' : 'store')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10201,6 +10204,18 @@ class MyPurchase extends $pb.GeneratedMessage {
   $core.bool hasPromotionCode() => $_has(20);
   @$pb.TagNumber(21)
   void clearPromotionCode() => $_clearField(21);
+
+  /// The store that charged the reader ("app_store", "google_play"), which
+  /// issued their receipt in place of the tenant. Empty on every other
+  /// purchase, the tenant's own checkout's and one paid with coins among them.
+  @$pb.TagNumber(22)
+  $core.String get store => $_getSZ(21);
+  @$pb.TagNumber(22)
+  set store($core.String value) => $_setString(21, value);
+  @$pb.TagNumber(22)
+  $core.bool hasStore() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearStore() => $_clearField(22);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

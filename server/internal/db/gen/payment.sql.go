@@ -919,7 +919,8 @@ SELECT p.id,
     -- a purchase no code discounted, and the tenant's code that discounted it,
     -- empty for one discounted by none or by a code of the provider's.
     purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
-    COALESCE(pc.code, '')::text AS promotion_code
+    COALESCE(pc.code, '')::text AS promotion_code,
+    p.store
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -1027,6 +1028,7 @@ type ListMyPurchasesAscRow struct {
 	SeriesTitleLocale           string         `json:"series_title_locale"`
 	ListPrice                   int32          `json:"list_price"`
 	PromotionCode               string         `json:"promotion_code"`
+	Store                       sql.NullString `json:"store"`
 }
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
@@ -1082,6 +1084,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.SeriesTitleLocale,
 			&i.ListPrice,
 			&i.PromotionCode,
+			&i.Store,
 		); err != nil {
 			return nil, err
 		}
@@ -1142,7 +1145,8 @@ SELECT p.id,
     -- a purchase no code discounted, and the tenant's code that discounted it,
     -- empty for one discounted by none or by a code of the provider's.
     purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
-    COALESCE(pc.code, '')::text AS promotion_code
+    COALESCE(pc.code, '')::text AS promotion_code,
+    p.store
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -1250,6 +1254,7 @@ type ListMyPurchasesDescRow struct {
 	SeriesTitleLocale           string         `json:"series_title_locale"`
 	ListPrice                   int32          `json:"list_price"`
 	PromotionCode               string         `json:"promotion_code"`
+	Store                       sql.NullString `json:"store"`
 }
 
 // The reader's library, newest purchase first: each purchase of an episode,
@@ -1312,6 +1317,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.SeriesTitleLocale,
 			&i.ListPrice,
 			&i.PromotionCode,
+			&i.Store,
 		); err != nil {
 			return nil, err
 		}

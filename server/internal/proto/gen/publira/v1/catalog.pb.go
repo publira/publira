@@ -7824,6 +7824,10 @@ type MyPurchase struct {
 	// including one discounted by a code entered on the provider's checkout
 	// page.
 	PromotionCode string `protobuf:"bytes,21,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
+	// The store that charged the reader ("app_store", "google_play"), which
+	// issued their receipt in place of the tenant. Empty on every other
+	// purchase, the tenant's own checkout's and one paid with coins among them.
+	Store         string `protobuf:"bytes,22,opt,name=store,proto3" json:"store,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8001,6 +8005,13 @@ func (x *MyPurchase) GetListPrice() int32 {
 func (x *MyPurchase) GetPromotionCode() string {
 	if x != nil {
 		return x.PromotionCode
+	}
+	return ""
+}
+
+func (x *MyPurchase) GetStore() string {
+	if x != nil {
+		return x.Store
 	}
 	return ""
 }
@@ -10094,7 +10105,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
 	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xef\x06\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\x85\a\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -10125,7 +10136,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"tax_amount\x18\x13 \x01(\x05H\x01R\ttaxAmount\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"list_price\x18\x14 \x01(\x05R\tlistPrice\x12%\n" +
-	"\x0epromotion_code\x18\x15 \x01(\tR\rpromotionCodeB\x0f\n" +
+	"\x0epromotion_code\x18\x15 \x01(\tR\rpromotionCode\x12\x14\n" +
+	"\x05store\x18\x16 \x01(\tR\x05storeB\x0f\n" +
 	"\r_tax_rate_bpsB\r\n" +
 	"\v_tax_amount\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
