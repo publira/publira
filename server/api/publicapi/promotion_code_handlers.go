@@ -333,10 +333,11 @@ type grantedSale struct {
 }
 
 // grantPurchaseWithPromotionCode records the purchase of a sale code takes the
-// whole price off, with its redemption, in one transaction. The code's
-// redemptions are serialized for the transaction, and the code and the
-// reader's holdings are checked again under that lock, so two requests sent
-// at once grant one purchase and never take a code past its limits. Nothing
+// whole price off, with its redemption, in one transaction. The reader's
+// grants and the code's redemptions are each serialized for the transaction,
+// in that order, and the code and the reader's holdings are checked again
+// under both locks, so two requests sent at once grant one purchase, whether
+// they name one code or two, and never take a code past its limits. Nothing
 // is paid, so no provider or store is asked, and the purchase names neither.
 func (s *apiServer) grantPurchaseWithPromotionCode(ctx context.Context, tenantID, userID uuid.UUID, code string, sale grantedSale) (dbmodels.Purchase, error) {
 	tx, err := s.beginTenantTx(ctx)
@@ -350,11 +351,14 @@ func (s *apiServer) grantPurchaseWithPromotionCode(ctx context.Context, tenantID
 	if err != nil {
 		return dbmodels.Purchase{}, err
 	}
+	if err := txq.LockReaderPromotionGrants(ctx, dbmodels.LockReaderPromotionGrantsParams{TenantID: tenantID, UserID: userID}); err != nil {
+		return dbmodels.Purchase{}, s.internalDBError(ctx, "failed to lock the reader's promotion code grants", err, "tenant_id", tenantID.String())
+	}
 	if err := txq.LockPromotionCodeRedemptions(ctx, dbmodels.LockPromotionCodeRedemptionsParams{TenantID: tenantID, ID: applied.id}); err != nil {
 		return dbmodels.Purchase{}, s.internalDBError(ctx, "failed to lock a promotion code's redemptions", err, "tenant_id", tenantID.String())
 	}
-	// Read again under the lock, which a concurrent grant held until it
-	// committed its redemption.
+	// Read again under the locks, which a concurrent grant held until it
+	// committed its purchase and its redemption.
 	if applied, err = s.applyPromotionCode(ctx, txq, tenantID, userID, code, promotionSale{episodeID: sale.episodeID, volumeID: sale.volumeID, price: sale.listPrice}); err != nil {
 		return dbmodels.Purchase{}, err
 	}

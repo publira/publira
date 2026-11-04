@@ -860,6 +860,25 @@ func (q *Queries) LockPromotionCodeRedemptions(ctx context.Context, arg LockProm
 	return err
 }
 
+const LockReaderPromotionGrants = `-- name: LockReaderPromotionGrants :exec
+SELECT pg_advisory_xact_lock(hashtextextended('promotion-grant:' || $1::uuid::text || ':' || $2::uuid::text, 0))
+`
+
+type LockReaderPromotionGrantsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// Serializes, for the rest of the caller's transaction, the purchases codes
+// grant one reader without a payment, whichever code each names, so two
+// requests sent at once with two codes that each make the same episode or
+// volume free see what the other committed before they check what the reader
+// holds. Taken before LockPromotionCodeRedemptions, always in that order.
+func (q *Queries) LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error {
+	_, err := q.db.ExecContext(ctx, LockReaderPromotionGrants, arg.TenantID, arg.UserID)
+	return err
+}
+
 const PromotionCodeTargetExists = `-- name: PromotionCodeTargetExists :one
 SELECT CASE $1::text
         WHEN 'catalog' THEN TRUE

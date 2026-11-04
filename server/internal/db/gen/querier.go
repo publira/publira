@@ -3606,6 +3606,12 @@ type Querier interface {
 	// in flight to commit, and the clear that follows sees it; an election that
 	// arrives after the lock waits in turn and then finds the preset gone.
 	LockReaderIconPreset(ctx context.Context, arg LockReaderIconPresetParams) (uuid.UUID, error)
+	// Serializes, for the rest of the caller's transaction, the purchases codes
+	// grant one reader without a payment, whichever code each names, so two
+	// requests sent at once with two codes that each make the same episode or
+	// volume free see what the other committed before they check what the reader
+	// holds. Taken before LockPromotionCodeRedemptions, always in that order.
+	LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes

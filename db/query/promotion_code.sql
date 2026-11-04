@@ -44,6 +44,14 @@ WHERE pc.tenant_id = sqlc.arg('tenant_id')::uuid
 -- its redemption is written whenever the payment is confirmed.
 SELECT pg_advisory_xact_lock(hashtextextended('promotion-code:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('id')::uuid::text, 0));
 
+-- name: LockReaderPromotionGrants :exec
+-- Serializes, for the rest of the caller's transaction, the purchases codes
+-- grant one reader without a payment, whichever code each names, so two
+-- requests sent at once with two codes that each make the same episode or
+-- volume free see what the other committed before they check what the reader
+-- holds. Taken before LockPromotionCodeRedemptions, always in that order.
+SELECT pg_advisory_xact_lock(hashtextextended('promotion-grant:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('user_id')::uuid::text, 0));
+
 -- name: TenantHasLivePromotionCode :one
 -- Whether the tenant holds a code a reader could enter now or later: one
 -- neither deleted, paused, nor past its end. A code whose window has not

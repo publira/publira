@@ -557,3 +557,49 @@ func TestDBAStorePurchaseWithAPromotionCodeOpensTheIntentAtTheDiscountedProduct(
 		t.Fatalf("answer = %+v, want the purchase granted at 0 of 100 and no intent", granted)
 	}
 }
+
+// Two codes that each make the same episode free, sent at once by the same
+// reader, grant one purchase: the second request sees the first one's
+// purchase, whichever code it names.
+func TestDBTwoFreeCodesSentAtOnceGrantOnePurchase(t *testing.T) {
+	t.Parallel()
+
+	env := newPromotionCodeEnv(t, openReaderGuards())
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "FREEA", kind: "percent", value: 100})
+	seedPromotionCode(t, env.pg, env.tenant.ID, promotionCodeSeed{code: "FREEB", kind: "amount", value: 1000})
+
+	errs := make(chan error, 2)
+	for _, code := range []string{"FREEA", "FREEB"} {
+		go func() {
+			_, err := env.client.StartEpisodeCheckout(env.ctx(), &publirav1.StartEpisodeCheckoutRequest{
+				Tenant:        tenantContext(env.tenant),
+				EpisodeId:     env.episode.ID.String(),
+				PromotionCode: code,
+			})
+			errs <- err
+		}()
+	}
+	var granted, refused int
+	for range 2 {
+		switch err := <-errs; connect.CodeOf(err) {
+		case connect.CodeUnknown:
+			if err != nil {
+				t.Fatalf("StartEpisodeCheckout: %v", err)
+			}
+			granted++
+		case connect.CodeAlreadyExists:
+			refused++
+		default:
+			t.Fatalf("StartEpisodeCheckout = %v, want a grant or already_exists", err)
+		}
+	}
+	if granted != 1 || refused != 1 {
+		t.Fatalf("granted %d and refused %d, want one of each", granted, refused)
+	}
+	if got := env.count(t, `SELECT count(*) FROM purchases WHERE tenant_id = $1 AND episode_id = $2`, env.tenant.ID, env.episode.ID); got != 1 {
+		t.Fatalf("purchases = %d, want 1", got)
+	}
+	if got := env.count(t, `SELECT count(*) FROM promotion_code_redemptions WHERE tenant_id = $1`, env.tenant.ID); got != 1 {
+		t.Fatalf("redemptions = %d, want 1", got)
+	}
+}
