@@ -6,6 +6,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -861,6 +862,14 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
+	// The tenant's tax and invoice settings: the tax rate its prices include, as
+	// tenant_tax_rates records it changing over time, and the withholding rate,
+	// the legal name, and the registration number tenant_config holds.
+	// The change of rate in effect now, and when it started to apply. No row
+	// where the tenant has never set a rate; a row with no rate_bps where its
+	// latest change was to none. now() is the clock purchases_record_tax reads a
+	// purchase's time by, through the purchase's default.
+	GetCurrentTenantTaxRate(ctx context.Context, tenantID uuid.UUID) (GetCurrentTenantTaxRateRow, error)
 	// The reader's latest archive that is ready and has not expired. A request
 	// made after it is still being built does not take it away.
 	GetDownloadableUserDataExport(ctx context.Context, arg GetDownloadableUserDataExportParams) (UserDataExport, error)
@@ -1265,7 +1274,14 @@ type Querier interface {
 	// it was paid. A payment belongs to no series, so only the totals and the
 	// days count it.
 	//
-	// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
+	// The tax of a purchase is the tax what the tenant kept of it includes, at
+	// the rate the purchase recorded: tax_included of its price less what went
+	// back on it, which is the tax_amount it recorded while nothing has gone back,
+	// and nothing for a purchase made without a rate. A part of a purchase, an
+	// episode's or a series', is taxed the same way on its own net. A subscription
+	// payment's tax is worked out alike from its own rate.
+	//
+	// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales_tax,
 	// which carries every column GetRevenueTotals and ListRevenueByDay read, so
 	// those two answer from the index alone. The series and episode reports join
 	// each purchase to its parts in purchase_episode_parts, and narrow the parts
@@ -1458,6 +1474,9 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as no code.
 	GetTenantSiteVerification(ctx context.Context, tenantID uuid.UUID) (TenantSiteVerification, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
+	// What a royalty statement closed now withholds from each Author. NULL, and
+	// no row for a tenant with no config row, withhold nothing.
+	GetTenantWithholdingRate(ctx context.Context, tenantID uuid.UUID) (sql.NullInt32, error)
 	// The account of the tenant that holds the inbox an address reaches, whether
 	// or not it holds it under the same tag. A tenant may already hold several
 	// such accounts; the one holding the address exactly as given answers first,
@@ -1701,6 +1720,9 @@ type Querier interface {
 	InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error)
 	// A second close of the same month fails on royalty_statements_tenant_id_period_key.
 	InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyStatementParams) (RoyaltyStatement, error)
+	// Writes every Author's subtotal of a statement in one statement, as
+	// InsertRoyaltyStatementLines writes its lines.
+	InsertRoyaltyStatementCreatorSubtotals(ctx context.Context, arg InsertRoyaltyStatementCreatorSubtotalsParams) error
 	// Writes every line of a statement in one statement. The lines travel as one
 	// JSON array because several of their columns are nullable, which a typed
 	// array parameter per column cannot carry.
@@ -1728,6 +1750,9 @@ type Querier interface {
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
+	// A change of rate applying from now. A second change saved in the same
+	// transaction replaces the first.
+	InsertTenantTaxRate(ctx context.Context, arg InsertTenantTaxRateParams) (InsertTenantTaxRateRow, error)
 	// Writes the volume's links in the order given, the first at position 0. The
 	// two arrays are read pairwise: the n-th label goes with the n-th URL.
 	InsertVolumeBookstoreLinks(ctx context.Context, arg InsertVolumeBookstoreLinksParams) error
@@ -2801,7 +2826,7 @@ type Querier interface {
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
 	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
-	// both over idx_purchases_tenant_purchased_at_id_sales, or over
+	// both over idx_purchases_tenant_purchased_at_id_sales_tax, or over
 	// idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
 	// handler puts the ascending rows back into display order. id is a UUIDv7, so
 	// the order stays unique when purchased_at ties. These read the keys alone,
@@ -3035,6 +3060,17 @@ type Querier interface {
 	// royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
 	// reaches the episode's line of sales alone. A line closed before lines had
 	// a source is one of sales.
+	//
+	// A refund reaches the line of the tax rate its purchase or payment recorded,
+	// since a month whose rate changed has a line per rate, and the adjustment
+	// takes that line's rate. counted_payout_amount is what the line has paid so
+	// far, its own payout and every adjustment it has had added up, which the
+	// adjustment's tax is worked out from as its payout is from the net: the tax
+	// of what the line pays after the adjustment less the tax of what it paid
+	// before. A statement the previous release closed cut no line
+	// by rate, so a refund of a sale with a rate that finds no line of its rate
+	// there reaches the credit's line with none, and the refunds of every rate
+	// carried to one line are added up into one adjustment of it.
 	ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error)
 	// Computes the lines of one tenant month: every credit on an episode sold in
 	// the month, with the month's sales of that episode. It is what a close
@@ -3060,7 +3096,17 @@ type Querier interface {
 	// payout is
 	// floored per line over the month's sum, which keeps the rounding loss to one
 	// minor unit of the currency per line.
+	//
+	// A credit's sales are cut into one line per tax rate the purchases recorded,
+	// so a line's payout includes tax at one rate, the line's, which the close
+	// works out from the payout. Sales made without a rate are a line of their
+	// own, with none; a month in which the rate never changed has the lines it
+	// would have had without tax.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
+	// Every Author's subtotal of a statement in the order it was closed in, with
+	// the public ID of a creator that still exists. A statement closed before
+	// subtotals were written has none.
+	ListRoyaltyStatementCreatorSubtotals(ctx context.Context, arg ListRoyaltyStatementCreatorSubtotalsParams) ([]ListRoyaltyStatementCreatorSubtotalsRow, error)
 	// The lines of a statement in the order they were closed in, with the public
 	// IDs of the catalog rows that still exist and the month an adjustment line
 	// adjusts.
@@ -3096,7 +3142,8 @@ type Querier interface {
 	// episode a payment of the month was shared to, with the parts of the
 	// month's payments that fall on it. sale_count is how many payments did. It
 	// is what a close writes and what a preview shows, so the two cannot
-	// disagree, and its columns and order are those of ListRoyaltyLinesForPeriod.
+	// disagree, and its columns and order are those of ListRoyaltyLinesForPeriod,
+	// its cut by the payments' tax rates included.
 	ListRoyaltySubscriptionLinesForPeriod(ctx context.Context, arg ListRoyaltySubscriptionLinesForPeriodParams) ([]ListRoyaltySubscriptionLinesForPeriodRow, error)
 	// ListSeriesAudienceDesc walked the other way, to build a previous page. The
 	// order it describes is the same one.
@@ -4588,6 +4635,10 @@ type Querier interface {
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
 	UpsertTenantGoogleSignInConfig(ctx context.Context, arg UpsertTenantGoogleSignInConfigParams) (TenantGoogleSignInConfig, error)
 	UpsertTenantInboundEmailConfig(ctx context.Context, arg UpsertTenantInboundEmailConfigParams) (TenantInboundEmailConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. The three are
+	// written together because the console offers them as one card with the tax
+	// rate.
+	UpsertTenantInvoiceSettings(ctx context.Context, arg UpsertTenantInvoiceSettingsParams) (TenantConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 	// written together because the console offers them as one card.
 	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)

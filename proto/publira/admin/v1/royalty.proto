@@ -62,6 +62,31 @@ message RoyaltyStatementTotals {
   // zero, or a negative amount. The adjustment lines carry it to the
   // creators.
   int64 adjustment = 4;
+  // The tax the lines' payouts include, the sum of their tax_amount. Unset
+  // where no line has a tax rate.
+  optional int64 tax = 5;
+  // What is withheld from the Authors, the sum of the subtotals'
+  // withholding_amount. Unset where the month withholds nothing.
+  optional int64 withholding = 6;
+}
+
+// What a statement pays one Author: the payouts of the lines crediting them,
+// adjustment lines included, added up. Subtotals follow the order of each
+// Author's first line.
+message RoyaltyCreatorSubtotal {
+  // Empty once the creator has been deleted, and for the lines of a creator
+  // a statement closed before lines kept their creator's ID named.
+  string creator_public_id = 1;
+  // As closed: the name on the Author's first line.
+  string creator_name = 2;
+  int64 payout_amount = 3;
+  // The tax the payouts include, the sum of the lines' tax_amount. Unset
+  // where none of the Author's lines has a tax rate.
+  optional int64 tax_amount = 4;
+  // withholding_rate_bps of payout_amount less tax_amount, rounded down, and
+  // zero where the payout is not above its tax. Unset where the month
+  // withholds nothing.
+  optional int64 withholding_amount = 5;
 }
 
 // A closed month.
@@ -79,6 +104,11 @@ message RoyaltyStatement {
   // The ISO 4217 code the totals and lines are in: the tenant's at close. A
   // statement keeps it after the tenant's changes.
   string currency = 7;
+  // The tenant's withholding rate at close, in basis points, which the
+  // statement keeps after the tenant's changes as it keeps time_zone. Unset
+  // where the month withheld nothing, and on every statement closed before
+  // statements carried withholding.
+  optional int32 withholding_rate_bps = 8;
 }
 
 // What one line of a royalty statement credits.
@@ -111,6 +141,11 @@ enum RoyaltyLineSource {
 // gross_amount the parts of them it was given, and refunded_amount the same
 // parts of their partial refunds. The month's own sales lines come first,
 // then its subscription lines, then the adjustment lines.
+//
+// A line counts the sales or payments of one tax rate, the one each recorded
+// when it was made, so a month whose rate changed has a line per rate for each
+// credit, the line of the sales made without a rate first. An adjustment line
+// has the rate of the line it adjusts.
 message RoyaltyStatementLine {
   // Position in the statement, from 1.
   int32 line_number = 1;
@@ -141,6 +176,16 @@ message RoyaltyStatementLine {
   // What the line credits. An adjustment line has the source of the line it
   // adjusts.
   RoyaltyLineSource source = 16;
+  // The tax rate of the sales or payments the line counts, in basis points,
+  // and the tax payout_amount includes at it: payout_amount less
+  // payout_amount without tax, rounded down. On an adjustment, the tax it
+  // takes off the line it adjusts: the tax of what that line pays after it,
+  // the line's payout and its adjustments added up, less the tax of what it
+  // paid before, so a line and its adjustments include the tax of what they
+  // pay together. Both unset on a line of sales made without a rate, and on
+  // every line closed before statements carried tax.
+  optional int32 tax_rate_bps = 17;
+  optional int64 tax_amount = 18;
 }
 
 message PreviewRoyaltyStatementRequest {
@@ -168,6 +213,11 @@ message PreviewRoyaltyStatementResponse {
   // The ISO 4217 code the totals and lines are in: the tenant's current one,
   // which closing the month now would record.
   string currency = 7;
+  // What each Author would be paid, in the order of their first line.
+  repeated RoyaltyCreatorSubtotal creator_subtotals = 8;
+  // The tenant's current withholding rate, which closing the month now would
+  // record. Unset where it withholds nothing.
+  optional int32 withholding_rate_bps = 9;
 }
 
 message CloseRoyaltyStatementRequest {
@@ -213,6 +263,9 @@ message GetRoyaltyStatementResponse {
   repeated RoyaltyStatementLine lines = 2;
   string previous_token = 3;
   string next_token = 4;
+  // What the statement pays each Author, every one of them on every page.
+  // Empty for a statement closed before statements carried subtotals.
+  repeated RoyaltyCreatorSubtotal creator_subtotals = 5;
 }
 
 message ExportRoyaltyStatementRequest {
@@ -253,6 +306,27 @@ message ExportRoyaltyStatementResponse {
   //
   // The IDs are the rows' internal IDs, not their public IDs, and they stay
   // on the line after the row is deleted.
+  //
+  // A statement with a line that has a tax rate, or that withheld anything,
+  // has four more columns after source, and after its lines a row for each
+  // Author's subtotal, in RoyaltyCreatorSubtotal's order:
+  //
+  //   row_type          line on a line, creator_subtotal on a subtotal. A
+  //                     subtotal fills period, creator_id, creator_name,
+  //                     payout_amount, currency, and the columns below, and
+  //                     leaves the others empty
+  //   tax_rate_percent  a line's tax rate with two decimals, 10.00 for 1000
+  //                     bps; empty for a line without one, and on a subtotal
+  //   tax_amount        an integer in the minor unit of currency, no currency
+  //                     symbol: the line's tax_amount as RoyaltyStatementLine
+  //                     describes it, or the sum of an Author's. Empty
+  //                     without a rate
+  //   withholding_amount an integer in the minor unit of currency on a
+  //                     subtotal of a statement that withheld; empty
+  //                     otherwise
+  //
+  // A statement with neither has the columns above alone, as every statement
+  // closed before statements carried tax does.
   bytes csv = 1;
 }
 

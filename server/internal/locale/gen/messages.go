@@ -621,6 +621,13 @@ var Messages = map[string]map[string]string{
 		"zh-Hans": "以下是您在{$tenant_name}的购买明细。",
 		"zh-Hant": "以下是您在{$tenant_name}的購買明細。",
 	},
+	"email.purchase_receipt.issuer": {
+		"ja":      "発行事業者は{$legal_name}です。",
+		"en":      "Issued by: {$legal_name}",
+		"ko":      "발행자: {$legal_name}",
+		"zh-Hans": "开票方：{$legal_name}",
+		"zh-Hant": "開立者：{$legal_name}",
+	},
 	"email.purchase_receipt.preview": {
 		"ja":      "{$title}をご購入いただきありがとうございます。",
 		"en":      "Thank you for buying {$title}.",
@@ -634,6 +641,13 @@ var Messages = map[string]map[string]string{
 		"ko":      "구매 일시: {$purchased_at}",
 		"zh-Hans": "购买时间：{$purchased_at}",
 		"zh-Hant": "購買時間：{$purchased_at}",
+	},
+	"email.purchase_receipt.registration_number": {
+		"ja":      "登録番号は{$registration_number}です。",
+		"en":      "Registration number: {$registration_number}",
+		"ko":      "등록번호: {$registration_number}",
+		"zh-Hans": "登记编号：{$registration_number}",
+		"zh-Hant": "登記編號：{$registration_number}",
 	},
 	"email.purchase_receipt.series": {
 		"ja":      "シリーズ「{$series_title}」",
@@ -655,6 +669,13 @@ var Messages = map[string]map[string]string{
 		"ko":      "{$tenant_name} 구매 완료",
 		"zh-Hans": "{$tenant_name}购买成功",
 		"zh-Hant": "{$tenant_name}購買成功",
+	},
+	"email.purchase_receipt.tax": {
+		"ja":      "うち消費税 ({$rate}%) は{$amount}です。",
+		"en":      "Tax included ({$rate}%): {$amount}",
+		"ko":      "포함된 세금 ({$rate}%): {$amount}",
+		"zh-Hans": "其中税额（{$rate}%）：{$amount}",
+		"zh-Hant": "其中稅額（{$rate}%）：{$amount}",
 	},
 	"email.purchase_receipt.test_notice": {
 		"ja":      "これは決済サービスのテストモードでの購入です。料金は請求されていません。",

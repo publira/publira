@@ -203,6 +203,19 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			},
 		},
 		{
+			name: "tax and invoices", action: "tenant_tax_settings_updated", targetType: "tenant_tax_settings",
+			save: func() error {
+				_, err := settings.UpdateTenantTaxSettings(ctx, &publiraadminv1.UpdateTenantTaxSettingsRequest{
+					Tenant:                    tenant.tenantContext(),
+					TaxRateBps:                new(int32(1000)),
+					WithholdingRateBps:        new(int32(1021)),
+					InvoiceLegalName:          "Settings Audit Ltd.",
+					InvoiceRegistrationNumber: "T1234567890123",
+				})
+				return err
+			},
+		},
+		{
 			name: "app links", action: "tenant_mobile_app_association_updated", targetType: "tenant_mobile_app_association",
 			save: func() error {
 				_, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{

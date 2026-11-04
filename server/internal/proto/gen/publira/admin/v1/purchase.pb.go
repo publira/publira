@@ -156,8 +156,16 @@ type AdminPurchase struct {
 	// provider has yet to report, in the minor unit of currency. Zero while no
 	// such refund is waiting. The purchase keeps opening its episode meanwhile.
 	RefundRequestedAmount int64 `protobuf:"varint,28,opt,name=refund_requested_amount,json=refundRequestedAmount,proto3" json:"refund_requested_amount,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The tenant's tax rate when the purchase was made, in basis points, and
+	// the tax price includes at it, in the minor unit of currency, rounded as
+	// price less price without tax rounded down. Both unset on a purchase made
+	// while the tenant had no rate, and on a purchase of a pack of coins, whose
+	// tax is recorded on the purchases its coins pay for. A store purchase
+	// records its tax alike; the store issued its receipt.
+	TaxRateBps    *int32 `protobuf:"varint,29,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
+	TaxAmount     *int64 `protobuf:"varint,30,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminPurchase) Reset() {
@@ -382,6 +390,20 @@ func (x *AdminPurchase) GetCoinName() string {
 func (x *AdminPurchase) GetRefundRequestedAmount() int64 {
 	if x != nil {
 		return x.RefundRequestedAmount
+	}
+	return 0
+}
+
+func (x *AdminPurchase) GetTaxRateBps() int32 {
+	if x != nil && x.TaxRateBps != nil {
+		return *x.TaxRateBps
+	}
+	return 0
+}
+
+func (x *AdminPurchase) GetTaxAmount() int64 {
+	if x != nil && x.TaxAmount != nil {
+		return *x.TaxAmount
 	}
 	return 0
 }
@@ -1018,7 +1040,7 @@ var File_publira_admin_v1_purchase_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xac\b\n" +
+	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x97\t\n" +
 	"\rAdminPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1055,7 +1077,13 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\rseries_bundle\x18\x19 \x01(\v2\x1e.publira.types.v1.SeriesBundleR\fseriesBundle\x12@\n" +
 	"\tcoin_pack\x18\x1a \x01(\v2#.publira.types.v1.PurchasedCoinPackR\bcoinPack\x12\x1b\n" +
 	"\tcoin_name\x18\x1b \x01(\tR\bcoinName\x126\n" +
-	"\x17refund_requested_amount\x18\x1c \x01(\x03R\x15refundRequestedAmount\"\xbe\x02\n" +
+	"\x17refund_requested_amount\x18\x1c \x01(\x03R\x15refundRequestedAmount\x12%\n" +
+	"\ftax_rate_bps\x18\x1d \x01(\x05H\x00R\n" +
+	"taxRateBps\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"tax_amount\x18\x1e \x01(\x03H\x01R\ttaxAmount\x88\x01\x01B\x0f\n" +
+	"\r_tax_rate_bpsB\r\n" +
+	"\v_tax_amount\"\xbe\x02\n" +
 	"\x14ListPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -1180,6 +1208,7 @@ func file_publira_admin_v1_purchase_proto_init() {
 	if File_publira_admin_v1_purchase_proto != nil {
 		return
 	}
+	file_publira_admin_v1_purchase_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

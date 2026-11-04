@@ -22,7 +22,7 @@ WHERE d.tenant_id = sp.tenant_id
     AND d.provider_payment_id = sp.stripe_payment_intent_id
     AND sp.tenant_id = $2
     AND sp.stripe_payment_intent_id = $3::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at, sp.tax_rate_bps, sp.tax_amount
 `
 
 type ApplyUnappliedDisputeToSubscriptionPaymentParams struct {
@@ -56,6 +56,8 @@ func (q *Queries) ApplyUnappliedDisputeToSubscriptionPayment(ctx context.Context
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }
@@ -85,7 +87,7 @@ SET refunded_amount = LEAST(
 FROM held
 WHERE sp.tenant_id = $1
     AND sp.stripe_payment_intent_id = $2::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at, sp.tax_rate_bps, sp.tax_amount
 `
 
 type ApplyUnappliedRefundToSubscriptionPaymentParams struct {
@@ -118,6 +120,8 @@ func (q *Queries) ApplyUnappliedRefundToSubscriptionPayment(ctx context.Context,
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }
@@ -174,7 +178,7 @@ SET refunded_amount = LEAST(sp.amount, $1::integer)
 WHERE sp.tenant_id = $2
     AND sp.stripe_payment_intent_id = $3::text
     AND sp.currency = $4::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at, sp.tax_rate_bps, sp.tax_amount
 `
 
 type RecordFailedRefundOnSubscriptionPaymentParams struct {
@@ -213,6 +217,8 @@ func (q *Queries) RecordFailedRefundOnSubscriptionPayment(ctx context.Context, a
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }
@@ -222,7 +228,7 @@ UPDATE subscription_payments
 SET dispute_lost_at = COALESCE(dispute_lost_at, NOW())
 WHERE tenant_id = $1
     AND stripe_payment_intent_id = $2::text
-RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at
+RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at, tax_rate_bps, tax_amount
 `
 
 type RecordLostDisputeOnSubscriptionPaymentParams struct {
@@ -254,6 +260,8 @@ func (q *Queries) RecordLostDisputeOnSubscriptionPayment(ctx context.Context, ar
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }
@@ -274,7 +282,7 @@ SET refunded_amount = LEAST(
     )
 WHERE sp.tenant_id = $3
     AND sp.stripe_payment_intent_id = $4::text
-RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at
+RETURNING sp.id, sp.tenant_id, sp.subscription_id, sp.plan_id, sp.stripe_invoice_id, sp.stripe_payment_intent_id, sp.amount, sp.currency, sp.period_start, sp.period_end, sp.paid_at, sp.refunded_amount, sp.is_test, sp.created_at, sp.dispute_lost_at, sp.tax_rate_bps, sp.tax_amount
 `
 
 type RecordRefundOnSubscriptionPaymentParams struct {
@@ -314,6 +322,8 @@ func (q *Queries) RecordRefundOnSubscriptionPayment(ctx context.Context, arg Rec
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }
@@ -347,7 +357,7 @@ INSERT INTO subscription_payments (
     $12
 )
 ON CONFLICT (tenant_id, stripe_invoice_id) DO NOTHING
-RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at
+RETURNING id, tenant_id, subscription_id, plan_id, stripe_invoice_id, stripe_payment_intent_id, amount, currency, period_start, period_end, paid_at, refunded_amount, is_test, created_at, dispute_lost_at, tax_rate_bps, tax_amount
 `
 
 type RecordSubscriptionPaymentParams struct {
@@ -401,6 +411,8 @@ func (q *Queries) RecordSubscriptionPayment(ctx context.Context, arg RecordSubsc
 		&i.IsTest,
 		&i.CreatedAt,
 		&i.DisputeLostAt,
+		&i.TaxRateBps,
+		&i.TaxAmount,
 	)
 	return i, err
 }

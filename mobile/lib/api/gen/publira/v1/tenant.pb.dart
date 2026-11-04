@@ -391,6 +391,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $core.Iterable<$0.TenantBrandMark>? brandMarks,
     $0.TenantThemePalette? darkTheme,
     $core.bool? creatorPagesEnabled,
+    TenantInvoiceDetails? invoice,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -426,6 +427,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (darkTheme != null) result.darkTheme = darkTheme;
     if (creatorPagesEnabled != null)
       result.creatorPagesEnabled = creatorPagesEnabled;
+    if (invoice != null) result.invoice = invoice;
     return result;
   }
 
@@ -477,6 +479,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     ..aOM<$0.TenantThemePalette>(28, _omitFieldNames ? '' : 'darkTheme',
         subBuilder: $0.TenantThemePalette.$_createMessage)
     ..aOB(29, _omitFieldNames ? '' : 'creatorPagesEnabled')
+    ..aOM<TenantInvoiceDetails>(30, _omitFieldNames ? '' : 'invoice',
+        subBuilder: TenantInvoiceDetails.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -802,6 +806,110 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   $core.bool hasCreatorPagesEnabled() => $_has(26);
   @$pb.TagNumber(29)
   void clearCreatorPagesEnabled() => $_clearField(29);
+
+  /// What the tenant states about the tax its prices include, for a client to
+  /// say a price includes tax and to name who charged it on a purchase.
+  @$pb.TagNumber(30)
+  TenantInvoiceDetails get invoice => $_getN(27);
+  @$pb.TagNumber(30)
+  set invoice(TenantInvoiceDetails value) => $_setField(30, value);
+  @$pb.TagNumber(30)
+  $core.bool hasInvoice() => $_has(27);
+  @$pb.TagNumber(30)
+  void clearInvoice() => $_clearField(30);
+  @$pb.TagNumber(30)
+  TenantInvoiceDetails ensureInvoice() => $_ensure(27);
+}
+
+/// The tax a tenant's prices include and the details its invoices carry.
+class TenantInvoiceDetails extends $pb.GeneratedMessage {
+  factory TenantInvoiceDetails({
+    $core.int? taxRateBps,
+    $core.String? legalName,
+    $core.String? registrationNumber,
+  }) {
+    final result = TenantInvoiceDetails._();
+    if (taxRateBps != null) result.taxRateBps = taxRateBps;
+    if (legalName != null) result.legalName = legalName;
+    if (registrationNumber != null)
+      result.registrationNumber = registrationNumber;
+    return result;
+  }
+
+  TenantInvoiceDetails._();
+
+  factory TenantInvoiceDetails.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantInvoiceDetails()..mergeFromBuffer(data, registry);
+  factory TenantInvoiceDetails.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantInvoiceDetails()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantInvoiceDetails',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: TenantInvoiceDetails.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'taxRateBps')
+    ..aOS(2, _omitFieldNames ? '' : 'legalName')
+    ..aOS(3, _omitFieldNames ? '' : 'registrationNumber')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantInvoiceDetails clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantInvoiceDetails copyWith(void Function(TenantInvoiceDetails) updates) =>
+      super.copyWith((message) => updates(message as TenantInvoiceDetails))
+          as TenantInvoiceDetails;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TenantInvoiceDetails() / TenantInvoiceDetails.new instead')
+  static TenantInvoiceDetails create() => TenantInvoiceDetails._();
+  static $pb.GeneratedMessage $_createMessage() => TenantInvoiceDetails._();
+  @$core.override
+  TenantInvoiceDetails createEmptyInstance() => TenantInvoiceDetails._();
+  @$core.pragma('dart2js:noInline')
+  static TenantInvoiceDetails getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TenantInvoiceDetails>(
+          TenantInvoiceDetails.$_createMessage);
+  static TenantInvoiceDetails? _defaultInstance;
+
+  /// The rate every price the catalog answers includes now, in basis points,
+  /// 1000 for 10%. Unset where the tenant states no rate, and prices are then
+  /// not said to include tax.
+  @$pb.TagNumber(1)
+  $core.int get taxRateBps => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set taxRateBps($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTaxRateBps() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTaxRateBps() => $_clearField(1);
+
+  /// The name the tenant issues invoices under. Empty where it has entered
+  /// none.
+  @$pb.TagNumber(2)
+  $core.String get legalName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set legalName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLegalName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLegalName() => $_clearField(2);
+
+  /// The tenant's registration number under the qualified invoice system.
+  /// Empty where it has entered none.
+  @$pb.TagNumber(3)
+  $core.String get registrationNumber => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set registrationNumber($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRegistrationNumber() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRegistrationNumber() => $_clearField(3);
 }
 
 /// How a client signs a reader in with Apple. The iOS app signs in with its own

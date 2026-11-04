@@ -65,9 +65,12 @@ func (s *apiServer) GetTenant(
 	// The column's default too: a tenant shows its creators no pages until it
 	// turns them on.
 	creatorPagesEnabled := false
+	invoice := &publirav1.TenantInvoiceDetails{}
 
 	if err == nil {
 		creatorPagesEnabled = config.CreatorPagesEnabled
+		invoice.LegalName = config.InvoiceLegalName.String
+		invoice.RegistrationNumber = config.InvoiceRegistrationNumber.String
 		appStoreURL = config.AppStoreUrl.String
 		googlePlayURL = config.GooglePlayUrl.String
 		appPurchaseRoute, err = protomapper.AppPurchaseRouteFromStored(config.AppPurchaseRoute)
@@ -95,6 +98,18 @@ func (s *apiServer) GetTenant(
 	})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the tenant site copy", err, "tenant_id", tenant.ID.String())
+	}
+
+	// Failed rather than answered without a rate, which web-storefront would
+	// cache as prices that do not include tax.
+	taxRate, err := queries.GetCurrentTenantTaxRate(ctx, tenant.ID)
+	switch {
+	case err == nil:
+		if taxRate.RateBps.Valid {
+			invoice.TaxRateBps = new(taxRate.RateBps.Int32)
+		}
+	case !errors.Is(err, sql.ErrNoRows):
+		return nil, s.internalDBError(ctx, "failed to read the tenant tax rate", err, "tenant_id", tenant.ID.String())
 	}
 
 	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
@@ -203,6 +218,7 @@ func (s *apiServer) GetTenant(
 		SignUpClosedMessage:       signUpClosedMessage,
 		BrandMarks:                brandMarks,
 		CreatorPagesEnabled:       creatorPagesEnabled,
+		Invoice:                   invoice,
 	}, nil
 }
 

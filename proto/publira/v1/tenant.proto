@@ -143,6 +143,23 @@ message GetTenantResponse {
   // pages. While it is false every CreatorService RPC is refused, so a client
   // offers no Author page and calls none of them.
   bool creator_pages_enabled = 29;
+  // What the tenant states about the tax its prices include, for a client to
+  // say a price includes tax and to name who charged it on a purchase.
+  TenantInvoiceDetails invoice = 30;
+}
+
+// The tax a tenant's prices include and the details its invoices carry.
+message TenantInvoiceDetails {
+  // The rate every price the catalog answers includes now, in basis points,
+  // 1000 for 10%. Unset where the tenant states no rate, and prices are then
+  // not said to include tax.
+  optional int32 tax_rate_bps = 1;
+  // The name the tenant issues invoices under. Empty where it has entered
+  // none.
+  string legal_name = 2;
+  // The tenant's registration number under the qualified invoice system.
+  // Empty where it has entered none.
+  string registration_number = 3;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

@@ -117,6 +117,11 @@ func purchaseReceiptEmailIDs(event dbmodels.OutboxEvent) (uuid.UUID, uuid.UUID, 
 // purchase of a pack carries its coins, the tenant's word for them in its
 // default locale, and when they stop being spendable, and every other purchase
 // 0 and empty there.
+//
+// A purchase that recorded a tax rate carries it and the tax its price
+// includes, and one made without a rate 0 for both, which the copy leaves the
+// tax line out on. The tenant's legal name and registration number travel as
+// they stand when the receipt is sent, empty where it has entered none.
 func purchaseReceiptEmailRequest(
 	delivery tenantDelivery,
 	receipt dbmodels.GetPurchaseReceiptForTenantRow,
@@ -149,6 +154,10 @@ func purchaseReceiptEmailRequest(
 			"purchased_at":                receipt.PurchasedAt.UTC().Format(time.RFC3339Nano),
 			"series_title":                receipt.SeriesTitle,
 			"tenant_name":                 delivery.tenantName,
+			"tax_rate_bps":                int64(receipt.TaxRateBps.Int32),
+			"tax_amount":                  int64(receipt.TaxAmount.Int32),
+			"invoice_legal_name":          receipt.InvoiceLegalName.String,
+			"invoice_registration_number": receipt.InvoiceRegistrationNumber.String,
 		},
 		TimeZone: delivery.timeZone,
 	}

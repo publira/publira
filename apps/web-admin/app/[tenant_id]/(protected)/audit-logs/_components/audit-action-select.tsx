@@ -575,6 +575,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_purchase_settings_updated",
             },
             {
+              label: t("admin.audit.actions.tenant_tax_settings_updated"),
+              value: "tenant_tax_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.tenant_fcm_credentials_saved"),
               value: "tenant_fcm_credentials_saved",
             },

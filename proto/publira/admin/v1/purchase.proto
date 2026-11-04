@@ -94,6 +94,14 @@ message AdminPurchase {
   // provider has yet to report, in the minor unit of currency. Zero while no
   // such refund is waiting. The purchase keeps opening its episode meanwhile.
   int64 refund_requested_amount = 28;
+  // The tenant's tax rate when the purchase was made, in basis points, and
+  // the tax price includes at it, in the minor unit of currency, rounded as
+  // price less price without tax rounded down. Both unset on a purchase made
+  // while the tenant had no rate, and on a purchase of a pack of coins, whose
+  // tax is recorded on the purchases its coins pay for. A store purchase
+  // records its tax alike; the store issued its receipt.
+  optional int32 tax_rate_bps = 29;
+  optional int64 tax_amount = 30;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:

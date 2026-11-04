@@ -247,6 +247,62 @@ message UpdateTenantPurchaseSettingsResponse {
   TenantPurchaseSettings settings = 1;
 }
 
+// The tax rate a tenant's prices include, as of one change of it.
+message TenantTaxRate {
+  // In basis points, 1000 for 10%. Unset where the change was to no rate.
+  optional int32 rate_bps = 1;
+  // RFC 3339: when the change was saved, which is when it started to apply.
+  string applies_from = 2;
+}
+
+// What a tenant states about the tax its prices include, and what its receipts
+// and royalty statements name.
+message TenantTaxSettings {
+  // The rate in effect now. Unset where the tenant has never set one;
+  // rate_bps unset where its latest change was to none. A purchase records the
+  // rate in effect when it was made and the tax its price includes at it, so
+  // a change applies to the purchases made after it alone.
+  TenantTaxRate tax_rate = 1;
+  // In basis points, withheld from each Author's payout, less the tax it
+  // includes, when a royalty statement is closed. Unset withholds nothing.
+  optional int32 withholding_rate_bps = 2;
+  // The name the tenant issues invoices under. Empty where it has entered
+  // none.
+  string invoice_legal_name = 3;
+  // The tenant's registration number under the qualified invoice system, as
+  // its receipts print it. Empty where it has entered none.
+  string invoice_registration_number = 4;
+}
+
+message GetTenantTaxSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantTaxSettingsResponse {
+  TenantTaxSettings settings = 1;
+}
+
+message UpdateTenantTaxSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The rate the tenant's prices include from now on, 1 through 10000 basis
+  // points, and unset for none. A rate other than the one in effect is
+  // recorded as a change applying from the moment it is saved; the one in
+  // effect is left as it is.
+  optional int32 tax_rate_bps = 2;
+  // 1 through 10000 basis points, and unset to withhold nothing.
+  optional int32 withholding_rate_bps = 3;
+  // Trimmed; empty clears it. At most 200 characters, with no control
+  // character.
+  string invoice_legal_name = 4;
+  // Trimmed; empty clears it. At most 32 characters, with no whitespace or
+  // control character.
+  string invoice_registration_number = 5;
+}
+
+message UpdateTenantTaxSettingsResponse {
+  TenantTaxSettings settings = 1;
+}
+
 // A page the tenant names as its terms of service or its privacy policy.
 message TenantLegalPage {
   string page_id = 1;
@@ -770,6 +826,13 @@ service TenantSettingsService {
   rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantTaxSettings(GetTenantTaxSettingsRequest) returns (GetTenantTaxSettingsResponse) {}
+  // Every field is written. A value out of range, a name or a number too long
+  // or carrying a character it may not, is invalid_argument.
+  //
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantTaxSettings(UpdateTenantTaxSettingsRequest) returns (UpdateTenantTaxSettingsResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   // Minimum role: tenant_admin.

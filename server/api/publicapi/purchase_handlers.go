@@ -330,6 +330,8 @@ type purchasePageRow struct {
 	refundedAmount  sql.NullInt32
 	refundedAt      sql.NullTime
 	purchasedAt     time.Time
+	taxRateBps      sql.NullInt32
+	taxAmount       sql.NullInt32
 	// coinsSpent is the coins a purchase paid with coins spent, and zero on
 	// any other purchase.
 	coinsSpent        int32
@@ -372,6 +374,8 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			expiresAt:                   row.ExpiresAt,
 			revokedAt:                   row.RevokedAt,
 			refundedAmount:              row.RefundedAmount,
+			taxRateBps:                  row.TaxRateBps,
+			taxAmount:                   row.TaxAmount,
 			refundedAt:                  row.RefundedAt,
 			purchasedAt:                 row.PurchasedAt,
 			coinsSpent:                  row.CoinsSpent,
@@ -411,6 +415,8 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			expiresAt:                   row.ExpiresAt,
 			revokedAt:                   row.RevokedAt,
 			refundedAmount:              row.RefundedAmount,
+			taxRateBps:                  row.TaxRateBps,
+			taxAmount:                   row.TaxAmount,
 			refundedAt:                  row.RefundedAt,
 			purchasedAt:                 row.PurchasedAt,
 			coinsSpent:                  row.CoinsSpent,
@@ -518,6 +524,9 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 	if row.coinsSpent > 0 {
 		item.PriceAtPurchase = 0
 		item.RefundedAmount = 0
+	} else if row.taxAmount.Valid && row.taxRateBps.Valid {
+		item.TaxRateBps = new(row.taxRateBps.Int32)
+		item.TaxAmount = new(row.taxAmount.Int32)
 	}
 	if row.seriesID.Valid {
 		item.Series = &publirattypesv1.Series{

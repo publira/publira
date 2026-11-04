@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -183,10 +184,29 @@ var emailTemplates = map[string]func(*emailComposer){
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
 }
 
+// basisPointsAsPercent writes a rate in basis points as the number of a
+// percentage, with no trailing zero: 10 for 1000, 8.5 for 850, 10.21 for 1021.
+// Every locale the catalogs carry writes a decimal point as a full stop, and
+// the copy puts the % sign after it. formatBasisPointsAsPercent in
+// packages/email-templates writes the same.
+func basisPointsAsPercent(bps int64) string {
+	whole, fraction := bps/100, bps%100
+	switch {
+	case fraction == 0:
+		return strconv.FormatInt(whole, 10)
+	case fraction%10 == 0:
+		return fmt.Sprintf("%d.%d", whole, fraction/10)
+	default:
+		return fmt.Sprintf("%d.%02d", whole, fraction)
+	}
+}
+
 // purchaseReceiptCopy words the receipt a reader is sent for a purchase. The
 // price names its currency by code as well as by symbol, because a symbol such
 // as "$" stands for more than one currency. A purchase with no reading period
-// has no line saying when it ends. A purchase paid in the provider's test mode,
+// has no line saying when it ends, and one made without a tax rate no line
+// stating its tax; the tenant's legal name and registration number are lines
+// of their own where it has entered them. A purchase paid in the provider's test mode,
 // which the documented setup asks an operator to make, says it charged nothing,
 // so its "price paid" is not read as money taken. A purchase of a volume names
 // the volume where a purchase of an episode names the episode, and a purchase
@@ -219,12 +239,21 @@ func purchaseReceiptCopy(c *emailComposer) {
 		c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
 	}
 	c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	if rate := c.integer("tax_rate_bps"); rate > 0 {
+		c.line("email.purchase_receipt.tax", map[string]any{"amount": c.price("tax_amount", "currency"), "rate": basisPointsAsPercent(rate)})
+	}
 	c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
 	if c.value("expires_at") != "" {
 		c.line("email.purchase_receipt.expires_at", map[string]any{"expires_at": c.instant("expires_at")})
 	}
 	if c.value("coins_expire_at") != "" {
 		c.line("email.purchase_receipt.coins_expire_at", map[string]any{"expires_at": c.instant("coins_expire_at")})
+	}
+	if name := c.value("invoice_legal_name"); name != "" {
+		c.line("email.purchase_receipt.issuer", map[string]any{"legal_name": name})
+	}
+	if number := c.value("invoice_registration_number"); number != "" {
+		c.line("email.purchase_receipt.registration_number", map[string]any{"registration_number": number})
 	}
 	c.linkLine("email.purchase_receipt.action", nil, libraryURL)
 	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)

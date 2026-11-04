@@ -81,6 +81,12 @@ const (
 	// TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantPurchaseSettings RPC.
 	TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantPurchaseSettings"
+	// TenantSettingsServiceGetTenantTaxSettingsProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantTaxSettings RPC.
+	TenantSettingsServiceGetTenantTaxSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantTaxSettings"
+	// TenantSettingsServiceUpdateTenantTaxSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantTaxSettings RPC.
+	TenantSettingsServiceUpdateTenantTaxSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantTaxSettings"
 	// TenantSettingsServiceGetTenantLegalPagesProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantLegalPages RPC.
 	TenantSettingsServiceGetTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantLegalPages"
@@ -277,6 +283,20 @@ var (
 			Procedure:  TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
 		}
 	})
+	tenantSettingsServiceGetTenantTaxSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantTaxSettings"),
+			Procedure:  TenantSettingsServiceGetTenantTaxSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantTaxSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantTaxSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantTaxSettingsProcedure,
+		}
+	})
 	tenantSettingsServiceGetTenantLegalPagesSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -466,6 +486,13 @@ type TenantSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantTaxSettings(context.Context, *v1.GetTenantTaxSettingsRequest) (*v1.GetTenantTaxSettingsResponse, error)
+	// Every field is written. A value out of range, a name or a number too long
+	// or carrying a character it may not, is invalid_argument.
+	//
+	// Minimum role: tenant_admin.
+	UpdateTenantTaxSettings(context.Context, *v1.UpdateTenantTaxSettingsRequest) (*v1.UpdateTenantTaxSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantLegalPages(context.Context, *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error)
@@ -564,6 +591,13 @@ type TenantSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantTaxSettings(context.Context, *v1.GetTenantTaxSettingsRequest) (*v1.GetTenantTaxSettingsResponse, error)
+	// Every field is written. A value out of range, a name or a number too long
+	// or carrying a character it may not, is invalid_argument.
+	//
+	// Minimum role: tenant_admin.
+	UpdateTenantTaxSettings(context.Context, *v1.UpdateTenantTaxSettingsRequest) (*v1.UpdateTenantTaxSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantLegalPages(context.Context, *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error)
@@ -632,6 +666,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantEpisodeReviewSettingsSpec(), Handler: adapter.updateTenantEpisodeReviewSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantPurchaseSettingsSpec(), Handler: adapter.getTenantPurchaseSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantPurchaseSettingsSpec(), Handler: adapter.updateTenantPurchaseSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantTaxSettingsSpec(), Handler: adapter.getTenantTaxSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantTaxSettingsSpec(), Handler: adapter.updateTenantTaxSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantLegalPagesSpec(), Handler: adapter.getTenantLegalPages},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantLegalPagesSpec(), Handler: adapter.updateTenantLegalPages},
 		connect.Method{Spec: tenantSettingsServiceGetTenantMobileAppAssociationSpec(), Handler: adapter.getTenantMobileAppAssociation},
@@ -732,6 +768,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(conte
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantTaxSettings(context.Context, *v1.GetTenantTaxSettingsRequest) (*v1.GetTenantTaxSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantTaxSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantTaxSettings(context.Context, *v1.UpdateTenantTaxSettingsRequest) (*v1.UpdateTenantTaxSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantTaxSettings is not implemented")
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error) {
@@ -965,6 +1009,22 @@ func (c *tenantSettingsServiceClient) GetTenantPurchaseSettings(ctx context.Cont
 func (c *tenantSettingsServiceClient) UpdateTenantPurchaseSettings(ctx context.Context, req *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error) {
 	var res v1.UpdateTenantPurchaseSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantPurchaseSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantTaxSettings(ctx context.Context, req *v1.GetTenantTaxSettingsRequest) (*v1.GetTenantTaxSettingsResponse, error) {
+	var res v1.GetTenantTaxSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantTaxSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantTaxSettings(ctx context.Context, req *v1.UpdateTenantTaxSettingsRequest) (*v1.UpdateTenantTaxSettingsResponse, error) {
+	var res v1.UpdateTenantTaxSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantTaxSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1354,6 +1414,30 @@ func (h tenantSettingsServiceHandler) updateTenantPurchaseSettings(ctx context.C
 		return err
 	}
 	res, err := h.svc.UpdateTenantPurchaseSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantTaxSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantTaxSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantTaxSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantTaxSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantTaxSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantTaxSettings(ctx, &req)
 	if err != nil {
 		return err
 	}

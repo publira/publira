@@ -141,7 +141,7 @@ func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoy
 
 const GetRoyaltyStatementByPeriod = `-- name: GetRoyaltyStatementByPeriod :one
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment, rs.withholding_rate_bps, rs.total_tax, rs.total_withholding,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -169,6 +169,9 @@ type GetRoyaltyStatementByPeriodRow struct {
 	EndsAt               time.Time      `json:"ends_at"`
 	Currency             string         `json:"currency"`
 	TotalAdjustment      int64          `json:"total_adjustment"`
+	WithholdingRateBps   sql.NullInt32  `json:"withholding_rate_bps"`
+	TotalTax             sql.NullInt64  `json:"total_tax"`
+	TotalWithholding     sql.NullInt64  `json:"total_withholding"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -190,6 +193,9 @@ func (q *Queries) GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyalt
 		&i.EndsAt,
 		&i.Currency,
 		&i.TotalAdjustment,
+		&i.WithholdingRateBps,
+		&i.TotalTax,
+		&i.TotalWithholding,
 		&i.ClosedByUserPublicID,
 		&i.ClosedByUserName,
 	)
@@ -209,7 +215,10 @@ INSERT INTO royalty_statements (
     total_gross,
     total_refunded,
     total_adjustment,
-    total_payout
+    total_payout,
+    withholding_rate_bps,
+    total_tax,
+    total_withholding
 ) VALUES (
     $1,
     $2,
@@ -222,24 +231,30 @@ INSERT INTO royalty_statements (
     $9,
     $10,
     $11,
-    $12
+    $12,
+    $13,
+    $14,
+    $15
 )
-RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout, starts_at, ends_at, currency, total_adjustment
+RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout, starts_at, ends_at, currency, total_adjustment, withholding_rate_bps, total_tax, total_withholding
 `
 
 type InsertRoyaltyStatementParams struct {
-	ID              uuid.UUID     `json:"id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	Period          time.Time     `json:"period"`
-	TimeZone        string        `json:"time_zone"`
-	StartsAt        time.Time     `json:"starts_at"`
-	EndsAt          time.Time     `json:"ends_at"`
-	ClosedByUserID  uuid.NullUUID `json:"closed_by_user_id"`
-	Currency        string        `json:"currency"`
-	TotalGross      int64         `json:"total_gross"`
-	TotalRefunded   int64         `json:"total_refunded"`
-	TotalAdjustment int64         `json:"total_adjustment"`
-	TotalPayout     int64         `json:"total_payout"`
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	Period             time.Time     `json:"period"`
+	TimeZone           string        `json:"time_zone"`
+	StartsAt           time.Time     `json:"starts_at"`
+	EndsAt             time.Time     `json:"ends_at"`
+	ClosedByUserID     uuid.NullUUID `json:"closed_by_user_id"`
+	Currency           string        `json:"currency"`
+	TotalGross         int64         `json:"total_gross"`
+	TotalRefunded      int64         `json:"total_refunded"`
+	TotalAdjustment    int64         `json:"total_adjustment"`
+	TotalPayout        int64         `json:"total_payout"`
+	WithholdingRateBps sql.NullInt32 `json:"withholding_rate_bps"`
+	TotalTax           sql.NullInt64 `json:"total_tax"`
+	TotalWithholding   sql.NullInt64 `json:"total_withholding"`
 }
 
 // A second close of the same month fails on royalty_statements_tenant_id_period_key.
@@ -257,6 +272,9 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		arg.TotalRefunded,
 		arg.TotalAdjustment,
 		arg.TotalPayout,
+		arg.WithholdingRateBps,
+		arg.TotalTax,
+		arg.TotalWithholding,
 	)
 	var i RoyaltyStatement
 	err := row.Scan(
@@ -273,8 +291,54 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		&i.EndsAt,
 		&i.Currency,
 		&i.TotalAdjustment,
+		&i.WithholdingRateBps,
+		&i.TotalTax,
+		&i.TotalWithholding,
 	)
 	return i, err
+}
+
+const InsertRoyaltyStatementCreatorSubtotals = `-- name: InsertRoyaltyStatementCreatorSubtotals :exec
+INSERT INTO royalty_statement_creator_subtotals (
+    tenant_id,
+    statement_id,
+    "position",
+    creator_id,
+    creator_name,
+    payout_amount,
+    tax_amount,
+    withholding_amount
+)
+SELECT
+    $1,
+    $2,
+    subtotal."position",
+    subtotal.creator_id,
+    subtotal.creator_name,
+    subtotal.payout_amount,
+    subtotal.tax_amount,
+    subtotal.withholding_amount
+FROM jsonb_to_recordset($3::jsonb) AS subtotal(
+    "position" integer,
+    creator_id uuid,
+    creator_name text,
+    payout_amount bigint,
+    tax_amount bigint,
+    withholding_amount bigint
+)
+`
+
+type InsertRoyaltyStatementCreatorSubtotalsParams struct {
+	TenantID    uuid.UUID       `json:"tenant_id"`
+	StatementID uuid.UUID       `json:"statement_id"`
+	Subtotals   json.RawMessage `json:"subtotals"`
+}
+
+// Writes every Author's subtotal of a statement in one statement, as
+// InsertRoyaltyStatementLines writes its lines.
+func (q *Queries) InsertRoyaltyStatementCreatorSubtotals(ctx context.Context, arg InsertRoyaltyStatementCreatorSubtotalsParams) error {
+	_, err := q.db.ExecContext(ctx, InsertRoyaltyStatementCreatorSubtotals, arg.TenantID, arg.StatementID, arg.Subtotals)
+	return err
 }
 
 const InsertRoyaltyStatementLines = `-- name: InsertRoyaltyStatementLines :exec
@@ -297,7 +361,9 @@ INSERT INTO royalty_statement_lines (
     payout_amount,
     adjusted_statement_id,
     adjusted_line_number,
-    source
+    source,
+    tax_rate_bps,
+    tax_amount
 )
 SELECT
     $1,
@@ -318,7 +384,9 @@ SELECT
     line.payout_amount,
     line.adjusted_statement_id,
     line.adjusted_line_number,
-    line.source
+    line.source,
+    line.tax_rate_bps,
+    line.tax_amount
 FROM jsonb_to_recordset($3::jsonb) AS line(
     line_number integer,
     creator_id uuid,
@@ -336,7 +404,9 @@ FROM jsonb_to_recordset($3::jsonb) AS line(
     payout_amount bigint,
     adjusted_statement_id uuid,
     adjusted_line_number integer,
-    source text
+    source text,
+    tax_rate_bps integer,
+    tax_amount bigint
 )
 `
 
@@ -428,14 +498,16 @@ WITH carried AS (
         u.statement_id,
         u.period,
         u.episode_id,
+        p.tax_rate_bps,
         sum(u.sale_count)::integer AS sale_count,
         sum(u.gross_amount)::bigint AS gross_amount,
         sum(u.refunded_amount)::bigint AS refunded_amount
     FROM royalty_uncarried_episode_refunds u
+    JOIN purchases p ON p.tenant_id = u.tenant_id AND p.id = u.purchase_id
     WHERE u.tenant_id = $1
         AND u.currency = $2::text
         AND u.period < $3::date
-    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id, p.tax_rate_bps
     UNION ALL
     SELECT
         'subscription'::text AS source,
@@ -443,17 +515,55 @@ WITH carried AS (
         u.statement_id,
         u.period,
         u.episode_id,
+        sp.tax_rate_bps,
         sum(u.sale_count)::integer AS sale_count,
         sum(u.gross_amount)::bigint AS gross_amount,
         sum(u.refunded_amount)::bigint AS refunded_amount
     FROM royalty_uncarried_subscription_episode_refunds u
+    JOIN subscription_payments sp ON sp.tenant_id = u.tenant_id AND sp.id = u.subscription_payment_id
     WHERE u.tenant_id = $1
         AND u.currency = $2::text
         AND u.period < $3::date
-    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id, sp.tax_rate_bps
+),
+matched AS (
+    SELECT
+        carried.source,
+        carried.period,
+        l.tenant_id,
+        l.statement_id,
+        l.line_number,
+        sum(carried.sale_count)::integer AS sale_count,
+        sum(carried.gross_amount)::bigint AS gross_amount,
+        sum(carried.refunded_amount)::bigint AS refunded_amount
+    FROM carried
+    JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
+        AND l.statement_id = carried.statement_id
+        AND l.episode_id = carried.episode_id
+        AND l.adjusted_statement_id IS NULL
+        AND COALESCE(l.source, 'sale') = carried.source
+        AND (
+            l.tax_rate_bps IS NOT DISTINCT FROM carried.tax_rate_bps
+            OR (
+                l.tax_rate_bps IS NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM royalty_statement_lines o
+                    WHERE o.tenant_id = l.tenant_id
+                        AND o.statement_id = l.statement_id
+                        AND o.episode_id = l.episode_id
+                        AND o.creator_id IS NOT DISTINCT FROM l.creator_id
+                        AND o.role_id IS NOT DISTINCT FROM l.role_id
+                        AND o.adjusted_statement_id IS NULL
+                        AND COALESCE(o.source, 'sale') = carried.source
+                        AND o.tax_rate_bps = carried.tax_rate_bps
+                )
+            )
+        )
+    GROUP BY carried.source, carried.period, l.tenant_id, l.statement_id, l.line_number
 )
 SELECT
-    carried.source,
+    matched.source,
     l.creator_id,
     c.public_id AS creator_public_id,
     l.creator_name,
@@ -468,36 +578,40 @@ SELECT
     l.role_name,
     l.statement_id AS adjusted_statement_id,
     l.line_number AS adjusted_line_number,
-    carried.period AS adjusted_period,
-    carried.sale_count,
-    carried.gross_amount,
-    carried.refunded_amount,
+    matched.period AS adjusted_period,
+    matched.sale_count,
+    matched.gross_amount,
+    matched.refunded_amount,
     l.share_bps,
-    (
-        (counted.net + carried.gross_amount - carried.refunded_amount) * l.share_bps / 10000
-        - counted.net * l.share_bps / 10000
-    )::bigint AS payout_amount
-FROM carried
-JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
-    AND l.statement_id = carried.statement_id
-    AND l.episode_id = carried.episode_id
-    AND l.adjusted_statement_id IS NULL
-    AND COALESCE(l.source, 'sale') = carried.source
+    change.payout_amount,
+    l.tax_rate_bps,
+    counted.payout AS counted_payout_amount
+FROM matched
+JOIN royalty_statement_lines l ON l.tenant_id = matched.tenant_id
+    AND l.statement_id = matched.statement_id
+    AND l.line_number = matched.line_number
 CROSS JOIN LATERAL (
     SELECT (
         l.gross_amount - l.refunded_amount
         + COALESCE(sum(a.gross_amount - a.refunded_amount), 0)
-    )::bigint AS net
+    )::bigint AS net,
+    (l.payout_amount + COALESCE(sum(a.payout_amount), 0))::bigint AS payout
     FROM royalty_statement_lines a
     WHERE a.tenant_id = l.tenant_id
         AND a.adjusted_statement_id = l.statement_id
         AND a.adjusted_line_number = l.line_number
 ) counted
+CROSS JOIN LATERAL (
+    SELECT (
+        (counted.net + matched.gross_amount - matched.refunded_amount) * l.share_bps / 10000
+        - counted.net * l.share_bps / 10000
+    )::bigint AS payout_amount
+) change
 LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
 LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
 LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
 LEFT JOIN creator_roles r ON r.tenant_id = l.tenant_id AND r.id = l.role_id
-ORDER BY carried.period, l.line_number
+ORDER BY matched.period, l.line_number
 `
 
 type ListRoyaltyAdjustmentLinesForPeriodParams struct {
@@ -528,6 +642,8 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 	RefundedAmount      int64          `json:"refunded_amount"`
 	ShareBps            int32          `json:"share_bps"`
 	PayoutAmount        int64          `json:"payout_amount"`
+	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	CountedPayoutAmount int64          `json:"counted_payout_amount"`
 }
 
 // Computes the adjustment lines of one tenant month: for each line of a
@@ -550,6 +666,17 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 // royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
 // reaches the episode's line of sales alone. A line closed before lines had
 // a source is one of sales.
+//
+// A refund reaches the line of the tax rate its purchase or payment recorded,
+// since a month whose rate changed has a line per rate, and the adjustment
+// takes that line's rate. counted_payout_amount is what the line has paid so
+// far, its own payout and every adjustment it has had added up, which the
+// adjustment's tax is worked out from as its payout is from the net: the tax
+// of what the line pays after the adjustment less the tax of what it paid
+// before. A statement the previous release closed cut no line
+// by rate, so a refund of a sale with a rate that finds no line of its rate
+// there reaches the credit's line with none, and the refunds of every rate
+// carried to one line are added up into one adjustment of it.
 func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRoyaltyAdjustmentLinesForPeriod, arg.TenantID, arg.Currency, arg.Period)
 	if err != nil {
@@ -581,6 +708,8 @@ func (q *Queries) ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg L
 			&i.RefundedAmount,
 			&i.ShareBps,
 			&i.PayoutAmount,
+			&i.TaxRateBps,
+			&i.CountedPayoutAmount,
 		); err != nil {
 			return nil, err
 		}
@@ -613,7 +742,8 @@ SELECT
     sum(pp.price)::bigint AS gross_amount,
     sum(part.refunded_amount)::bigint AS refunded_amount,
     ec.share_bps,
-    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
+    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount,
+    p.tax_rate_bps
 FROM purchases p
 JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
     AND pp.purchase_id = p.id
@@ -641,8 +771,9 @@ GROUP BY
     e.id, e.public_id, et.title, e.order_index,
     ec.creator_id, c.public_id, c.name,
     ec.role_id, r.public_id, r.name,
-    ec.display_order, ec.share_bps
-ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST
+    ec.display_order, ec.share_bps,
+    p.tax_rate_bps
+ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST, p.tax_rate_bps NULLS FIRST
 `
 
 type ListRoyaltyLinesForPeriodParams struct {
@@ -670,6 +801,7 @@ type ListRoyaltyLinesForPeriodRow struct {
 	RefundedAmount  int64          `json:"refunded_amount"`
 	ShareBps        int32          `json:"share_bps"`
 	PayoutAmount    int64          `json:"payout_amount"`
+	TaxRateBps      sql.NullInt32  `json:"tax_rate_bps"`
 }
 
 // Computes the lines of one tenant month: every credit on an episode sold in
@@ -696,6 +828,12 @@ type ListRoyaltyLinesForPeriodRow struct {
 // payout is
 // floored per line over the month's sum, which keeps the rounding loss to one
 // minor unit of the currency per line.
+//
+// A credit's sales are cut into one line per tax rate the purchases recorded,
+// so a line's payout includes tax at one rate, the line's, which the close
+// works out from the payout. Sales made without a rate are a line of their
+// own, with none; a month in which the rate never changed has the lines it
+// would have had without tax.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod,
 		arg.StartsAt,
@@ -728,6 +866,71 @@ func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyalty
 			&i.RefundedAmount,
 			&i.ShareBps,
 			&i.PayoutAmount,
+			&i.TaxRateBps,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListRoyaltyStatementCreatorSubtotals = `-- name: ListRoyaltyStatementCreatorSubtotals :many
+SELECT
+    st.tenant_id, st.statement_id, st.position, st.creator_id, st.creator_name, st.payout_amount, st.tax_amount, st.withholding_amount,
+    c.public_id AS creator_public_id
+FROM royalty_statement_creator_subtotals st
+LEFT JOIN creators c ON c.tenant_id = st.tenant_id AND c.id = st.creator_id
+WHERE st.tenant_id = $1
+    AND st.statement_id = $2
+ORDER BY st."position" ASC
+`
+
+type ListRoyaltyStatementCreatorSubtotalsParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	StatementID uuid.UUID `json:"statement_id"`
+}
+
+type ListRoyaltyStatementCreatorSubtotalsRow struct {
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	StatementID       uuid.UUID      `json:"statement_id"`
+	Position          int32          `json:"position"`
+	CreatorID         uuid.NullUUID  `json:"creator_id"`
+	CreatorName       string         `json:"creator_name"`
+	PayoutAmount      int64          `json:"payout_amount"`
+	TaxAmount         sql.NullInt64  `json:"tax_amount"`
+	WithholdingAmount sql.NullInt64  `json:"withholding_amount"`
+	CreatorPublicID   sql.NullString `json:"creator_public_id"`
+}
+
+// Every Author's subtotal of a statement in the order it was closed in, with
+// the public ID of a creator that still exists. A statement closed before
+// subtotals were written has none.
+func (q *Queries) ListRoyaltyStatementCreatorSubtotals(ctx context.Context, arg ListRoyaltyStatementCreatorSubtotalsParams) ([]ListRoyaltyStatementCreatorSubtotalsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementCreatorSubtotals, arg.TenantID, arg.StatementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoyaltyStatementCreatorSubtotalsRow
+	for rows.Next() {
+		var i ListRoyaltyStatementCreatorSubtotalsRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.StatementID,
+			&i.Position,
+			&i.CreatorID,
+			&i.CreatorName,
+			&i.PayoutAmount,
+			&i.TaxAmount,
+			&i.WithholdingAmount,
+			&i.CreatorPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -744,7 +947,7 @@ func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyalty
 
 const ListRoyaltyStatementLinesAsc = `-- name: ListRoyaltyStatementLinesAsc :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source, l.tax_rate_bps, l.tax_amount,
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
@@ -790,6 +993,8 @@ type ListRoyaltyStatementLinesAscRow struct {
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
 	Source              sql.NullString `json:"source"`
+	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount           sql.NullInt64  `json:"tax_amount"`
 	CreatorPublicID     sql.NullString `json:"creator_public_id"`
 	SeriesPublicID      sql.NullString `json:"series_public_id"`
 	EpisodePublicID     sql.NullString `json:"episode_public_id"`
@@ -834,6 +1039,8 @@ func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoya
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
 			&i.Source,
+			&i.TaxRateBps,
+			&i.TaxAmount,
 			&i.CreatorPublicID,
 			&i.SeriesPublicID,
 			&i.EpisodePublicID,
@@ -855,7 +1062,7 @@ func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoya
 
 const ListRoyaltyStatementLinesDesc = `-- name: ListRoyaltyStatementLinesDesc :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source, l.tax_rate_bps, l.tax_amount,
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
@@ -901,6 +1108,8 @@ type ListRoyaltyStatementLinesDescRow struct {
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
 	Source              sql.NullString `json:"source"`
+	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount           sql.NullInt64  `json:"tax_amount"`
 	CreatorPublicID     sql.NullString `json:"creator_public_id"`
 	SeriesPublicID      sql.NullString `json:"series_public_id"`
 	EpisodePublicID     sql.NullString `json:"episode_public_id"`
@@ -943,6 +1152,8 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
 			&i.Source,
+			&i.TaxRateBps,
+			&i.TaxAmount,
 			&i.CreatorPublicID,
 			&i.SeriesPublicID,
 			&i.EpisodePublicID,
@@ -964,7 +1175,7 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 
 const ListRoyaltyStatementLinesForExport = `-- name: ListRoyaltyStatementLinesForExport :many
 SELECT
-    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source,
+    l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount, l.adjusted_statement_id, l.adjusted_line_number, l.source, l.tax_rate_bps, l.tax_amount,
     adjusted.period AS adjusted_period
 FROM royalty_statement_lines l
 LEFT JOIN royalty_statements adjusted ON adjusted.tenant_id = l.tenant_id AND adjusted.id = l.adjusted_statement_id
@@ -998,6 +1209,8 @@ type ListRoyaltyStatementLinesForExportRow struct {
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
 	Source              sql.NullString `json:"source"`
+	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount           sql.NullInt64  `json:"tax_amount"`
 	AdjustedPeriod      sql.NullTime   `json:"adjusted_period"`
 }
 
@@ -1033,6 +1246,8 @@ func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg Li
 			&i.AdjustedStatementID,
 			&i.AdjustedLineNumber,
 			&i.Source,
+			&i.TaxRateBps,
+			&i.TaxAmount,
 			&i.AdjustedPeriod,
 		); err != nil {
 			return nil, err
@@ -1088,7 +1303,7 @@ func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListR
 
 const ListRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment, rs.withholding_rate_bps, rs.total_tax, rs.total_withholding,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -1119,6 +1334,9 @@ type ListRoyaltyStatementsAscRow struct {
 	EndsAt               time.Time      `json:"ends_at"`
 	Currency             string         `json:"currency"`
 	TotalAdjustment      int64          `json:"total_adjustment"`
+	WithholdingRateBps   sql.NullInt32  `json:"withholding_rate_bps"`
+	TotalTax             sql.NullInt64  `json:"total_tax"`
+	TotalWithholding     sql.NullInt64  `json:"total_withholding"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -1147,6 +1365,9 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 			&i.EndsAt,
 			&i.Currency,
 			&i.TotalAdjustment,
+			&i.WithholdingRateBps,
+			&i.TotalTax,
+			&i.TotalWithholding,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {
@@ -1165,7 +1386,7 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 
 const ListRoyaltyStatementsDesc = `-- name: ListRoyaltyStatementsDesc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency, rs.total_adjustment, rs.withholding_rate_bps, rs.total_tax, rs.total_withholding,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -1200,6 +1421,9 @@ type ListRoyaltyStatementsDescRow struct {
 	EndsAt               time.Time      `json:"ends_at"`
 	Currency             string         `json:"currency"`
 	TotalAdjustment      int64          `json:"total_adjustment"`
+	WithholdingRateBps   sql.NullInt32  `json:"withholding_rate_bps"`
+	TotalTax             sql.NullInt64  `json:"total_tax"`
+	TotalWithholding     sql.NullInt64  `json:"total_withholding"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -1234,6 +1458,9 @@ func (q *Queries) ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyalty
 			&i.EndsAt,
 			&i.Currency,
 			&i.TotalAdjustment,
+			&i.WithholdingRateBps,
+			&i.TotalTax,
+			&i.TotalWithholding,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {

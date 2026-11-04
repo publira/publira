@@ -94,6 +94,8 @@ func (s *adminServer) revenueByDay(ctx context.Context, report revenueReport) ([
 		row.Date = day.SaleDate.Format(time.DateOnly)
 		row.SubscriptionAmount = day.SubscriptionAmount
 		row.SubscriptionRefundedAmount = day.SubscriptionRefundedAmount
+		row.TaxAmount = day.TaxAmount
+		row.SubscriptionTaxAmount = day.SubscriptionTaxAmount
 		rows = append(rows, row)
 	}
 	return rows, nil
@@ -112,6 +114,7 @@ func (s *adminServer) seriesRevenuePage(
 	mapped := []revenueRankedRow{}
 	add := func(row dbmodels.ListSeriesRevenueDescRow) {
 		stats := revenueStatsRow(row.PurchaseCount, row.GrossAmount, row.RefundedAmount)
+		stats.TaxAmount = row.TaxAmount
 		stats.SeriesPublicId = row.SeriesPublicID
 		stats.SeriesTitle = row.SeriesTitle
 		mapped = append(mapped, revenueRankedRow{id: row.SeriesID, row: stats})
@@ -171,6 +174,7 @@ func (s *adminServer) episodeRevenuePage(
 	mapped := []revenueRankedRow{}
 	add := func(row dbmodels.ListEpisodeRevenueDescRow) {
 		stats := revenueStatsRow(row.PurchaseCount, row.GrossAmount, row.RefundedAmount)
+		stats.TaxAmount = row.TaxAmount
 		stats.SeriesPublicId = row.SeriesPublicID
 		stats.SeriesTitle = row.SeriesTitle
 		stats.EpisodePublicId = row.EpisodePublicID
@@ -294,6 +298,8 @@ func (s *adminServer) GetRevenueStats(
 
 			SubscriptionAmount:         totals.SubscriptionAmount,
 			SubscriptionRefundedAmount: totals.SubscriptionRefundedAmount,
+			TaxAmount:                  totals.TaxAmount,
+			SubscriptionTaxAmount:      totals.SubscriptionTaxAmount,
 		},
 	}
 

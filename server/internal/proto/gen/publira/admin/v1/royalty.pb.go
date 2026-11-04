@@ -404,7 +404,13 @@ type RoyaltyStatementTotals struct {
 	// recorded since their close take back, each sale and payment counted once:
 	// zero, or a negative amount. The adjustment lines carry it to the
 	// creators.
-	Adjustment    int64 `protobuf:"varint,4,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
+	Adjustment int64 `protobuf:"varint,4,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
+	// The tax the lines' payouts include, the sum of their tax_amount. Unset
+	// where no line has a tax rate.
+	Tax *int64 `protobuf:"varint,5,opt,name=tax,proto3,oneof" json:"tax,omitempty"`
+	// What is withheld from the Authors, the sum of the subtotals'
+	// withholding_amount. Unset where the month withholds nothing.
+	Withholding   *int64 `protobuf:"varint,6,opt,name=withholding,proto3,oneof" json:"withholding,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -467,6 +473,107 @@ func (x *RoyaltyStatementTotals) GetAdjustment() int64 {
 	return 0
 }
 
+func (x *RoyaltyStatementTotals) GetTax() int64 {
+	if x != nil && x.Tax != nil {
+		return *x.Tax
+	}
+	return 0
+}
+
+func (x *RoyaltyStatementTotals) GetWithholding() int64 {
+	if x != nil && x.Withholding != nil {
+		return *x.Withholding
+	}
+	return 0
+}
+
+// What a statement pays one Author: the payouts of the lines crediting them,
+// adjustment lines included, added up. Subtotals follow the order of each
+// Author's first line.
+type RoyaltyCreatorSubtotal struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty once the creator has been deleted, and for the lines of a creator
+	// a statement closed before lines kept their creator's ID named.
+	CreatorPublicId string `protobuf:"bytes,1,opt,name=creator_public_id,json=creatorPublicId,proto3" json:"creator_public_id,omitempty"`
+	// As closed: the name on the Author's first line.
+	CreatorName  string `protobuf:"bytes,2,opt,name=creator_name,json=creatorName,proto3" json:"creator_name,omitempty"`
+	PayoutAmount int64  `protobuf:"varint,3,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
+	// The tax the payouts include, the sum of the lines' tax_amount. Unset
+	// where none of the Author's lines has a tax rate.
+	TaxAmount *int64 `protobuf:"varint,4,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
+	// withholding_rate_bps of payout_amount less tax_amount, rounded down, and
+	// zero where the payout is not above its tax. Unset where the month
+	// withholds nothing.
+	WithholdingAmount *int64 `protobuf:"varint,5,opt,name=withholding_amount,json=withholdingAmount,proto3,oneof" json:"withholding_amount,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *RoyaltyCreatorSubtotal) Reset() {
+	*x = RoyaltyCreatorSubtotal{}
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoyaltyCreatorSubtotal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoyaltyCreatorSubtotal) ProtoMessage() {}
+
+func (x *RoyaltyCreatorSubtotal) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoyaltyCreatorSubtotal.ProtoReflect.Descriptor instead.
+func (*RoyaltyCreatorSubtotal) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RoyaltyCreatorSubtotal) GetCreatorPublicId() string {
+	if x != nil {
+		return x.CreatorPublicId
+	}
+	return ""
+}
+
+func (x *RoyaltyCreatorSubtotal) GetCreatorName() string {
+	if x != nil {
+		return x.CreatorName
+	}
+	return ""
+}
+
+func (x *RoyaltyCreatorSubtotal) GetPayoutAmount() int64 {
+	if x != nil {
+		return x.PayoutAmount
+	}
+	return 0
+}
+
+func (x *RoyaltyCreatorSubtotal) GetTaxAmount() int64 {
+	if x != nil && x.TaxAmount != nil {
+		return *x.TaxAmount
+	}
+	return 0
+}
+
+func (x *RoyaltyCreatorSubtotal) GetWithholdingAmount() int64 {
+	if x != nil && x.WithholdingAmount != nil {
+		return *x.WithholdingAmount
+	}
+	return 0
+}
+
 // A closed month.
 type RoyaltyStatement struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -482,14 +589,19 @@ type RoyaltyStatement struct {
 	Totals               *RoyaltyStatementTotals `protobuf:"bytes,6,opt,name=totals,proto3" json:"totals,omitempty"`
 	// The ISO 4217 code the totals and lines are in: the tenant's at close. A
 	// statement keeps it after the tenant's changes.
-	Currency      string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Currency string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
+	// The tenant's withholding rate at close, in basis points, which the
+	// statement keeps after the tenant's changes as it keeps time_zone. Unset
+	// where the month withheld nothing, and on every statement closed before
+	// statements carried withholding.
+	WithholdingRateBps *int32 `protobuf:"varint,8,opt,name=withholding_rate_bps,json=withholdingRateBps,proto3,oneof" json:"withholding_rate_bps,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RoyaltyStatement) Reset() {
 	*x = RoyaltyStatement{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +613,7 @@ func (x *RoyaltyStatement) String() string {
 func (*RoyaltyStatement) ProtoMessage() {}
 
 func (x *RoyaltyStatement) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +626,7 @@ func (x *RoyaltyStatement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoyaltyStatement.ProtoReflect.Descriptor instead.
 func (*RoyaltyStatement) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RoyaltyStatement) GetPeriod() string {
@@ -566,6 +678,13 @@ func (x *RoyaltyStatement) GetCurrency() string {
 	return ""
 }
 
+func (x *RoyaltyStatement) GetWithholdingRateBps() int32 {
+	if x != nil && x.WithholdingRateBps != nil {
+		return *x.WithholdingRateBps
+	}
+	return 0
+}
+
 // One creator's credit on one episode for one role, with that episode's sales
 // in the month, or the parts of the month's subscription payments shared to
 // it. Names are as they stood at close; a public ID is empty once the
@@ -584,6 +703,11 @@ func (x *RoyaltyStatement) GetCurrency() string {
 // gross_amount the parts of them it was given, and refunded_amount the same
 // parts of their partial refunds. The month's own sales lines come first,
 // then its subscription lines, then the adjustment lines.
+//
+// A line counts the sales or payments of one tax rate, the one each recorded
+// when it was made, so a month whose rate changed has a line per rate for each
+// credit, the line of the sales made without a rate first. An adjustment line
+// has the rate of the line it adjusts.
 type RoyaltyStatementLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Position in the statement, from 1.
@@ -614,14 +738,24 @@ type RoyaltyStatementLine struct {
 	AdjustedPeriod string `protobuf:"bytes,15,opt,name=adjusted_period,json=adjustedPeriod,proto3" json:"adjusted_period,omitempty"`
 	// What the line credits. An adjustment line has the source of the line it
 	// adjusts.
-	Source        RoyaltyLineSource `protobuf:"varint,16,opt,name=source,proto3,enum=publira.admin.v1.RoyaltyLineSource" json:"source,omitempty"`
+	Source RoyaltyLineSource `protobuf:"varint,16,opt,name=source,proto3,enum=publira.admin.v1.RoyaltyLineSource" json:"source,omitempty"`
+	// The tax rate of the sales or payments the line counts, in basis points,
+	// and the tax payout_amount includes at it: payout_amount less
+	// payout_amount without tax, rounded down. On an adjustment, the tax it
+	// takes off the line it adjusts: the tax of what that line pays after it,
+	// the line's payout and its adjustments added up, less the tax of what it
+	// paid before, so a line and its adjustments include the tax of what they
+	// pay together. Both unset on a line of sales made without a rate, and on
+	// every line closed before statements carried tax.
+	TaxRateBps    *int32 `protobuf:"varint,17,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
+	TaxAmount     *int64 `protobuf:"varint,18,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RoyaltyStatementLine) Reset() {
 	*x = RoyaltyStatementLine{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +767,7 @@ func (x *RoyaltyStatementLine) String() string {
 func (*RoyaltyStatementLine) ProtoMessage() {}
 
 func (x *RoyaltyStatementLine) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +780,7 @@ func (x *RoyaltyStatementLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoyaltyStatementLine.ProtoReflect.Descriptor instead.
 func (*RoyaltyStatementLine) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{7}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RoyaltyStatementLine) GetLineNumber() int32 {
@@ -761,6 +895,20 @@ func (x *RoyaltyStatementLine) GetSource() RoyaltyLineSource {
 	return RoyaltyLineSource_ROYALTY_LINE_SOURCE_UNSPECIFIED
 }
 
+func (x *RoyaltyStatementLine) GetTaxRateBps() int32 {
+	if x != nil && x.TaxRateBps != nil {
+		return *x.TaxRateBps
+	}
+	return 0
+}
+
+func (x *RoyaltyStatementLine) GetTaxAmount() int64 {
+	if x != nil && x.TaxAmount != nil {
+		return *x.TaxAmount
+	}
+	return 0
+}
+
 type PreviewRoyaltyStatementRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -772,7 +920,7 @@ type PreviewRoyaltyStatementRequest struct {
 
 func (x *PreviewRoyaltyStatementRequest) Reset() {
 	*x = PreviewRoyaltyStatementRequest{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -784,7 +932,7 @@ func (x *PreviewRoyaltyStatementRequest) String() string {
 func (*PreviewRoyaltyStatementRequest) ProtoMessage() {}
 
 func (x *PreviewRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -797,7 +945,7 @@ func (x *PreviewRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewRoyaltyStatementRequest.ProtoReflect.Descriptor instead.
 func (*PreviewRoyaltyStatementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{8}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PreviewRoyaltyStatementRequest) GetTenant() *v1.TenantContext {
@@ -833,14 +981,19 @@ type PreviewRoyaltyStatementResponse struct {
 	EndsAt   string `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	// The ISO 4217 code the totals and lines are in: the tenant's current one,
 	// which closing the month now would record.
-	Currency      string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Currency string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
+	// What each Author would be paid, in the order of their first line.
+	CreatorSubtotals []*RoyaltyCreatorSubtotal `protobuf:"bytes,8,rep,name=creator_subtotals,json=creatorSubtotals,proto3" json:"creator_subtotals,omitempty"`
+	// The tenant's current withholding rate, which closing the month now would
+	// record. Unset where it withholds nothing.
+	WithholdingRateBps *int32 `protobuf:"varint,9,opt,name=withholding_rate_bps,json=withholdingRateBps,proto3,oneof" json:"withholding_rate_bps,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *PreviewRoyaltyStatementResponse) Reset() {
 	*x = PreviewRoyaltyStatementResponse{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -852,7 +1005,7 @@ func (x *PreviewRoyaltyStatementResponse) String() string {
 func (*PreviewRoyaltyStatementResponse) ProtoMessage() {}
 
 func (x *PreviewRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -865,7 +1018,7 @@ func (x *PreviewRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewRoyaltyStatementResponse.ProtoReflect.Descriptor instead.
 func (*PreviewRoyaltyStatementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{9}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PreviewRoyaltyStatementResponse) GetPeriod() string {
@@ -917,6 +1070,20 @@ func (x *PreviewRoyaltyStatementResponse) GetCurrency() string {
 	return ""
 }
 
+func (x *PreviewRoyaltyStatementResponse) GetCreatorSubtotals() []*RoyaltyCreatorSubtotal {
+	if x != nil {
+		return x.CreatorSubtotals
+	}
+	return nil
+}
+
+func (x *PreviewRoyaltyStatementResponse) GetWithholdingRateBps() int32 {
+	if x != nil && x.WithholdingRateBps != nil {
+		return *x.WithholdingRateBps
+	}
+	return 0
+}
+
 type CloseRoyaltyStatementRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -928,7 +1095,7 @@ type CloseRoyaltyStatementRequest struct {
 
 func (x *CloseRoyaltyStatementRequest) Reset() {
 	*x = CloseRoyaltyStatementRequest{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -940,7 +1107,7 @@ func (x *CloseRoyaltyStatementRequest) String() string {
 func (*CloseRoyaltyStatementRequest) ProtoMessage() {}
 
 func (x *CloseRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -953,7 +1120,7 @@ func (x *CloseRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseRoyaltyStatementRequest.ProtoReflect.Descriptor instead.
 func (*CloseRoyaltyStatementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{10}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CloseRoyaltyStatementRequest) GetTenant() *v1.TenantContext {
@@ -979,7 +1146,7 @@ type CloseRoyaltyStatementResponse struct {
 
 func (x *CloseRoyaltyStatementResponse) Reset() {
 	*x = CloseRoyaltyStatementResponse{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1158,7 @@ func (x *CloseRoyaltyStatementResponse) String() string {
 func (*CloseRoyaltyStatementResponse) ProtoMessage() {}
 
 func (x *CloseRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1171,7 @@ func (x *CloseRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseRoyaltyStatementResponse.ProtoReflect.Descriptor instead.
 func (*CloseRoyaltyStatementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{11}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CloseRoyaltyStatementResponse) GetStatement() *RoyaltyStatement {
@@ -1028,7 +1195,7 @@ type ListRoyaltyStatementsRequest struct {
 
 func (x *ListRoyaltyStatementsRequest) Reset() {
 	*x = ListRoyaltyStatementsRequest{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1040,7 +1207,7 @@ func (x *ListRoyaltyStatementsRequest) String() string {
 func (*ListRoyaltyStatementsRequest) ProtoMessage() {}
 
 func (x *ListRoyaltyStatementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1053,7 +1220,7 @@ func (x *ListRoyaltyStatementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRoyaltyStatementsRequest.ProtoReflect.Descriptor instead.
 func (*ListRoyaltyStatementsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{12}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListRoyaltyStatementsRequest) GetTenant() *v1.TenantContext {
@@ -1088,7 +1255,7 @@ type ListRoyaltyStatementsResponse struct {
 
 func (x *ListRoyaltyStatementsResponse) Reset() {
 	*x = ListRoyaltyStatementsResponse{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1100,7 +1267,7 @@ func (x *ListRoyaltyStatementsResponse) String() string {
 func (*ListRoyaltyStatementsResponse) ProtoMessage() {}
 
 func (x *ListRoyaltyStatementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1113,7 +1280,7 @@ func (x *ListRoyaltyStatementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRoyaltyStatementsResponse.ProtoReflect.Descriptor instead.
 func (*ListRoyaltyStatementsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{13}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListRoyaltyStatementsResponse) GetStatements() []*RoyaltyStatement {
@@ -1155,7 +1322,7 @@ type GetRoyaltyStatementRequest struct {
 
 func (x *GetRoyaltyStatementRequest) Reset() {
 	*x = GetRoyaltyStatementRequest{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1167,7 +1334,7 @@ func (x *GetRoyaltyStatementRequest) String() string {
 func (*GetRoyaltyStatementRequest) ProtoMessage() {}
 
 func (x *GetRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1180,7 +1347,7 @@ func (x *GetRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRoyaltyStatementRequest.ProtoReflect.Descriptor instead.
 func (*GetRoyaltyStatementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{14}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetRoyaltyStatementRequest) GetTenant() *v1.TenantContext {
@@ -1217,13 +1384,16 @@ type GetRoyaltyStatementResponse struct {
 	Lines         []*RoyaltyStatementLine `protobuf:"bytes,2,rep,name=lines,proto3" json:"lines,omitempty"`
 	PreviousToken string                  `protobuf:"bytes,3,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
 	NextToken     string                  `protobuf:"bytes,4,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// What the statement pays each Author, every one of them on every page.
+	// Empty for a statement closed before statements carried subtotals.
+	CreatorSubtotals []*RoyaltyCreatorSubtotal `protobuf:"bytes,5,rep,name=creator_subtotals,json=creatorSubtotals,proto3" json:"creator_subtotals,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetRoyaltyStatementResponse) Reset() {
 	*x = GetRoyaltyStatementResponse{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1235,7 +1405,7 @@ func (x *GetRoyaltyStatementResponse) String() string {
 func (*GetRoyaltyStatementResponse) ProtoMessage() {}
 
 func (x *GetRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1248,7 +1418,7 @@ func (x *GetRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRoyaltyStatementResponse.ProtoReflect.Descriptor instead.
 func (*GetRoyaltyStatementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{15}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetRoyaltyStatementResponse) GetStatement() *RoyaltyStatement {
@@ -1279,6 +1449,13 @@ func (x *GetRoyaltyStatementResponse) GetNextToken() string {
 	return ""
 }
 
+func (x *GetRoyaltyStatementResponse) GetCreatorSubtotals() []*RoyaltyCreatorSubtotal {
+	if x != nil {
+		return x.CreatorSubtotals
+	}
+	return nil
+}
+
 type ExportRoyaltyStatementRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1290,7 +1467,7 @@ type ExportRoyaltyStatementRequest struct {
 
 func (x *ExportRoyaltyStatementRequest) Reset() {
 	*x = ExportRoyaltyStatementRequest{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1302,7 +1479,7 @@ func (x *ExportRoyaltyStatementRequest) String() string {
 func (*ExportRoyaltyStatementRequest) ProtoMessage() {}
 
 func (x *ExportRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1315,7 +1492,7 @@ func (x *ExportRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportRoyaltyStatementRequest.ProtoReflect.Descriptor instead.
 func (*ExportRoyaltyStatementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{16}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ExportRoyaltyStatementRequest) GetTenant() *v1.TenantContext {
@@ -1365,6 +1542,27 @@ type ExportRoyaltyStatementResponse struct {
 	//
 	// The IDs are the rows' internal IDs, not their public IDs, and they stay
 	// on the line after the row is deleted.
+	//
+	// A statement with a line that has a tax rate, or that withheld anything,
+	// has four more columns after source, and after its lines a row for each
+	// Author's subtotal, in RoyaltyCreatorSubtotal's order:
+	//
+	//	row_type          line on a line, creator_subtotal on a subtotal. A
+	//	                  subtotal fills period, creator_id, creator_name,
+	//	                  payout_amount, currency, and the columns below, and
+	//	                  leaves the others empty
+	//	tax_rate_percent  a line's tax rate with two decimals, 10.00 for 1000
+	//	                  bps; empty for a line without one, and on a subtotal
+	//	tax_amount        an integer in the minor unit of currency, no currency
+	//	                  symbol: the line's tax_amount as RoyaltyStatementLine
+	//	                  describes it, or the sum of an Author's. Empty
+	//	                  without a rate
+	//	withholding_amount an integer in the minor unit of currency on a
+	//	                  subtotal of a statement that withheld; empty
+	//	                  otherwise
+	//
+	// A statement with neither has the columns above alone, as every statement
+	// closed before statements carried tax does.
 	Csv           []byte `protobuf:"bytes,1,opt,name=csv,proto3" json:"csv,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1372,7 +1570,7 @@ type ExportRoyaltyStatementResponse struct {
 
 func (x *ExportRoyaltyStatementResponse) Reset() {
 	*x = ExportRoyaltyStatementResponse{}
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1384,7 +1582,7 @@ func (x *ExportRoyaltyStatementResponse) String() string {
 func (*ExportRoyaltyStatementResponse) ProtoMessage() {}
 
 func (x *ExportRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1397,7 +1595,7 @@ func (x *ExportRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportRoyaltyStatementResponse.ProtoReflect.Descriptor instead.
 func (*ExportRoyaltyStatementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{17}
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ExportRoyaltyStatementResponse) GetCsv() []byte {
@@ -1429,14 +1627,27 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x0eauto_close_day\x18\x03 \x01(\x05H\x00R\fautoCloseDay\x88\x01\x01B\x11\n" +
 	"\x0f_auto_close_day\"V\n" +
 	"\x1bUpdateRoyaltyConfigResponse\x127\n" +
-	"\x06config\x18\x01 \x01(\v2\x1f.publira.admin.v1.RoyaltyConfigR\x06config\"\x82\x01\n" +
+	"\x06config\x18\x01 \x01(\v2\x1f.publira.admin.v1.RoyaltyConfigR\x06config\"\xd8\x01\n" +
 	"\x16RoyaltyStatementTotals\x12\x14\n" +
 	"\x05gross\x18\x01 \x01(\x03R\x05gross\x12\x1a\n" +
 	"\brefunded\x18\x02 \x01(\x03R\brefunded\x12\x16\n" +
 	"\x06payout\x18\x03 \x01(\x03R\x06payout\x12\x1e\n" +
 	"\n" +
 	"adjustment\x18\x04 \x01(\x03R\n" +
-	"adjustment\"\xa9\x02\n" +
+	"adjustment\x12\x15\n" +
+	"\x03tax\x18\x05 \x01(\x03H\x00R\x03tax\x88\x01\x01\x12%\n" +
+	"\vwithholding\x18\x06 \x01(\x03H\x01R\vwithholding\x88\x01\x01B\x06\n" +
+	"\x04_taxB\x0e\n" +
+	"\f_withholding\"\x8a\x02\n" +
+	"\x16RoyaltyCreatorSubtotal\x12*\n" +
+	"\x11creator_public_id\x18\x01 \x01(\tR\x0fcreatorPublicId\x12!\n" +
+	"\fcreator_name\x18\x02 \x01(\tR\vcreatorName\x12#\n" +
+	"\rpayout_amount\x18\x03 \x01(\x03R\fpayoutAmount\x12\"\n" +
+	"\n" +
+	"tax_amount\x18\x04 \x01(\x03H\x00R\ttaxAmount\x88\x01\x01\x122\n" +
+	"\x12withholding_amount\x18\x05 \x01(\x03H\x01R\x11withholdingAmount\x88\x01\x01B\r\n" +
+	"\v_tax_amountB\x15\n" +
+	"\x13_withholding_amount\"\xf9\x02\n" +
 	"\x10RoyaltyStatement\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12\x1b\n" +
@@ -1444,7 +1655,9 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x18closed_by_user_public_id\x18\x04 \x01(\tR\x14closedByUserPublicId\x12-\n" +
 	"\x13closed_by_user_name\x18\x05 \x01(\tR\x10closedByUserName\x12@\n" +
 	"\x06totals\x18\x06 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\x12\x1a\n" +
-	"\bcurrency\x18\a \x01(\tR\bcurrency\"\xfa\x04\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\x125\n" +
+	"\x14withholding_rate_bps\x18\b \x01(\x05H\x00R\x12withholdingRateBps\x88\x01\x01B\x17\n" +
+	"\x15_withholding_rate_bps\"\xe5\x05\n" +
 	"\x14RoyaltyStatementLine\x12\x1f\n" +
 	"\vline_number\x18\x01 \x01(\x05R\n" +
 	"lineNumber\x12*\n" +
@@ -1464,10 +1677,16 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\tshare_bps\x18\r \x01(\x05R\bshareBps\x12#\n" +
 	"\rpayout_amount\x18\x0e \x01(\x03R\fpayoutAmount\x12'\n" +
 	"\x0fadjusted_period\x18\x0f \x01(\tR\x0eadjustedPeriod\x12;\n" +
-	"\x06source\x18\x10 \x01(\x0e2#.publira.admin.v1.RoyaltyLineSourceR\x06source\"q\n" +
+	"\x06source\x18\x10 \x01(\x0e2#.publira.admin.v1.RoyaltyLineSourceR\x06source\x12%\n" +
+	"\ftax_rate_bps\x18\x11 \x01(\x05H\x00R\n" +
+	"taxRateBps\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"tax_amount\x18\x12 \x01(\x03H\x01R\ttaxAmount\x88\x01\x01B\x0f\n" +
+	"\r_tax_rate_bpsB\r\n" +
+	"\v_tax_amount\"q\n" +
 	"\x1ePreviewRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
-	"\x06period\x18\x02 \x01(\tR\x06period\"\xa8\x02\n" +
+	"\x06period\x18\x02 \x01(\tR\x06period\"\xcf\x03\n" +
 	"\x1fPreviewRoyaltyStatementResponse\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12@\n" +
@@ -1475,7 +1694,10 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x05lines\x18\x04 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\x12\x1b\n" +
 	"\tstarts_at\x18\x05 \x01(\tR\bstartsAt\x12\x17\n" +
 	"\aends_at\x18\x06 \x01(\tR\x06endsAt\x12\x1a\n" +
-	"\bcurrency\x18\a \x01(\tR\bcurrency\"o\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\x12U\n" +
+	"\x11creator_subtotals\x18\b \x03(\v2(.publira.admin.v1.RoyaltyCreatorSubtotalR\x10creatorSubtotals\x125\n" +
+	"\x14withholding_rate_bps\x18\t \x01(\x05H\x00R\x12withholdingRateBps\x88\x01\x01B\x17\n" +
+	"\x15_withholding_rate_bps\"o\n" +
 	"\x1cCloseRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\"a\n" +
@@ -1496,13 +1718,14 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"\xe3\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\"\xba\x02\n" +
 	"\x1bGetRoyaltyStatementResponse\x12@\n" +
 	"\tstatement\x18\x01 \x01(\v2\".publira.admin.v1.RoyaltyStatementR\tstatement\x12<\n" +
 	"\x05lines\x18\x02 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x04 \x01(\tR\tnextToken\"p\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken\x12U\n" +
+	"\x11creator_subtotals\x18\x05 \x03(\v2(.publira.admin.v1.RoyaltyCreatorSubtotalR\x10creatorSubtotals\"p\n" +
 	"\x1dExportRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\"2\n" +
@@ -1538,7 +1761,7 @@ func file_publira_admin_v1_royalty_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_royalty_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_publira_admin_v1_royalty_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_publira_admin_v1_royalty_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_publira_admin_v1_royalty_proto_goTypes = []any{
 	(RoyaltyCloseMode)(0),                   // 0: publira.admin.v1.RoyaltyCloseMode
 	(RoyaltyLineSource)(0),                  // 1: publira.admin.v1.RoyaltyLineSource
@@ -1548,59 +1771,62 @@ var file_publira_admin_v1_royalty_proto_goTypes = []any{
 	(*UpdateRoyaltyConfigRequest)(nil),      // 5: publira.admin.v1.UpdateRoyaltyConfigRequest
 	(*UpdateRoyaltyConfigResponse)(nil),     // 6: publira.admin.v1.UpdateRoyaltyConfigResponse
 	(*RoyaltyStatementTotals)(nil),          // 7: publira.admin.v1.RoyaltyStatementTotals
-	(*RoyaltyStatement)(nil),                // 8: publira.admin.v1.RoyaltyStatement
-	(*RoyaltyStatementLine)(nil),            // 9: publira.admin.v1.RoyaltyStatementLine
-	(*PreviewRoyaltyStatementRequest)(nil),  // 10: publira.admin.v1.PreviewRoyaltyStatementRequest
-	(*PreviewRoyaltyStatementResponse)(nil), // 11: publira.admin.v1.PreviewRoyaltyStatementResponse
-	(*CloseRoyaltyStatementRequest)(nil),    // 12: publira.admin.v1.CloseRoyaltyStatementRequest
-	(*CloseRoyaltyStatementResponse)(nil),   // 13: publira.admin.v1.CloseRoyaltyStatementResponse
-	(*ListRoyaltyStatementsRequest)(nil),    // 14: publira.admin.v1.ListRoyaltyStatementsRequest
-	(*ListRoyaltyStatementsResponse)(nil),   // 15: publira.admin.v1.ListRoyaltyStatementsResponse
-	(*GetRoyaltyStatementRequest)(nil),      // 16: publira.admin.v1.GetRoyaltyStatementRequest
-	(*GetRoyaltyStatementResponse)(nil),     // 17: publira.admin.v1.GetRoyaltyStatementResponse
-	(*ExportRoyaltyStatementRequest)(nil),   // 18: publira.admin.v1.ExportRoyaltyStatementRequest
-	(*ExportRoyaltyStatementResponse)(nil),  // 19: publira.admin.v1.ExportRoyaltyStatementResponse
-	(*v1.TenantContext)(nil),                // 20: publira.types.v1.TenantContext
+	(*RoyaltyCreatorSubtotal)(nil),          // 8: publira.admin.v1.RoyaltyCreatorSubtotal
+	(*RoyaltyStatement)(nil),                // 9: publira.admin.v1.RoyaltyStatement
+	(*RoyaltyStatementLine)(nil),            // 10: publira.admin.v1.RoyaltyStatementLine
+	(*PreviewRoyaltyStatementRequest)(nil),  // 11: publira.admin.v1.PreviewRoyaltyStatementRequest
+	(*PreviewRoyaltyStatementResponse)(nil), // 12: publira.admin.v1.PreviewRoyaltyStatementResponse
+	(*CloseRoyaltyStatementRequest)(nil),    // 13: publira.admin.v1.CloseRoyaltyStatementRequest
+	(*CloseRoyaltyStatementResponse)(nil),   // 14: publira.admin.v1.CloseRoyaltyStatementResponse
+	(*ListRoyaltyStatementsRequest)(nil),    // 15: publira.admin.v1.ListRoyaltyStatementsRequest
+	(*ListRoyaltyStatementsResponse)(nil),   // 16: publira.admin.v1.ListRoyaltyStatementsResponse
+	(*GetRoyaltyStatementRequest)(nil),      // 17: publira.admin.v1.GetRoyaltyStatementRequest
+	(*GetRoyaltyStatementResponse)(nil),     // 18: publira.admin.v1.GetRoyaltyStatementResponse
+	(*ExportRoyaltyStatementRequest)(nil),   // 19: publira.admin.v1.ExportRoyaltyStatementRequest
+	(*ExportRoyaltyStatementResponse)(nil),  // 20: publira.admin.v1.ExportRoyaltyStatementResponse
+	(*v1.TenantContext)(nil),                // 21: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_royalty_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.RoyaltyConfig.close_mode:type_name -> publira.admin.v1.RoyaltyCloseMode
-	20, // 1: publira.admin.v1.GetRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 1: publira.admin.v1.GetRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 2: publira.admin.v1.GetRoyaltyConfigResponse.config:type_name -> publira.admin.v1.RoyaltyConfig
-	20, // 3: publira.admin.v1.UpdateRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 3: publira.admin.v1.UpdateRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 4: publira.admin.v1.UpdateRoyaltyConfigRequest.close_mode:type_name -> publira.admin.v1.RoyaltyCloseMode
 	2,  // 5: publira.admin.v1.UpdateRoyaltyConfigResponse.config:type_name -> publira.admin.v1.RoyaltyConfig
 	7,  // 6: publira.admin.v1.RoyaltyStatement.totals:type_name -> publira.admin.v1.RoyaltyStatementTotals
 	1,  // 7: publira.admin.v1.RoyaltyStatementLine.source:type_name -> publira.admin.v1.RoyaltyLineSource
-	20, // 8: publira.admin.v1.PreviewRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 8: publira.admin.v1.PreviewRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	7,  // 9: publira.admin.v1.PreviewRoyaltyStatementResponse.totals:type_name -> publira.admin.v1.RoyaltyStatementTotals
-	9,  // 10: publira.admin.v1.PreviewRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
-	20, // 11: publira.admin.v1.CloseRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	8,  // 12: publira.admin.v1.CloseRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
-	20, // 13: publira.admin.v1.ListRoyaltyStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	8,  // 14: publira.admin.v1.ListRoyaltyStatementsResponse.statements:type_name -> publira.admin.v1.RoyaltyStatement
-	20, // 15: publira.admin.v1.GetRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	8,  // 16: publira.admin.v1.GetRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
-	9,  // 17: publira.admin.v1.GetRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
-	20, // 18: publira.admin.v1.ExportRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	3,  // 19: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:input_type -> publira.admin.v1.GetRoyaltyConfigRequest
-	5,  // 20: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:input_type -> publira.admin.v1.UpdateRoyaltyConfigRequest
-	10, // 21: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:input_type -> publira.admin.v1.PreviewRoyaltyStatementRequest
-	12, // 22: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:input_type -> publira.admin.v1.CloseRoyaltyStatementRequest
-	14, // 23: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:input_type -> publira.admin.v1.ListRoyaltyStatementsRequest
-	16, // 24: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:input_type -> publira.admin.v1.GetRoyaltyStatementRequest
-	18, // 25: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:input_type -> publira.admin.v1.ExportRoyaltyStatementRequest
-	4,  // 26: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:output_type -> publira.admin.v1.GetRoyaltyConfigResponse
-	6,  // 27: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:output_type -> publira.admin.v1.UpdateRoyaltyConfigResponse
-	11, // 28: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:output_type -> publira.admin.v1.PreviewRoyaltyStatementResponse
-	13, // 29: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:output_type -> publira.admin.v1.CloseRoyaltyStatementResponse
-	15, // 30: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:output_type -> publira.admin.v1.ListRoyaltyStatementsResponse
-	17, // 31: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:output_type -> publira.admin.v1.GetRoyaltyStatementResponse
-	19, // 32: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:output_type -> publira.admin.v1.ExportRoyaltyStatementResponse
-	26, // [26:33] is the sub-list for method output_type
-	19, // [19:26] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	10, // 10: publira.admin.v1.PreviewRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
+	8,  // 11: publira.admin.v1.PreviewRoyaltyStatementResponse.creator_subtotals:type_name -> publira.admin.v1.RoyaltyCreatorSubtotal
+	21, // 12: publira.admin.v1.CloseRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 13: publira.admin.v1.CloseRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
+	21, // 14: publira.admin.v1.ListRoyaltyStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 15: publira.admin.v1.ListRoyaltyStatementsResponse.statements:type_name -> publira.admin.v1.RoyaltyStatement
+	21, // 16: publira.admin.v1.GetRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 17: publira.admin.v1.GetRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
+	10, // 18: publira.admin.v1.GetRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
+	8,  // 19: publira.admin.v1.GetRoyaltyStatementResponse.creator_subtotals:type_name -> publira.admin.v1.RoyaltyCreatorSubtotal
+	21, // 20: publira.admin.v1.ExportRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 21: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:input_type -> publira.admin.v1.GetRoyaltyConfigRequest
+	5,  // 22: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:input_type -> publira.admin.v1.UpdateRoyaltyConfigRequest
+	11, // 23: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:input_type -> publira.admin.v1.PreviewRoyaltyStatementRequest
+	13, // 24: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:input_type -> publira.admin.v1.CloseRoyaltyStatementRequest
+	15, // 25: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:input_type -> publira.admin.v1.ListRoyaltyStatementsRequest
+	17, // 26: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:input_type -> publira.admin.v1.GetRoyaltyStatementRequest
+	19, // 27: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:input_type -> publira.admin.v1.ExportRoyaltyStatementRequest
+	4,  // 28: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:output_type -> publira.admin.v1.GetRoyaltyConfigResponse
+	6,  // 29: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:output_type -> publira.admin.v1.UpdateRoyaltyConfigResponse
+	12, // 30: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:output_type -> publira.admin.v1.PreviewRoyaltyStatementResponse
+	14, // 31: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:output_type -> publira.admin.v1.CloseRoyaltyStatementResponse
+	16, // 32: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:output_type -> publira.admin.v1.ListRoyaltyStatementsResponse
+	18, // 33: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:output_type -> publira.admin.v1.GetRoyaltyStatementResponse
+	20, // 34: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:output_type -> publira.admin.v1.ExportRoyaltyStatementResponse
+	28, // [28:35] is the sub-list for method output_type
+	21, // [21:28] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_royalty_proto_init() }
@@ -1610,13 +1836,18 @@ func file_publira_admin_v1_royalty_proto_init() {
 	}
 	file_publira_admin_v1_royalty_proto_msgTypes[0].OneofWrappers = []any{}
 	file_publira_admin_v1_royalty_proto_msgTypes[3].OneofWrappers = []any{}
+	file_publira_admin_v1_royalty_proto_msgTypes[5].OneofWrappers = []any{}
+	file_publira_admin_v1_royalty_proto_msgTypes[6].OneofWrappers = []any{}
+	file_publira_admin_v1_royalty_proto_msgTypes[7].OneofWrappers = []any{}
+	file_publira_admin_v1_royalty_proto_msgTypes[8].OneofWrappers = []any{}
+	file_publira_admin_v1_royalty_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_royalty_proto_rawDesc), len(file_publira_admin_v1_royalty_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

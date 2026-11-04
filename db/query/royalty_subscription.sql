@@ -17,7 +17,8 @@
 -- episode a payment of the month was shared to, with the parts of the
 -- month's payments that fall on it. sale_count is how many payments did. It
 -- is what a close writes and what a preview shows, so the two cannot
--- disagree, and its columns and order are those of ListRoyaltyLinesForPeriod.
+-- disagree, and its columns and order are those of ListRoyaltyLinesForPeriod,
+-- its cut by the payments' tax rates included.
 SELECT
     ec.creator_id,
     c.public_id AS creator_public_id,
@@ -35,7 +36,8 @@ SELECT
     sum(pp.price)::bigint AS gross_amount,
     sum(part.refunded_amount)::bigint AS refunded_amount,
     ec.share_bps,
-    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
+    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount,
+    sp.tax_rate_bps
 FROM subscription_payments sp
 JOIN subscription_payment_episode_parts pp ON pp.tenant_id = sp.tenant_id
     AND pp.subscription_payment_id = sp.id
@@ -63,8 +65,9 @@ GROUP BY
     e.id, e.public_id, et.title, e.order_index,
     ec.creator_id, c.public_id, c.name,
     ec.role_id, r.public_id, r.name,
-    ec.display_order, ec.share_bps
-ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST;
+    ec.display_order, ec.share_bps,
+    sp.tax_rate_bps
+ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST, sp.tax_rate_bps NULLS FIRST;
 
 -- name: GetRoyaltySubscriptionTotalsForPeriod :one
 -- Totals the month's shared payments once each, however many episodes and

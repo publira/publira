@@ -1,0 +1,7 @@
+-- INDEX: idx_purchases_tenant_purchased_at_id_sales
+-- idx_purchases_tenant_purchased_at_id_sales_tax serves everything this did,
+-- in the same order, the previous release's queries included, and two indexes
+-- over the same range of the same table only make every purchase cost a second
+-- index write. CONCURRENTLY, so the drop waits for no lock a storefront's
+-- writes hold.
+DROP INDEX CONCURRENTLY IF EXISTS idx_purchases_tenant_purchased_at_id_sales;

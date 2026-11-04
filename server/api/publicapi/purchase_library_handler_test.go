@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"regexp"
 	"slices"
 	"testing"
@@ -42,6 +43,8 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			nil,
 			nil,
 			now,
+			nil,
+			nil,
 			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
@@ -91,6 +94,50 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// A purchase made at a rate carries the rate and the tax its price includes,
+// and one made without a rate carries neither.
+func TestPurchaseListReportsTheTaxOfAPurchase(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	testServer, mock := newTestPublicServer(t)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectAuthSession(mock, tenantID, userID, now)
+
+	row := func(id uuid.UUID, purchasedAt time.Time, rate, tax any) []driver.Value {
+		return []driver.Value{
+			id, "purchase", int32(1100), "JPY", nil, nil, nil, nil, purchasedAt,
+			rate, tax, int32(0),
+			uuid.Must(uuid.NewV7()), "EPISODE001", "Episode title", "ja", int32(3),
+			nil, nil, nil, nil, nil, nil, int32(0), nil, nil, nil, nil,
+			uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja",
+		}
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WillReturnRows(purchaseRows().
+			AddRow(row(uuid.Must(uuid.NewV7()), now, int32(1000), int32(100))...).
+			AddRow(row(uuid.Must(uuid.NewV7()), now.Add(-time.Hour), nil, nil)...))
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(response.Purchases) != 2 {
+		t.Fatalf("purchase count = %d, want 2", len(response.Purchases))
+	}
+	if got := response.Purchases[0]; got.GetTaxRateBps() != 1000 || got.GetTaxAmount() != 100 || got.TaxAmount == nil {
+		t.Fatalf("purchase made at 10%% has tax %v at %v, want 100 at 1000", got.TaxAmount, got.TaxRateBps)
+	}
+	if got := response.Purchases[1]; got.TaxRateBps != nil || got.TaxAmount != nil {
+		t.Fatalf("purchase made without a rate has tax %v at %v, want none", got.TaxAmount, got.TaxRateBps)
+	}
+	assertPublicExpectations(t, mock)
+}
+
 // A refunded purchase opens nothing, so the library must not offer it as one
 // the reader can still open, and says when the money went back.
 func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
@@ -114,6 +161,8 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			int32(500),
 			now.Add(-time.Hour),
 			now.Add(-2*time.Hour),
+			nil,
+			nil,
 			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
@@ -182,6 +231,8 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			nil,
 			nil,
 			now.Add(-2*time.Hour),
+			nil,
+			nil,
 			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
@@ -247,6 +298,8 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			int32(200),
 			nil,
 			now.Add(-2*time.Hour),
+			nil,
+			nil,
 			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
@@ -499,7 +552,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "tax_rate_bps", "tax_amount", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale",
 	})
 }
 
@@ -514,6 +567,8 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		nil,
 		nil,
 		purchasedAt,
+		nil,
+		nil,
 		int32(0),
 		uuid.Must(uuid.NewV7()),
 		"EPISODE"+id.String(),

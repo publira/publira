@@ -278,7 +278,7 @@ func TestDBAdminRevenueByEpisodePagesAndBindsItsTokens(t *testing.T) {
 }
 
 // The totals and the day report read a tenant's range of purchases from
-// idx_purchases_tenant_purchased_at_id_sales alone, without visiting the
+// idx_purchases_tenant_purchased_at_id_sales_tax alone, without visiting the
 // table.
 func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndex(t *testing.T) {
 	t.Parallel()
@@ -325,7 +325,7 @@ func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndex(t *testing.T) {
 			if err := rows.Err(); err != nil {
 				t.Fatalf("iterate plan: %v", err)
 			}
-			if !strings.Contains(plan.String(), "Index Only Scan using idx_purchases_tenant_purchased_at_id_sales") {
+			if !strings.Contains(plan.String(), "Index Only Scan using idx_purchases_tenant_purchased_at_id_sales_tax") {
 				t.Fatalf("%s does not scan the index alone:\n%s", name, plan.String())
 			}
 		})

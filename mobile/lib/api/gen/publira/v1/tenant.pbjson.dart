@@ -230,6 +230,14 @@ const GetTenantResponse$json = {
       '5': 8,
       '10': 'creatorPagesEnabled'
     },
+    {
+      '1': 'invoice',
+      '3': 30,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.TenantInvoiceDetails',
+      '10': 'invoice'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -264,8 +272,42 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlEkIKC2JyYW5kX21hcmtzGBsgAygLMiEucHVi'
     'bGlyYS50eXBlcy52MS5UZW5hbnRCcmFuZE1hcmtSCmJyYW5kTWFya3MSQwoKZGFya190aGVtZR'
     'gcIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlUglkYXJrVGhlbWUS'
-    'MgoVY3JlYXRvcl9wYWdlc19lbmFibGVkGB0gASgIUhNjcmVhdG9yUGFnZXNFbmFibGVkSgQIEB'
-    'ARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2U=');
+    'MgoVY3JlYXRvcl9wYWdlc19lbmFibGVkGB0gASgIUhNjcmVhdG9yUGFnZXNFbmFibGVkEjoKB2'
+    'ludm9pY2UYHiABKAsyIC5wdWJsaXJhLnYxLlRlbmFudEludm9pY2VEZXRhaWxzUgdpbnZvaWNl'
+    'SgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2U=');
+
+@$core.Deprecated('Use tenantInvoiceDetailsDescriptor instead')
+const TenantInvoiceDetails$json = {
+  '1': 'TenantInvoiceDetails',
+  '2': [
+    {
+      '1': 'tax_rate_bps',
+      '3': 1,
+      '4': 1,
+      '5': 5,
+      '9': 0,
+      '10': 'taxRateBps',
+      '17': true
+    },
+    {'1': 'legal_name', '3': 2, '4': 1, '5': 9, '10': 'legalName'},
+    {
+      '1': 'registration_number',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'registrationNumber'
+    },
+  ],
+  '8': [
+    {'1': '_tax_rate_bps'},
+  ],
+};
+
+/// Descriptor for `TenantInvoiceDetails`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantInvoiceDetailsDescriptor = $convert.base64Decode(
+    'ChRUZW5hbnRJbnZvaWNlRGV0YWlscxIlCgx0YXhfcmF0ZV9icHMYASABKAVIAFIKdGF4UmF0ZU'
+    'Jwc4gBARIdCgpsZWdhbF9uYW1lGAIgASgJUglsZWdhbE5hbWUSLwoTcmVnaXN0cmF0aW9uX251'
+    'bWJlchgDIAEoCVIScmVnaXN0cmF0aW9uTnVtYmVyQg8KDV90YXhfcmF0ZV9icHM=');
 
 @$core.Deprecated('Use tenantAppleSignInDescriptor instead')
 const TenantAppleSignIn$json = {
@@ -657,6 +699,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.TenantGoogleSignIn': TenantGoogleSignIn$json,
   '.publira.types.v1.TenantBrandMark': $0.TenantBrandMark$json,
   '.publira.types.v1.TenantThemePalette': $0.TenantThemePalette$json,
+  '.publira.v1.TenantInvoiceDetails': TenantInvoiceDetails$json,
   '.publira.v1.GetTenantLegalPagesRequest': GetTenantLegalPagesRequest$json,
   '.publira.v1.GetTenantLegalPagesResponse': GetTenantLegalPagesResponse$json,
   '.publira.v1.TenantLegalPage': TenantLegalPage$json,
