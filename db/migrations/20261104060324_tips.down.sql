@@ -71,17 +71,20 @@ SET payout_amount = kept.payout,
     END
 FROM tipped_statements t
     JOIN royalty_statements rs ON rs.tenant_id = t.tenant_id
-    AND rs.id = t.statement_id,
-    LATERAL (
-        SELECT COALESCE(sum(l.payout_amount), 0)::bigint AS payout,
+    AND rs.id = t.statement_id
+    JOIN (
+        SELECT l.tenant_id,
+            l.statement_id,
+            l.creator_id,
+            sum(l.payout_amount)::bigint AS payout,
             sum(l.tax_amount)::bigint AS tax
         FROM royalty_statement_lines l
-        WHERE l.tenant_id = st.tenant_id
-            AND l.statement_id = st.statement_id
-            AND l.creator_id IS NOT DISTINCT FROM st.creator_id
-    ) kept
+        GROUP BY l.tenant_id, l.statement_id, l.creator_id
+    ) kept ON kept.tenant_id = t.tenant_id
+    AND kept.statement_id = t.statement_id
 WHERE st.tenant_id = t.tenant_id
-    AND st.statement_id = t.statement_id;
+    AND st.statement_id = t.statement_id
+    AND st.creator_id IS NOT DISTINCT FROM kept.creator_id;
 
 UPDATE royalty_statements rs
 SET total_gross = rs.total_gross - t.gross,
