@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// An event the worker POSTs to the endpoints that subscribed to it. The body
+// is a JSON object: `id`, the event's id, the same for every endpoint it goes
+// to and for every attempt, which a receiver keeps to drop an event it has
+// already handled; `type`, the name below; `created_at`, RFC 3339; `tenant_id`,
+// the tenant's public id; and `data`, the event's own fields. Those carry the
+// ids this namespace answers the same records by and the reader's address,
+// never an id of the database's own.
+//
+// A delivery is signed as `X-Publira-Signature: t=<unix seconds>,v1=<hex>`,
+// the hex being HMAC-SHA256 under the endpoint's secret of the timestamp, a
+// full stop, and the body. A receiver recomputes it over the body it received
+// and rejects one whose timestamp is too old, which a replay's is.
+// `X-Publira-Event` names the type and `X-Publira-Delivery` the delivery.
+//
+// A 2xx answer delivers it. Any other 4xx but 408 and 429 gives the delivery
+// up; anything else, a timeout, or no answer is tried again, after a wait that
+// doubles from a second to an hour, for 20 attempts in all, and the delivery is
+// then given up. A delivery given up is dead, and ResendWebhookDelivery owes
+// it again. An endpoint whose host resolves to a private or loopback address
+// is never sent to.
+enum WebhookEventType {
+  WEBHOOK_EVENT_TYPE_UNSPECIFIED = 0;
+  // "purchase.completed": a reader's purchase is recorded, whatever paid for
+  // it: a payment provider, a store, the tenant's coins, or a promotion code
+  // that took the whole price off. `data` is the purchase.
+  WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED = 1;
+  // "purchase.refunded": a refund of a purchase is recorded, in part or in
+  // full; each refund in part is an event of its own. `data` is the purchase
+  // as it stands after it.
+  WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED = 2;
+  // "reader.signed_up": a reader's account is opened, with an address and a
+  // password (`email_verified` false until the reader confirms it) or by
+  // signing in with another provider. `data` is the reader.
+  WEBHOOK_EVENT_TYPE_READER_SIGNED_UP = 3;
+  // "subscription.started": a subscription starts to be billed. `data` is the
+  // subscription.
+  WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED = 4;
+  // "subscription.ended": a subscription stops being billed. `data` is the
+  // subscription.
+  WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED = 5;
+  // "webhook.test": what SendTestWebhook sends. No endpoint subscribes to it.
+  WEBHOOK_EVENT_TYPE_TEST = 6;
+}
+
+// How a delivery stands.
+enum WebhookDeliveryStatus {
+  WEBHOOK_DELIVERY_STATUS_UNSPECIFIED = 0;
+  // Owed, and not attempted yet.
+  WEBHOOK_DELIVERY_STATUS_PENDING = 1;
+  // An attempt failed and another is due.
+  WEBHOOK_DELIVERY_STATUS_FAILED = 2;
+  // The endpoint answered 2xx.
+  WEBHOOK_DELIVERY_STATUS_DELIVERED = 3;
+  // Given up: the attempts ran out, the endpoint refused it for good, or the
+  // endpoint was disabled before it was sent.
+  WEBHOOK_DELIVERY_STATUS_DEAD = 4;
+}
+
+// A URL of the tenant's that the worker POSTs events to. A tenant keeps at
+// most five.
+message WebhookEndpoint {
+  // A UUID.
+  string id = 1;
+  string url = 2;
+  repeated WebhookEventType event_types = 3;
+  bool enabled = 4;
+  // The secret's start and its last four characters, which is all the
+  // console shows of it once it is created or rotated.
+  string secret_hint = 5;
+  // RFC 3339.
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// One event owed to one endpoint, and how its delivery went.
+message WebhookDelivery {
+  // A UUID.
+  string id = 1;
+  string endpoint_id = 2;
+  string endpoint_url = 3;
+  WebhookEventType event_type = 4;
+  // The `id` of the body sent.
+  string event_id = 5;
+  WebhookDeliveryStatus status = 6;
+  // How many attempts have been made, a resend's included.
+  int32 attempts = 7;
+  // The HTTP status of the last answer; 0 when the last attempt got none.
+  int32 last_status_code = 8;
+  // Why the last attempt failed; empty once delivered.
+  string last_error = 9;
+  // RFC 3339; empty until delivered.
+  string delivered_at = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
+message ListWebhookEndpointsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every endpoint of the tenant's, oldest first.
+message ListWebhookEndpointsResponse {
+  repeated WebhookEndpoint endpoints = 1;
+}
+
+// `url` is an https URL of at most 2048 characters with a host, and
+// `event_types` names at least one event an endpoint can subscribe to; every
+// refusal of a field is invalid_argument with a field violation naming it. A
+// tenant that already keeps five endpoints is failed_precondition with
+// WEBHOOK_ENDPOINT_LIMIT.
+message CreateWebhookEndpointRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string url = 2;
+  repeated WebhookEventType event_types = 3;
+  bool enabled = 4;
+}
+
+message CreateWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+  // The signing secret, answered this once.
+  string secret = 2;
+}
+
+// Replaces the endpoint's URL, events, and whether it is enabled, checked as
+// CreateWebhookEndpoint checks them. A save that changes nothing records
+// nothing.
+message UpdateWebhookEndpointRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string endpoint_id = 2;
+  string url = 3;
+  repeated WebhookEventType event_types = 4;
+  bool enabled = 5;
+}
+
+message UpdateWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+}
+
+// Replaces the signing secret. A delivery attempted from then on is signed
+// with the new one, an attempt of one queued before included.
+message RotateWebhookSecretRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string endpoint_id = 2;
+}
+
+message RotateWebhookSecretResponse {
+  WebhookEndpoint endpoint = 1;
+  // The new signing secret, answered this once.
+  string secret = 2;
+}
+
+// Deletes the endpoint and every delivery owed to it.
+message DeleteWebhookEndpointRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string endpoint_id = 2;
+}
+
+message DeleteWebhookEndpointResponse {}
+
+// Owes the endpoint a "webhook.test" event, whether it is enabled or not and
+// whatever it subscribed to; `data` is empty. The delivery is listed with the
+// others.
+message SendTestWebhookRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string endpoint_id = 2;
+}
+
+message SendTestWebhookResponse {
+  WebhookDelivery delivery = 1;
+}
+
+// Cursor pagination, newest delivery first. Field shape and token rules:
+// proto/README.md. Changing the filter starts again from the first page.
+message ListWebhookDeliveriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+  // Only deliveries in this status; unspecified is every delivery.
+  WebhookDeliveryStatus status = 4;
+}
+
+message ListWebhookDeliveriesResponse {
+  repeated WebhookDelivery deliveries = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// Owes a dead delivery again, with the same body and event id, and a budget of
+// attempts of its own. A delivery that is not dead is failed_precondition.
+message ResendWebhookDeliveryRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string delivery_id = 2;
+}
+
+message ResendWebhookDeliveryResponse {
+  WebhookDelivery delivery = 1;
+}
+
+service AdminWebhookService {
+  // Minimum role: tenant_admin.
+  rpc ListWebhookEndpoints(ListWebhookEndpointsRequest) returns (ListWebhookEndpointsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc CreateWebhookEndpoint(CreateWebhookEndpointRequest) returns (CreateWebhookEndpointResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateWebhookEndpoint(UpdateWebhookEndpointRequest) returns (UpdateWebhookEndpointResponse) {}
+  // Minimum role: tenant_admin.
+  rpc RotateWebhookSecret(RotateWebhookSecretRequest) returns (RotateWebhookSecretResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteWebhookEndpoint(DeleteWebhookEndpointRequest) returns (DeleteWebhookEndpointResponse) {}
+  // Minimum role: tenant_admin.
+  rpc SendTestWebhook(SendTestWebhookRequest) returns (SendTestWebhookResponse) {}
+  // Minimum role: tenant_admin.
+  rpc ListWebhookDeliveries(ListWebhookDeliveriesRequest) returns (ListWebhookDeliveriesResponse) {}
+  // Minimum role: tenant_admin.
+  rpc ResendWebhookDelivery(ResendWebhookDeliveryRequest) returns (ResendWebhookDeliveryResponse) {}
+}

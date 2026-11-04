@@ -237,6 +237,7 @@ type Querier interface {
 	// subscribe to it through a store.
 	CountSubscriptionsAndCheckoutsForPlan(ctx context.Context, arg CountSubscriptionsAndCheckoutsForPlanParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
+	CountTenantWebhookEndpoints(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) (int64, error)
@@ -516,10 +517,12 @@ type Querier interface {
 	// either: the platform default is applied explicitly.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
+	CreateTenantApiKey(ctx context.Context, arg CreateTenantApiKeyParams) (TenantApiKey, error)
 	CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	CreateTenantImage(ctx context.Context, arg CreateTenantImageParams) (TenantImage, error)
 	CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
+	CreateTenantWebhookEndpoint(ctx context.Context, arg CreateTenantWebhookEndpointParams) (TenantWebhookEndpoint, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// A reader's download of what the install keeps about them. The reader's own
 	// connection requests it and reads it back, under the member isolation the
@@ -676,6 +679,7 @@ type Querier interface {
 	// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteTenantWebhookEndpoint(ctx context.Context, arg DeleteTenantWebhookEndpointParams) (int64, error)
 	// A replaced banner image is left behind by the banner that now points at the
 	// new upload; deleting the banner takes its images with it.
 	DeleteUnreferencedCampaignBannerImages(ctx context.Context, createdBefore time.Time) (int64, error)
@@ -1369,13 +1373,16 @@ type Querier interface {
 	// are elapsed time, 24 hours a day, from the moment the account was created.
 	GetSignUpFunnel(ctx context.Context, arg GetSignUpFunnelParams) (GetSignUpFunnelRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
-	// The subscription a store's own ID is recorded as, whose it is, and the plan
-	// it is recorded on.
+	// The subscription a store's own ID is recorded as, whose it is, the plan it
+	// is recorded on, and the status it is recorded in.
 	GetStoreSubscription(ctx context.Context, arg GetStoreSubscriptionParams) (GetStoreSubscriptionRow, error)
 	// The reader an intent was opened by, read without its lock: a store's
 	// notification learns from it whose subscriptions to lock before it takes the
 	// intent's, the order an account deletion takes them in.
 	GetStoreSubscriptionIntentOwner(ctx context.Context, arg GetStoreSubscriptionIntentOwnerParams) (uuid.UUID, error)
+	// The status a Stripe subscription is recorded in before a notification writes
+	// it again, so the change can be told: no row for one not recorded yet.
+	GetStripeSubscriptionStatusForTenant(ctx context.Context, arg GetStripeSubscriptionStatusForTenantParams) (GetStripeSubscriptionStatusForTenantRow, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	// The subscription payment paid through a PaymentIntent. No row is a
 	// PaymentIntent no payment here was paid through, which is an open dispute
@@ -1403,6 +1410,10 @@ type Querier interface {
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
 	// Returns no rows for a tenant that has saved nothing, which reads as no tag.
 	GetTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error)
+	GetTenantApiKey(ctx context.Context, arg GetTenantApiKeyParams) (TenantApiKey, error)
+	// The key a request's bearer token names, revoked or not, so a revoked key is
+	// told apart from one that never existed only in the log.
+	GetTenantApiKeyByPrefix(ctx context.Context, arg GetTenantApiKeyByPrefixParams) (TenantApiKey, error)
 	// A tenant with no config row has no row here either, and sells through the
 	// external checkout, which is what the column's default says.
 	GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error)
@@ -1502,6 +1513,7 @@ type Querier interface {
 	// a caller offers what this answers and nothing when it is empty. A tenant
 	// with no config row takes none.
 	GetTenantTipAmounts(ctx context.Context, tenantID uuid.UUID) ([]int32, error)
+	GetTenantWebhookEndpointForUpdate(ctx context.Context, arg GetTenantWebhookEndpointForUpdateParams) (TenantWebhookEndpoint, error)
 	// What a royalty statement closed now withholds from each Author. NULL, and
 	// no row for a tenant with no config row, withhold nothing.
 	GetTenantWithholdingRate(ctx context.Context, tenantID uuid.UUID) (sql.NullInt32, error)
@@ -1574,6 +1586,19 @@ type Querier interface {
 	// claim below and the grants view compare against. No row means the reader
 	// has never used a ticket here, and one is ready.
 	GetWaitFreeTicketState(ctx context.Context, arg GetWaitFreeTicketStateParams) (GetWaitFreeTicketStateRow, error)
+	// One delivery, shaped as ListWebhookDeliveriesDesc answers it.
+	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (GetWebhookDeliveryRow, error)
+	GetWebhookDeliveryForUpdate(ctx context.Context, arg GetWebhookDeliveryForUpdateParams) (WebhookDelivery, error)
+	// A delivery with the endpoint it goes to, as the worker sends it.
+	GetWebhookDeliveryToSend(ctx context.Context, arg GetWebhookDeliveryToSendParams) (GetWebhookDeliveryToSendRow, error)
+	// A purchase as a webhook event carries it: the ids the admin API answers it
+	// by, and the reader's address.
+	GetWebhookPurchase(ctx context.Context, arg GetWebhookPurchaseParams) (GetWebhookPurchaseRow, error)
+	GetWebhookReader(ctx context.Context, arg GetWebhookReaderParams) (GetWebhookReaderRow, error)
+	GetWebhookSubscription(ctx context.Context, arg GetWebhookSubscriptionParams) (GetWebhookSubscriptionRow, error)
+	// Gives up a delivery no attempt was made at, its endpoint disabled since it
+	// was queued.
+	GiveUpWebhookDelivery(ctx context.Context, arg GiveUpWebhookDeliveryParams) error
 	// A signed-in reader's own recommendation list, ordered from the features the
 	// daily batch writes for them. The tenant-wide list every reader shares stays
 	// with the other engagement reads in engagement.sql; this file is the half
@@ -1791,6 +1816,9 @@ type Querier interface {
 	InsertVolumeBookstoreLinks(ctx context.Context, arg InsertVolumeBookstoreLinksParams) error
 	// Writes the volume's episodes in the order given, the first at position 0.
 	InsertVolumeEpisodes(ctx context.Context, arg InsertVolumeEpisodesParams) error
+	// Owes one endpoint one event. An event already owed to the endpoint — the
+	// same change recorded twice — inserts nothing and returns no row.
+	InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error)
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
@@ -3326,6 +3354,9 @@ type Querier interface {
 	// The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	// Every key of the tenant's, revoked ones included, newest first. A tenant
+	// keeps few, so the list is not paged.
+	ListTenantApiKeys(ctx context.Context, tenantID uuid.UUID) ([]TenantApiKey, error)
 	// Every mark the tenant holds an image for, with the account that accepted its
 	// owner's terms, for the console. A mark whose image is gone shows nothing on
 	// the storefront and is left out here too, so the console offers the upload
@@ -3384,6 +3415,11 @@ type Querier interface {
 	// handler has already fetched would drop every matching user that sits on a
 	// later page.
 	ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDescParams) ([]ListTenantUsersDescRow, error)
+	// Every endpoint of the tenant's, oldest first. A tenant keeps at most five.
+	ListTenantWebhookEndpoints(ctx context.Context, tenantID uuid.UUID) ([]TenantWebhookEndpoint, error)
+	// The endpoints an event of event_type is owed to: the enabled ones that
+	// subscribed to it.
+	ListTenantWebhookEndpointsForEvent(ctx context.Context, arg ListTenantWebhookEndpointsForEventParams) ([]uuid.UUID, error)
 	ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error)
 	// ListTenants is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler
@@ -3458,6 +3494,11 @@ type Querier interface {
 	// Every tenant, whose site starts offering browser notifications once the
 	// first subject is saved. Read as publira_platform, which bypasses RLS.
 	ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error)
+	// ListWebhookDeliveriesDesc read towards the newer rows, for a previous page.
+	ListWebhookDeliveriesAsc(ctx context.Context, arg ListWebhookDeliveriesAscParams) ([]ListWebhookDeliveriesAscRow, error)
+	// The tenant's deliveries, newest first, narrowed to one status when one is
+	// named.
+	ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhookDeliveriesDescParams) ([]ListWebhookDeliveriesDescRow, error)
 	// Serializes the image writes on one banner; the caller re-reads image_id
 	// behind it.
 	LockCampaignBannerByIDForTenant(ctx context.Context, arg LockCampaignBannerByIDForTenantParams) (uuid.UUID, error)
@@ -3753,6 +3794,9 @@ type Querier interface {
 	// GetTenantHostsTaken would otherwise both commit.
 	LockTenantHosts(ctx context.Context) error
 	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
+	// Serializes the writes that count a tenant's endpoints, so two creates cannot
+	// each find four and each add a fifth.
+	LockTenantWebhookEndpoints(ctx context.Context, tenantID uuid.UUID) error
 	// The reader's grants a spend can draw on, in the order it draws on them: the
 	// one that expires first first. The grants are locked for the draws that
 	// follow, and the pack purchases that made them are not, so a refund of one
@@ -4221,6 +4265,8 @@ type Querier interface {
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFailureParams) (UserMfaLockout, error)
+	// Records one attempt at a delivery and what it came to.
+	RecordWebhookDeliveryAttempt(ctx context.Context, arg RecordWebhookDeliveryAttemptParams) error
 	// The same reclaim for the events whose payload holds a secret. A crash
 	// records no failure, so an event whose worker dies on every attempt would
 	// be re-queued forever and never reach the terminal update that drops the
@@ -4299,6 +4345,8 @@ type Querier interface {
 	// commits, something revoked the purchase, or the amount no longer leaves part
 	// of the price unrefunded.
 	RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (int32, error)
+	// Owes a dead delivery again, keeping the attempts made so far.
+	ResendWebhookDelivery(ctx context.Context, arg ResendWebhookDeliveryParams) error
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	// A second factor that checked out clears the count, and so does starting an
 	// enrollment, so a stalled attempt never blocks the next one.
@@ -4335,6 +4383,9 @@ type Querier interface {
 	// attempt the refund is sent under, as it stands on the row rather than on an
 	// earlier read of it, which a refund in part settled since has moved on.
 	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (int32, error)
+	// Revokes a key that is not revoked yet; no row for one that is, or for none.
+	RevokeTenantApiKey(ctx context.Context, arg RevokeTenantApiKeyParams) (TenantApiKey, error)
+	RotateTenantWebhookEndpointSecret(ctx context.Context, arg RotateTenantWebhookEndpointSecretParams) (TenantWebhookEndpoint, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a
 	// position for an episode that was unpublished or a rental that has expired.
@@ -4521,6 +4572,9 @@ type Querier interface {
 	// and the sitemap's last_modified_at reads that from series.updated_at, which
 	// every other write to a translation moves through UpdateSeriesBase.
 	TouchSeriesUpdatedAt(ctx context.Context, arg TouchSeriesUpdatedAtParams) error
+	// Records that a key was used, at most once a minute, so a busy key does not
+	// write on every request.
+	TouchTenantApiKey(ctx context.Context, arg TouchTenantApiKeyParams) error
 	// Release a claim when River already has an in-flight process job for
 	// this event (unique skip). attempts and available_at stay as they were.
 	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
@@ -4639,6 +4693,7 @@ type Querier interface {
 	// already has that zone, so the caller can tell a save that changes nothing
 	// from one it has to answer for in the audit log.
 	UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error)
+	UpdateTenantWebhookEndpoint(ctx context.Context, arg UpdateTenantWebhookEndpointParams) (TenantWebhookEndpoint, error)
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
 	UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error)

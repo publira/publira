@@ -393,6 +393,23 @@ On the platform API it runs as a service principal with no operator and no platf
 
 `PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. An install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches `publira server` first: the edge answers the Platform Console's API itself, but a caller on the private network, or an edge that forwards that API after all, reaches it. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
 
+## Tenant API keys
+
+A tenant admin creates API keys for the tenant's own systems through `AdminApiKeyService`. A key is sent as `Authorization: Bearer pbk_<prefix>_<secret>` on the admin API with the tenant in the request's `TenantContext`, as an operator's session is, and the call runs as that key: no user and no role, and only on the reads its scopes admit; any other answers `permission_denied`. Only the key's SHA-256 is stored, and a revoked key, or one of another tenant, answers `unauthenticated`.
+
+- `catalog:read`: `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `ListEpisodesByPublicationDate`, `GetEpisode`, `ListEpisodeCredits`, `ListEpisodeFreeWindows`, `ListEpisodeCampaignPrices`, `GetSeriesWaitFreeSettings`, `GetSeriesFreeAfterSettings`, `ListVolumes`; `AdminLabelService/ListLabels`, `GetLabel`; `AdminGenreService/ListGenres`; `AdminCreatorService/ListCreators`, `GetCreator`; `AdminCreatorRoleService/ListCreatorRoles`
+- `purchases:read`: `AdminPurchaseService/ListPurchases`, `GetPurchase`, `ListReaderPurchases`
+
+Each request a key makes is charged to it against the platform policy's `api_key_request` limit, on the same counters as the reader limits, and one past it answers `resource_exhausted` with `Retry-After`.
+
+The edge does not forward the admin API yet, so a key reaches `publira server` only over the network the web apps call it on (#5357).
+
+## Tenant webhooks
+
+A tenant admin saves up to five HTTPS endpoints through `AdminWebhookService`, each subscribed to some of `purchase.completed`, `purchase.refunded`, `reader.signed_up`, `subscription.started`, and `subscription.ended`. The writer of each change calls `internal/tenantwebhooks` in its own transaction, which writes a `webhook_deliveries` row per subscribed endpoint and a `webhook_delivery` outbox event that sends it, so a change and the events it owes commit together. The body, the signature header, and the retry rule are stated on `WebhookEventType` in `proto/publira/admin/v1/webhook.proto`; the worker's side is the `webhook_delivery` row in the [worker's event table](cmd/publira/README.md). An endpoint's signing secret is sealed under `PUBLIRA_SECRET_ENCRYPTION_KEYS` in `tenant_webhook_endpoints.secret_encrypted`, which `publiractl db reseal` moves with every other sealed value.
+
+The worker sends a delivery from the network it runs in to a URL the tenant chose, so it dials a public address only, checked after the name resolves, and follows no redirect.
+
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`
@@ -685,7 +702,7 @@ A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration`
 - `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
 - `publira.platform.v1` — the Platform Console's API
 
-The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` to it, prefixes kept, on every host, and answers the rest of `/rpc` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` to it, prefixes kept, on every host, and answers the rest of `/rpc` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session, the [web service credential](#web-service-credential), or, on the admin API, one of the tenant's [API keys](#tenant-api-keys) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 

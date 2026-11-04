@@ -61,11 +61,12 @@ SELECT pg_advisory_xact_lock(
 );
 
 -- name: GetStoreSubscription :one
--- The subscription a store's own ID is recorded as, whose it is, and the plan
--- it is recorded on.
+-- The subscription a store's own ID is recorded as, whose it is, the plan it
+-- is recorded on, and the status it is recorded in.
 SELECT id,
     user_id,
-    plan_id
+    plan_id,
+    status
 FROM subscriptions
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')::text

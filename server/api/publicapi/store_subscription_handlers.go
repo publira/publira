@@ -13,9 +13,11 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storesubscription"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 func (s *apiServer) StartStoreSubscription(
@@ -544,6 +546,12 @@ func (s *apiServer) recordStoreSubscription(
 	})
 	if err != nil {
 		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to record a store subscription", err, "tenant_id", tenantID.String(), "store", subscription.provider)
+	}
+	// The subscription a change of plan replaced was billed as this one is, so
+	// moving it on is no start.
+	wasBilled := recorded && paymentprovider.SubscriptionStatus(existing.Status).Billed()
+	if err := tenantwebhooks.QueueSubscriptionChange(ctx, txq, tenantID, row.ID, wasBilled, paymentprovider.SubscriptionStatus(row.Status).Billed()); err != nil {
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalError(ctx, "failed to queue the webhook events of a store subscription", err, "tenant_id", tenantID.String(), "subscription_id", row.ID.String())
 	}
 	if !recorded {
 		if err := txq.ConsumeStoreSubscriptionIntent(ctx, dbmodels.ConsumeStoreSubscriptionIntentParams{TenantID: tenantID, ID: intentID}); err != nil {

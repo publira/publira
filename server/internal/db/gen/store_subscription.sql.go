@@ -33,7 +33,8 @@ func (q *Queries) ConsumeStoreSubscriptionIntent(ctx context.Context, arg Consum
 const GetStoreSubscription = `-- name: GetStoreSubscription :one
 SELECT id,
     user_id,
-    plan_id
+    plan_id,
+    status
 FROM subscriptions
 WHERE tenant_id = $1
     AND provider = $2::text
@@ -50,14 +51,20 @@ type GetStoreSubscriptionRow struct {
 	ID     uuid.UUID     `json:"id"`
 	UserID uuid.NullUUID `json:"user_id"`
 	PlanID uuid.UUID     `json:"plan_id"`
+	Status string        `json:"status"`
 }
 
-// The subscription a store's own ID is recorded as, whose it is, and the plan
-// it is recorded on.
+// The subscription a store's own ID is recorded as, whose it is, the plan it
+// is recorded on, and the status it is recorded in.
 func (q *Queries) GetStoreSubscription(ctx context.Context, arg GetStoreSubscriptionParams) (GetStoreSubscriptionRow, error) {
 	row := q.db.QueryRowContext(ctx, GetStoreSubscription, arg.TenantID, arg.Provider, arg.StoreSubscriptionID)
 	var i GetStoreSubscriptionRow
-	err := row.Scan(&i.ID, &i.UserID, &i.PlanID)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PlanID,
+		&i.Status,
+	)
 	return i, err
 }
 

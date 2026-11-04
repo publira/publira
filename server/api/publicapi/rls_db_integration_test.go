@@ -270,6 +270,11 @@ var publicDataTables = []struct {
 	// webhook and the store confirmations write.
 	{name: "promotion_codes", count: "SELECT count(*) FROM promotion_codes"},
 	{name: "promotion_code_redemptions", count: "SELECT count(*) FROM promotion_code_redemptions"},
+	// The tenant's webhook endpoints, which a purchase, a refund, a sign-up, or
+	// a subscription recorded here looks up to owe each an event, and the
+	// deliveries it writes for them.
+	{name: "tenant_webhook_endpoints", count: "SELECT count(*) FROM tenant_webhook_endpoints"},
+	{name: "webhook_deliveries", count: "SELECT count(*) FROM webhook_deliveries"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
 	{name: "page_translations", count: "SELECT count(*) FROM page_translations"},
 	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
@@ -481,6 +486,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	promotionCodeID := uuid.Must(uuid.NewV7())
 	seed("promotion code", "INSERT INTO promotion_codes (id, tenant_id, code, discount_kind, discount_value, target_kind) VALUES ($1, $2, 'RLSCODE', 'percent', 10, 'catalog')", promotionCodeID, first.ID)
 	seed("promotion code redemption", "INSERT INTO promotion_code_redemptions (id, tenant_id, promotion_code_id, user_id, purchase_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, promotionCodeID, member.ID, volumePurchaseID)
+	webhookEndpointID := uuid.Must(uuid.NewV7())
+	seed("webhook endpoint", "INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types) VALUES ($1, $2, 'https://hooks.example.com/publira', 'sealed', 'whsec_••••abcd', ARRAY['purchase.completed'])", webhookEndpointID, first.ID)
+	seed("webhook delivery", "INSERT INTO webhook_deliveries (id, tenant_id, endpoint_id, event_type, event_id, payload) VALUES ($1, $2, $3, 'purchase.completed', 'evt_rls', '{}')", uuid.Must(uuid.NewV7()), first.ID, webhookEndpointID)
 	seriesBundleID := uuid.Must(uuid.NewV7())
 	seed("series bundle", "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price) VALUES ($1, $2, $3, $4, 'series-remainder-checkout:rls', 500)", seriesBundleID, first.ID, series.ID, member.ID)
 	seed("series bundle episode", `INSERT INTO series_bundle_episodes (tenant_id, series_bundle_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 500, 500)`, first.ID, seriesBundleID, episode.ID)

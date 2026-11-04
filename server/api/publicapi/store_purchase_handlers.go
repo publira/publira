@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storeproduct"
 	"github.com/publira/publira/server/internal/storepurchase"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -575,6 +576,9 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	}
 	if err := recordPromotionCodeRedemption(ctx, txq, purchase); err != nil {
 		return nil, s.internalDBError(ctx, "failed to record a promotion code redemption", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
+	}
+	if err := tenantwebhooks.QueuePurchaseCompleted(ctx, txq, tenantID, purchase.ID); err != nil {
+		return nil, s.internalError(ctx, "failed to queue the webhook events of a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
 	}
 	refunded, err := storepurchase.ApplyHeldRefund(ctx, txq, tenantID, purchase.ID, transaction.store, transaction.transactionID)
 	if err != nil {

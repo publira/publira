@@ -75,7 +75,8 @@ type Config struct {
 	// ClaimLimit is the maximum number of pending rows one drain claims.
 	ClaimLimit int32
 	// MaxAttempts is the outbox retry budget. The attempt that reaches
-	// this count marks the row dead.
+	// this count marks the row dead. An event type registered with
+	// [Registry.RegisterWithAttempts] has a budget of its own instead.
 	MaxAttempts int
 	// StaleProcessing re-queues processing rows whose updated_at is older
 	// than this. Zero uses the 15m default. A negative duration disables
@@ -745,7 +746,7 @@ func (w *Worker) finishFailed(ctx context.Context, event dbmodels.OutboxEvent, h
 		"error", herr,
 	}
 
-	if IsPermanent(herr) || int(nextAttempts) >= w.cfg.MaxAttempts {
+	if IsPermanent(herr) || int(nextAttempts) >= w.cfg.Handlers.MaxAttempts(event.EventType, w.cfg.MaxAttempts) {
 		if _, err := w.queries.MarkOutboxEventDead(ctx, dbmodels.MarkOutboxEventDeadParams{
 			ID:        event.ID,
 			LastError: lastErr,

@@ -323,6 +323,7 @@
       "targets": {
         "access_ticket": "アクセスチケット",
         "announcement": "お知らせ",
+        "api_key": "APIキー",
         "audience_stats": "読者の反応",
         "audit_log": "監査ログ",
         "campaign_banner": "キャンペーンバナー",
@@ -379,7 +380,9 @@
         "tenant_timezone": "タイムゾーン",
         "tenant_tip_settings": "チップ",
         "user": "ユーザー",
-        "volume": "巻"
+        "volume": "巻",
+        "webhook_delivery": "Webhook配信",
+        "webhook_endpoint": "Webhookエンドポイント"
       },
       "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
       "filter_invalid": "フィルタ条件に誤りがあります。入力内容を確認してください。",
@@ -551,6 +554,13 @@
         "tenant_fcm_credentials_deleted": "Firebaseの認証情報の削除",
         "tenant_mobile_app_association_updated": "アプリリンク更新",
         "tenant_sign_in_settings_updated": "ログイン方法の設定更新",
+        "api_key_created": "APIキー作成",
+        "api_key_revoked": "APIキー失効",
+        "webhook_endpoint_created": "Webhookエンドポイント作成",
+        "webhook_endpoint_updated": "Webhookエンドポイント更新",
+        "webhook_endpoint_deleted": "Webhookエンドポイント削除",
+        "webhook_secret_rotated": "Webhook署名シークレット再発行",
+        "webhook_delivery_resent": "Webhook配信の再送",
         "tenant_community_limits_updated": "コミュニティの上限更新",
         "tenant_retention_updated": "保持期間更新",
         "tenant_email_rejection_settings_updated": "受け付けないメールアドレスの更新",

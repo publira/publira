@@ -31,6 +31,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -75,6 +76,9 @@ type adminServer struct {
 	// inboundProviders are the providers a tenant's inbound email settings may
 	// name.
 	inboundProviders *inboundprovider.Registry
+	// apiKeyLimiter counts the requests each of the tenants' API keys makes,
+	// against the platform policy's api_key_request limit.
+	apiKeyLimiter *ratelimit.Limiter
 }
 
 func invalidSessionError() error {
@@ -322,6 +326,7 @@ func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.P
 		return nil, err
 	}
 	api.server.serviceToken = serviceToken
+	api.server.apiKeyLimiter = ratelimit.NewFromEnv(api.server.logger)
 	if payments != nil {
 		api.server.paymentProviders = payments
 	}
@@ -385,6 +390,7 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		login:            loginguard.NewDefault(),
 		paymentProviders: providers.Registry(),
 		inboundProviders: inboundproviders.Registry(),
+		apiKeyLimiter:    ratelimit.New(ratelimit.NewMemoryStore()),
 	}
 	return &API{server: server}, nil
 }
@@ -487,6 +493,8 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminRoyaltyServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminPaymentReconciliationServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminTenantMemberServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminApiKeyServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminWebhookServiceHandler(services, server)
 	connecthttp.Mount(mux, services, limits...)
 
 	// AdminAuthService signs a session in, so it runs before there is one to

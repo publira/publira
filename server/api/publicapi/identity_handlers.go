@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signupsettings"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // maxAccountNameRunes is the longest name UpdateMe accepts, which a name taken
@@ -446,6 +447,9 @@ func (s *apiServer) createAccountForIdentity(
 		}); err != nil {
 			return dbmodels.User{}, err
 		}
+	}
+	if err := tenantwebhooks.QueueReaderSignedUp(ctx, txq, tenant.ID, user.ID); err != nil {
+		return dbmodels.User{}, err
 	}
 	return user, nil
 }

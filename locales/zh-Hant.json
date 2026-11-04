@@ -323,6 +323,7 @@
       "targets": {
         "access_ticket": "閱讀券",
         "announcement": "公告",
+        "api_key": "API金鑰",
         "audience_stats": "讀者反應",
         "audit_log": "稽核記錄",
         "campaign_banner": "活動橫幅",
@@ -379,7 +380,9 @@
         "tenant_timezone": "時區",
         "tenant_tip_settings": "打賞",
         "user": "使用者",
-        "volume": "卷"
+        "volume": "卷",
+        "webhook_delivery": "Webhook傳送",
+        "webhook_endpoint": "Webhook端點"
       },
       "list_failed": "無法載入稽核記錄。請稍後再試。",
       "filter_invalid": "某個篩選條件無效。請檢查您輸入的內容。",
@@ -551,6 +554,13 @@
         "tenant_fcm_credentials_deleted": "刪除了Firebase憑證",
         "tenant_mobile_app_association_updated": "更新了應用程式連結",
         "tenant_sign_in_settings_updated": "更新了登入方式設定",
+        "api_key_created": "建立了API金鑰",
+        "api_key_revoked": "撤銷了API金鑰",
+        "webhook_endpoint_created": "建立了Webhook端點",
+        "webhook_endpoint_updated": "更新了Webhook端點",
+        "webhook_endpoint_deleted": "刪除了Webhook端點",
+        "webhook_secret_rotated": "重新產生了Webhook簽章密鑰",
+        "webhook_delivery_resent": "重新傳送了Webhook",
         "tenant_community_limits_updated": "更新了社群限制",
         "tenant_retention_updated": "更新了保留期限",
         "tenant_email_rejection_settings_updated": "更新了不接受的電子郵件地址",

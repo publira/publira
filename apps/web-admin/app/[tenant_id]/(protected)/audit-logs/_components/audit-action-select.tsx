@@ -621,6 +621,34 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_sign_in_settings_updated",
             },
             {
+              label: t("admin.audit.actions.api_key_created"),
+              value: "api_key_created",
+            },
+            {
+              label: t("admin.audit.actions.api_key_revoked"),
+              value: "api_key_revoked",
+            },
+            {
+              label: t("admin.audit.actions.webhook_endpoint_created"),
+              value: "webhook_endpoint_created",
+            },
+            {
+              label: t("admin.audit.actions.webhook_endpoint_updated"),
+              value: "webhook_endpoint_updated",
+            },
+            {
+              label: t("admin.audit.actions.webhook_endpoint_deleted"),
+              value: "webhook_endpoint_deleted",
+            },
+            {
+              label: t("admin.audit.actions.webhook_secret_rotated"),
+              value: "webhook_secret_rotated",
+            },
+            {
+              label: t("admin.audit.actions.webhook_delivery_resent"),
+              value: "webhook_delivery_resent",
+            },
+            {
               label: t("admin.audit.actions.tenant_community_limits_updated"),
               value: "tenant_community_limits_updated",
             },

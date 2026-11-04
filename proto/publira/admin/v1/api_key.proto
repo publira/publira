@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// What an API key may read. Each scope admits a fixed set of this namespace's
+// reads, and no scope admits a write.
+enum ApiKeyScope {
+  API_KEY_SCOPE_UNSPECIFIED = 0;
+  // The catalog: AdminSeriesService's series, episode, and volume reads, and
+  // the labels, genres, Authors, and Author roles.
+  API_KEY_SCOPE_CATALOG_READ = 1;
+  // AdminPurchaseService.ListPurchases, GetPurchase, and ListReaderPurchases,
+  // which answer each buyer's address.
+  API_KEY_SCOPE_PURCHASES_READ = 2;
+}
+
+// A read-only credential the tenant hands to its own systems. A request sends
+// it as `Authorization: Bearer <key>` on this namespace, with the tenant in
+// the request's TenantContext as a person's session does; one that names
+// another tenant is unauthenticated. A key is charged against the platform
+// policy's api_key_request limit, and a request past it is resource_exhausted
+// with Retry-After. A procedure none of the key's scopes admits is
+// permission_denied, and a revoked key is unauthenticated.
+message ApiKey {
+  // A UUID.
+  string id = 1;
+  string name = 2;
+  // The start of the key, "pbk_" and twelve characters, which is all the
+  // console shows of it once it is created.
+  string prefix = 3;
+  repeated ApiKeyScope scopes = 4;
+  // RFC 3339.
+  string created_at = 5;
+  // RFC 3339, to the minute; empty for a key never used.
+  string last_used_at = 6;
+  // RFC 3339; set once the key is revoked, which refuses it from then on.
+  string revoked_at = 7;
+}
+
+message ListApiKeysRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every key of the tenant's, revoked ones included, newest first.
+message ListApiKeysResponse {
+  repeated ApiKey api_keys = 1;
+}
+
+// `name` is 1 to 100 characters, and `scopes` names at least one scope. Every
+// refusal of a field is invalid_argument with a field violation naming it.
+message CreateApiKeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+  repeated ApiKeyScope scopes = 3;
+}
+
+message CreateApiKeyResponse {
+  ApiKey api_key = 1;
+  // The whole key, answered this once: only its hash is kept.
+  string key = 2;
+}
+
+// A key already revoked is answered as it stands; one that is not the
+// tenant's is not_found.
+message RevokeApiKeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string api_key_id = 2;
+}
+
+message RevokeApiKeyResponse {
+  ApiKey api_key = 1;
+}
+
+service AdminApiKeyService {
+  // Minimum role: tenant_admin.
+  rpc ListApiKeys(ListApiKeysRequest) returns (ListApiKeysResponse) {}
+  // Minimum role: tenant_admin.
+  rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse) {}
+  // Minimum role: tenant_admin.
+  rpc RevokeApiKey(RevokeApiKeyRequest) returns (RevokeApiKeyResponse) {}
+}

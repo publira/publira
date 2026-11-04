@@ -890,3 +890,78 @@ func TestDBProcessPaymentWebhookWaitsForAnAccountDeletionInProgress(t *testing.T
 		t.Fatalf("cancellations queued for the subscription = %d, want 1", got)
 	}
 }
+
+// A subscription owes the endpoint that subscribed to it subscription.started
+// when it starts to be billed and subscription.ended when it stops, once each
+// however often a notification is delivered, and nothing for a change that
+// keeps it billed.
+func TestDBASubscriptionOwesItsWebhookEndpointItsStartAndItsEnd(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_hooked", Published: true})
+	if _, err := f.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://crm.example.com/publira', 'sealed', 'whsec_••••', ARRAY['subscription.started', 'subscription.ended'])
+	`, uuid.Must(uuid.NewV7()), f.tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+	owed := func() []string {
+		t.Helper()
+		rows, err := f.pg.DB.QueryContext(context.Background(), `
+			SELECT event_type || ':' || (payload->'data'->>'status') || ':' || (payload->'data'->>'reader_public_id')
+			FROM webhook_deliveries WHERE tenant_id = $1 ORDER BY created_at, id
+		`, f.tenant.ID)
+		if err != nil {
+			t.Fatalf("read webhook deliveries: %v", err)
+		}
+		defer rows.Close() //nolint:errcheck
+		var got []string
+		for rows.Next() {
+			var row string
+			if err := rows.Scan(&row); err != nil {
+				t.Fatalf("scan webhook delivery: %v", err)
+			}
+			got = append(got, row)
+		}
+		return got
+	}
+
+	started, err := f.subscriptions.StartSubscriptionCheckout(f.readerCtx(t), &publirav1.StartSubscriptionCheckoutRequest{Tenant: tenantContext(f.tenant), PlanId: plan.ID.String()})
+	if err != nil {
+		t.Fatalf("StartSubscriptionCheckout: %v", err)
+	}
+	subscription := stripetest.Subscription{
+		ID:               "sub_hooked",
+		CustomerID:       "cus_hooked",
+		PriceID:          "price_hooked",
+		Status:           "active",
+		CurrentPeriodEnd: time.Now().Add(30 * 24 * time.Hour).Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_hooked"),
+	}
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, checkoutIDOf(started.CheckoutUrl), subscription)
+	for range 2 {
+		if err := f.deliver(t, payload, headers); err != nil {
+			t.Fatalf("deliver the completed checkout: %v", err)
+		}
+	}
+	subscription.Status = "past_due"
+	payload, headers = f.stripe.InvoicePaymentFailed(t, f.credentials, subscription)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the failed payment: %v", err)
+	}
+	payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, subscription)
+	for range 2 {
+		if err := f.deliver(t, payload, headers); err != nil {
+			t.Fatalf("deliver the deletion: %v", err)
+		}
+	}
+
+	want := []string{
+		"subscription.started:active:" + f.reader.PublicID,
+		"subscription.ended:canceled:" + f.reader.PublicID,
+	}
+	if got := owed(); !slices.Equal(got, want) {
+		t.Fatalf("webhook deliveries = %v, want %v", got, want)
+	}
+}

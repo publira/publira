@@ -5,6 +5,7 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_pb.js";
 import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_pb.js";
+import { AdminApiKeyService } from "../gen/publira/admin/v1/api_key_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { TenantBrandMarkService } from "../gen/publira/admin/v1/brand_mark_pb.js";
@@ -34,6 +35,7 @@ import { AdminSubscriptionPlanService } from "../gen/publira/admin/v1/subscripti
 import { TenantSettingsService } from "../gen/publira/admin/v1/tenant_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
+import { AdminWebhookService } from "../gen/publira/admin/v1/webhook_pb.js";
 import { createApiGrpcTransport } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
@@ -50,6 +52,7 @@ export type AdminApiClientOptions = {
 
 export interface AdminApiClient {
   accessTickets: Client<typeof AdminAccessTicketService>;
+  apiKeys: Client<typeof AdminApiKeyService>;
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
   brandMarks: Client<typeof TenantBrandMarkService>;
@@ -80,6 +83,7 @@ export interface AdminApiClient {
   tenantSettings: Client<typeof TenantSettingsService>;
   theme: Client<typeof TenantThemeService>;
   users: Client<typeof AdminUserService>;
+  webhooks: Client<typeof AdminWebhookService>;
 }
 
 export const createAdminApiClient = (
@@ -118,6 +122,7 @@ export const createAdminApiClient = (
   return {
     accessTickets: createClient(AdminAccessTicketService, transportInstance),
     announcement: createClient(AdminAnnouncementService, transportInstance),
+    apiKeys: createClient(AdminApiKeyService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
     brandMarks: createClient(TenantBrandMarkService, transportInstance),
@@ -162,5 +167,6 @@ export const createAdminApiClient = (
     tenantSettings: createClient(TenantSettingsService, transportInstance),
     theme: createClient(TenantThemeService, transportInstance),
     users: createClient(AdminUserService, transportInstance),
+    webhooks: createClient(AdminWebhookService, transportInstance),
   };
 };

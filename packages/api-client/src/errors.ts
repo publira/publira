@@ -64,6 +64,7 @@ export const RPC_ERROR_REASON = {
   waitFreeEpisodeFree: "WAIT_FREE_EPISODE_FREE",
   waitFreeNotOffered: "WAIT_FREE_NOT_OFFERED",
   waitFreeNotRecharged: "WAIT_FREE_NOT_RECHARGED",
+  webhookEndpointLimit: "WEBHOOK_ENDPOINT_LIMIT",
 } as const;
 
 /**
