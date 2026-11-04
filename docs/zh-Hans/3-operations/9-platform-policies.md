@@ -2,8 +2,8 @@
 title: 平台默认值与策略
 description: 选择每个租户继承的默认值、安全限制、社区限制和保留期限，以及租户可以自行更改的内容。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-03
+source_updated: 2026-11-02
 ---
 
 安装实例依赖少数几项不属于任何租户的设置：新租户起始使用的语言、时区和货币，防止单个读者或单个地址压垮平台的各项限制，以及会过期的记录保留多长时间。本页说明每组设置防范什么、如何更改，以及其中哪些部分可以由租户管理员为自己的租户更改。
@@ -93,7 +93,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 
 ![安全页面上的速率限制：密码验证、每个地址和每个来源的邮件请求、应用内购买确认和等免费券使用，各自按每分钟或每小时以及每天设置。](./platform-policies-rate-limits.png)
 
-另有十项同类限制在安全页面上还没有对应的字段：在被要求同意修订版本时，单个读者向其租户的服务条款和隐私政策发送的同意，除非使用`publiractl policy set --legal-page-agreement-per-minute`和`--legal-page-agreement-per-day`设置，否则为每分钟10次、每天50次；单个读者将Apple或Google账户关联到其账户的请求，除非使用`--identity-link-per-minute`和`--identity-link-per-day`设置，否则为每分钟5次、每天20次；单个读者上传、选择或删除其图标的次数，除非使用`--icon-change-per-minute`和`--icon-change-per-day`设置，否则为每分钟5次、每天20次；单个读者开始注册通行密钥或用通行密钥确认请求，或者重命名或删除通行密钥的次数，除非使用`--passkey-per-minute`和`--passkey-per-day`设置，否则为每分钟10次、每天50次；单个读者发起的购买系列剩余部分的结账，除非使用`--series-remainder-checkout-per-minute`和`--series-remainder-checkout-per-day`设置，否则为每分钟10次、每天50次；单个读者开始的订阅，无论是通过网站上的结账还是通过租户应用中的商店，合并计数，除非使用`--subscription-checkout-per-minute`和`--subscription-checkout-per-day`设置，否则为每分钟10次、每天50次；单个读者用代币支付的章节，除非使用`--coin-payment-per-minute`和`--coin-payment-per-day`设置，否则为每分钟20次、每天500次；单个读者发起的章节、卷或代币包的购买，无论是在网页上还是通过应用的商店，合并计数，除非使用`--purchase-checkout-per-minute`和`--purchase-checkout-per-day`设置，否则为每分钟10次、每天100次；单个读者查询过的优惠码，无论是询问某个优惠码能减免多少，还是用优惠码发起购买，合并计数，除非使用`--promotion-code-attempt-per-minute`和`--promotion-code-attempt-per-day`设置，否则为每分钟5次、每天30次，因为优惠码是租户分发出去的秘密，这项限制决定了一个账户能以多快的速度猜测优惠码；以及单个读者申请的其数据副本，如[读者账户](../4-console/2-readers/1-accounts.md#读者下载的个人数据)所述，除非使用`--data-export-per-hour`和`--data-export-per-day`设置，否则为每小时1次、每天1次，因为每次都会读取安装实例保存的有关该读者的所有记录。保存安全页面时，会保留它们的现有设置。
+另有九项同类限制在安全页面上还没有对应的字段：在被要求同意修订版本时，单个读者向其租户的服务条款和隐私政策发送的同意，除非使用`publiractl policy set --legal-page-agreement-per-minute`和`--legal-page-agreement-per-day`设置，否则为每分钟10次、每天50次；单个读者将Apple或Google账户关联到其账户的请求，除非使用`--identity-link-per-minute`和`--identity-link-per-day`设置，否则为每分钟5次、每天20次；单个读者上传、选择或删除其图标的次数，除非使用`--icon-change-per-minute`和`--icon-change-per-day`设置，否则为每分钟5次、每天20次；单个读者开始注册通行密钥或用通行密钥确认请求，或者重命名或删除通行密钥的次数，除非使用`--passkey-per-minute`和`--passkey-per-day`设置，否则为每分钟10次、每天50次；单个读者发起的购买系列剩余部分的结账，除非使用`--series-remainder-checkout-per-minute`和`--series-remainder-checkout-per-day`设置，否则为每分钟10次、每天50次；单个读者开始的订阅，无论是通过网站上的结账还是通过租户应用中的商店，合并计数，除非使用`--subscription-checkout-per-minute`和`--subscription-checkout-per-day`设置，否则为每分钟10次、每天50次；单个读者用代币支付的章节，除非使用`--coin-payment-per-minute`和`--coin-payment-per-day`设置，否则为每分钟20次、每天500次；单个读者发起的章节、卷或代币包的购买，无论是在网页上还是通过应用的商店，合并计数，除非使用`--purchase-checkout-per-minute`和`--purchase-checkout-per-day`设置，否则为每分钟10次、每天100次；以及单个读者申请的其数据副本，如[读者账户](../4-console/2-readers/1-accounts.md#读者下载的个人数据)所述，除非使用`--data-export-per-hour`和`--data-export-per-day`设置，否则为每小时1次、每天1次，因为每次都会读取安装实例保存的有关该读者的所有记录。保存安全页面时，会保留它们的现有设置。
 
 每份邀请都算作一次请求，包括**创建租户**上的每个**初始管理员邮箱**地址，这些地址会在租户创建之前全部计数：如果其中一个超出限制，就不会创建租户，也不会发送任何邮件。`publiractl`不通过任何表单发送，不计入这些限制中的任何一项。
 
