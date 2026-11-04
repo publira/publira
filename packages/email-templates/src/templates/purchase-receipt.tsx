@@ -61,6 +61,13 @@ export const purchaseReceiptDataSchema = z
     episode_title: z.string().trim().default(""),
     /** Empty for a purchase with no reading period. */
     expires_at: z.union([z.literal(""), instantField("expires_at")]),
+    /**
+     * The name the tenant issues invoices under and its registration number
+     * under the qualified invoice system, as they stand when the receipt is
+     * sent. Empty where the tenant has entered none.
+     */
+    invoice_legal_name: z.string().trim().default(""),
+    invoice_registration_number: z.string().trim().default(""),
     /** Whether the purchase was paid in the payment provider's test mode. */
     is_test: z.boolean({ error: "is_test must be a boolean" }),
     library_url: httpUrlField("library_url"),
@@ -72,6 +79,22 @@ export const purchaseReceiptDataSchema = z
       .default(0),
     /** Empty on a purchase of a pack, which is of no series. */
     series_title: z.string().trim().default(""),
+    /**
+     * The tax `amount` includes, in the minor unit of `currency`, at the rate
+     * the purchase recorded, in basis points. Both 0 for a purchase made
+     * without a rate.
+     */
+    tax_amount: z
+      .number()
+      .int({ error: "tax_amount must be an integer in the minor unit" })
+      .min(0, { error: "tax_amount must not be negative" })
+      .default(0),
+    tax_rate_bps: z
+      .number()
+      .int({ error: "tax_rate_bps must be an integer" })
+      .min(0, { error: "tax_rate_bps must not be negative" })
+      .max(10_000, { error: "tax_rate_bps must be at most 10000" })
+      .default(0),
     tenant_name: displayNameField("tenant_name"),
     volume_title: z.string().trim().default(""),
   })
@@ -118,6 +141,27 @@ const purchasedTitle = (data: PurchaseReceiptData): string => {
   }
 
   return data.volume_title === "" ? data.series_title : data.volume_title;
+};
+
+/**
+ * A rate in basis points as the number of a percentage, with no trailing zero:
+ * 10 for 1000, 8.5 for 850, 10.21 for 1021. The copy puts the % sign after it.
+ * basisPointsAsPercent in the server's outbox writes the same for the
+ * plain-text part.
+ */
+export const formatBasisPointsAsPercent = (bps: number): string => {
+  const whole = Math.trunc(bps / 100);
+  const fraction = bps % 100;
+
+  if (fraction === 0) {
+    return `${whole}`;
+  }
+
+  if (fraction % 10 === 0) {
+    return `${whole}.${fraction / 10}`;
+  }
+
+  return `${whole}.${String(fraction).padStart(2, "0")}`;
 };
 
 export const purchaseReceiptPreview = (
@@ -168,7 +212,9 @@ const PurchasedItem = ({
  * setup asks an operator to make, says it charged nothing, so its price paid is
  * not read as money taken. A purchase of a pack of coins names no series, and
  * says until when its coins can be spent, which a prepaid instrument has to
- * state.
+ * state. A purchase that recorded a tax rate states the tax its price
+ * includes, and the tenant's legal name and registration number each have a
+ * line where the tenant has entered them.
  */
 export const PurchaseReceiptEmail = ({
   data,
@@ -211,6 +257,17 @@ export const PurchaseReceiptEmail = ({
         currency: data.currency,
       })}
     </EmailDetail>
+    {data.tax_rate_bps > 0 ? (
+      <EmailDetail>
+        {emailMessage(messages, "email.purchase_receipt.tax", {
+          amount: formatPrice(data.tax_amount, {
+            currency: data.currency,
+            locale,
+          }),
+          rate: formatBasisPointsAsPercent(data.tax_rate_bps),
+        })}
+      </EmailDetail>
+    ) : null}
     <EmailDetail>
       {emailMessage(messages, "email.purchase_receipt.purchased_at", {
         purchased_at: formatDateTime(data.purchased_at, { locale, timeZone }),
@@ -230,6 +287,20 @@ export const PurchaseReceiptEmail = ({
             locale,
             timeZone,
           }),
+        })}
+      </EmailDetail>
+    )}
+    {data.invoice_legal_name === "" ? null : (
+      <EmailDetail>
+        {emailMessage(messages, "email.purchase_receipt.issuer", {
+          legal_name: data.invoice_legal_name,
+        })}
+      </EmailDetail>
+    )}
+    {data.invoice_registration_number === "" ? null : (
+      <EmailDetail>
+        {emailMessage(messages, "email.purchase_receipt.registration_number", {
+          registration_number: data.invoice_registration_number,
         })}
       </EmailDetail>
     )}

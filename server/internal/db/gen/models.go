@@ -1081,6 +1081,8 @@ type Purchase struct {
 	ProviderPromotionCodeID    sql.NullString `json:"provider_promotion_code_id"`
 	CoinPackID                 uuid.NullUUID  `json:"coin_pack_id"`
 	StaffRefundRequestedAmount sql.NullInt32  `json:"staff_refund_requested_amount"`
+	TaxRateBps                 sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount                  sql.NullInt32  `json:"tax_amount"`
 }
 
 type PurchaseEpisodePart struct {
@@ -1119,19 +1121,33 @@ type ReaderIconPresetVariant struct {
 }
 
 type RoyaltyStatement struct {
-	ID              uuid.UUID     `json:"id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	Period          time.Time     `json:"period"`
-	TimeZone        string        `json:"time_zone"`
-	ClosedAt        time.Time     `json:"closed_at"`
-	ClosedByUserID  uuid.NullUUID `json:"closed_by_user_id"`
-	TotalGross      int64         `json:"total_gross"`
-	TotalRefunded   int64         `json:"total_refunded"`
-	TotalPayout     int64         `json:"total_payout"`
-	StartsAt        time.Time     `json:"starts_at"`
-	EndsAt          time.Time     `json:"ends_at"`
-	Currency        string        `json:"currency"`
-	TotalAdjustment int64         `json:"total_adjustment"`
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	Period             time.Time     `json:"period"`
+	TimeZone           string        `json:"time_zone"`
+	ClosedAt           time.Time     `json:"closed_at"`
+	ClosedByUserID     uuid.NullUUID `json:"closed_by_user_id"`
+	TotalGross         int64         `json:"total_gross"`
+	TotalRefunded      int64         `json:"total_refunded"`
+	TotalPayout        int64         `json:"total_payout"`
+	StartsAt           time.Time     `json:"starts_at"`
+	EndsAt             time.Time     `json:"ends_at"`
+	Currency           string        `json:"currency"`
+	TotalAdjustment    int64         `json:"total_adjustment"`
+	WithholdingRateBps sql.NullInt32 `json:"withholding_rate_bps"`
+	TotalTax           sql.NullInt64 `json:"total_tax"`
+	TotalWithholding   sql.NullInt64 `json:"total_withholding"`
+}
+
+type RoyaltyStatementCreatorSubtotal struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	StatementID       uuid.UUID     `json:"statement_id"`
+	Position          int32         `json:"position"`
+	CreatorID         uuid.NullUUID `json:"creator_id"`
+	CreatorName       string        `json:"creator_name"`
+	PayoutAmount      int64         `json:"payout_amount"`
+	TaxAmount         sql.NullInt64 `json:"tax_amount"`
+	WithholdingAmount sql.NullInt64 `json:"withholding_amount"`
 }
 
 type RoyaltyStatementLine struct {
@@ -1154,6 +1170,8 @@ type RoyaltyStatementLine struct {
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
 	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
 	Source              sql.NullString `json:"source"`
+	TaxRateBps          sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount           sql.NullInt64  `json:"tax_amount"`
 }
 
 type RoyaltyStatementPurchase struct {
@@ -1482,6 +1500,8 @@ type SubscriptionPayment struct {
 	IsTest                bool           `json:"is_test"`
 	CreatedAt             time.Time      `json:"created_at"`
 	DisputeLostAt         sql.NullTime   `json:"dispute_lost_at"`
+	TaxRateBps            sql.NullInt32  `json:"tax_rate_bps"`
+	TaxAmount             sql.NullInt32  `json:"tax_amount"`
 }
 
 type SubscriptionPaymentCompletion struct {
@@ -1694,6 +1714,9 @@ type TenantConfig struct {
 	CreatorPagesEnabled            bool           `json:"creator_pages_enabled"`
 	CreatorPagesShowSales          bool           `json:"creator_pages_show_sales"`
 	EpisodeReviewRequired          bool           `json:"episode_review_required"`
+	InvoiceLegalName               sql.NullString `json:"invoice_legal_name"`
+	InvoiceRegistrationNumber      sql.NullString `json:"invoice_registration_number"`
+	WithholdingRateBps             sql.NullInt32  `json:"withholding_rate_bps"`
 }
 
 type TenantConfigTranslation struct {
@@ -1855,6 +1878,12 @@ type TenantSmtpConfig struct {
 	ReplyTo             sql.NullString `json:"reply_to"`
 	CreatedAt           time.Time      `json:"created_at"`
 	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
+type TenantTaxRate struct {
+	TenantID    uuid.UUID     `json:"tenant_id"`
+	AppliesFrom time.Time     `json:"applies_from"`
+	RateBps     sql.NullInt32 `json:"rate_bps"`
 }
 
 type TenantTheme struct {

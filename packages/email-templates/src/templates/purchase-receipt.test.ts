@@ -3,7 +3,10 @@ import type { z } from "zod";
 
 import { loadEmailMessages } from "../messages";
 import { renderEmail } from "../render";
-import { purchaseReceiptDataSchema } from "./purchase-receipt";
+import {
+  formatBasisPointsAsPercent,
+  purchaseReceiptDataSchema,
+} from "./purchase-receipt";
 
 const data = {
   amount: 500,
@@ -14,13 +17,27 @@ const data = {
   currency: "JPY",
   episode_title: "The First Night",
   expires_at: "2030-01-17T12:00:00Z",
+  invoice_legal_name: "",
+  invoice_registration_number: "",
   is_test: false,
   library_url: "https://aoto.example.com/my/library",
   purchased_at: "2030-01-15T12:00:00Z",
   series_bundle_episode_count: 0,
   series_title: "The Lighthouse Keeper",
+  tax_amount: 0,
+  tax_rate_bps: 0,
   tenant_name: "Aoto Press",
   volume_title: "",
+} as const;
+
+// A purchase of ¥550 made while the tenant's rate was 10%, from a tenant that
+// entered its invoice details.
+const taxed = {
+  amount: 550,
+  invoice_legal_name: "Aoto Press Ltd.",
+  invoice_registration_number: "T1234567890123",
+  tax_amount: 50,
+  tax_rate_bps: 1000,
 } as const;
 
 // A purchase of a pack of 1,000 Points with 100 bonus Points.
@@ -168,6 +185,37 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
   });
 
+  // The worker of the release before sends none of the tax fields, and its
+  // receipts still go out, without them.
+  it("accepts a purchase whose data carries no tax or invoice details", () => {
+    const older = {
+      amount: data.amount,
+      coin_name: data.coin_name,
+      coin_pack_bonus_coins: data.coin_pack_bonus_coins,
+      coin_pack_coins: data.coin_pack_coins,
+      coins_expire_at: data.coins_expire_at,
+      currency: data.currency,
+      episode_title: data.episode_title,
+      expires_at: data.expires_at,
+      is_test: data.is_test,
+      library_url: data.library_url,
+      purchased_at: data.purchased_at,
+      series_bundle_episode_count: data.series_bundle_episode_count,
+      series_title: data.series_title,
+      tenant_name: data.tenant_name,
+      volume_title: data.volume_title,
+    };
+
+    expect(purchaseReceiptDataSchema.parse(older)).toEqual(data);
+  });
+
+  it("rejects a tax rate above 100%", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({ ...data, tax_rate_bps: 10_001 })
+        .success
+    ).toBe(false);
+  });
+
   // The console stores titles with no length limit, and a receipt whose data
   // the schema refuses is never sent.
   it("accepts any title the catalogue can hold", () => {
@@ -257,6 +305,30 @@ describe("PurchaseReceiptEmail", () => {
     expect(await render("en")).not.toContain("test mode");
   });
 
+  it("states the tax the price includes and the tenant's invoice details", async () => {
+    const html = await render("en", taxed);
+
+    expect(html).toContain("Price paid: ¥550 (JPY)");
+    expect(html).toContain("Tax included (10%): ¥50");
+    expect(html).toContain("Issued by: Aoto Press Ltd.");
+    expect(html).toContain("Registration number: T1234567890123");
+  });
+
+  it("states no tax and no invoice details for a tenant that set none", async () => {
+    const html = await render("en");
+
+    expect(html).not.toContain("Tax included");
+    expect(html).not.toContain("Issued by");
+    expect(html).not.toContain("Registration number");
+  });
+
+  it("states the tax in Japanese", async () => {
+    const html = await render("ja", taxed);
+
+    expect(html).toContain("うち消費税 (10%) は￥50です。");
+    expect(html).toContain("登録番号はT1234567890123です。");
+  });
+
   it("the ja mail comes from the Japanese catalog", async () => {
     const html = await render("ja");
 
@@ -264,5 +336,15 @@ describe("PurchaseReceiptEmail", () => {
     expect(html).toContain("購入価格は￥500 (JPY) です。");
     expect(html).toContain("購入日時は2030/01/15 21:00です。");
     expect(html).toContain("有効期限は2030/01/17 21:00です。");
+  });
+});
+
+describe("formatBasisPointsAsPercent", () => {
+  it("writes a rate with no trailing zero", () => {
+    expect(formatBasisPointsAsPercent(1000)).toBe("10");
+    expect(formatBasisPointsAsPercent(850)).toBe("8.5");
+    expect(formatBasisPointsAsPercent(1021)).toBe("10.21");
+    expect(formatBasisPointsAsPercent(5)).toBe("0.05");
+    expect(formatBasisPointsAsPercent(10_000)).toBe("100");
   });
 });

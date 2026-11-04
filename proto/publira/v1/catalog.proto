@@ -1860,6 +1860,14 @@ message MyPurchase {
   // active until it is refunded or disputed: its coins expire on their own,
   // as CoinBalance reports. A purchase of a pack is listed on every surface.
   publira.types.v1.PurchasedCoinPack coin_pack = 17;
+  // The tenant's tax rate when the purchase was made, in basis points, and
+  // the tax price_at_purchase includes at it, in the same minor unit. Both
+  // unset on a purchase made while the tenant had no rate, on a purchase of a
+  // pack of coins, whose coins are no taxed sale, and on a purchase paid with
+  // coins, which took no payment. GetTenantResponse.invoice names who the tax
+  // was charged by.
+  optional int32 tax_rate_bps = 18;
+  optional int32 tax_amount = 19;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

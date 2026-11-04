@@ -131,6 +131,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    p.tax_rate_bps,
+    p.tax_amount,
     -- The coins a purchase paid with coins spent, 0 on every other purchase.
     COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
@@ -229,6 +231,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    p.tax_rate_bps,
+    p.tax_amount,
     -- The coins a purchase paid with coins spent, 0 on every other purchase.
     COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
@@ -367,6 +371,13 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
+    -- The tax the price includes and its rate, NULL where the purchase was
+    -- made without a rate, and the tenant's invoice details as they stand
+    -- when the receipt is sent, NULL where it has entered none.
+    p.tax_rate_bps,
+    p.tax_amount,
+    tc.invoice_legal_name,
+    tc.invoice_registration_number,
     -- What was bought: an episode, a volume, a series bundle, or a pack of
     -- coins. The title of each of the others is empty, and the episode count
     -- is that of the bundle, 0 on any other purchase.
@@ -413,6 +424,8 @@ LEFT JOIN LATERAL series_translation_for(s.id, '') str ON TRUE
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
+LEFT JOIN tenant_config tc
+    ON tc.tenant_id = p.tenant_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
     AND p.id = sqlc.arg('id')::uuid;
 
@@ -790,7 +803,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- The console's purchase list is (purchased_at, id) DESC. A forward page reads
 -- ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
--- both over idx_purchases_tenant_purchased_at_id_sales, or over
+-- both over idx_purchases_tenant_purchased_at_id_sales_tax, or over
 -- idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
 -- handler puts the ascending rows back into display order. id is a UUIDv7, so
 -- the order stays unique when purchased_at ties. These read the keys alone,
@@ -977,6 +990,8 @@ SELECT p.id,
     p.currency,
     p.purchased_at,
     p.expires_at,
+    p.tax_rate_bps,
+    p.tax_amount,
     p.provider,
     p.provider_payment_id,
     p.store,

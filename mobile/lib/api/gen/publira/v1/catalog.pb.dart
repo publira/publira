@@ -9797,6 +9797,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     $core.int? coinsSpent,
     $core.String? coinName,
     $0.PurchasedCoinPack? coinPack,
+    $core.int? taxRateBps,
+    $core.int? taxAmount,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9816,6 +9818,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (coinsSpent != null) result.coinsSpent = coinsSpent;
     if (coinName != null) result.coinName = coinName;
     if (coinPack != null) result.coinPack = coinPack;
+    if (taxRateBps != null) result.taxRateBps = taxRateBps;
+    if (taxAmount != null) result.taxAmount = taxAmount;
     return result;
   }
 
@@ -9855,6 +9859,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     ..aOS(16, _omitFieldNames ? '' : 'coinName')
     ..aOM<$0.PurchasedCoinPack>(17, _omitFieldNames ? '' : 'coinPack',
         subBuilder: $0.PurchasedCoinPack.$_createMessage)
+    ..aI(18, _omitFieldNames ? '' : 'taxRateBps')
+    ..aI(19, _omitFieldNames ? '' : 'taxAmount')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10079,6 +10085,30 @@ class MyPurchase extends $pb.GeneratedMessage {
   void clearCoinPack() => $_clearField(17);
   @$pb.TagNumber(17)
   $0.PurchasedCoinPack ensureCoinPack() => $_ensure(16);
+
+  /// The tenant's tax rate when the purchase was made, in basis points, and
+  /// the tax price_at_purchase includes at it, in the same minor unit. Both
+  /// unset on a purchase made while the tenant had no rate, on a purchase of a
+  /// pack of coins, whose coins are no taxed sale, and on a purchase paid with
+  /// coins, which took no payment. GetTenantResponse.invoice names who the tax
+  /// was charged by.
+  @$pb.TagNumber(18)
+  $core.int get taxRateBps => $_getIZ(17);
+  @$pb.TagNumber(18)
+  set taxRateBps($core.int value) => $_setSignedInt32(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasTaxRateBps() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearTaxRateBps() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $core.int get taxAmount => $_getIZ(18);
+  @$pb.TagNumber(19)
+  set taxAmount($core.int value) => $_setSignedInt32(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasTaxAmount() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearTaxAmount() => $_clearField(19);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

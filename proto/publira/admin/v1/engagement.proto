@@ -114,6 +114,15 @@ message RevenueStatsRow {
   int64 subscription_amount = 10;
   // What went back to the subscribers of those payments.
   int64 subscription_refunded_amount = 11;
+  // The tax net_amount includes: for each purchase, the tax what the tenant
+  // kept of it includes at the rate it recorded, its price less what went
+  // back less that without tax, rounded down; for an episode or a series, the
+  // same of its part of the purchase. A purchase made without a rate includes
+  // none, so a tenant that never set a rate reads zero.
+  int64 tax_amount = 12;
+  // The tax the subscription payments include, worked out the same way on
+  // what the tenant kept of each.
+  int64 subscription_tax_amount = 13;
 }
 
 // The same figures over the whole period, each purchase counted once
@@ -125,6 +134,8 @@ message RevenueStatsTotals {
   int64 net_amount = 4;
   int64 subscription_amount = 5;
   int64 subscription_refunded_amount = 6;
+  int64 tax_amount = 7;
+  int64 subscription_tax_amount = 8;
 }
 
 message GetRevenueStatsRequest {

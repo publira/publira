@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/royalty.proto.
  */
 export const file_publira_admin_v1_royalty: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciXQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMSEgoKYWRqdXN0bWVudBgEIAEoAyLTAQoQUm95YWx0eVN0YXRlbWVudBIOCgZwZXJpb2QYASABKAkSEQoJdGltZV96b25lGAIgASgJEhEKCWNsb3NlZF9hdBgDIAEoCRIgChhjbG9zZWRfYnlfdXNlcl9wdWJsaWNfaWQYBCABKAkSGwoTY2xvc2VkX2J5X3VzZXJfbmFtZRgFIAEoCRI4CgZ0b3RhbHMYBiABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSEAoIY3VycmVuY3kYByABKAkipAMKFFJveWFsdHlTdGF0ZW1lbnRMaW5lEhMKC2xpbmVfbnVtYmVyGAEgASgFEhkKEWNyZWF0b3JfcHVibGljX2lkGAIgASgJEhQKDGNyZWF0b3JfbmFtZRgDIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAQgASgJEhQKDHNlcmllc190aXRsZRgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAcgASgJEhYKDnJvbGVfcHVibGljX2lkGAggASgJEhEKCXJvbGVfbmFtZRgJIAEoCRISCgpzYWxlX2NvdW50GAogASgFEhQKDGdyb3NzX2Ftb3VudBgLIAEoAxIXCg9yZWZ1bmRlZF9hbW91bnQYDCABKAMSEQoJc2hhcmVfYnBzGA0gASgFEhUKDXBheW91dF9hbW91bnQYDiABKAMSFwoPYWRqdXN0ZWRfcGVyaW9kGA8gASgJEjMKBnNvdXJjZRgQIAEoDjIjLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUxpbmVTb3VyY2UiYQoeUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAki6wEKH1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRI4CgZ0b3RhbHMYAyABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSNQoFbGluZXMYBCADKAsyJi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRMaW5lEhEKCXN0YXJ0c19hdBgFIAEoCRIPCgdlbmRzX2F0GAYgASgJEhAKCGN1cnJlbmN5GAcgASgJIl8KHENsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCSJWCh1DbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRI1CglzdGF0ZW1lbnQYASABKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQibQocTGlzdFJveWFsdHlTdGF0ZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkigwEKHUxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlEjYKCnN0YXRlbWVudHMYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ7ChpHZXRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIrcBChtHZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EjUKBWxpbmVzGAIgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIWCg5wcmV2aW91c190b2tlbhgDIAEoCRISCgpuZXh0X3Rva2VuGAQgASgJImAKHUV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiLQoeRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEgsKA2NzdhgBIAEoDCp3ChBSb3lhbHR5Q2xvc2VNb2RlEiIKHlJPWUFMVFlfQ0xPU0VfTU9ERV9VTlNQRUNJRklFRBAAEh0KGVJPWUFMVFlfQ0xPU0VfTU9ERV9NQU5VQUwQARIgChxST1lBTFRZX0NMT1NFX01PREVfQVVUT01BVElDEAIqfAoRUm95YWx0eUxpbmVTb3VyY2USIwofUk9ZQUxUWV9MSU5FX1NPVVJDRV9VTlNQRUNJRklFRBAAEhwKGFJPWUFMVFlfTElORV9TT1VSQ0VfU0FMRRABEiQKIFJPWUFMVFlfTElORV9TT1VSQ0VfU1VCU0NSSVBUSU9OEAIy6AYKE0FkbWluUm95YWx0eVNlcnZpY2USawoQR2V0Um95YWx0eUNvbmZpZxIpLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXNwb25zZSIAEnQKE1VwZGF0ZVJveWFsdHlDb25maWcSLC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABKAAQoXUHJldmlld1JveWFsdHlTdGF0ZW1lbnQSMC5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEnoKFUNsb3NlUm95YWx0eVN0YXRlbWVudBIuLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVMaXN0Um95YWx0eVN0YXRlbWVudHMSLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlIgASdAoTR2V0Um95YWx0eVN0YXRlbWVudBIsLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEn0KFkV4cG9ydFJveWFsdHlTdGF0ZW1lbnQSLy5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcioQEKFlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSDQoFZ3Jvc3MYASABKAMSEAoIcmVmdW5kZWQYAiABKAMSDgoGcGF5b3V0GAMgASgDEhIKCmFkanVzdG1lbnQYBCABKAMSEAoDdGF4GAUgASgDSACIAQESGAoLd2l0aGhvbGRpbmcYBiABKANIAYgBAUIGCgRfdGF4Qg4KDF93aXRoaG9sZGluZyLAAQoWUm95YWx0eUNyZWF0b3JTdWJ0b3RhbBIZChFjcmVhdG9yX3B1YmxpY19pZBgBIAEoCRIUCgxjcmVhdG9yX25hbWUYAiABKAkSFQoNcGF5b3V0X2Ftb3VudBgDIAEoAxIXCgp0YXhfYW1vdW50GAQgASgDSACIAQESHwoSd2l0aGhvbGRpbmdfYW1vdW50GAUgASgDSAGIAQFCDQoLX3RheF9hbW91bnRCFQoTX3dpdGhob2xkaW5nX2Ftb3VudCKPAgoQUm95YWx0eVN0YXRlbWVudBIOCgZwZXJpb2QYASABKAkSEQoJdGltZV96b25lGAIgASgJEhEKCWNsb3NlZF9hdBgDIAEoCRIgChhjbG9zZWRfYnlfdXNlcl9wdWJsaWNfaWQYBCABKAkSGwoTY2xvc2VkX2J5X3VzZXJfbmFtZRgFIAEoCRI4CgZ0b3RhbHMYBiABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSEAoIY3VycmVuY3kYByABKAkSIQoUd2l0aGhvbGRpbmdfcmF0ZV9icHMYCCABKAVIAIgBAUIXChVfd2l0aGhvbGRpbmdfcmF0ZV9icHMi+AMKFFJveWFsdHlTdGF0ZW1lbnRMaW5lEhMKC2xpbmVfbnVtYmVyGAEgASgFEhkKEWNyZWF0b3JfcHVibGljX2lkGAIgASgJEhQKDGNyZWF0b3JfbmFtZRgDIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAQgASgJEhQKDHNlcmllc190aXRsZRgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAcgASgJEhYKDnJvbGVfcHVibGljX2lkGAggASgJEhEKCXJvbGVfbmFtZRgJIAEoCRISCgpzYWxlX2NvdW50GAogASgFEhQKDGdyb3NzX2Ftb3VudBgLIAEoAxIXCg9yZWZ1bmRlZF9hbW91bnQYDCABKAMSEQoJc2hhcmVfYnBzGA0gASgFEhUKDXBheW91dF9hbW91bnQYDiABKAMSFwoPYWRqdXN0ZWRfcGVyaW9kGA8gASgJEjMKBnNvdXJjZRgQIAEoDjIjLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUxpbmVTb3VyY2USGQoMdGF4X3JhdGVfYnBzGBEgASgFSACIAQESFwoKdGF4X2Ftb3VudBgSIAEoA0gBiAEBQg8KDV90YXhfcmF0ZV9icHNCDQoLX3RheF9hbW91bnQiYQoeUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAki7AIKH1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRI4CgZ0b3RhbHMYAyABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSNQoFbGluZXMYBCADKAsyJi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRMaW5lEhEKCXN0YXJ0c19hdBgFIAEoCRIPCgdlbmRzX2F0GAYgASgJEhAKCGN1cnJlbmN5GAcgASgJEkMKEWNyZWF0b3Jfc3VidG90YWxzGAggAygLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q3JlYXRvclN1YnRvdGFsEiEKFHdpdGhob2xkaW5nX3JhdGVfYnBzGAkgASgFSACIAQFCFwoVX3dpdGhob2xkaW5nX3JhdGVfYnBzIl8KHENsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCSJWCh1DbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRI1CglzdGF0ZW1lbnQYASABKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQibQocTGlzdFJveWFsdHlTdGF0ZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkigwEKHUxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlEjYKCnN0YXRlbWVudHMYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ7ChpHZXRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIvwBChtHZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EjUKBWxpbmVzGAIgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIWCg5wcmV2aW91c190b2tlbhgDIAEoCRISCgpuZXh0X3Rva2VuGAQgASgJEkMKEWNyZWF0b3Jfc3VidG90YWxzGAUgAygLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q3JlYXRvclN1YnRvdGFsImAKHUV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiLQoeRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEgsKA2NzdhgBIAEoDCp3ChBSb3lhbHR5Q2xvc2VNb2RlEiIKHlJPWUFMVFlfQ0xPU0VfTU9ERV9VTlNQRUNJRklFRBAAEh0KGVJPWUFMVFlfQ0xPU0VfTU9ERV9NQU5VQUwQARIgChxST1lBTFRZX0NMT1NFX01PREVfQVVUT01BVElDEAIqfAoRUm95YWx0eUxpbmVTb3VyY2USIwofUk9ZQUxUWV9MSU5FX1NPVVJDRV9VTlNQRUNJRklFRBAAEhwKGFJPWUFMVFlfTElORV9TT1VSQ0VfU0FMRRABEiQKIFJPWUFMVFlfTElORV9TT1VSQ0VfU1VCU0NSSVBUSU9OEAIy6AYKE0FkbWluUm95YWx0eVNlcnZpY2USawoQR2V0Um95YWx0eUNvbmZpZxIpLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXNwb25zZSIAEnQKE1VwZGF0ZVJveWFsdHlDb25maWcSLC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABKAAQoXUHJldmlld1JveWFsdHlTdGF0ZW1lbnQSMC5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEnoKFUNsb3NlUm95YWx0eVN0YXRlbWVudBIuLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVMaXN0Um95YWx0eVN0YXRlbWVudHMSLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlIgASdAoTR2V0Um95YWx0eVN0YXRlbWVudBIsLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEn0KFkV4cG9ydFJveWFsdHlTdGF0ZW1lbnQSLy5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * The tenant's policy for closing completed royalty months.
@@ -171,6 +171,22 @@ export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementT
    * @generated from field: int64 adjustment = 4;
    */
   adjustment: bigint;
+
+  /**
+   * The tax the lines' payouts include, the sum of their tax_amount. Unset
+   * where no line has a tax rate.
+   *
+   * @generated from field: optional int64 tax = 5;
+   */
+  tax?: bigint | undefined;
+
+  /**
+   * What is withheld from the Authors, the sum of the subtotals'
+   * withholding_amount. Unset where the month withholds nothing.
+   *
+   * @generated from field: optional int64 withholding = 6;
+   */
+  withholding?: bigint | undefined;
 };
 
 /**
@@ -179,6 +195,59 @@ export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementT
  */
 export const RoyaltyStatementTotalsSchema: GenMessage<RoyaltyStatementTotals> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_royalty, 5);
+
+/**
+ * What a statement pays one Author: the payouts of the lines crediting them,
+ * adjustment lines included, added up. Subtotals follow the order of each
+ * Author's first line.
+ *
+ * @generated from message publira.admin.v1.RoyaltyCreatorSubtotal
+ */
+export type RoyaltyCreatorSubtotal = Message<"publira.admin.v1.RoyaltyCreatorSubtotal"> & {
+  /**
+   * Empty once the creator has been deleted, and for the lines of a creator
+   * a statement closed before lines kept their creator's ID named.
+   *
+   * @generated from field: string creator_public_id = 1;
+   */
+  creatorPublicId: string;
+
+  /**
+   * As closed: the name on the Author's first line.
+   *
+   * @generated from field: string creator_name = 2;
+   */
+  creatorName: string;
+
+  /**
+   * @generated from field: int64 payout_amount = 3;
+   */
+  payoutAmount: bigint;
+
+  /**
+   * The tax the payouts include, the sum of the lines' tax_amount. Unset
+   * where none of the Author's lines has a tax rate.
+   *
+   * @generated from field: optional int64 tax_amount = 4;
+   */
+  taxAmount?: bigint | undefined;
+
+  /**
+   * withholding_rate_bps of payout_amount less tax_amount, rounded down, and
+   * zero where the payout is not above its tax. Unset where the month
+   * withholds nothing.
+   *
+   * @generated from field: optional int64 withholding_amount = 5;
+   */
+  withholdingAmount?: bigint | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.RoyaltyCreatorSubtotal.
+ * Use `create(RoyaltyCreatorSubtotalSchema)` to create a new message.
+ */
+export const RoyaltyCreatorSubtotalSchema: GenMessage<RoyaltyCreatorSubtotal> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 6);
 
 /**
  * A closed month.
@@ -230,6 +299,16 @@ export type RoyaltyStatement = Message<"publira.admin.v1.RoyaltyStatement"> & {
    * @generated from field: string currency = 7;
    */
   currency: string;
+
+  /**
+   * The tenant's withholding rate at close, in basis points, which the
+   * statement keeps after the tenant's changes as it keeps time_zone. Unset
+   * where the month withheld nothing, and on every statement closed before
+   * statements carried withholding.
+   *
+   * @generated from field: optional int32 withholding_rate_bps = 8;
+   */
+  withholdingRateBps?: number | undefined;
 };
 
 /**
@@ -237,7 +316,7 @@ export type RoyaltyStatement = Message<"publira.admin.v1.RoyaltyStatement"> & {
  * Use `create(RoyaltyStatementSchema)` to create a new message.
  */
 export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 6);
+  messageDesc(file_publira_admin_v1_royalty, 7);
 
 /**
  * One creator's credit on one episode for one role, with that episode's sales
@@ -258,6 +337,11 @@ export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*
  * gross_amount the parts of them it was given, and refunded_amount the same
  * parts of their partial refunds. The month's own sales lines come first,
  * then its subscription lines, then the adjustment lines.
+ *
+ * A line counts the sales or payments of one tax rate, the one each recorded
+ * when it was made, so a month whose rate changed has a line per rate for each
+ * credit, the line of the sales made without a rate first. An adjustment line
+ * has the rate of the line it adjusts.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementLine
  */
@@ -360,6 +444,22 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
    * @generated from field: publira.admin.v1.RoyaltyLineSource source = 16;
    */
   source: RoyaltyLineSource;
+
+  /**
+   * The tax rate of the sales or payments the line counts, in basis points,
+   * and the tax payout_amount includes at it: payout_amount less
+   * payout_amount without tax, rounded toward zero, so negative on an
+   * adjustment that takes a payout back. Both unset on a line of sales made
+   * without a rate, and on every line closed before statements carried tax.
+   *
+   * @generated from field: optional int32 tax_rate_bps = 17;
+   */
+  taxRateBps?: number | undefined;
+
+  /**
+   * @generated from field: optional int64 tax_amount = 18;
+   */
+  taxAmount?: bigint | undefined;
 };
 
 /**
@@ -367,7 +467,7 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
  * Use `create(RoyaltyStatementLineSchema)` to create a new message.
  */
 export const RoyaltyStatementLineSchema: GenMessage<RoyaltyStatementLine> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 7);
+  messageDesc(file_publira_admin_v1_royalty, 8);
 
 /**
  * @generated from message publira.admin.v1.PreviewRoyaltyStatementRequest
@@ -391,7 +491,7 @@ export type PreviewRoyaltyStatementRequest = Message<"publira.admin.v1.PreviewRo
  * Use `create(PreviewRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const PreviewRoyaltyStatementRequestSchema: GenMessage<PreviewRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 8);
+  messageDesc(file_publira_admin_v1_royalty, 9);
 
 /**
  * @generated from message publira.admin.v1.PreviewRoyaltyStatementResponse
@@ -446,6 +546,21 @@ export type PreviewRoyaltyStatementResponse = Message<"publira.admin.v1.PreviewR
    * @generated from field: string currency = 7;
    */
   currency: string;
+
+  /**
+   * What each Author would be paid, in the order of their first line.
+   *
+   * @generated from field: repeated publira.admin.v1.RoyaltyCreatorSubtotal creator_subtotals = 8;
+   */
+  creatorSubtotals: RoyaltyCreatorSubtotal[];
+
+  /**
+   * The tenant's current withholding rate, which closing the month now would
+   * record. Unset where it withholds nothing.
+   *
+   * @generated from field: optional int32 withholding_rate_bps = 9;
+   */
+  withholdingRateBps?: number | undefined;
 };
 
 /**
@@ -453,7 +568,7 @@ export type PreviewRoyaltyStatementResponse = Message<"publira.admin.v1.PreviewR
  * Use `create(PreviewRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const PreviewRoyaltyStatementResponseSchema: GenMessage<PreviewRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 9);
+  messageDesc(file_publira_admin_v1_royalty, 10);
 
 /**
  * @generated from message publira.admin.v1.CloseRoyaltyStatementRequest
@@ -477,7 +592,7 @@ export type CloseRoyaltyStatementRequest = Message<"publira.admin.v1.CloseRoyalt
  * Use `create(CloseRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const CloseRoyaltyStatementRequestSchema: GenMessage<CloseRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 10);
+  messageDesc(file_publira_admin_v1_royalty, 11);
 
 /**
  * @generated from message publira.admin.v1.CloseRoyaltyStatementResponse
@@ -494,7 +609,7 @@ export type CloseRoyaltyStatementResponse = Message<"publira.admin.v1.CloseRoyal
  * Use `create(CloseRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const CloseRoyaltyStatementResponseSchema: GenMessage<CloseRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 11);
+  messageDesc(file_publira_admin_v1_royalty, 12);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -527,7 +642,7 @@ export type ListRoyaltyStatementsRequest = Message<"publira.admin.v1.ListRoyalty
  * Use `create(ListRoyaltyStatementsRequestSchema)` to create a new message.
  */
 export const ListRoyaltyStatementsRequestSchema: GenMessage<ListRoyaltyStatementsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 12);
+  messageDesc(file_publira_admin_v1_royalty, 13);
 
 /**
  * @generated from message publira.admin.v1.ListRoyaltyStatementsResponse
@@ -554,7 +669,7 @@ export type ListRoyaltyStatementsResponse = Message<"publira.admin.v1.ListRoyalt
  * Use `create(ListRoyaltyStatementsResponseSchema)` to create a new message.
  */
 export const ListRoyaltyStatementsResponseSchema: GenMessage<ListRoyaltyStatementsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 13);
+  messageDesc(file_publira_admin_v1_royalty, 14);
 
 /**
  * Cursor pagination over the lines. Field shape and token rules:
@@ -596,7 +711,7 @@ export type GetRoyaltyStatementRequest = Message<"publira.admin.v1.GetRoyaltySta
  * Use `create(GetRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const GetRoyaltyStatementRequestSchema: GenMessage<GetRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 14);
+  messageDesc(file_publira_admin_v1_royalty, 15);
 
 /**
  * @generated from message publira.admin.v1.GetRoyaltyStatementResponse
@@ -621,6 +736,14 @@ export type GetRoyaltyStatementResponse = Message<"publira.admin.v1.GetRoyaltySt
    * @generated from field: string next_token = 4;
    */
   nextToken: string;
+
+  /**
+   * What the statement pays each Author, every one of them on every page.
+   * Empty for a statement closed before statements carried subtotals.
+   *
+   * @generated from field: repeated publira.admin.v1.RoyaltyCreatorSubtotal creator_subtotals = 5;
+   */
+  creatorSubtotals: RoyaltyCreatorSubtotal[];
 };
 
 /**
@@ -628,7 +751,7 @@ export type GetRoyaltyStatementResponse = Message<"publira.admin.v1.GetRoyaltySt
  * Use `create(GetRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const GetRoyaltyStatementResponseSchema: GenMessage<GetRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 15);
+  messageDesc(file_publira_admin_v1_royalty, 16);
 
 /**
  * @generated from message publira.admin.v1.ExportRoyaltyStatementRequest
@@ -652,7 +775,7 @@ export type ExportRoyaltyStatementRequest = Message<"publira.admin.v1.ExportRoya
  * Use `create(ExportRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const ExportRoyaltyStatementRequestSchema: GenMessage<ExportRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 16);
+  messageDesc(file_publira_admin_v1_royalty, 17);
 
 /**
  * @generated from message publira.admin.v1.ExportRoyaltyStatementResponse
@@ -691,6 +814,26 @@ export type ExportRoyaltyStatementResponse = Message<"publira.admin.v1.ExportRoy
    * The IDs are the rows' internal IDs, not their public IDs, and they stay
    * on the line after the row is deleted.
    *
+   * A statement with a line that has a tax rate, or that withheld anything,
+   * has four more columns after source, and after its lines a row for each
+   * Author's subtotal, in RoyaltyCreatorSubtotal's order:
+   *
+   *   row_type          line on a line, creator_subtotal on a subtotal. A
+   *                     subtotal fills period, creator_id, creator_name,
+   *                     payout_amount, currency, and the columns below, and
+   *                     leaves the others empty
+   *   tax_rate_percent  a line's tax rate with two decimals, 10.00 for 1000
+   *                     bps; empty for a line without one, and on a subtotal
+   *   tax_amount        an integer in the minor unit of currency, no currency
+   *                     symbol: the tax the payout includes. Empty without a
+   *                     rate
+   *   withholding_amount an integer in the minor unit of currency on a
+   *                     subtotal of a statement that withheld; empty
+   *                     otherwise
+   *
+   * A statement with neither has the columns above alone, as every statement
+   * closed before statements carried tax does.
+   *
    * @generated from field: bytes csv = 1;
    */
   csv: Uint8Array;
@@ -701,7 +844,7 @@ export type ExportRoyaltyStatementResponse = Message<"publira.admin.v1.ExportRoy
  * Use `create(ExportRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const ExportRoyaltyStatementResponseSchema: GenMessage<ExportRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 17);
+  messageDesc(file_publira_admin_v1_royalty, 18);
 
 /**
  * @generated from enum publira.admin.v1.RoyaltyCloseMode

@@ -1,0 +1,11 @@
+-- INDEX: idx_purchases_tenant_purchased_at_id_sales_tax
+-- idx_purchases_tenant_purchased_at_id_sales with tax_rate_bps carried beside
+-- the other columns the console's revenue statistics read of a purchase, since
+-- they now state the tax of what the tenant kept, which is worked out from the
+-- rate. A range of a tenant's days is still totalled, and cut into days, from
+-- the index alone. The order is that of the index it takes over from, which
+-- the next migration drops.
+--
+-- CONCURRENTLY, so building it does not block the purchases a storefront keeps
+-- writing, which is also why this statement is the whole file.
+CREATE INDEX CONCURRENTLY idx_purchases_tenant_purchased_at_id_sales_tax ON purchases USING btree (tenant_id, purchased_at DESC, id DESC) INCLUDE (episode_id, currency, is_test, price_at_purchase, refunded_amount, dispute_lost_at, coin_pack_id, tax_rate_bps);

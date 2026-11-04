@@ -109,6 +109,8 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		RevocationReason:      purchaseRevocationReasonToProto(row.RevocationReason),
 		Refundable:            purchaseRefundable(row, payments),
 		RefundRequestedAmount: purchaseRefundRequestedAmount(row),
+		TaxRateBps:            optional(row.TaxRateBps),
+		TaxAmount:             optionalInt64(sql.NullInt64{Int64: int64(row.TaxAmount.Int32), Valid: row.TaxAmount.Valid}),
 	}
 }
 

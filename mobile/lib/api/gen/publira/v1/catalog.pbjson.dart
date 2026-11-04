@@ -3216,6 +3216,28 @@ const MyPurchase$json = {
       '6': '.publira.types.v1.PurchasedCoinPack',
       '10': 'coinPack'
     },
+    {
+      '1': 'tax_rate_bps',
+      '3': 18,
+      '4': 1,
+      '5': 5,
+      '9': 0,
+      '10': 'taxRateBps',
+      '17': true
+    },
+    {
+      '1': 'tax_amount',
+      '3': 19,
+      '4': 1,
+      '5': 5,
+      '9': 1,
+      '10': 'taxAmount',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_tax_rate_bps'},
+    {'1': '_tax_amount'},
   ],
 };
 
@@ -3233,7 +3255,9 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'ZvbHVtZRJDCg1zZXJpZXNfYnVuZGxlGA4gASgLMh4ucHVibGlyYS50eXBlcy52MS5TZXJpZXNC'
     'dW5kbGVSDHNlcmllc0J1bmRsZRIfCgtjb2luc19zcGVudBgPIAEoBVIKY29pbnNTcGVudBIbCg'
     'ljb2luX25hbWUYECABKAlSCGNvaW5OYW1lEkAKCWNvaW5fcGFjaxgRIAEoCzIjLnB1YmxpcmEu'
-    'dHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2tSCGNvaW5QYWNr');
+    'dHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2tSCGNvaW5QYWNrEiUKDHRheF9yYXRlX2JwcxgSIA'
+    'EoBUgAUgp0YXhSYXRlQnBziAEBEiIKCnRheF9hbW91bnQYEyABKAVIAVIJdGF4QW1vdW50iAEB'
+    'Qg8KDV90YXhfcmF0ZV9icHNCDQoLX3RheF9hbW91bnQ=');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {

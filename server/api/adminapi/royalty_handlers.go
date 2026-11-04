@@ -212,6 +212,8 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
 			Source:          publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SALE,
+			TaxRateBps:      optional(row.TaxRateBps),
+			TaxAmount:       optionalInt64(royalties.LineTax(row.TaxRateBps, row.PayoutAmount)),
 		})
 	}
 	for _, row := range computation.SubscriptionLines {
@@ -231,6 +233,8 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
 			Source:          publiraadminv1.RoyaltyLineSource_ROYALTY_LINE_SOURCE_SUBSCRIPTION,
+			TaxRateBps:      optional(row.TaxRateBps),
+			TaxAmount:       optionalInt64(royalties.LineTax(row.TaxRateBps, row.PayoutAmount)),
 		})
 	}
 	for _, row := range computation.Adjustments {
@@ -251,6 +255,8 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			PayoutAmount:    row.PayoutAmount,
 			AdjustedPeriod:  royalties.FormatPeriod(row.AdjustedPeriod),
 			Source:          royaltyLineSourceToProto(royalties.Source(row.Source)),
+			TaxRateBps:      optional(row.TaxRateBps),
+			TaxAmount:       optionalInt64(royalties.LineTax(row.TaxRateBps, row.PayoutAmount)),
 		})
 	}
 
@@ -261,12 +267,16 @@ func (s *adminServer) PreviewRoyaltyStatement(
 		StartsAt: computation.Bounds.Start.UTC().Format(time.RFC3339),
 		EndsAt:   computation.Bounds.End.UTC().Format(time.RFC3339),
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
-			Gross:      computation.Totals.Gross,
-			Refunded:   computation.Totals.Refunded,
-			Adjustment: computation.Totals.Adjustment,
-			Payout:     computation.Totals.Payout,
+			Gross:       computation.Totals.Gross,
+			Refunded:    computation.Totals.Refunded,
+			Adjustment:  computation.Totals.Adjustment,
+			Payout:      computation.Totals.Payout,
+			Tax:         optionalInt64(computation.Totals.Tax),
+			Withholding: optionalInt64(computation.Totals.Withholding),
 		},
-		Lines: lines,
+		Lines:              lines,
+		CreatorSubtotals:   computedSubtotalsToProto(computation.Subtotals),
+		WithholdingRateBps: optional(computation.WithholdingRate),
 	}, nil
 }
 
@@ -493,12 +503,33 @@ func (s *adminServer) GetRoyaltyStatement(
 			PayoutAmount:    row.PayoutAmount,
 			AdjustedPeriod:  nullPeriodString(row.AdjustedPeriod),
 			Source:          royaltyLineSourceToProto(royalties.LineSource(row.Source)),
+			TaxRateBps:      optional(row.TaxRateBps),
+			TaxAmount:       optionalInt64(row.TaxAmount),
+		})
+	}
+
+	subtotals, err := s.queriesFor(ctx).ListRoyaltyStatementCreatorSubtotals(ctx, dbmodels.ListRoyaltyStatementCreatorSubtotalsParams{
+		TenantID:    tenant.ID,
+		StatementID: header.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list royalty statement subtotals", err, "tenant_id", tenant.ID.String(), "period", periodKey)
+	}
+	creatorSubtotals := make([]*publiraadminv1.RoyaltyCreatorSubtotal, 0, len(subtotals))
+	for _, row := range subtotals {
+		creatorSubtotals = append(creatorSubtotals, &publiraadminv1.RoyaltyCreatorSubtotal{
+			CreatorPublicId:   row.CreatorPublicID.String,
+			CreatorName:       row.CreatorName,
+			PayoutAmount:      row.PayoutAmount,
+			TaxAmount:         optionalInt64(row.TaxAmount),
+			WithholdingAmount: optionalInt64(row.WithholdingAmount),
 		})
 	}
 
 	res := &publiraadminv1.GetRoyaltyStatementResponse{
-		Statement: royaltyStatementToProto(royaltyStatementOf(dbmodels.ListRoyaltyStatementsDescRow(header)), header.ClosedByUserPublicID.String, header.ClosedByUserName.String),
-		Lines:     lines,
+		Statement:        royaltyStatementToProto(royaltyStatementOf(dbmodels.ListRoyaltyStatementsDescRow(header)), header.ClosedByUserPublicID.String, header.ClosedByUserName.String),
+		Lines:            lines,
+		CreatorSubtotals: creatorSubtotals,
 	}
 	if len(rows) > 0 {
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
@@ -549,8 +580,15 @@ func (s *adminServer) ExportRoyaltyStatement(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list royalty statement lines", err, "tenant_id", tenant.ID.String(), "period", periodKey)
 	}
+	subtotals, err := s.queriesFor(ctx).ListRoyaltyStatementCreatorSubtotals(ctx, dbmodels.ListRoyaltyStatementCreatorSubtotalsParams{
+		TenantID:    tenant.ID,
+		StatementID: header.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list royalty statement subtotals", err, "tenant_id", tenant.ID.String(), "period", periodKey)
+	}
 
-	body := royaltyStatementCSV(periodKey, header.Currency, lines)
+	body := royaltyStatementCSV(periodKey, header.Currency, header.WithholdingRateBps.Valid, lines, subtotals)
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
@@ -560,9 +598,20 @@ func (s *adminServer) ExportRoyaltyStatement(
 }
 
 // royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
-// documents, in that order.
-func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltyStatementLinesForExportRow) []byte {
-	w := csvexport.New(
+// documents, in that order. A statement that states tax or withholding has
+// the tax columns and a row for each Author's subtotal after its lines; one
+// that states neither is written as statements were before they carried tax.
+func royaltyStatementCSV(
+	period, currency string,
+	withheld bool,
+	lines []dbmodels.ListRoyaltyStatementLinesForExportRow,
+	subtotals []dbmodels.ListRoyaltyStatementCreatorSubtotalsRow,
+) []byte {
+	taxed := withheld
+	for _, line := range lines {
+		taxed = taxed || line.TaxRateBps.Valid
+	}
+	header := []string{
 		"period",
 		"creator_id", "creator_name",
 		"role_id", "role_name",
@@ -572,9 +621,13 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltySt
 		"currency",
 		"adjusted_period",
 		"source",
-	)
+	}
+	if taxed {
+		header = append(header, "row_type", "tax_rate_percent", "tax_amount", "withholding_amount")
+	}
+	w := csvexport.New(header...)
 	for _, line := range lines {
-		w.Row(
+		row := []string{
 			period,
 			nullUUIDString(line.CreatorID), line.CreatorName,
 			nullUUIDString(line.RoleID), line.RoleName.String,
@@ -588,9 +641,67 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltySt
 			currency,
 			nullPeriodString(line.AdjustedPeriod),
 			string(royalties.LineSource(line.Source)),
-		)
+		}
+		if taxed {
+			row = append(row, "line", bpsPercent(line.TaxRateBps), nullInt64String(line.TaxAmount), "")
+		}
+		w.Row(row...)
+	}
+	if taxed {
+		for _, subtotal := range subtotals {
+			w.Row(
+				period,
+				nullUUIDString(subtotal.CreatorID), subtotal.CreatorName,
+				"", "",
+				"", "",
+				"", "",
+				"", "", "", "",
+				strconv.FormatInt(subtotal.PayoutAmount, 10),
+				currency,
+				"",
+				"",
+				"creator_subtotal", "", nullInt64String(subtotal.TaxAmount), nullInt64String(subtotal.WithholdingAmount),
+			)
+		}
 	}
 	return w.Bytes()
+}
+
+// bpsPercent writes basis points as a percentage with two decimals, 10.00 for
+// 1000, or nothing where there is no rate.
+func bpsPercent(bps sql.NullInt32) string {
+	if !bps.Valid {
+		return ""
+	}
+	return fmt.Sprintf("%d.%02d", bps.Int32/100, bps.Int32%100)
+}
+
+func nullInt64String(value sql.NullInt64) string {
+	if !value.Valid {
+		return ""
+	}
+	return strconv.FormatInt(value.Int64, 10)
+}
+
+func optionalInt64(value sql.NullInt64) *int64 {
+	if !value.Valid {
+		return nil
+	}
+	return new(value.Int64)
+}
+
+func computedSubtotalsToProto(subtotals []royalties.CreatorSubtotal) []*publiraadminv1.RoyaltyCreatorSubtotal {
+	out := make([]*publiraadminv1.RoyaltyCreatorSubtotal, 0, len(subtotals))
+	for _, subtotal := range subtotals {
+		out = append(out, &publiraadminv1.RoyaltyCreatorSubtotal{
+			CreatorPublicId:   subtotal.CreatorPublicID,
+			CreatorName:       subtotal.CreatorName,
+			PayoutAmount:      subtotal.Payout,
+			TaxAmount:         optionalInt64(subtotal.Tax),
+			WithholdingAmount: optionalInt64(subtotal.Withholding),
+		})
+	}
+	return out
 }
 
 func nullUUIDString(id uuid.NullUUID) string {
@@ -615,19 +726,22 @@ func invalidRoyaltyTokenError() error {
 
 func royaltyStatementOf(row dbmodels.ListRoyaltyStatementsDescRow) dbmodels.RoyaltyStatement {
 	return dbmodels.RoyaltyStatement{
-		ID:              row.ID,
-		TenantID:        row.TenantID,
-		Period:          row.Period,
-		TimeZone:        row.TimeZone,
-		StartsAt:        row.StartsAt,
-		EndsAt:          row.EndsAt,
-		ClosedAt:        row.ClosedAt,
-		ClosedByUserID:  row.ClosedByUserID,
-		Currency:        row.Currency,
-		TotalGross:      row.TotalGross,
-		TotalRefunded:   row.TotalRefunded,
-		TotalAdjustment: row.TotalAdjustment,
-		TotalPayout:     row.TotalPayout,
+		ID:                 row.ID,
+		TenantID:           row.TenantID,
+		Period:             row.Period,
+		TimeZone:           row.TimeZone,
+		StartsAt:           row.StartsAt,
+		EndsAt:             row.EndsAt,
+		ClosedAt:           row.ClosedAt,
+		ClosedByUserID:     row.ClosedByUserID,
+		Currency:           row.Currency,
+		TotalGross:         row.TotalGross,
+		TotalRefunded:      row.TotalRefunded,
+		TotalAdjustment:    row.TotalAdjustment,
+		TotalPayout:        row.TotalPayout,
+		WithholdingRateBps: row.WithholdingRateBps,
+		TotalTax:           row.TotalTax,
+		TotalWithholding:   row.TotalWithholding,
 	}
 }
 
@@ -640,10 +754,13 @@ func royaltyStatementToProto(statement dbmodels.RoyaltyStatement, closedByPublic
 		ClosedByUserName:     closedByName,
 		Currency:             statement.Currency,
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
-			Gross:      statement.TotalGross,
-			Refunded:   statement.TotalRefunded,
-			Adjustment: statement.TotalAdjustment,
-			Payout:     statement.TotalPayout,
+			Gross:       statement.TotalGross,
+			Refunded:    statement.TotalRefunded,
+			Adjustment:  statement.TotalAdjustment,
+			Payout:      statement.TotalPayout,
+			Tax:         optionalInt64(statement.TotalTax),
+			Withholding: optionalInt64(statement.TotalWithholding),
 		},
+		WithholdingRateBps: optional(statement.WithholdingRateBps),
 	}
 }

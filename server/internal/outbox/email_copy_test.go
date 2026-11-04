@@ -311,6 +311,38 @@ var emailCopyCases = []struct {
 				"coin_pack_bonus_coins":       int64(0),
 				"coin_name":                   "",
 				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a purchase with tax and the invoice details",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":                      int64(550),
+				"currency":                    "JPY",
+				"episode_title":               "Episode 1",
+				"expires_at":                  "",
+				"is_test":                     false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(1000),
+				"tax_amount":                  int64(50),
+				"invoice_legal_name":          "Aoto Press Ltd.",
+				"invoice_registration_number": "T1234567890123",
 			},
 		},
 	},
@@ -335,6 +367,10 @@ var emailCopyCases = []struct {
 				"coin_pack_bonus_coins":       int64(0),
 				"coin_name":                   "",
 				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
 			},
 		},
 	},
@@ -359,6 +395,10 @@ var emailCopyCases = []struct {
 				"coin_pack_bonus_coins":       int64(0),
 				"coin_name":                   "",
 				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
 			},
 		},
 	},
@@ -383,6 +423,10 @@ var emailCopyCases = []struct {
 				"coin_pack_bonus_coins":       int64(0),
 				"coin_name":                   "",
 				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
 			},
 		},
 	},
@@ -407,6 +451,10 @@ var emailCopyCases = []struct {
 				"coin_pack_bonus_coins":       int64(0),
 				"coin_name":                   "",
 				"coins_expire_at":             "",
+				"tax_rate_bps":                int64(0),
+				"tax_amount":                  int64(0),
+				"invoice_legal_name":          "",
+				"invoice_registration_number": "",
 			},
 		},
 	},
@@ -624,8 +672,54 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 		bonusCoins    int64
 		coinName      string
 		coinsExpireAt string
-		wantText      string
+		// taxRateBps, taxAmount, legalName, and registrationNumber describe
+		// the tax the purchase recorded and the tenant's invoice details.
+		taxRateBps         int64
+		taxAmount          int64
+		legalName          string
+		registrationNumber string
+		wantText           string
 	}{
+		{
+			name:               "in English with tax and the invoice details",
+			locale:             "en",
+			amount:             550,
+			currency:           "JPY",
+			episodeTitle:       "Episode 1",
+			taxRateBps:         1000,
+			taxAmount:          50,
+			legalName:          "Aoto Press Ltd.",
+			registrationNumber: "T1234567890123",
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
+				"Price paid: ¥550 (JPY)\n\n" +
+				"Tax included (10%): ¥50\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
+				"Issued by: Aoto Press Ltd.\n\n" +
+				"Registration number: T1234567890123\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:         "in Japanese with tax at a rate with a fraction",
+			locale:       "ja",
+			amount:       108,
+			currency:     "JPY",
+			episodeTitle: "Episode 1",
+			taxRateBps:   850,
+			taxAmount:    9,
+			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
+				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
+				"シリーズ「The Lighthouse Keeper」\n\nエピソード「Episode 1」\n\n" +
+				"購入価格は￥108 (JPY) です。\n\n" +
+				"うち消費税 (8.5%) は￥9です。\n\n" +
+				"購入日時は2030/01/15 21:00です。\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
 		{
 			name:         "in English with a reading period",
 			locale:       "en",
@@ -778,6 +872,10 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 					"coin_pack_bonus_coins":       testCase.bonusCoins,
 					"coin_name":                   testCase.coinName,
 					"coins_expire_at":             testCase.coinsExpireAt,
+					"tax_rate_bps":                testCase.taxRateBps,
+					"tax_amount":                  testCase.taxAmount,
+					"invoice_legal_name":          testCase.legalName,
+					"invoice_registration_number": testCase.registrationNumber,
 				},
 				TimeZone: "Asia/Tokyo",
 			})

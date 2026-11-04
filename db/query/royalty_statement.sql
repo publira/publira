@@ -50,6 +50,12 @@ SELECT
 -- payout is
 -- floored per line over the month's sum, which keeps the rounding loss to one
 -- minor unit of the currency per line.
+--
+-- A credit's sales are cut into one line per tax rate the purchases recorded,
+-- so a line's payout includes tax at one rate, the line's, which the close
+-- works out from the payout. Sales made without a rate are a line of their
+-- own, with none; a month in which the rate never changed has the lines it
+-- would have had without tax.
 SELECT
     ec.creator_id,
     c.public_id AS creator_public_id,
@@ -67,7 +73,8 @@ SELECT
     sum(pp.price)::bigint AS gross_amount,
     sum(part.refunded_amount)::bigint AS refunded_amount,
     ec.share_bps,
-    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
+    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount,
+    p.tax_rate_bps
 FROM purchases p
 JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
     AND pp.purchase_id = p.id
@@ -95,8 +102,9 @@ GROUP BY
     e.id, e.public_id, et.title, e.order_index,
     ec.creator_id, c.public_id, c.name,
     ec.role_id, r.public_id, r.name,
-    ec.display_order, ec.share_bps
-ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST;
+    ec.display_order, ec.share_bps,
+    p.tax_rate_bps
+ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST, p.tax_rate_bps NULLS FIRST;
 
 -- name: GetRoyaltySalesTotalsForPeriod :one
 -- Totals the month's sales once each, however many episodes and creators a
@@ -138,6 +146,13 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- royalty_uncarried_subscription_episode_refunds gives it; a refund of a sale
 -- reaches the episode's line of sales alone. A line closed before lines had
 -- a source is one of sales.
+--
+-- A refund reaches the line of the tax rate its purchase or payment recorded,
+-- since a month whose rate changed has a line per rate, and the adjustment
+-- takes that line's rate. A statement the previous release closed cut no line
+-- by rate, so a refund of a sale with a rate that finds no line of its rate
+-- there reaches the credit's line with none, and the refunds of every rate
+-- carried to one line are added up into one adjustment of it.
 WITH carried AS (
     SELECT
         'sale'::text AS source,
@@ -145,14 +160,16 @@ WITH carried AS (
         u.statement_id,
         u.period,
         u.episode_id,
+        p.tax_rate_bps,
         sum(u.sale_count)::integer AS sale_count,
         sum(u.gross_amount)::bigint AS gross_amount,
         sum(u.refunded_amount)::bigint AS refunded_amount
     FROM royalty_uncarried_episode_refunds u
+    JOIN purchases p ON p.tenant_id = u.tenant_id AND p.id = u.purchase_id
     WHERE u.tenant_id = sqlc.arg('tenant_id')
         AND u.currency = sqlc.arg('currency')::text
         AND u.period < sqlc.arg('period')::date
-    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id, p.tax_rate_bps
     UNION ALL
     SELECT
         'subscription'::text AS source,
@@ -160,17 +177,55 @@ WITH carried AS (
         u.statement_id,
         u.period,
         u.episode_id,
+        sp.tax_rate_bps,
         sum(u.sale_count)::integer AS sale_count,
         sum(u.gross_amount)::bigint AS gross_amount,
         sum(u.refunded_amount)::bigint AS refunded_amount
     FROM royalty_uncarried_subscription_episode_refunds u
+    JOIN subscription_payments sp ON sp.tenant_id = u.tenant_id AND sp.id = u.subscription_payment_id
     WHERE u.tenant_id = sqlc.arg('tenant_id')
         AND u.currency = sqlc.arg('currency')::text
         AND u.period < sqlc.arg('period')::date
-    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id
+    GROUP BY u.tenant_id, u.statement_id, u.period, u.episode_id, sp.tax_rate_bps
+),
+matched AS (
+    SELECT
+        carried.source,
+        carried.period,
+        l.tenant_id,
+        l.statement_id,
+        l.line_number,
+        sum(carried.sale_count)::integer AS sale_count,
+        sum(carried.gross_amount)::bigint AS gross_amount,
+        sum(carried.refunded_amount)::bigint AS refunded_amount
+    FROM carried
+    JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
+        AND l.statement_id = carried.statement_id
+        AND l.episode_id = carried.episode_id
+        AND l.adjusted_statement_id IS NULL
+        AND COALESCE(l.source, 'sale') = carried.source
+        AND (
+            l.tax_rate_bps IS NOT DISTINCT FROM carried.tax_rate_bps
+            OR (
+                l.tax_rate_bps IS NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM royalty_statement_lines o
+                    WHERE o.tenant_id = l.tenant_id
+                        AND o.statement_id = l.statement_id
+                        AND o.episode_id = l.episode_id
+                        AND o.creator_id IS NOT DISTINCT FROM l.creator_id
+                        AND o.role_id IS NOT DISTINCT FROM l.role_id
+                        AND o.adjusted_statement_id IS NULL
+                        AND COALESCE(o.source, 'sale') = carried.source
+                        AND o.tax_rate_bps = carried.tax_rate_bps
+                )
+            )
+        )
+    GROUP BY carried.source, carried.period, l.tenant_id, l.statement_id, l.line_number
 )
 SELECT
-    carried.source,
+    matched.source,
     l.creator_id,
     c.public_id AS creator_public_id,
     l.creator_name,
@@ -185,21 +240,20 @@ SELECT
     l.role_name,
     l.statement_id AS adjusted_statement_id,
     l.line_number AS adjusted_line_number,
-    carried.period AS adjusted_period,
-    carried.sale_count,
-    carried.gross_amount,
-    carried.refunded_amount,
+    matched.period AS adjusted_period,
+    matched.sale_count,
+    matched.gross_amount,
+    matched.refunded_amount,
     l.share_bps,
     (
-        (counted.net + carried.gross_amount - carried.refunded_amount) * l.share_bps / 10000
+        (counted.net + matched.gross_amount - matched.refunded_amount) * l.share_bps / 10000
         - counted.net * l.share_bps / 10000
-    )::bigint AS payout_amount
-FROM carried
-JOIN royalty_statement_lines l ON l.tenant_id = carried.tenant_id
-    AND l.statement_id = carried.statement_id
-    AND l.episode_id = carried.episode_id
-    AND l.adjusted_statement_id IS NULL
-    AND COALESCE(l.source, 'sale') = carried.source
+    )::bigint AS payout_amount,
+    l.tax_rate_bps
+FROM matched
+JOIN royalty_statement_lines l ON l.tenant_id = matched.tenant_id
+    AND l.statement_id = matched.statement_id
+    AND l.line_number = matched.line_number
 CROSS JOIN LATERAL (
     SELECT (
         l.gross_amount - l.refunded_amount
@@ -214,7 +268,7 @@ LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
 LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
 LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
 LEFT JOIN creator_roles r ON r.tenant_id = l.tenant_id AND r.id = l.role_id
-ORDER BY carried.period, l.line_number;
+ORDER BY matched.period, l.line_number;
 
 -- name: GetRoyaltyAdjustmentTotalForPeriod :one
 -- Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
@@ -251,7 +305,10 @@ INSERT INTO royalty_statements (
     total_gross,
     total_refunded,
     total_adjustment,
-    total_payout
+    total_payout,
+    withholding_rate_bps,
+    total_tax,
+    total_withholding
 ) VALUES (
     sqlc.arg('id'),
     sqlc.arg('tenant_id'),
@@ -264,7 +321,10 @@ INSERT INTO royalty_statements (
     sqlc.arg('total_gross'),
     sqlc.arg('total_refunded'),
     sqlc.arg('total_adjustment'),
-    sqlc.arg('total_payout')
+    sqlc.arg('total_payout'),
+    sqlc.narg('withholding_rate_bps'),
+    sqlc.narg('total_tax'),
+    sqlc.narg('total_withholding')
 )
 RETURNING *;
 
@@ -291,7 +351,9 @@ INSERT INTO royalty_statement_lines (
     payout_amount,
     adjusted_statement_id,
     adjusted_line_number,
-    source
+    source,
+    tax_rate_bps,
+    tax_amount
 )
 SELECT
     sqlc.arg('tenant_id'),
@@ -312,7 +374,9 @@ SELECT
     line.payout_amount,
     line.adjusted_statement_id,
     line.adjusted_line_number,
-    line.source
+    line.source,
+    line.tax_rate_bps,
+    line.tax_amount
 FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     line_number integer,
     creator_id uuid,
@@ -330,8 +394,54 @@ FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     payout_amount bigint,
     adjusted_statement_id uuid,
     adjusted_line_number integer,
-    source text
+    source text,
+    tax_rate_bps integer,
+    tax_amount bigint
 );
+
+-- name: InsertRoyaltyStatementCreatorSubtotals :exec
+-- Writes every Author's subtotal of a statement in one statement, as
+-- InsertRoyaltyStatementLines writes its lines.
+INSERT INTO royalty_statement_creator_subtotals (
+    tenant_id,
+    statement_id,
+    "position",
+    creator_id,
+    creator_name,
+    payout_amount,
+    tax_amount,
+    withholding_amount
+)
+SELECT
+    sqlc.arg('tenant_id'),
+    sqlc.arg('statement_id'),
+    subtotal."position",
+    subtotal.creator_id,
+    subtotal.creator_name,
+    subtotal.payout_amount,
+    subtotal.tax_amount,
+    subtotal.withholding_amount
+FROM jsonb_to_recordset(sqlc.arg('subtotals')::jsonb) AS subtotal(
+    "position" integer,
+    creator_id uuid,
+    creator_name text,
+    payout_amount bigint,
+    tax_amount bigint,
+    withholding_amount bigint
+);
+
+-- name: ListRoyaltyStatementCreatorSubtotals :many
+-- Every Author's subtotal of a statement in the order it was closed in, with
+-- the public ID of a creator that still exists. A statement closed before
+-- subtotals were written has none.
+SELECT
+    st.*,
+    c.public_id AS creator_public_id
+FROM royalty_statement_creator_subtotals st
+LEFT JOIN creators c ON c.tenant_id = st.tenant_id AND c.id = st.creator_id
+WHERE st.tenant_id = sqlc.arg('tenant_id')
+    AND st.statement_id = sqlc.arg('statement_id')
+ORDER BY st."position" ASC;
 
 -- name: InsertRoyaltyStatementPurchases :exec
 -- Writes down what a statement counted of each purchase: every sale of its

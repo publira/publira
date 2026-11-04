@@ -7751,7 +7751,15 @@ type MyPurchase struct {
 	// a purchase is always PURCHASE_KIND_PURCHASE, has no expires_at, and is
 	// active until it is refunded or disputed: its coins expire on their own,
 	// as CoinBalance reports. A purchase of a pack is listed on every surface.
-	CoinPack      *v1.PurchasedCoinPack `protobuf:"bytes,17,opt,name=coin_pack,json=coinPack,proto3" json:"coin_pack,omitempty"`
+	CoinPack *v1.PurchasedCoinPack `protobuf:"bytes,17,opt,name=coin_pack,json=coinPack,proto3" json:"coin_pack,omitempty"`
+	// The tenant's tax rate when the purchase was made, in basis points, and
+	// the tax price_at_purchase includes at it, in the same minor unit. Both
+	// unset on a purchase made while the tenant had no rate, on a purchase of a
+	// pack of coins, whose coins are no taxed sale, and on a purchase paid with
+	// coins, which took no payment. GetTenantResponse.invoice names who the tax
+	// was charged by.
+	TaxRateBps    *int32 `protobuf:"varint,18,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
+	TaxAmount     *int32 `protobuf:"varint,19,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7903,6 +7911,20 @@ func (x *MyPurchase) GetCoinPack() *v1.PurchasedCoinPack {
 		return x.CoinPack
 	}
 	return nil
+}
+
+func (x *MyPurchase) GetTaxRateBps() int32 {
+	if x != nil && x.TaxRateBps != nil {
+		return *x.TaxRateBps
+	}
+	return 0
+}
+
+func (x *MyPurchase) GetTaxAmount() int32 {
+	if x != nil && x.TaxAmount != nil {
+		return *x.TaxAmount
+	}
+	return 0
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -9473,7 +9495,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
 	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xbe\x05\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xa9\x06\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -9497,7 +9519,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\vcoins_spent\x18\x0f \x01(\x05R\n" +
 	"coinsSpent\x12\x1b\n" +
 	"\tcoin_name\x18\x10 \x01(\tR\bcoinName\x12@\n" +
-	"\tcoin_pack\x18\x11 \x01(\v2#.publira.types.v1.PurchasedCoinPackR\bcoinPack\"\xd0\x01\n" +
+	"\tcoin_pack\x18\x11 \x01(\v2#.publira.types.v1.PurchasedCoinPackR\bcoinPack\x12%\n" +
+	"\ftax_rate_bps\x18\x12 \x01(\x05H\x00R\n" +
+	"taxRateBps\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"tax_amount\x18\x13 \x01(\x05H\x01R\ttaxAmount\x88\x01\x01B\x0f\n" +
+	"\r_tax_rate_bpsB\r\n" +
+	"\v_tax_amount\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -10116,6 +10144,7 @@ func file_publira_v1_catalog_proto_init() {
 	file_publira_v1_catalog_proto_msgTypes[2].OneofWrappers = []any{}
 	file_publira_v1_catalog_proto_msgTypes[29].OneofWrappers = []any{}
 	file_publira_v1_catalog_proto_msgTypes[39].OneofWrappers = []any{}
+	file_publira_v1_catalog_proto_msgTypes[94].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
