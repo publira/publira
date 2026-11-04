@@ -98,6 +98,7 @@ export const EpisodeBody = async ({
   previewPages,
   previousEpisode,
   series,
+  taxIncluded,
   tenantId,
   timeZone,
   waitFree,
@@ -142,6 +143,8 @@ export const EpisodeBody = async ({
   previewPages: EpisodeImageItem[];
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
+  /** Whether the tenant states a tax rate, which every price includes. */
+  taxIncluded: boolean;
   tenantId: string;
   /** The tenant's time zone, for the instant a recharging ticket is ready. */
   timeZone: string;
@@ -151,7 +154,12 @@ export const EpisodeBody = async ({
   if (isPublicEpisodeBody(access)) {
     return (
       <EpisodeViewer
-        sales={toTenantSales({ acceptsPayments, appPayments, currency })}
+        sales={toTenantSales({
+          acceptsPayments,
+          appPayments,
+          currency,
+          taxIncluded,
+        })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
@@ -210,6 +218,7 @@ export const EpisodeBody = async ({
             locale,
             subscription
           )}
+          taxIncluded={taxIncluded}
           tenantId={tenantId}
           timeZone={timeZone}
           waitFree={toWaitFreeOffer({
@@ -262,7 +271,12 @@ export const EpisodeBody = async ({
   ) {
     return (
       <EpisodeViewer
-        sales={toTenantSales({ acceptsPayments, appPayments, currency })}
+        sales={toTenantSales({
+          acceptsPayments,
+          appPayments,
+          currency,
+          taxIncluded,
+        })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
@@ -345,6 +359,7 @@ export const EpisodeBody = async ({
         seriesPublicId={series.publicId}
         signedIn
         subscribable={await offersSubscription(tenantId, locale, subscription)}
+        taxIncluded={taxIncluded}
         tenantId={tenantId}
         timeZone={timeZone}
         waitFree={toWaitFreeOffer({

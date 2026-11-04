@@ -8,6 +8,7 @@ const HEADER =
   "purchase_id,purchased_at,series_title,episode_number,episode_title,price,refunded_amount,currency,expires_at,refunded_at,status,item,volume_title,coins,bonus_coins,coins_spent\r\n";
 
 const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
+  chargedByStore: false,
   currency: "USD",
   expiresAt: "",
   id: "PURCHASE01",
@@ -164,6 +165,29 @@ describe("renderPurchasesCsv", () => {
 
     expect(csv.split("\r\n")[1]).toBe(
       "PURCHASE01,2026-10-01T09:00:00Z,,,,10.00,0.00,USD,,,active,coin_pack,,1100,100,"
+    );
+  });
+
+  it("appends the tax rate and the tax to a file holding a taxed purchase, empty on an untaxed one", () => {
+    const csv = renderPurchasesCsv([
+      purchase({
+        currency: "JPY",
+        priceAtPurchase: 1100,
+        tax: { amount: 100, rateBps: 1000 },
+      }),
+      purchase({ currency: "JPY", id: "PURCHASE02", priceAtPurchase: 500 }),
+    ]);
+
+    expect(csv.split("\r\n").slice(0, 3)).toEqual([
+      `\uFEFF${HEADER.replace("\r\n", "")},tax_rate_percent,tax_amount`,
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,1100,0,JPY,,,active,episode,,,,,10.00,100",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,500,0,JPY,,,active,episode,,,,,,",
+    ]);
+  });
+
+  it("keeps the columns it always had for a file holding no taxed purchase", () => {
+    expect(renderPurchasesCsv([purchase()]).split("\r\n")[0]).toBe(
+      `\uFEFF${HEADER.replace("\r\n", "")}`
     );
   });
 });

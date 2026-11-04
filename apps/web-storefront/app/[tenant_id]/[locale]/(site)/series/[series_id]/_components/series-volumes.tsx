@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
+import { TaxIncludedNote } from "#components/tax-included-note";
 import type { TenantSales } from "#lib/app-payments";
 import type {
   EyeCatchImageVariant,
@@ -187,7 +188,8 @@ export const VolumeBookstoreLinks = ({
  * cards say what each volume holds and costs and offer nothing to press, the
  * way an episode row quotes a price nobody can pay right now; a reader who
  * already holds a volume is still told so. A price is not
- * quoted at all while the tenant's currency is unknown.
+ * quoted at all while the tenant's currency is unknown, and says it includes
+ * tax while the tenant states a rate.
  */
 export const SeriesVolumes = ({
   locale,
@@ -248,11 +250,14 @@ export const SeriesVolumes = ({
                     </Suspense>
                   </span>
                   {sales.currency ? (
-                    <span className="font-medium text-foreground tabular-nums">
-                      {formatPrice(volume.price, {
-                        currency: sales.currency,
-                        locale,
-                      })}
+                    <span className="inline-flex items-baseline gap-x-1">
+                      <span className="font-medium text-foreground tabular-nums">
+                        {formatPrice(volume.price, {
+                          currency: sales.currency,
+                          locale,
+                        })}
+                      </span>
+                      {sales.taxIncluded ? <TaxIncludedNote /> : null}
                     </span>
                   ) : null}
                 </p>

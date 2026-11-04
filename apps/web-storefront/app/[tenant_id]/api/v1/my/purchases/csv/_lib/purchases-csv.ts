@@ -61,6 +61,19 @@ const HEADER = [
   "coins_spent",
 ] as const;
 
+/**
+ * The columns a file gains when a purchase in it was charged tax: the rate
+ * with two decimals, `10.00` for 10%, and the tax the price includes, as the
+ * royalty statement writes them.
+ */
+const TAX_HEADER = ["tax_rate_percent", "tax_amount"] as const;
+
+/** The tax columns of a row, empty for a purchase charged no tax. */
+const taxFields = ({ currency, tax }: PurchaseItem): [string, string] =>
+  tax
+    ? [(tax.rateBps / 100).toFixed(2), formatAmount(tax.amount, currency)]
+    : ["", ""];
+
 /** The coins a pack granted, its bonus coins among them, and the bonus. */
 const coinFields = ({ item }: PurchaseItem): [string, string] =>
   item.kind === "coin_pack"
@@ -77,29 +90,39 @@ const coinFields = ({ item }: PurchaseItem): [string, string] =>
  * coins has a `price` of 0 and the coins it took in `coins_spent`. The columns
  * that came later are appended, so a sheet that reads the earlier ones by
  * position keeps reading them.
+ *
+ * The tax columns are appended only to a file holding a purchase that was
+ * charged tax, so the history of a reader of a tenant that states no rate is
+ * the file it always was.
  */
 export const renderPurchasesCsv = (
   purchases: readonly PurchaseItem[]
-): string =>
-  CSV_BOM +
-  encodeCsvRow(HEADER) +
-  purchases
-    .map((purchase) =>
-      encodeCsvRow([
-        purchase.id,
-        purchase.purchasedAt,
-        purchase.series.title,
-        ...episodeFields(purchase),
-        formatAmount(purchase.priceAtPurchase, purchase.currency),
-        formatAmount(purchase.refundedAmount, purchase.currency),
-        purchase.currency,
-        purchase.expiresAt,
-        purchase.refundedAt,
-        purchaseStatus(purchase),
-        itemType(purchase),
-        purchase.item.kind === "volume" ? purchase.item.title : "",
-        ...coinFields(purchase),
-        purchase.coinsSpent ? String(purchase.coinsSpent.count) : "",
-      ])
-    )
-    .join("");
+): string => {
+  const taxed = purchases.some((purchase) => purchase.tax);
+
+  return (
+    CSV_BOM +
+    encodeCsvRow(taxed ? [...HEADER, ...TAX_HEADER] : HEADER) +
+    purchases
+      .map((purchase) =>
+        encodeCsvRow([
+          purchase.id,
+          purchase.purchasedAt,
+          purchase.series.title,
+          ...episodeFields(purchase),
+          formatAmount(purchase.priceAtPurchase, purchase.currency),
+          formatAmount(purchase.refundedAmount, purchase.currency),
+          purchase.currency,
+          purchase.expiresAt,
+          purchase.refundedAt,
+          purchaseStatus(purchase),
+          itemType(purchase),
+          purchase.item.kind === "volume" ? purchase.item.title : "",
+          ...coinFields(purchase),
+          purchase.coinsSpent ? String(purchase.coinsSpent.count) : "",
+          ...(taxed ? taxFields(purchase) : []),
+        ])
+      )
+      .join("")
+  );
+};

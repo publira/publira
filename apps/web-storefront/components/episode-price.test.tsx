@@ -17,7 +17,12 @@ vi.mock("#components/message", () => ({
 
 afterEach(cleanup);
 
-const sellsEverywhere = { app: true, currency: "JPY", web: true };
+const sellsEverywhere = {
+  app: true,
+  currency: "JPY",
+  taxIncluded: false,
+  web: true,
+};
 
 describe("EpisodePrice", () => {
   it("Quote the price of an episode the web sells", () => {
@@ -50,7 +55,7 @@ describe("EpisodePrice", () => {
   it("Quote the price of an episode sold in the app alone while the app cannot sell it", () => {
     render(
       <EpisodePrice
-        sales={{ app: false, currency: "JPY", web: true }}
+        sales={{ app: false, currency: "JPY", taxIncluded: false, web: true }}
         locale="en"
         price={1200}
         purchaseSurface="app"
@@ -67,7 +72,7 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: true, currency: "JPY", web: false }}
+        sales={{ app: true, currency: "JPY", taxIncluded: false, web: false }}
       />
     );
 
@@ -81,7 +86,7 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: false, currency: "JPY", web: false }}
+        sales={{ app: false, currency: "JPY", taxIncluded: false, web: false }}
       />
     );
 
@@ -224,13 +229,47 @@ describe("EpisodePrice", () => {
     expect(screen.getByText("$4.99")).toBeDefined();
   });
 
+  it("Say a quoted price includes tax while the tenant states a rate", () => {
+    const { container } = render(
+      <EpisodePrice
+        locale="en"
+        price={1200}
+        purchaseSurface="all"
+        sales={{ ...sellsEverywhere, taxIncluded: true }}
+      />
+    );
+
+    expect(container.textContent).toBe("¥1,200storefront.common.tax_included");
+  });
+
+  it("Say nothing of tax beside a free episode or one sold in the app", () => {
+    const sales = { ...sellsEverywhere, taxIncluded: true };
+
+    const { rerender } = render(
+      <EpisodePrice locale="en" price={0} purchaseSurface="all" sales={sales} />
+    );
+
+    expect(screen.queryByText("storefront.common.tax_included")).toBeNull();
+
+    rerender(
+      <EpisodePrice
+        locale="en"
+        price={1200}
+        purchaseSurface="app"
+        sales={sales}
+      />
+    );
+
+    expect(screen.queryByText("storefront.common.tax_included")).toBeNull();
+  });
+
   it("Quote no price while the tenant's currency is unknown", () => {
     const { container } = render(
       <EpisodePrice
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: false, currency: null, web: false }}
+        sales={{ app: false, currency: null, taxIncluded: false, web: false }}
       />
     );
 

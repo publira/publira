@@ -25,6 +25,7 @@ import {
   getTenantTheme,
   getTenantWebPushPublicKey,
   readConsentPageVersionIds,
+  tenantSales,
 } from "./tenant";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant, mockGetTenantLegalPages } =
@@ -152,6 +153,42 @@ describe("tenant", () => {
     mockGetTenant.mockResolvedValueOnce({ ...tenantResponse, currency: "" });
 
     expect(await getTenantSiteInfo("TENANT_001")).toBeNull();
+  });
+
+  it("Carry the tax rate and the invoice details the tenant states", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      invoice: {
+        legalName: " Example Publishing ",
+        registrationNumber: "T1234567890123",
+        taxRateBps: 1000,
+      },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.invoice).toEqual({
+      legalName: "Example Publishing",
+      registrationNumber: "T1234567890123",
+      taxRateBps: 1000,
+    });
+    expect(tenantSales(info).taxIncluded).toBe(true);
+  });
+
+  it("Say no price includes tax where the tenant states no rate", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      invoice: { legalName: "", registrationNumber: "" },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.invoice).toEqual({
+      legalName: undefined,
+      registrationNumber: undefined,
+      taxRateBps: null,
+    });
+    expect(tenantSales(info).taxIncluded).toBe(false);
   });
 
   it("Treat tenants that cannot accept payments as false", async () => {

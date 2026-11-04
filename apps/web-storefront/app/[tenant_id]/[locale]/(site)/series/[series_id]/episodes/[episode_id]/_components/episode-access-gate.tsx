@@ -296,7 +296,8 @@ const CheckoutForm = ({
  * Under a campaign the permanent copy's button names the campaign price
  * whether or not the episode is rented: the gate quotes it above the buttons,
  * and a button that said only "Buy" would leave the reader to guess which of
- * the two prices it charges.
+ * the two prices it charges. A button that names a price says it includes tax
+ * while the tenant states a rate.
  */
 const CheckoutActions = ({
   campaign,
@@ -309,6 +310,7 @@ const CheckoutActions = ({
   rentalPrice,
   seriesPublicId,
   shuElsewhere,
+  taxIncluded,
   tenantId,
 }: {
   campaign?: EpisodeCampaign;
@@ -322,6 +324,8 @@ const CheckoutActions = ({
   seriesPublicId: string;
   /** Whether a ready ticket or the reader's coins carry the Shu instead. */
   shuElsewhere: boolean;
+  /** Whether the tenant states a tax rate, which every price includes. */
+  taxIncluded: boolean;
   tenantId: string;
 }) => {
   const formProps = { episodeId, episodePublicId, seriesPublicId, tenantId };
@@ -343,7 +347,11 @@ const CheckoutActions = ({
       <CheckoutForm {...formProps} kind="purchase" variant={purchaseVariant}>
         <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
           <Message
-            message="storefront.episode.gate.purchase_for"
+            message={
+              taxIncluded
+                ? "storefront.episode.gate.purchase_for_tax_included"
+                : "storefront.episode.gate.purchase_for"
+            }
             values={{
               price: formatPrice(campaign?.price ?? price, {
                 currency,
@@ -357,7 +365,11 @@ const CheckoutActions = ({
         <CheckoutForm {...formProps} kind="rental" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
             <Message
-              message="storefront.episode.gate.rent_for"
+              message={
+                taxIncluded
+                  ? "storefront.episode.gate.rent_for_tax_included"
+                  : "storefront.episode.gate.rent_for"
+              }
               values={{
                 period: formatDuration(
                   { hours: rentalPeriodHours },
@@ -765,6 +777,7 @@ export const EpisodeAccessGate = ({
   seriesPublicId,
   signedIn,
   subscribable,
+  taxIncluded,
   tenantId,
   timeZone,
   waitFree,
@@ -806,6 +819,8 @@ export const EpisodeAccessGate = ({
   signedIn: boolean;
   /** Whether a plan the site sells right now opens this episode. */
   subscribable: boolean;
+  /** Whether the tenant states a tax rate, which every price includes. */
+  taxIncluded: boolean;
   tenantId: string;
   /**
    * The tenant's time zone, which a recharging ticket's instant and the end of
@@ -849,6 +864,7 @@ export const EpisodeAccessGate = ({
         rentalPrice={rentalPrice}
         seriesPublicId={seriesPublicId}
         shuElsewhere={shuTaken}
+        taxIncluded={taxIncluded}
         tenantId={tenantId}
       />
     );
@@ -907,6 +923,7 @@ export const EpisodeAccessGate = ({
               currency={currency}
               locale={locale}
               price={price}
+              taxIncluded={taxIncluded}
               timeZone={timeZone}
             />
           </p>

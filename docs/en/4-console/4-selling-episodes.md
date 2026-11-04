@@ -88,6 +88,8 @@ Every price is tax-inclusive: what a reader pays is the price as it is entered, 
 
 The receipt the tenant sends for a purchase on the site states the tax and the rate, such as "Tax included (10%): ¥100", and, once they are entered, the tenant's **Legal name** and **Registration number**, as [Email](./3-setup/7-email.md#what-goes-through-it) describes.
 
+While a rate is set, every price the site offers says it includes tax, such as `¥1,100 incl. tax`: an episode's price and its campaign price, the price on the buttons that buy or rent it, a volume's price, the price of the rest of a series, and a subscription plan's price. A pack of coins says nothing of tax. Under **Purchases** on the reader's account, a purchase that recorded tax shows it as **Tax included** with its rate, such as `¥100 (10%)`, and, once they are entered, the tenant's **Legal name** as **Issued by** and its **Registration number**. A purchase made through the App Store or Google Play shows its tax alone, because the store issued its receipt. The file **Download as CSV** saves gains a `tax_rate_percent` and a `tax_amount` column when a purchase in it recorded tax.
+
 ## Choosing a payment provider
 
 A tenant takes payment on the site through one provider at a time, chosen under **Payment settings** on **Payments** › **Payment methods**:

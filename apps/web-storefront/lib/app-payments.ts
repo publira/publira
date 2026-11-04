@@ -31,8 +31,9 @@ export interface TenantSaleChannels {
 }
 
 /**
- * Where the tenant can sell an episode right now, and the currency its prices
- * are in: everything a page needs to say what an episode costs.
+ * Where the tenant can sell an episode right now, the currency its prices are
+ * in, and whether they include tax: everything a page needs to say what an
+ * episode costs.
  */
 export interface TenantSales extends TenantSaleChannels {
   /**
@@ -40,6 +41,11 @@ export interface TenantSales extends TenantSaleChannels {
    * the tenant could not be read, when no price can be quoted at all.
    */
   currency: string | null;
+  /**
+   * Whether the tenant states a tax rate, which every price it offers then
+   * includes and says it does. False while the tenant could not be read.
+   */
+  taxIncluded: boolean;
 }
 
 export const toTenantSaleChannels = ({
@@ -57,13 +63,16 @@ export const toTenantSales = ({
   acceptsPayments,
   appPayments,
   currency,
+  taxIncluded,
 }: {
   acceptsPayments: boolean;
   appPayments: TenantAppPayments;
   currency: string | null;
+  taxIncluded: boolean;
 }): TenantSales => ({
   ...toTenantSaleChannels({ acceptsPayments, appPayments }),
   currency,
+  taxIncluded,
 });
 
 /**

@@ -10,6 +10,7 @@ import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import * as SeriesShelf from "#components/series-shelf";
+import { TaxIncludedNote } from "#components/tax-included-note";
 import { resolveAccessToken } from "#lib/api-client";
 import { getLocale } from "#lib/locale";
 import {
@@ -233,6 +234,8 @@ export const PlanList = async () => {
       : null;
 
   const sells = tenant?.acceptsPayments === true;
+  // A plan's payments record tax at the tenant's rate, as a purchase does.
+  const taxIncluded = tenant !== null && tenant.invoice.taxRateBps !== null;
 
   return (
     <div className="grid gap-6">
@@ -266,10 +269,11 @@ export const PlanList = async () => {
           >
             <div className="grid gap-1">
               <h2 className="font-serif text-xl leading-tight">{plan.name}</h2>
-              <p className="text-lg tabular-nums">
+              <p className="flex flex-wrap items-baseline gap-x-2 text-lg tabular-nums">
                 <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                   <PlanPrice locale={locale} plan={plan} />
                 </Suspense>
+                {taxIncluded ? <TaxIncludedNote /> : null}
               </p>
             </div>
             {plan.description ? (

@@ -28,6 +28,7 @@ describe("CampaignPrice", () => {
         currency="USD"
         locale="en"
         price={1200}
+        taxIncluded={false}
         timeZone="Asia/Tokyo"
       />
     );
@@ -40,6 +41,34 @@ describe("CampaignPrice", () => {
     );
   });
 
+  it("Says the campaign price includes tax while the tenant states a rate", () => {
+    const { rerender } = render(
+      <CampaignPrice
+        campaign={campaign}
+        currency="JPY"
+        locale="ja"
+        price={1200}
+        taxIncluded
+        timeZone="Asia/Tokyo"
+      />
+    );
+
+    expect(screen.getByText("storefront.common.tax_included")).toBeDefined();
+
+    rerender(
+      <CampaignPrice
+        campaign={campaign}
+        currency="JPY"
+        locale="ja"
+        price={1200}
+        taxIncluded={false}
+        timeZone="Asia/Tokyo"
+      />
+    );
+
+    expect(screen.queryByText("storefront.common.tax_included")).toBeNull();
+  });
+
   it("Writes the end of the campaign in the tenant's time zone", () => {
     const { rerender } = render(
       <CampaignPrice
@@ -47,6 +76,7 @@ describe("CampaignPrice", () => {
         currency="JPY"
         locale="ja"
         price={1200}
+        taxIncluded={false}
         timeZone="Asia/Tokyo"
       />
     );
@@ -61,6 +91,7 @@ describe("CampaignPrice", () => {
         currency="JPY"
         locale="ja"
         price={1200}
+        taxIncluded={false}
         timeZone="America/Los_Angeles"
       />
     );
@@ -77,6 +108,7 @@ describe("CampaignPrice", () => {
         currency="JPY"
         locale="en"
         price={1200}
+        taxIncluded={false}
         timeZone="Asia/Tokyo"
       />
     );
