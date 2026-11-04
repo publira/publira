@@ -342,42 +342,46 @@ const CheckoutActions = ({
     );
   }
 
+  const purchaseValues = {
+    price: formatPrice(campaign?.price ?? price, { currency, locale }),
+  };
+
+  const rentalValues = {
+    period: formatDuration({ hours: rentalPeriodHours }, { locale }),
+    price: formatPrice(rentalPrice, { currency, locale }),
+  };
+
   return (
     <>
       <CheckoutForm {...formProps} kind="purchase" variant={purchaseVariant}>
         <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-          <Message
-            message={
-              taxIncluded
-                ? "storefront.episode.gate.purchase_for_tax_included"
-                : "storefront.episode.gate.purchase_for"
-            }
-            values={{
-              price: formatPrice(campaign?.price ?? price, {
-                currency,
-                locale,
-              }),
-            }}
-          />
+          {taxIncluded ? (
+            <Message
+              message="storefront.episode.gate.purchase_for_tax_included"
+              values={purchaseValues}
+            />
+          ) : (
+            <Message
+              message="storefront.episode.gate.purchase_for"
+              values={purchaseValues}
+            />
+          )}
         </Suspense>
       </CheckoutForm>
       {rented ? (
         <CheckoutForm {...formProps} kind="rental" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-            <Message
-              message={
-                taxIncluded
-                  ? "storefront.episode.gate.rent_for_tax_included"
-                  : "storefront.episode.gate.rent_for"
-              }
-              values={{
-                period: formatDuration(
-                  { hours: rentalPeriodHours },
-                  { locale }
-                ),
-                price: formatPrice(rentalPrice, { currency, locale }),
-              }}
-            />
+            {taxIncluded ? (
+              <Message
+                message="storefront.episode.gate.rent_for_tax_included"
+                values={rentalValues}
+              />
+            ) : (
+              <Message
+                message="storefront.episode.gate.rent_for"
+                values={rentalValues}
+              />
+            )}
           </Suspense>
         </CheckoutForm>
       ) : null}

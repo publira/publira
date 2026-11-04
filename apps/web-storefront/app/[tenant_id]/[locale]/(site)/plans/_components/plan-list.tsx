@@ -10,7 +10,6 @@ import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import * as SeriesShelf from "#components/series-shelf";
-import { TaxIncludedNote } from "#components/tax-included-note";
 import { resolveAccessToken } from "#lib/api-client";
 import { getLocale } from "#lib/locale";
 import {
@@ -273,7 +272,17 @@ export const PlanList = async () => {
                 <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                   <PlanPrice locale={locale} plan={plan} />
                 </Suspense>
-                {taxIncluded ? <TaxIncludedNote /> : null}
+                {taxIncluded ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    <Suspense
+                      fallback={
+                        <SkeletonLine className="inline-block h-3 w-12" />
+                      }
+                    >
+                      <Message message="storefront.common.tax_included" />
+                    </Suspense>
+                  </span>
+                ) : null}
               </p>
             </div>
             {plan.description ? (

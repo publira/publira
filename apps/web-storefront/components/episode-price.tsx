@@ -6,7 +6,6 @@ import { Suspense } from "react";
 import { CampaignPrice } from "#components/campaign-price";
 import { FreeUntilBadge } from "#components/free-until-badge";
 import { Message } from "#components/message";
-import { TaxIncludedNote } from "#components/tax-included-note";
 import { episodeSaleDestination } from "#lib/app-payments";
 import type { TenantSales } from "#lib/app-payments";
 import type { EpisodeCampaign, EpisodePurchaseSurface } from "#lib/catalog";
@@ -111,7 +110,11 @@ export const EpisodePrice = ({
   return (
     <span className="inline-flex items-baseline gap-x-1">
       {quoted}
-      <TaxIncludedNote />
+      <span className="text-xs font-normal text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="inline-block h-3 w-12" />}>
+          <Message message="storefront.common.tax_included" />
+        </Suspense>
+      </span>
     </span>
   );
 };

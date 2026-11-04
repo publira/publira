@@ -291,7 +291,12 @@ const nonEmpty = (value?: string): string | undefined =>
  * the field states no rate, which is what the tenant stated before it.
  */
 const toTenantInvoice = (
-  invoice: TenantInvoiceDetails | undefined
+  invoice:
+    | Pick<
+        TenantInvoiceDetails,
+        "legalName" | "registrationNumber" | "taxRateBps"
+      >
+    | undefined
 ): TenantInvoice => ({
   legalName: nonEmpty(invoice?.legalName),
   registrationNumber: nonEmpty(invoice?.registrationNumber),

@@ -70,6 +70,11 @@ export const SeriesRemainderOffer = async ({
     return null;
   }
 
+  const buyValues = {
+    count: remainder.episodeCount,
+    price: formatPrice(remainder.price, { currency, locale }),
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <form action={startSeriesRemainderCheckoutAction}>
@@ -79,17 +84,17 @@ export const SeriesRemainderOffer = async ({
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <Button type="submit" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <Message
-              message={
-                sales.taxIncluded
-                  ? "storefront.series.remainder_buy_tax_included"
-                  : "storefront.series.remainder_buy"
-              }
-              values={{
-                count: remainder.episodeCount,
-                price: formatPrice(remainder.price, { currency, locale }),
-              }}
-            />
+            {sales.taxIncluded ? (
+              <Message
+                message="storefront.series.remainder_buy_tax_included"
+                values={buyValues}
+              />
+            ) : (
+              <Message
+                message="storefront.series.remainder_buy"
+                values={buyValues}
+              />
+            )}
           </Suspense>
         </Button>
       </form>

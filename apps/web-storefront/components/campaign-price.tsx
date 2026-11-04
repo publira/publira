@@ -5,7 +5,6 @@ import { formatDateTimeWithWeekday, formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { TaxIncludedNote } from "#components/tax-included-note";
 import type { EpisodeCampaign } from "#lib/catalog";
 
 /**
@@ -47,7 +46,13 @@ export const CampaignPrice = ({
     <span className="text-foreground">
       {formatPrice(campaign.price, { currency, locale })}
     </span>
-    {taxIncluded ? <TaxIncludedNote /> : null}
+    {taxIncluded ? (
+      <span className="text-xs font-normal text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="inline-block h-3 w-12" />}>
+          <Message message="storefront.common.tax_included" />
+        </Suspense>
+      </span>
+    ) : null}
     <s>
       <span className="sr-only">
         <Suspense fallback={null}>

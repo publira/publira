@@ -9,7 +9,6 @@ import { Suspense } from "react";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
-import { TaxIncludedNote } from "#components/tax-included-note";
 import type { TenantSales } from "#lib/app-payments";
 import type {
   EyeCatchImageVariant,
@@ -257,7 +256,17 @@ export const SeriesVolumes = ({
                           locale,
                         })}
                       </span>
-                      {sales.taxIncluded ? <TaxIncludedNote /> : null}
+                      {sales.taxIncluded ? (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          <Suspense
+                            fallback={
+                              <SkeletonLine className="inline-block h-3 w-12" />
+                            }
+                          >
+                            <Message message="storefront.common.tax_included" />
+                          </Suspense>
+                        </span>
+                      ) : null}
                     </span>
                   ) : null}
                 </p>
