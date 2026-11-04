@@ -29,6 +29,29 @@ export interface RoyaltyLine {
   shareBps: number;
   payoutAmount: number;
   source: RoyaltyLineSource;
+  /**
+   * The tax rate of the sales or payments the line counts, in basis points,
+   * and the tax `payoutAmount` includes at it; on an adjustment, the tax it
+   * takes off the line it adjusts. Both `null` on a line of sales made without
+   * a rate, and on every line closed before statements carried tax.
+   */
+  taxRateBps: number | null;
+  taxAmount: number | null;
+}
+
+/**
+ * What a statement pays one Author over all its lines, every page of a closed
+ * one included, as the API adds it up.
+ */
+export interface RoyaltyCreatorSubtotal {
+  /** Empty once the Author has been deleted. */
+  creatorPublicId: string;
+  creatorName: string;
+  payoutAmount: number;
+  /** `null` where none of the Author's lines has a tax rate. */
+  taxAmount: number | null;
+  /** `null` where the month withholds nothing. */
+  withholdingAmount: number | null;
 }
 
 export interface RoyaltyCreatorGroup {
@@ -36,6 +59,11 @@ export interface RoyaltyCreatorGroup {
   creatorName: string;
   lines: RoyaltyLine[];
   payoutSubtotal: number;
+  /**
+   * The tax the given lines' payouts include, `null` while none of them has a
+   * tax rate.
+   */
+  taxSubtotal: number | null;
   /**
    * What the lines of each source pay the creator, adjustments counted with
    * the source of the line they adjust. `null` for a creator with no
@@ -81,12 +109,17 @@ export const groupRoyaltyLinesByCreator = (
         lines: [],
         payoutSubtotal: 0,
         sourceSubtotals: null,
+        taxSubtotal: null,
       };
       groups.set(key, group);
     }
 
     group.lines.push(line);
     group.payoutSubtotal += line.payoutAmount;
+
+    if (line.taxAmount !== null) {
+      group.taxSubtotal = (group.taxSubtotal ?? 0) + line.taxAmount;
+    }
   }
 
   return [...groups.values()].map((group) =>

@@ -56,6 +56,13 @@ export const StatementList = async ({
 
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  // Statements closed before statements carried tax, and those of a tenant
+  // that never set a rate, state neither, and keep the columns they had.
+  const withTax = statements.some((statement) => statement.totals.tax !== null);
+
+  const withWithholding = statements.some(
+    (statement) => statement.totals.withholding !== null
+  );
 
   return (
     <ConsoleSection.Root>
@@ -116,6 +123,20 @@ export const StatementList = async ({
                   <Message message="admin.royalties.statements.columns.payout" />
                 </Suspense>
               </Table.Head>
+              {withTax ? (
+                <Table.Head className="text-right">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="admin.royalties.statements.columns.tax" />
+                  </Suspense>
+                </Table.Head>
+              ) : null}
+              {withWithholding ? (
+                <Table.Head className="text-right">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.royalties.statements.columns.withholding" />
+                  </Suspense>
+                </Table.Head>
+              ) : null}
               <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
                   <Message message="admin.royalties.statements.columns.export" />
@@ -166,6 +187,30 @@ export const StatementList = async ({
                     locale,
                   })}
                 </Table.Cell>
+                {withTax ? (
+                  <Table.Cell className="text-right">
+                    {statement.totals.tax === null ? (
+                      <Message message="admin.royalties.lines.no_tax_rate" />
+                    ) : (
+                      formatTenantAmount(statement.totals.tax, {
+                        currency: statement.currency,
+                        locale,
+                      })
+                    )}
+                  </Table.Cell>
+                ) : null}
+                {withWithholding ? (
+                  <Table.Cell className="text-right">
+                    {statement.totals.withholding === null ? (
+                      <Message message="admin.royalties.lines.no_tax_rate" />
+                    ) : (
+                      formatTenantAmount(statement.totals.withholding, {
+                        currency: statement.currency,
+                        locale,
+                      })
+                    )}
+                  </Table.Cell>
+                ) : null}
                 <Table.Cell className="text-right">
                   <LinkButton
                     aria-label={t("admin.royalties.export.row_label", {

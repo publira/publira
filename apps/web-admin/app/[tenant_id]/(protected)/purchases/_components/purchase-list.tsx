@@ -192,6 +192,16 @@ export const PurchaseList = async ({
                   currency: readCurrency(purchase.currency),
                   locale,
                 })}
+                {purchase.taxAmount === null ? null : (
+                  <span className="block text-xs whitespace-nowrap text-muted-foreground">
+                    {t("admin.purchases.tax_in_price", {
+                      amount: formatTenantAmount(purchase.taxAmount, {
+                        currency: readCurrency(purchase.currency),
+                        locale,
+                      }),
+                    })}
+                  </span>
+                )}
               </Table.Cell>
               <Table.Cell>
                 <PurchasePaidThrough

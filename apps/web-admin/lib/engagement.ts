@@ -263,6 +263,13 @@ export interface RevenueStatsItem {
   subscriptionAmount: number;
   /** What went back on those payments, taken off the day they were paid. */
   subscriptionRefundedAmount: number;
+  /**
+   * The tax `netAmount` includes, at the rate each purchase recorded when it
+   * was made; zero for the purchases made while the tenant had no rate.
+   */
+  taxAmount: number;
+  /** The same of what the tenant kept of the subscription payments. */
+  subscriptionTaxAmount: number;
 }
 
 export type RevenueStatsTotalsItem = Pick<
@@ -273,6 +280,8 @@ export type RevenueStatsTotalsItem = Pick<
   | "refundedAmount"
   | "subscriptionAmount"
   | "subscriptionRefundedAmount"
+  | "subscriptionTaxAmount"
+  | "taxAmount"
 >;
 
 export type GetRevenueStatsResult =
@@ -303,6 +312,8 @@ type RawRevenueStatsRow = Pick<
   | "seriesTitle"
   | "subscriptionAmount"
   | "subscriptionRefundedAmount"
+  | "subscriptionTaxAmount"
+  | "taxAmount"
 >;
 
 type RawRevenueStatsTotals = Pick<
@@ -313,6 +324,8 @@ type RawRevenueStatsTotals = Pick<
   | "refundedAmount"
   | "subscriptionAmount"
   | "subscriptionRefundedAmount"
+  | "subscriptionTaxAmount"
+  | "taxAmount"
 >;
 
 const mapRevenueStatsTotals = (
@@ -324,6 +337,8 @@ const mapRevenueStatsTotals = (
   refundedAmount: Number(totals?.refundedAmount ?? 0),
   subscriptionAmount: Number(totals?.subscriptionAmount ?? 0),
   subscriptionRefundedAmount: Number(totals?.subscriptionRefundedAmount ?? 0),
+  subscriptionTaxAmount: Number(totals?.subscriptionTaxAmount ?? 0),
+  taxAmount: Number(totals?.taxAmount ?? 0),
 });
 
 const mapRevenueStatsRow = (row: RawRevenueStatsRow): RevenueStatsItem => ({

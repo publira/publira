@@ -57,6 +57,8 @@ const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   seriesPublicId: "SERIES001",
   seriesTitle: "Series 1",
   store: "",
+  taxAmount: null,
+  taxRateBps: null,
   test: false,
   ...overrides,
 });

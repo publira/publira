@@ -3260,6 +3260,32 @@
           "other_service": "这不是{$name}标签。请复制此服务显示的标签。"
         }
       },
+      "tax": {
+        "title": "税费与发票",
+        "description": "价格中包含的税费、从作者版税中代扣的金额，以及收据的开票名称和登记编号。",
+        "rate_label": "税率（%）",
+        "rate_description": "所有价格中包含的税率，例如10。价格不含税时请留空。新税率适用于保存之后的购买；已完成的购买保留购买时的税率。",
+        "rate_applies_from": "当前税率自{$applies_from}起适用。",
+        "withholding_label": "代扣税率（%）",
+        "withholding_description": "结算版税月份时，对每位作者的支付额扣除其中所含税费后的金额进行代扣，例如10.21。留空则不代扣。",
+        "legal_name_label": "开票名称",
+        "legal_name_description": "收据上作为开票方的名称，最多{$max}个字符。留空则不显示。",
+        "registration_number_label": "登记编号",
+        "registration_number_description": "合格发票制度下的登记编号，例如T1234567890123，显示在每张收据上。最多{$max}个字符，不能包含空格。留空则不显示。",
+        "submit": "保存税费与发票设置",
+        "saved": "税费与发票设置已保存。",
+        "load_failed": "无法加载税费与发票设置。请稍后再试。",
+        "save_failed": "无法保存税费与发票设置。请稍后再试。",
+        "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+        "validation": {
+          "rate": "请输入0.01到100之间、最多两位小数的百分比，或留空。",
+          "legal_name_too_long": "开票名称最多{$max}个字符。",
+          "legal_name_control": "开票名称不能包含换行等控制字符。",
+          "registration_number_too_long": "登记编号最多{$max}个字符。",
+          "registration_number_whitespace": "登记编号不能包含空格或换行。",
+          "refused": "此值未被接受。请检查后重新保存。"
+        }
+      },
       "icon": {
         "title": "图标",
         "description": "公开站点在浏览器标签页和地址栏中显示的图标。",
@@ -4323,11 +4349,13 @@
         "subscription_label": "订阅",
         "subscription_refunded_label": "订阅退款额",
         "net_label": "净销售额",
+        "tax_label": "税额",
         "chart_label": "每日净销售额",
         "chart_purchases": "购买",
         "chart_subscriptions": "订阅",
         "definition": "销售额计入购买当天，因退款或租户败诉的争议而退回的金额，无论何时退回，都从同一天扣除，因此已统计的某天的金额之后可能下降。一卷或系列剩余章节的购买，按其中每个章节在价格中所占的部分计为该章节的销售。以租户当前货币以外的货币支付的购买不计入。",
         "subscription_definition": "订阅付款计入Stripe收到付款的当天，退回的金额从同一天扣除。净销售额包含扣除退款后的订阅付款与购买，图表将订阅付款叠加在购买之上。付款不属于任何系列，因此只计入按日的行。以Stripe测试密钥收到的付款不计入。",
+        "tax_definition": "税额是净销售额中包含的税费：对每笔购买和订阅付款，按其发生时记录的税率，计算租户留存部分中包含的税费。未设置税率期间的销售不含税费。",
         "breakdown_title": "明细",
         "group_aria": "销售额明细",
         "group_day": "按日",
@@ -4485,7 +4513,9 @@
         "gross": "销售额",
         "refunded": "退款",
         "adjustment": "退款调整",
-        "payout": "支付给作者"
+        "payout": "支付给作者",
+        "tax": "支付额中的税费",
+        "withholding": "代扣税额"
       },
       "open": {
         "section_error": "无法显示未结算月份",
@@ -4516,6 +4546,7 @@
         "sale_subtotal": "销售小计",
         "subscription_subtotal": "订阅小计",
         "no_role": "—",
+        "no_tax_rate": "—",
         "adjustment": "{$period}的退款调整",
         "subscription": "订阅分成",
         "columns": {
@@ -4527,8 +4558,16 @@
           "gross": "销售额",
           "refunded": "退款",
           "share": "分成比例",
-          "payout": "支付额"
+          "payout": "支付额",
+          "tax_rate": "税率",
+          "tax": "税额",
+          "withholding": "代扣税额"
         }
+      },
+      "subtotals": {
+        "title": "按作者列出的支付额",
+        "description": "本月向每位作者支付的金额、其中包含的税费，以及代扣的金额。",
+        "withholding_note": "代扣税额为支付额扣除其中所含税费后金额的{$rate}，舍去尾数。"
       },
       "statements": {
         "title": "已结算明细",
@@ -4548,6 +4587,8 @@
           "refunded": "退款",
           "adjustment": "调整",
           "payout": "支付额",
+          "tax": "税额",
+          "withholding": "代扣税额",
           "export": "CSV"
         }
       },
@@ -4635,6 +4676,9 @@
       "expires_at": "可阅读至",
       "expires_never": "无期限",
       "refunded_amount": "已退金额",
+      "tax_label": "其中税额",
+      "tax_value": "{$amount}（{$rate}）",
+      "tax_in_price": "含税{$amount}",
       "revoked_at": "对读者关闭",
       "revocation_reason": {
         "refund": "通过支付服务退款",

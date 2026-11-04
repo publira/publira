@@ -188,6 +188,7 @@ for (const locale of DOCS_LOCALES) {
           "search-engine-verification",
           "admin.settings.site_verification.title",
         ],
+        ["tax-and-invoices", "admin.settings.tax.title"],
       ] as const) {
         test(`the ${subject} card`, async ({ consoleSessions, page }) => {
           await openScreen(page, consoleSessions, locale, "/settings");

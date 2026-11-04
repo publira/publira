@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, review before publishing, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, review before publishing, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, search engine verification codes, and the tax and invoice details, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -167,6 +167,23 @@ Choose **Save the verification codes** to save, then ask the service to verify t
 ![The Search engine verification card: a Google Search Console field and a Bing Webmaster Tools field, each with what to paste under it, and Save the verification codes.](./settings-search-engine-verification.png)
 
 Only a Tenant admin can see this card's contents. Saves are recorded in the [audit log](./8-audit-log.md) as **Search engine verification updated**.
+
+### Tax and invoices
+
+The tax the tenant's prices include, what is withheld from its Authors' royalties, and the details its receipts are issued under. Every member of the staff sees what is saved here, and only a Tenant admin saves it.
+
+- **Tax rate (%)** is the rate every price includes, such as `10`, with up to two decimal places. Prices stay as they are entered: a rate does not add tax to a price, it states how much of the price is tax. Leave it empty if the prices include none.
+- **Withholding rate (%)**, such as `10.21`, is withheld from each Author's payout, less the tax it includes, when a month of royalties is closed. Leave it empty to withhold nothing.
+- **Legal name** is the name the receipts are issued under, up to 200 characters.
+- **Registration number** is the tenant's registration number under the qualified invoice system, such as `T1234567890123`, up to 32 characters without spaces.
+
+Choose **Save the tax and invoice settings** to save. A rate applies to the purchases made from the moment it is saved; a purchase already made keeps the rate it was made at, so changing the rate or clearing it leaves every earlier purchase and its tax as they were. While a rate is set, the card says since when it has applied, such as "The current rate has applied since Jan 16, 2026, 12:00 AM." Saving the card with the rate unchanged leaves that moment as it is.
+
+What a purchase records at the rate is in [Selling episodes](../4-selling-episodes.md#tax-included-in-prices), what a royalty statement states in [Reports and royalties](../6-reports-and-royalties.md#tax-and-withholding), and what the receipt says in [Email](./7-email.md#what-goes-through-it). A month of royalties records the withholding rate it is closed with, so set it before the close.
+
+![The Tax and invoices card: Tax rate (%), Withholding rate (%), Legal name, and Registration number, each with what it is for under it, and Save the tax and invoice settings.](./settings-tax-and-invoices.png)
+
+Saves are recorded in the [audit log](./8-audit-log.md) as **Tax and invoices updated**.
 
 ## Limits and retention
 

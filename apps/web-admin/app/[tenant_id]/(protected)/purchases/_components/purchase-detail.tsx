@@ -1,3 +1,4 @@
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import * as Identifier from "@publira/ui-components/identifier";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -13,6 +14,7 @@ import {
 } from "#components/purchase-status";
 import { PurchasedItemName } from "#components/purchased-item-name";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { formatShareBps } from "#lib/credit-share";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
@@ -246,6 +248,33 @@ export const PurchaseDetail = async ({
         <dd className={`${valueClassName} tabular-nums`}>
           {formatTenantAmount(purchase.price, { currency, locale })}
         </dd>
+
+        {purchase.taxRateBps !== null && purchase.taxAmount !== null ? (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.purchases.tax_label" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message
+                  message="admin.purchases.tax_value"
+                  values={{
+                    amount: formatTenantAmount(purchase.taxAmount, {
+                      currency,
+                      locale,
+                    }),
+                    rate: formatShareBps(
+                      purchase.taxRateBps,
+                      toIntlLocale(locale)
+                    ),
+                  }}
+                />
+              </Suspense>
+            </dd>
+          </>
+        ) : null}
 
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
