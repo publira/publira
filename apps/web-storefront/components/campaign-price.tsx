@@ -15,7 +15,9 @@ import type { EpisodeCampaign } from "#lib/catalog";
  * The regular price stays on screen because the campaign is only worth
  * something against it, and it is what the episode costs again afterwards.
  * Strike-through is not announced by a screen reader, so the regular price
- * carries its name in words for one.
+ * carries its name in words for one. Where the tenant states a tax rate the
+ * campaign price says it includes tax, and the regular price, which is
+ * struck through beside it, is read as including it too.
  *
  * The end is written in the tenant's time zone, as a free period's is, and as
  * an absolute date for the reason `FreeUntilBadge` gives: the page is a shared
@@ -27,6 +29,7 @@ export const CampaignPrice = ({
   currency,
   locale,
   price,
+  taxIncluded,
   timeZone,
 }: {
   campaign: EpisodeCampaign;
@@ -35,12 +38,21 @@ export const CampaignPrice = ({
   locale: Locale;
   /** The episode's regular price. */
   price: number;
+  /** Whether the tenant states a tax rate, which both prices include. */
+  taxIncluded: boolean;
   timeZone: string;
 }) => (
   <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-1">
     <span className="text-foreground">
       {formatPrice(campaign.price, { currency, locale })}
     </span>
+    {taxIncluded ? (
+      <span className="text-xs font-normal text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="inline-block h-3 w-12" />}>
+          <Message message="storefront.common.tax_included" />
+        </Suspense>
+      </span>
+    ) : null}
     <s>
       <span className="sr-only">
         <Suspense fallback={null}>

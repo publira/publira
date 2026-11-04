@@ -43,7 +43,12 @@ vi.mock("../_lib/actions", () => ({
 afterEach(cleanup);
 
 /** A site that takes payments in yen. */
-const SELLING: TenantSales = { app: false, currency: "JPY", web: true };
+const SELLING: TenantSales = {
+  app: false,
+  currency: "JPY",
+  taxIncluded: false,
+  web: true,
+};
 
 const renderOffer = async (sales = SELLING) =>
   render(
@@ -114,6 +119,27 @@ describe("SeriesRemainderOffer", () => {
     expect(screen.queryByText(/one by one/u)).toBeNull();
   });
 
+  it("says the price includes tax while the tenant states a rate", async () => {
+    mockGetMySeriesPurchaseState.mockResolvedValueOnce({
+      ok: true,
+      ownedEpisodeIds: new Set(),
+      remainder: {
+        discountPercent: 0,
+        episodeCount: 2,
+        listPrice: 600,
+        price: 600,
+      },
+    });
+
+    await renderOffer({ ...SELLING, taxIncluded: true });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Buy remaining episodes (2) for ¥600 incl. tax",
+      })
+    ).toBeTruthy();
+  });
+
   it("offers nothing when there is nothing left to sell", async () => {
     mockGetMySeriesPurchaseState.mockResolvedValueOnce({
       ok: true,
@@ -127,8 +153,14 @@ describe("SeriesRemainderOffer", () => {
   });
 
   it.each([
-    ["takes no payments", { app: false, currency: "JPY", web: false }],
-    ["could not be read", { app: false, currency: null, web: true }],
+    [
+      "takes no payments",
+      { app: false, currency: "JPY", taxIncluded: false, web: false },
+    ],
+    [
+      "could not be read",
+      { app: false, currency: null, taxIncluded: false, web: true },
+    ],
   ] satisfies [string, TenantSales][])(
     "offers nothing, and asks nothing, on a site that %s",
     async (_, sales) => {

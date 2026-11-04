@@ -22,6 +22,8 @@ import { startSeriesRemainderCheckoutAction } from "../_lib/actions";
  * checkout lists, or a reader credited on one of them. A read that failed says
  * so in place of the offer, since there is no price to quote without it.
  *
+ * The button says the price includes tax while the tenant states a rate.
+ *
  * Offered only where the site takes payments and the tenant's currency is
  * known, so a site that sells nothing never asks what the reader holds.
  */
@@ -68,6 +70,11 @@ export const SeriesRemainderOffer = async ({
     return null;
   }
 
+  const buyValues = {
+    count: remainder.episodeCount,
+    price: formatPrice(remainder.price, { currency, locale }),
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <form action={startSeriesRemainderCheckoutAction}>
@@ -77,13 +84,17 @@ export const SeriesRemainderOffer = async ({
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <Button type="submit" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <Message
-              message="storefront.series.remainder_buy"
-              values={{
-                count: remainder.episodeCount,
-                price: formatPrice(remainder.price, { currency, locale }),
-              }}
-            />
+            {sales.taxIncluded ? (
+              <Message
+                message="storefront.series.remainder_buy_tax_included"
+                values={buyValues}
+              />
+            ) : (
+              <Message
+                message="storefront.series.remainder_buy"
+                values={buyValues}
+              />
+            )}
           </Suspense>
         </Button>
       </form>

@@ -10,8 +10,13 @@ import type * as SubscriptionsModule from "#lib/subscriptions";
 
 import { PlanList } from "./plan-list";
 
-const { mockGetMySubscription, mockListSubscriptionPlans } = vi.hoisted(() => ({
+const {
+  mockGetMySubscription,
+  mockGetTenantSiteInfo,
+  mockListSubscriptionPlans,
+} = vi.hoisted(() => ({
   mockGetMySubscription: vi.fn(),
+  mockGetTenantSiteInfo: vi.fn(),
   mockListSubscriptionPlans: vi.fn(),
 }));
 
@@ -45,7 +50,7 @@ vi.mock("#lib/subscriptions", async () => {
 });
 
 vi.mock("#lib/tenant", () => ({
-  getTenantSiteInfo: () => Promise.resolve({ acceptsPayments: true }),
+  getTenantSiteInfo: mockGetTenantSiteInfo,
 }));
 
 vi.mock("../_lib/actions", () => ({
@@ -96,6 +101,10 @@ const held = (
 });
 
 beforeEach(() => {
+  mockGetTenantSiteInfo.mockResolvedValue({
+    acceptsPayments: true,
+    invoice: { taxRateBps: null },
+  });
   mockGetMySubscription.mockReset();
   mockListSubscriptionPlans.mockReset();
   mockListSubscriptionPlans.mockResolvedValue({
@@ -168,5 +177,23 @@ describe("PlanList", () => {
       screen.queryByText("storefront.plans.already_subscribed_google_play")
     ).toBeNull();
     expect(subscribe()).toBeTruthy();
+  });
+
+  it("says a plan's price includes tax while the tenant states a rate", async () => {
+    mockGetMySubscription.mockResolvedValue({ ok: true, subscription: null });
+
+    await renderList();
+
+    expect(screen.queryByText("storefront.common.tax_included")).toBeNull();
+
+    cleanup();
+    mockGetTenantSiteInfo.mockResolvedValue({
+      acceptsPayments: true,
+      invoice: { taxRateBps: 1000 },
+    });
+
+    await renderList();
+
+    expect(screen.getByText("storefront.common.tax_included")).toBeTruthy();
   });
 });

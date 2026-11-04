@@ -16,6 +16,8 @@ import type { StorefrontMessageAccessor } from "#lib/messages";
 import type { PurchaseItem } from "#lib/purchases";
 
 import { purchasesListHref } from "../_lib/search-params";
+import { PurchaseTax } from "./purchase-tax";
+import type { PurchaseIssuer } from "./purchase-tax";
 import { RentalTimeLeft } from "./rental-time-left";
 
 /**
@@ -28,6 +30,7 @@ import { RentalTimeLeft } from "./rental-time-left";
 const PURCHASES_CSV_PATH = "/api/v1/my/purchases/csv";
 
 interface PurchaseLibraryProps {
+  issuer: PurchaseIssuer;
   listErrorMessage?: string;
   /** The library's language, which the download reads the titles in. */
   locale: Locale;
@@ -138,9 +141,11 @@ const purchasedItemLink = (
 };
 
 const PurchaseCard = async ({
+  issuer,
   purchase,
   timeZone,
 }: {
+  issuer: PurchaseIssuer;
   purchase: PurchaseItem;
   timeZone: string;
 }) => {
@@ -246,6 +251,12 @@ const PurchaseCard = async ({
             </dd>
           </div>
         )}
+        <PurchaseTax
+          issuer={issuer}
+          locale={locale}
+          purchase={purchase}
+          t={t}
+        />
       </dl>
       {href ? (
         <div className="mt-4">
@@ -269,6 +280,7 @@ const onShelf = (purchase: PurchaseItem): boolean =>
   purchase.isActive && purchase.item.kind !== "coin_pack";
 
 export const PurchaseLibrary = ({
+  issuer,
   listErrorMessage,
   locale,
   nextToken,
@@ -346,6 +358,7 @@ export const PurchaseLibrary = ({
           <div className="grid gap-3">
             {activePurchases.map((purchase) => (
               <PurchaseCard
+                issuer={issuer}
                 key={purchase.id}
                 purchase={purchase}
                 timeZone={timeZone}
@@ -371,6 +384,7 @@ export const PurchaseLibrary = ({
           <div className="grid gap-3">
             {expiredPurchases.map((purchase) => (
               <PurchaseCard
+                issuer={issuer}
                 key={purchase.id}
                 purchase={purchase}
                 timeZone={timeZone}

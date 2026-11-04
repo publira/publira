@@ -40,7 +40,8 @@ type DatedPriceProps =
  * regular one and says until when, for the same reason; a free period open
  * over a campaign still opens the episode to everyone, so it wins. A price is
  * quoted in the tenant's currency, and not at all while the tenant could not
- * be read: a number with no currency is no price.
+ * be read: a number with no currency is no price. A quoted price says it
+ * includes tax while the tenant states a rate.
  */
 export const EpisodePrice = ({
   campaign,
@@ -94,10 +95,26 @@ export const EpisodePrice = ({
         currency={sales.currency}
         locale={locale}
         price={price}
+        taxIncluded={sales.taxIncluded}
         timeZone={timeZone}
       />
     );
   }
 
-  return formatPrice(price, { currency: sales.currency, locale });
+  const quoted = formatPrice(price, { currency: sales.currency, locale });
+
+  if (!sales.taxIncluded) {
+    return quoted;
+  }
+
+  return (
+    <span className="inline-flex items-baseline gap-x-1">
+      {quoted}
+      <span className="text-xs font-normal text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="inline-block h-3 w-12" />}>
+          <Message message="storefront.common.tax_included" />
+        </Suspense>
+      </span>
+    </span>
+  );
 };

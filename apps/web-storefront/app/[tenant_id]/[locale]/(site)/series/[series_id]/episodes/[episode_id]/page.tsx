@@ -438,6 +438,7 @@ const EpisodeContent = async (
                     previewPages={previewPages}
                     previousEpisode={previousEpisode}
                     series={series}
+                    taxIncluded={sales.taxIncluded}
                     tenantId={tenantId}
                     timeZone={timeZone}
                     waitFree={waitFree}

@@ -187,7 +187,8 @@ export const VolumeBookstoreLinks = ({
  * cards say what each volume holds and costs and offer nothing to press, the
  * way an episode row quotes a price nobody can pay right now; a reader who
  * already holds a volume is still told so. A price is not
- * quoted at all while the tenant's currency is unknown.
+ * quoted at all while the tenant's currency is unknown, and says it includes
+ * tax while the tenant states a rate.
  */
 export const SeriesVolumes = ({
   locale,
@@ -248,11 +249,24 @@ export const SeriesVolumes = ({
                     </Suspense>
                   </span>
                   {sales.currency ? (
-                    <span className="font-medium text-foreground tabular-nums">
-                      {formatPrice(volume.price, {
-                        currency: sales.currency,
-                        locale,
-                      })}
+                    <span className="inline-flex items-baseline gap-x-1">
+                      <span className="font-medium text-foreground tabular-nums">
+                        {formatPrice(volume.price, {
+                          currency: sales.currency,
+                          locale,
+                        })}
+                      </span>
+                      {sales.taxIncluded ? (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          <Suspense
+                            fallback={
+                              <SkeletonLine className="inline-block h-3 w-12" />
+                            }
+                          >
+                            <Message message="storefront.common.tax_included" />
+                          </Suspense>
+                        </span>
+                      ) : null}
                     </span>
                   ) : null}
                 </p>

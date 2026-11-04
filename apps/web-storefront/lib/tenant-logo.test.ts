@@ -12,6 +12,7 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   currency: "JPY",
   defaultLocale: "ja",
   domain: "example.test",
+  invoice: { taxRateBps: null },
   name: "Example Tenant",
   publicId: "TENANT_PUBLIC",
   signUpOpen: true,

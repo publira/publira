@@ -8,7 +8,7 @@ import { redirectToLogin } from "#lib/auth-session";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { listMyPurchases } from "#lib/purchases";
-import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { getTenantDisplayTimeZone, getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PurchaseLibrary } from "./_components/purchase-library";
@@ -44,13 +44,14 @@ const PurchaseLibraryData = async ({
 
   const { token } = parsePurchasesSearchParams(resolvedSearchParams);
 
-  const [result, timeZone] = await Promise.all([
+  const [result, timeZone, tenant] = await Promise.all([
     listMyPurchases(tenantId, {
       limit: defaultPurchasesPageSize,
       locale,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
+    getTenantSiteInfo(tenantId),
   ]);
 
   if (!result.ok && result.requiresSignIn) {
@@ -59,6 +60,7 @@ const PurchaseLibraryData = async ({
 
   return (
     <PurchaseLibrary
+      issuer={tenant?.invoice ?? {}}
       listErrorMessage={result.ok ? undefined : result.message}
       locale={locale}
       nextToken={result.nextToken}

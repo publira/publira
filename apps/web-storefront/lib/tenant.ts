@@ -1,4 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
+import type { TenantInvoiceDetails } from "@publira/api-client/public/tenant";
 import {
   AgeVerification,
   CommentMode,
@@ -178,6 +179,25 @@ export interface TenantLegalPages {
   termsPage?: TenantLegalPage;
 }
 
+/**
+ * What the tenant states about the tax its prices include: the rate a price
+ * offered now includes, and the name and registration number under the
+ * qualified invoice system that a taxed purchase was charged under.
+ */
+export interface TenantInvoice {
+  /**
+   * The name the tenant issues invoices under. Absent where it entered none.
+   */
+  legalName?: string;
+  /** The tenant's registration number. Absent where it entered none. */
+  registrationNumber?: string;
+  /**
+   * The rate every price offered now includes, in basis points. `null` where
+   * the tenant states no rate, and no price is then said to include tax.
+   */
+  taxRateBps: number | null;
+}
+
 export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
@@ -218,6 +238,8 @@ export interface TenantSiteInfo {
   /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
+  /** The tax the tenant's prices include, and who its invoices name. */
+  invoice: TenantInvoice;
   /**
    * The public header brand mark. Absent while the tenant has not
    * uploaded a logo.
@@ -263,6 +285,23 @@ const trimmed = (value?: string): string | undefined => value?.trim();
 
 const nonEmpty = (value?: string): string | undefined =>
   value?.trim() || undefined;
+
+/**
+ * The invoice details as `GetTenant` answers them. A response that predates
+ * the field states no rate, which is what the tenant stated before it.
+ */
+const toTenantInvoice = (
+  invoice:
+    | Pick<
+        TenantInvoiceDetails,
+        "legalName" | "registrationNumber" | "taxRateBps"
+      >
+    | undefined
+): TenantInvoice => ({
+  legalName: nonEmpty(invoice?.legalName),
+  registrationNumber: nonEmpty(invoice?.registrationNumber),
+  taxRateBps: invoice?.taxRateBps ?? null,
+});
 
 /**
  * The generated `TenantImageVariant` fields {@link toTenantImageVariants} reads
@@ -414,6 +453,7 @@ export const getTenantSiteInfo = async (
       iconImageVariants: toTenantImageVariants(
         response.theme?.iconImageVariants
       ),
+      invoice: toTenantInvoice(response.invoice),
       logoImageUpdatedAt: nonEmpty(response.theme?.logoImageUpdatedAt),
       logoImageVariants: toTenantImageVariants(
         response.theme?.logoImageVariants
@@ -621,11 +661,17 @@ export const getTenantDisplayTimeZone = async (
 };
 
 /**
- * Where a tenant already read can sell an episode, and in what currency. A
- * tenant that could not be read sells nowhere, and quotes no price.
+ * Where a tenant already read can sell an episode, in what currency, and
+ * whether its prices include tax. A tenant that could not be read sells
+ * nowhere, and quotes no price.
  */
 export const tenantSales = (tenant: TenantSiteInfo | null): TenantSales =>
-  tenant ? toTenantSales(tenant) : { app: false, currency: null, web: false };
+  tenant
+    ? toTenantSales({
+        ...tenant,
+        taxIncluded: tenant.invoice.taxRateBps !== null,
+      })
+    : { app: false, currency: null, taxIncluded: false, web: false };
 
 /**
  * Where the tenant can sell an episode right now, for a page that says what

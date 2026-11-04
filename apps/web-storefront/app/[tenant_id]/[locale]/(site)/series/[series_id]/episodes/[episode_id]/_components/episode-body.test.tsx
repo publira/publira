@@ -162,6 +162,7 @@ const props: Parameters<typeof EpisodeBody>[0] = {
   previewImages: [page("blurred_1", 1)],
   previewPages: [],
   series,
+  taxIncluded: false,
   tenantId: "TENANT_001",
   timeZone: "UTC",
 };

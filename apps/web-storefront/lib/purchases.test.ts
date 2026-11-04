@@ -98,6 +98,47 @@ describe("listMyPurchases", () => {
     ]);
   });
 
+  it("keeps the tax a purchase was charged, and none where it was charged none", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          currency: "JPY",
+          id: "PURCHASE01",
+          priceAtPurchase: 1100,
+          taxAmount: 100,
+          taxRateBps: 1000,
+        },
+        { currency: "JPY", id: "PURCHASE02", priceAtPurchase: 500 },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases.map(({ tax }) => tax)).toEqual([
+      { amount: 100, rateBps: 1000 },
+      undefined,
+    ]);
+  });
+
+  it("says which purchases a store charged", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        { currency: "JPY", id: "PURCHASE01", store: "app_store" },
+        { currency: "JPY", id: "PURCHASE02", store: "" },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(
+      result.purchases.map(({ chargedByStore }) => chargedByStore)
+    ).toEqual([true, false]);
+  });
+
   it("says which purchases are rentals", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",

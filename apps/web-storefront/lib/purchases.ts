@@ -33,6 +33,11 @@ export type PurchasedItem =
 
 export interface PurchaseItem {
   /**
+   * Whether the App Store or Google Play charged the reader, and issued their
+   * receipt in place of the tenant.
+   */
+  chargedByStore: boolean;
+  /**
    * Set on an episode paid with the tenant's coins: how many were spent, and
    * the tenant's word for them in the reader's locale. Such a purchase took no
    * payment, so `priceAtPurchase` is 0 on it.
@@ -61,6 +66,13 @@ export interface PurchaseItem {
    */
   revokedAt: string;
   series: { publicId: string; title: string };
+  /**
+   * The tax `priceAtPurchase` includes, in the same unit, at the rate the
+   * tenant had when the purchase was made, in basis points. Absent on a
+   * purchase made while the tenant stated no rate, on a pack of coins, and on
+   * an episode paid with coins, none of which was charged tax.
+   */
+  tax?: { amount: number; rateBps: number };
 }
 
 export type ListPurchasesResult =
@@ -124,6 +136,9 @@ type RawPurchase = Pick<
   | "revokedAt"
   | "series"
   | "seriesBundle"
+  | "store"
+  | "taxAmount"
+  | "taxRateBps"
   | "volume"
 >;
 
@@ -178,6 +193,7 @@ const toPurchasedItem = ({
 };
 
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
+  chargedByStore: Boolean(purchase.store),
   coinsSpent: purchase.coinsSpent
     ? { coinName: purchase.coinName ?? "", count: purchase.coinsSpent }
     : undefined,
@@ -196,6 +212,10 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
     publicId: purchase.series?.publicId ?? "",
     title: purchase.series?.title ?? "",
   },
+  tax:
+    purchase.taxAmount === undefined || purchase.taxRateBps === undefined
+      ? undefined
+      : { amount: purchase.taxAmount, rateBps: purchase.taxRateBps },
 });
 
 /**

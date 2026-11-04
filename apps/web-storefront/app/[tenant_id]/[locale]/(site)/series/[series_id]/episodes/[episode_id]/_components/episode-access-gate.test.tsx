@@ -90,6 +90,7 @@ const props = {
   seriesPublicId: "SERIES_001",
   signedIn: true,
   subscribable: false,
+  taxIncluded: false,
   tenantId: "TENANT_001",
   timeZone: "UTC",
 };
@@ -533,6 +534,23 @@ describe("EpisodeAccessGate", () => {
       });
     });
 
+    it("Say each sale's price includes tax while the tenant states a rate", () => {
+      render(<EpisodeAccessGate {...rented} taxIncluded />);
+
+      const buy = screen.getByRole("button", {
+        name: "storefront.episode.gate.purchase_for_tax_included",
+      });
+
+      const rent = screen.getByRole("button", {
+        name: "storefront.episode.gate.rent_for_tax_included",
+      });
+
+      expect(kindOf(buy)).toBe("purchase");
+      expect(valuesOf(buy)).toEqual({ price: "$4.99" });
+      expect(kindOf(rent)).toBe("rental");
+      expect(valuesOf(rent)).toEqual({ period: "48 hours", price: "$1.99" });
+    });
+
     it("Keep the Shu on the permanent copy, and give it to a ready ticket", () => {
       const { rerender } = render(<EpisodeAccessGate {...rented} />);
 
@@ -584,6 +602,19 @@ describe("EpisodeAccessGate", () => {
       expect(JSON.parse(end?.dataset.values ?? "{}")).toEqual({
         date: "Sun, Oct 11, 11:59 PM",
       });
+    });
+
+    it("Say the campaign price includes tax while the tenant states a rate", () => {
+      render(<EpisodeAccessGate {...onCampaign} taxIncluded />);
+
+      expect(screen.getByText("storefront.common.tax_included")).toBeDefined();
+      expect(
+        valuesOf(
+          screen.getByRole("button", {
+            name: "storefront.episode.gate.purchase_for_tax_included",
+          })
+        )
+      ).toEqual({ price: "$2.99" });
     });
 
     it("Name the campaign price on the button that buys the permanent copy", () => {
