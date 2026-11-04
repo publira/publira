@@ -206,6 +206,8 @@ On an episode sold **App only**, the site shows the episode as sold in the app a
 
 The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. While a [campaign price](./1-catalog/2-episodes.md#campaign-prices) is on sale, the price is the campaign's: an episode on sale from ¥500 to ¥300 is bought as `episode_300` and recorded at ¥300. A [promotion code](#promotion-codes) works the same way: an episode of ¥500 bought with a code of 10% off is bought as `episode_450`. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs, the price of every campaign that is scheduled or on sale included, and each of those prices less the discount of every code that applies to the episode and is neither paused, deleted, nor past its end, a code that has not started yet included. It counts an episode under each of its prices. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list, which for a campaign is as soon as it is scheduled and for a code as soon as it is created, so its product is ready before it starts. A code that takes the whole price off needs no product, since such a purchase is recorded without the store. The app refuses a code whose discounted price is not on the list.
 
+While [tips](#tips) are on, each tip amount is listed there too, below the prices, as `tip_` followed by the amount, such as `tip_300` for a tip of ¥300, and is created the same way, as a consumable at that amount.
+
 Each pack of your coins on sale is listed there too, as `coins_` followed by the pack's ID, with the coins and bonus coins it grants, and is created the same way, as a consumable at the pack's price. The stores show a product under the name you give it in App Store Connect and Play Console rather than one Publira sends, so name each pack's product with your word for your coins, in every language your app is listed in.
 
 Below them, under **Subscription plans**, each [subscription plan](./5-subscription-plans.md#creating-a-plan) that names an **App Store product ID** or a **Google Play product ID** is listed with what it bills every period and the product ID of each store, or **Not sold** for a store it names none of. A plan is not a consumable: create it as an auto-renewable subscription in App Store Connect, inside a subscription group, and as a subscription with a base plan in Play Console, at the plan's price and billing period. The IDs are entered on the plan, and the list follows them.
@@ -215,6 +217,26 @@ Below them, under **Subscription plans**, each [subscription plan](./5-subscript
 What each store needs, from the key the install verifies purchases with to testing with the stores' test buyers, is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app), with the app's own setup. A purchase from the App Store sandbox or a Play license tester opens the episode but is recorded as a test, and left out of royalty statements and the content statistics.
 
 An episode a reader saved in the app keeps opening on that device without a network for up to seven days after the app last opened it online, so a refund closes a saved episode within that time rather than at once, as [Offline reading](../5-mobile-app/7-offline-reading.md#paid-episodes-seven-days-without-the-install) describes. The next time the app opens it online, it is locked and deleted from the device.
+
+## Tips
+
+A reader who has finished an episode can give its Authors one of the amounts the tenant offers, at the end of the episode, on the site and in the app. The **Tips** section, between **In-app purchase** and **Store products**, sets whether they can and what they can give:
+
+- **Take tips for Authors** offers the amounts at the end of every episode. Turned off, no tip is offered, and the amounts are kept for when it is turned on again.
+- **Tip amounts** are up to six amounts in the tenant's currency, each above 0, one per field. **Add an amount** adds a field, and the button beside a field removes it; pasting several lines into a field adds a field for each. Readers are offered the amounts in ascending order, which is the order **Save tip settings** stores them in.
+
+![The Tips section: Take tips for Authors turned on, Tip amounts of 100, 300, and 1000 with a button to remove each, Add an amount, and Save tip settings.](./selling-episodes-tips.png)
+
+The form refuses a seventh amount, an amount entered twice, and 0, and turning tips on with no amount, and says what to correct under **Tip amounts**. Each save is recorded in **Audit logs** as **Tip settings updated**.
+
+A tip opens nothing to read. It is split among the episode's credited Authors by their shares, as a sale of the episode is, and reaches their royalty statements on lines of its own, so tips are told apart from sales. [Promotion codes](#promotion-codes) do not apply to it.
+
+A tip is paid the way the episode would be bought:
+
+- **On the site**, through the payment provider, so the site takes tips only while one is **Ready**, as [Choosing a payment provider](#choosing-a-payment-provider) describes.
+- **In the app**, through the same provider in the phone's browser with **Web checkout**, and through the store with **In-app purchase**, as the product of its amount that **Store products** lists. The app tells a reader that an amount whose product the store does not have cannot be given in the app, so create each product in App Store Connect and in Play Console when you add its amount.
+
+**Payments** › **Purchases** lists a tip under its episode, marked **Tip**, and it is refunded as a purchase is, as [Refunding from the console](#refunding-from-the-console) describes. A refund takes it off the Authors' tips, as it takes a refunded sale off their sales.
 
 ## Promotion codes
 
@@ -297,7 +319,7 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 ### Refunding from the console
 
-**Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. A purchase that recorded [tax](#tax-included-in-prices) shows it under its amount in the list, such as **Includes ¥100 tax**, and as **Tax included**, with its rate, beside the list. Only a tenant admin sees the screen.
+**Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. A purchase that recorded [tax](#tax-included-in-prices) shows it under its amount in the list, such as **Includes ¥100 tax**, and as **Tax included**, with its rate, beside the list. A rental is marked **Rental** under its episode, and a [tip](#tips) **Tip**. Only a tenant admin sees the screen.
 
 A purchase of a pack of coins is listed there as the coins it granted, in the tenant's word for them in its default language, and with no series, so narrowing the list to a series or an episode leaves it out. It is refunded like any purchase, except that it is always refunded in full, so the dialog asks for no amount. Its coins stay with the reader until the provider reports the refund in full, or a dispute of the payment: then what the pack has left is taken back, and what of it the reader had already spent is recorded as owed, and taken out of the next pack they buy. The episodes those spent coins paid for stay open, and each of their purchases shows what the coins were worth as refunded.
 

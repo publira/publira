@@ -31,6 +31,18 @@ export type TenantPurchaseSettingsFormState =
     }
   | null;
 
+export type TenantTipSettingsFormState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: { tipAmounts?: string };
+    }
+  | null;
+
 export type TenantStorePaymentSettingsFormState =
   | {
       ok: true;

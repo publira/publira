@@ -1,4 +1,5 @@
 import { PurchaseRevocationReason } from "@publira/api-client/admin/purchase";
+import { PurchaseKind } from "@publira/api-client/admin/types";
 import {
   BadRequestSchema,
   Code,
@@ -64,6 +65,7 @@ const purchase = (
     episodeId: string;
     episodePublicId: string;
     episodeTitle: string;
+    kind: PurchaseKind;
     listPrice: bigint;
     price: bigint;
     promotionCode: string;
@@ -233,6 +235,30 @@ describe("listPurchases", () => {
       { kind: "volume", publicId: "VOLUME001", title: "Volume 1" },
       { episodeCount: 12, kind: "series_bundle" },
       { bonusCoins: 100, coinName: "Points", coins: 1000, kind: "coin_pack" },
+    ]);
+  });
+
+  it("tells a rental and a tip from a permanent copy", async () => {
+    mockListPurchases.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        purchase({ kind: PurchaseKind.PURCHASE }),
+        purchase({ kind: PurchaseKind.RENTAL }),
+        purchase({ kind: PurchaseKind.TIP }),
+        // A server of the release before tips sends no kind.
+        purchase(),
+      ],
+    });
+
+    const { listPurchases } = await import("./purchase");
+    const result = await listPurchases("TENANT001", "en");
+
+    expect(result.purchases.map(({ kind }) => kind)).toEqual([
+      "purchase",
+      "rental",
+      "tip",
+      "purchase",
     ]);
   });
 

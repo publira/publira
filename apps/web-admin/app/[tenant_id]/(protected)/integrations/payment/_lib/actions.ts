@@ -16,13 +16,14 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 import {
   getPaymentProvider,
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
 import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
-import { tenantSiteCacheTag } from "#lib/public-api";
+import { getTenantCurrency, tenantSiteCacheTag } from "#lib/public-api";
 import {
   hasSecretKey,
   secretKeyFormInput,
@@ -38,12 +39,19 @@ import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import {
   tenantPurchaseSettingsCacheTag,
   updateTenantPurchaseSettings,
+  updateTenantTipSettings,
 } from "#lib/tenant-purchase-settings";
+import {
+  MAX_TIP_AMOUNTS,
+  parseTipAmounts,
+} from "#lib/tenant-tip-settings-shared";
+import type { TipAmountsResult } from "#lib/tenant-tip-settings-shared";
 
 import type {
   TenantPaymentSettingsFormState,
   TenantPurchaseSettingsFormState,
   TenantStorePaymentSettingsFormState,
+  TenantTipSettingsFormState,
 } from "../payment-types";
 
 const optionalSecretSchema = z.preprocess(
@@ -226,6 +234,134 @@ export const updateTenantPurchaseSettingsAction = async (
 
   return {
     message: t("admin.settings.purchase.saved"),
+    ok: true,
+  };
+};
+
+const tenantTipSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    // Read once the tenant's currency is known.
+    amounts: z.array(z.string()),
+    // The currency the form showed the amounts in.
+    amountsCurrency: z.preprocess(
+      (value) => (isFormText(value) ? value.trim() : ""),
+      z.string()
+    ),
+    enabled: checkboxOnFormSchema,
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
+};
+
+/** What the card says of amounts {@link parseTipAmounts} refused. */
+const tipAmountsMessage = (
+  result: Extract<TipAmountsResult, { ok: false }>,
+  t: AdminMessageAccessor
+): string => {
+  switch (result.reason) {
+    case "amount_invalid": {
+      return t("admin.settings.tips.validation.amount_invalid", {
+        amount: result.amount,
+      });
+    }
+
+    case "duplicate": {
+      return t("admin.settings.tips.validation.amount_duplicate", {
+        amount: result.amount,
+      });
+    }
+
+    case "too_many": {
+      return t("admin.settings.tips.validation.too_many", {
+        max: MAX_TIP_AMOUNTS,
+      });
+    }
+
+    default: {
+      return t("admin.settings.tips.validation.amounts_required");
+    }
+  }
+};
+
+export const updateTenantTipSettingsAction = async (
+  _prevState: TenantTipSettingsFormState,
+  formData: FormData
+): Promise<TenantTipSettingsFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantTipSettingsSchema(locale),
+  ]);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      amounts: { kind: "values", name: "tip_amounts" },
+      amountsCurrency: { kind: "value", name: "tip_amounts_currency" },
+      enabled: { kind: "value", name: "tips_enabled" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: t("errors.validation"), ok: false };
+  }
+
+  const { amountsCurrency, enabled, tenantId } = parsed.data;
+  // Read in the currency the tenant sells in now, never one the form claims.
+  // A form opened before it changed was typed in the old one.
+  const currency = await getTenantCurrency(tenantId);
+
+  if (!currency) {
+    return {
+      message: t("admin.settings.tips.currency_unavailable"),
+      ok: false,
+    };
+  }
+
+  if (amountsCurrency !== currency) {
+    return {
+      message: t("admin.settings.tips.currency_changed"),
+      ok: false,
+    };
+  }
+
+  const amounts = parseTipAmounts(parsed.data.amounts, currency, enabled);
+
+  if (!amounts.ok) {
+    return {
+      fieldErrors: { tipAmounts: tipAmountsMessage(amounts, t) },
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantTipSettings(
+      { tenantId, tips: { amounts: amounts.amounts, enabled } },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.tipAmountsError
+        ? { tipAmounts: result.tipAmountsError }
+        : undefined,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The tips are read with the rest of the purchase settings, under their tag.
+  // Store products are read uncached, and the storefront's copies are dropped
+  // by the API as the update lands.
+  updateTag(tenantPurchaseSettingsCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.tips.saved"),
     ok: true,
   };
 };

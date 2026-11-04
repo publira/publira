@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 import type { TenantPurchaseSettingsFormState } from "../payment-types";
 import { TenantPurchaseSettingsForm } from "./tenant-purchase-settings-form";
@@ -41,11 +42,12 @@ vi.mock("#components/message", () => ({
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
-const storedSettings = {
+const storedSettings: TenantPurchaseSettings = {
   appStoreUrl: "https://apps.apple.com/app/id123",
   googlePlayUrl: "",
   purchaseAvailability: "app",
-} as const;
+  tips: { amounts: [], enabled: false },
+};
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>

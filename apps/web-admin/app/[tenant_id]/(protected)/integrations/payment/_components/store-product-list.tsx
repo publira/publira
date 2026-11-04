@@ -24,7 +24,8 @@ interface StoreProductListProps {
 
 /**
  * The consumable products the tenant creates in both stores: one per price,
- * and one per pack of the tenant's coins, which names the pack it sells. The
+ * one per tip amount while the tenant takes tips, and one per pack of the
+ * tenant's coins, which names the pack it sells. The
  * stores show a product under the name the tenant gives it there, so a list
  * with a pack says the pack's product is to carry the tenant's word for its
  * coins.
@@ -134,6 +135,11 @@ export const StoreProductList = async ({
                       })}
                     </p>
                   ) : null}
+                  {product.tip ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("admin.settings.store_products.tip")}
+                    </p>
+                  ) : null}
                 </Table.Cell>
                 <Table.Cell className="text-right">
                   {formatPrice(product.price, {
@@ -142,18 +148,25 @@ export const StoreProductList = async ({
                   })}
                 </Table.Cell>
                 <Table.Cell className="text-right">
-                  {product.coinPack ? null : product.episodeCount}
+                  {product.coinPack || product.tip
+                    ? null
+                    : product.episodeCount}
                 </Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>
         </Table.Root>
       ) : null}
-      {products.some((product) => !product.coinPack) ? (
+      {products.some((product) => !product.coinPack && !product.tip) ? (
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.store_products.promotion_code_prices" />
           </Suspense>
+        </p>
+      ) : null}
+      {products.some((product) => product.tip) ? (
+        <p className="text-sm text-muted-foreground">
+          {t("admin.settings.store_products.tip_products")}
         </p>
       ) : null}
       {products.some((product) => product.coinPack) ? (

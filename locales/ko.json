@@ -3758,6 +3758,31 @@
           "key_file_too_large": "키 파일이라기에는 너무 큰 파일입니다."
         }
       },
+      "tips": {
+        "title": "팁",
+        "description": "독자는 에피소드 마지막에서 이 금액 중 하나를 그 에피소드의 작가에게 팁으로 보낼 수 있습니다. 사이트와 앱 모두에서 보낼 수 있습니다. 팁으로 열리는 에피소드는 없습니다. 팁은 판매와 마찬가지로 에피소드에 크레딧된 작가에게 각자의 몫대로 나뉩니다. 사이트에서는 결제 제공자를 통해, 스토어에서 판매하는 앱에서는 스토어 상품에 표시되는 금액별 상품으로 결제됩니다.",
+        "section_error": "팁 설정을 표시하지 못했습니다",
+        "enabled": "작가에게 보내는 팁 받기",
+        "enabled_description": "모든 에피소드 마지막에 아래 금액을 독자에게 보여 줍니다. 끄면 팁이 표시되지 않으며, 금액은 유지됩니다.",
+        "amounts": "팁 금액",
+        "amounts_description": "{$currency}로 최대 {$max :integer}개, 각각 0보다 큰 금액을 입력합니다. 작은 금액부터 순서대로 표시됩니다. 여러 줄을 붙여 넣으면 한 줄마다 칸이 추가됩니다.",
+        "amount_label": "팁 금액 {$position}",
+        "amount_remove": "팁 금액 {$position} 삭제",
+        "amounts_add": "금액 추가",
+        "submit": "팁 설정 저장",
+        "saved": "팁 설정을 저장했습니다.",
+        "load_failed": "팁 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "팁 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "currency_unavailable": "테넌트의 통화를 불러올 수 없어 지금은 팁 금액을 입력할 수 없습니다.",
+        "currency_changed": "이 양식을 연 뒤 테넌트의 통화가 바뀌었습니다. 페이지를 새로고침하고 팁 금액을 다시 입력하세요.",
+        "validation": {
+          "amount_invalid": "팁 금액은 0보다 큰 금액으로 입력해 주세요. \"{$amount}\"은(는) 금액이 아닙니다.",
+          "amount_duplicate": "팁 금액에 \"{$amount}\"이(가) 두 번 이상 입력되었습니다.",
+          "too_many": "팁 금액은 {$max :integer}개까지 입력해 주세요.",
+          "amounts_required": "팁을 받으려면 팁 금액을 하나 이상 입력해 주세요.",
+          "amounts_refused": "팁 금액을 확인해 주세요. 0보다 큰 금액을 중복 없이 {$max :integer}개까지 입력하고, 팁을 받는 동안에는 하나 이상 입력해야 합니다."
+        }
+      },
       "store_products": {
         "title": "스토어 상품",
         "description": "App Store Connect와 Play Console에 이 ID들로 소모성 상품을 각 가격에 맞춰 만드세요. 에피소드는 가격에 해당하는 상품으로, 캠페인 중에는 캠페인 가격에 해당하는 상품으로 구매되므로, 시작 전인 캠페인의 가격을 포함해 앱에서 판매하는 유료 에피소드의 가격마다 하나씩 필요합니다. 앱에서 판매하는 구독 플랜은 소모성 상품이 아니라 구독으로 만듭니다.",
@@ -3777,7 +3802,9 @@
         "plan": "플랜",
         "app_store": "App Store",
         "google_play": "Google Play",
-        "not_sold": "판매 안 함"
+        "not_sold": "판매 안 함",
+        "tip": "팁",
+        "tip_products": "팁을 받는 동안에는 팁 금액도 각각 tip_ 뒤에 금액을 붙인 ID의 상품으로 판매됩니다. 같은 방식으로 그 금액의 소모성 상품을 만들고, 팁에 금액을 추가할 때마다 상품도 추가하세요."
       },
       "mobile_push": {
         "description": "푸시 알림은 이 테넌트의 모바일 앱이 빌드된 Firebase 프로젝트를 통해 전달되므로, 인증 정보는 같은 프로젝트의 서비스 계정 키여야 합니다. 키 파일은 쓰기 전용이며 저장한 뒤에는 다시 표시되지 않습니다.",
@@ -4643,6 +4670,8 @@
       "reader_deleted": "삭제된 계정",
       "series_bundle": "남은 {$count :integer}화",
       "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
+      "kind_rental": "대여",
+      "kind_tip": "팁",
       "test_payment": "테스트",
       "columns": {
         "purchased_at": "구매 일시",

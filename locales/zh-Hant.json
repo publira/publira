@@ -3758,6 +3758,31 @@
           "key_file_too_large": "此檔案過大，不可能是金鑰檔案。"
         }
       },
+      "tips": {
+        "title": "打賞",
+        "description": "讀者可以在章節末尾，從這些金額中選擇一個打賞給該章節的作者，網站與應用程式中皆可打賞。打賞不會解鎖任何可閱讀的內容，並與銷售一樣，依分潤分給該章節署名的作者。在網站上透過您的付款服務商付款；在透過商店販售的應用程式中，則作為商店商品中列出的對應金額的商品付款。",
+        "section_error": "無法顯示打賞設定",
+        "enabled": "接受給作者的打賞",
+        "enabled_description": "在每個章節末尾向讀者提供以下金額。關閉後不再提供打賞，金額會保留。",
+        "amounts": "打賞金額",
+        "amounts_description": "最多{$max :integer}個以{$currency}計的金額，每個皆須大於0，依由小到大的順序提供。貼上多行時會依行分成多欄。",
+        "amount_label": "打賞金額{$position}",
+        "amount_remove": "刪除打賞金額{$position}",
+        "amounts_add": "新增金額",
+        "submit": "儲存打賞設定",
+        "saved": "打賞設定已儲存。",
+        "load_failed": "無法載入打賞設定。請稍後再試。",
+        "save_failed": "無法儲存打賞設定。請稍後再試。",
+        "currency_unavailable": "無法讀取租戶的貨幣，因此目前無法輸入打賞金額。",
+        "currency_changed": "開啟此表單後，租戶的貨幣已變更。請重新載入頁面並重新輸入打賞金額。",
+        "validation": {
+          "amount_invalid": "請將每個打賞金額輸入為大於0的金額。「{$amount}」不是有效金額。",
+          "amount_duplicate": "打賞金額中「{$amount}」輸入了不只一次。",
+          "too_many": "打賞金額最多可輸入{$max :integer}個。",
+          "amounts_required": "若要接受打賞，請至少輸入一個打賞金額。",
+          "amounts_refused": "請檢查打賞金額。最多可輸入{$max :integer}個大於0且不重複的金額，接受打賞期間至少需要一個。"
+        }
+      },
       "store_products": {
         "title": "商店商品",
         "description": "請在App Store Connect與Play Console中依各自的價格建立這些ID的消耗性商品。章節會以其價格對應的商品購買，活動期間則以活動價格對應的商品購買，因此應用程式中販售的付費章節的每個價格都需要一個商品，包括尚未開始的活動價格。應用程式中販售的訂閱方案則以訂閱建立，而非消耗性商品。",
@@ -3777,7 +3802,9 @@
         "plan": "方案",
         "app_store": "App Store",
         "google_play": "Google Play",
-        "not_sold": "不販售"
+        "not_sold": "不販售",
+        "tip": "打賞",
+        "tip_products": "接受打賞期間，每個打賞金額也會各自作為一個商品販售，ID為tip_加上金額。請以同樣方式將其建立為該金額的消耗性商品，並在打賞中每新增一個金額時也新增對應商品。"
       },
       "mobile_push": {
         "description": "推播通知透過建置該租戶行動應用程式所用的Firebase專案送達，因此憑證必須是同一專案的服務帳戶金鑰。金鑰檔案僅供寫入，儲存後不會再次顯示。",
@@ -4643,6 +4670,8 @@
       "reader_deleted": "已刪除的帳戶",
       "series_bundle": "剩餘的{$count :integer}章",
       "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
+      "kind_rental": "租借",
+      "kind_tip": "打賞",
       "test_payment": "測試",
       "columns": {
         "purchased_at": "購買時間",

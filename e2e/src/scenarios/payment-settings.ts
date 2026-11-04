@@ -1,7 +1,7 @@
 /**
  * Records created by `db/seeds/scenarios/330_payment_settings.sql`. Re-applying
  * it deletes the tenant's stored payment settings, which leaves it with no
- * provider.
+ * provider, and turns its tips off with no amounts.
  */
 
 export const PAYMENT_SETTINGS_SCENARIO = "330_payment_settings";

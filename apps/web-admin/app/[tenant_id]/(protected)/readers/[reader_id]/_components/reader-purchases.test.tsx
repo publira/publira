@@ -42,6 +42,7 @@ const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   expiresAt: "",
   id: "018f0e6a-5000-7000-8000-000000000001",
   item: { kind: "episode", publicId: "EPISODE001", title: "Episode 1" },
+  kind: "purchase",
   listPrice: 500,
   price: 500,
   promotionCode: "",
@@ -120,6 +121,25 @@ describe("ReaderPurchases", () => {
         /\/purchases\?purchase=018f0e6a-5000-7000-8000-000000000001$/u
       )
     );
+  });
+
+  it("names a rental and a tip under what they were of, and nothing for a permanent copy", async () => {
+    await renderPurchases({
+      purchases: [
+        purchase(),
+        purchase({
+          id: "018f0e6a-5000-7000-8000-000000000002",
+          kind: "rental",
+        }),
+        purchase({ id: "018f0e6a-5000-7000-8000-000000000003", kind: "tip" }),
+      ],
+    });
+
+    const [, copy, rental, tip] = screen.getAllByRole("row");
+    expect(within(copy).queryByText("Rental")).toBeNull();
+    expect(within(copy).queryByText("Tip")).toBeNull();
+    expect(within(rental).getByText("Rental")).toBeDefined();
+    expect(within(tip).getByText("Tip")).toBeDefined();
   });
 
   it("says the reader has bought nothing when the list is empty", async () => {

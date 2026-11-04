@@ -251,6 +251,39 @@ for (const locale of DOCS_LOCALES) {
           });
         });
       }
+
+      // The seed tenant takes no tips, so the card is photographed as a
+      // Tenant admin fills it in, before it is saved.
+      test("the tips section", async ({ consoleSessions, page }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          "/integrations/payment"
+        );
+        const tips = docsSection(page, t("admin.settings.tips.title"));
+        const amounts = tips.getByRole("spinbutton");
+
+        const add = tips.getByRole("button", {
+          name: t("admin.settings.tips.amounts_add"),
+        });
+
+        await tips
+          .getByRole("switch", { name: t("admin.settings.tips.enabled") })
+          .click();
+        await amounts.nth(0).fill("100");
+        await add.click();
+        await amounts.nth(1).fill("300");
+        await add.click();
+        await amounts.nth(2).fill("1000");
+
+        await expectDocsScreenshot(page, {
+          element: tips,
+          locale,
+          page: sellingPage,
+          subject: "tips",
+        });
+      });
     });
 
     test.describe("promotion codes", () => {

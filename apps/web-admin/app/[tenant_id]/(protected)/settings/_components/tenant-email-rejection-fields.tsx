@@ -7,6 +7,7 @@ import { Switch } from "@publira/ui-components/switch";
 import { useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import * as EntryList from "#components/entry-list";
 import type { TenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 import {
   isEmailRejectionEntry,
@@ -15,7 +16,6 @@ import {
 } from "#lib/tenant-email-rejection-settings-shared";
 
 import type { TenantEmailRejectionActionState } from "../settings-types";
-import * as EntryList from "./entry-list";
 
 type SettledState = NonNullable<TenantEmailRejectionActionState>;
 

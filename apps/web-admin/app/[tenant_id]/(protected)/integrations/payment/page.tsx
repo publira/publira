@@ -22,6 +22,7 @@ import {
   getTenantPaymentSettings,
   listPaymentProviders,
 } from "#lib/payment-settings";
+import { getTenantCurrency } from "#lib/public-api";
 import {
   getTenantStorePaymentSettings,
   listTenantStoreProducts,
@@ -35,6 +36,7 @@ import { StoreProductList } from "./_components/store-product-list";
 import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
 import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
 import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payment-settings-form";
+import { TenantTipSettingsForm } from "./_components/tenant-tip-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -219,6 +221,59 @@ const SettingsStorePaymentForm = async () => {
   );
 };
 
+const SettingsTipFormSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-16" />
+    <div className="grid gap-3">
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </div>
+  </div>
+);
+
+const SettingsTipForm = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [purchaseSettingsResult, currentUserResult, currency, t] =
+    await Promise.all([
+      getTenantPurchaseSettings(tenantId, locale),
+      getAdminCurrentUser(tenantId),
+      getTenantCurrency(tenantId),
+      getMessagesFor(locale),
+    ]);
+
+  await redirectToLoginIfSessionRejected(
+    purchaseSettingsResult,
+    currentUserResult
+  );
+
+  let loadErrorMessage: string | undefined;
+
+  if (!purchaseSettingsResult.ok) {
+    loadErrorMessage = t("admin.settings.tips.load_failed");
+  } else if (!currency) {
+    loadErrorMessage = t("admin.settings.tips.currency_unavailable");
+  }
+
+  return (
+    <TenantTipSettingsForm
+      canEdit={isTenantAdminRole(
+        currentUserResult.ok ? currentUserResult.user.role : undefined
+      )}
+      currency={currency ?? undefined}
+      initialSettings={
+        purchaseSettingsResult.ok
+          ? purchaseSettingsResult.settings.tips
+          : undefined
+      }
+      loadErrorMessage={loadErrorMessage}
+      tenantId={tenantId}
+    />
+  );
+};
+
 const StoreProductsSkeleton = () => (
   <div className="grid gap-4">
     <SkeletonLine className="h-5 w-32" />
@@ -297,6 +352,17 @@ const IntegrationsPaymentPage = () => (
             >
               <Suspense fallback={<SettingsStorePaymentFormSkeleton />}>
                 <SettingsStorePaymentForm />
+              </Suspense>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.settings.tips.section_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsTipFormSkeleton />}>
+                <SettingsTipForm />
               </Suspense>
             </SectionErrorBoundary>
             <SectionErrorBoundary
