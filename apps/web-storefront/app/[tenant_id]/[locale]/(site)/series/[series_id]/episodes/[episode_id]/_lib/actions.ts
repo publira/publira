@@ -26,6 +26,9 @@ import { episodeCoinsPath } from "#lib/coins-path";
 import type { EpisodeCoinsOutcome } from "#lib/coins-path";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { PROMOTION_CODE_MAX_LENGTH } from "#lib/promotion-code";
+import type { EpisodeSaleKind, PromotionCodeState } from "#lib/promotion-code";
+import { quoteEpisodePromotionCode } from "#lib/promotion-code-quote";
 import { recordIdSchema } from "#lib/record-id";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -48,6 +51,30 @@ const checkoutFormSchema = episodeFormSchema.extend({
   kind: z.enum(["purchase", "rental"]).default("purchase"),
 });
 
+/**
+ * The code a checkout button carries once the gate applied one to its sale.
+ * Empty, or absent, is no code.
+ */
+const promotionCodeFormSchema = z
+  .string()
+  .trim()
+  .max(PROMOTION_CODE_MAX_LENGTH)
+  .default("");
+
+const episodeCheckoutFormSchema = checkoutFormSchema.extend({
+  promotionCode: promotionCodeFormSchema,
+});
+
+/** Whether a checkout was refused for the code it carried. */
+const refusedForPromotionCode = (cause: unknown): boolean =>
+  [
+    RPC_ERROR_REASON.promotionCodeAlreadyRedeemed,
+    RPC_ERROR_REASON.promotionCodeExhausted,
+    RPC_ERROR_REASON.promotionCodeExpired,
+    RPC_ERROR_REASON.promotionCodeInvalid,
+    RPC_ERROR_REASON.promotionCodeNotApplicable,
+  ].some((reason) => rpcErrorHasReason(cause, reason));
+
 const purchaseKinds = {
   purchase: PurchaseKind.PURCHASE,
   rental: PurchaseKind.RENTAL,
@@ -66,12 +93,13 @@ export const startEpisodeCheckoutAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
 
-  const parsed = checkoutFormSchema.safeParse(
+  const parsed = episodeCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
       episodePublicId: "value",
       kind: "value",
       locale: "value",
+      promotionCode: "value",
       seriesPublicId: "value",
       tenantId: "value",
     })
@@ -81,8 +109,15 @@ export const startEpisodeCheckoutAction = async (
     redirect("/");
   }
 
-  const { episodeId, episodePublicId, kind, locale, seriesPublicId, tenantId } =
-    parsed.data;
+  const {
+    episodeId,
+    episodePublicId,
+    kind,
+    locale,
+    promotionCode,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
 
   // `returnTo` is the episode itself. Handing `episodeLoginHref()` to these
   // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
@@ -109,6 +144,7 @@ export const startEpisodeCheckoutAction = async (
         episodeId,
         kind: purchaseKinds[kind],
         locale,
+        promotionCode,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -118,6 +154,18 @@ export const startEpisodeCheckoutAction = async (
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
+    }
+
+    // A code that stopped applying between the quote and the press: back to
+    // the gate with the code, which quotes it again and says why.
+    if (promotionCode && refusedForPromotionCode(error)) {
+      const returnPath = await tenantLocalePath(
+        tenantId,
+        locale,
+        `${returnTo}?${new URLSearchParams({ promotion_code: promotionCode }).toString()}`
+      );
+
+      redirect(returnPath);
     }
 
     // Already bought or still rented, or refused for a reason the episode page
@@ -152,7 +200,86 @@ export const startEpisodeCheckoutAction = async (
     redirect(errorPath);
   }
 
+  // A code that takes the whole price off records the purchase at once, and
+  // the URL answered is the episode's own return from a payment.
+  if (promotionCode) {
+    updateTag(tenantReaderAccessTag(tenantId));
+    updateTag(tenantPurchasesTag(tenantId));
+  }
+
   redirect(checkoutURL);
+};
+
+/**
+ * The gate's code field: the code the reader typed and the sales of the
+ * episode its buttons offer, which are the ones the code is quoted against.
+ */
+const promotionCodeQuoteFormSchema = episodeFormSchema.extend({
+  kinds: z
+    .array(z.enum(["purchase", "rental"]))
+    .min(1)
+    .max(2),
+  promotionCode: promotionCodeFormSchema,
+});
+
+/**
+ * Quote the code the reader typed at the gate against each sale its buttons
+ * offer, for the gate to rewrite their prices with.
+ *
+ * The answer is the field's state, not a redirect: the quote spends one of the
+ * reader's lookups per sale, and a page that read the code back from the URL
+ * to show it would spend them again. An empty field takes the code off.
+ */
+export const applyEpisodePromotionCodeAction = async (
+  _previous: PromotionCodeState<EpisodeSaleKind>,
+  formData: FormData
+): Promise<PromotionCodeState<EpisodeSaleKind>> => {
+  await assertSameOrigin();
+
+  const parsed = promotionCodeQuoteFormSchema.safeParse(
+    toFormDataInput(formData, {
+      episodeId: "value",
+      episodePublicId: "value",
+      kinds: "values",
+      locale: "value",
+      promotionCode: "value",
+      seriesPublicId: "value",
+      tenantId: "value",
+    })
+  );
+
+  if (!parsed.success) {
+    redirect("/");
+  }
+
+  const {
+    episodeId,
+    episodePublicId,
+    kinds,
+    locale,
+    promotionCode,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
+
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
+
+  try {
+    return await quoteEpisodePromotionCode({
+      code: promotionCode,
+      episodeId,
+      kinds: [...new Set(kinds)],
+      sessionId,
+      tenantId,
+    });
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      await redirectToLogin(locale, returnTo, tenantId);
+    }
+
+    throw error;
+  }
 };
 
 const waitFreeErrorPath = (

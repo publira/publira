@@ -201,6 +201,11 @@ export interface TenantInvoice {
 export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
+  /**
+   * Whether the tenant holds a promotion code a reader could enter now or
+   * later, which is when a checkout offers the code field.
+   */
+  acceptsPromotionCodes: boolean;
   /** Which ratings this tenant makes a reader prove an age for. */
   ageVerification: TenantAgeVerification;
   /** Where the tenant's app can sell an episode right now. */
@@ -402,6 +407,14 @@ const toTenantBrandMarks = (
  * Callers cannot tell "no tenant" from "could not ask" — deliberately: both
  * render the same defaults, and the distinction has no reader-facing meaning.
  */
+/**
+ * Whether a checkout offers the promotion code field. A tenant that could not
+ * be read offers none, as it takes no payment.
+ */
+export const tenantAcceptsPromotionCodes = (
+  tenant: Pick<TenantSiteInfo, "acceptsPromotionCodes"> | null
+): boolean => tenant?.acceptsPromotionCodes ?? false;
+
 export const getTenantSiteInfo = async (
   tenantId: string
 ): Promise<TenantSiteInfo | null> => {
@@ -437,6 +450,7 @@ export const getTenantSiteInfo = async (
 
     return {
       acceptsPayments: response.acceptsPayments === true,
+      acceptsPromotionCodes: response.acceptsPromotionCodes === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
       appPayments: toTenantAppPayments(response),
       appStoreUrl: nonEmpty(response.appStoreUrl),

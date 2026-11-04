@@ -21,6 +21,12 @@ export const EPISODE_RENTALS_SERIES = {
   title: "Rental Series 001",
 } as const;
 
+/** The Author episode 1 credits, with half of each sale. */
+export const EPISODE_RENTALS_AUTHOR = {
+  name: "Rental Artist",
+  publicId: "RntlAUTHAAA1",
+} as const;
+
 /** 300 yen to keep, or 100 yen for 48 hours. */
 export const EPISODE_RENTALS_EPISODE = {
   publicId: "RntlEPSDAAA1",
@@ -65,6 +71,18 @@ export const EPISODE_RENTALS_READERS = {
     email: "campaign-buyer@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA5",
+  },
+  /** Applies the admin's promotion code at episode 1's gate and buys it. */
+  codeBuyer: {
+    email: "code-buyer@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA6",
+  },
+  /** Enters a promotion code the tenant does not hold. */
+  codeMistyper: {
+    email: "code-mistyper@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA7",
   },
   /** Buys every episode in one checkout, at the series' discount. */
   remainderBuyer: {

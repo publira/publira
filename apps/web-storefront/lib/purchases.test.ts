@@ -74,6 +74,42 @@ describe("listMyPurchases", () => {
     ]);
   });
 
+  it("keeps the price before a promotion code and the code beside what was paid", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          currency: "JPY",
+          id: "PURCHASE01",
+          listPrice: 300,
+          priceAtPurchase: 240,
+          promotionCode: "SPRING10",
+        },
+        // A server that predates promotion codes answers no list price.
+        {
+          currency: "JPY",
+          id: "PURCHASE02",
+          listPrice: 0,
+          priceAtPurchase: 300,
+        },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(
+      result.purchases.map(({ listPrice, priceAtPurchase, promotionCode }) => ({
+        listPrice,
+        priceAtPurchase,
+        promotionCode,
+      }))
+    ).toEqual([
+      { listPrice: 300, priceAtPurchase: 240, promotionCode: "SPRING10" },
+      { listPrice: 300, priceAtPurchase: 300, promotionCode: "" },
+    ]);
+  });
+
   it("says how many coins an episode paid with them took, in the tenant's word for them", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",

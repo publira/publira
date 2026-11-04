@@ -28,6 +28,8 @@ import type {
   EpisodePurchaseSurface,
 } from "#lib/catalog";
 import { coinPackTotal } from "#lib/coins";
+import { episodeSaleKinds } from "#lib/promotion-code";
+import type { EpisodeSaleKind, PromotionCodeState } from "#lib/promotion-code";
 import type { TenantImageVariant } from "#lib/tenant";
 
 import { episodeLoginHref } from "../_lib/access-gate";
@@ -40,6 +42,11 @@ import { coinsCarryShu, offersCoinPayment } from "../_lib/coin-offer";
 import type { CoinOffer } from "../_lib/coin-offer";
 import { episodePath } from "../_lib/episode-path";
 import type { WaitFreeOffer } from "../_lib/wait-free-offer";
+import {
+  CheckoutSubmit,
+  PromotionCodeField,
+  PromotionCodeProvider,
+} from "./checkout-promotion-code";
 import { WaitFreeCountdown } from "./wait-free-countdown";
 
 /**
@@ -253,18 +260,26 @@ const WaitFreeTicketForm = ({
  */
 const CheckoutForm = ({
   children,
+  currency,
   episodeId,
   episodePublicId,
   kind,
+  locale,
+  rentalPeriodHours,
   seriesPublicId,
+  taxIncluded,
   tenantId,
   variant,
 }: {
   children: ReactNode;
+  currency: string | null;
   episodeId: string;
   episodePublicId: string;
-  kind: "purchase" | "rental";
+  kind: EpisodeSaleKind;
+  locale: Locale;
+  rentalPeriodHours: number;
   seriesPublicId: string;
+  taxIncluded: boolean;
   tenantId: string;
   variant: "outline" | "secondary";
 }) => (
@@ -275,9 +290,16 @@ const CheckoutForm = ({
     <input name="episodePublicId" type="hidden" value={episodePublicId} />
     <input name="episodeId" type="hidden" value={episodeId} />
     <input name="kind" type="hidden" value={kind} />
-    <Button size="lg" type="submit" variant={variant}>
+    <CheckoutSubmit
+      currency={currency}
+      kind={kind}
+      locale={locale}
+      rentalPeriodHours={rentalPeriodHours}
+      taxIncluded={taxIncluded}
+      variant={variant}
+    >
       {children}
-    </Button>
+    </CheckoutSubmit>
   </form>
 );
 
@@ -298,6 +320,9 @@ const CheckoutForm = ({
  * and a button that said only "Buy" would leave the reader to guess which of
  * the two prices it charges. A button that names a price says it includes tax
  * while the tenant states a rate.
+ *
+ * A promotion code the gate's field applied rewrites the price of each button
+ * whose sale it applies to (`CheckoutSubmit`).
  */
 const CheckoutActions = ({
   campaign,
@@ -328,9 +353,22 @@ const CheckoutActions = ({
   taxIncluded: boolean;
   tenantId: string;
 }) => {
-  const formProps = { episodeId, episodePublicId, seriesPublicId, tenantId };
+  const formProps = {
+    currency,
+    episodeId,
+    episodePublicId,
+    locale,
+    rentalPeriodHours,
+    seriesPublicId,
+    taxIncluded,
+    tenantId,
+  };
+
   const purchaseVariant = shuElsewhere ? "outline" : "secondary";
-  const rented = rentalPrice > 0 && rentalPeriodHours > 0;
+
+  const rented = episodeSaleKinds({ rentalPeriodHours, rentalPrice }).includes(
+    "rental"
+  );
 
   if (!currency || !(rented || campaign)) {
     return (
@@ -388,6 +426,50 @@ const CheckoutActions = ({
     </>
   );
 };
+
+/**
+ * The promotion code the gate offers its field with: only beside the checkout
+ * buttons the field rewrites, which a signed-in reader is offered on an
+ * episode the site sells, and only in a currency their prices can be written
+ * in.
+ */
+const offeredPromotionCode = ({
+  currency,
+  payable,
+  promotionCode,
+  signedIn,
+}: {
+  currency: string | null;
+  payable: boolean;
+  promotionCode?: PromotionCodeState<EpisodeSaleKind>;
+  signedIn: boolean;
+}): PromotionCodeState<EpisodeSaleKind> | undefined =>
+  signedIn && payable && currency !== null ? promotionCode : undefined;
+
+/**
+ * The gate inside the promotion code's state, where it offers the field; the
+ * field and the buttons render as they would without one elsewhere.
+ *
+ * Keyed on the code the URL carried: a checkout refused for its code comes
+ * back to the gate with it, and the field starts over from that quote.
+ */
+const PromotionCodeScope = ({
+  children,
+  offer,
+}: {
+  children: ReactNode;
+  offer?: PromotionCodeState<EpisodeSaleKind>;
+}) =>
+  offer ? (
+    <PromotionCodeProvider
+      initialState={offer}
+      key={offer.kind === "none" ? "" : offer.code}
+    >
+      {children}
+    </PromotionCodeProvider>
+  ) : (
+    children
+  );
 
 /**
  * One payment the gate offers for coins: a form that spends `coins` on the
@@ -775,6 +857,7 @@ export const EpisodeAccessGate = ({
   nextFreeEpisode,
   previewEnded = false,
   price,
+  promotionCode,
   purchaseSurface,
   rentalPeriodHours,
   rentalPrice,
@@ -815,6 +898,12 @@ export const EpisodeAccessGate = ({
   previewEnded?: boolean;
   /** What the permanent copy costs. */
   price: number;
+  /**
+   * The promotion code the URL carried, quoted for the reader; absent where
+   * the gate offers no code field: to a guest, and on a tenant that holds no
+   * code a reader could enter.
+   */
+  promotionCode?: PromotionCodeState<EpisodeSaleKind>;
   purchaseSurface: EpisodePurchaseSurface;
   /** How long a rental lasts; 0, with `rentalPrice`, when it is not rented. */
   rentalPeriodHours: number;
@@ -890,7 +979,7 @@ export const EpisodeAccessGate = ({
     );
   }
 
-  return (
+  const gate = (
     <div className="grid gap-6">
       <div className="grid gap-2">
         <p className="font-serif text-xl leading-tight">
@@ -977,6 +1066,13 @@ export const EpisodeAccessGate = ({
             </Suspense>
           </LinkButton>
         </div>
+        <PromotionCodeField
+          episodeId={episodeId}
+          episodePublicId={episodePublicId}
+          kinds={episodeSaleKinds({ rentalPeriodHours, rentalPrice })}
+          seriesPublicId={seriesPublicId}
+          tenantId={tenantId}
+        />
         {nextFreeEpisode ? (
           <LinkButton
             render={
@@ -996,5 +1092,18 @@ export const EpisodeAccessGate = ({
         ) : null}
       </div>
     </div>
+  );
+
+  return (
+    <PromotionCodeScope
+      offer={offeredPromotionCode({
+        currency,
+        payable,
+        promotionCode,
+        signedIn,
+      })}
+    >
+      {gate}
+    </PromotionCodeScope>
   );
 };

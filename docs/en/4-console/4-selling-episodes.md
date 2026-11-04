@@ -283,14 +283,23 @@ The list shows each code, newest first, with its discount, what it applies to, w
 
 Creating, editing, pausing, resuming, and deleting a code are each recorded in **Audit logs**.
 
+### Entering a code on the site
+
+A reader enters a code on the page of the episode they are buying. While the tenant holds a code that is neither paused, deleted, nor past its end, a signed-in reader finds **Promotion code** under the episode's purchase buttons. A guest sees it once they sign in, and a tenant with no such code shows no field.
+
+The reader enters the code and chooses **Apply**. Each button the code applies to then names the discounted price, with the price before the code struck through beside it, and starts the checkout at that price: the payment page charges it and offers no code input of its own. A button the code does not apply to keeps its price. The code stays applied when the page is reloaded, and emptying the field and choosing **Apply** again takes it off.
+
+Back from the payment page, the episode says what the reader paid, with the price before the code struck through beside it and the code named, and **Purchase history** under **Purchases** shows the same.
+
 ### When a code is refused
 
-A code that does not work is refused before the reader pays, and the reader is told why:
+A code that does not work is refused before the reader pays, and the reader is told why under the field:
 
 - No code of the tenant is spelled that way, or the code is deleted, paused, or has not started.
 - The code has ended.
 - The code does not apply to what the reader is buying.
 - The code has reached its **Total redemptions**, or the reader has made as many purchases with it as **Per reader** allows.
+- The reader has entered codes too many times in a short while, and is asked to wait and try again.
 
 ### When a code is redeemed
 

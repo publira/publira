@@ -10,7 +10,8 @@
  * answer carries beside it. `POST /v1/checkout/sessions` then answers a session
  * whose `url` is `GET /checkout/:id` here, which names what is sold and at what
  * price — every line item, less the fixed-amount coupon `POST /v1/coupons`
- * made for a discounted sale — and paying there signs
+ * made for a discounted sale — with a field for a promotion code of Stripe's
+ * own where the session allows one, and paying there signs
  * `checkout.session.completed`, delivers it to
  * every endpoint the secret key registered, and sends the reader on to the
  * session's success URL once the storefront has accepted it: an event carries
@@ -77,6 +78,11 @@ interface LineItem {
 }
 
 interface CheckoutSession {
+  /**
+   * Whether the page takes a promotion code of the account's own, which
+   * `allow_promotion_codes=true` asks for and the page offers a field for.
+   */
+  allowPromotionCodes: boolean;
   /** What the reader pays: the line items, less the coupon's amount. */
   amount: number;
   /** The customer the server named; a subscription checkout makes one if not. */
@@ -266,6 +272,14 @@ const hashOf = (form: URLSearchParams, name: string): Record<string, string> =>
     })
   );
 
+/**
+ * Whether `secretKey` is a live-mode key, which is what Stripe sets
+ * `livemode` on a session, its payment, and its events from: a purchase the
+ * server records from one is a sale, and one from a test key a test purchase.
+ */
+const isLiveKey = (secretKey: string): boolean =>
+  secretKey.startsWith("sk_live_");
+
 const sessionObject = (session: CheckoutSession) => ({
   amount_subtotal: session.amount + session.discount,
   amount_total: session.amount,
@@ -273,7 +287,7 @@ const sessionObject = (session: CheckoutSession) => ({
   currency: session.currency,
   customer: session.customer || null,
   id: session.id,
-  livemode: false,
+  livemode: isLiveKey(session.secretKey),
   metadata: session.metadata,
   mode: session.mode,
   object: "checkout.session",
@@ -487,6 +501,7 @@ const createCheckoutSession = async (
   const subtotal = items.reduce((sum, { amount }) => sum + amount, 0);
 
   const session: CheckoutSession = {
+    allowPromotionCodes: form.get("allow_promotion_codes") === "true",
     amount: subtotal - discount,
     apiVersion: String(request.headers["stripe-version"] ?? ""),
     cancelURL: form.get("cancel_url") ?? "",
@@ -1042,7 +1057,7 @@ const deliverEvent = async (
     created: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
     data: { object },
     id: randomId("evt_test_"),
-    livemode: false,
+    livemode: isLiveKey(secretKey),
     object: "event",
     pending_webhooks: 1,
     type,
@@ -1278,7 +1293,12 @@ const checkoutPage = (session: CheckoutSession): string =>
     "Checkout",
     `${itemsHTML(session)}
 <p>${escapeHTML(formatAmount(session.amount, session.currency))}</p>
-<form method="post" action="/checkout/${escapeHTML(session.id)}">
+<form method="post" action="/checkout/${escapeHTML(session.id)}">${
+      session.allowPromotionCodes
+        ? `
+  <label>Add promotion code <input name="promotion_code"></label>`
+        : ""
+    }
   <button type="submit">Pay</button>
 </form>
 <a href="${escapeHTML(session.cancelURL)}">Cancel</a>`
@@ -1348,7 +1368,7 @@ const pay = async (
       created: nowSeconds(),
       currency: session.currency,
       id: session.paymentIntent,
-      livemode: false,
+      livemode: isLiveKey(session.secretKey),
       refunded: 0,
     });
   }

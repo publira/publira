@@ -5842,7 +5842,8 @@
       "coin_pack_success": "구매해 주셔서 감사합니다. 결제가 확인되면 {$coin_name}이(가) 추가되고, 이 에피소드 결제에 사용할 수 있습니다.",
       "coin_pack_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
       "coin_price_changed": "이 에피소드의 {$coin_name} 가격이 변경되었습니다. 새 가격을 확인하고 다시 시도해 주세요.",
-      "coin_pay_error": "{$coin_name}(으)로 결제하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      "coin_pay_error": "{$coin_name}(으)로 결제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "checkout_paid": "결제 금액"
     },
     "errors": {
       "not_found_description": "해당 페이지가 삭제되었거나 URL이 변경되었을 수 있습니다.",
@@ -6532,6 +6533,20 @@
       "updated_error": "업데이트된 작품을 표시할 수 없습니다",
       "updated_heading": "최근 업데이트",
       "view_all": "모두 보기"
+    },
+    "promotion_code": {
+      "label": "프로모션 코드",
+      "apply": "적용",
+      "applied": "{$code} 코드가 적용되었습니다.",
+      "list_price": "할인 전 가격",
+      "code": "코드 {$code}",
+      "invalid": "유효하지 않은 코드입니다.",
+      "expired": "기간이 만료된 코드입니다.",
+      "exhausted": "사용 횟수 한도에 도달한 코드입니다.",
+      "already_redeemed": "이미 사용한 코드입니다.",
+      "not_applicable_episode": "이 에피소드에는 사용할 수 없는 코드입니다.",
+      "rate_limited": "코드 입력 횟수가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+      "error": "코드를 확인하지 못했습니다. 다시 시도해 주세요."
     }
   },
   "mobile": {
