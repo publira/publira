@@ -284,8 +284,8 @@ importers:
         specifier: 1.90.0
         version: 1.90.0
       oxlint-plugin-react-doctor:
-        specifier: 0.9.18
-        version: 0.9.18
+        specifier: 0.9.20
+        version: 0.9.20
       sharp:
         specifier: 0.35.5
         version: 0.35.5(@types/node@26.6.6)
@@ -4977,8 +4977,8 @@ packages:
       vite-plus:
         optional: true
 
-  oxlint-plugin-react-doctor@0.9.18:
-    resolution: {integrity: sha512-1mfeb/jzXnduWOZJxrvdJjvKT0pFNKrNFYcPO4ncpFAnfW41M0mLz/23lAFzHb0knNLYayEgIQ5DjI4ZfFe+DQ==}
+  oxlint-plugin-react-doctor@0.9.20:
+    resolution: {integrity: sha512-q2bmU7h3ANDwZYQPUoal0pGEh6z2DcRB7HTmM+DXOiMeEW814BfO1EmYwZuH/Tq0MINoPzyhJIHFtxCHxdqq9g==}
     engines: {node: ^20.19.0 || >=22.13.0}
 
   oxlint@1.90.0:
@@ -9500,7 +9500,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.75.0
       '@oxfmt/binding-win32-x64-msvc': 0.75.0
 
-  oxlint-plugin-react-doctor@0.9.18:
+  oxlint-plugin-react-doctor@0.9.20:
     dependencies:
       '@shaderfrog/glsl-parser': 7.0.1
       '@typescript-eslint/types': 8.72.1
