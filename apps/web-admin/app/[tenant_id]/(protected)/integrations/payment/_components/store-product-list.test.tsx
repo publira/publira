@@ -60,12 +60,14 @@ describe("StoreProductList", () => {
             episodeCount: 2,
             price: 300,
             productId: "episode_300",
+            tip: false,
           },
           {
             currency: "USD",
             episodeCount: 1,
             price: 1200,
             productId: "episode_1200",
+            tip: false,
           },
         ],
         subscriptionPlans: [],
@@ -93,6 +95,7 @@ describe("StoreProductList", () => {
             episodeCount: 1,
             price: 300,
             productId: "episode_300",
+            tip: false,
           },
           {
             coinPack: { bonusCoins: 20, coins: 100 },
@@ -100,6 +103,7 @@ describe("StoreProductList", () => {
             episodeCount: 0,
             price: 1000,
             productId: "coins_0190a0a0000070008000000000000003",
+            tip: false,
           },
         ],
         subscriptionPlans: [],
@@ -120,6 +124,51 @@ describe("StoreProductList", () => {
     ).toBeDefined();
   });
 
+  it("lists the product of each tip amount under the prices, with no episode count", async () => {
+    render(
+      await StoreProductList({
+        locale: "en",
+        products: [
+          {
+            currency: "JPY",
+            episodeCount: 2,
+            price: 300,
+            productId: "episode_300",
+            tip: false,
+          },
+          {
+            currency: "JPY",
+            episodeCount: 0,
+            price: 100,
+            productId: "tip_100",
+            tip: true,
+          },
+          {
+            currency: "JPY",
+            episodeCount: 0,
+            price: 1000,
+            productId: "tip_1000",
+            tip: true,
+          },
+        ],
+        subscriptionPlans: [],
+      })
+    );
+
+    const [, episode, tip] = screen.getAllByRole("row");
+    expect(within(episode).queryByText("Tip")).toBeNull();
+    expect(within(tip).getByText("tip_100")).toBeDefined();
+    expect(within(tip).getByText("Tip")).toBeDefined();
+    expect(within(tip).getByText("¥100")).toBeDefined();
+    expect(within(tip).queryByText("0")).toBeNull();
+    expect(
+      within(tip).getByRole("button", { name: "Copy the product ID" })
+    ).toBeDefined();
+    expect(
+      screen.getByText(/each tip amount is sold as a product of its own/u)
+    ).toBeDefined();
+  });
+
   it("says nothing about coin packs while none is listed", async () => {
     render(
       await StoreProductList({
@@ -130,6 +179,7 @@ describe("StoreProductList", () => {
             episodeCount: 1,
             price: 300,
             productId: "episode_300",
+            tip: false,
           },
         ],
         subscriptionPlans: [],
@@ -137,6 +187,7 @@ describe("StoreProductList", () => {
     );
 
     expect(screen.queryByText(/coin pack/iu)).toBeNull();
+    expect(screen.queryByText(/tip amount/iu)).toBeNull();
   });
 
   it("says no product is needed while the app sells no paid episode", async () => {
@@ -162,6 +213,7 @@ describe("StoreProductList", () => {
             episodeCount: 1,
             price: 300,
             productId: "episode_300",
+            tip: false,
           },
         ],
         subscriptionPlans: [
@@ -219,6 +271,7 @@ describe("StoreProductList", () => {
             episodeCount: 1,
             price: 300,
             productId: "episode_300",
+            tip: false,
           },
         ],
         subscriptionPlans: [],

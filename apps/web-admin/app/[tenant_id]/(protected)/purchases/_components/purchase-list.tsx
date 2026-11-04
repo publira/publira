@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
+import { PurchaseKindLabel } from "#components/purchase-kind";
 import {
   PurchasePaidThrough,
   PurchaseStatusChip,
@@ -182,6 +183,7 @@ export const PurchaseList = async ({
                   <span className="font-medium">
                     {purchasedItemLabel(purchase, t)}
                   </span>
+                  <PurchaseKindLabel kind={purchase.kind} />
                   <span className="text-xs text-muted-foreground">
                     {purchase.seriesTitle || purchase.seriesPublicId}
                   </span>

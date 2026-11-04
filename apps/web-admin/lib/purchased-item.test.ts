@@ -9,6 +9,7 @@ const purchase = (item: PurchasedItem): PurchaseItem => ({
   expiresAt: "",
   id: "018f0e6a-5000-7000-8000-000000000001",
   item,
+  kind: "purchase",
   listPrice: 500,
   price: 500,
   promotionCode: "",

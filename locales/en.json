@@ -3758,6 +3758,31 @@
           "key_file_too_large": "This file is too large to be a key file."
         }
       },
+      "tips": {
+        "title": "Tips",
+        "description": "Readers can give the Authors of an episode one of these amounts at the end of the episode, on the site and in the app. A tip opens nothing to read, and is split among the episode's credited Authors by their shares, as a sale is. On the site it is paid through your payment provider, and in an app that sells through the stores, as the store product of its amount, listed under Store products.",
+        "section_error": "Could not display the tip settings",
+        "enabled": "Take tips for Authors",
+        "enabled_description": "Offers readers the amounts below at the end of every episode. Turned off, no tip is offered, and the amounts are kept.",
+        "amounts": "Tip amounts",
+        "amounts_description": "Up to {$max :integer} amounts in {$currency}, each above 0, offered in ascending order. Pasting several lines adds a field for each.",
+        "amount_label": "Tip amount {$position}",
+        "amount_remove": "Remove tip amount {$position}",
+        "amounts_add": "Add an amount",
+        "submit": "Save tip settings",
+        "saved": "The tip settings were saved.",
+        "load_failed": "Could not load the tip settings. Please try again later.",
+        "save_failed": "Could not save the tip settings. Please try again later.",
+        "currency_unavailable": "The tenant's currency could not be read, so tip amounts cannot be entered right now.",
+        "currency_changed": "The tenant's currency changed after this form was opened. Reload the page and enter the tip amounts again.",
+        "validation": {
+          "amount_invalid": "Enter each tip amount as an amount above 0. \"{$amount}\" is not one.",
+          "amount_duplicate": "\"{$amount}\" is entered more than once in Tip amounts.",
+          "too_many": "Enter at most {$max :integer} tip amounts.",
+          "amounts_required": "Enter at least one tip amount to take tips.",
+          "amounts_refused": "Check Tip amounts. Enter up to {$max :integer} amounts, each above 0 and none twice, and at least one while tips are on."
+        }
+      },
       "store_products": {
         "title": "Store products",
         "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, or of its campaign price while a campaign is on sale, so each price your paid episodes sell at in the app needs one, the prices of campaigns not yet started included. A subscription plan the app sells is created as a subscription instead.",
@@ -3777,7 +3802,9 @@
         "plan": "Plan",
         "app_store": "App Store",
         "google_play": "Google Play",
-        "not_sold": "Not sold"
+        "not_sold": "Not sold",
+        "tip": "Tip",
+        "tip_products": "While tips are on, each tip amount is sold as a product of its own too, as tip_ followed by the amount. Create each one the same way, as a consumable at that amount, and add one whenever you add an amount under Tips."
       },
       "mobile_push": {
         "description": "Push notifications reach this tenant's mobile app through the Firebase project the app is built with, so the credentials must be a service account key from that same project. The key file is write-only: once saved, it is never shown again.",
@@ -4643,6 +4670,8 @@
       "reader_deleted": "Deleted account",
       "series_bundle": "Remaining episodes ({$count :integer})",
       "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
+      "kind_rental": "Rental",
+      "kind_tip": "Tip",
       "test_payment": "Test",
       "columns": {
         "purchased_at": "Purchased",

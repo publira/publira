@@ -300,7 +300,7 @@ describe("store-payment-settings", () => {
     ).rejects.toThrow(/boom/u);
   });
 
-  it("lists the store products the catalog and the plans the app sells need", async () => {
+  it("lists the store products the catalog, the tips, and the plans the app sells need", async () => {
     mockListProductsApi.mockResolvedValueOnce({
       products: [
         {
@@ -314,6 +314,13 @@ describe("store-payment-settings", () => {
           episodeCount: 1,
           price: 500,
           productId: "episode_500",
+        },
+        {
+          currency: "JPY",
+          episodeCount: 0,
+          price: 100,
+          productId: "tip_100",
+          tip: true,
         },
       ],
       subscriptionPlans: [
@@ -346,12 +353,21 @@ describe("store-payment-settings", () => {
           episodeCount: 2,
           price: 300,
           productId: "episode_300",
+          tip: false,
         },
         {
           currency: "JPY",
           episodeCount: 1,
           price: 500,
           productId: "episode_500",
+          tip: false,
+        },
+        {
+          currency: "JPY",
+          episodeCount: 0,
+          price: 100,
+          productId: "tip_100",
+          tip: true,
         },
       ],
       subscriptionPlans: [

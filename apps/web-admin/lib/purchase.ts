@@ -1,4 +1,5 @@
 import { PurchaseRevocationReason } from "@publira/api-client/admin/purchase";
+import { PurchaseKind } from "@publira/api-client/admin/types";
 import type { AdminPurchase } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -29,6 +30,13 @@ import {
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
+/**
+ * Which sale of an episode a purchase was: its permanent copy, a rental of it,
+ * or a tip to its Authors, which opens nothing. A volume, the rest of a
+ * series, and a pack of coins are always `purchase`.
+ */
+export type PurchaseKindValue = "purchase" | "rental" | "tip";
+
 /** Why a purchase stopped opening what it bought, or `""` while it still does. */
 export type PurchaseRevocationReasonValue = "" | "dispute" | "refund" | "staff";
 
@@ -53,6 +61,7 @@ export interface PurchaseItem {
   /** The UUID GetPurchase and RefundPurchase address the purchase by. */
   id: string;
   item: PurchasedItem;
+  kind: PurchaseKindValue;
   /**
    * The price before a promotion code took its discount off: what the
    * purchase would have been sold at. Equal to `price` on a purchase no code
@@ -130,6 +139,11 @@ export type RefundPurchaseResult =
   | { ok: true; purchase: PurchaseItem }
   | { message: string; ok: false };
 
+const purchaseKinds: Partial<Record<PurchaseKind, PurchaseKindValue>> = {
+  [PurchaseKind.RENTAL]: "rental",
+  [PurchaseKind.TIP]: "tip",
+};
+
 const revocationReasons: Record<
   PurchaseRevocationReason,
   PurchaseRevocationReasonValue
@@ -150,6 +164,7 @@ type RawPurchase = Pick<
   | "episodeTitle"
   | "expiresAt"
   | "id"
+  | "kind"
   | "listPrice"
   | "price"
   | "promotionCode"
@@ -212,6 +227,9 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   expiresAt: item.expiresAt,
   id: item.id,
   item: mapPurchasedItem(item),
+  // A server of the release before tips answers no kind, as it does for a
+  // permanent copy.
+  kind: purchaseKinds[item.kind] ?? "purchase",
   // A server of the release before promotion codes answers no list price,
   // which is the price the reader paid.
   listPrice: Number(item.listPrice) || Number(item.price),

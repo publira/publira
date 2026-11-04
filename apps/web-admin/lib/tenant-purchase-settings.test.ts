@@ -41,7 +41,7 @@ vi.mock("./api", () => ({
   }),
 }));
 
-const storeUrlError = (field: string) =>
+const fieldViolation = (field: string) =>
   new ConnectError(
     "store URL must be an https:// URL",
     Code.InvalidArgument,
@@ -61,12 +61,13 @@ describe("tenant-purchase-settings", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("reads the default and the store addresses under the tenant's tag", async () => {
+  it("reads the default, the store addresses, and the tips under the tenant's tag", async () => {
     mockGetTenantPurchaseSettingsApi.mockResolvedValueOnce({
       settings: {
         appStoreUrl: "https://apps.apple.com/app/id123",
         googlePlayUrl: "",
         purchaseAvailability: SurfaceAvailability.APP,
+        tips: { amounts: [100, 300], enabled: true },
       },
     });
 
@@ -81,6 +82,7 @@ describe("tenant-purchase-settings", () => {
         appStoreUrl: "https://apps.apple.com/app/id123",
         googlePlayUrl: "",
         purchaseAvailability: "app",
+        tips: { amounts: [100, 300], enabled: true },
       },
     });
     expect(mockGetTenantPurchaseSettingsApi).toHaveBeenCalledWith(
@@ -91,6 +93,23 @@ describe("tenant-purchase-settings", () => {
       "tenant:TENANT001:purchase-settings"
     );
     expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  // A server of the release before tips answers none.
+  it("reads tips a server does not answer as off with no amounts", async () => {
+    mockGetTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: { purchaseAvailability: SurfaceAvailability.ALL },
+    });
+
+    const { getTenantPurchaseSettings } =
+      await import("./tenant-purchase-settings");
+
+    const result = await getTenantPurchaseSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      ok: true,
+      settings: { tips: { amounts: [], enabled: false } },
+    });
   });
 
   // The API never answers unspecified for the tenant. Reading it as a choice
@@ -174,7 +193,7 @@ describe("tenant-purchase-settings", () => {
     });
   });
 
-  it("writes every field and reads back what was stored", async () => {
+  it("writes every field but the tips and reads back what was stored", async () => {
     mockUpdateTenantPurchaseSettingsApi.mockResolvedValueOnce({
       settings: {
         appStoreUrl: "",
@@ -207,12 +226,17 @@ describe("tenant-purchase-settings", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
+    // Unset, the API keeps the tenant's tips as they are.
+    expect(
+      mockUpdateTenantPurchaseSettingsApi.mock.calls[0]?.[0].settings.tips
+    ).toBeUndefined();
     expect(result).toEqual({
       ok: true,
       settings: {
         appStoreUrl: "",
         googlePlayUrl: "https://play.google.com/store/apps/details?id=a.b",
         purchaseAvailability: "web",
+        tips: { amounts: [], enabled: false },
       },
     });
   });
@@ -228,7 +252,7 @@ describe("tenant-purchase-settings", () => {
     ],
   ])("names the address the API refused in %s", async (field, message) => {
     mockUpdateTenantPurchaseSettingsApi.mockRejectedValueOnce(
-      storeUrlError(field)
+      fieldViolation(field)
     );
 
     const { updateTenantPurchaseSettings } =
@@ -245,5 +269,113 @@ describe("tenant-purchase-settings", () => {
     );
 
     expect(result).toEqual({ message, ok: false });
+  });
+
+  it("writes the tips beside the other settings as the API answers them now", async () => {
+    mockGetTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: {
+        appStoreUrl: "https://apps.apple.com/app/id123",
+        googlePlayUrl: "",
+        purchaseAvailability: SurfaceAvailability.APP,
+        tips: { amounts: [], enabled: false },
+      },
+    });
+    mockUpdateTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: {
+        appStoreUrl: "https://apps.apple.com/app/id123",
+        googlePlayUrl: "",
+        purchaseAvailability: SurfaceAvailability.APP,
+        tips: { amounts: [100, 300, 1000], enabled: true },
+      },
+    });
+
+    const { updateTenantTipSettings } =
+      await import("./tenant-purchase-settings");
+
+    const result = await updateTenantTipSettings(
+      {
+        tenantId: " TENANT001 ",
+        tips: { amounts: [100, 300, 1000], enabled: true },
+      },
+      "en"
+    );
+
+    expect(mockUpdateTenantPurchaseSettingsApi).toHaveBeenCalledWith(
+      {
+        settings: {
+          appStoreUrl: "https://apps.apple.com/app/id123",
+          googlePlayUrl: "",
+          purchaseAvailability: SurfaceAvailability.APP,
+          tips: { amounts: [100, 300, 1000], enabled: true },
+        },
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      settings: { tips: { amounts: [100, 300, 1000], enabled: true } },
+    });
+  });
+
+  it("writes no tips when the other settings could not be read", async () => {
+    mockGetTenantPurchaseSettingsApi.mockRejectedValueOnce(
+      new ConnectError("purchase settings unavailable", Code.Unavailable)
+    );
+
+    const { updateTenantTipSettings } =
+      await import("./tenant-purchase-settings");
+
+    const result = await updateTenantTipSettings(
+      { tenantId: "TENANT001", tips: { amounts: [100], enabled: true } },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    expect(mockUpdateTenantPurchaseSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it("names the tip amounts the API refused", async () => {
+    mockGetTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: { purchaseAvailability: SurfaceAvailability.ALL },
+    });
+    mockUpdateTenantPurchaseSettingsApi.mockRejectedValueOnce(
+      fieldViolation("settings.tips.amounts")
+    );
+
+    const { updateTenantTipSettings } =
+      await import("./tenant-purchase-settings");
+
+    const result = await updateTenantTipSettings(
+      { tenantId: "TENANT001", tips: { amounts: [100], enabled: true } },
+      "en"
+    );
+
+    const message =
+      "Check Tip amounts. Enter up to 6 amounts, each above 0 and none twice, and at least one while tips are on.";
+
+    expect(result).toEqual({ message, ok: false, tipAmountsError: message });
+  });
+
+  it("words a failure the API gave no reason for as the tips'", async () => {
+    mockGetTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: { purchaseAvailability: SurfaceAvailability.ALL },
+    });
+    mockUpdateTenantPurchaseSettingsApi.mockResolvedValueOnce({
+      settings: { purchaseAvailability: SurfaceAvailability.UNSPECIFIED },
+    });
+
+    const { updateTenantTipSettings } =
+      await import("./tenant-purchase-settings");
+
+    const result = await updateTenantTipSettings(
+      { tenantId: "TENANT001", tips: { amounts: [100], enabled: true } },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "Could not save the tip settings. Please try again later.",
+      ok: false,
+    });
   });
 });

@@ -1,12 +1,13 @@
 -- Scenario: a tenant whose payment provider credentials the E2E may store and clear
 --
 -- `admin.payment-settings.spec.ts` chooses PAY.JP from `/integrations/payment`,
--- stores its credentials, and removes one again. The settings decide whether
--- the tenant's storefront can charge a reader at all, so no tenant another
--- suite reads can absorb them.
+-- stores its credentials, and removes one again, and sets the tip amounts the
+-- tenant offers. The settings decide whether the tenant's storefront can
+-- charge a reader at all, so no tenant another suite reads can absorb them.
 --
 -- Applying it is also how the suite puts the tenant back: the stored
--- settings are deleted, which leaves the tenant with no provider.
+-- settings are deleted, which leaves the tenant with no provider, and the
+-- tips are turned off with no amounts.
 -- public_id values are hard-coded in e2e/src/scenarios/payment-settings.ts.
 --   tenant PaymTNNTAAA1 (payment.localhost / admin.payment.localhost)
 --   admin  PaymADMNAAA1 (payment-admin@example.com)
@@ -88,4 +89,9 @@ WHERE u.public_id = 'PaymADMNAAA1'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 DELETE FROM tenant_payment_config
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'PaymTNNTAAA1');
+
+UPDATE tenant_config
+SET tips_enabled = false,
+    tip_amounts = '{}'
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'PaymTNNTAAA1');

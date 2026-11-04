@@ -18,7 +18,6 @@ import * as SpreadStart from "./app/[tenant_id]/(protected)/series/[series_id]/e
 import * as SeriesCreatorCredits from "./app/[tenant_id]/(protected)/series/_components/series-creator-credits-field";
 import * as SeriesEyeCatch from "./app/[tenant_id]/(protected)/series/_components/series-eye-catch-upload";
 import * as SeriesSchedule from "./app/[tenant_id]/(protected)/series/_components/series-schedule-field";
-import * as EntryList from "./app/[tenant_id]/(protected)/settings/_components/entry-list";
 import * as MfaSettingsOutcome from "./app/[tenant_id]/(protected)/settings/_components/mfa-settings-outcome";
 import * as PasskeyAddition from "./app/[tenant_id]/(protected)/settings/_components/passkey-addition";
 import * as LegalPage from "./app/[tenant_id]/(protected)/settings/_components/tenant-legal-page-picker";
@@ -30,6 +29,7 @@ import * as MfaVerifyMethods from "./app/[tenant_id]/mfa/_components/mfa-verify-
 import * as MfaVerifySteps from "./app/[tenant_id]/mfa/_components/mfa-verify-steps";
 import * as TicketTarget from "./components/access-ticket-target";
 import * as CredentialsEnabled from "./components/credentials-enabled";
+import * as EntryList from "./components/entry-list";
 import * as ErrorScreen from "./components/error-screen";
 import * as EyeCatchAspect from "./components/eye-catch/aspect-slot";
 import * as ImageCropDialog from "./components/image-crop/crop-dialog";

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { PurchaseKindLabel } from "#components/purchase-kind";
 import {
   PurchasePaidThrough,
   PurchaseStatusChip,
@@ -204,6 +205,7 @@ export const PurchaseDetail = async ({
         <dd className={valueClassName}>
           <div className="grid gap-0.5">
             <PurchasedItemName purchase={purchase} t={t} />
+            <PurchaseKindLabel kind={purchase.kind} />
             <span className="text-muted-foreground">
               {purchase.seriesTitle || purchase.seriesPublicId}
             </span>
@@ -219,9 +221,10 @@ export const PurchaseDetail = async ({
           {formatInstant(purchase.purchasedAt, locale, timeZone)}
         </dd>
 
-        {/* A pack of coins opens nothing to read, so it has no reading period
-            to show; its coins expire on their own. */}
-        {purchase.item.kind === "coin_pack" ? null : (
+        {/* A pack of coins and a tip open nothing to read, so they have no
+            reading period to show; a pack's coins expire on their own. */}
+        {purchase.item.kind === "coin_pack" ||
+        purchase.kind === "tip" ? null : (
           <>
             <dt className={labelClassName}>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>

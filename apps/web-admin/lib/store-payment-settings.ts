@@ -92,6 +92,8 @@ export interface TenantStoreProduct {
   episodeCount: number;
   /** The pack of coins the product sells; absent on the product of a price. */
   coinPack?: { bonusCoins: number; coins: number };
+  /** Whether the product is one of a tip amount, `tip_` and the amount. */
+  tip: boolean;
 }
 
 export type TenantStoreProductsResult =
@@ -140,7 +142,7 @@ type RawGooglePlay = Pick<
 
 type RawStoreProduct = Pick<
   RpcTenantStoreProduct,
-  "coinPack" | "currency" | "episodeCount" | "price" | "productId"
+  "coinPack" | "currency" | "episodeCount" | "price" | "productId" | "tip"
 >;
 
 const toAppStore = (
@@ -192,6 +194,7 @@ const toTenantStoreProduct = (
   episodeCount: product.episodeCount ?? 0,
   price: product.price ?? 0,
   productId: product.productId ?? "",
+  tip: product.tip ?? false,
 });
 
 const getTenantStorePaymentSettingsForSession = async (

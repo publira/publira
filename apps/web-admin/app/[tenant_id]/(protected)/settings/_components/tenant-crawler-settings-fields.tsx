@@ -7,6 +7,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useId, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import * as EntryList from "#components/entry-list";
 import type { TenantCrawlerSettings } from "#lib/tenant-crawler-settings";
 import {
   CRAWLER_PURPOSES,
@@ -20,7 +21,6 @@ import type {
 } from "#lib/tenant-crawler-settings-shared";
 
 import type { TenantCrawlerSettingsActionState } from "../settings-types";
-import * as EntryList from "./entry-list";
 
 type SettledState = NonNullable<TenantCrawlerSettingsActionState>;
 

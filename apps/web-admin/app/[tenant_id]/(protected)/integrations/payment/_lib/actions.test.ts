@@ -4,18 +4,22 @@ const {
   mockAssertSameOrigin,
   mockGetAccessToken,
   mockGetPaymentProvider,
+  mockGetTenantCurrency,
   mockUpdateTag,
   mockUpdateTenantPaymentSettings,
   mockUpdateTenantPurchaseSettings,
   mockUpdateTenantStorePaymentSettings,
+  mockUpdateTenantTipSettings,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetPaymentProvider: vi.fn(),
+  mockGetTenantCurrency: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
   mockUpdateTenantPurchaseSettings: vi.fn(),
   mockUpdateTenantStorePaymentSettings: vi.fn(),
+  mockUpdateTenantTipSettings: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -50,6 +54,12 @@ vi.mock("#lib/tenant-purchase-settings", () => ({
   tenantPurchaseSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:purchase-settings`,
   updateTenantPurchaseSettings: mockUpdateTenantPurchaseSettings,
+  updateTenantTipSettings: mockUpdateTenantTipSettings,
+}));
+
+vi.mock("#lib/public-api", () => ({
+  getTenantCurrency: mockGetTenantCurrency,
+  tenantSiteCacheTag: (tenantId: string) => `tenant:${tenantId}:site`,
 }));
 
 vi.mock("#lib/store-payment-settings", () => ({
@@ -537,6 +547,157 @@ describe("updateTenantPurchaseSettingsAction", () => {
     expect(result).toEqual({
       message:
         "Could not save where episodes are sold. Please try again later.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const tipFormData = (
+  amounts: string[],
+  values: Record<string, string> = {}
+) => {
+  const formData = textFormData({
+    tenant_id: "TENANT001",
+    tip_amounts_currency: "JPY",
+    tips_enabled: "on",
+    ...values,
+  });
+
+  for (const amount of amounts) {
+    formData.append("tip_amounts", amount);
+  }
+
+  return formData;
+};
+
+describe("updateTenantTipSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetTenantCurrency.mockResolvedValue("JPY");
+  });
+
+  it("saves the amounts in ascending order, then revalidates the cache tag", async () => {
+    mockUpdateTenantTipSettings.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantTipSettingsAction } = await import("./actions");
+
+    const result = await updateTenantTipSettingsAction(
+      null,
+      tipFormData(["1000", "", "100", "300"])
+    );
+
+    expect(result).toEqual({
+      message: "The tip settings were saved.",
+      ok: true,
+    });
+    expect(mockUpdateTenantTipSettings).toHaveBeenCalledWith(
+      {
+        tenantId: "TENANT001",
+        tips: { amounts: [100, 300, 1000], enabled: true },
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:purchase-settings"
+    );
+  });
+
+  it("keeps the amounts when tips are turned off", async () => {
+    mockUpdateTenantTipSettings.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantTipSettingsAction } = await import("./actions");
+
+    await updateTenantTipSettingsAction(
+      null,
+      tipFormData(["300"], { tips_enabled: "" })
+    );
+
+    expect(mockUpdateTenantTipSettings).toHaveBeenCalledWith(
+      { tenantId: "TENANT001", tips: { amounts: [300], enabled: false } },
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "a seventh amount",
+      ["100", "200", "300", "400", "500", "600", "700"],
+      "Enter at most 6 tip amounts.",
+    ],
+    [
+      "a duplicate",
+      ["100", "300", "100"],
+      '"100" is entered more than once in Tip amounts.',
+    ],
+    [
+      "0",
+      ["0", "300"],
+      'Enter each tip amount as an amount above 0. "0" is not one.',
+    ],
+    [
+      "no amount while tips are on",
+      [""],
+      "Enter at least one tip amount to take tips.",
+    ],
+  ])(
+    "refuses %s on the field and skips the API",
+    async (_, amounts, message) => {
+      const { updateTenantTipSettingsAction } = await import("./actions");
+
+      const result = await updateTenantTipSettingsAction(
+        null,
+        tipFormData(amounts)
+      );
+
+      expect(result).toEqual({
+        fieldErrors: { tipAmounts: message },
+        message: "Please check the information you entered.",
+        ok: false,
+      });
+      expect(mockUpdateTenantTipSettings).not.toHaveBeenCalled();
+    }
+  );
+
+  // Amounts typed while the form showed another currency would be stored in
+  // the new one as numbers nobody chose.
+  it("refuses amounts typed in a currency the tenant no longer sells in", async () => {
+    mockGetTenantCurrency.mockResolvedValueOnce("USD");
+
+    const { updateTenantTipSettingsAction } = await import("./actions");
+
+    const result = await updateTenantTipSettingsAction(
+      null,
+      tipFormData(["100"])
+    );
+
+    expect(result).toEqual({
+      message:
+        "The tenant's currency changed after this form was opened. Reload the page and enter the tip amounts again.",
+      ok: false,
+    });
+    expect(mockUpdateTenantTipSettings).not.toHaveBeenCalled();
+  });
+
+  it("puts the API's refusal of the amounts on the field and leaves the cache tag alone", async () => {
+    mockUpdateTenantTipSettings.mockResolvedValueOnce({
+      message: "Check Tip amounts.",
+      ok: false,
+      tipAmountsError: "Check Tip amounts.",
+    });
+
+    const { updateTenantTipSettingsAction } = await import("./actions");
+
+    const result = await updateTenantTipSettingsAction(
+      null,
+      tipFormData(["100"])
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { tipAmounts: "Check Tip amounts." },
+      message: "Check Tip amounts.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
