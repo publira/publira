@@ -42,6 +42,7 @@ const _header = [
   'volume_title',
   'coins',
   'bonus_coins',
+  'coins_spent',
 ];
 
 /// The reader's purchase history as CSV, in the columns and the encoding of
@@ -53,8 +54,10 @@ const _header = [
 /// Authors of the episode its episode columns name. The episode columns are
 /// empty for a volume and for the rest of a series, which name no one
 /// episode, and `coins`, every coin a pack granted, and `bonus_coins` are
-/// empty for anything but a pack. The columns that came later are appended,
-/// so a sheet that reads the earlier ones by position keeps reading them.
+/// empty for anything but a pack. An episode paid with coins has a `price` of
+/// 0 and the coins it took in `coins_spent`, which is empty on every other
+/// purchase. The columns that came later are appended, so a sheet that reads
+/// the earlier ones by position keeps reading them.
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
   final rows = StringBuffer(csvBom)..write(encodeCsvRow(_header));
   for (final purchase in purchases) {
@@ -79,6 +82,7 @@ String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
         if (purchase.item == PurchasedItem.volume) purchase.volumeTitle else '',
         if (coinPack) '${purchase.grantedCoins}' else '',
         if (coinPack) '${purchase.bonusCoins}' else '',
+        if (purchase.paidWithCoins) '${purchase.coinsSpent}' else '',
       ]),
     );
   }

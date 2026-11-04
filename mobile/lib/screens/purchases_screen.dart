@@ -391,7 +391,16 @@ class _PurchaseRow extends StatelessWidget {
         messages.purchasesPurchasedAt(
           date: messages.formatDateTime(purchasedAt),
         ),
-      if (purchase.currency.isNotEmpty)
+      // An episode paid with coins took no money, so its price of 0 would
+      // read as free: the coins it took are what it cost.
+      if (purchase.paidWithCoins)
+        messages.purchasesPrice(
+          price: messages.purchasesCoinsSpent(
+            count: purchase.coinsSpent,
+            coinName: purchase.coinName,
+          ),
+        )
+      else if (purchase.currency.isNotEmpty)
         messages.purchasesPrice(
           price: messages.formatPrice(purchase.price, purchase.currency),
         ),

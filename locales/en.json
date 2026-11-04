@@ -6843,6 +6843,7 @@
       "account_description": "Episodes and packs you bought, including episodes not saved on this device.",
       "canceled": "Canceled",
       "coin_pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
+      "coins_spent": "{$count :integer} {$coin_name}",
       "empty": "You have not bought any episodes yet. Episodes you buy appear here on every device you sign in on.",
       "ended_at": "Ended {$date}",
       "expired": "Expired",

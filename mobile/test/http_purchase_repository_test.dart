@@ -971,6 +971,29 @@ void main() {
       expect(pack.status, MyPurchaseStatus.active);
     });
 
+    test('reads the coins an episode was paid with', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        purchase('purchase-coins', active: true)
+          ..priceAtPurchase = 0
+          ..coinsSpent = 50
+          ..coinName = 'Points',
+        purchase('purchase-paid', active: true),
+      ];
+
+      final [coins, paid] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(coins.item, PurchasedItem.episode);
+      expect(coins.coinsSpent, 50);
+      expect(coins.coinName, 'Points');
+      expect(coins.paidWithCoins, isTrue);
+      expect(coins.price, 0);
+      expect(paid.coinsSpent, 0);
+      expect(paid.paidWithCoins, isFalse);
+    });
+
     test('tells a rental from the permanent copy', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.myPurchases = [
