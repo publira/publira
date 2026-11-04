@@ -179,6 +179,11 @@ type Policy struct {
 	// bounds is how fast one account can guess at a tenant's codes, and it is
 	// narrower than the checkouts it rides on.
 	PromotionCodeAttempt MinuteDay
+	// APIKeyRequest bounds how many requests one of a tenant's API keys may
+	// make to the tenant console's API. A key is a system's, not a person's,
+	// so the budget is sized for a sync job reading a catalog page by page,
+	// and it bounds what one leaked key can cost the database.
+	APIKeyRequest MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -259,6 +264,7 @@ func Defaults() Policy {
 		CoinPayment:               MinuteDay{PerMinute: 20, PerDay: 500},
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
 		PromotionCodeAttempt:      MinuteDay{PerMinute: 5, PerDay: 30},
+		APIKeyRequest:             MinuteDay{PerMinute: 600, PerDay: 100000},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 		DataExport:                HourDay{PerHour: 1, PerDay: 1},
@@ -303,6 +309,7 @@ func (p Policy) Validate() error {
 		{"coin_payment", "per_minute", p.CoinPayment.PerMinute, p.CoinPayment.PerDay},
 		{"purchase_checkout", "per_minute", p.PurchaseCheckout.PerMinute, p.PurchaseCheckout.PerDay},
 		{"promotion_code_attempt", "per_minute", p.PromotionCodeAttempt.PerMinute, p.PromotionCodeAttempt.PerDay},
+		{"api_key_request", "per_minute", p.APIKeyRequest.PerMinute, p.APIKeyRequest.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 		{"data_export", "per_hour", p.DataExport.PerHour, p.DataExport.PerDay},
@@ -398,6 +405,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		CoinPayment:               MinuteDay{PerMinute: int(config.CoinPaymentLimitPerMinute), PerDay: int(config.CoinPaymentLimitPerDay)},
 		PurchaseCheckout:          MinuteDay{PerMinute: int(config.PurchaseCheckoutLimitPerMinute), PerDay: int(config.PurchaseCheckoutLimitPerDay)},
 		PromotionCodeAttempt:      MinuteDay{PerMinute: int(config.PromotionCodeAttemptLimitPerMinute), PerDay: int(config.PromotionCodeAttemptLimitPerDay)},
+		APIKeyRequest:             MinuteDay{PerMinute: int(config.ApiKeyRequestLimitPerMinute), PerDay: int(config.ApiKeyRequestLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DataExport:                HourDay{PerHour: int(config.DataExportLimitPerHour), PerDay: int(config.DataExportLimitPerDay)},
@@ -462,6 +470,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		PurchaseCheckoutLimitPerDay:             int32(policy.PurchaseCheckout.PerDay),
 		PromotionCodeAttemptLimitPerMinute:      int32(policy.PromotionCodeAttempt.PerMinute),
 		PromotionCodeAttemptLimitPerDay:         int32(policy.PromotionCodeAttempt.PerDay),
+		ApiKeyRequestLimitPerMinute:             int32(policy.APIKeyRequest.PerMinute),
+		ApiKeyRequestLimitPerDay:                int32(policy.APIKeyRequest.PerDay),
 		AnonymousReadPublicApiLimitPer10Seconds: int32(policy.AnonymousReads.PublicAPI),
 		AnonymousReadSearchLimitPer10Seconds:    int32(policy.AnonymousReads.Search),
 		AnonymousReadImagesLimitPer10Seconds:    int32(policy.AnonymousReads.Images),

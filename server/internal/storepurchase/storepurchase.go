@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/coinledger"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // Values of purchases.store.
@@ -25,6 +26,7 @@ const (
 // RefundQuerier is the persistence a refund needs.
 type RefundQuerier interface {
 	coinledger.Querier
+	tenantwebhooks.Queries
 	LockStoreTransaction(ctx context.Context, arg dbmodels.LockStoreTransactionParams) error
 	RecordStoreRefundOnPurchase(ctx context.Context, arg dbmodels.RecordStoreRefundOnPurchaseParams) (dbmodels.Purchase, error)
 	HoldUnappliedStoreRefund(ctx context.Context, arg dbmodels.HoldUnappliedStoreRefundParams) error
@@ -62,7 +64,10 @@ func RecordRefund(ctx context.Context, q RefundQuerier, tenantID uuid.UUID, stor
 		StoreTransactionID: transactionID,
 	})
 	if err == nil {
-		return true, revokeCoins(ctx, q, purchase)
+		if err := revokeCoins(ctx, q, purchase); err != nil {
+			return false, err
+		}
+		return true, queueRefunded(ctx, q, purchase)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return false, fmt.Errorf("record store refund: %w", err)
@@ -95,6 +100,9 @@ func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID 
 	if err := revokeCoins(ctx, q, purchase); err != nil {
 		return false, err
 	}
+	if err := queueRefunded(ctx, q, purchase); err != nil {
+		return false, err
+	}
 	if err := q.ReleaseUnappliedStoreRefund(ctx, dbmodels.ReleaseUnappliedStoreRefundParams{
 		TenantID:           tenantID,
 		Store:              store,
@@ -103,6 +111,15 @@ func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID 
 		return false, fmt.Errorf("release held store refund: %w", err)
 	}
 	return true, nil
+}
+
+// queueRefunded owes the tenant's webhook endpoints the refund of purchase. A
+// store refunds a purchase whole, once.
+func queueRefunded(ctx context.Context, q RefundQuerier, purchase dbmodels.Purchase) error {
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, q, purchase); err != nil {
+		return fmt.Errorf("queue the webhook events of a store refund: %w", err)
+	}
+	return nil
 }
 
 // revokeCoins takes back the coins of a pack a store has refunded. A store

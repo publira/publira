@@ -20,6 +20,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -694,6 +695,9 @@ func (s *apiServer) PayEpisodeWithCoins(
 		PurchaseID: purchaseID,
 	}); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to project the purchase content event", err, "tenant_id", tenant.ID.String(), "purchase_id", purchaseID.String())
+	}
+	if err := tenantwebhooks.QueuePurchaseCompleted(ctx, q, tenant.ID, purchaseID); err != nil {
+		return nil, s.internalError(ctx, "failed to queue the webhook events of a purchase paid with coins", err, "tenant_id", tenant.ID.String(), "purchase_id", purchaseID.String())
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the coin payment", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())

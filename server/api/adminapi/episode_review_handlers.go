@@ -177,7 +177,7 @@ func (s *adminServer) writeEpisodeReviewAudit(txCtx context.Context, tenantID uu
 // or its decider.
 func sessionUserID(ctx context.Context) uuid.NullUUID {
 	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
-	if !ok || session.Service {
+	if !ok || session.Unattended() {
 		return uuid.NullUUID{}
 	}
 	return uuid.NullUUID{UUID: session.User.ID, Valid: true}

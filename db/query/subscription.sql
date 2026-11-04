@@ -187,3 +187,12 @@ WHERE tenant_id = $1
     AND stripe_subscription_id IS NOT NULL
 ORDER BY created_at,
     id;
+
+-- name: GetStripeSubscriptionStatusForTenant :one
+-- The status a Stripe subscription is recorded in before a notification writes
+-- it again, so the change can be told: no row for one not recorded yet.
+SELECT id,
+    status
+FROM subscriptions
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')::text;

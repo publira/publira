@@ -896,6 +896,8 @@ type PlatformPolicyConfig struct {
 	DataExportLimitPerDay                   int32     `json:"data_export_limit_per_day"`
 	PromotionCodeAttemptLimitPerMinute      int32     `json:"promotion_code_attempt_limit_per_minute"`
 	PromotionCodeAttemptLimitPerDay         int32     `json:"promotion_code_attempt_limit_per_day"`
+	ApiKeyRequestLimitPerMinute             int32     `json:"api_key_request_limit_per_minute"`
+	ApiKeyRequestLimitPerDay                int32     `json:"api_key_request_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1633,6 +1635,19 @@ type TenantAnalyticsSetting struct {
 	ConsentMode        string         `json:"consent_mode"`
 }
 
+type TenantApiKey struct {
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	Name            string        `json:"name"`
+	Prefix          string        `json:"prefix"`
+	KeyHash         []byte        `json:"key_hash"`
+	Scopes          []string      `json:"scopes"`
+	CreatedByUserID uuid.NullUUID `json:"created_by_user_id"`
+	CreatedAt       time.Time     `json:"created_at"`
+	LastUsedAt      sql.NullTime  `json:"last_used_at"`
+	RevokedAt       sql.NullTime  `json:"revoked_at"`
+}
+
 type TenantAppStoreConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	Enabled             bool           `json:"enabled"`
@@ -2001,6 +2016,18 @@ type TenantUserRole struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 }
 
+type TenantWebhookEndpoint struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Url             string    `json:"url"`
+	SecretEncrypted string    `json:"secret_encrypted"`
+	SecretHint      string    `json:"secret_hint"`
+	EventTypes      []string  `json:"event_types"`
+	Enabled         bool      `json:"enabled"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 type UnappliedDispute struct {
 	TenantID          uuid.UUID    `json:"tenant_id"`
 	Provider          string       `json:"provider"`
@@ -2319,4 +2346,20 @@ type WaitFreeTicketState struct {
 	UserID          uuid.UUID `json:"user_id"`
 	SeriesID        uuid.UUID `json:"series_id"`
 	NextAvailableAt time.Time `json:"next_available_at"`
+}
+
+type WebhookDelivery struct {
+	ID             uuid.UUID       `json:"id"`
+	TenantID       uuid.UUID       `json:"tenant_id"`
+	EndpointID     uuid.UUID       `json:"endpoint_id"`
+	EventType      string          `json:"event_type"`
+	EventID        string          `json:"event_id"`
+	Payload        json.RawMessage `json:"payload"`
+	Status         string          `json:"status"`
+	Attempts       int32           `json:"attempts"`
+	LastStatusCode sql.NullInt32   `json:"last_status_code"`
+	LastError      sql.NullString  `json:"last_error"`
+	DeliveredAt    sql.NullTime    `json:"delivered_at"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }

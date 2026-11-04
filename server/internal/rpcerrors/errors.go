@@ -138,6 +138,9 @@ const (
 	// ReasonSubscriptionPlanLimit refuses creating a subscription plan for a
 	// tenant that holds as many as it may.
 	ReasonSubscriptionPlanLimit = "SUBSCRIPTION_PLAN_LIMIT"
+	// ReasonWebhookEndpointLimit refuses a webhook endpoint past the most one
+	// tenant keeps.
+	ReasonWebhookEndpointLimit = "WEBHOOK_ENDPOINT_LIMIT"
 	// ReasonTenantSuspended refuses every request for a tenant the platform
 	// operator has suspended.
 	ReasonTenantSuspended = "TENANT_SUSPENDED"

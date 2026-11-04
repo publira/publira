@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storesubscription"
 	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // subscriptionProviderStripe is the subscriptions.provider of a subscription
@@ -659,6 +660,11 @@ func (s *apiServer) recordSubscription(
 	if !subscription.CurrentPeriodEnd.IsZero() {
 		currentPeriodEnd = sql.NullTime{Time: subscription.CurrentPeriodEnd, Valid: true}
 	}
+	before, err := queries.GetStripeSubscriptionStatusForTenant(ctx, dbmodels.GetStripeSubscriptionStatusForTenantParams{TenantID: tenantID, StripeSubscriptionID: subscription.ID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return s.internalDBError(ctx, "failed to read a subscription's status", err, "event_id", event.ID, "subscription_id", subscription.ID)
+	}
+	wasBilled := err == nil && paymentprovider.SubscriptionStatus(before.Status).Billed()
 	recorded, err := queries.RecordSubscriptionFromStripe(ctx, dbmodels.RecordSubscriptionFromStripeParams{
 		ID:                   uuid.Must(uuid.NewV7()),
 		TenantID:             tenantID,
@@ -673,6 +679,9 @@ func (s *apiServer) recordSubscription(
 	})
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)
+	}
+	if err := tenantwebhooks.QueueSubscriptionChange(ctx, queries, tenantID, recorded.ID, wasBilled, paymentprovider.SubscriptionStatus(recorded.Status).Billed()); err != nil {
+		return s.internalError(ctx, "failed to queue the webhook events of a subscription", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", subscription.ID)
 	}
 	// A subscription billed for nobody is one whose reader closed their
 	// account, before its checkout was paid or before the subscription was

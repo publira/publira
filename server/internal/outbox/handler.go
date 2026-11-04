@@ -96,6 +96,9 @@ type Registry struct {
 	handlers map[string]Handler
 	// messages are the event types registered through RegisterMessage.
 	messages map[string]bool
+	// attempts are the retry budgets of the event types registered through
+	// RegisterWithAttempts.
+	attempts map[string]int
 }
 
 // NewRegistry returns an empty handler set.
@@ -152,6 +155,38 @@ func (r *Registry) register(eventType string, handler Handler, message bool) {
 	}
 	r.handlers[eventType] = handler
 	r.messages[eventType] = message
+}
+
+// RegisterWithAttempts installs handler for eventType as [Registry.Register]
+// does, with a retry budget of its own in place of [Config.MaxAttempts]: the
+// attempt that reaches maxAttempts marks the event dead. It is for work whose
+// failures last longer than the default budget spans, such as a request to a
+// server a tenant runs.
+func (r *Registry) RegisterWithAttempts(eventType string, handler Handler, maxAttempts int) {
+	r.register(eventType, handler, false)
+	if r == nil || eventType == "" || handler == nil || maxAttempts <= 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.attempts == nil {
+		r.attempts = make(map[string]int)
+	}
+	r.attempts[eventType] = maxAttempts
+}
+
+// MaxAttempts answers the retry budget of eventType: its own, or fallback for
+// one registered without one.
+func (r *Registry) MaxAttempts(eventType string, fallback int) int {
+	if r == nil {
+		return fallback
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if n, ok := r.attempts[eventType]; ok {
+		return n
+	}
+	return fallback
 }
 
 // Lookup returns the handler for eventType.

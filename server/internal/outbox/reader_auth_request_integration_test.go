@@ -127,6 +127,41 @@ func TestReaderSignupRequestOpensAnInactiveAccountForAFreeAddress(t *testing.T) 
 	}
 }
 
+// The account a sign-up opens owes the tenant's webhook endpoint that
+// subscribed to it one reader.signed_up, its address not yet confirmed.
+func TestReaderSignupRequestOwesTheWebhookEndpointItsSignUp(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	if _, err := env.pg.DB.Exec(`
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://crm.example.com/publira', 'sealed', 'whsec_••••', ARRAY['reader.signed_up'])
+	`, uuid.Must(uuid.NewV7()), env.tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+	userID := uuid.Must(uuid.NewV7())
+	event := env.signupEvent(t, outbox.ReaderSignupRequestPayload{
+		UserID: userID.String(),
+		Email:  "hooked@reader-request.example.com",
+	})
+	handler := outbox.NewReaderSignupRequestHandler(env.cfg)
+	env.process(t, handler, event)
+	env.process(t, handler, event)
+
+	var publicID string
+	if err := env.pg.DB.QueryRow(`SELECT public_id FROM users WHERE id = $1`, userID).Scan(&publicID); err != nil {
+		t.Fatalf("read the new account: %v", err)
+	}
+	if got := env.count(t, `
+		SELECT count(*) FROM webhook_deliveries
+		WHERE tenant_id = $1
+			AND event_type = 'reader.signed_up'
+			AND payload->'data'->>'reader_public_id' = $2
+			AND payload->'data'->>'email' = 'hooked@reader-request.example.com'
+			AND payload->'data'->>'email_verified' = 'false'
+	`, env.tenant.ID, publicID); got != 1 {
+		t.Fatalf("reader.signed_up deliveries = %d, want 1", got)
+	}
+}
+
 func TestReaderSignupRequestNotifiesTheOwnerOfARegisteredAddress(t *testing.T) {
 	env := newReaderRequestEnv(t)
 	member := env.pg.SeedEndUser(t, env.tenant.ID, "READERREQU01", "member@reader-request.example.com", "Member")

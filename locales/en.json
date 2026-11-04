@@ -323,6 +323,7 @@
       "targets": {
         "access_ticket": "Access ticket",
         "announcement": "Announcement",
+        "api_key": "API key",
         "audience_stats": "Audience",
         "audit_log": "Audit log",
         "campaign_banner": "Campaign banner",
@@ -379,7 +380,9 @@
         "tenant_timezone": "Time zone",
         "tenant_tip_settings": "Tips",
         "user": "User",
-        "volume": "Volume"
+        "volume": "Volume",
+        "webhook_delivery": "Webhook delivery",
+        "webhook_endpoint": "Webhook endpoint"
       },
       "list_failed": "Could not load the audit log. Please try again later.",
       "filter_invalid": "One of the filters is not valid. Check what you entered.",
@@ -551,6 +554,13 @@
         "tenant_fcm_credentials_deleted": "Firebase credentials removed",
         "tenant_mobile_app_association_updated": "App links updated",
         "tenant_sign_in_settings_updated": "Sign-in providers updated",
+        "api_key_created": "API key created",
+        "api_key_revoked": "API key revoked",
+        "webhook_endpoint_created": "Webhook endpoint created",
+        "webhook_endpoint_updated": "Webhook endpoint updated",
+        "webhook_endpoint_deleted": "Webhook endpoint deleted",
+        "webhook_secret_rotated": "Webhook signing secret rotated",
+        "webhook_delivery_resent": "Webhook delivery resent",
         "tenant_community_limits_updated": "Community limits updated",
         "tenant_retention_updated": "Retention periods updated",
         "tenant_email_rejection_settings_updated": "Refused email addresses updated",

@@ -135,6 +135,33 @@ func (q *Queries) GetMySubscriptionByID(ctx context.Context, arg GetMySubscripti
 	return i, err
 }
 
+const GetStripeSubscriptionStatusForTenant = `-- name: GetStripeSubscriptionStatusForTenant :one
+SELECT id,
+    status
+FROM subscriptions
+WHERE tenant_id = $1
+    AND stripe_subscription_id = $2::text
+`
+
+type GetStripeSubscriptionStatusForTenantParams struct {
+	TenantID             uuid.UUID `json:"tenant_id"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id"`
+}
+
+type GetStripeSubscriptionStatusForTenantRow struct {
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
+}
+
+// The status a Stripe subscription is recorded in before a notification writes
+// it again, so the change can be told: no row for one not recorded yet.
+func (q *Queries) GetStripeSubscriptionStatusForTenant(ctx context.Context, arg GetStripeSubscriptionStatusForTenantParams) (GetStripeSubscriptionStatusForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetStripeSubscriptionStatusForTenant, arg.TenantID, arg.StripeSubscriptionID)
+	var i GetStripeSubscriptionStatusForTenantRow
+	err := row.Scan(&i.ID, &i.Status)
+	return i, err
+}
+
 const GetSubscriptionCheckoutForUser = `-- name: GetSubscriptionCheckoutForUser :one
 SELECT plan_id,
     stripe_checkout_session_id

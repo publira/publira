@@ -30,6 +30,7 @@ import (
 	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/webpushsettings"
 )
@@ -494,6 +495,13 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
 	subscriptionCancelHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeSubscriptionCancel, outbox.NewSubscriptionCancelHandler(subscriptionCancelHandlers))
+	// A webhook goes to a server the tenant runs, which may be down for longer
+	// than the default budget spans.
+	handlers.RegisterWithAttempts(outbox.EventTypeWebhookDelivery, outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{
+		DB:        emailHandlers.DB,
+		Encryptor: emailHandlers.Encryptor,
+		Logger:    logger,
+	}), tenantwebhooks.MaxAttempts)
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

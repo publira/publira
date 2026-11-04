@@ -323,6 +323,7 @@
       "targets": {
         "access_ticket": "이용권",
         "announcement": "공지사항",
+        "api_key": "API 키",
         "audience_stats": "독자 반응",
         "audit_log": "감사 로그",
         "campaign_banner": "캠페인 배너",
@@ -379,7 +380,9 @@
         "tenant_timezone": "시간대",
         "tenant_tip_settings": "팁",
         "user": "사용자",
-        "volume": "권"
+        "volume": "권",
+        "webhook_delivery": "웹훅 전송",
+        "webhook_endpoint": "웹훅 엔드포인트"
       },
       "list_failed": "감사 로그를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "filter_invalid": "필터 조건에 잘못된 값이 있습니다. 입력한 내용을 확인해 주세요.",
@@ -551,6 +554,13 @@
         "tenant_fcm_credentials_deleted": "Firebase 인증 정보 삭제",
         "tenant_mobile_app_association_updated": "앱 링크 변경",
         "tenant_sign_in_settings_updated": "로그인 방법 설정 변경",
+        "api_key_created": "API 키 생성",
+        "api_key_revoked": "API 키 폐기",
+        "webhook_endpoint_created": "웹훅 엔드포인트 생성",
+        "webhook_endpoint_updated": "웹훅 엔드포인트 수정",
+        "webhook_endpoint_deleted": "웹훅 엔드포인트 삭제",
+        "webhook_secret_rotated": "웹훅 서명 시크릿 재발급",
+        "webhook_delivery_resent": "웹훅 전송 재시도",
         "tenant_community_limits_updated": "커뮤니티 제한 변경",
         "tenant_retention_updated": "보존 기간 변경",
         "tenant_email_rejection_settings_updated": "받지 않는 이메일 주소 변경",

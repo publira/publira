@@ -43,6 +43,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		CoinPayment:                    minuteDayToProto(policy.CoinPayment),
 		PurchaseCheckout:               minuteDayToProto(policy.PurchaseCheckout),
 		PromotionCodeAttempt:           minuteDayToProto(policy.PromotionCodeAttempt),
+		ApiKeyRequest:                  minuteDayToProto(policy.APIKeyRequest),
 		LoginAttemptsPerAccount:        minuteDayToProto(policy.LoginAttemptsPerAccount),
 		LoginAttemptsPerSource:         hourDayToProto(policy.LoginAttemptsPerSource),
 		DataExport:                     hourDayToProto(policy.DataExport),
@@ -95,6 +96,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		CoinPayment:                    minuteDayFromProto(policy.GetCoinPayment()),
 		PurchaseCheckout:               minuteDayFromProto(policy.GetPurchaseCheckout()),
 		PromotionCodeAttempt:           minuteDayFromProto(policy.GetPromotionCodeAttempt()),
+		APIKeyRequest:                  minuteDayFromProto(policy.GetApiKeyRequest()),
 		LoginAttemptsPerAccount:        minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
 		LoginAttemptsPerSource:         hourDayFromProto(policy.GetLoginAttemptsPerSource()),
 		DataExport:                     hourDayFromProto(policy.GetDataExport()),
@@ -172,7 +174,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetPromotionCodeAttempt() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.GetAnonymousReadLimits() == nil || requested.GetDataExport() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetPromotionCodeAttempt() == nil || requested.GetApiKeyRequest() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.GetAnonymousReadLimits() == nil || requested.GetDataExport() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -213,6 +215,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.GetPromotionCodeAttempt() == nil {
 			params.Policy.PromotionCodeAttempt = stored.PromotionCodeAttempt
+		}
+		if requested.GetApiKeyRequest() == nil {
+			params.Policy.APIKeyRequest = stored.APIKeyRequest
 		}
 		if requested.GetLoginAttemptsPerAccount() == nil {
 			params.Policy.LoginAttemptsPerAccount = stored.LoginAttemptsPerAccount

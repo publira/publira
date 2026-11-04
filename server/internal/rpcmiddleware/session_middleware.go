@@ -30,6 +30,17 @@ type SessionContext struct {
 	// Service marks a call a web app made with its own credential rather than
 	// on a person's behalf. User and Role are zero for it.
 	Service bool
+	// APIKeyID names the tenant's API key a call was made with, by one of the
+	// tenant's own systems rather than on a person's behalf. User and Role are
+	// zero for it.
+	APIKeyID uuid.UUID
+}
+
+// Unattended reports a call no person makes: a web app's with its service
+// credential, or a tenant's system's with an API key. What needs a person —
+// an account to name, a role to read — refuses it.
+func (s SessionContext) Unattended() bool {
+	return s.Service || s.APIKeyID != uuid.Nil
 }
 
 // SessionAuthenticator resolves an authenticated user from request metadata (Bearer JWT).

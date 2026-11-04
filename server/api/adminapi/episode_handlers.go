@@ -1231,9 +1231,10 @@ func (s *adminServer) attachAdminMediaToken(
 	images []*publirattypesv1.EpisodeImage,
 ) error {
 	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
-	// A media token names the operator it is issued to, and the service
-	// principal is none, so it is refused even when there is nothing to sign.
-	if ok && session.Service {
+	// A media token names the operator it is issued to, and neither the service
+	// principal nor an API key is one, so it is refused even when there is
+	// nothing to sign.
+	if ok && session.Unattended() {
 		return serviceProcedureDeniedError()
 	}
 	if len(images) == 0 {

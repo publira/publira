@@ -323,6 +323,7 @@
       "targets": {
         "access_ticket": "阅读券",
         "announcement": "公告",
+        "api_key": "API密钥",
         "audience_stats": "读者反响",
         "audit_log": "审计日志",
         "campaign_banner": "活动横幅",
@@ -379,7 +380,9 @@
         "tenant_timezone": "时区",
         "tenant_tip_settings": "打赏",
         "user": "用户",
-        "volume": "卷"
+        "volume": "卷",
+        "webhook_delivery": "Webhook发送",
+        "webhook_endpoint": "Webhook端点"
       },
       "list_failed": "无法加载审计日志。请稍后再试。",
       "filter_invalid": "某个筛选条件无效。请检查您输入的内容。",
@@ -551,6 +554,13 @@
         "tenant_fcm_credentials_deleted": "删除了Firebase凭据",
         "tenant_mobile_app_association_updated": "更新了应用链接",
         "tenant_sign_in_settings_updated": "更新了登录方式设置",
+        "api_key_created": "创建了API密钥",
+        "api_key_revoked": "吊销了API密钥",
+        "webhook_endpoint_created": "创建了Webhook端点",
+        "webhook_endpoint_updated": "更新了Webhook端点",
+        "webhook_endpoint_deleted": "删除了Webhook端点",
+        "webhook_secret_rotated": "重新生成了Webhook签名密钥",
+        "webhook_delivery_resent": "重新发送了Webhook",
         "tenant_community_limits_updated": "更新了社区限制",
         "tenant_retention_updated": "更新了保留期限",
         "tenant_email_rejection_settings_updated": "更新了不接受的电子邮件地址",

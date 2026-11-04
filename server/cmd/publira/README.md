@@ -193,6 +193,7 @@ It also handles these non-mail events:
 | `platform_password_reset_request` | A password reset the platform console accepted, or an operator a Super admin added: the reset token and a `platform_password_reset_email` when the address belongs to an operator |
 | `google_play_purchase_consume` | The Google Play Developer API consume of a Play purchase `ConfirmStorePurchase` recorded, which also acknowledges it |
 | `subscription_cancel` | The immediate cancellation, on the tenant's Stripe account, of a subscription whose reader's account was deleted. While the tenant's payment settings cannot send it, it is tried again every 10 minutes without spending an attempt, so `PUBLIRA_OUTBOX_MAX_ATTEMPTS` does not mark it `dead`; see [Subscription plans](../../README.md#subscription-plans) |
+| `webhook_delivery` | The signed `POST` of one event to one of a tenant's webhook endpoints, recorded on its `webhook_deliveries` row: a 2xx delivers it, any other 4xx but 408 and 429 or a host that resolves to a private or loopback address gives it up, and anything else is tried again. It has a budget of 20 attempts of its own, which `PUBLIRA_OUTBOX_MAX_ATTEMPTS` does not change, so the doubling wait spans about half a day of an endpoint being down |
 
 The push handler is always registered and reads its credentials per delivery: a mobile device is sent with its tenant's stored FCM credentials and skipped while the tenant has none, and a browser with the platform's VAPID key pair; see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging) and [Web Push](../../README.md#web-push).
 
@@ -346,7 +347,7 @@ The connection uses `publira_outbox`, the login across every tenant the baseline
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
 - `PUBLIRA_OUTBOX_CLAIM_LIMIT` (optional, the maximum number of rows claimed per drain. Default `100`)
-- `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (optional, default `10`. The failure count at which an entry becomes `dead`)
+- `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (optional, default `10`. The failure count at which an entry becomes `dead`, for every event type but `webhook_delivery`, which keeps its own)
 - `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`. For the auth mail above the reclaim also counts as a failed attempt, so this duration times `PUBLIRA_OUTBOX_MAX_ATTEMPTS` bounds how long a crash loop can keep the row's raw token)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue, which the Outbox drain has to itself. Default `8`)
 - `PUBLIRA_PUBLISH_INTERVAL_SECONDS` / `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` / `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` / `PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS` / `PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS` / `PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS` / `PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS` / `PUBLIRA_COIN_EXPIRY_INTERVAL_SECONDS` / `PUBLIRA_FREE_AFTER_INTERVAL_SECONDS` / `PUBLIRA_SCHEDULED_ANNOUNCEMENT_INTERVAL_SECONDS` (optional, seconds between the passes of each periodic job. Default `60`; a non-numeric or non-positive value falls back to it. Each one bounds how long the site can stay on the wrong side of the instant its job answers to)

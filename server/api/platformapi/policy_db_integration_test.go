@@ -68,6 +68,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.CoinPayment = platformpolicy.MinuteDay{PerMinute: 5, PerDay: 40}
 	policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 30}
 	policy.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 20}
+	policy.APIKeyRequest = platformpolicy.MinuteDay{PerMinute: 300, PerDay: 50000}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.AnonymousReads = platformpolicy.ReadLimits{PublicAPI: 400, Search: 50, Images: 1500}
@@ -1303,5 +1304,63 @@ func TestDBUpdatePlatformPolicyDropsTheCoinPricesOfTenantsWithCoins(t *testing.T
 	}
 	if got := drops(withCoins.ID.String()); got != 2 {
 		t.Fatalf("drops after forbidding coins = %d, want 2", got)
+	}
+}
+
+// api_key_request reached the policy after the console screens that
+// save it as well, so an omitted one keeps what is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedAPIKeyRequestLimit(t *testing.T) {
+	t.Parallel()
+
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.ApiKeyRequest = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without api_key_request: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.APIKeyRequest = platformpolicy.Defaults().APIKeyRequest
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default API key request limit", got, want)
+	}
+
+	want.APIKeyRequest = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 10}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with api_key_request: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored API key request limit", got, want)
+	}
+}
+
+// Nor does it name the API key request limits.
+func TestDBPlatformPolicyRowWrittenWithoutTheAPIKeyRequestLimitReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "api_key_request_limit_per_minute", "api_key_request_limit_per_day")
+
+	want := tightenedPolicy()
+	want.APIKeyRequest = platformpolicy.Defaults().APIKeyRequest
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default API key request limit", got, want)
 	}
 }

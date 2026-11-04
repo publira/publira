@@ -100,6 +100,9 @@ func seedEveryColumn(t *testing.T, pg *testutil.PostgresEnv, sealer *secretcrypt
 		tenant.ID, seal(t, sealer, "apple-key"))
 	exec(t, db, `INSERT INTO tenant_fcm_config (tenant_id, project_id, client_email, service_account_json_encrypted)
 		VALUES ($1, 'project', 'fcm@example.iam.gserviceaccount.com', $2)`, tenant.ID, seal(t, sealer, `{"type":"service_account"}`))
+	exec(t, db, `INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://crm.example.com/publira', $3, 'whsec_••••', ARRAY['purchase.completed'])`,
+		uuid.Must(uuid.NewV7()), tenant.ID, seal(t, sealer, "whsec_webhook-secret"))
 
 	exec(t, db, `INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted) VALUES ($1, $2, $3)`,
 		admin.ID, tenant.ID, seal(t, sealer, "TOTPSECRET"))

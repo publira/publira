@@ -188,6 +188,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit promotion_code_attempt = 23;
+  // How many requests one of a tenant's API keys may make to the tenant
+  // console's API, counted per key.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit api_key_request = 24;
 }
 
 // The reads one client may make of a storefront in 10 seconds, counted per

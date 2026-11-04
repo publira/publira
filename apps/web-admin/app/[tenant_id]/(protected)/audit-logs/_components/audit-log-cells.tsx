@@ -897,6 +897,43 @@ const integrationActionName = (action: string) => {
   }
 };
 
+/** An action on the tenant's API keys and webhooks. */
+const apiAccessActionName = (action: string) => {
+  switch (action) {
+    case "api_key_created": {
+      return <Message message="admin.audit.actions.api_key_created" />;
+    }
+
+    case "api_key_revoked": {
+      return <Message message="admin.audit.actions.api_key_revoked" />;
+    }
+
+    case "webhook_endpoint_created": {
+      return <Message message="admin.audit.actions.webhook_endpoint_created" />;
+    }
+
+    case "webhook_endpoint_updated": {
+      return <Message message="admin.audit.actions.webhook_endpoint_updated" />;
+    }
+
+    case "webhook_endpoint_deleted": {
+      return <Message message="admin.audit.actions.webhook_endpoint_deleted" />;
+    }
+
+    case "webhook_secret_rotated": {
+      return <Message message="admin.audit.actions.webhook_secret_rotated" />;
+    }
+
+    case "webhook_delivery_resent": {
+      return <Message message="admin.audit.actions.webhook_delivery_resent" />;
+    }
+
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on a member's two-step verification. */
 const mfaActionName = (action: string) => {
   switch (action) {
@@ -966,6 +1003,7 @@ const actionName = (action: string) =>
   settingsActionName(action) ??
   brandingActionName(action) ??
   integrationActionName(action) ??
+  apiAccessActionName(action) ??
   mfaActionName(action);
 
 /** The name of a catalog, community, or reader target type. */
@@ -1178,11 +1216,33 @@ const tenantTargetName = (targetType: string) => {
   }
 };
 
+/** The name of a target type of the tenant's API keys and webhooks. */
+const apiAccessTargetName = (targetType: string) => {
+  switch (targetType) {
+    case "api_key": {
+      return <Message message="admin.audit.targets.api_key" />;
+    }
+
+    case "webhook_delivery": {
+      return <Message message="admin.audit.targets.webhook_delivery" />;
+    }
+
+    case "webhook_endpoint": {
+      return <Message message="admin.audit.targets.webhook_endpoint" />;
+    }
+
+    default: {
+      return null;
+    }
+  }
+};
+
 /** The name of a target type the admin API records, or `null` for any other. */
 const targetTypeName = (targetType: string) =>
   catalogTargetName(targetType) ??
   settingTargetName(targetType) ??
-  tenantTargetName(targetType);
+  tenantTargetName(targetType) ??
+  apiAccessTargetName(targetType);
 
 /**
  * What the entry's target ID reads as: the language's name for the public site

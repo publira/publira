@@ -10,6 +10,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantapikeys"
 )
 
 // serviceProcedures are the reads a web app may make with its service token:
@@ -41,12 +42,16 @@ func serviceProcedureDeniedError() error {
 }
 
 // sessionContextBuilder authenticates a request carrying the service token as
-// the service principal and every other request as an operator's session.
+// the service principal, one carrying a tenant's API key as that key, and every
+// other request as an operator's session.
 func (s *adminServer) sessionContextBuilder() rpcmiddleware.UnaryContextBuilder {
 	operator := rpcmiddleware.BuildAdminSessionContext(s.authenticateSession)
 	service := rpcmiddleware.BuildAdminSessionContext(s.authenticateService)
 	return func(ctx context.Context, spec connect.Spec, req proto.Message) (context.Context, error) {
 		bearer, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx))
+		if ok && tenantapikeys.Looks(bearer) {
+			return s.apiKeyContext(ctx, spec, req)
+		}
 		if !ok || !s.serviceToken.Matches(bearer) {
 			return operator(ctx, spec, req)
 		}

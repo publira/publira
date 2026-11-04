@@ -30,6 +30,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -905,6 +906,9 @@ func (s *apiServer) recordRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
+		return s.internalError(ctx, "failed to queue the webhook events of a refund", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
+	}
 	if purchase.StaffRefundRequestedAmount.Valid {
 		if err := s.settleStaffRefundInPart(ctx, queries, tenantID, provider, credentials, event, purchase); err != nil {
 			return err
@@ -1445,9 +1449,13 @@ func purchaseListPrice(event paymentprovider.PurchaseCompleted) (sql.NullInt32, 
 	return sql.NullInt32{}, uuid.NullUUID{}
 }
 
-// enqueuePurchaseReceipt queues the receipt of a purchase just recorded. The
-// key names the purchase, so a receipt queued once is never queued again.
+// enqueuePurchaseReceipt queues the receipt of a purchase just recorded, and
+// owes the tenant's webhook endpoints its purchase.completed. The keys name the
+// purchase, so neither is queued twice.
 func enqueuePurchaseReceipt(ctx context.Context, queries *dbmodels.Queries, tenantID, purchaseID uuid.UUID) error {
+	if err := tenantwebhooks.QueuePurchaseCompleted(ctx, queries, tenantID, purchaseID); err != nil {
+		return err
+	}
 	payload, err := json.Marshal(outbox.PurchaseReceiptPayload{
 		TenantID:   tenantID.String(),
 		PurchaseID: purchaseID.String(),
@@ -1495,6 +1503,9 @@ func (s *apiServer) applyHeldRefund(
 			return fmt.Errorf("revoke the coins of a refunded pack: %w", err)
 		}
 		s.logRevokedCoins(ctx, purchase, revocation)
+	}
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
+		return err
 	}
 	s.logger.InfoContext(ctx, "applied a refund that arrived before its purchase",
 		"tenant_id", tenantID,

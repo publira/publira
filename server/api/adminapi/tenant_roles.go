@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -21,7 +22,16 @@ import (
 // requireTenantAdmin admits a tenant_admin alone: members and invitations, the
 // tenant's settings and integrations, reader accounts, access tickets,
 // royalties, and the audit log.
+//
+// It admits a tenant's API key as well. Which procedures a key may call is
+// decided before the handler runs, by apiKeyProcedures and the key's scopes,
+// and the ones at this level are the purchase reads purchases:read admits;
+// TestAPIKeyProceduresAreReads keeps every one of them a read.
 func (s *adminServer) requireTenantAdmin(ctx context.Context) (rpcmiddleware.SessionContext, error) {
+	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if ok && sessionCtx.APIKeyID != uuid.Nil {
+		return sessionCtx, nil
+	}
 	return requireTenantLevel(ctx, auth.RoleTenantAdmin, "tenant admin role required")
 }
 
@@ -34,12 +44,13 @@ func (s *adminServer) requireTenantEditor(ctx context.Context) (rpcmiddleware.Se
 // requireTenantAuditor admits every member of staff: the reads an editor makes,
 // which a tenant_auditor makes too.
 //
-// It is the one level the service principal passes as well. Which procedures a
-// web app may call with its service token is decided before the handler runs,
-// by serviceProcedures, and every one of them is a read at this level.
+// The service principal passes it as well, and so does a tenant's API key.
+// Which procedures a web app may call with its service token is decided before
+// the handler runs, by serviceProcedures, and every one of them is a read at
+// this level; a key's are decided by apiKeyProcedures.
 func (s *adminServer) requireTenantAuditor(ctx context.Context) (rpcmiddleware.SessionContext, error) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
-	if ok && sessionCtx.Service {
+	if ok && sessionCtx.Unattended() {
 		return sessionCtx, nil
 	}
 	return requireTenantLevel(ctx, auth.RoleTenantAuditor, "tenant staff role required")

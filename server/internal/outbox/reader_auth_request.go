@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // The reader forms that answer a registered address exactly as they answer a
@@ -216,6 +217,9 @@ func processReaderSignup(ctx context.Context, db *sql.DB, event dbmodels.OutboxE
 		return "", fmt.Errorf("generate email verification token id: %w", err)
 	}
 	if _, err := issueReaderEmailVerification(ctx, queries, signup.tenantID, user.ID, tokenID); err != nil {
+		return "", err
+	}
+	if err := tenantwebhooks.QueueReaderSignedUp(ctx, queries, signup.tenantID, user.ID); err != nil {
 		return "", err
 	}
 	if err := tx.Commit(); err != nil {
