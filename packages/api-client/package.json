@@ -91,6 +91,10 @@
       "types": "./dist/admin/announcement.d.mts",
       "default": "./dist/admin/announcement.mjs"
     },
+    "./admin/api-key": {
+      "types": "./dist/admin/api-key.d.mts",
+      "default": "./dist/admin/api-key.mjs"
+    },
     "./admin/coin": {
       "types": "./dist/admin/coin.d.mts",
       "default": "./dist/admin/coin.mjs"
@@ -130,6 +134,10 @@
     "./admin/types": {
       "types": "./dist/admin/types.d.mts",
       "default": "./dist/admin/types.mjs"
+    },
+    "./admin/webhook": {
+      "types": "./dist/admin/webhook.d.mts",
+      "default": "./dist/admin/webhook.mjs"
     },
     "./platform/auth": {
       "types": "./dist/platform/auth.d.mts",

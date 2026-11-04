@@ -2,6 +2,7 @@
 title: Rotating secrets
 description: Replace an install's secret encryption keys, a database role's password, and its signing keys and tokens without losing what they protect.
 published: 2026-10-21
+updated: 2026-11-04
 ---
 
 These procedures replace each secret that [Where each secret may go](./index.md#where-each-secret-may-go) names. Read them before you need them — each is easier to run on a quiet day than during an incident.
@@ -39,7 +40,7 @@ Run `publiractl db reseal` on the administrative login's connection, with the sa
 publiractl db reseal
 ```
 
-It opens every sealed value in the database with the keys in the list and seals each one that names a key other than the primary again with the primary key: the platform's and every tenant's credentials, the two-step verification secret of every member of staff and operator, the token each Sign in with Apple link holds, the Web Push private key, and the ones that outbox entries carry to the worker. The values themselves stay the same, so nobody is signed out and nobody has to enter anything again, and the install keeps serving while it runs: a save that arrives meanwhile waits for it, or it for the save, and neither is lost.
+It opens every sealed value in the database with the keys in the list and seals each one that names a key other than the primary again with the primary key: the platform's and every tenant's credentials, the two-step verification secret of every member of staff and operator, the token each Sign in with Apple link holds, the Web Push private key, the signing secret of every webhook endpoint, and the ones that outbox entries carry to the worker. The values themselves stay the same, so nobody is signed out and nobody has to enter anything again, and the install keeps serving while it runs: a save that arrives meanwhile waits for it, or it for the save, and neither is lost.
 
 It prints one line per key ID that a stored value names:
 
@@ -63,7 +64,7 @@ Remove `k1` from the list only when `db reseal` exits `0`, with no value left in
 
 When a value no key in the list opens, `db reseal` leaves it as it is, seals every other value, and exits `1`. Its log names each such value, with its column, its row, and the key ID it names, and the table counts it under that key ID. The value was sealed with a key that is no longer in the list, or with other key material under the same ID: put that key back in the list and run the command again. A value nobody holds the key to any more has to be entered again where it was saved, as a lost key requires.
 
-A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either. Putting the key back in the list, and restarting, undoes all of it.
+A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either, and a webhook endpoint whose signing secret it sealed is sent nothing: its deliveries wait until the key is back, or until a Tenant admin rotates the secret. Putting the key back in the list, and restarting, undoes all of it.
 
 When a key has leaked, sealing again is not enough. Whoever holds the old key and any database backup taken before the rotation can open every value in that backup, so replace the credentials themselves where they were issued — a new SMTP password, a new access key for the bucket, new payment provider keys — and save the new ones. In the Platform Console, a new SMTP password is entered with **Change** beside **Password** under **Email**, and a new access key with **Replace access key** under **Storage**, as [Email](../6-email.md#changing-it) and [Object storage](../5-object-storage.md#rotating-the-access-key) describe.
 

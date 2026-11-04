@@ -31,6 +31,7 @@ const ADMIN_ONLY_ENTRIES = [
   "Mobile push",
   "Sign-in",
   "Google tag",
+  "API keys and webhooks",
   "Members",
   "Audit logs",
 ] as const;
@@ -208,6 +209,7 @@ test.describe("tenant roles in the console", () => {
     expect(auditCsv.status()).toBe(404);
     await expectNotFound(page, "/integrations/sign-in");
     await expectNotFound(page, "/integrations/google-tag");
+    await expectNotFound(page, "/integrations/api-keys-and-webhooks");
     await expectNotFound(page, "/purchases");
 
     const purchasesCsv = await page.request.get(

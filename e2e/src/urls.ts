@@ -332,6 +332,28 @@ export const WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the tenant from `db/seeds/scenarios/800_webhooks.sql`. Its
+ * suite creates and revokes API keys and saves, tests, and deletes webhook
+ * endpoints, which every sale and sign-up of the tenant is owed to, so it
+ * needs a console of its own.
+ */
+export const WEB_ADMIN_WEBHOOKS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_WEBHOOKS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.webhooks.localhost")
+);
+
+/**
+ * Admin console of the tenant from
+ * `db/seeds/scenarios/801_docs_webhooks.sql`, whose API keys, endpoint, and
+ * deliveries the documentation's screenshots show, on a console of its own
+ * beside the suite's.
+ */
+export const WEB_ADMIN_DOCS_WEBHOOKS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_DOCS_WEBHOOKS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.hook-docs.localhost")
+);
+
+/**
  * Public site of the tenant from
  * `db/seeds/scenarios/580_storefront_google_tag.sql`. Its suite stores the
  * tenant's Google tag settings in every serving mode, which every page of the

@@ -32,6 +32,7 @@ import {
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
+  WebhookIcon,
 } from "@publira/icons";
 import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -82,6 +83,7 @@ const hrefs = [
   "/integrations/app-links",
   "/integrations/sign-in",
   "/integrations/google-tag",
+  "/integrations/api-keys-and-webhooks",
   "/members",
   "/branding",
   "/audit-logs",
@@ -539,6 +541,18 @@ export const AdminNavigation = () => (
                 <ConsoleSidebar.NavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.nav.google_tag_label" />
+                  </Suspense>
+                </ConsoleSidebar.NavigationItemLabel>
+              </ConsoleSidebar.NavigationItemHeading>
+            </ConsoleSidebar.NavigationItem>
+            <ConsoleSidebar.NavigationItem href="/integrations/api-keys-and-webhooks">
+              <ConsoleSidebar.NavigationItemIcon>
+                <WebhookIcon className="size-4" />
+              </ConsoleSidebar.NavigationItemIcon>
+              <ConsoleSidebar.NavigationItemHeading>
+                <ConsoleSidebar.NavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.nav.api_keys_label" />
                   </Suspense>
                 </ConsoleSidebar.NavigationItemLabel>
               </ConsoleSidebar.NavigationItemHeading>

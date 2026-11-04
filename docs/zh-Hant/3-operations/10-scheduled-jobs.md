@@ -2,7 +2,8 @@
 title: 排程工作與維護工作
 description: publira worker依自身排程所做的事、停機後如何補上進度、如何重試外寄的郵件、推播與快取重新驗證，以及何時以publiractl job手動執行工作。
 published: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-04
+source_updated: 2026-11-04
 ---
 
 安裝實例在沒有請求的情況下所做的一切，都由`publira worker`完成：它會發布排定在此刻的章節、告訴Web應用程式哪些快取頁面因變更而過時、寄送郵件和推播通知、重新建立統計和排行榜，並刪除超過保留期限的內容。不需要其他任何東西依計時器執行，也不需要主機的cron或Kubernetes CronJob。本頁說明什麼工作在何時執行、如何判斷症狀背後是哪個工作，以及如何以`publiractl job`手動執行工作。
@@ -159,8 +160,11 @@ GROUP BY queue, kind;
 - **郵件**在SMTP伺服器（或啟用後的`email-renderer`）拒絕或無法連線時失敗，如[電子郵件](./6-email.md#安裝實例寄送的郵件)所述。
 - 傳送到手機的**推播通知**，在租戶尚未儲存Firebase認證資訊時會被跳過而非失敗，因此儲存之後也不會重試。瀏覽器通知只有在開啟Web Push後才會傳送，如[Web Push](./8-web-push.md)所述。
 - **快取重新驗證**在Web應用程式停擺時失敗。沒有`PUBLIRA_REVALIDATE_TOKEN`的worker，每次嘗試都會讓`publira server`或`publiractl`記錄的每個捨棄失敗；而它自己的工作所產生的捨棄則完全不會記錄，如[免費閱讀期間](#免費閱讀期間與其他快取頁面)所述。
+- **Webhook傳送**（`event_type`為`webhook_delivery`）會將一個事件傳送到租戶管理員儲存的端點，如[API金鑰與Webhook](../4-console/10-api-keys-and-webhooks.md#重試與重新傳送)所述。它在該端點停擺或以`2xx`以外的任何狀態回應時失敗；當端點以`408`與`429`以外的其他`4xx`回應，或其主機解析為私人位址、回送位址、鏈路本機位址或共用位址時，會立即被放棄。端點是租戶自己執行的伺服器，因此失敗的傳送應由租戶而非安裝實例修正。若端點的簽章密鑰無法以`PUBLIRA_SECRET_ENCRYPTION_KEYS`中的任何金鑰開啟，該傳送會等待，且不消耗嘗試次數，直到金鑰放回或簽章密鑰重新產生為止。
 
-`publira worker`上的`PUBLIRA_OUTBOX_MAX_ATTEMPTS`可設定嘗試次數。等待時間持續加倍，最長可達每次嘗試間隔一小時，因此多加幾次嘗試就能讓項目撐過長得多的停擺。
+`publira worker`上的`PUBLIRA_OUTBOX_MAX_ATTEMPTS`可設定嘗試次數。等待時間持續加倍，最長可達每次嘗試間隔一小時，因此多加幾次嘗試就能讓項目撐過長得多的停擺。無論`PUBLIRA_OUTBOX_MAX_ATTEMPTS`如何設定，Webhook傳送都有自己的20次嘗試額度，約八小時，因為它傳送到的伺服器停擺的時間可能比安裝實例自身的服務更久。
+
+worker會透過HTTPS將Webhook傳送到各端點指定的任何主機與連接埠，因此限制worker對外流量的安裝實例必須允許這些流量，Webhook才能送達。
 
 ### 查看被放棄的項目
 
@@ -174,11 +178,12 @@ ORDER BY updated_at DESC
 LIMIT 20;
 ```
 
-dead的項目無法再次傳送。其代價取決於它的`event_type`：
+dead的項目無法再次傳送，但Webhook傳送除外。其代價取決於它的`event_type`：
 
 - **郵件**永遠不會送達。讀者需要重新申請密碼重設或確認郵件，管理員邀請則需要重新寄送，如[租戶的工作人員](./3-tenant-staff.md)所述。
 - **推播通知**永遠不會送達，但通知會留在讀者於網站和應用程式中的通知列表裡。
 - **快取重新驗證**會讓它指定的頁面繼續顯示先前的內容，直到同一對象的下一次變更再次捨棄它們，或其快取到期為止。
+- **Webhook傳送**會在租戶主控台的**API金鑰與Webhook**中列為**已放棄**，租戶管理員可在端點修正後於該處重新傳送。
 
 ## 手動執行工作
 

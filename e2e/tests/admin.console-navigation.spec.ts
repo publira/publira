@@ -39,6 +39,7 @@ const sidebarEntries = [
   "App links",
   "Sign-in",
   "Google tag",
+  "API keys and webhooks",
   "Members",
   "Branding",
   "Audit logs",
@@ -162,6 +163,11 @@ test.describe("web-admin console navigation", () => {
     await expectIntegrationOpens(page, "App links", "app-links");
     await expectIntegrationOpens(page, "Sign-in", "sign-in");
     await expectIntegrationOpens(page, "Google tag", "google-tag");
+    await expectIntegrationOpens(
+      page,
+      "API keys and webhooks",
+      "api-keys-and-webhooks"
+    );
   });
 
   test("the retired integrations landing path answers not found", async ({

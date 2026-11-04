@@ -2,7 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -25,7 +25,7 @@ Every member of the staff holds one of three roles, and the console shows each o
 
 | Role | What it may do |
 | --- | --- |
-| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, sign-in, and the Google tag, readers' accounts, purchases, their refunds, and their reconciliation with the providers, subscription plans, coins, royalties, and the audit log |
+| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, sign-in, the Google tag, and its own systems through API keys and webhooks, readers' accounts, purchases, their refunds, and their reconciliation with the providers, subscription plans, coins, royalties, and the audit log |
 | **Editor** | Write the catalog and the site's pages, announcements, and campaign banners, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 
@@ -44,5 +44,6 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 - [Sign-in with Apple and Google](./7-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.
 - [Google tag](./8-google-tag.md): measuring the site with Google Analytics or Google Tag Manager, the three places the tag can be loaded from, and what to set up in Google Tag Manager for the gateway.
 - [Coins](./9-coins.md): naming the coins readers buy in advance, the disclosures they carry, the packs they are sold in, and turning them on, stopping sales, and turning them off.
+- [API keys and webhooks](./10-api-keys-and-webhooks.md): giving the tenant's own systems a read-only key for the admin API, sending them signed events for sales, refunds, sign-ups, and subscriptions, verifying the signature, and resending a delivery that was given up.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

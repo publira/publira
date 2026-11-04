@@ -291,6 +291,10 @@
       "types": "./dist/wallet-icon.d.mts",
       "default": "./dist/wallet-icon.mjs"
     },
+    "./webhook-icon": {
+      "types": "./dist/webhook-icon.d.mts",
+      "default": "./dist/webhook-icon.mjs"
+    },
     "./wifi-off-icon": {
       "types": "./dist/wifi-off-icon.d.mts",
       "default": "./dist/wifi-off-icon.mjs"

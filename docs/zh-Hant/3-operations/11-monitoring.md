@@ -2,7 +2,8 @@
 title: 監控
 description: 以/livez和/readyz探測每個處理程序、值得設定警示的日誌行與指標，以及開啟OpenTelemetry指標與追蹤。
 published: 2026-11-03
-source_updated: 2026-11-01
+updated: 2026-11-04
+source_updated: 2026-11-04
 ---
 
 安裝實例會以四種方式告訴您它的狀況：每個處理程序都會回應存活檢查和就緒檢查，`publira server`和`publira worker`會寫入結構化日誌，這兩者在您開啟後也會匯出OpenTelemetry指標，而除了`email-renderer`以外的每個處理程序都可以匯出OpenTelemetry追蹤。本頁說明它們各自回報什麼、如何將它們接到協調器和警示系統，以及什麼值得設定警示。由哪個監控系統接收它們由您決定；本頁只說明安裝實例會傳送什麼。
@@ -119,7 +120,9 @@ worker的排程工作如何在日誌和`river_job`資料表中記錄其失敗，
 
 ### outbox
 
-worker的指標追蹤的是outbox，所有郵件、推播通知和快取重新驗證都經由它傳送，如[outbox](./10-scheduled-jobs.md#outbox郵件推播與快取重新驗證)所述。每個指標都以`outbox.event_type`帶有項目的類型。
+worker的指標追蹤的是outbox，所有郵件、推播通知、快取重新驗證和Webhook傳送都經由它傳送，如[outbox](./10-scheduled-jobs.md#outbox郵件推播與快取重新驗證)所述。每個指標都以`outbox.event_type`帶有項目的類型。
+
+`webhook_delivery`項目會將事件傳送到租戶自己執行的伺服器，且無論`PUBLIRA_OUTBOX_MAX_ATTEMPTS`如何設定，都會嘗試20次才放棄。它的重試與dead項目代表的是租戶的端點停擺或拒絕接收，而不是安裝實例發生故障；租戶管理員會在主控台中看到這些傳送並重新傳送。請將`outbox.event_type`為`webhook_delivery`的項目與其他項目分開設定警示，或將其排除在dead項目的警示之外。
 
 | 指標 | 計算的內容 | 觀察重點 |
 | --- | --- | --- |
