@@ -12,6 +12,11 @@ import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
+/// The store product a tip of [amount], in the minor unit of the tenant
+/// currency, is sold as: `tip_` followed by the amount, as
+/// `StartStoreTipResponse.product_id` names it.
+String tipProductId(int amount) => 'tip_$amount';
+
 /// **Tip the Authors**: opens [TipAmountsSheet] and gives the Authors of an
 /// episode the amount the reader picks there, the way the tenant's app takes
 /// a payment — the store's payment sheet, or the web checkout handed to the
@@ -48,6 +53,9 @@ class TipAuthorsButton extends StatefulWidget {
 class _TipAuthorsButtonState extends State<TipAuthorsButton> {
   var _tipping = false;
 
+  /// Asks the tenant's purchase route, reads what the store charges for each
+  /// amount where the app sells through it, opens the sheet, and gives the
+  /// amount the reader picks.
   Future<void> _open() async {
     final purchase = PurchaseScope.maybeOf(context);
     if (purchase == null || _tipping) {
@@ -57,24 +65,6 @@ class _TipAuthorsButtonState extends State<TipAuthorsButton> {
       _signIn();
       return;
     }
-    final amount = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (context) => TipAmountsSheet(
-        creators: widget.creators,
-        amounts: widget.amounts,
-        currency: widget.currency,
-      ),
-    );
-    if (amount == null || !mounted) {
-      return;
-    }
-    await _tip(purchase, amount);
-  }
-
-  Future<void> _tip(PurchaseScope purchase, int amount) async {
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -85,12 +75,40 @@ class _TipAuthorsButtonState extends State<TipAuthorsButton> {
     });
     try {
       final repository = purchase.repository!;
-      if (await repository.appPurchaseRoute() == AppPurchaseRoute.store) {
-        final purchaser = purchase.storePurchaser;
-        if (purchaser == null) {
-          throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
-        }
-        final outcome = await purchaser.buyTip(
+      final route = await repository.appPurchaseRoute();
+      final purchaser = purchase.storePurchaser;
+      if (route == AppPurchaseRoute.store && purchaser == null) {
+        throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
+      }
+      // The store charges its own price for each product, in the reader's
+      // storefront, so that is the price the sheet names. An amount the store
+      // has no product for keeps the tenant's, and says it cannot be given
+      // once picked.
+      final storePrices = route == AppPurchaseRoute.store
+          ? await purchaser!.prices({
+              for (final amount in widget.amounts) tipProductId(amount),
+            })
+          : const <String, String>{};
+      if (!mounted) {
+        return;
+      }
+      final amount = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (context) => TipAmountsSheet(
+          creators: widget.creators,
+          amounts: widget.amounts,
+          currency: widget.currency,
+          storePrices: storePrices,
+        ),
+      );
+      if (amount == null || !mounted) {
+        return;
+      }
+      if (route == AppPurchaseRoute.store) {
+        final outcome = await purchaser!.buyTip(
           widget.episodeInternalId,
           amount: amount,
         );
@@ -170,11 +188,17 @@ class TipAmountsSheet extends StatelessWidget {
     required this.creators,
     required this.amounts,
     required this.currency,
+    this.storePrices = const {},
   });
 
   final List<SeriesCreator> creators;
   final List<int> amounts;
   final String currency;
+
+  /// What the store charges for each amount's product, formatted by the store
+  /// and keyed by [tipProductId], where the app sells through one. An amount
+  /// missing here is named in [currency].
+  final Map<String, String> storePrices;
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +244,10 @@ class TipAmountsSheet extends StatelessWidget {
                 FilledButton.tonal(
                   key: ValueKey('tip-amount-$amount'),
                   onPressed: () => Navigator.of(context).pop(amount),
-                  child: AutospacedText(messages.formatPrice(amount, currency)),
+                  child: AutospacedText(
+                    storePrices[tipProductId(amount)] ??
+                        messages.formatPrice(amount, currency),
+                  ),
                 ),
             ],
           ),

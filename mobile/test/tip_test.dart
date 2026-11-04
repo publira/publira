@@ -219,6 +219,31 @@ void main() {
       expect(endPanel, findsOne);
     });
 
+    testWidgets('names each amount at the price the store charges', (
+      tester,
+    ) async {
+      // The store sells the ¥300 tip at its own price in this storefront, and
+      // has no product for the ¥1,000 one.
+      platform
+        ..products = {'tip_300'}
+        ..prices = {'tip_300': 320};
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+
+      await tester.ensureVisible(tip);
+      await tester.tap(tip);
+      await pumpUntilFound(tester, sheet);
+
+      expect(
+        find.descendant(of: amount(300), matching: find.text('¥320')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: amount(1000), matching: find.text('¥1,000')),
+        findsOne,
+      );
+    });
+
     testWidgets('says so for an amount the store does not sell', (
       tester,
     ) async {
