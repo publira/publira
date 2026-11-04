@@ -683,6 +683,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       remainingEpisodeCount: purchase.seriesBundle.episodeCount,
       coins: purchase.coinPack.coins,
       bonusCoins: purchase.coinPack.bonusCoins,
+      coinsSpent: purchase.coinsSpent,
       coinName: purchase.coinName.trim(),
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),

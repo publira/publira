@@ -456,6 +456,41 @@ void main() {
       expect(router.state.uri.path, AppRoutes.accountPurchases);
     });
 
+    testWidgets('names the coins an episode was paid with as its price', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [
+          MyPurchase(
+            id: 'purchase-coins',
+            seriesId: series.id,
+            seriesTitle: series.title,
+            episodeId: 'episode-1',
+            episodeTitle: 'Episode 1',
+            orderIndex: 1,
+            coinsSpent: 50,
+            coinName: 'Points',
+            price: 0,
+            currency: 'JPY',
+            isActive: true,
+            purchasedAt: DateTime.utc(2026, 1, 10, 12),
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      final row = find.byKey(const ValueKey('purchase-row-purchase-coins'));
+      await pumpUntilFound(tester, row);
+
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.textContaining('Paid 50 Points'),
+        ),
+        findsOne,
+      );
+      expect(find.textContaining('¥0'), findsNothing);
+    });
+
     testWidgets('names a tip as a tip, and opens the episode it was given on', (
       tester,
     ) async {
@@ -747,11 +782,11 @@ void main() {
       final episode = '${series.title},${series.episodeCount}';
       expect(lines.sublist(1), [
         'purchase-active,2026-01-10T12:00:00Z,$episode,Still open,'
-            '500,0,JPY,,,active,episode,,,',
+            '500,0,JPY,,,active,episode,,,,',
         'purchase-refunded,2026-01-10T12:00:00Z,$episode,Paid back,'
-            '500,500,JPY,,2026-01-11T12:00:00Z,refunded,episode,,,',
+            '500,500,JPY,,2026-01-11T12:00:00Z,refunded,episode,,,,',
         'purchase-canceled,2026-01-10T12:00:00Z,$episode,Disputed,'
-            '500,0,JPY,,,canceled,episode,,,',
+            '500,0,JPY,,,canceled,episode,,,,',
         '',
       ]);
       // The whole history, read in the largest pages the API answers rather

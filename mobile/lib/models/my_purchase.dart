@@ -58,6 +58,7 @@ class MyPurchase {
     this.remainingEpisodeCount = 0,
     this.coins = 0,
     this.bonusCoins = 0,
+    this.coinsSpent = 0,
     this.coinName = '',
     required this.price,
     required this.currency,
@@ -115,11 +116,22 @@ class MyPurchase {
   /// Every coin a pack granted, its bonus coins among them.
   int get grantedCoins => coins + bonusCoins;
 
-  /// The tenant's word for its coins in the locale the list was read in, which
-  /// a screen names the coins by instead of a word of the app's own.
+  /// The coins an episode was paid with, and 0 on every purchase that took a
+  /// payment instead. Such a purchase has a [price] and a [refundedAmount] of
+  /// 0, whatever its coins were worth to the tenant.
+  final int coinsSpent;
+
+  /// Whether the episode was paid with the tenant's coins rather than with
+  /// money.
+  bool get paidWithCoins => coinsSpent > 0;
+
+  /// The tenant's word for its coins in the locale the list was read in, set
+  /// on a pack and on an episode paid with coins, which a screen names the
+  /// coins by instead of a word of the app's own.
   final String coinName;
 
-  /// What the reader paid, in the minor unit of [currency].
+  /// What the reader paid, in the minor unit of [currency]. 0 on an episode
+  /// paid with coins, which [coinsSpent] says the cost of.
   final int price;
 
   /// The ISO 4217 code of the currency the reader paid in. Empty for a row

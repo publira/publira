@@ -10,6 +10,7 @@ MyPurchase _purchase({
   String episodeTitle = 'Episode',
   int orderIndex = 3,
   int price = 500,
+  int coinsSpent = 0,
   String currency = 'JPY',
   bool isActive = true,
   int refundedAmount = 0,
@@ -25,6 +26,8 @@ MyPurchase _purchase({
   episodeTitle: episodeTitle,
   orderIndex: orderIndex,
   price: price,
+  coinsSpent: coinsSpent,
+  coinName: coinsSpent > 0 ? 'Points' : '',
   currency: currency,
   isActive: isActive,
   refundedAmount: refundedAmount,
@@ -50,7 +53,7 @@ void main() {
       csv,
       '﻿purchase_id,purchased_at,series_title,episode_number,'
       'episode_title,price,refunded_amount,currency,expires_at,refunded_at,'
-      'status,item,volume_title,coins,bonus_coins\r\n',
+      'status,item,volume_title,coins,bonus_coins,coins_spent\r\n',
     );
   });
 
@@ -67,7 +70,7 @@ void main() {
 
     expect(rows, [
       'purchase-1,2026-01-10T12:00:00Z,Series,3,Episode,500,0,JPY,'
-          '2026-01-13T12:00:00Z,,expired,episode,,,',
+          '2026-01-13T12:00:00Z,,expired,episode,,,,',
     ]);
   });
 
@@ -103,7 +106,7 @@ void main() {
       [for (final row in rows) row.split(',')[10]],
       ['active', 'expired', 'refunded', 'canceled'],
     );
-    expect(rows[2], endsWith(',2026-01-11T12:00:00Z,refunded,episode,,,'));
+    expect(rows[2], endsWith(',2026-01-11T12:00:00Z,refunded,episode,,,,'));
   });
 
   test('quotes a field that holds a comma, a quote, or a line break', () {
@@ -119,7 +122,7 @@ void main() {
     expect(
       rows.join('\r\n'),
       'purchase-1,2026-01-10T12:00:00Z,"Night, Again",3,'
-      '"The ""last"" one\nand after",500,0,JPY,,,active,episode,,,',
+      '"The ""last"" one\nand after",500,0,JPY,,,active,episode,,,,',
     );
   });
 
@@ -162,8 +165,8 @@ void main() {
     );
 
     expect(rows, [
-      'purchase-volume,,Series,,,350,0,JPY,,,active,volume,Volume 1,,',
-      'purchase-rest,,Series,,,810,0,JPY,,,active,remaining_episodes,,,',
+      'purchase-volume,,Series,,,350,0,JPY,,,active,volume,Volume 1,,,',
+      'purchase-rest,,Series,,,810,0,JPY,,,active,remaining_episodes,,,,',
     ]);
   });
 
@@ -185,7 +188,9 @@ void main() {
       ]),
     );
 
-    expect(rows, ['purchase-pack,,,,,1000,0,JPY,,,active,coin_pack,,1100,100']);
+    expect(rows, [
+      'purchase-pack,,,,,1000,0,JPY,,,active,coin_pack,,1100,100,',
+    ]);
   });
 
   test('names a tip as a tip, with the episode it was given on', () {
@@ -223,9 +228,25 @@ void main() {
     );
 
     expect(rows, [
-      'purchase-tip,,Series,3,Episode,300,0,JPY,,,active,tip,,,',
+      'purchase-tip,,Series,3,Episode,300,0,JPY,,,active,tip,,,,',
       'purchase-tip-refunded,,Series,3,Episode,300,300,JPY,,'
-          '2026-01-11T00:00:00Z,refunded,tip,,,',
+          '2026-01-11T00:00:00Z,refunded,tip,,,,',
+    ]);
+  });
+
+  test('counts the coins an episode was paid with, at a price of 0', () {
+    final rows = _rows(
+      renderPurchaseHistoryCsv([
+        _purchase(id: 'purchase-coins', price: 0, coinsSpent: 50),
+        _purchase(id: 'purchase-paid'),
+      ]),
+    );
+
+    expect(rows, [
+      'purchase-coins,2026-01-10T12:00:00Z,Series,3,Episode,0,0,JPY,,,'
+          'active,episode,,,,50',
+      'purchase-paid,2026-01-10T12:00:00Z,Series,3,Episode,500,0,JPY,,,'
+          'active,episode,,,,',
     ]);
   });
 }
