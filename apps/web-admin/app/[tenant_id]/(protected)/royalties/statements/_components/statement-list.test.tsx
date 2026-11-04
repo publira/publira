@@ -43,7 +43,15 @@ const statement = (
   currency,
   period,
   timeZone: "Asia/Tokyo",
-  totals: { adjustment: -300, gross: 7000, payout: 2950, refunded: 500 },
+  totals: {
+    adjustment: -300,
+    gross: 7000,
+    payout: 2950,
+    refunded: 500,
+    tax: null,
+    withholding: null,
+  },
+  withholdingRateBps: null,
 });
 
 afterEach(() => {

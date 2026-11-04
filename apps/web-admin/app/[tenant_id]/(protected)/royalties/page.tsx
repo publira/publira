@@ -112,6 +112,7 @@ const PreviewContent = ({
     return (
       <OpenMonth
         closeState={royaltyCloseState(period, policy, zone)}
+        creatorSubtotals={preview.creatorSubtotals}
         currency={preview.currency}
         endsAt={preview.endsAt}
         lines={preview.lines}
@@ -121,6 +122,7 @@ const PreviewContent = ({
         tenantId={tenantId}
         timeZone={zone}
         totals={preview.totals}
+        withholdingRateBps={preview.withholdingRateBps}
       />
     );
   }

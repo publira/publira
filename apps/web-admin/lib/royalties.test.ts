@@ -60,6 +60,8 @@ const mappedLine = {
   seriesTitle: "Series A",
   shareBps: 3000,
   source: "sale",
+  taxAmount: null,
+  taxRateBps: null,
 };
 
 // An adjustment names the closed month it takes refunds back from.
@@ -220,6 +222,7 @@ describe("royalties", () => {
 
     expect(await previewRoyaltyStatement("TENANT001", "en", "2026-08")).toEqual(
       {
+        creatorSubtotals: [],
         currency: "USD",
         endsAt: "2026-08-31T15:00:00Z",
         lines: [mappedLine, mappedAdjustment, mappedSubscriptionLine],
@@ -227,13 +230,76 @@ describe("royalties", () => {
         period: "2026-08",
         startsAt: "2026-07-31T15:00:00Z",
         timeZone: "Asia/Tokyo",
-        totals: { adjustment: -500, gross: 5000, payout: 1350, refunded: 0 },
+        totals: {
+          adjustment: -500,
+          gross: 5000,
+          payout: 1350,
+          refunded: 0,
+          tax: null,
+          withholding: null,
+        },
+        withholdingRateBps: null,
       }
     );
     expect(mockApi.previewRoyaltyStatement).toHaveBeenCalledWith(
       { period: "2026-08", tenant: { tenantId: "TENANT001" } },
       expect.anything()
     );
+  });
+
+  it("reads the tax and the withholding a statement states, and each Author's subtotal", async () => {
+    mockApi.getRoyaltyStatement.mockResolvedValueOnce({
+      creatorSubtotals: [
+        {
+          creatorName: "Aki",
+          creatorPublicId: "CR001",
+          payoutAmount: 1500n,
+          taxAmount: 136n,
+          withholdingAmount: 139n,
+        },
+        { creatorName: "Ben", creatorPublicId: "", payoutAmount: 0n },
+      ],
+      lines: [{ ...wireLine, taxAmount: 136n, taxRateBps: 1000 }],
+      nextToken: "",
+      previousToken: "",
+      statement: {
+        closedAt: "2026-09-02T01:30:00Z",
+        closedByUserName: "Operator",
+        closedByUserPublicId: "US001",
+        currency: "JPY",
+        period: "2026-08",
+        timeZone: "Asia/Tokyo",
+        totals: { ...wireTotals, tax: 136n, withholding: 139n },
+        withholdingRateBps: 1021,
+      },
+    });
+    const { getRoyaltyStatement } = await import("./royalties");
+
+    expect(
+      await getRoyaltyStatement("TENANT001", "en", "2026-08")
+    ).toMatchObject({
+      creatorSubtotals: [
+        {
+          creatorName: "Aki",
+          creatorPublicId: "CR001",
+          payoutAmount: 1500,
+          taxAmount: 136,
+          withholdingAmount: 139,
+        },
+        {
+          creatorName: "Ben",
+          creatorPublicId: "",
+          payoutAmount: 0,
+          taxAmount: null,
+          withholdingAmount: null,
+        },
+      ],
+      lines: [{ ...mappedLine, taxAmount: 136, taxRateBps: 1000 }],
+      statement: {
+        totals: { tax: 136, withholding: 139 },
+        withholdingRateBps: 1021,
+      },
+    });
   });
 
   it("tells a month that cannot be previewed from a failed read", async () => {
@@ -286,6 +352,7 @@ describe("royalties", () => {
         token: "cursor",
       })
     ).toEqual({
+      creatorSubtotals: [],
       lines: [mappedLine],
       nextToken: "next",
       ok: true,
@@ -296,7 +363,15 @@ describe("royalties", () => {
         currency: "JPY",
         period: "2026-08",
         timeZone: "Asia/Tokyo",
-        totals: { adjustment: -500, gross: 5000, payout: 1350, refunded: 0 },
+        totals: {
+          adjustment: -500,
+          gross: 5000,
+          payout: 1350,
+          refunded: 0,
+          tax: null,
+          withholding: null,
+        },
+        withholdingRateBps: null,
       },
     });
     expect(mockApi.getRoyaltyStatement).toHaveBeenCalledWith(

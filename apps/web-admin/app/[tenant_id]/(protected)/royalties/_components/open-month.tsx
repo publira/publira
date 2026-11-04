@@ -14,15 +14,18 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyTotals } from "#lib/royalties";
-import type { RoyaltyLine } from "#lib/royalty-lines";
+import type { RoyaltyCreatorSubtotal, RoyaltyLine } from "#lib/royalty-lines";
 import type { RoyaltyCloseState } from "#lib/royalty-period";
 
 import { CloseStatementButton } from "./close-statement-button";
 import { RoyaltyFigures } from "./royalty-figures";
 import { RoyaltyLinesTable } from "./royalty-lines-table";
+import { RoyaltySubtotals } from "./royalty-subtotals";
 
 interface OpenMonthProps {
   closeState: RoyaltyCloseState;
+  /** What each Author would be paid, in the order of their first line. */
+  creatorSubtotals: RoyaltyCreatorSubtotal[];
   /**
    * The currency every amount is in, the statement's or the preview's.
    * `null` when the API answered none, and each amount is then a dash.
@@ -38,6 +41,8 @@ interface OpenMonthProps {
   tenantId: string;
   timeZone: string;
   totals: RoyaltyTotals;
+  /** The rate closing the month now would withhold at, `null` for none. */
+  withholdingRateBps: number | null;
 }
 
 /** What happens to the month next, and the close button when it is a person's. */
@@ -133,6 +138,7 @@ const CloseStatus = ({
  */
 export const OpenMonth = ({
   closeState,
+  creatorSubtotals,
   currency,
   endsAt,
   lines,
@@ -142,6 +148,7 @@ export const OpenMonth = ({
   tenantId,
   timeZone,
   totals,
+  withholdingRateBps,
 }: OpenMonthProps) => (
   <ConsoleSection.Stack>
     <ConsoleSection.Root>
@@ -191,6 +198,13 @@ export const OpenMonth = ({
         totals={totals}
       />
     </ConsoleSection.Root>
+
+    <RoyaltySubtotals
+      currency={currency}
+      locale={locale}
+      subtotals={creatorSubtotals}
+      withholdingRateBps={withholdingRateBps}
+    />
 
     <ConsoleSection.Root>
       <ConsoleSection.Header>

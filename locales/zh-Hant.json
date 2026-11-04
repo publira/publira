@@ -3260,6 +3260,32 @@
           "other_service": "這不是{$name}標籤。請複製此服務顯示的標籤。"
         }
       },
+      "tax": {
+        "title": "稅金與發票",
+        "description": "價格中包含的稅金、從作者版稅中扣繳的金額，以及收據的開立名稱與登記編號。",
+        "rate_label": "稅率（%）",
+        "rate_description": "所有價格中包含的稅率，例如10。價格不含稅時請留空。新稅率適用於儲存之後的購買；已完成的購買保留購買時的稅率。",
+        "rate_applies_from": "目前稅率自{$applies_from}起適用。",
+        "withholding_label": "扣繳稅率（%）",
+        "withholding_description": "結算版稅月份時，對每位作者的支付額扣除其中所含稅金後的金額進行扣繳，例如10.21。留空則不扣繳。",
+        "legal_name_label": "開立名稱",
+        "legal_name_description": "收據上作為開立者的名稱，最多{$max}個字元。留空則不顯示。",
+        "registration_number_label": "登記編號",
+        "registration_number_description": "合格發票制度下的登記編號，例如T1234567890123，顯示在每張收據上。最多{$max}個字元，不能包含空格。留空則不顯示。",
+        "submit": "儲存稅金與發票設定",
+        "saved": "稅金與發票設定已儲存。",
+        "load_failed": "無法載入稅金與發票設定。請稍後再試。",
+        "save_failed": "無法儲存稅金與發票設定。請稍後再試。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "validation": {
+          "rate": "請輸入0.01到100之間、最多兩位小數的百分比，或留空。",
+          "legal_name_too_long": "開立名稱最多{$max}個字元。",
+          "legal_name_control": "開立名稱不能包含換行等控制字元。",
+          "registration_number_too_long": "登記編號最多{$max}個字元。",
+          "registration_number_whitespace": "登記編號不能包含空格或換行。",
+          "refused": "此值未被接受。請檢查後重新儲存。"
+        }
+      },
       "icon": {
         "title": "圖示",
         "description": "公開網站在瀏覽器分頁與網址列中顯示的圖示。",
@@ -4323,11 +4349,13 @@
         "subscription_label": "訂閱",
         "subscription_refunded_label": "訂閱退款額",
         "net_label": "淨銷售額",
+        "tax_label": "稅額",
         "chart_label": "每日淨銷售額",
         "chart_purchases": "購買",
         "chart_subscriptions": "訂閱",
         "definition": "銷售額計入購買當天，因退款或租戶敗訴的爭議而退回的金額，無論何時退回，都從同一天扣除，因此已統計的某天的金額之後可能下降。一卷或系列剩餘章節的購買，依其中每個章節在價格中所占的部分計為該章節的銷售。以租戶目前貨幣以外的貨幣支付的購買不計入。",
         "subscription_definition": "訂閱付款計入Stripe收到付款的當天，退回的金額從同一天扣除。淨銷售額包含扣除退款後的訂閱付款與購買，圖表將訂閱付款疊加在購買之上。付款不屬於任何系列，因此只計入按日的列。以Stripe測試金鑰收到的付款不計入。",
+        "tax_definition": "稅額是淨銷售額中包含的稅金：對每筆購買與訂閱付款，依其發生時記錄的稅率，計算租戶留存部分中包含的稅金。未設定稅率期間的銷售不含稅金。",
         "breakdown_title": "明細",
         "group_aria": "銷售額明細",
         "group_day": "依日",
@@ -4485,7 +4513,9 @@
         "gross": "銷售額",
         "refunded": "退款",
         "adjustment": "退款調整",
-        "payout": "支付給作者"
+        "payout": "支付給作者",
+        "tax": "支付額中的稅金",
+        "withholding": "扣繳稅額"
       },
       "open": {
         "section_error": "無法顯示未結算月份",
@@ -4516,6 +4546,7 @@
         "sale_subtotal": "銷售小計",
         "subscription_subtotal": "訂閱小計",
         "no_role": "—",
+        "no_tax_rate": "—",
         "adjustment": "{$period}的退款調整",
         "subscription": "訂閱分潤",
         "columns": {
@@ -4527,8 +4558,16 @@
           "gross": "銷售額",
           "refunded": "退款",
           "share": "分潤比例",
-          "payout": "支付額"
+          "payout": "支付額",
+          "tax_rate": "稅率",
+          "tax": "稅額",
+          "withholding": "扣繳稅額"
         }
+      },
+      "subtotals": {
+        "title": "依作者列出的支付額",
+        "description": "本月向每位作者支付的金額、其中包含的稅金，以及扣繳的金額。",
+        "withholding_note": "扣繳稅額為支付額扣除其中所含稅金後金額的{$rate}，捨去尾數。"
       },
       "statements": {
         "title": "已結算明細",
@@ -4548,6 +4587,8 @@
           "refunded": "退款",
           "adjustment": "調整",
           "payout": "支付額",
+          "tax": "稅額",
+          "withholding": "扣繳稅額",
           "export": "CSV"
         }
       },
@@ -4635,6 +4676,9 @@
       "expires_at": "可閱讀至",
       "expires_never": "無期限",
       "refunded_amount": "已退金額",
+      "tax_label": "其中稅額",
+      "tax_value": "{$amount}（{$rate}）",
+      "tax_in_price": "含稅{$amount}",
       "revoked_at": "對讀者關閉",
       "revocation_reason": {
         "refund": "透過金流服務退款",

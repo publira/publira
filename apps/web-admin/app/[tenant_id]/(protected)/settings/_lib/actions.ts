@@ -85,6 +85,17 @@ import {
   parseSiteVerificationCode,
   siteVerificationCodeMessage,
 } from "#lib/tenant-site-verification-shared";
+import {
+  tenantTaxSettingsCacheTag,
+  updateTenantTaxSettings,
+} from "#lib/tenant-tax-settings";
+import {
+  invoiceLegalNameProblem,
+  invoiceRegistrationNumberProblem,
+  MAX_INVOICE_LEGAL_NAME_LENGTH,
+  MAX_INVOICE_REGISTRATION_NUMBER_LENGTH,
+  ratePercentToBps,
+} from "#lib/tenant-tax-settings-shared";
 import { updateTenantTimezone } from "#lib/tenant-timezone";
 
 import type {
@@ -100,6 +111,7 @@ import type {
   TenantLocalesActionState,
   TenantSignUpSettingsActionState,
   TenantSiteVerificationActionState,
+  TenantTaxSettingsActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
 
@@ -1109,6 +1121,153 @@ export const updateTenantSignUpSettingsAction = async (
     ),
     ok: true,
     settings: result.settings,
+  };
+};
+
+/**
+ * Each rate is a percentage with at most two decimal places, empty for none,
+ * and the name and the number are trimmed, empty clearing them. The Go server
+ * applies the same rules and stays the authority; this only gives the operator
+ * immediate feedback instead of a round trip.
+ */
+const tenantTaxSettingsSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  const rate = z
+    .string()
+    .default("")
+    .transform((value, context) => {
+      const bps = ratePercentToBps(value);
+
+      if (bps !== undefined) {
+        return bps;
+      }
+
+      context.addIssue({
+        code: "custom",
+        message: t("admin.settings.tax.validation.rate"),
+      });
+
+      return z.NEVER;
+    });
+
+  return z.object({
+    invoiceLegalName: z
+      .string()
+      .default("")
+      .transform((value) => value.trim())
+      .superRefine((value, context) => {
+        const problem = invoiceLegalNameProblem(value);
+
+        if (problem === "too_long") {
+          context.addIssue({
+            code: "custom",
+            message: t("admin.settings.tax.validation.legal_name_too_long", {
+              max: MAX_INVOICE_LEGAL_NAME_LENGTH,
+            }),
+          });
+        } else if (problem === "control") {
+          context.addIssue({
+            code: "custom",
+            message: t("admin.settings.tax.validation.legal_name_control"),
+          });
+        }
+      }),
+    invoiceRegistrationNumber: z
+      .string()
+      .default("")
+      .transform((value) => value.trim())
+      .superRefine((value, context) => {
+        const problem = invoiceRegistrationNumberProblem(value);
+
+        if (problem === "too_long") {
+          context.addIssue({
+            code: "custom",
+            message: t(
+              "admin.settings.tax.validation.registration_number_too_long",
+              { max: MAX_INVOICE_REGISTRATION_NUMBER_LENGTH }
+            ),
+          });
+        } else if (problem === "whitespace") {
+          context.addIssue({
+            code: "custom",
+            message: t(
+              "admin.settings.tax.validation.registration_number_whitespace"
+            ),
+          });
+        }
+      }),
+    taxRateBps: rate,
+    tenantId,
+    withholdingRateBps: rate,
+  });
+};
+
+export const updateTenantTaxSettingsAction = async (
+  _prevState: TenantTaxSettingsActionState,
+  formData: FormData
+): Promise<TenantTaxSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantTaxSettingsSchema(locale),
+  ]);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      invoiceLegalName: { kind: "value", name: "invoice_legal_name" },
+      invoiceRegistrationNumber: {
+        kind: "value",
+        name: "invoice_registration_number",
+      },
+      taxRateBps: { kind: "value", name: "tax_rate" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      withholdingRateBps: { kind: "value", name: "withholding_rate" },
+    })
+  );
+
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+
+    return {
+      fieldErrors: {
+        invoiceLegalName: fieldErrors.invoiceLegalName,
+        invoiceRegistrationNumber: fieldErrors.invoiceRegistrationNumber,
+        taxRateBps: fieldErrors.taxRateBps,
+        withholdingRateBps: fieldErrors.withholdingRateBps,
+      },
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { tenantId, ...settings } = parsed.data;
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantTaxSettings({ ...settings, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the settings through a private cache, so
+  // without this the operator would keep seeing the previous ones in the same
+  // session. The storefront's copy is dropped by the API as the update lands.
+  updateTag(tenantTaxSettingsCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.tax.saved"),
+    ok: true,
   };
 };
 

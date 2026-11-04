@@ -75,6 +75,14 @@ export interface PurchaseItem {
   seriesTitle: string;
   /** The store that charged the reader (`app_store`, `google_play`), or `""`. */
   store: string;
+  /**
+   * The tenant's tax rate when the purchase was made, in basis points, and the
+   * tax `price` includes at it. Both `null` on a purchase made while the
+   * tenant had no rate, and on a pack of coins, whose tax is recorded on the
+   * purchases its coins pay for.
+   */
+  taxAmount: number | null;
+  taxRateBps: number | null;
   test: boolean;
 }
 
@@ -144,6 +152,8 @@ type RawPurchase = Pick<
   | "seriesPublicId"
   | "seriesTitle"
   | "store"
+  | "taxAmount"
+  | "taxRateBps"
   | "test"
   | "volumePublicId"
   | "volumeTitle"
@@ -201,6 +211,8 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   seriesPublicId: item.seriesPublicId,
   seriesTitle: item.seriesTitle,
   store: item.store,
+  taxAmount: item.taxAmount === undefined ? null : Number(item.taxAmount),
+  taxRateBps: item.taxRateBps ?? null,
   test: item.test,
 });
 

@@ -23,6 +23,8 @@ const line = (
   seriesTitle: "Series A",
   shareBps: 3000,
   source,
+  taxAmount: null,
+  taxRateBps: null,
 });
 
 describe("groupRoyaltyLinesByCreator", () => {

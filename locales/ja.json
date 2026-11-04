@@ -3260,6 +3260,32 @@
           "other_service": "{$name}のタグではありません。このサービスに表示されたタグをコピーしてください。"
         }
       },
+      "tax": {
+        "title": "税と請求書",
+        "description": "価格に含まれる税、著者の印税から源泉徴収する額、領収書を発行する名義と登録番号です。",
+        "rate_label": "税率 (%)",
+        "rate_description": "すべての価格に含まれる税率です。例: 10。価格に税を含まない場合は空にします。新しい税率は保存した後の購入から適用され、すでに行われた購入には購入時の税率が残ります。",
+        "rate_applies_from": "現在の税率は{$applies_from}から適用されています。",
+        "withholding_label": "源泉徴収税率 (%)",
+        "withholding_description": "印税の月を締めるとき、各著者への支払額からそこに含まれる税を除いた額に対して源泉徴収します。例: 10.21。空にすると源泉徴収しません。",
+        "legal_name_label": "名義",
+        "legal_name_description": "領収書の発行者として記載する名義です。{$max}文字以内で入力します。空にすると記載しません。",
+        "registration_number_label": "登録番号",
+        "registration_number_description": "適格請求書発行事業者の登録番号です。例: T1234567890123。すべての領収書に記載されます。空白を含まない{$max}文字以内で入力します。空にすると記載しません。",
+        "submit": "税と請求書の設定を保存",
+        "saved": "税と請求書の設定を保存しました。",
+        "load_failed": "税と請求書の設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "税と請求書の設定の保存に失敗しました。時間をおいて再試行してください。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "validation": {
+          "rate": "0.01から100までの割合を小数点以下2桁以内で入力するか、空にしてください。",
+          "legal_name_too_long": "名義は{$max}文字以内で入力してください。",
+          "legal_name_control": "名義に改行などの制御文字は使えません。",
+          "registration_number_too_long": "登録番号は{$max}文字以内で入力してください。",
+          "registration_number_whitespace": "登録番号に空白や改行は使えません。",
+          "refused": "この値は受け付けられませんでした。確認してから保存し直してください。"
+        }
+      },
       "icon": {
         "title": "アイコン",
         "description": "公開サイトのタブやロケーションバーに表示するアイコンです。",
@@ -4323,11 +4349,13 @@
         "subscription_label": "サブスクリプション",
         "subscription_refunded_label": "サブスクリプションの返金額",
         "net_label": "純売上",
+        "tax_label": "税額",
         "chart_label": "日ごとの純売上",
         "chart_purchases": "購入",
         "chart_subscriptions": "サブスクリプション",
         "definition": "売上は購入された日に数え、返金やテナントが認められなかった異議申し立てで戻った分は、いつ戻ったかにかかわらず同じ日から差し引きます。そのため、すでに集計した日の金額が後から下がることがあります。巻やシリーズの残り話のまとめ買いは、含まれる各エピソードがそれぞれの価格の割合で売れたものとして数えます。テナントの現在の通貨以外で支払われた購入は含めません。",
         "subscription_definition": "サブスクリプションの支払いはStripeが受け取った日に数え、戻った分は同じ日から差し引きます。純売上には返金を差し引いた支払いを購入とあわせて含め、グラフでは購入の上に積み上げて表示します。支払いはどのシリーズにも属さないため、日ごとの行にだけ含まれます。Stripeのテスト用キーで受け取った支払いは含めません。",
+        "tax_definition": "税額は純売上に含まれる税です。購入とサブスクリプションの支払いごとに、テナントに残った額に含まれる税を、それぞれが行われたときに記録した税率で数えます。税率を設定していなかった間の売上は税を含みません。",
         "breakdown_title": "内訳",
         "group_aria": "売上の内訳",
         "group_day": "日別",
@@ -4485,7 +4513,9 @@
         "gross": "売上",
         "refunded": "返金",
         "adjustment": "返金の調整",
-        "payout": "著者への支払額"
+        "payout": "著者への支払額",
+        "tax": "支払額に含まれる税",
+        "withholding": "源泉徴収額"
       },
       "open": {
         "section_error": "未締めの月を表示できませんでした",
@@ -4516,6 +4546,7 @@
         "sale_subtotal": "販売の小計",
         "subscription_subtotal": "サブスクリプションの小計",
         "no_role": "—",
+        "no_tax_rate": "—",
         "adjustment": "{$period}分の返金の調整",
         "subscription": "サブスクリプションの分配",
         "columns": {
@@ -4527,8 +4558,16 @@
           "gross": "売上",
           "refunded": "返金",
           "share": "分配率",
-          "payout": "支払額"
+          "payout": "支払額",
+          "tax_rate": "税率",
+          "tax": "税額",
+          "withholding": "源泉徴収額"
         }
+      },
+      "subtotals": {
+        "title": "著者ごとの支払額",
+        "description": "この月に各著者へ支払う額と、そこに含まれる税、源泉徴収する額です。",
+        "withholding_note": "源泉徴収額は、支払額からそこに含まれる税を除いた額の{$rate}で、端数は切り捨てます。"
       },
       "statements": {
         "title": "締めた明細",
@@ -4548,6 +4587,8 @@
           "refunded": "返金",
           "adjustment": "調整",
           "payout": "支払額",
+          "tax": "税額",
+          "withholding": "源泉徴収額",
           "export": "CSV"
         }
       },
@@ -4635,6 +4676,9 @@
       "expires_at": "閲覧期限",
       "expires_never": "期限なし",
       "refunded_amount": "返金額",
+      "tax_label": "うち税額",
+      "tax_value": "{$amount} ({$rate})",
+      "tax_in_price": "うち税額{$amount}",
       "revoked_at": "読者への公開終了",
       "revocation_reason": {
         "refund": "決済サービスで返金",

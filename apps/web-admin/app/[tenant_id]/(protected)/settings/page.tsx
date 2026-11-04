@@ -37,6 +37,8 @@ import type { GetTenantLocalesResult } from "#lib/tenant-locales";
 import { getTenantSignUpSettings } from "#lib/tenant-sign-up-settings";
 import { getTenantSiteVerification } from "#lib/tenant-site-verification";
 import type { TenantSiteVerificationResult } from "#lib/tenant-site-verification";
+import { getTenantTaxSettings } from "#lib/tenant-tax-settings";
+import type { TenantTaxSettingsResult } from "#lib/tenant-tax-settings";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
@@ -51,6 +53,7 @@ import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantLocalesForm } from "./_components/tenant-locales-form";
 import { TenantSignUpSettingsForm } from "./_components/tenant-sign-up-settings-form";
 import { TenantSiteVerificationForm } from "./_components/tenant-site-verification-form";
+import { TenantTaxSettingsForm } from "./_components/tenant-tax-settings-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -164,6 +167,13 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-10" />
       <Skeleton className="h-10" />
     </ConsoleSection.Root>
+    <ConsoleSection.Root>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </ConsoleSection.Root>
   </ConsoleSection.Stack>
 );
 
@@ -218,6 +228,12 @@ const siteVerificationFormState = (
     ? { initialSiteVerification: result.siteVerification }
     : { loadErrorMessage: result?.message };
 
+/** The card's saved settings, or what it says about the read that failed. */
+const taxSettingsFormState = (result: TenantTaxSettingsResult) =>
+  result.ok
+    ? { initialSettings: result.settings }
+    : { loadErrorMessage: result.message };
+
 const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
@@ -239,6 +255,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     emailRejectionResult,
     crawlerSettingsResult,
     siteVerificationResult,
+    taxSettingsResult,
   ] = await Promise.all([
     readSiteSettingsTabs({ locale, localesPromise, searchParams, tenantId }),
     getTenantTimezone(tenantId, locale),
@@ -254,6 +271,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     readEmailRejectionSettings(tenantId, locale, currentUserPromise),
     getTenantCrawlerSettings(tenantId, locale),
     readSiteVerification(tenantId, locale, currentUserPromise),
+    getTenantTaxSettings(tenantId, locale),
   ]);
 
   await redirectToLoginIfSessionRejected(
@@ -266,6 +284,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     publishedPagesResult,
     signUpSettingsResult,
     crawlerSettingsResult,
+    taxSettingsResult,
     // Read for a tenant administrator alone, and null for anyone else.
     ...[emailRejectionResult, siteVerificationResult].filter(
       (result) => result !== null
@@ -419,6 +438,14 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
         canEdit={canEdit}
         tenantId={tenantId}
         {...siteVerificationFormState(siteVerificationResult)}
+      />
+
+      <TenantTaxSettingsForm
+        canEdit={canEdit}
+        locale={locale}
+        tenantId={tenantId}
+        timeZone={timezoneResult.timezone}
+        {...taxSettingsFormState(taxSettingsResult)}
       />
     </ConsoleSection.Stack>
   );

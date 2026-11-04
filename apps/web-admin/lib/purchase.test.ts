@@ -73,6 +73,8 @@ const purchase = (
       episodeCount: number;
       id: string;
     };
+    taxAmount: bigint;
+    taxRateBps: number;
     volumeId: string;
     volumePublicId: string;
     volumeTitle: string;
@@ -160,6 +162,23 @@ describe("listPurchases", () => {
         },
       ],
     });
+  });
+
+  it("reads the tax a purchase recorded, and none where it recorded no rate", async () => {
+    mockListPurchases.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      purchases: [purchase({ taxAmount: 45n, taxRateBps: 1000 }), purchase()],
+    });
+
+    const { listPurchases } = await import("./purchase");
+
+    const result = await listPurchases("TENANT001", "en");
+
+    expect(result.purchases).toMatchObject([
+      { taxAmount: 45, taxRateBps: 1000 },
+      { taxAmount: null, taxRateBps: null },
+    ]);
   });
 
   it("tells an episode, a volume, and the rest of a series apart", async () => {

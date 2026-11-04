@@ -24,6 +24,8 @@ const purchase = (item: PurchasedItem): PurchaseItem => ({
   seriesPublicId: "SERIES001",
   seriesTitle: "Series 1",
   store: "",
+  taxAmount: null,
+  taxRateBps: null,
   test: false,
 });
 

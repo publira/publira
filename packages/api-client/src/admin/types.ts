@@ -74,6 +74,7 @@ export type { AdminPurchase } from "../gen/publira/admin/v1/purchase_pb.js";
 
 export type {
   RoyaltyConfig,
+  RoyaltyCreatorSubtotal,
   RoyaltyStatement,
   RoyaltyStatementLine,
   RoyaltyStatementTotals,
@@ -107,6 +108,7 @@ export type {
   TenantRetentionOverrides,
   TenantSignUpSettings,
   TenantSiteVerification,
+  TenantTaxSettings,
 } from "../gen/publira/admin/v1/tenant_pb.js";
 
 export type {

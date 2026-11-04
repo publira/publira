@@ -4,6 +4,7 @@ import {
 } from "@publira/api-client/admin/royalty";
 import type {
   RoyaltyConfig,
+  RoyaltyCreatorSubtotal as RawCreatorSubtotal,
   RoyaltyStatement,
   RoyaltyStatementLine,
   RoyaltyStatementTotals,
@@ -26,7 +27,7 @@ import { cursorPageRequest, cursorPageTokens } from "./cursor-page";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import { getMessagesFor } from "./messages";
 import { readCurrency } from "./price";
-import type { RoyaltyLine } from "./royalty-lines";
+import type { RoyaltyCreatorSubtotal, RoyaltyLine } from "./royalty-lines";
 import type { RoyaltyCloseMode, RoyaltyClosePolicy } from "./royalty-period";
 import { getAccessToken } from "./session";
 
@@ -40,6 +41,10 @@ export interface RoyaltyTotals {
    */
   adjustment: number;
   payout: number;
+  /** The tax the payouts include, `null` where no line has a tax rate. */
+  tax: number | null;
+  /** What is withheld from the Authors, `null` where nothing is. */
+  withholding: number | null;
 }
 
 /** A closed month. */
@@ -55,6 +60,12 @@ export interface RoyaltyStatementSummary {
    */
   currency: string | null;
   totals: RoyaltyTotals;
+  /**
+   * The withholding rate the month was closed with, in basis points, which
+   * the statement keeps after the tenant changes it. `null` where the month
+   * withheld nothing.
+   */
+  withholdingRateBps: number | null;
 }
 
 interface ReadFailure {
@@ -87,6 +98,13 @@ export type PreviewRoyaltyStatementResult =
       currency: string | null;
       totals: RoyaltyTotals;
       lines: RoyaltyLine[];
+      /** What each Author would be paid, in the order of their first line. */
+      creatorSubtotals: RoyaltyCreatorSubtotal[];
+      /**
+       * The tenant's withholding rate, which closing the month now would
+       * record, in basis points. `null` where it withholds nothing.
+       */
+      withholdingRateBps: number | null;
     }
   | (ReadFailure & {
       /** The month is already closed, or has not started yet. */
@@ -102,6 +120,11 @@ export type GetRoyaltyStatementResult =
       ok: true;
       statement: RoyaltyStatementSummary;
       lines: RoyaltyLine[];
+      /**
+       * What the statement pays each Author, every one of them on every page.
+       * Empty for a statement closed before statements carried subtotals.
+       */
+      creatorSubtotals: RoyaltyCreatorSubtotal[];
     })
   | (ReadFailure & { notFound: boolean });
 
@@ -125,14 +148,20 @@ export type CloseRoyaltyStatementResult =
 /** The generated `RoyaltyStatementTotals` fields {@link mapTotals} reads. */
 type RawTotals = Pick<
   RoyaltyStatementTotals,
-  "adjustment" | "gross" | "payout" | "refunded"
+  "adjustment" | "gross" | "payout" | "refunded" | "tax" | "withholding"
 >;
+
+/** An optional amount the API leaves unset where it states nothing. */
+const optionalAmount = (value: bigint | undefined): number | null =>
+  value === undefined ? null : Number(value);
 
 const mapTotals = (totals: RawTotals | undefined): RoyaltyTotals => ({
   adjustment: Number(totals?.adjustment ?? 0),
   gross: Number(totals?.gross ?? 0),
   payout: Number(totals?.payout ?? 0),
   refunded: Number(totals?.refunded ?? 0),
+  tax: optionalAmount(totals?.tax),
+  withholding: optionalAmount(totals?.withholding),
 });
 
 /** The generated `RoyaltyStatementLine` fields {@link mapLine} reads. */
@@ -151,6 +180,8 @@ type RawLine = Pick<
   | "seriesTitle"
   | "shareBps"
   | "source"
+  | "taxAmount"
+  | "taxRateBps"
 >;
 
 const mapLine = (line: RawLine): RoyaltyLine => ({
@@ -170,6 +201,26 @@ const mapLine = (line: RawLine): RoyaltyLine => ({
   // states no source, and every line it knew was a sale.
   source:
     line.source === RoyaltyLineSource.SUBSCRIPTION ? "subscription" : "sale",
+  taxAmount: optionalAmount(line.taxAmount),
+  taxRateBps: line.taxRateBps ?? null,
+});
+
+/** The generated `RoyaltyCreatorSubtotal` fields {@link mapCreatorSubtotal} reads. */
+type RawSubtotal = Pick<
+  RawCreatorSubtotal,
+  | "creatorName"
+  | "creatorPublicId"
+  | "payoutAmount"
+  | "taxAmount"
+  | "withholdingAmount"
+>;
+
+const mapCreatorSubtotal = (subtotal: RawSubtotal): RoyaltyCreatorSubtotal => ({
+  creatorName: subtotal.creatorName ?? "",
+  creatorPublicId: subtotal.creatorPublicId ?? "",
+  payoutAmount: Number(subtotal.payoutAmount ?? 0),
+  taxAmount: optionalAmount(subtotal.taxAmount),
+  withholdingAmount: optionalAmount(subtotal.withholdingAmount),
 });
 
 /** The generated `RoyaltyStatement` fields {@link mapStatement} reads. */
@@ -181,6 +232,7 @@ type RawStatement = Pick<
   | "period"
   | "timeZone"
   | "totals"
+  | "withholdingRateBps"
 >;
 
 const mapStatement = (
@@ -192,6 +244,7 @@ const mapStatement = (
   period: statement?.period ?? "",
   timeZone: statement?.timeZone ?? "",
   totals: mapTotals(statement?.totals),
+  withholdingRateBps: statement?.withholdingRateBps ?? null,
 });
 
 /** The generated `RoyaltyConfig` fields {@link mapPolicy} reads. */
@@ -331,6 +384,9 @@ export const previewRoyaltyStatement = async (
     );
 
     return {
+      creatorSubtotals: (response.creatorSubtotals ?? []).map((subtotal) =>
+        mapCreatorSubtotal(subtotal)
+      ),
       currency: readCurrency(response.currency),
       endsAt: response.endsAt ?? "",
       lines: (response.lines ?? []).map((line) => mapLine(line)),
@@ -339,6 +395,7 @@ export const previewRoyaltyStatement = async (
       startsAt: response.startsAt ?? "",
       timeZone: response.timeZone ?? "",
       totals: mapTotals(response.totals),
+      withholdingRateBps: response.withholdingRateBps ?? null,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -403,6 +460,9 @@ export const getRoyaltyStatement = async (
 
     return {
       ...cursorPageTokens(response),
+      creatorSubtotals: (response.creatorSubtotals ?? []).map((subtotal) =>
+        mapCreatorSubtotal(subtotal)
+      ),
       lines: (response.lines ?? []).map((line) => mapLine(line)),
       ok: true,
       statement: mapStatement(response.statement),

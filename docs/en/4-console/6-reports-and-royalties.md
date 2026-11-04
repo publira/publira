@@ -1,6 +1,6 @@
 ---
 title: Reports and royalties
-description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
+description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author with the tax and withholding it states, and export it as CSV.
 published: 2026-10-07
 updated: 2026-11-04
 ---
@@ -57,8 +57,9 @@ Figures that come from the daily statistics reach a day once that day is over. `
 | **Subscriptions** | What subscribers paid for the tenant's [subscription plans](./5-subscription-plans.md) in the period |
 | **Subscription refunds** | What went back on those payments: refunds, and disputes the tenant lost |
 | **Net sales** | **Gross sales** less **Refunded**, and **Subscriptions** less **Subscription refunds**: what the tenant kept |
+| **Tax** | The tax **Net sales** includes: for each purchase and subscription payment, the tax that what the tenant kept of it includes, at the rate it recorded when it was made |
 
-**Subscriptions** and **Subscription refunds** are shown only for a period in which a subscription payment was made, so a tenant that sells no plans sees the other four figures alone. Such a period's chart stacks each day's subscription payments, net of their refunds, on its net sales of purchases, in a lighter shade named under the chart, and the table **By day** has a column for each of the two figures. A payment counts on the day Stripe was paid it, and what went back on it is taken off that day, as a purchase's refund is. A dispute the tenant lost takes the whole payment back; one still open, or one the tenant won, takes nothing. A payment belongs to no series, so the tables **By series** and **By episode** leave it out, and their **Net** is the purchases'. A payment made with Stripe's test keys is in no figure.
+**Tax** is shown only for a period whose net sales include some, so a tenant that never set a rate under [Settings › Tax and invoices](./3-setup/1-settings.md#tax-and-invoices) does not see it, and a sale made while no rate was set adds nothing to it. **Subscriptions** and **Subscription refunds** are shown only for a period in which a subscription payment was made, so a tenant that sells no plans sees the other four figures alone. Such a period's chart stacks each day's subscription payments, net of their refunds, on its net sales of purchases, in a lighter shade named under the chart, and the table **By day** has a column for each of the two figures. A payment counts on the day Stripe was paid it, and what went back on it is taken off that day, as a purchase's refund is. A dispute the tenant lost takes the whole payment back; one still open, or one the tenant won, takes nothing. A payment belongs to no series, so the tables **By series** and **By episode** leave it out, and their **Net** is the purchases'. A payment made with Stripe's test keys is in no figure.
 
 The chart is the net sales of each day. A sale counts on the day it was made, and what went back on it is taken off that same day, however much later it went back, so a day already reported can fall afterwards, and a day on which more went back than sold is drawn below the line. A dispute still open takes nothing back until it is lost. A purchase of a volume or of the rest of a series is a sale of each episode it opened, at the part of the price the episode accounts for, the part a royalty statement credits, and a sale of their series at all of it. A purchase paid in a currency other than the tenant's current one is in no figure. An episode paid with the tenant's coins is a sale at what its coins were paid for, the amount a royalty statement credits, and a purchase of a pack of coins is in no figure: its money is counted as its coins are spent, and a refund of the pack in full or a dispute of it is taken off the sales its spent coins made. Revenue reads the purchases themselves, so a sale made a moment ago is already in it.
 
@@ -211,11 +212,22 @@ Each part of a refund is taken off once. A purchase refunded in part after one c
 
 An adjustment is carried only into a month later than the one it adjusts. A month closed out of order, before an earlier one, carries none of that earlier month's refunds; the next month closed after both carries them. When a month's adjustments outweigh its own sales, its **Payout to authors** is negative, and so is an Author's subtotal when their adjustments outweigh their lines of sales.
 
+### Tax and withholding
+
+Once a Tenant admin sets a **Tax rate (%)** under [Settings › Tax and invoices](./3-setup/1-settings.md#tax-and-invoices), every sale and subscription payment records the rate in effect when it was made, as [Selling episodes](./4-selling-episodes.md#tax-included-in-prices) describes, and the statement follows it:
+
+- **A line per tax rate.** A line counts the sales or payments of one rate, the one each recorded. A month whose rate changed has a line per rate for each credit, the line of the sales made without a rate first. An adjustment has the rate of the line it adjusts.
+- **The tax a line's payout includes.** A line's **Tax** is its payout less its payout without tax at the line's rate, which is rounded down to the smallest unit of the currency. On an adjustment, it is the tax the adjustment takes off the line it adjusts, so a line and its adjustments together include the tax of what they pay together. A line of sales made without a rate has no tax.
+- **Withholding on each Author's subtotal.** Where a **Withholding rate (%)** is set, each Author is withheld that rate of their payout less the tax it includes, rounded down to the smallest unit of the currency, and nothing when their payout is not above its tax. At 10.21%, an Author paid ¥2,200, of which ¥100 is tax, is withheld ¥214.
+- **The rate a closed statement keeps.** A closed statement keeps the withholding rate it was closed with, as it keeps the time zone, so a rate changed afterwards reaches only the months closed after the change. The open month withholds at the tenant's rate as it stands.
+
+Publira works these amounts out and states them; paying the tax and the withheld amounts is the tenant's to do, outside Publira, as paying the Authors is. A tenant that sets neither rate sees its statements exactly as before: no tax, no withholding, and the same CSV columns.
+
 ### Reading the open month
 
 **Royalties** opens on the month after the newest closed statement, or on last month when nothing has been closed yet. **Month**, with **Show**, opens any other month that is not closed and has started.
 
-**Open month** gives four totals:
+**Open month** gives four totals, and two more where the month states [tax and withholding](#tax-and-withholding):
 
 | Total | What it is |
 | --- | --- |
@@ -223,8 +235,12 @@ An adjustment is carried only into a month later than the one it adjusts. A mont
 | **Refunds** | The refunds on those sales and payments |
 | **Refund adjustments** | What the month takes back of the sales and the subscription payments of closed months refunded since their close, as [A refund after the close](#a-refund-after-the-close) describes, each counted once: zero, or a negative amount |
 | **Payout to authors** | What the month owes its Authors, the sum of the lines below, adjustments included. The rest of **Sales** after **Refunds** and **Refund adjustments** is the publisher's |
+| **Tax in payouts** | The tax **Payout to authors** includes, the sum of the lines' tax. Shown only where a line has a tax rate |
+| **Withholding** | What is withheld from the Authors, the sum of their withholding. Shown only where a withholding rate applies |
 
 **Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each, and an episode the month shared subscription payments to has a line for those beside its line of sales, which says **Subscription share** under its episode. An adjustment comes after the month's own lines in its Author's group, says **Refund adjustment for** the closed month under its episode, and counts in the Author's **Subtotal**. An Author with a line of subscription payments has a **Sales subtotal** and a **Subscription subtotal** above their **Subtotal**, each counting the lines of its kind and the adjustments to them.
+
+Where a line has a tax rate, every line also gives its **Tax rate** and its **Tax**, `—` on a line of sales made without a rate, and each Author's **Subtotal** the tax of their lines. Where the month states tax or withholding, **Payouts by author** above the lines gives each Author's **Payout**, the **Tax** it includes, and the **Withholding** from it, and says the rate it withholds at.
 
 Above the totals the screen says where the month stands:
 
@@ -252,13 +268,13 @@ Close the months in order. The console offers the month after the newest stateme
 
 ![The dialog that closes a month, giving the payout to authors that will be fixed, with Cancel and Close month.](./reports-and-royalties-close-month.png)
 
-The console then opens the month's **Statement**, which shows **Closed on**, who closed it, and the same totals and lines as the open month had. The close is recorded in **Audit logs** as **Royalty month closed**.
+The console then opens the month's **Statement**, which shows **Closed on**, who closed it, and the same totals, **Payouts by author**, and lines as the open month had. **Payouts by author** counts every line of the statement, while an Author's **Subtotal** among the lines counts the lines on that page. The close is recorded in **Audit logs** as **Royalty month closed**.
 
 ![The statement of December 2025: Closed on, who closed it, and the time zone it was cut in, its totals, Download CSV, and each Author's lines as they stood at the close.](./reports-and-royalties-statement.png)
 
 Once closed, a statement keeps each Author's, series', episode's, and role's name as it was at the close: renaming an Author, editing a share, refunding a purchase, or deleting a credit afterwards leaves it as it is. A refund recorded afterwards is taken off the next statement instead. A closed month cannot be reopened, by staff or by the operator. A mistake found afterwards is corrected outside Publira, in what the tenant pays.
 
-**Closed statements** lists every closed month, newest first, with when it was closed, who closed it, and its totals. A month closed automatically shows `—` under **Closed by**.
+**Closed statements** lists every closed month, newest first, with when it was closed, who closed it, and its totals, with **Tax** and **Withholding** columns where a statement on the page states them. A month closed automatically shows `—` under **Closed by**.
 
 ![Closed statements: December 2025, closed on 5 January 2026 by the tenant's admin, with its sales, refunds, refund adjustments, and payout to authors, and Download CSV.](./reports-and-royalties-closed-statements.png)
 
@@ -266,7 +282,7 @@ Once closed, a statement keeps each Author's, series', episode's, and role's nam
 
 **Download CSV** downloads a closed statement: on the **Statement** itself, or on its row in **Closed statements**. An open month cannot be downloaded, since its figures are still changing.
 
-The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte order mark so that Excel reads it correctly, one row for each line of the statement under a header row, and no total row. Its columns are:
+The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte order mark so that Excel reads it correctly, one row for each line of the statement under a header row, and no total row. A statement that states [tax or withholding](#tax-and-withholding) also has a row for each Author's subtotal after the lines, in the order of **Payouts by author**. Its columns are:
 
 | Column | Holds |
 | --- | --- |
@@ -283,6 +299,12 @@ The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte o
 | `currency` | The statement's currency, such as `USD`: the tenant's when the month was closed, and the only one whose sales it counts |
 | `adjusted_period` | Empty for a line of the month's own sales. On an adjustment, the closed month it takes a refund back from, `YYYY-MM`, and its amounts are the negative changes [A refund after the close](#a-refund-after-the-close) describes |
 | `source` | `sale` for a line of sales, `subscription` for a line of [subscription payments](#subscription-payments). An adjustment has the source of the line it adjusts |
+| `row_type` | `line` on a line, `creator_subtotal` on an Author's subtotal. A subtotal fills `period`, `creator_id`, `creator_name`, `payout_amount`, `currency`, and the columns below, and leaves the others empty |
+| `tax_rate_percent` | A line's tax rate, with two decimals, such as `10.00`. Empty on a line without one, and on a subtotal |
+| `tax_amount` | The tax a line's payout includes, or the sum of an Author's lines' tax on a subtotal, in the same unit. Empty without a rate |
+| `withholding_amount` | What is withheld from the Author, in the same unit, on the subtotal of a statement that withheld. Empty otherwise |
+
+The last four columns are there only on a statement with a line that has a tax rate or that withheld anything. Any other statement, every statement closed before the install recorded tax among them, has the columns above them alone.
 
 Names are as they were at the close, and the IDs keep a line tied to its Author and episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text. A statement downloads the same file every time, and each download is recorded in **Audit logs** as **Royalty statement CSV downloaded**.
 
@@ -295,7 +317,7 @@ A reader whose account is linked to an Author, as [Authors and Author roles](./1
 
 They never read the statement's totals, another Author's lines, or the open month. Lines are as they were at the close, like everything else on a statement.
 
-**Download CSV** on a month saves the Author's own lines of it in the file [Exporting a statement as CSV](#exporting-a-statement-as-csv) describes, with three columns left out: `creator_id` and `creator_name`, which would name the same Author on every row, and `role_id`. `series_id` and `episode_id` hold the IDs the site's addresses carry rather than the internal ones the console's file holds. The file is named `royalties-<author>-<YYYY-MM>.csv`, after the Author's public ID and the month. In the app, **Share CSV** on a month hands the same file to the device's share sheet.
+**Download CSV** on a month saves the Author's own lines of it in the file [Exporting a statement as CSV](#exporting-a-statement-as-csv) describes, with three columns left out: `creator_id` and `creator_name`, which would name the same Author on every row, and `role_id`. It has no tax or withholding columns and no subtotal row. `series_id` and `episode_id` hold the IDs the site's addresses carry rather than the internal ones the console's file holds. The file is named `royalties-<author>-<YYYY-MM>.csv`, after the Author's public ID and the month. In the app, **Share CSV** on a month hands the same file to the device's share sheet.
 
 ### Closing months automatically
 

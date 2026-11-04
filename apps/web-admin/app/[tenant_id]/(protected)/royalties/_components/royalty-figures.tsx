@@ -21,11 +21,7 @@ interface RoyaltyFiguresProps {
  * A month's own sales, its refunds, what it takes back of earlier months'
  * sales refunded since their close, and what its lines pay out.
  */
-export const RoyaltyFigures = ({
-  currency,
-  locale,
-  totals,
-}: RoyaltyFiguresProps) => (
+const MonthFigures = ({ currency, locale, totals }: RoyaltyFiguresProps) => (
   <FigureLine.Root>
     <FigureLine.Figure>
       <FigureLine.Label>
@@ -68,4 +64,47 @@ export const RoyaltyFigures = ({
       </FigureLine.Value>
     </FigureLine.Figure>
   </FigureLine.Root>
+);
+
+/**
+ * The tax the month's payout includes and what is withheld from it, on a line
+ * of their own under the month's totals: six figures across leave a label no
+ * room. Nothing where the month states neither.
+ */
+const TaxFigures = ({ currency, locale, totals }: RoyaltyFiguresProps) =>
+  totals.tax === null && totals.withholding === null ? null : (
+    <FigureLine.Root className="border-t-0">
+      {totals.tax === null ? null : (
+        <FigureLine.Figure>
+          <FigureLine.Label>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.royalties.totals.tax" />
+            </Suspense>
+          </FigureLine.Label>
+          <FigureLine.Value>
+            {formatTenantAmount(totals.tax, { currency, locale })}
+          </FigureLine.Value>
+        </FigureLine.Figure>
+      )}
+      {totals.withholding === null ? null : (
+        <FigureLine.Figure>
+          <FigureLine.Label>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.royalties.totals.withholding" />
+            </Suspense>
+          </FigureLine.Label>
+          <FigureLine.Value>
+            {formatTenantAmount(totals.withholding, { currency, locale })}
+          </FigureLine.Value>
+        </FigureLine.Figure>
+      )}
+    </FigureLine.Root>
+  );
+
+/** The month's totals, with the tax and withholding it states under them. */
+export const RoyaltyFigures = (props: RoyaltyFiguresProps) => (
+  <div>
+    <MonthFigures {...props} />
+    <TaxFigures {...props} />
+  </div>
 );

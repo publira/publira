@@ -3260,6 +3260,32 @@
           "other_service": "This is not a {$name} tag. Copy the tag this service shows."
         }
       },
+      "tax": {
+        "title": "Tax and invoices",
+        "description": "The tax your prices include, what is withheld from Authors' royalties, and the name and registration number your receipts are issued under.",
+        "rate_label": "Tax rate (%)",
+        "rate_description": "The rate every price includes, such as 10. Leave it empty if prices include no tax. A new rate applies to the purchases made after it is saved; a purchase already made keeps the rate it was made at.",
+        "rate_applies_from": "The current rate has applied since {$applies_from}.",
+        "withholding_label": "Withholding rate (%)",
+        "withholding_description": "Withheld from each Author's payout, less the tax it includes, when a month of royalties is closed, such as 10.21. Leave it empty to withhold nothing.",
+        "legal_name_label": "Legal name",
+        "legal_name_description": "The name your receipts are issued under, up to {$max} characters. Leave it empty to leave it off.",
+        "registration_number_label": "Registration number",
+        "registration_number_description": "Your registration number under the qualified invoice system, such as T1234567890123, printed on every receipt. Up to {$max} characters, with no spaces. Leave it empty to leave it off.",
+        "submit": "Save the tax and invoice settings",
+        "saved": "The tax and invoice settings were saved.",
+        "load_failed": "Could not load the tax and invoice settings. Please try again later.",
+        "save_failed": "Could not save the tax and invoice settings. Please try again later.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "validation": {
+          "rate": "Enter a percentage from 0.01 to 100 with at most two decimal places, or leave it empty.",
+          "legal_name_too_long": "Enter a legal name of up to {$max} characters.",
+          "legal_name_control": "The legal name cannot contain line breaks or other control characters.",
+          "registration_number_too_long": "Enter a registration number of up to {$max} characters.",
+          "registration_number_whitespace": "The registration number cannot contain spaces or line breaks.",
+          "refused": "This value was not accepted. Check it and save again."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",
@@ -4323,11 +4349,13 @@
         "subscription_label": "Subscriptions",
         "subscription_refunded_label": "Subscription refunds",
         "net_label": "Net sales",
+        "tax_label": "Tax",
         "chart_label": "Net sales per day",
         "chart_purchases": "Purchases",
         "chart_subscriptions": "Subscriptions",
         "definition": "A sale counts on the day it was made, and what went back on it - a refund, or a dispute the tenant lost - is taken off that same day, however much later it went back, so a day already reported can fall afterwards. A volume or the rest of a series is a sale of each of its episodes at the part of the price that episode accounts for. A purchase paid in a currency other than the tenant's current one is left out.",
         "subscription_definition": "A subscription payment counts on the day Stripe was paid it, and what went back on it is taken off that same day. Net sales counts the payments net of their refunds beside the purchases, and the chart stacks them on the purchases. A payment belongs to no series, so only the rows by day carry it. A payment made with Stripe's test keys is left out.",
+        "tax_definition": "Tax is the tax Net sales includes: for each purchase and subscription payment, the tax that what the tenant kept of it includes, at the rate it recorded when it was made. A sale made while no rate was set includes none.",
         "breakdown_title": "Breakdown",
         "group_aria": "Break down revenue",
         "group_day": "By day",
@@ -4485,7 +4513,9 @@
         "gross": "Sales",
         "refunded": "Refunds",
         "adjustment": "Refund adjustments",
-        "payout": "Payout to authors"
+        "payout": "Payout to authors",
+        "tax": "Tax in payouts",
+        "withholding": "Withholding"
       },
       "open": {
         "section_error": "Could not display the open month",
@@ -4516,6 +4546,7 @@
         "sale_subtotal": "Sales subtotal",
         "subscription_subtotal": "Subscription subtotal",
         "no_role": "—",
+        "no_tax_rate": "—",
         "adjustment": "Refund adjustment for {$period}",
         "subscription": "Subscription share",
         "columns": {
@@ -4527,8 +4558,16 @@
           "gross": "Gross",
           "refunded": "Refunded",
           "share": "Share",
-          "payout": "Payout"
+          "payout": "Payout",
+          "tax_rate": "Tax rate",
+          "tax": "Tax",
+          "withholding": "Withholding"
         }
+      },
+      "subtotals": {
+        "title": "Payouts by author",
+        "description": "What the month pays each Author, the tax that includes, and what is withheld from it.",
+        "withholding_note": "Withholding is {$rate} of each payout less the tax it includes, rounded down."
       },
       "statements": {
         "title": "Closed statements",
@@ -4548,6 +4587,8 @@
           "refunded": "Refunds",
           "adjustment": "Adjustments",
           "payout": "Payout",
+          "tax": "Tax",
+          "withholding": "Withholding",
           "export": "CSV"
         }
       },
@@ -4635,6 +4676,9 @@
       "expires_at": "Readable until",
       "expires_never": "No limit",
       "refunded_amount": "Refunded",
+      "tax_label": "Tax included",
+      "tax_value": "{$amount} ({$rate})",
+      "tax_in_price": "Includes {$amount} tax",
       "revoked_at": "Closed to the reader",
       "revocation_reason": {
         "refund": "Refunded through the payment provider",

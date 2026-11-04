@@ -1,6 +1,6 @@
 ---
 title: Selling episodes
-description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
+description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
 updated: 2026-11-04
 ---
@@ -76,6 +76,17 @@ A price is what a reader pays when nothing else opens the episode. Two other thi
 - **Free if you wait**, set on a series, gives each signed-in reader a free ticket that opens one paid episode of the series for **Hours an episode stays open**, and a new ticket **Hours until the next ticket** after they use one. **Newest episodes a ticket cannot open** keeps the latest episodes for buyers. A ticket cannot be used on an episode in a free reading period, or on one the reader already has.
 
 An [access ticket](./2-readers/4-access-tickets.md), issued by staff under **Access tickets**, opens an episode the same way, without payment. An Author credited on an episode reads it free and is not offered a purchase. A member of the tenant's [staff](../3-operations/3-tenant-staff.md#members-and-users), in any of the three roles, reads every published episode free while signed in to the site or the app with the account that holds the role.
+
+### Tax included in prices
+
+Every price is tax-inclusive: what a reader pays is the price as it is entered, and nothing is added at the checkout. Once a Tenant admin sets a **Tax rate (%)** under [Settings › Tax and invoices](./3-setup/1-settings.md#tax-and-invoices), each purchase records the rate in effect when it was made and the tax its price includes: the price less the price without tax, which is rounded down to the smallest unit of the currency. A ¥1,100 purchase at 10% includes ¥100, and a ¥500 one ¥46. A purchase keeps what it recorded when the rate changes later, and a purchase made while no rate is set records none.
+
+- **An episode paid with coins** records tax on what its coins were paid for, the amount a royalty statement credits, as [Royalties](./6-reports-and-royalties.md#what-an-author-is-owed) describes.
+- **A pack of coins** records none: its coins are paid in advance, and the tax is recorded on the purchases they pay for.
+- **A purchase in the app through the App Store or Google Play** records tax as any other does. The store charges the reader and issues their receipt.
+- **A subscription payment** records tax at the rate in effect when Stripe was paid it.
+
+The receipt the tenant sends for a purchase on the site states the tax and the rate, such as "Tax included (10%): ¥100", and, once they are entered, the tenant's **Legal name** and **Registration number**, as [Email](./3-setup/7-email.md#what-goes-through-it) describes.
 
 ## Choosing a payment provider
 
@@ -222,7 +233,7 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 ### Refunding from the console
 
-**Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. Only a tenant admin sees the screen.
+**Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. A purchase that recorded [tax](#tax-included-in-prices) shows it under its amount in the list, such as **Includes ¥100 tax**, and as **Tax included**, with its rate, beside the list. Only a tenant admin sees the screen.
 
 A purchase of a pack of coins is listed there as the coins it granted, in the tenant's word for them in its default language, and with no series, so narrowing the list to a series or an episode leaves it out. It is refunded like any purchase, except that it is always refunded in full, so the dialog asks for no amount. Its coins stay with the reader until the provider reports the refund in full, or a dispute of the payment: then what the pack has left is taken back, and what of it the reader had already spent is recorded as owed, and taken out of the next pack they buy. The episodes those spent coins paid for stay open, and each of their purchases shows what the coins were worth as refunded.
 

@@ -296,6 +296,7 @@ services:
         admin.social.localhost
         admin.subs.localhost
         admin.tag-docs.localhost
+        admin.tax.localhost
         admin.team.localhost
         admin.verify.localhost
         admin.waitfree.localhost

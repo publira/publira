@@ -13,6 +13,7 @@ const {
   mockUpdateTenantSignUpSettings,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantSiteVerification,
+  mockUpdateTenantTaxSettings,
   mockUpdateTenantTimezone,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -27,6 +28,7 @@ const {
   mockUpdateTenantSignUpSettings: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantSiteVerification: vi.fn(),
+  mockUpdateTenantTaxSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
 }));
 
@@ -129,6 +131,12 @@ vi.mock("#lib/tenant-site-verification", () => ({
   tenantSiteVerificationCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:site-verification`,
   updateTenantSiteVerification: mockUpdateTenantSiteVerification,
+}));
+
+vi.mock("#lib/tenant-tax-settings", () => ({
+  tenantTaxSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:tax-settings`,
+  updateTenantTaxSettings: mockUpdateTenantTaxSettings,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -1500,5 +1508,156 @@ describe("updateTenantEpisodeReviewSettingsAction", () => {
       ok: false,
     });
     expect(mockUpdateTenantEpisodeReviewSettings).not.toHaveBeenCalled();
+  });
+});
+
+const TAX_TENANT_ID = "018f1080-0001-7000-8000-000000000001";
+
+const taxFormData = (
+  values: Partial<
+    Record<
+      | "invoice_legal_name"
+      | "invoice_registration_number"
+      | "tax_rate"
+      | "withholding_rate",
+      string
+    >
+  >
+): FormData =>
+  textFormData({
+    invoice_legal_name: "",
+    invoice_registration_number: "",
+    tax_rate: "",
+    tenant_id: TAX_TENANT_ID,
+    withholding_rate: "",
+    ...values,
+  });
+
+describe("updateTenantTaxSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads the rates into basis points, trims the name and the number, then revalidates the tag", async () => {
+    mockUpdateTenantTaxSettings.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantTaxSettingsAction } = await import("./actions");
+
+    const result = await updateTenantTaxSettingsAction(
+      null,
+      taxFormData({
+        invoice_legal_name: "  Example Publishing Inc. ",
+        invoice_registration_number: " T1234567890123 ",
+        tax_rate: "10",
+        withholding_rate: "10.21",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The tax and invoice settings were saved.",
+      ok: true,
+    });
+    expect(mockUpdateTenantTaxSettings).toHaveBeenCalledWith(
+      {
+        invoiceLegalName: "Example Publishing Inc.",
+        invoiceRegistrationNumber: "T1234567890123",
+        taxRateBps: 1000,
+        tenantId: TAX_TENANT_ID,
+        withholdingRateBps: 1021,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${TAX_TENANT_ID}:tax-settings`
+    );
+  });
+
+  it("sends empty fields as no rate and no invoice details", async () => {
+    mockUpdateTenantTaxSettings.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantTaxSettingsAction } = await import("./actions");
+
+    await updateTenantTaxSettingsAction(null, taxFormData({}));
+
+    expect(mockUpdateTenantTaxSettings).toHaveBeenCalledWith(
+      {
+        invoiceLegalName: "",
+        invoiceRegistrationNumber: "",
+        taxRateBps: null,
+        tenantId: TAX_TENANT_ID,
+        withholdingRateBps: null,
+      },
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "a rate of zero",
+      { tax_rate: "0" },
+      {
+        taxRateBps:
+          "Enter a percentage from 0.01 to 100 with at most two decimal places, or leave it empty.",
+      },
+    ],
+    [
+      "a rate with three decimal places",
+      { withholding_rate: "10.215" },
+      {
+        withholdingRateBps:
+          "Enter a percentage from 0.01 to 100 with at most two decimal places, or leave it empty.",
+      },
+    ],
+    [
+      "a name of 201 characters",
+      { invoice_legal_name: "a".repeat(201) },
+      { invoiceLegalName: "Enter a legal name of up to 200 characters." },
+    ],
+    [
+      "a number with a space",
+      { invoice_registration_number: "T123 456" },
+      {
+        invoiceRegistrationNumber:
+          "The registration number cannot contain spaces or line breaks.",
+      },
+    ],
+  ])(
+    "refuses %s on its field without calling the API",
+    async (_, values, fieldErrors) => {
+      const { updateTenantTaxSettingsAction } = await import("./actions");
+
+      const result = await updateTenantTaxSettingsAction(
+        null,
+        taxFormData(values)
+      );
+
+      expect(result).toMatchObject({ fieldErrors, ok: false });
+      expect(mockUpdateTenantTaxSettings).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it("shows the server's refusal on its field and keeps the cache", async () => {
+    mockUpdateTenantTaxSettings.mockResolvedValueOnce({
+      fieldErrors: { invoiceRegistrationNumber: "Refused." },
+      message: "Refused.",
+      ok: false,
+    });
+
+    const { updateTenantTaxSettingsAction } = await import("./actions");
+
+    await expect(
+      updateTenantTaxSettingsAction(
+        null,
+        taxFormData({ invoice_registration_number: "T1234567890123" })
+      )
+    ).resolves.toEqual({
+      fieldErrors: { invoiceRegistrationNumber: "Refused." },
+      message: "Refused.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

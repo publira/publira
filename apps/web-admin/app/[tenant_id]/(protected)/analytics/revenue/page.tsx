@@ -443,6 +443,9 @@ const RevenueContent = async ({
   const rows = breakdown ?? daily;
   // A payment is never zero, so a period with none has a total of zero.
   const withSubscriptions = daily.totals.subscriptionAmount > 0;
+  // A tenant that never set a rate records no tax, so its periods read zero
+  // and the figure would only ever say so.
+  const tax = daily.totals.taxAmount + daily.totals.subscriptionTaxAmount;
   const table = revenueSortColumns(group, withSubscriptions);
   const sort = parseSortSearchParams(sp, table.columns, table.fallback);
 
@@ -543,6 +546,16 @@ const RevenueContent = async ({
             </FigureLine.Label>
             <FigureLine.Value>{amount(netOf(daily.totals))}</FigureLine.Value>
           </FigureLine.Figure>
+          {tax === 0 ? null : (
+            <FigureLine.Figure>
+              <FigureLine.Label>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.analytics.revenue.tax_label" />
+                </Suspense>
+              </FigureLine.Label>
+              <FigureLine.Value>{amount(tax)}</FigureLine.Value>
+            </FigureLine.Figure>
+          )}
         </FigureLine.Root>
         <Chart.Root>
           {withSubscriptions ? (
@@ -602,6 +615,13 @@ const RevenueContent = async ({
             </Suspense>
           </p>
         ) : null}
+        {tax === 0 ? null : (
+          <p className="max-w-3xl text-xs text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="admin.analytics.revenue.tax_definition" />
+            </Suspense>
+          </p>
+        )}
       </ConsoleSection.Root>
 
       <ConsoleSection.Root>

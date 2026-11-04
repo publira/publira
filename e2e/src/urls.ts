@@ -505,6 +505,17 @@ export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the tax tenant from
+ * `db/seeds/scenarios/780_tax_settings.sql`. Its suite saves the tenant's tax
+ * settings and closes a month, both tenant-wide, so it needs a console of its
+ * own.
+ */
+export const WEB_ADMIN_TAX_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_TAX_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.tax.localhost")
+);
+
+/**
  * Public site of the tenant whose refused email addresses the console suite
  * changes, from `db/seeds/scenarios/380_email_rejection.sql`. The setting is
  * tenant-wide, so the sign-ups it refuses are not ones another suite drives.

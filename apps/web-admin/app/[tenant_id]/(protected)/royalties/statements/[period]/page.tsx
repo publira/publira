@@ -48,6 +48,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { RoyaltyFigures } from "../../_components/royalty-figures";
 import { RoyaltyLinesTable } from "../../_components/royalty-lines-table";
+import { RoyaltySubtotals } from "../../_components/royalty-subtotals";
 
 type RoyaltyStatementPageProps =
   PageProps<"/[tenant_id]/royalties/statements/[period]">;
@@ -201,6 +202,13 @@ const StatementContent = async ({
           totals={statement.totals}
         />
       </ConsoleSection.Root>
+
+      <RoyaltySubtotals
+        currency={statement.currency}
+        locale={locale}
+        subtotals={result.creatorSubtotals}
+        withholdingRateBps={statement.withholdingRateBps}
+      />
 
       <ConsoleSection.Root>
         <ConsoleSection.Header>

@@ -8,6 +8,7 @@ import type {
   TenantSiteVerification,
   TenantSiteVerificationFieldErrors,
 } from "#lib/tenant-site-verification";
+import type { TenantTaxSettingsFieldErrors } from "#lib/tenant-tax-settings";
 
 export type SiteSettingsActionState =
   | {
@@ -161,6 +162,18 @@ export type TenantSignUpSettingsActionState =
       ok: false;
       message: string;
       fieldErrors?: { closedMessage?: string };
+    }
+  | null;
+
+export type TenantTaxSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: TenantTaxSettingsFieldErrors;
     }
   | null;
 

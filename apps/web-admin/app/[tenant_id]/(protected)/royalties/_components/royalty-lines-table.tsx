@@ -24,6 +24,27 @@ interface RoyaltyLinesTableProps {
 /** The columns before the payout, which the subtotal label spans. */
 const LEADING_COLUMN_COUNT = 7;
 
+/** The tax rate and the tax, after the payout, on a month that states tax. */
+const TAX_COLUMN_COUNT = 2;
+
+/** A subtotal's cells under the tax columns: none, or the tax it includes. */
+const TaxSubtotalCells = ({
+  currency,
+  locale,
+  tax,
+}: {
+  currency: string | null;
+  locale: Locale;
+  tax: number | null;
+}) => (
+  <>
+    <Table.Cell />
+    <Table.Cell className="text-right">
+      {tax === null ? null : formatTenantAmount(tax, { currency, locale })}
+    </Table.Cell>
+  </>
+);
+
 /**
  * The lines grouped by author: a heading row naming the author, their lines,
  * and what those lines pay them. Each group is its own `<tbody>`, so the author
@@ -31,7 +52,9 @@ const LEADING_COLUMN_COUNT = 7;
  * takes refunds back from under its episode, which is what tells its negative
  * figures from a line of the month's own sales. A line of subscription payments
  * says so under its episode too, and an author who has one is given a subtotal
- * for sales and one for subscription shares above their total.
+ * for sales and one for subscription shares above their total. Where a line
+ * has a tax rate, every line gives its rate and the tax its payout includes,
+ * and the Author's total the tax of their lines.
  */
 export const RoyaltyLinesTable = ({
   currency,
@@ -39,6 +62,15 @@ export const RoyaltyLinesTable = ({
   locale,
 }: RoyaltyLinesTableProps) => {
   const intlLocale = toIntlLocale(locale);
+
+  // A tenant that never set a rate has no line with one, and keeps the
+  // columns it always had.
+  const withTax = lines.some(
+    (line) => line.taxRateBps !== null || line.taxAmount !== null
+  );
+
+  const columnCount =
+    LEADING_COLUMN_COUNT + 1 + (withTax ? TAX_COLUMN_COUNT : 0);
 
   return (
     <Table.Root>
@@ -84,6 +116,20 @@ export const RoyaltyLinesTable = ({
               <Message message="admin.royalties.lines.columns.payout" />
             </Suspense>
           </Table.Head>
+          {withTax ? (
+            <>
+              <Table.Head className="text-right">
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.royalties.lines.columns.tax_rate" />
+                </Suspense>
+              </Table.Head>
+              <Table.Head className="text-right">
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.royalties.lines.columns.tax" />
+                </Suspense>
+              </Table.Head>
+            </>
+          ) : null}
         </Table.Row>
       </Table.Header>
       {groupRoyaltyLinesByCreator(lines).map((group) => (
@@ -91,7 +137,7 @@ export const RoyaltyLinesTable = ({
           <Table.Row className="bg-muted/50 hover:bg-muted/50">
             <Table.Head
               className="text-foreground"
-              colSpan={LEADING_COLUMN_COUNT + 1}
+              colSpan={columnCount}
               scope="rowgroup"
             >
               {group.creatorName}
@@ -142,6 +188,24 @@ export const RoyaltyLinesTable = ({
               <Table.Cell className="text-right">
                 {formatTenantAmount(line.payoutAmount, { currency, locale })}
               </Table.Cell>
+              {withTax ? (
+                <>
+                  <Table.Cell className="text-right">
+                    {line.taxRateBps === null ? (
+                      <Message message="admin.royalties.lines.no_tax_rate" />
+                    ) : (
+                      formatShareBps(line.taxRateBps, intlLocale)
+                    )}
+                  </Table.Cell>
+                  <Table.Cell className="text-right">
+                    {line.taxAmount === null ? (
+                      <Message message="admin.royalties.lines.no_tax_rate" />
+                    ) : (
+                      formatTenantAmount(line.taxAmount, { currency, locale })
+                    )}
+                  </Table.Cell>
+                </>
+              ) : null}
             </Table.Row>
           ))}
           {group.sourceSubtotals ? (
@@ -163,6 +227,13 @@ export const RoyaltyLinesTable = ({
                     locale,
                   })}
                 </Table.Cell>
+                {withTax ? (
+                  <TaxSubtotalCells
+                    currency={currency}
+                    locale={locale}
+                    tax={null}
+                  />
+                ) : null}
               </Table.Row>
               <Table.Row>
                 <Table.Cell
@@ -181,6 +252,13 @@ export const RoyaltyLinesTable = ({
                     locale,
                   })}
                 </Table.Cell>
+                {withTax ? (
+                  <TaxSubtotalCells
+                    currency={currency}
+                    locale={locale}
+                    tax={null}
+                  />
+                ) : null}
               </Table.Row>
             </>
           ) : null}
@@ -198,6 +276,13 @@ export const RoyaltyLinesTable = ({
             <Table.Cell className="text-right font-medium">
               {formatTenantAmount(group.payoutSubtotal, { currency, locale })}
             </Table.Cell>
+            {withTax ? (
+              <TaxSubtotalCells
+                currency={currency}
+                locale={locale}
+                tax={group.taxSubtotal}
+              />
+            ) : null}
           </Table.Row>
         </Table.Body>
       ))}
