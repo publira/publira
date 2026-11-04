@@ -3455,54 +3455,121 @@ const PreviewPromotionCodeRequest$json = {
       '10': 'tenant'
     },
     {'1': 'code', '3': 2, '4': 1, '5': 9, '10': 'code'},
-    {'1': 'episode_id', '3': 3, '4': 1, '5': 9, '10': 'episodeId'},
     {
-      '1': 'kind',
-      '3': 4,
-      '4': 1,
-      '5': 14,
-      '6': '.publira.types.v1.PurchaseKind',
-      '10': 'kind'
+      '1': 'sales',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.PromotionCodeSale',
+      '10': 'sales'
     },
-    {'1': 'volume_id', '3': 5, '4': 1, '5': 9, '10': 'volumeId'},
     {
       '1': 'client',
-      '3': 6,
+      '3': 4,
       '4': 1,
       '5': 14,
       '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
       '10': 'client'
     },
-    {'1': 'store', '3': 7, '4': 1, '5': 8, '10': 'store'},
+    {'1': 'store', '3': 5, '4': 1, '5': 8, '10': 'store'},
   ],
 };
 
 /// Descriptor for `PreviewPromotionCodeRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List previewPromotionCodeRequestDescriptor = $convert.base64Decode(
     'ChtQcmV2aWV3UHJvbW90aW9uQ29kZVJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
-    '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSEgoEY29kZRgCIAEoCVIEY29kZRIdCgpl'
-    'cGlzb2RlX2lkGAMgASgJUgllcGlzb2RlSWQSMgoEa2luZBgEIAEoDjIeLnB1YmxpcmEudHlwZX'
-    'MudjEuUHVyY2hhc2VLaW5kUgRraW5kEhsKCXZvbHVtZV9pZBgFIAEoCVIIdm9sdW1lSWQSRgoG'
-    'Y2xpZW50GAYgASgOMi4ucHVibGlyYS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2'
-    'xpZW50UgZjbGllbnQSFAoFc3RvcmUYByABKAhSBXN0b3Jl');
+    '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSEgoEY29kZRgCIAEoCVIEY29kZRIzCgVz'
+    'YWxlcxgDIAMoCzIdLnB1YmxpcmEudjEuUHJvbW90aW9uQ29kZVNhbGVSBXNhbGVzEkYKBmNsaW'
+    'VudBgEIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZXF1ZXN0LkNsaWVu'
+    'dFIGY2xpZW50EhQKBXN0b3JlGAUgASgIUgVzdG9yZQ==');
+
+@$core.Deprecated('Use promotionCodeSaleDescriptor instead')
+const PromotionCodeSale$json = {
+  '1': 'PromotionCodeSale',
+  '2': [
+    {'1': 'episode_id', '3': 1, '4': 1, '5': 9, '10': 'episodeId'},
+    {
+      '1': 'kind',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.PurchaseKind',
+      '10': 'kind'
+    },
+    {'1': 'volume_id', '3': 3, '4': 1, '5': 9, '10': 'volumeId'},
+  ],
+};
+
+/// Descriptor for `PromotionCodeSale`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List promotionCodeSaleDescriptor = $convert.base64Decode(
+    'ChFQcm9tb3Rpb25Db2RlU2FsZRIdCgplcGlzb2RlX2lkGAEgASgJUgllcGlzb2RlSWQSMgoEa2'
+    'luZBgCIAEoDjIeLnB1YmxpcmEudHlwZXMudjEuUHVyY2hhc2VLaW5kUgRraW5kEhsKCXZvbHVt'
+    'ZV9pZBgDIAEoCVIIdm9sdW1lSWQ=');
 
 @$core.Deprecated('Use previewPromotionCodeResponseDescriptor instead')
 const PreviewPromotionCodeResponse$json = {
   '1': 'PreviewPromotionCodeResponse',
   '2': [
-    {'1': 'list_price', '3': 1, '4': 1, '5': 5, '10': 'listPrice'},
-    {'1': 'discount_amount', '3': 2, '4': 1, '5': 5, '10': 'discountAmount'},
-    {'1': 'price', '3': 3, '4': 1, '5': 5, '10': 'price'},
-    {'1': 'currency', '3': 4, '4': 1, '5': 9, '10': 'currency'},
+    {
+      '1': 'quotes',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.PromotionCodeQuote',
+      '10': 'quotes'
+    },
+    {'1': 'currency', '3': 2, '4': 1, '5': 9, '10': 'currency'},
   ],
 };
 
 /// Descriptor for `PreviewPromotionCodeResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List previewPromotionCodeResponseDescriptor =
     $convert.base64Decode(
-        'ChxQcmV2aWV3UHJvbW90aW9uQ29kZVJlc3BvbnNlEh0KCmxpc3RfcHJpY2UYASABKAVSCWxpc3'
-        'RQcmljZRInCg9kaXNjb3VudF9hbW91bnQYAiABKAVSDmRpc2NvdW50QW1vdW50EhQKBXByaWNl'
-        'GAMgASgFUgVwcmljZRIaCghjdXJyZW5jeRgEIAEoCVIIY3VycmVuY3k=');
+        'ChxQcmV2aWV3UHJvbW90aW9uQ29kZVJlc3BvbnNlEjYKBnF1b3RlcxgBIAMoCzIeLnB1Ymxpcm'
+        'EudjEuUHJvbW90aW9uQ29kZVF1b3RlUgZxdW90ZXMSGgoIY3VycmVuY3kYAiABKAlSCGN1cnJl'
+        'bmN5');
+
+@$core.Deprecated('Use promotionCodeQuoteDescriptor instead')
+const PromotionCodeQuote$json = {
+  '1': 'PromotionCodeQuote',
+  '2': [
+    {'1': 'list_price', '3': 1, '4': 1, '5': 5, '10': 'listPrice'},
+    {'1': 'discount_amount', '3': 2, '4': 1, '5': 5, '10': 'discountAmount'},
+    {'1': 'price', '3': 3, '4': 1, '5': 5, '10': 'price'},
+    {
+      '1': 'refusal',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.PromotionCodeQuote.Refusal',
+      '10': 'refusal'
+    },
+  ],
+  '4': [PromotionCodeQuote_Refusal$json],
+};
+
+@$core.Deprecated('Use promotionCodeQuoteDescriptor instead')
+const PromotionCodeQuote_Refusal$json = {
+  '1': 'Refusal',
+  '2': [
+    {'1': 'REFUSAL_UNSPECIFIED', '2': 0},
+    {'1': 'REFUSAL_NOT_APPLICABLE', '2': 1},
+    {'1': 'REFUSAL_NO_STORE_PRODUCT', '2': 2},
+    {'1': 'REFUSAL_NOT_SOLD', '2': 3},
+    {'1': 'REFUSAL_HELD', '2': 4},
+    {'1': 'REFUSAL_READER_CREDITED', '2': 5},
+  ],
+};
+
+/// Descriptor for `PromotionCodeQuote`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List promotionCodeQuoteDescriptor = $convert.base64Decode(
+    'ChJQcm9tb3Rpb25Db2RlUXVvdGUSHQoKbGlzdF9wcmljZRgBIAEoBVIJbGlzdFByaWNlEicKD2'
+    'Rpc2NvdW50X2Ftb3VudBgCIAEoBVIOZGlzY291bnRBbW91bnQSFAoFcHJpY2UYAyABKAVSBXBy'
+    'aWNlEkAKB3JlZnVzYWwYBCABKA4yJi5wdWJsaXJhLnYxLlByb21vdGlvbkNvZGVRdW90ZS5SZW'
+    'Z1c2FsUgdyZWZ1c2FsIqEBCgdSZWZ1c2FsEhcKE1JFRlVTQUxfVU5TUEVDSUZJRUQQABIaChZS'
+    'RUZVU0FMX05PVF9BUFBMSUNBQkxFEAESHAoYUkVGVVNBTF9OT19TVE9SRV9QUk9EVUNUEAISFA'
+    'oQUkVGVVNBTF9OT1RfU09MRBADEhAKDFJFRlVTQUxfSEVMRBAEEhsKF1JFRlVTQUxfUkVBREVS'
+    'X0NSRURJVEVEEAU=');
 
 @$core.Deprecated('Use startTipCheckoutRequestDescriptor instead')
 const StartTipCheckoutRequest$json = {
@@ -4408,7 +4475,9 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.StartStorePurchaseRequest': StartStorePurchaseRequest$json,
   '.publira.v1.StartStorePurchaseResponse': StartStorePurchaseResponse$json,
   '.publira.v1.PreviewPromotionCodeRequest': PreviewPromotionCodeRequest$json,
+  '.publira.v1.PromotionCodeSale': PromotionCodeSale$json,
   '.publira.v1.PreviewPromotionCodeResponse': PreviewPromotionCodeResponse$json,
+  '.publira.v1.PromotionCodeQuote': PromotionCodeQuote$json,
   '.publira.v1.ConfirmStorePurchaseRequest': ConfirmStorePurchaseRequest$json,
   '.publira.v1.ConfirmStorePurchaseResponse': ConfirmStorePurchaseResponse$json,
   '.publira.v1.ProcessAppStoreNotificationRequest':

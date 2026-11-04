@@ -1707,11 +1707,13 @@ service ContentViewService {
 // not offered on it, so a reader never takes two discounts. A code that takes
 // the whole price off opens no checkout: the purchase is recorded at once,
 // and checkout_url is the URL the provider would have returned the reader to
-// on success. A code is refused as PreviewPromotionCode refuses one, and its
-// lookup spends the reader's allowance for promotion codes, on top of the one
-// for checkouts, before the code is read. The code is redeemed when the
-// purchase is recorded, so a checkout the reader abandons spends none of its
-// limits.
+// on success. A code is refused as failed_precondition with an ErrorInfo
+// reason: one PreviewPromotionCode fails a call with, or
+// PROMOTION_CODE_NOT_APPLICABLE when it does not apply to the episode. Its
+// lookup spends one from the reader's allowance for promotion codes, on top
+// of the one for checkouts, before the code is read. The code is redeemed
+// when the purchase is recorded, so a checkout the reader abandons spends
+// none of its limits.
 //
 // `client` also names the surface the checkout is started from: CLIENT_MOBILE
 // is the app, and every other value the storefront. An episode that surface
@@ -2025,32 +2027,35 @@ message StartStorePurchaseResponse {
   MyPurchase purchase = 3;
 }
 
-// Quotes what one of the tenant's promotion codes takes off the sale a reader
-// is about to start, without starting it or spending the code: the permanent
-// copy or the rental of an episode (`episode_id` and `kind`), or a volume
-// (`volume_id`), exactly one of the two. The price the code is taken off is
-// the one the checkout would charge now, a campaign's while one is open on the
-// permanent copy. `store` asks for the price of the app's store purchase,
-// which sells the permanent copy of an episode alone, and checks that the
-// tenant's store sells the discounted price.
+// Quotes what one of the tenant's promotion codes takes off the sales a
+// reader is about to start, without starting any of them or spending the
+// code: up to 100 sales in one call, each the permanent copy or the rental
+// of an episode, or a volume (PromotionCodeSale). The price the code is
+// taken off is the one the checkout would charge now, a campaign's while one
+// is open on the permanent copy. `store` asks for the price of the app's
+// store purchase, which sells the permanent copy of an episode alone, and
+// checks that the tenant's store sells the discounted price.
 //
-// Signed-in readers only. Every call spends the reader's allowance for
-// promotion codes before the code is read, and a reader past it is
-// resource_exhausted. The sale is refused as the checkout would refuse it:
-// not_found for an episode or a volume the surface does not sell, and
-// already_exists for one the reader holds. A code that cannot be applied is
+// Signed-in readers only. One call is one lookup of the code, however many
+// sales it carries: it spends one from the reader's allowance for promotion
+// codes before the code is read, and a reader past it is
+// resource_exhausted. A series' volumes are quoted together for that one
+// lookup, and the permanent copy and the rental of an episode alike.
+//
+// A refusal that belongs to the code fails the whole call as
 // failed_precondition with an ErrorInfo reason:
 //
 // - PROMOTION_CODE_INVALID: no code of the tenant's is spelled so, or it is
 //   deleted, paused, or its window has not opened yet.
 // - PROMOTION_CODE_EXPIRED: its window has closed.
-// - PROMOTION_CODE_NOT_APPLICABLE: it does not apply to what is being bought,
-//   or it is entered on a store purchase of a rental or a volume.
 // - PROMOTION_CODE_EXHAUSTED: it has been redeemed as often as it may be.
 // - PROMOTION_CODE_ALREADY_REDEEMED: the reader has redeemed it as often as
 //   one reader may.
-// - PROMOTION_CODE_NO_STORE_PRODUCT: with `store`, the tenant's store sells no
-//   product at the discounted price.
+//
+// The last two are told only of a code that applies to one of the sales, so
+// a code none of them takes is answered as not applying to each. A refusal
+// that belongs to one sale is answered on its quote
+// (PromotionCodeQuote.refusal), and the other sales are still quoted.
 //
 // A code's limits are counted when it is quoted and again when a checkout
 // starts, but a code is redeemed only once the purchase is recorded, so
@@ -2059,30 +2064,72 @@ message PreviewPromotionCodeRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The code the reader typed, matched without regard to case.
   string code = 2;
-  string episode_id = 3;
-  // Which of the episode's sales is being bought. Unspecified is the
-  // permanent copy.
-  publira.types.v1.PurchaseKind kind = 4;
-  string volume_id = 5;
-  // The surface the sale would be started from, as on StartEpisodeCheckout.
+  // The sales to quote, 1 to 100 of them. They are quoted in this order, and
+  // a sale named twice is quoted twice.
+  repeated PromotionCodeSale sales = 3;
+  // The surface the sales would be started from, as on StartEpisodeCheckout.
   // `store` is always the app.
-  StartEpisodeCheckoutRequest.Client client = 6;
-  // The sale is a purchase through the app's store, as StartStorePurchase
-  // starts it.
-  bool store = 7;
+  StartEpisodeCheckoutRequest.Client client = 4;
+  // The sales are purchases through the app's store, as StartStorePurchase
+  // starts them.
+  bool store = 5;
+}
+
+// One sale a promotion code is quoted against: the permanent copy or the
+// rental of an episode (`episode_id` and `kind`), or a volume (`volume_id`),
+// exactly one of the two.
+message PromotionCodeSale {
+  string episode_id = 1;
+  // Which of the episode's sales is being bought. Unspecified is the
+  // permanent copy. Left unspecified with `volume_id`.
+  publira.types.v1.PurchaseKind kind = 2;
+  string volume_id = 3;
 }
 
 message PreviewPromotionCodeResponse {
-  // The price before the code, in the minor unit of currency.
+  // One quote for each of PreviewPromotionCodeRequest.sales, in its order.
+  repeated PromotionCodeQuote quotes = 1;
+  // The ISO 4217 code, in capitals, of the tenant's currency.
+  string currency = 2;
+}
+
+// What a promotion code takes off one sale, or why it takes nothing off it.
+message PromotionCodeQuote {
+  // Why the code is not quoted on the sale. Unspecified is a quote.
+  enum Refusal {
+    REFUSAL_UNSPECIFIED = 0;
+    // The code does not apply to the sale. list_price and price are what the
+    // sale costs without it.
+    REFUSAL_NOT_APPLICABLE = 1;
+    // With `store`, the tenant's store sells no product at the discounted
+    // price. list_price and price are what the sale costs without the code.
+    REFUSAL_NO_STORE_PRODUCT = 2;
+    // The surface does not sell the sale: an episode or a volume it does not
+    // show, an episode it shows but may not sell
+    // (Episode.purchase_availability), a free episode, the rental of an
+    // episode that is not rented, and with `store` a rental or a volume.
+    REFUSAL_NOT_SOLD = 3;
+    // The reader holds what the sale would open: the permanent copy of the
+    // episode for either of its sales, its rental for the rental, or the
+    // volume.
+    REFUSAL_HELD = 4;
+    // The reader's account is linked to an Author the episode, or one of the
+    // volume's episodes, credits, as READER_CREDITED_ON_EPISODE refuses a
+    // checkout.
+    REFUSAL_READER_CREDITED = 5;
+  }
+
+  // The price before the code, in the minor unit of currency. 0 with
+  // REFUSAL_NOT_SOLD, REFUSAL_HELD, and REFUSAL_READER_CREDITED.
   int32 list_price = 1;
-  // What the code takes off list_price, never more than it.
+  // What the code takes off list_price, never more than it, and 0 with a
+  // refusal.
   int32 discount_amount = 2;
   // What the reader would pay: list_price less discount_amount. 0 when the
   // code takes the whole price off, and the sale is then recorded without a
   // payment.
   int32 price = 3;
-  // The ISO 4217 code, in capitals, of the tenant's currency.
-  string currency = 4;
+  Refusal refusal = 4;
 }
 
 // Starts a provider checkout of a tip to the Authors of an episode, at one of
