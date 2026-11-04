@@ -312,6 +312,9 @@ describe("updateWebhookEndpointAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:webhook-endpoints"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:webhook-deliveries"
+    );
   });
 
   it("refuses a form that names no endpoint", async () => {

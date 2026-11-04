@@ -186,7 +186,9 @@ export const updateWebhookEndpointAction = async (
     return { message: result.message, ok: false };
   }
 
+  // A delivery is listed with its endpoint's URL as it stands now.
   updateTag(webhookEndpointsCacheTag(parsed.data.tenantId));
+  updateTag(webhookDeliveriesCacheTag(parsed.data.tenantId));
 
   return { message: t("admin.settings.webhooks.saved"), ok: true };
 };
