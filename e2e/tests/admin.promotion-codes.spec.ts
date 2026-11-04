@@ -128,8 +128,11 @@ test.describe("Promotion codes", () => {
     await expect(detail.getByText("Active", { exact: true })).toBeVisible();
 
     // The drawer is modal, so the list behind it is read once it is closed.
+    // Closing replaces the history entry once the sheet has slid out, so the
+    // list is opened again only after that replacement has landed.
     await detail.getByRole("button", { exact: true, name: "Close" }).click();
     await expect(detail).toBeHidden();
+    await expect(page).toHaveURL(/\/promotion-codes$/u);
     await expect(page.getByRole("table")).toContainText("SUMMER20");
     await page
       .getByRole("link", { name: "View the promotion code SUMMER20" })
