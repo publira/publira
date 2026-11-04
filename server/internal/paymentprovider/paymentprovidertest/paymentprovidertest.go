@@ -287,6 +287,61 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a checkout the tenant's promotion code discounted names the code and the price before it", func(t *testing.T) {
+		discounted := checkout
+		discounted.CheckoutID = "checkout_contract_promotion_code"
+		discounted.Purchase.Price = 400
+		discounted.Purchase.ListPrice = 500
+		discounted.Purchase.PromotionCodeID = uuid.New()
+		payload, headers := fixture.CheckoutCompleted(t, credentials, discounted)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != discounted.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, discounted.Purchase)
+		}
+		// The checkout charged the discounted price, and offered no code of
+		// the provider's beside the tenant's.
+		if completed.AmountPaid != 400 || completed.PromotionCodeID != "" {
+			t.Fatalf("paid %d with provider code %q, want 400 with none", completed.AmountPaid, completed.PromotionCodeID)
+		}
+	})
+
+	t.Run("a promotion code the checkout cannot carry is malformed", func(t *testing.T) {
+		for name, malformed := range map[string]func(*Checkout){
+			"a list price below the price": func(c *Checkout) { c.Purchase.ListPrice = 300 },
+			"a code without a list price":  func(c *Checkout) { c.Purchase.ListPrice = 0 },
+			"a list price without a code":  func(c *Checkout) { c.Purchase.PromotionCodeID = uuid.Nil },
+			"a code on a tip": func(c *Checkout) {
+				c.Purchase.Kind = paymentprovider.KindTip
+				c.Purchase.ReadingPeriodHours = 0
+			},
+			"a code on a series bundle": func(c *Checkout) {
+				c.Purchase.EpisodeID = uuid.Nil
+				c.Purchase.ReadingPeriodHours = 0
+				c.Purchase.SeriesBundleID = uuid.New()
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				bad := checkout
+				bad.CheckoutID = "checkout_contract_bad_promotion_code"
+				bad.Purchase.Price = 400
+				bad.Purchase.ListPrice = 500
+				bad.Purchase.PromotionCodeID = uuid.New()
+				malformed(&bad)
+				payload, headers := fixture.CheckoutCompleted(t, credentials, bad)
+				if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+					t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+				}
+			})
+		}
+	})
+
 	t.Run("a rental that names no period is malformed", func(t *testing.T) {
 		unbounded := checkout
 		unbounded.CheckoutID = "checkout_contract_unbounded_rental"
@@ -885,8 +940,19 @@ type Tenant interface {
 	// OpensEpisode reports whether the reader may open the episode.
 	OpensEpisode(t *testing.T) bool
 	// SalesGross answers the gross sales of the current month's royalty
-	// statement.
+	// statement, and SalesRefunded what the refunds take off it.
 	SalesGross(t *testing.T) int64
+	SalesRefunded(t *testing.T) int64
+	// DiscountedPurchase makes a promotion code of the tenant's that takes 20
+	// percent off the episode, and answers the reader's purchase of it as a
+	// checkout started with the code would name it: at 400, with the list
+	// price of 500 and the code.
+	DiscountedPurchase(t *testing.T) paymentprovider.Purchase
+	// Redemptions counts the tenant's promotion code redemptions.
+	Redemptions(t *testing.T) int
+	// ListPrice answers the list price recorded on the tenant's only purchase,
+	// zero when none is.
+	ListPrice(t *testing.T) int32
 	// RefundedAmount answers the refunded amount recorded on the tenant's only
 	// purchase, zero when none is.
 	RefundedAmount(t *testing.T) int32
@@ -954,6 +1020,43 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		}
 		if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
 			t.Fatalf("sales gross = %d, want %d", got, want)
+		}
+	})
+
+	t.Run("a checkout the tenant's promotion code discounted redeems it once and is a sale at its list price", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		purchase := tenant.DiscountedPurchase(t)
+		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: id("checkout_promotion_code"),
+			PaymentID:  id("payment_promotion_code"),
+			Purchase:   purchase,
+		})
+		for delivery := range 2 {
+			if err := tenant.Deliver(t, payload, headers); err != nil {
+				t.Fatalf("delivery %d: %v", delivery+1, err)
+			}
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("the purchase does not open the episode")
+		}
+		if got := tenant.Redemptions(t); got != 1 {
+			t.Fatalf("redemptions = %d, want 1", got)
+		}
+		if got := tenant.ListPrice(t); got != purchase.ListPrice {
+			t.Fatalf("list price = %d, want %d", got, purchase.ListPrice)
+		}
+		// The tenant chose the promotion, so the Authors are paid as if the
+		// episode had sold at its price.
+		if got, want := tenant.SalesGross(t), int64(purchase.ListPrice); got != want {
+			t.Fatalf("sales gross = %d, want %d, the list price", got, want)
+		}
+		// A refund of half of what was paid takes half of the list price off.
+		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_promotion_code"), Currency: currency, AmountRefunded: int64(purchase.Price) / 2})
+		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
+			t.Fatalf("refund: %v", err)
+		}
+		if got, want := tenant.SalesRefunded(t), int64(purchase.ListPrice)/2; got != want {
+			t.Fatalf("sales refunded = %d, want %d, half of the list price", got, want)
 		}
 	})
 

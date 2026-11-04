@@ -228,8 +228,18 @@ type Purchase struct {
 	Kind Kind
 	// Price is the episode's, the volume's, or the pack's price at the time of
 	// checkout, or what a series bundle charges once its discount is taken
-	// off, in the minor unit of Currency.
+	// off, in the minor unit of Currency. It is what the provider charges, so
+	// on a checkout a promotion code of the tenant's discounted it is the
+	// price once that discount is taken off.
 	Price int32
+	// ListPrice is the price before the tenant's promotion code PromotionCodeID
+	// names took its discount off, and zero on a checkout no such code
+	// discounted. PromotionCodeID names the code, and is [uuid.Nil] alongside
+	// a zero ListPrice. Both are left out of the encoding an idempotency key is
+	// made from while they are zero, so a checkout without a code keeps the
+	// key it had before codes existed.
+	ListPrice       int32     `json:",omitzero"`
+	PromotionCodeID uuid.UUID `json:",omitzero"`
 	// Currency is the ISO 4217 code, in capitals, of the tenant currency the
 	// checkout charges in. A provider reads it back from the payment it
 	// confirms rather than from anything the checkout carried, so it names the
@@ -282,6 +292,12 @@ type CheckoutRequest struct {
 	// SuccessURL and CancelURL are where the reader returns to afterwards.
 	SuccessURL string
 	CancelURL  string
+	// DisallowProviderCodes closes the provider's own promotion code input on
+	// the checkout, which a checkout the tenant's code already discounted
+	// sets so that a reader never takes two discounts. A provider that takes
+	// no code of its own has nothing to close. Left out of the encoding an
+	// idempotency key is made from while it is false.
+	DisallowProviderCodes bool `json:",omitzero"`
 	// IdempotencyKey is the same for every attempt that sends the same request,
 	// so a retried request reuses the provider's checkout, and differs between
 	// requests whose other fields differ, which the provider would refuse or
@@ -323,14 +339,18 @@ type PurchaseCompleted struct {
 	PaymentID string
 	Purchase  Purchase
 	// AmountPaid is what the reader paid, in the minor unit of
-	// Purchase.Currency: Purchase.Price, less the discount of the promotion
-	// code PromotionCodeID names when the reader entered one. It is what the
+	// Purchase.Currency: Purchase.Price, less the discount of the provider's
+	// promotion code PromotionCodeID names when the reader entered one. A
+	// checkout the tenant's own code discounted (Purchase.PromotionCodeID)
+	// offered no provider code, and its Purchase.Price is already the
+	// discounted price. It is what the
 	// purchase records, since a refund of the payment returns this much and no
 	// more. A code may take off the whole price, which leaves it zero and the
 	// checkout with no payment, and so no PaymentID.
 	AmountPaid int32
 	// PromotionCodeID is the provider's id of the promotion code the reader
-	// entered at the checkout, and empty when they entered none.
+	// entered at the checkout, and empty when they entered none. The tenant's
+	// own code is Purchase.PromotionCodeID.
 	PromotionCodeID string
 	// Test reports a payment made in the provider's test mode. Such a
 	// purchase opens the episode, but no money reached the tenant, so royalty

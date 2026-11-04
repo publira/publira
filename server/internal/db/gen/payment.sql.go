@@ -27,7 +27,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -73,6 +73,8 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -121,7 +123,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -169,6 +171,8 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -227,7 +231,9 @@ INSERT INTO purchases (
     is_test,
     currency,
     kind,
-    provider_promotion_code_id
+    provider_promotion_code_id,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     $1::uuid,
@@ -242,10 +248,12 @@ VALUES (
     $10::boolean,
     $11::text,
     $12::text,
-    $13::text
+    $13::text,
+    $14::integer,
+    $15::uuid
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount, list_price, promotion_code_id
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -262,6 +270,8 @@ type CreatePurchaseFromProviderCheckoutParams struct {
 	Currency                string         `json:"currency"`
 	Kind                    string         `json:"kind"`
 	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
+	ListPrice               sql.NullInt32  `json:"list_price"`
+	PromotionCodeID         uuid.NullUUID  `json:"promotion_code_id"`
 }
 
 // Every checkout the provider reports paid is a purchase of its own, even for a
@@ -283,6 +293,8 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		arg.Currency,
 		arg.Kind,
 		arg.ProviderPromotionCodeID,
+		arg.ListPrice,
+		arg.PromotionCodeID,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -314,6 +326,8 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -900,10 +914,17 @@ SELECT p.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     COALESCE(str.title, '')::text AS series_title,
-    COALESCE(str.locale, '')::text AS series_title_locale
+    COALESCE(str.locale, '')::text AS series_title_locale,
+    -- The price before a promotion code's discount, which is what was paid on
+    -- a purchase no code discounted, and the tenant's code that discounted it,
+    -- empty for one discounted by none or by a code of the provider's.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
@@ -1004,6 +1025,8 @@ type ListMyPurchasesAscRow struct {
 	SeriesPublicID              sql.NullString `json:"series_public_id"`
 	SeriesTitle                 string         `json:"series_title"`
 	SeriesTitleLocale           string         `json:"series_title_locale"`
+	ListPrice                   int32          `json:"list_price"`
+	PromotionCode               string         `json:"promotion_code"`
 }
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
@@ -1057,6 +1080,8 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.SeriesTitleLocale,
+			&i.ListPrice,
+			&i.PromotionCode,
 		); err != nil {
 			return nil, err
 		}
@@ -1112,10 +1137,17 @@ SELECT p.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     COALESCE(str.title, '')::text AS series_title,
-    COALESCE(str.locale, '')::text AS series_title_locale
+    COALESCE(str.locale, '')::text AS series_title_locale,
+    -- The price before a promotion code's discount, which is what was paid on
+    -- a purchase no code discounted, and the tenant's code that discounted it,
+    -- empty for one discounted by none or by a code of the provider's.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
@@ -1216,6 +1248,8 @@ type ListMyPurchasesDescRow struct {
 	SeriesPublicID              sql.NullString `json:"series_public_id"`
 	SeriesTitle                 string         `json:"series_title"`
 	SeriesTitleLocale           string         `json:"series_title_locale"`
+	ListPrice                   int32          `json:"list_price"`
+	PromotionCode               string         `json:"promotion_code"`
 }
 
 // The reader's library, newest purchase first: each purchase of an episode,
@@ -1276,6 +1310,8 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.SeriesTitleLocale,
+			&i.ListPrice,
+			&i.PromotionCode,
 		); err != nil {
 			return nil, err
 		}
@@ -1595,11 +1631,17 @@ SELECT p.id,
     p.revoked_at,
     p.revocation_reason,
     p.staff_refund_attempt,
-    p.staff_refund_requested_amount
+    p.staff_refund_requested_amount,
+    -- The price before a promotion code's discount, and the tenant's code
+    -- that took it, as ListMyPurchasesDesc answers them.
+    purchase_royalty_basis(p.list_price, p.price_at_purchase)::integer AS list_price,
+    COALESCE(pc.code, '')::text AS promotion_code
 FROM purchases p
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+    LEFT JOIN promotion_codes pc ON pc.tenant_id = p.tenant_id
+    AND pc.id = p.promotion_code_id
     LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
@@ -1661,6 +1703,8 @@ type ListPurchasesForTenantByIDsRow struct {
 	RevocationReason            sql.NullString `json:"revocation_reason"`
 	StaffRefundAttempt          int32          `json:"staff_refund_attempt"`
 	StaffRefundRequestedAmount  sql.NullInt32  `json:"staff_refund_requested_amount"`
+	ListPrice                   int32          `json:"list_price"`
+	PromotionCode               string         `json:"promotion_code"`
 }
 
 // What the console shows of each purchase named, in no particular order: the
@@ -1716,6 +1760,8 @@ func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurch
 			&i.RevocationReason,
 			&i.StaffRefundAttempt,
 			&i.StaffRefundRequestedAmount,
+			&i.ListPrice,
+			&i.PromotionCode,
 		); err != nil {
 			return nil, err
 		}
@@ -1763,7 +1809,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount, list_price, promotion_code_id
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1809,6 +1855,8 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -1895,7 +1943,7 @@ WHERE p.tenant_id = $3
     AND p.provider = $4::text
     AND p.provider_payment_id = $5::text
     AND p.currency = $6::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1969,6 +2017,8 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -1981,7 +2031,7 @@ SET dispute_lost_at = COALESCE(dispute_lost_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount, list_price, promotion_code_id
 `
 
 type RecordLostDisputeOnPurchaseParams struct {
@@ -2029,6 +2079,8 @@ func (q *Queries) RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLos
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -2066,7 +2118,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -2134,6 +2186,8 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }

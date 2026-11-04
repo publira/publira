@@ -1701,6 +1701,18 @@ service ContentViewService {
 // the purchase records what the reader paid once the code's discount is
 // taken off (MyPurchase.price_at_purchase).
 //
+// `promotion_code` applies one of the tenant's own codes to that price
+// before the provider is reached, as PreviewPromotionCode quotes it: the
+// checkout charges the discounted price, and the provider's own code input is
+// not offered on it, so a reader never takes two discounts. A code that takes
+// the whole price off opens no checkout: the purchase is recorded at once,
+// and checkout_url is the URL the provider would have returned the reader to
+// on success. A code is refused as PreviewPromotionCode refuses one, and its
+// lookup spends the reader's allowance for promotion codes, on top of the one
+// for checkouts, before the code is read. The code is redeemed when the
+// purchase is recorded, so a checkout the reader abandons spends none of its
+// limits.
+//
 // `client` also names the surface the checkout is started from: CLIENT_MOBILE
 // is the app, and every other value the storefront. An episode that surface
 // may not show is not_found, as it is in the catalog, and one it shows but may
@@ -1732,6 +1744,9 @@ message StartEpisodeCheckoutRequest {
   // already_exists for either kind, and one who holds an active rental for
   // another rental, but may still buy the permanent copy.
   publira.types.v1.PurchaseKind kind = 6;
+  // One of the tenant's promotion codes, matched without regard to case.
+  // Empty is no code.
+  string promotion_code = 7;
 }
 
 message StartEpisodeCheckoutResponse {
@@ -1756,10 +1771,17 @@ message StartEpisodeCheckoutResponse {
 // The storefront is returned to the series page with `checkout` and `volume`
 // in the query; the app to `/{locale}/checkout/return` with `series`,
 // `volume`, and `status`.
+//
+// `promotion_code` applies one of the tenant's codes to the volume's price as
+// it does on StartEpisodeCheckout, with the same refusals and the same
+// purchase recorded at once for a code that takes the whole price off.
 message StartVolumeCheckoutRequest {
   publira.types.v1.TenantContext tenant = 1;
   string volume_id = 2;
   StartEpisodeCheckoutRequest.Client client = 3;
+  // One of the tenant's promotion codes, matched without regard to case.
+  // Empty is no code.
+  string promotion_code = 4;
 }
 
 message StartVolumeCheckoutResponse {
@@ -1818,7 +1840,8 @@ message MyPurchase {
   // The series of the episode, the volume, or the rest of a series bought.
   // Unset on a purchase of a pack of coins, which is of no series.
   publira.types.v1.Series series = 3;
-  // What the reader paid, in the minor unit of currency.
+  // What the reader paid, in the minor unit of currency, once any promotion
+  // code's discount was taken off (list_price).
   int32 price_at_purchase = 4;
   string purchased_at = 5;
   // Empty when this purchase does not expire.
@@ -1879,6 +1902,15 @@ message MyPurchase {
   // was charged by.
   optional int32 tax_rate_bps = 18;
   optional int32 tax_amount = 19;
+  // The price before a promotion code took its discount off, in the same
+  // minor unit as price_at_purchase, and equal to it on a purchase no code
+  // discounted. 0 on a purchase paid with coins, as price_at_purchase is.
+  int32 list_price = 20;
+  // The tenant's promotion code the reader entered, spelled as the tenant
+  // created it. Empty on a purchase no code of the tenant's discounted,
+  // including one discounted by a code entered on the provider's checkout
+  // page.
+  string promotion_code = 21;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1942,6 +1974,16 @@ enum InAppPurchaseStore {
 // ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
 // episode at the same price answers the same intent.
 //
+// `promotion_code` applies one of the tenant's codes to an episode's price as
+// StartEpisodeCheckout does, with the same refusals, and the intent is opened
+// at the store product of the discounted price, which ListTenantStoreProducts
+// lists for every live code. A tenant that has not created that product in
+// its store is refused with failed_precondition and the ErrorInfo reason
+// PROMOTION_CODE_NO_STORE_PRODUCT, since the store would charge no other
+// price. A code that takes the whole price off opens no intent: the purchase
+// is recorded at once and answered as `purchase`. A code is never applied to
+// a pack.
+//
 // A pack is refused as CoinService.StartCoinPackCheckout refuses one:
 // failed_precondition with the ErrorInfo reason COINS_UNAVAILABLE while the
 // platform does not allow tenant coins or the tenant's coins are off,
@@ -1960,14 +2002,83 @@ message StartStorePurchaseRequest {
   // (CoinPack.id).
   string episode_id = 4;
   string coin_pack_id = 5;
+  // One of the tenant's promotion codes, matched without regard to case.
+  // Empty is no code; a code beside coin_pack_id is invalid_argument.
+  string promotion_code = 6;
 }
 
 message StartStorePurchaseResponse {
+  // Empty when `purchase` is set.
   string intent_id = 1;
   // The store product the episode's price is sold as, such as `episode_300`,
   // or the pack, `coins_` followed by the pack's id in lowercase hexadecimal,
-  // without hyphens, which every store accepts as a product ID.
+  // without hyphens, which every store accepts as a product ID. Empty when
+  // `purchase` is set.
   string product_id = 2;
+  // The purchase recorded at once for a promotion code that took the whole
+  // price off, which the app buys nothing from the store for. Unset whenever
+  // an intent is answered.
+  MyPurchase purchase = 3;
+}
+
+// Quotes what one of the tenant's promotion codes takes off the sale a reader
+// is about to start, without starting it or spending the code: the permanent
+// copy or the rental of an episode (`episode_id` and `kind`), or a volume
+// (`volume_id`), exactly one of the two. The price the code is taken off is
+// the one the checkout would charge now, a campaign's while one is open on the
+// permanent copy. `store` asks for the price of the app's store purchase,
+// which sells the permanent copy of an episode alone, and checks that the
+// tenant's store sells the discounted price.
+//
+// Signed-in readers only. Every call spends the reader's allowance for
+// promotion codes before the code is read, and a reader past it is
+// resource_exhausted. The sale is refused as the checkout would refuse it:
+// not_found for an episode or a volume the surface does not sell, and
+// already_exists for one the reader holds. A code that cannot be applied is
+// failed_precondition with an ErrorInfo reason:
+//
+// - PROMOTION_CODE_INVALID: no code of the tenant's is spelled so, or it is
+//   deleted, paused, or its window has not opened yet.
+// - PROMOTION_CODE_EXPIRED: its window has closed.
+// - PROMOTION_CODE_NOT_APPLICABLE: it does not apply to what is being bought,
+//   or it is entered on a store purchase of a rental or a volume.
+// - PROMOTION_CODE_EXHAUSTED: it has been redeemed as often as it may be.
+// - PROMOTION_CODE_ALREADY_REDEEMED: the reader has redeemed it as often as
+//   one reader may.
+// - PROMOTION_CODE_NO_STORE_PRODUCT: with `store`, the tenant's store sells no
+//   product at the discounted price.
+//
+// A code's limits are counted when it is quoted and again when a checkout
+// starts, but a code is redeemed only once the purchase is recorded, so
+// checkouts started before a limit was reached may each go past it.
+message PreviewPromotionCodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The code the reader typed, matched without regard to case.
+  string code = 2;
+  string episode_id = 3;
+  // Which of the episode's sales is being bought. Unspecified is the
+  // permanent copy.
+  publira.types.v1.PurchaseKind kind = 4;
+  string volume_id = 5;
+  // The surface the sale would be started from, as on StartEpisodeCheckout.
+  // `store` is always the app.
+  StartEpisodeCheckoutRequest.Client client = 6;
+  // The sale is a purchase through the app's store, as StartStorePurchase
+  // starts it.
+  bool store = 7;
+}
+
+message PreviewPromotionCodeResponse {
+  // The price before the code, in the minor unit of currency.
+  int32 list_price = 1;
+  // What the code takes off list_price, never more than it.
+  int32 discount_amount = 2;
+  // What the reader would pay: list_price less discount_amount. 0 when the
+  // code takes the whole price off, and the sale is then recorded without a
+  // payment.
+  int32 price = 3;
+  // The ISO 4217 code, in capitals, of the tenant's currency.
+  string currency = 4;
 }
 
 // Starts a provider checkout of a tip to the Authors of an episode, at one of
@@ -2127,6 +2238,7 @@ service PurchaseService {
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}
   rpc StartStorePurchase(StartStorePurchaseRequest) returns (StartStorePurchaseResponse) {}
+  rpc PreviewPromotionCode(PreviewPromotionCodeRequest) returns (PreviewPromotionCodeResponse) {}
   rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}
   rpc ProcessAppStoreNotification(ProcessAppStoreNotificationRequest) returns (ProcessAppStoreNotificationResponse) {}
   rpc ProcessGooglePlayNotification(ProcessGooglePlayNotificationRequest) returns (ProcessGooglePlayNotificationResponse) {}

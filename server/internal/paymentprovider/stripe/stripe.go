@@ -52,6 +52,12 @@ const (
 	MetadataCoinExpiryDays     = "coin_expiry_days"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
+	// MetadataListPrice and MetadataPromotionCodeID are present together on a
+	// checkout the tenant's own promotion code discounted: the price before
+	// the discount, and the code. MetadataPrice is the discounted price the
+	// session charges.
+	MetadataListPrice       = "list_price"
+	MetadataPromotionCodeID = "promotion_code_id"
 	// MetadataKind is absent on a checkout started before an episode had
 	// two sales, which sold the permanent copy.
 	MetadataKind = "kind"
@@ -166,7 +172,8 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	// takes one or the other on a session, never both. Nor on a checkout of
 	// a pack, whose coins are worth what was paid for them: a code would grant
 	// them for less, or, taking off the whole price, for nothing. Nor on a
-	// tip, whose amount is the reader's own choice of what to give.
+	// tip, whose amount is the reader's own choice of what to give. Nor on one
+	// the tenant's own code already discounted, which would take two.
 	switch {
 	case req.Discount != nil:
 		couponID, err := createDiscountCoupon(ctx, client, currency, *req.Discount, req.IdempotencyKey)
@@ -174,6 +181,8 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 			return "", err
 		}
 		params.Discounts = []*stripego.CheckoutSessionCreateDiscountParams{{Coupon: stripego.String(couponID)}}
+	case req.DisallowProviderCodes:
+		params.AllowPromotionCodes = stripego.Bool(false)
 	case req.Purchase.CoinPackID == uuid.Nil && req.Purchase.Kind != paymentprovider.KindTip:
 		params.AllowPromotionCodes = stripego.Bool(true)
 	}
@@ -253,6 +262,10 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	}
 	if purchase.Kind != "" {
 		metadata[MetadataKind] = string(purchase.Kind)
+	}
+	if purchase.PromotionCodeID != uuid.Nil {
+		metadata[MetadataListPrice] = strconv.FormatInt(int64(purchase.ListPrice), 10)
+		metadata[MetadataPromotionCodeID] = purchase.PromotionCodeID.String()
 	}
 	return metadata
 }
@@ -609,6 +622,9 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	if purchase.CoinPackID != uuid.Nil && promotionCodeID != "" {
 		return nil, fmt.Errorf("%w: a checkout of a coin pack takes no promotion code", paymentprovider.ErrMalformedNotification)
 	}
+	if purchase.PromotionCodeID != uuid.Nil && promotionCodeID != "" {
+		return nil, fmt.Errorf("%w: a checkout the tenant's promotion code discounted takes no other", paymentprovider.ErrMalformedNotification)
+	}
 	amountPaid, err := paidAmount(&session, purchase.Price, promotionCodeID)
 	if err != nil {
 		return nil, err
@@ -744,6 +760,10 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
 		}
 	}
+	listPrice, promotionCodeID, err := parsePromotionCodeMetadata(metadata, price, (sellsVolume || sellsEpisode) && kind != paymentprovider.KindTip)
+	if err != nil {
+		return paymentprovider.Purchase{}, err
+	}
 	var coins, bonusCoins, expiryDays int64
 	if sellsCoinPack {
 		parseCount := func(key string) (int64, error) {
@@ -778,8 +798,34 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 		CoinExpiryDays:     int32(expiryDays),
 		Kind:               kind,
 		Price:              int32(price),
+		ListPrice:          listPrice,
+		PromotionCodeID:    promotionCodeID,
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil
+}
+
+// parsePromotionCodeMetadata reads the tenant's promotion code a checkout was
+// discounted by, and the price before it, which a checkout carries together
+// or not at all. A code applies to the sale of an episode or a volume alone,
+// never to a tip, and never raises a price.
+func parsePromotionCodeMetadata(metadata map[string]string, price int64, takesCodes bool) (int32, uuid.UUID, error) {
+	codeValue, hasCode := metadata[MetadataPromotionCodeID]
+	listValue, hasList := metadata[MetadataListPrice]
+	if !hasCode && !hasList {
+		return 0, uuid.Nil, nil
+	}
+	if !hasCode || !hasList || !takesCodes {
+		return 0, uuid.Nil, errors.New("invalid promotion code metadata")
+	}
+	codeID, err := uuid.Parse(codeValue)
+	if err != nil || codeID == uuid.Nil {
+		return 0, uuid.Nil, errors.New("invalid promotion code metadata")
+	}
+	listPrice, err := strconv.ParseInt(listValue, 10, 32)
+	if err != nil || listPrice < price {
+		return 0, uuid.Nil, errors.New("invalid list price metadata")
+	}
+	return int32(listPrice), codeID, nil
 }
 
 func countTrue(values ...bool) int {

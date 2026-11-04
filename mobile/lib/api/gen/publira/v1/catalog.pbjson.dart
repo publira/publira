@@ -3021,6 +3021,7 @@ const StartEpisodeCheckoutRequest$json = {
       '6': '.publira.types.v1.PurchaseKind',
       '10': 'kind'
     },
+    {'1': 'promotion_code', '3': 7, '4': 1, '5': 9, '10': 'promotionCode'},
   ],
   '4': [StartEpisodeCheckoutRequest_Client$json],
   '9': [
@@ -3045,9 +3046,10 @@ final $typed_data.Uint8List startEpisodeCheckoutRequestDescriptor = $convert.bas
     '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSRgoGY2xpZW50GAMgASgOMi4ucHVibGly'
     'YS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSHQoKZXBpc2'
     '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlEjIKBGtpbmQY'
-    'BiABKA4yHi5wdWJsaXJhLnR5cGVzLnYxLlB1cmNoYXNlS2luZFIEa2luZCJDCgZDbGllbnQSFg'
-    'oSQ0xJRU5UX1VOU1BFQ0lGSUVEEAASDgoKQ0xJRU5UX1dFQhABEhEKDUNMSUVOVF9NT0JJTEUQ'
-    'AkoECAIQA1IRZXBpc29kZV9wdWJsaWNfaWQ=');
+    'BiABKA4yHi5wdWJsaXJhLnR5cGVzLnYxLlB1cmNoYXNlS2luZFIEa2luZBIlCg5wcm9tb3Rpb2'
+    '5fY29kZRgHIAEoCVINcHJvbW90aW9uQ29kZSJDCgZDbGllbnQSFgoSQ0xJRU5UX1VOU1BFQ0lG'
+    'SUVEEAASDgoKQ0xJRU5UX1dFQhABEhEKDUNMSUVOVF9NT0JJTEUQAkoECAIQA1IRZXBpc29kZV'
+    '9wdWJsaWNfaWQ=');
 
 @$core.Deprecated('Use startEpisodeCheckoutResponseDescriptor instead')
 const StartEpisodeCheckoutResponse$json = {
@@ -3084,6 +3086,7 @@ const StartVolumeCheckoutRequest$json = {
       '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
       '10': 'client'
     },
+    {'1': 'promotion_code', '3': 4, '4': 1, '5': 9, '10': 'promotionCode'},
   ],
 };
 
@@ -3092,7 +3095,8 @@ final $typed_data.Uint8List startVolumeCheckoutRequestDescriptor = $convert.base
     'ChpTdGFydFZvbHVtZUNoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
     'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCgl2b2x1bWVfaWQYAiABKAlSCHZvbHVt'
     'ZUlkEkYKBmNsaWVudBgDIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZX'
-    'F1ZXN0LkNsaWVudFIGY2xpZW50');
+    'F1ZXN0LkNsaWVudFIGY2xpZW50EiUKDnByb21vdGlvbl9jb2RlGAQgASgJUg1wcm9tb3Rpb25D'
+    'b2Rl');
 
 @$core.Deprecated('Use startVolumeCheckoutResponseDescriptor instead')
 const StartVolumeCheckoutResponse$json = {
@@ -3236,6 +3240,8 @@ const MyPurchase$json = {
       '10': 'taxAmount',
       '17': true
     },
+    {'1': 'list_price', '3': 20, '4': 1, '5': 5, '10': 'listPrice'},
+    {'1': 'promotion_code', '3': 21, '4': 1, '5': 9, '10': 'promotionCode'},
   ],
   '8': [
     {'1': '_tax_rate_bps'},
@@ -3259,7 +3265,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'ljb2luX25hbWUYECABKAlSCGNvaW5OYW1lEkAKCWNvaW5fcGFjaxgRIAEoCzIjLnB1YmxpcmEu'
     'dHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2tSCGNvaW5QYWNrEiUKDHRheF9yYXRlX2JwcxgSIA'
     'EoBUgAUgp0YXhSYXRlQnBziAEBEiIKCnRheF9hbW91bnQYEyABKAVIAVIJdGF4QW1vdW50iAEB'
-    'Qg8KDV90YXhfcmF0ZV9icHNCDQoLX3RheF9hbW91bnQ=');
+    'Eh0KCmxpc3RfcHJpY2UYFCABKAVSCWxpc3RQcmljZRIlCg5wcm9tb3Rpb25fY29kZRgVIAEoCV'
+    'INcHJvbW90aW9uQ29kZUIPCg1fdGF4X3JhdGVfYnBzQg0KC190YXhfYW1vdW50');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {
@@ -3393,6 +3400,7 @@ const StartStorePurchaseRequest$json = {
     },
     {'1': 'episode_id', '3': 4, '4': 1, '5': 9, '10': 'episodeId'},
     {'1': 'coin_pack_id', '3': 5, '4': 1, '5': 9, '10': 'coinPackId'},
+    {'1': 'promotion_code', '3': 6, '4': 1, '5': 9, '10': 'promotionCode'},
   ],
   '9': [
     {'1': 2, '2': 3},
@@ -3405,8 +3413,8 @@ final $typed_data.Uint8List startStorePurchaseRequestDescriptor = $convert.base6
     'ChlTdGFydFN0b3JlUHVyY2hhc2VSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
     'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EjQKBXN0b3JlGAMgASgOMh4ucHVibGlyYS52'
     'MS5JbkFwcFB1cmNoYXNlU3RvcmVSBXN0b3JlEh0KCmVwaXNvZGVfaWQYBCABKAlSCWVwaXNvZG'
-    'VJZBIgCgxjb2luX3BhY2tfaWQYBSABKAlSCmNvaW5QYWNrSWRKBAgCEANSEWVwaXNvZGVfcHVi'
-    'bGljX2lk');
+    'VJZBIgCgxjb2luX3BhY2tfaWQYBSABKAlSCmNvaW5QYWNrSWQSJQoOcHJvbW90aW9uX2NvZGUY'
+    'BiABKAlSDXByb21vdGlvbkNvZGVKBAgCEANSEWVwaXNvZGVfcHVibGljX2lk');
 
 @$core.Deprecated('Use startStorePurchaseResponseDescriptor instead')
 const StartStorePurchaseResponse$json = {
@@ -3414,6 +3422,14 @@ const StartStorePurchaseResponse$json = {
   '2': [
     {'1': 'intent_id', '3': 1, '4': 1, '5': 9, '10': 'intentId'},
     {'1': 'product_id', '3': 2, '4': 1, '5': 9, '10': 'productId'},
+    {
+      '1': 'purchase',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.MyPurchase',
+      '10': 'purchase'
+    },
   ],
 };
 
@@ -3421,7 +3437,70 @@ const StartStorePurchaseResponse$json = {
 final $typed_data.Uint8List startStorePurchaseResponseDescriptor =
     $convert.base64Decode(
         'ChpTdGFydFN0b3JlUHVyY2hhc2VSZXNwb25zZRIbCglpbnRlbnRfaWQYASABKAlSCGludGVudE'
-        'lkEh0KCnByb2R1Y3RfaWQYAiABKAlSCXByb2R1Y3RJZA==');
+        'lkEh0KCnByb2R1Y3RfaWQYAiABKAlSCXByb2R1Y3RJZBIyCghwdXJjaGFzZRgDIAEoCzIWLnB1'
+        'YmxpcmEudjEuTXlQdXJjaGFzZVIIcHVyY2hhc2U=');
+
+@$core.Deprecated('Use previewPromotionCodeRequestDescriptor instead')
+const PreviewPromotionCodeRequest$json = {
+  '1': 'PreviewPromotionCodeRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'code', '3': 2, '4': 1, '5': 9, '10': 'code'},
+    {'1': 'episode_id', '3': 3, '4': 1, '5': 9, '10': 'episodeId'},
+    {
+      '1': 'kind',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.PurchaseKind',
+      '10': 'kind'
+    },
+    {'1': 'volume_id', '3': 5, '4': 1, '5': 9, '10': 'volumeId'},
+    {
+      '1': 'client',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
+      '10': 'client'
+    },
+    {'1': 'store', '3': 7, '4': 1, '5': 8, '10': 'store'},
+  ],
+};
+
+/// Descriptor for `PreviewPromotionCodeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List previewPromotionCodeRequestDescriptor = $convert.base64Decode(
+    'ChtQcmV2aWV3UHJvbW90aW9uQ29kZVJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
+    '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSEgoEY29kZRgCIAEoCVIEY29kZRIdCgpl'
+    'cGlzb2RlX2lkGAMgASgJUgllcGlzb2RlSWQSMgoEa2luZBgEIAEoDjIeLnB1YmxpcmEudHlwZX'
+    'MudjEuUHVyY2hhc2VLaW5kUgRraW5kEhsKCXZvbHVtZV9pZBgFIAEoCVIIdm9sdW1lSWQSRgoG'
+    'Y2xpZW50GAYgASgOMi4ucHVibGlyYS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2'
+    'xpZW50UgZjbGllbnQSFAoFc3RvcmUYByABKAhSBXN0b3Jl');
+
+@$core.Deprecated('Use previewPromotionCodeResponseDescriptor instead')
+const PreviewPromotionCodeResponse$json = {
+  '1': 'PreviewPromotionCodeResponse',
+  '2': [
+    {'1': 'list_price', '3': 1, '4': 1, '5': 5, '10': 'listPrice'},
+    {'1': 'discount_amount', '3': 2, '4': 1, '5': 5, '10': 'discountAmount'},
+    {'1': 'price', '3': 3, '4': 1, '5': 5, '10': 'price'},
+    {'1': 'currency', '3': 4, '4': 1, '5': 9, '10': 'currency'},
+  ],
+};
+
+/// Descriptor for `PreviewPromotionCodeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List previewPromotionCodeResponseDescriptor =
+    $convert.base64Decode(
+        'ChxQcmV2aWV3UHJvbW90aW9uQ29kZVJlc3BvbnNlEh0KCmxpc3RfcHJpY2UYASABKAVSCWxpc3'
+        'RQcmljZRInCg9kaXNjb3VudF9hbW91bnQYAiABKAVSDmRpc2NvdW50QW1vdW50EhQKBXByaWNl'
+        'GAMgASgFUgVwcmljZRIaCghjdXJyZW5jeRgEIAEoCVIIY3VycmVuY3k=');
 
 @$core.Deprecated('Use startTipCheckoutRequestDescriptor instead')
 const StartTipCheckoutRequest$json = {
@@ -4258,6 +4337,11 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '3': '.publira.v1.StartStorePurchaseResponse'
     },
     {
+      '1': 'PreviewPromotionCode',
+      '2': '.publira.v1.PreviewPromotionCodeRequest',
+      '3': '.publira.v1.PreviewPromotionCodeResponse'
+    },
+    {
       '1': 'ConfirmStorePurchase',
       '2': '.publira.v1.ConfirmStorePurchaseRequest',
       '3': '.publira.v1.ConfirmStorePurchaseResponse'
@@ -4321,6 +4405,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       ProcessPaymentWebhookResponse$json,
   '.publira.v1.StartStorePurchaseRequest': StartStorePurchaseRequest$json,
   '.publira.v1.StartStorePurchaseResponse': StartStorePurchaseResponse$json,
+  '.publira.v1.PreviewPromotionCodeRequest': PreviewPromotionCodeRequest$json,
+  '.publira.v1.PreviewPromotionCodeResponse': PreviewPromotionCodeResponse$json,
   '.publira.v1.ConfirmStorePurchaseRequest': ConfirmStorePurchaseRequest$json,
   '.publira.v1.ConfirmStorePurchaseResponse': ConfirmStorePurchaseResponse$json,
   '.publira.v1.ProcessAppStoreNotificationRequest':
@@ -4353,16 +4439,18 @@ final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'F5bWVudFdlYmhvb2tSZXF1ZXN0GikucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tS'
     'ZXNwb25zZRJjChJTdGFydFN0b3JlUHVyY2hhc2USJS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdX'
     'JjaGFzZVJlcXVlc3QaJi5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlc3BvbnNlEmkK'
-    'FENvbmZpcm1TdG9yZVB1cmNoYXNlEicucHVibGlyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZV'
-    'JlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJv'
-    'Y2Vzc0FwcFN0b3JlTm90aWZpY2F0aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3'
-    'RpZmljYXRpb25SZXF1ZXN0Gi8ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRp'
-    'b25SZXNwb25zZRKEAQodUHJvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb24SMC5wdWJsaXJhLn'
-    'YxLlByb2Nlc3NHb29nbGVQbGF5Tm90aWZpY2F0aW9uUmVxdWVzdBoxLnB1YmxpcmEudjEuUHJv'
-    'Y2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXNwb25zZRJdChBTdGFydFRpcENoZWNrb3V0Ei'
-    'MucHVibGlyYS52MS5TdGFydFRpcENoZWNrb3V0UmVxdWVzdBokLnB1YmxpcmEudjEuU3RhcnRU'
-    'aXBDaGVja291dFJlc3BvbnNlElQKDVN0YXJ0U3RvcmVUaXASIC5wdWJsaXJhLnYxLlN0YXJ0U3'
-    'RvcmVUaXBSZXF1ZXN0GiEucHVibGlyYS52MS5TdGFydFN0b3JlVGlwUmVzcG9uc2U=');
+    'FFByZXZpZXdQcm9tb3Rpb25Db2RlEicucHVibGlyYS52MS5QcmV2aWV3UHJvbW90aW9uQ29kZV'
+    'JlcXVlc3QaKC5wdWJsaXJhLnYxLlByZXZpZXdQcm9tb3Rpb25Db2RlUmVzcG9uc2USaQoUQ29u'
+    'ZmlybVN0b3JlUHVyY2hhc2USJy5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVxdW'
+    'VzdBooLnB1YmxpcmEudjEuQ29uZmlybVN0b3JlUHVyY2hhc2VSZXNwb25zZRJ+ChtQcm9jZXNz'
+    'QXBwU3RvcmVOb3RpZmljYXRpb24SLi5wdWJsaXJhLnYxLlByb2Nlc3NBcHBTdG9yZU5vdGlmaW'
+    'NhdGlvblJlcXVlc3QaLy5wdWJsaXJhLnYxLlByb2Nlc3NBcHBTdG9yZU5vdGlmaWNhdGlvblJl'
+    'c3BvbnNlEoQBCh1Qcm9jZXNzR29vZ2xlUGxheU5vdGlmaWNhdGlvbhIwLnB1YmxpcmEudjEuUH'
+    'JvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5Qcm9jZXNz'
+    'R29vZ2xlUGxheU5vdGlmaWNhdGlvblJlc3BvbnNlEl0KEFN0YXJ0VGlwQ2hlY2tvdXQSIy5wdW'
+    'JsaXJhLnYxLlN0YXJ0VGlwQ2hlY2tvdXRSZXF1ZXN0GiQucHVibGlyYS52MS5TdGFydFRpcENo'
+    'ZWNrb3V0UmVzcG9uc2USVAoNU3RhcnRTdG9yZVRpcBIgLnB1YmxpcmEudjEuU3RhcnRTdG9yZV'
+    'RpcFJlcXVlc3QaIS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVUaXBSZXNwb25zZQ==');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

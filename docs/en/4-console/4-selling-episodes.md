@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -128,7 +128,7 @@ Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own 
 
 A reader can enter a promotion code on Stripe's checkout page. The codes are created in the Stripe Dashboard, under the coupons of the same account and mode as the secret key, and nothing is set in the console: every checkout of an episode or a volume takes them. A checkout of the rest of a series sold at a discount does not, since Stripe applies one discount or the other to a checkout, never both.
 
-The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history**, the amount a full refund returns, and the sale the episode's Authors are paid royalties on. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP checkouts take no promotion code.
+The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history** and the amount a full refund returns, and the price before the code beside it, which is the sale the episode's Authors are paid royalties on: the tenant offered the promotion, so the tenant bears it. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP checkouts take no promotion code.
 
 ### PAY.JP
 
@@ -209,6 +209,8 @@ A purchase on the site is refunded from the console, as [Refunding from the cons
 
 - **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
 - **A partial refund** leaves the episode open until the refunds on the payment add up to what the reader paid. It still lowers the sales the episode's Authors are paid royalties on.
+
+A purchase a [promotion code](#promotion-codes) discounted is refunded at most what the reader paid. Its Authors are paid on the price before the code, so a refund of part of it takes the same share of that price off their sales: refunding half of what the reader paid takes off half of the price before the code.
 
 Each refund reaches the install the way its purchase did:
 

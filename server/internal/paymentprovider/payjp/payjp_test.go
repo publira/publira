@@ -96,6 +96,44 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 	}
 }
 
+// A checkout the tenant's own promotion code discounted charges the
+// discounted price and carries the price before it and the code to the
+// notification.
+func TestStartCheckoutDiscountedByTheTenantsCodeChargesTheDiscountedPrice(t *testing.T) {
+	api := payjptest.NewAPI(t)
+	purchase := testPurchase()
+	purchase.Price = 400
+	purchase.ListPrice = 500
+	purchase.PromotionCodeID = uuid.New()
+	if _, err := payjp.New(payjp.WithBaseURL(api.URL())).StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
+		Purchase:              purchase,
+		LineItemName:          "Episode 1",
+		SuccessURL:            "https://store.example/series/SR01/episodes/EP01?checkout=success",
+		CancelURL:             "https://store.example/series/SR01/episodes/EP01?checkout=cancelled",
+		IdempotencyKey:        "episode-checkout:discounted",
+		DisallowProviderCodes: true,
+	}); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+	body := api.CheckoutSessions()[0].Body
+	items, _ := body["line_items"].([]any)
+	item, _ := items[0].(map[string]any)
+	price, _ := item["price_data"].(map[string]any)
+	if len(items) != 1 || price["unit_amount"] != float64(400) {
+		t.Fatalf("line_items = %v, want one at the discounted 400", body["line_items"])
+	}
+	metadata, _ := body["metadata"].(map[string]any)
+	for key, want := range map[string]string{
+		"price":             "400",
+		"list_price":        "500",
+		"promotion_code_id": purchase.PromotionCodeID.String(),
+	} {
+		if metadata[key] != want {
+			t.Fatalf("metadata[%s] = %v, want %v", key, metadata[key], want)
+		}
+	}
+}
+
 // PAY.JP Checkout takes no discount, so a checkout of the rest of a series
 // charges each line the part of the discounted price it accounts for.
 func TestStartCheckoutChargesEachLineItsPartOfTheDiscountedPrice(t *testing.T) {

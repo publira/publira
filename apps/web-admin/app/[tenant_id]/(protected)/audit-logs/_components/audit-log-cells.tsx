@@ -498,6 +498,35 @@ const coinActionName = (action: string) => {
   }
 };
 
+/** An action on one of the tenant's promotion codes. */
+const promotionCodeActionName = (action: string) => {
+  switch (action) {
+    case "promotion_code_created": {
+      return <Message message="admin.audit.actions.promotion_code_created" />;
+    }
+
+    case "promotion_code_updated": {
+      return <Message message="admin.audit.actions.promotion_code_updated" />;
+    }
+
+    case "promotion_code_paused": {
+      return <Message message="admin.audit.actions.promotion_code_paused" />;
+    }
+
+    case "promotion_code_resumed": {
+      return <Message message="admin.audit.actions.promotion_code_resumed" />;
+    }
+
+    case "promotion_code_deleted": {
+      return <Message message="admin.audit.actions.promotion_code_deleted" />;
+    }
+
+    default: {
+      return null;
+    }
+  }
+};
+
 /**
  * A CSV download: a royalty statement, an analytics report, the purchases, or
  * the log.
@@ -933,6 +962,7 @@ const actionName = (action: string) =>
   purchaseActionName(action) ??
   subscriptionPlanActionName(action) ??
   coinActionName(action) ??
+  promotionCodeActionName(action) ??
   settingsActionName(action) ??
   brandingActionName(action) ??
   integrationActionName(action) ??
@@ -1104,6 +1134,10 @@ const tenantTargetName = (targetType: string) => {
 
     case "payment_reconciliation": {
       return <Message message="admin.audit.targets.payment_reconciliation" />;
+    }
+
+    case "promotion_code": {
+      return <Message message="admin.audit.targets.promotion_code" />;
     }
 
     case "purchases": {

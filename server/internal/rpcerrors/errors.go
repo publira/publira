@@ -90,6 +90,18 @@ const (
 	// ReasonReaderIconPresetLimit refuses adding a preset to a tenant that
 	// holds as many as it may.
 	ReasonReaderIconPresetLimit = "READER_ICON_PRESET_LIMIT"
+	// The refusals of one of a tenant's promotion codes, on a quote, a checkout,
+	// or a store purchase: a code that does not exist, is deleted or paused,
+	// or has not started; one whose window has closed; one redeemed as often
+	// as it may be, in all or by the reader; one that does not apply to what
+	// is being bought; and one whose discounted price the tenant's store sells
+	// no product at.
+	ReasonPromotionCodeInvalid         = "PROMOTION_CODE_INVALID"
+	ReasonPromotionCodeExpired         = "PROMOTION_CODE_EXPIRED"
+	ReasonPromotionCodeExhausted       = "PROMOTION_CODE_EXHAUSTED"
+	ReasonPromotionCodeAlreadyRedeemed = "PROMOTION_CODE_ALREADY_REDEEMED"
+	ReasonPromotionCodeNotApplicable   = "PROMOTION_CODE_NOT_APPLICABLE"
+	ReasonPromotionCodeNoStoreProduct  = "PROMOTION_CODE_NO_STORE_PRODUCT"
 	// ReasonReaderCreditedOnEpisode refuses buying or rating an episode that
 	// credits a creator the reader's account is linked to.
 	ReasonReaderCreditedOnEpisode = "READER_CREDITED_ON_EPISODE"

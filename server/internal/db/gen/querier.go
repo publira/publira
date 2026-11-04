@@ -417,6 +417,10 @@ type Querier interface {
 	CreatePlatformUserMfaRecoveryCode(ctx context.Context, arg CreatePlatformUserMfaRecoveryCodeParams) error
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
+	CreatePromotionCode(ctx context.Context, arg CreatePromotionCodeParams) (uuid.UUID, error)
+	// Records that a purchase redeemed a code. A purchase redeems once, so the
+	// redelivery of the notification that recorded it writes nothing.
+	CreatePromotionCodeRedemption(ctx context.Context, arg CreatePromotionCodeRedemptionParams) error
 	// Every checkout the provider reports paid is a purchase of its own, even for a
 	// reader who already holds one for the episode: the payment was taken, so it is
 	// a sale to report and to match a refund against. A redelivery of the same
@@ -439,6 +443,12 @@ type Querier interface {
 	// is a purchase of its own, and a redelivery of the same checkout is no row. A
 	// volume is never rented and never expires.
 	CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, arg CreatePurchaseFromProviderVolumeCheckoutParams) (Purchase, error)
+	// The purchase of an episode or a volume a code took the whole price off.
+	// Nothing is paid, so no provider opens a checkout for it, and it is recorded
+	// at once with no provider and no store, at a price of 0 and with the price
+	// it would have been sold at as its list_price, which a royalty statement
+	// credits it at.
+	CreatePurchaseGrantedByPromotionCode(ctx context.Context, arg CreatePurchaseGrantedByPromotionCodeParams) (Purchase, error)
 	// The purchase a spend of coins pays for. It names the spend as its checkout,
 	// under the provider `coins`, so that what follows a purchase — the episode it
 	// opens, its reading period, its revocation, the reader's purchase history,
@@ -550,7 +560,9 @@ type Querier interface {
 	// amount is spread in proportion to the episodes' own prices, or evenly when
 	// none of them has one, and each part is what the running total up to and
 	// including it comes to less what the total before it came to, each rounded
-	// down, so the parts add up to the amount exactly.
+	// down, so the parts add up to the amount exactly. The purchase's royalty
+	// basis, its list price before a promotion code's discount, is spread the same
+	// way as royalty_price, which is what a statement credits instead.
 	CreateVolumePurchaseEpisodes(ctx context.Context, arg CreateVolumePurchaseEpisodesParams) error
 	// The grant a spent ticket opens. It is an access_tickets row so every read
 	// that decides access sees it through episode_grants, and it expires by the
@@ -625,6 +637,9 @@ type Querier interface {
 	DeletePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
+	// Deletes a code softly: the purchases it discounted and its redemptions keep
+	// naming it, and its name is free for another code.
+	DeletePromotionCode(ctx context.Context, arg DeletePromotionCodeParams) error
 	// The variants go with the row, and their objects are left for the orphan
 	// sweep, which deletes an object once no variant row names it.
 	DeleteReaderIconPreset(ctx context.Context, arg DeleteReaderIconPresetParams) (int64, error)
@@ -1138,6 +1153,11 @@ type Querier interface {
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	// Returns no rows until the server has generated a key pair.
 	GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// The code a reader typed, matched without regard to case among the tenant's
+	// codes that are not deleted, with what it has been redeemed so far: in all,
+	// and by the reader asking. Whether it applies to the episode or the volume
+	// about to be bought is answered beside it, one of the two being NULL.
+	GetPromotionCodeByCode(ctx context.Context, arg GetPromotionCodeByCodeParams) (GetPromotionCodeByCodeRow, error)
 	// A URL names the creator by its public ID and a reader's request by its ID;
 	// the caller passes the one it holds.
 	//
@@ -1304,8 +1324,8 @@ type Querier interface {
 	// closes leaves no hour in neither month and none in both.
 	GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error)
 	// Totals the month's sales once each, however many episodes and creators a
-	// sale is credited to. The month, the refund rule, and the currency are
-	// those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
+	// sale is credited to. The month, the refund rule, the currency, and the
+	// royalty basis are those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
 	// out: its money is the price of the purchases its coins paid for, which
 	// are counted here.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
@@ -2636,6 +2656,21 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
+	// ListPromotionCodeIDsDesc read backwards, for the page before a token.
+	ListPromotionCodeIDsAsc(ctx context.Context, arg ListPromotionCodeIDsAscParams) ([]ListPromotionCodeIDsAscRow, error)
+	// The keyset of ListPromotionCodes, newest first, over the codes not deleted.
+	ListPromotionCodeIDsDesc(ctx context.Context, arg ListPromotionCodeIDsDescParams) ([]ListPromotionCodeIDsDescRow, error)
+	// ListPromotionCodeRedemptionsDesc read backwards, for the page before a
+	// token.
+	ListPromotionCodeRedemptionsAsc(ctx context.Context, arg ListPromotionCodeRedemptionsAscParams) ([]ListPromotionCodeRedemptionsAscRow, error)
+	// The purchases one code discounted, newest first, with the reader who made
+	// each, what was bought, and what it was sold at.
+	ListPromotionCodeRedemptionsDesc(ctx context.Context, arg ListPromotionCodeRedemptionsDescParams) ([]ListPromotionCodeRedemptionsDescRow, error)
+	// The codes the tenant has not deleted among ids, as the console shows them:
+	// with how many purchases each has discounted and the title of what it
+	// applies to, in the tenant's default locale. The order is the caller's to
+	// restore.
+	ListPromotionCodesByIDs(ctx context.Context, arg ListPromotionCodesByIDsParams) ([]ListPromotionCodesByIDsRow, error)
 	// What the storefront draws a mark from: its image, and when and under which
 	// page its owner's terms were accepted. Who accepted them is the console's
 	// alone, so this reads no account.
@@ -3089,10 +3124,14 @@ type Querier interface {
 	// the month, with the month's sales of that episode. It is what a close
 	// writes and what a preview shows, so the two cannot disagree.
 	//
-	// A sale of a volume or of the rest of a series is a sale of each episode in
-	// it, at the part of its price purchase_episode_parts says that episode
-	// accounts for, and with the part of its refund
-	// episode_part_of_purchase_amount gives that episode. The parts are narrowed
+	// A sale is credited at its royalty basis, purchase_royalty_basis: the price
+	// before a promotion code's discount, the tenant having chosen the promotion,
+	// and what was paid for a sale no code discounted. A refund takes back the
+	// share of that basis purchase_royalty_refunded_amount gives, the share of
+	// the payment returned. A sale of a volume or of the rest of a series is a
+	// sale of each episode in it, at the part of its basis purchase_episode_parts
+	// says that episode accounts for (royalty_price), and with the part of its
+	// refund episode_part_of_purchase_amount gives that episode. The parts are narrowed
 	// to the month as well, by their own purchased_at: the join on purchase_id
 	// alone is not pushed into the branches of the view's union, and each branch
 	// would read the purchases of every month the tenant ever sold in.
@@ -3326,10 +3365,14 @@ type Querier interface {
 	// no row follows the platform defaults.
 	ListTenantRetentionSettings(ctx context.Context) ([]TenantRetentionSetting, error)
 	// The prices a tenant's app sells episodes at, so each one has a store product:
-	// each episode's own price, and the price of every campaign on it that has not
-	// ended. Drafts, scheduled episodes, and scheduled campaigns count: their
-	// product has to exist before they go on sale. An episode counts once at a
-	// price, however many of its campaigns share it.
+	// each episode's own price, the price of every campaign on it that has not
+	// ended, and each of those prices once a promotion code that applies to the
+	// episode has taken its discount off, for every code neither deleted, paused,
+	// nor past its end. Drafts, scheduled episodes, scheduled campaigns, and codes
+	// whose window has not opened count: their product has to exist before they
+	// go on sale. A code that takes the whole price off needs no product, since
+	// such a purchase is granted without one. An episode counts once at a price,
+	// however many of its campaigns and codes share it.
 	ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error)
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
@@ -3543,6 +3586,14 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// Takes a code the tenant has not deleted for a change to it.
+	LockPromotionCodeForTenant(ctx context.Context, arg LockPromotionCodeForTenantParams) (PromotionCode, error)
+	// Serializes, for the rest of the caller's transaction, the purchases one code
+	// grants without a payment, so two requests sent at once each see what the
+	// other committed before they count the code's redemptions and the reader's
+	// holdings. A purchase paid through a provider or a store is not held to it:
+	// its redemption is written whenever the payment is confirmed.
+	LockPromotionCodeRedemptions(ctx context.Context, arg LockPromotionCodeRedemptionsParams) error
 	// Serializes the writes about one payment of a provider for the rest of the
 	// transaction: recording a subscription payment and applying the refund or the
 	// dispute held for it, against matching a refund or a dispute to it or holding
@@ -3555,6 +3606,12 @@ type Querier interface {
 	// in flight to commit, and the clear that follows sees it; an election that
 	// arrives after the lock waits in turn and then finds the preset gone.
 	LockReaderIconPreset(ctx context.Context, arg LockReaderIconPresetParams) (uuid.UUID, error)
+	// Serializes, for the rest of the caller's transaction, the purchases codes
+	// grant one reader without a payment, whichever code each names, so two
+	// requests sent at once with two codes that each make the same episode or
+	// volume free see what the other committed before they check what the reader
+	// holds. Taken before LockPromotionCodeRedemptions, always in that order.
+	LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -3985,6 +4042,9 @@ type Querier interface {
 	// provider one, found by the purchase's own ID since a store purchase has no
 	// checkout.
 	ProjectPurchaseContentEventByID(ctx context.Context, arg ProjectPurchaseContentEventByIDParams) (ContentEvent, error)
+	// Whether the label, series, volume, or episode a new code names is one of
+	// the tenant's. The catalog is always there.
+	PromotionCodeTargetExists(ctx context.Context, arg PromotionCodeTargetExistsParams) (bool, error)
 	// The console's publication of an episode given a time that has already
 	// passed: what MarkEpisodePublished does once the time is reached, done in the
 	// write that saves it. An episode already published is left as it is, its
@@ -4319,6 +4379,8 @@ type Querier interface {
 	SetEpisodeEyeCatchImageIDForTenant(ctx context.Context, arg SetEpisodeEyeCatchImageIDForTenantParams) error
 	SetEpisodeListingReviewState(ctx context.Context, arg SetEpisodeListingReviewStateParams) error
 	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
+	// Pauses a code, keeping the instant it was first paused at, or resumes it.
+	SetPromotionCodePaused(ctx context.Context, arg SetPromotionCodePausedParams) error
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like
 	// another tenant's account.
@@ -4429,6 +4491,11 @@ type Querier interface {
 	TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// Whether the tenant has ever granted a coin, which fixes the value of one.
 	TenantHasCoinGrants(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Whether the tenant holds a code a reader could enter now or later: one
+	// neither deleted, paused, nor past its end. A code whose window has not
+	// opened yet, or whose limits are spent, still counts, so the storefront
+	// offers the input no later than the code starts working.
+	TenantHasLivePromotionCode(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Whether the tenant has any purchase, from a provider's checkout or a store,
 	// test ones included, which keeps the tenant currency from changing.
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
@@ -4532,6 +4599,9 @@ type Querier interface {
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	UpdatePlatformUserStatusByID(ctx context.Context, arg UpdatePlatformUserStatusByIDParams) (PlatformUser, error)
 	UpdatePlatformWebPushSubject(ctx context.Context, subject string) (PlatformWebpushConfig, error)
+	// Changes what a code's tenant may change once it exists: when it works and
+	// how often it may be redeemed.
+	UpdatePromotionCodeLimits(ctx context.Context, arg UpdatePromotionCodeLimitsParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
 	// Each write_* flag says whether the admin save stated that field. A column it

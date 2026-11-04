@@ -25,7 +25,9 @@ INSERT INTO purchases (
     is_test,
     currency,
     kind,
-    provider_promotion_code_id
+    provider_promotion_code_id,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     $1::uuid,
@@ -39,10 +41,12 @@ VALUES (
     $9::boolean,
     $10::text,
     'purchase',
-    $11::text
+    $11::text,
+    $12::integer,
+    $13::uuid
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount, tax_rate_bps, tax_amount, list_price, promotion_code_id
 `
 
 type CreatePurchaseFromProviderVolumeCheckoutParams struct {
@@ -57,6 +61,8 @@ type CreatePurchaseFromProviderVolumeCheckoutParams struct {
 	IsTest                  bool           `json:"is_test"`
 	Currency                string         `json:"currency"`
 	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
+	ListPrice               sql.NullInt32  `json:"list_price"`
+	PromotionCodeID         uuid.NullUUID  `json:"promotion_code_id"`
 }
 
 // Records the purchase of a volume a completed checkout paid for, by the rules
@@ -76,6 +82,8 @@ func (q *Queries) CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, 
 		arg.IsTest,
 		arg.Currency,
 		arg.ProviderPromotionCodeID,
+		arg.ListPrice,
+		arg.PromotionCodeID,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -107,6 +115,8 @@ func (q *Queries) CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, 
 		&i.StaffRefundRequestedAmount,
 		&i.TaxRateBps,
 		&i.TaxAmount,
+		&i.ListPrice,
+		&i.PromotionCodeID,
 	)
 	return i, err
 }
@@ -116,6 +126,7 @@ WITH items AS (
     SELECT p.tenant_id,
         p.id AS purchase_id,
         p.price_at_purchase::bigint AS paid,
+        purchase_royalty_basis(p.list_price, p.price_at_purchase)::bigint AS basis,
         ve.episode_id,
         ve."position",
         COALESCE(el.price, 0) AS list_price
@@ -127,7 +138,7 @@ WITH items AS (
         AND p.id = $2
 ),
 weighted AS (
-    SELECT items.tenant_id, items.purchase_id, items.paid, items.episode_id, items.position, items.list_price,
+    SELECT items.tenant_id, items.purchase_id, items.paid, items.basis, items.episode_id, items.position, items.list_price,
         CASE
             WHEN sum(items.list_price) OVER () > 0 THEN items.list_price
             ELSE 1
@@ -135,7 +146,7 @@ weighted AS (
     FROM items
 ),
 running AS (
-    SELECT weighted.tenant_id, weighted.purchase_id, weighted.paid, weighted.episode_id, weighted.position, weighted.list_price, weighted.weight,
+    SELECT weighted.tenant_id, weighted.purchase_id, weighted.paid, weighted.basis, weighted.episode_id, weighted.position, weighted.list_price, weighted.weight,
         (sum(weighted.weight) OVER (
             ORDER BY weighted."position", weighted.episode_id
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
@@ -149,14 +160,16 @@ INSERT INTO volume_purchase_episodes (
     episode_id,
     "position",
     list_price,
-    price
+    price,
+    royalty_price
 )
 SELECT running.tenant_id,
     running.purchase_id,
     running.episode_id,
     running."position",
     running.list_price,
-    (running.paid * running.up_to / running.total - running.paid * (running.up_to - running.weight) / running.total)::integer
+    (running.paid * running.up_to / running.total - running.paid * (running.up_to - running.weight) / running.total)::integer,
+    (running.basis * running.up_to / running.total - running.basis * (running.up_to - running.weight) / running.total)::integer
 FROM running
 `
 
@@ -171,7 +184,9 @@ type CreateVolumePurchaseEpisodesParams struct {
 // amount is spread in proportion to the episodes' own prices, or evenly when
 // none of them has one, and each part is what the running total up to and
 // including it comes to less what the total before it came to, each rounded
-// down, so the parts add up to the amount exactly.
+// down, so the parts add up to the amount exactly. The purchase's royalty
+// basis, its list price before a promotion code's discount, is spread the same
+// way as royalty_price, which is what a statement credits instead.
 func (q *Queries) CreateVolumePurchaseEpisodes(ctx context.Context, arg CreateVolumePurchaseEpisodesParams) error {
 	_, err := q.db.ExecContext(ctx, CreateVolumePurchaseEpisodes, arg.TenantID, arg.PurchaseID)
 	return err

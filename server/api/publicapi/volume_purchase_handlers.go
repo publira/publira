@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
@@ -29,11 +30,16 @@ func (s *apiServer) StartVolumeCheckout(
 		return nil, err
 	}
 
+	promotionCode := promotionCodeOf(req.PromotionCode)
+
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
+	if err := s.chargePromotionCodeAttempt(ctx, tenant.ID, user.ID, promotionCode); err != nil {
 		return nil, err
 	}
 	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
@@ -55,38 +61,15 @@ func (s *apiServer) StartVolumeCheckout(
 	}
 
 	queries := s.queriesFor(ctx)
-	volume, err := queries.GetPurchasableVolumeForTenant(ctx, dbmodels.GetPurchasableVolumeForTenantParams{
-		TenantID: tenant.ID,
-		ID:       volumeID,
-		Surface:  surface,
-	})
+	volume, err := s.resolveVolumeSale(ctx, tenant.ID, user.ID, volumeID, surface)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, "volume not found")
+		return nil, err
+	}
+	var applied appliedPromotionCode
+	if promotionCode != "" {
+		if applied, err = s.applyPromotionCode(ctx, queries, tenant.ID, user.ID, promotionCode, promotionSale{volumeID: volume.ID, price: volume.Price}); err != nil {
+			return nil, err
 		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable volume", err, "tenant_id", tenant.ID.String(), "volume_id", volumeID.String())
-	}
-	credited, err := queries.ReaderIsCreditedOnVolume(ctx, dbmodels.ReaderIsCreditedOnVolumeParams{
-		TenantID: tenant.ID,
-		VolumeID: volume.ID,
-		UserID:   user.ID,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check the reader's credits on the volume", err, "tenant_id", tenant.ID.String(), "volume_id", volume.ID.String())
-	}
-	if credited {
-		return nil, readerCreditedOnEpisodeError()
-	}
-	held, err := queries.HoldsStandingVolumePurchase(ctx, dbmodels.HoldsStandingVolumePurchaseParams{
-		TenantID: tenant.ID,
-		UserID:   user.ID,
-		VolumeID: volume.ID,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check volume purchase status", err, "tenant_id", tenant.ID.String(), "volume_id", volume.ID.String())
-	}
-	if held {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "volume is already purchased")
 	}
 
 	successURL := volumePurchaseReturnURL(origin, volume.SeriesPublicID, volume.PublicID, "success")
@@ -98,6 +81,19 @@ func (s *apiServer) StartVolumeCheckout(
 		}
 		successURL = mobileVolumePurchaseReturnURL(origin, code, volume.SeriesPublicID, volume.PublicID, "success")
 		cancelURL = mobileVolumePurchaseReturnURL(origin, code, volume.SeriesPublicID, volume.PublicID, "cancelled")
+	}
+	// A code that takes the whole price off leaves nothing for a provider to
+	// charge, as on an episode's checkout.
+	if applied.id != uuid.Nil && applied.price == 0 {
+		if _, err := s.grantPurchaseWithPromotionCode(ctx, tenant.ID, user.ID, promotionCode, grantedSale{
+			volumeID:  volume.ID,
+			kind:      paymentprovider.KindPurchase,
+			listPrice: volume.Price,
+			currency:  config.Currency,
+		}); err != nil {
+			return nil, err
+		}
+		return &publirav1.StartVolumeCheckoutResponse{CheckoutUrl: successURL}, nil
 	}
 	checkout := paymentprovider.CheckoutRequest{
 		Purchase: paymentprovider.Purchase{
@@ -112,6 +108,7 @@ func (s *apiServer) StartVolumeCheckout(
 		SuccessURL:   successURL,
 		CancelURL:    cancelURL,
 	}
+	applied.discount(&checkout)
 	expiredCheckoutID, err := queries.GetExpiredVolumeCheckoutID(ctx, dbmodels.GetExpiredVolumeCheckoutIDParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,

@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -166,9 +166,9 @@ For each credit, a month's payout is:
 
 The sales of a month are:
 
-- Purchases of the episode on the site, through Stripe or PAY.JP, at the price the reader paid.
-- Purchases on the site of a volume holding the episode, each a sale of the episode at its part of the price the reader paid. That price is divided among the volume's episodes in proportion to their own prices when the purchase was recorded, or evenly when none of them has a price, so a free episode in a volume with priced ones takes no part and has no sale. The parts are fixed with the purchase: repricing an episode or changing what the volume holds afterwards does not move them. A partial refund of the volume is divided in the same proportion, each episode's part rounded down.
-- Purchases on the site of the rest of a series, each a sale of every episode it opened at its part of the price the reader paid. Each episode's part is fixed when the reader starts the checkout: the bundle discount is spread over the episodes in proportion to the prices they sold at, a campaign price while one was open, so a later change to an episode's price or to the series' discount does not move it. When a promotion code makes the reader pay less than the checkout's price, the parts are reduced in the same proportion. A partial refund is divided in the same proportion as the price, each episode's part rounded down.
+- Purchases of the episode on the site, through Stripe or PAY.JP, at the price before any [promotion code](./4-selling-episodes.md#promotion-codes) the reader entered on Stripe's checkout page: the tenant offered the promotion, so the tenant bears the discount. A purchase a code made free is a sale at that price too. A purchase recorded before the install kept the price before a code is a sale at what the reader paid.
+- Purchases on the site of a volume holding the episode, each a sale of the episode at its part of the volume's price before any promotion code. That price is divided among the volume's episodes in proportion to their own prices when the purchase was recorded, or evenly when none of them has a price, so a free episode in a volume with priced ones takes no part and has no sale. The parts are fixed with the purchase: repricing an episode or changing what the volume holds afterwards does not move them. A partial refund of the volume is divided in the same proportion, each episode's part rounded down.
+- Purchases on the site of the rest of a series, each a sale of every episode it opened at its part of the price the reader paid. Each episode's part is fixed when the reader starts the checkout: the bundle discount is spread over the episodes in proportion to the prices they sold at, a campaign price while one was open, so a later change to an episode's price or to the series' discount does not move it. A partial refund is divided in the same proportion as the price, each episode's part rounded down.
 - Purchases in the tenant's app through the App Store or Google Play, at the episode's price. The store's commission is not taken off.
 - Purchases of the episode with the tenant's coins, on the site or in the app, at what the coins spent were paid for. Each coin of a pack is worth an equal part of what the reader paid for the pack, its bonus coins included, so the bonus is a discount the tenant gives: a pack of 1,100 coins, 100 of them a bonus, bought for ¥1,000 makes each coin worth ¥0.909, and an episode of 100 coins a sale of ¥90, rounded down to the smallest unit of the currency. A coin granted without a payment is worth nothing, and so is one of a test purchase or of a pack paid in a currency other than the tenant's current one. What a sale is worth is fixed when the coins are spent: a pack edited afterwards does not move it.
 
@@ -176,7 +176,7 @@ Every amount is in the tenant's currency, and a closed statement keeps the curre
 
 Nothing else is a sale. A purchase of a pack of coins is not one: its money is the sales its coins make as they are spent. Access tickets, **Free if you wait**, free reading periods, and an Author reading their own episode open an episode without one. A purchase from the App Store sandbox or a Play license tester, and one made with Stripe's or PAY.JP's test keys, is a test and is left out.
 
-A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. Either way, while the month of the purchase is open, the refund counts against that month, not the month of the refund.
+A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. On a purchase a promotion code discounted, what is taken off is the same share of the price before the code as the refund is of what the reader paid: refunding half of a ¥400 payment for a ¥500 episode takes ¥250 off, rounded down to the smallest unit of the currency. Either way, while the month of the purchase is open, the refund counts against that month, not the month of the refund.
 
 A Stripe payment whose [dispute](./4-selling-episodes.md#disputes) the reader's bank decides against you counts as refunded in full from the moment Stripe reports the decision, here and after the close alike. A dispute that is still open, or that is decided for you, leaves the sale in.
 
@@ -202,6 +202,8 @@ A refund recorded after the month of the purchase was closed cannot change that 
 - **Sales** is minus the purchases refunded in full, and **Gross** minus their price.
 - **Refunded** is the change in the refunds of the purchases that are still sales. It is negative when a purchase that was partly refunded at the close has since been refunded in full, since that purchase now leaves through **Gross** instead.
 - **Payout** is what the refund takes off the closed line's payout: the line's payout worked out again, at the share the closed month applied and rounded down as before, over what is left of its sales, less what it was. A share changed since the close, or an Author credited since, changes nothing about it. The closed line and its adjustments together pay what the line would have paid had the refunds come before the close, so nothing once every sale on it is refunded.
+
+A refund of a purchase a promotion code discounted is taken off at the same share of the price before the code as before the close, so the closed line and its adjustments still pay nothing once the purchase is refunded in full.
 
 A refund of a subscription payment after the close is taken off in the same way, from the subscription lines of the episodes the closed month shared it among, each by its part of the refund. A payment whose dispute was lost after the close is taken off as a full refund.
 

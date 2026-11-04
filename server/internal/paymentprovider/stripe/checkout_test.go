@@ -154,3 +154,45 @@ func TestStartCheckoutOfACoinPackTakesNoPromotionCode(t *testing.T) {
 		t.Fatalf("metadata = %v, want no episode", session)
 	}
 }
+
+// A checkout the tenant's own promotion code discounted charges the
+// discounted price, carries the price before it and the code to the
+// notification, and closes Stripe's promotion code input, so a reader never
+// takes two discounts.
+func TestStartCheckoutDiscountedByTheTenantsCodeClosesStripesCodes(t *testing.T) {
+	api := stripetest.NewAPI(t)
+	purchase := paymentprovider.Purchase{
+		TenantID:        uuid.New(),
+		ReaderID:        uuid.New(),
+		EpisodeID:       uuid.New(),
+		Kind:            paymentprovider.KindPurchase,
+		Price:           400,
+		ListPrice:       500,
+		PromotionCodeID: uuid.New(),
+		Currency:        "JPY",
+	}
+	if _, err := stripe.New(stripe.WithAPIURL(api.URL())).StartCheckout(t.Context(), checkoutCredentials, paymentprovider.CheckoutRequest{
+		Purchase:              purchase,
+		LineItemName:          "Episode 1",
+		SuccessURL:            "https://store.example/series/SR01/episodes/EP01?checkout=success",
+		CancelURL:             "https://store.example/series/SR01/episodes/EP01?checkout=cancelled",
+		IdempotencyKey:        "episode-checkout:discounted",
+		DisallowProviderCodes: true,
+	}); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+	session := api.CheckoutSessions()[0].Form
+	if session.Get("allow_promotion_codes") != "false" || session.Has("discounts[0][coupon]") {
+		t.Fatalf("session = %v, want Stripe's promotion codes closed and no coupon", session)
+	}
+	for key, want := range map[string]string{
+		"line_items[0][price_data][unit_amount]": "400",
+		"metadata[price]":                        "400",
+		"metadata[list_price]":                   "500",
+		"metadata[promotion_code_id]":            purchase.PromotionCodeID.String(),
+	} {
+		if got := session.Get(key); got != want {
+			t.Fatalf("%s = %q, want %q", key, got, want)
+		}
+	}
+}

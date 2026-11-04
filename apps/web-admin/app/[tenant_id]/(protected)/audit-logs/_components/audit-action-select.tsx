@@ -407,6 +407,26 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "coin_pack_retired",
             },
             {
+              label: t("admin.audit.actions.promotion_code_created"),
+              value: "promotion_code_created",
+            },
+            {
+              label: t("admin.audit.actions.promotion_code_updated"),
+              value: "promotion_code_updated",
+            },
+            {
+              label: t("admin.audit.actions.promotion_code_paused"),
+              value: "promotion_code_paused",
+            },
+            {
+              label: t("admin.audit.actions.promotion_code_resumed"),
+              value: "promotion_code_resumed",
+            },
+            {
+              label: t("admin.audit.actions.promotion_code_deleted"),
+              value: "promotion_code_deleted",
+            },
+            {
               label: t("admin.audit.actions.royalty_config_updated"),
               value: "royalty_config_updated",
             },

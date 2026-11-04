@@ -67,6 +67,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 14}
 	policy.CoinPayment = platformpolicy.MinuteDay{PerMinute: 5, PerDay: 40}
 	policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 30}
+	policy.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 20}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.AnonymousReads = platformpolicy.ReadLimits{PublicAPI: 400, Search: 50, Images: 1500}
@@ -607,6 +608,46 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedPurchaseCheckoutLimit(t *testing.T)
 	}
 }
 
+// promotion_code_attempt reached the policy after the console screens that
+// save it as well, so an omitted one keeps what is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedPromotionCodeAttemptLimit(t *testing.T) {
+	t.Parallel()
+
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.PromotionCodeAttempt = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without promotion_code_attempt: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.PromotionCodeAttempt = platformpolicy.Defaults().PromotionCodeAttempt
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default promotion code attempt limit", got, want)
+	}
+
+	want.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 10}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with promotion_code_attempt: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored promotion code attempt limit", got, want)
+	}
+}
+
 // community_limit_defaults.notification_settings reached the policy after the
 // Community page that saves it, so an omitted one keeps what is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedNotificationSettingsLimit(t *testing.T) {
@@ -872,6 +913,24 @@ func TestDBPlatformPolicyRowWrittenWithoutThePurchaseCheckoutLimitReadsTheDefaul
 	want.PurchaseCheckout = platformpolicy.Defaults().PurchaseCheckout
 	if got, _ := getPolicy(t, client, operator); got != want {
 		t.Fatalf("policy = %+v, want %+v with the default purchase checkout limit", got, want)
+	}
+}
+
+// Nor does it name the promotion code attempt limits.
+func TestDBPlatformPolicyRowWrittenWithoutThePromotionCodeAttemptLimitReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "promotion_code_attempt_limit_per_minute", "promotion_code_attempt_limit_per_day")
+
+	want := tightenedPolicy()
+	want.PromotionCodeAttempt = platformpolicy.Defaults().PromotionCodeAttempt
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default promotion code attempt limit", got, want)
 	}
 }
 

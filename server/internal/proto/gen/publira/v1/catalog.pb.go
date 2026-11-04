@@ -7305,6 +7305,18 @@ func (*RecordContentViewResponse) Descriptor() ([]byte, []int) {
 // the purchase records what the reader paid once the code's discount is
 // taken off (MyPurchase.price_at_purchase).
 //
+// `promotion_code` applies one of the tenant's own codes to that price
+// before the provider is reached, as PreviewPromotionCode quotes it: the
+// checkout charges the discounted price, and the provider's own code input is
+// not offered on it, so a reader never takes two discounts. A code that takes
+// the whole price off opens no checkout: the purchase is recorded at once,
+// and checkout_url is the URL the provider would have returned the reader to
+// on success. A code is refused as PreviewPromotionCode refuses one, and its
+// lookup spends the reader's allowance for promotion codes, on top of the one
+// for checkouts, before the code is read. The code is redeemed when the
+// purchase is recorded, so a checkout the reader abandons spends none of its
+// limits.
+//
 // `client` also names the surface the checkout is started from: CLIENT_MOBILE
 // is the app, and every other value the storefront. An episode that surface
 // may not show is not_found, as it is in the catalog, and one it shows but may
@@ -7327,7 +7339,10 @@ type StartEpisodeCheckoutRequest struct {
 	// failed_precondition. A reader who holds an active permanent copy is
 	// already_exists for either kind, and one who holds an active rental for
 	// another rental, but may still buy the permanent copy.
-	Kind          v1.PurchaseKind `protobuf:"varint,6,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
+	Kind v1.PurchaseKind `protobuf:"varint,6,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
+	// One of the tenant's promotion codes, matched without regard to case.
+	// Empty is no code.
+	PromotionCode string `protobuf:"bytes,7,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7397,6 +7412,13 @@ func (x *StartEpisodeCheckoutRequest) GetKind() v1.PurchaseKind {
 	return v1.PurchaseKind(0)
 }
 
+func (x *StartEpisodeCheckoutRequest) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
+}
+
 type StartEpisodeCheckoutResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CheckoutUrl   string                 `protobuf:"bytes,1,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"`
@@ -7459,11 +7481,18 @@ func (x *StartEpisodeCheckoutResponse) GetCheckoutUrl() string {
 // The storefront is returned to the series page with `checkout` and `volume`
 // in the query; the app to `/{locale}/checkout/return` with `series`,
 // `volume`, and `status`.
+//
+// `promotion_code` applies one of the tenant's codes to the volume's price as
+// it does on StartEpisodeCheckout, with the same refusals and the same
+// purchase recorded at once for a code that takes the whole price off.
 type StartVolumeCheckoutRequest struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	Tenant        *v1.TenantContext                  `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	VolumeId      string                             `protobuf:"bytes,2,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
-	Client        StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	state    protoimpl.MessageState             `protogen:"open.v1"`
+	Tenant   *v1.TenantContext                  `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	VolumeId string                             `protobuf:"bytes,2,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	Client   StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	// One of the tenant's promotion codes, matched without regard to case.
+	// Empty is no code.
+	PromotionCode string `protobuf:"bytes,4,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7517,6 +7546,13 @@ func (x *StartVolumeCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Cli
 		return x.Client
 	}
 	return StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED
+}
+
+func (x *StartVolumeCheckoutRequest) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
 }
 
 type StartVolumeCheckoutResponse struct {
@@ -7717,7 +7753,8 @@ type MyPurchase struct {
 	// The series of the episode, the volume, or the rest of a series bought.
 	// Unset on a purchase of a pack of coins, which is of no series.
 	Series *v1.Series `protobuf:"bytes,3,opt,name=series,proto3" json:"series,omitempty"`
-	// What the reader paid, in the minor unit of currency.
+	// What the reader paid, in the minor unit of currency, once any promotion
+	// code's discount was taken off (list_price).
 	PriceAtPurchase int32  `protobuf:"varint,4,opt,name=price_at_purchase,json=priceAtPurchase,proto3" json:"price_at_purchase,omitempty"`
 	PurchasedAt     string `protobuf:"bytes,5,opt,name=purchased_at,json=purchasedAt,proto3" json:"purchased_at,omitempty"`
 	// Empty when this purchase does not expire.
@@ -7776,8 +7813,17 @@ type MyPurchase struct {
 	// pack of coins, whose coins are no taxed sale, and on a purchase paid with
 	// coins, which took no payment. GetTenantResponse.invoice names who the tax
 	// was charged by.
-	TaxRateBps    *int32 `protobuf:"varint,18,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
-	TaxAmount     *int32 `protobuf:"varint,19,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
+	TaxRateBps *int32 `protobuf:"varint,18,opt,name=tax_rate_bps,json=taxRateBps,proto3,oneof" json:"tax_rate_bps,omitempty"`
+	TaxAmount  *int32 `protobuf:"varint,19,opt,name=tax_amount,json=taxAmount,proto3,oneof" json:"tax_amount,omitempty"`
+	// The price before a promotion code took its discount off, in the same
+	// minor unit as price_at_purchase, and equal to it on a purchase no code
+	// discounted. 0 on a purchase paid with coins, as price_at_purchase is.
+	ListPrice int32 `protobuf:"varint,20,opt,name=list_price,json=listPrice,proto3" json:"list_price,omitempty"`
+	// The tenant's promotion code the reader entered, spelled as the tenant
+	// created it. Empty on a purchase no code of the tenant's discounted,
+	// including one discounted by a code entered on the provider's checkout
+	// page.
+	PromotionCode string `protobuf:"bytes,21,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7943,6 +7989,20 @@ func (x *MyPurchase) GetTaxAmount() int32 {
 		return *x.TaxAmount
 	}
 	return 0
+}
+
+func (x *MyPurchase) GetListPrice() int32 {
+	if x != nil {
+		return x.ListPrice
+	}
+	return 0
+}
+
+func (x *MyPurchase) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -8216,6 +8276,16 @@ func (*ProcessPaymentWebhookResponse) Descriptor() ([]byte, []int) {
 // ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
 // episode at the same price answers the same intent.
 //
+// `promotion_code` applies one of the tenant's codes to an episode's price as
+// StartEpisodeCheckout does, with the same refusals, and the intent is opened
+// at the store product of the discounted price, which ListTenantStoreProducts
+// lists for every live code. A tenant that has not created that product in
+// its store is refused with failed_precondition and the ErrorInfo reason
+// PROMOTION_CODE_NO_STORE_PRODUCT, since the store would charge no other
+// price. A code that takes the whole price off opens no intent: the purchase
+// is recorded at once and answered as `purchase`. A code is never applied to
+// a pack.
+//
 // A pack is refused as CoinService.StartCoinPackCheckout refuses one:
 // failed_precondition with the ErrorInfo reason COINS_UNAVAILABLE while the
 // platform does not allow tenant coins or the tenant's coins are off,
@@ -8230,8 +8300,11 @@ type StartStorePurchaseRequest struct {
 	Store InAppPurchaseStore `protobuf:"varint,3,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
 	// What to buy: exactly one of an episode and a pack of the tenant's coins
 	// (CoinPack.id).
-	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
-	CoinPackId    string `protobuf:"bytes,5,opt,name=coin_pack_id,json=coinPackId,proto3" json:"coin_pack_id,omitempty"`
+	EpisodeId  string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	CoinPackId string `protobuf:"bytes,5,opt,name=coin_pack_id,json=coinPackId,proto3" json:"coin_pack_id,omitempty"`
+	// One of the tenant's promotion codes, matched without regard to case.
+	// Empty is no code; a code beside coin_pack_id is invalid_argument.
+	PromotionCode string `protobuf:"bytes,6,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8294,13 +8367,26 @@ func (x *StartStorePurchaseRequest) GetCoinPackId() string {
 	return ""
 }
 
+func (x *StartStorePurchaseRequest) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
+}
+
 type StartStorePurchaseResponse struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	IntentId string                 `protobuf:"bytes,1,opt,name=intent_id,json=intentId,proto3" json:"intent_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty when `purchase` is set.
+	IntentId string `protobuf:"bytes,1,opt,name=intent_id,json=intentId,proto3" json:"intent_id,omitempty"`
 	// The store product the episode's price is sold as, such as `episode_300`,
 	// or the pack, `coins_` followed by the pack's id in lowercase hexadecimal,
-	// without hyphens, which every store accepts as a product ID.
-	ProductId     string `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// without hyphens, which every store accepts as a product ID. Empty when
+	// `purchase` is set.
+	ProductId string `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// The purchase recorded at once for a promotion code that took the whole
+	// price off, which the app buys nothing from the store for. Unset whenever
+	// an intent is answered.
+	Purchase      *MyPurchase `protobuf:"bytes,3,opt,name=purchase,proto3" json:"purchase,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8349,6 +8435,216 @@ func (x *StartStorePurchaseResponse) GetProductId() string {
 	return ""
 }
 
+func (x *StartStorePurchaseResponse) GetPurchase() *MyPurchase {
+	if x != nil {
+		return x.Purchase
+	}
+	return nil
+}
+
+// Quotes what one of the tenant's promotion codes takes off the sale a reader
+// is about to start, without starting it or spending the code: the permanent
+// copy or the rental of an episode (`episode_id` and `kind`), or a volume
+// (`volume_id`), exactly one of the two. The price the code is taken off is
+// the one the checkout would charge now, a campaign's while one is open on the
+// permanent copy. `store` asks for the price of the app's store purchase,
+// which sells the permanent copy of an episode alone, and checks that the
+// tenant's store sells the discounted price.
+//
+// Signed-in readers only. Every call spends the reader's allowance for
+// promotion codes before the code is read, and a reader past it is
+// resource_exhausted. The sale is refused as the checkout would refuse it:
+// not_found for an episode or a volume the surface does not sell, and
+// already_exists for one the reader holds. A code that cannot be applied is
+// failed_precondition with an ErrorInfo reason:
+//
+//   - PROMOTION_CODE_INVALID: no code of the tenant's is spelled so, or it is
+//     deleted, paused, or its window has not opened yet.
+//   - PROMOTION_CODE_EXPIRED: its window has closed.
+//   - PROMOTION_CODE_NOT_APPLICABLE: it does not apply to what is being bought,
+//     or it is entered on a store purchase of a rental or a volume.
+//   - PROMOTION_CODE_EXHAUSTED: it has been redeemed as often as it may be.
+//   - PROMOTION_CODE_ALREADY_REDEEMED: the reader has redeemed it as often as
+//     one reader may.
+//   - PROMOTION_CODE_NO_STORE_PRODUCT: with `store`, the tenant's store sells no
+//     product at the discounted price.
+//
+// A code's limits are counted when it is quoted and again when a checkout
+// starts, but a code is redeemed only once the purchase is recorded, so
+// checkouts started before a limit was reached may each go past it.
+type PreviewPromotionCodeRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The code the reader typed, matched without regard to case.
+	Code      string `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	EpisodeId string `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	// Which of the episode's sales is being bought. Unspecified is the
+	// permanent copy.
+	Kind     v1.PurchaseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
+	VolumeId string          `protobuf:"bytes,5,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	// The surface the sale would be started from, as on StartEpisodeCheckout.
+	// `store` is always the app.
+	Client StartEpisodeCheckoutRequest_Client `protobuf:"varint,6,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	// The sale is a purchase through the app's store, as StartStorePurchase
+	// starts it.
+	Store         bool `protobuf:"varint,7,opt,name=store,proto3" json:"store,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewPromotionCodeRequest) Reset() {
+	*x = PreviewPromotionCodeRequest{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewPromotionCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewPromotionCodeRequest) ProtoMessage() {}
+
+func (x *PreviewPromotionCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewPromotionCodeRequest.ProtoReflect.Descriptor instead.
+func (*PreviewPromotionCodeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{101}
+}
+
+func (x *PreviewPromotionCodeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *PreviewPromotionCodeRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *PreviewPromotionCodeRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
+func (x *PreviewPromotionCodeRequest) GetKind() v1.PurchaseKind {
+	if x != nil {
+		return x.Kind
+	}
+	return v1.PurchaseKind(0)
+}
+
+func (x *PreviewPromotionCodeRequest) GetVolumeId() string {
+	if x != nil {
+		return x.VolumeId
+	}
+	return ""
+}
+
+func (x *PreviewPromotionCodeRequest) GetClient() StartEpisodeCheckoutRequest_Client {
+	if x != nil {
+		return x.Client
+	}
+	return StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED
+}
+
+func (x *PreviewPromotionCodeRequest) GetStore() bool {
+	if x != nil {
+		return x.Store
+	}
+	return false
+}
+
+type PreviewPromotionCodeResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The price before the code, in the minor unit of currency.
+	ListPrice int32 `protobuf:"varint,1,opt,name=list_price,json=listPrice,proto3" json:"list_price,omitempty"`
+	// What the code takes off list_price, never more than it.
+	DiscountAmount int32 `protobuf:"varint,2,opt,name=discount_amount,json=discountAmount,proto3" json:"discount_amount,omitempty"`
+	// What the reader would pay: list_price less discount_amount. 0 when the
+	// code takes the whole price off, and the sale is then recorded without a
+	// payment.
+	Price int32 `protobuf:"varint,3,opt,name=price,proto3" json:"price,omitempty"`
+	// The ISO 4217 code, in capitals, of the tenant's currency.
+	Currency      string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewPromotionCodeResponse) Reset() {
+	*x = PreviewPromotionCodeResponse{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewPromotionCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewPromotionCodeResponse) ProtoMessage() {}
+
+func (x *PreviewPromotionCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewPromotionCodeResponse.ProtoReflect.Descriptor instead.
+func (*PreviewPromotionCodeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{102}
+}
+
+func (x *PreviewPromotionCodeResponse) GetListPrice() int32 {
+	if x != nil {
+		return x.ListPrice
+	}
+	return 0
+}
+
+func (x *PreviewPromotionCodeResponse) GetDiscountAmount() int32 {
+	if x != nil {
+		return x.DiscountAmount
+	}
+	return 0
+}
+
+func (x *PreviewPromotionCodeResponse) GetPrice() int32 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *PreviewPromotionCodeResponse) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
 // Starts a provider checkout of a tip to the Authors of an episode, at one of
 // the tenant's tip amounts (GetEpisodeDetailResponse.tip_amounts), and answers
 // the URL of the provider's checkout page. The tip is recorded by the
@@ -8387,7 +8683,7 @@ type StartTipCheckoutRequest struct {
 
 func (x *StartTipCheckoutRequest) Reset() {
 	*x = StartTipCheckoutRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	mi := &file_publira_v1_catalog_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8399,7 +8695,7 @@ func (x *StartTipCheckoutRequest) String() string {
 func (*StartTipCheckoutRequest) ProtoMessage() {}
 
 func (x *StartTipCheckoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	mi := &file_publira_v1_catalog_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8412,7 +8708,7 @@ func (x *StartTipCheckoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartTipCheckoutRequest.ProtoReflect.Descriptor instead.
 func (*StartTipCheckoutRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{101}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *StartTipCheckoutRequest) GetTenant() *v1.TenantContext {
@@ -8459,7 +8755,7 @@ type StartTipCheckoutResponse struct {
 
 func (x *StartTipCheckoutResponse) Reset() {
 	*x = StartTipCheckoutResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	mi := &file_publira_v1_catalog_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8471,7 +8767,7 @@ func (x *StartTipCheckoutResponse) String() string {
 func (*StartTipCheckoutResponse) ProtoMessage() {}
 
 func (x *StartTipCheckoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	mi := &file_publira_v1_catalog_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8484,7 +8780,7 @@ func (x *StartTipCheckoutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartTipCheckoutResponse.ProtoReflect.Descriptor instead.
 func (*StartTipCheckoutResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{102}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *StartTipCheckoutResponse) GetCheckoutUrl() string {
@@ -8519,7 +8815,7 @@ type StartStoreTipRequest struct {
 
 func (x *StartStoreTipRequest) Reset() {
 	*x = StartStoreTipRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[103]
+	mi := &file_publira_v1_catalog_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8531,7 +8827,7 @@ func (x *StartStoreTipRequest) String() string {
 func (*StartStoreTipRequest) ProtoMessage() {}
 
 func (x *StartStoreTipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[103]
+	mi := &file_publira_v1_catalog_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8544,7 +8840,7 @@ func (x *StartStoreTipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStoreTipRequest.ProtoReflect.Descriptor instead.
 func (*StartStoreTipRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{103}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *StartStoreTipRequest) GetTenant() *v1.TenantContext {
@@ -8587,7 +8883,7 @@ type StartStoreTipResponse struct {
 
 func (x *StartStoreTipResponse) Reset() {
 	*x = StartStoreTipResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[104]
+	mi := &file_publira_v1_catalog_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8599,7 +8895,7 @@ func (x *StartStoreTipResponse) String() string {
 func (*StartStoreTipResponse) ProtoMessage() {}
 
 func (x *StartStoreTipResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[104]
+	mi := &file_publira_v1_catalog_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8612,7 +8908,7 @@ func (x *StartStoreTipResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStoreTipResponse.ProtoReflect.Descriptor instead.
 func (*StartStoreTipResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{104}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *StartStoreTipResponse) GetIntentId() string {
@@ -8663,7 +8959,7 @@ type ConfirmStorePurchaseRequest struct {
 
 func (x *ConfirmStorePurchaseRequest) Reset() {
 	*x = ConfirmStorePurchaseRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[105]
+	mi := &file_publira_v1_catalog_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8675,7 +8971,7 @@ func (x *ConfirmStorePurchaseRequest) String() string {
 func (*ConfirmStorePurchaseRequest) ProtoMessage() {}
 
 func (x *ConfirmStorePurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[105]
+	mi := &file_publira_v1_catalog_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8688,7 +8984,7 @@ func (x *ConfirmStorePurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmStorePurchaseRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmStorePurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{105}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *ConfirmStorePurchaseRequest) GetTenant() *v1.TenantContext {
@@ -8735,7 +9031,7 @@ type ConfirmStorePurchaseResponse struct {
 
 func (x *ConfirmStorePurchaseResponse) Reset() {
 	*x = ConfirmStorePurchaseResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[106]
+	mi := &file_publira_v1_catalog_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8747,7 +9043,7 @@ func (x *ConfirmStorePurchaseResponse) String() string {
 func (*ConfirmStorePurchaseResponse) ProtoMessage() {}
 
 func (x *ConfirmStorePurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[106]
+	mi := &file_publira_v1_catalog_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8760,7 +9056,7 @@ func (x *ConfirmStorePurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmStorePurchaseResponse.ProtoReflect.Descriptor instead.
 func (*ConfirmStorePurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{106}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *ConfirmStorePurchaseResponse) GetPurchase() *MyPurchase {
@@ -8797,7 +9093,7 @@ type ProcessAppStoreNotificationRequest struct {
 
 func (x *ProcessAppStoreNotificationRequest) Reset() {
 	*x = ProcessAppStoreNotificationRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[107]
+	mi := &file_publira_v1_catalog_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8809,7 +9105,7 @@ func (x *ProcessAppStoreNotificationRequest) String() string {
 func (*ProcessAppStoreNotificationRequest) ProtoMessage() {}
 
 func (x *ProcessAppStoreNotificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[107]
+	mi := &file_publira_v1_catalog_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8822,7 +9118,7 @@ func (x *ProcessAppStoreNotificationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ProcessAppStoreNotificationRequest.ProtoReflect.Descriptor instead.
 func (*ProcessAppStoreNotificationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{107}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ProcessAppStoreNotificationRequest) GetTenant() *v1.TenantContext {
@@ -8847,7 +9143,7 @@ type ProcessAppStoreNotificationResponse struct {
 
 func (x *ProcessAppStoreNotificationResponse) Reset() {
 	*x = ProcessAppStoreNotificationResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[108]
+	mi := &file_publira_v1_catalog_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8859,7 +9155,7 @@ func (x *ProcessAppStoreNotificationResponse) String() string {
 func (*ProcessAppStoreNotificationResponse) ProtoMessage() {}
 
 func (x *ProcessAppStoreNotificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[108]
+	mi := &file_publira_v1_catalog_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8872,7 +9168,7 @@ func (x *ProcessAppStoreNotificationResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ProcessAppStoreNotificationResponse.ProtoReflect.Descriptor instead.
 func (*ProcessAppStoreNotificationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{108}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{110}
 }
 
 // `web-storefront` forwards the raw body and the headers of a Google Play
@@ -8906,7 +9202,7 @@ type ProcessGooglePlayNotificationRequest struct {
 
 func (x *ProcessGooglePlayNotificationRequest) Reset() {
 	*x = ProcessGooglePlayNotificationRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[109]
+	mi := &file_publira_v1_catalog_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8918,7 +9214,7 @@ func (x *ProcessGooglePlayNotificationRequest) String() string {
 func (*ProcessGooglePlayNotificationRequest) ProtoMessage() {}
 
 func (x *ProcessGooglePlayNotificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[109]
+	mi := &file_publira_v1_catalog_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8931,7 +9227,7 @@ func (x *ProcessGooglePlayNotificationRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ProcessGooglePlayNotificationRequest.ProtoReflect.Descriptor instead.
 func (*ProcessGooglePlayNotificationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{109}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *ProcessGooglePlayNotificationRequest) GetTenant() *v1.TenantContext {
@@ -8963,7 +9259,7 @@ type ProcessGooglePlayNotificationResponse struct {
 
 func (x *ProcessGooglePlayNotificationResponse) Reset() {
 	*x = ProcessGooglePlayNotificationResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[110]
+	mi := &file_publira_v1_catalog_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8975,7 +9271,7 @@ func (x *ProcessGooglePlayNotificationResponse) String() string {
 func (*ProcessGooglePlayNotificationResponse) ProtoMessage() {}
 
 func (x *ProcessGooglePlayNotificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[110]
+	mi := &file_publira_v1_catalog_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8988,7 +9284,7 @@ func (x *ProcessGooglePlayNotificationResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ProcessGooglePlayNotificationResponse.ProtoReflect.Descriptor instead.
 func (*ProcessGooglePlayNotificationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{110}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{112}
 }
 
 type GetMyTicketStateRequest struct {
@@ -9003,7 +9299,7 @@ type GetMyTicketStateRequest struct {
 
 func (x *GetMyTicketStateRequest) Reset() {
 	*x = GetMyTicketStateRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[111]
+	mi := &file_publira_v1_catalog_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9015,7 +9311,7 @@ func (x *GetMyTicketStateRequest) String() string {
 func (*GetMyTicketStateRequest) ProtoMessage() {}
 
 func (x *GetMyTicketStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[111]
+	mi := &file_publira_v1_catalog_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9028,7 +9324,7 @@ func (x *GetMyTicketStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTicketStateRequest.ProtoReflect.Descriptor instead.
 func (*GetMyTicketStateRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{111}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *GetMyTicketStateRequest) GetTenant() *v1.TenantContext {
@@ -9064,7 +9360,7 @@ type WaitFreeTicket struct {
 
 func (x *WaitFreeTicket) Reset() {
 	*x = WaitFreeTicket{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[112]
+	mi := &file_publira_v1_catalog_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9076,7 +9372,7 @@ func (x *WaitFreeTicket) String() string {
 func (*WaitFreeTicket) ProtoMessage() {}
 
 func (x *WaitFreeTicket) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[112]
+	mi := &file_publira_v1_catalog_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9089,7 +9385,7 @@ func (x *WaitFreeTicket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WaitFreeTicket.ProtoReflect.Descriptor instead.
 func (*WaitFreeTicket) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{112}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *WaitFreeTicket) GetEpisodeId() string {
@@ -9120,7 +9416,7 @@ type GetMyTicketStateResponse struct {
 
 func (x *GetMyTicketStateResponse) Reset() {
 	*x = GetMyTicketStateResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[113]
+	mi := &file_publira_v1_catalog_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9132,7 +9428,7 @@ func (x *GetMyTicketStateResponse) String() string {
 func (*GetMyTicketStateResponse) ProtoMessage() {}
 
 func (x *GetMyTicketStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[113]
+	mi := &file_publira_v1_catalog_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9145,7 +9441,7 @@ func (x *GetMyTicketStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTicketStateResponse.ProtoReflect.Descriptor instead.
 func (*GetMyTicketStateResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{113}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *GetMyTicketStateResponse) GetNextAvailableAt() string {
@@ -9176,7 +9472,7 @@ type UseTicketRequest struct {
 
 func (x *UseTicketRequest) Reset() {
 	*x = UseTicketRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[114]
+	mi := &file_publira_v1_catalog_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9188,7 +9484,7 @@ func (x *UseTicketRequest) String() string {
 func (*UseTicketRequest) ProtoMessage() {}
 
 func (x *UseTicketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[114]
+	mi := &file_publira_v1_catalog_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9201,7 +9497,7 @@ func (x *UseTicketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseTicketRequest.ProtoReflect.Descriptor instead.
 func (*UseTicketRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{114}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *UseTicketRequest) GetTenant() *v1.TenantContext {
@@ -9236,7 +9532,7 @@ type UseTicketResponse struct {
 
 func (x *UseTicketResponse) Reset() {
 	*x = UseTicketResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[115]
+	mi := &file_publira_v1_catalog_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9248,7 +9544,7 @@ func (x *UseTicketResponse) String() string {
 func (*UseTicketResponse) ProtoMessage() {}
 
 func (x *UseTicketResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[115]
+	mi := &file_publira_v1_catalog_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9261,7 +9557,7 @@ func (x *UseTicketResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseTicketResponse.ProtoReflect.Descriptor instead.
 func (*UseTicketResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{115}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *UseTicketResponse) GetTicket() *WaitFreeTicket {
@@ -9769,25 +10065,27 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1b\n" +
-	"\x19RecordContentViewResponse\"\xe7\x02\n" +
+	"\x19RecordContentViewResponse\"\x8e\x03\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x1d\n" +
 	"\n" +
 	"episode_id\x18\x04 \x01(\tR\tepisodeId\x12\x16\n" +
 	"\x06locale\x18\x05 \x01(\tR\x06locale\x122\n" +
-	"\x04kind\x18\x06 \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\"C\n" +
+	"\x04kind\x18\x06 \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x12%\n" +
+	"\x0epromotion_code\x18\a \x01(\tR\rpromotionCode\"C\n" +
 	"\x06Client\x12\x16\n" +
 	"\x12CLIENT_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"CLIENT_WEB\x10\x01\x12\x11\n" +
 	"\rCLIENT_MOBILE\x10\x02J\x04\b\x02\x10\x03R\x11episode_public_id\"A\n" +
 	"\x1cStartEpisodeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xba\x01\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xe1\x01\n" +
 	"\x1aStartVolumeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tvolume_id\x18\x02 \x01(\tR\bvolumeId\x12F\n" +
-	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\"@\n" +
+	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12%\n" +
+	"\x0epromotion_code\x18\x04 \x01(\tR\rpromotionCode\"@\n" +
 	"\x1bStartVolumeCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xdb\x01\n" +
 	"#StartSeriesRemainderCheckoutRequest\x127\n" +
@@ -9796,7 +10094,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
 	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xa9\x06\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xef\x06\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -9824,7 +10122,10 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\ftax_rate_bps\x18\x12 \x01(\x05H\x00R\n" +
 	"taxRateBps\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"tax_amount\x18\x13 \x01(\x05H\x01R\ttaxAmount\x88\x01\x01B\x0f\n" +
+	"tax_amount\x18\x13 \x01(\x05H\x01R\ttaxAmount\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"list_price\x18\x14 \x01(\x05R\tlistPrice\x12%\n" +
+	"\x0epromotion_code\x18\x15 \x01(\tR\rpromotionCodeB\x0f\n" +
 	"\r_tax_rate_bpsB\r\n" +
 	"\v_tax_amount\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
@@ -9846,18 +10147,35 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1f\n" +
-	"\x1dProcessPaymentWebhookResponse\"\xe4\x01\n" +
+	"\x1dProcessPaymentWebhookResponse\"\x8b\x02\n" +
 	"\x19StartStorePurchaseRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x124\n" +
 	"\x05store\x18\x03 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\x12\x1d\n" +
 	"\n" +
 	"episode_id\x18\x04 \x01(\tR\tepisodeId\x12 \n" +
 	"\fcoin_pack_id\x18\x05 \x01(\tR\n" +
-	"coinPackIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"X\n" +
+	"coinPackId\x12%\n" +
+	"\x0epromotion_code\x18\x06 \x01(\tR\rpromotionCodeJ\x04\b\x02\x10\x03R\x11episode_public_id\"\x8c\x01\n" +
 	"\x1aStartStorePurchaseResponse\x12\x1b\n" +
 	"\tintent_id\x18\x01 \x01(\tR\bintentId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\tR\tproductId\"\xe9\x01\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\x122\n" +
+	"\bpurchase\x18\x03 \x01(\v2\x16.publira.v1.MyPurchaseR\bpurchase\"\xb8\x02\n" +
+	"\x1bPreviewPromotionCodeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\x122\n" +
+	"\x04kind\x18\x04 \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x12\x1b\n" +
+	"\tvolume_id\x18\x05 \x01(\tR\bvolumeId\x12F\n" +
+	"\x06client\x18\x06 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x14\n" +
+	"\x05store\x18\a \x01(\bR\x05store\"\x98\x01\n" +
+	"\x1cPreviewPromotionCodeResponse\x12\x1d\n" +
+	"\n" +
+	"list_price\x18\x01 \x01(\x05R\tlistPrice\x12'\n" +
+	"\x0fdiscount_amount\x18\x02 \x01(\x05R\x0ediscountAmount\x12\x14\n" +
+	"\x05price\x18\x03 \x01(\x05R\x05price\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"\xe9\x01\n" +
 	"\x17StartTipCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
@@ -10010,7 +10328,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x12GetMyEpisodeRating\x12%.publira.v1.GetMyEpisodeRatingRequest\x1a&.publira.v1.GetMyEpisodeRatingResponse\"\x00\x12b\n" +
 	"\x11GetMySeriesRating\x12$.publira.v1.GetMySeriesRatingRequest\x1a%.publira.v1.GetMySeriesRatingResponse\"\x002x\n" +
 	"\x12ContentViewService\x12b\n" +
-	"\x11RecordContentView\x12$.publira.v1.RecordContentViewRequest\x1a%.publira.v1.RecordContentViewResponse\"\x002\xd5\t\n" +
+	"\x11RecordContentView\x12$.publira.v1.RecordContentViewRequest\x1a%.publira.v1.RecordContentViewResponse\"\x002\xc2\n" +
+	"\n" +
 	"\x0fPurchaseService\x12k\n" +
 	"\x14StartEpisodeCheckout\x12'.publira.v1.StartEpisodeCheckoutRequest\x1a(.publira.v1.StartEpisodeCheckoutResponse\"\x00\x12h\n" +
 	"\x13StartVolumeCheckout\x12&.publira.v1.StartVolumeCheckoutRequest\x1a'.publira.v1.StartVolumeCheckoutResponse\"\x00\x12\x83\x01\n" +
@@ -10018,6 +10337,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x0fListMyPurchases\x12\".publira.v1.ListMyPurchasesRequest\x1a#.publira.v1.ListMyPurchasesResponse\"\x00\x12n\n" +
 	"\x15ProcessPaymentWebhook\x12(.publira.v1.ProcessPaymentWebhookRequest\x1a).publira.v1.ProcessPaymentWebhookResponse\"\x00\x12e\n" +
 	"\x12StartStorePurchase\x12%.publira.v1.StartStorePurchaseRequest\x1a&.publira.v1.StartStorePurchaseResponse\"\x00\x12k\n" +
+	"\x14PreviewPromotionCode\x12'.publira.v1.PreviewPromotionCodeRequest\x1a(.publira.v1.PreviewPromotionCodeResponse\"\x00\x12k\n" +
 	"\x14ConfirmStorePurchase\x12'.publira.v1.ConfirmStorePurchaseRequest\x1a(.publira.v1.ConfirmStorePurchaseResponse\"\x00\x12\x80\x01\n" +
 	"\x1bProcessAppStoreNotification\x12..publira.v1.ProcessAppStoreNotificationRequest\x1a/.publira.v1.ProcessAppStoreNotificationResponse\"\x00\x12\x86\x01\n" +
 	"\x1dProcessGooglePlayNotification\x120.publira.v1.ProcessGooglePlayNotificationRequest\x1a1.publira.v1.ProcessGooglePlayNotificationResponse\"\x00\x12_\n" +
@@ -10040,7 +10360,7 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 118)
+var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 120)
 var file_publira_v1_catalog_proto_goTypes = []any{
 	(SeriesOrder)(0),                              // 0: publira.v1.SeriesOrder
 	(EpisodeAccess)(0),                            // 1: publira.v1.EpisodeAccess
@@ -10154,320 +10474,328 @@ var file_publira_v1_catalog_proto_goTypes = []any{
 	(*ProcessPaymentWebhookResponse)(nil),         // 109: publira.v1.ProcessPaymentWebhookResponse
 	(*StartStorePurchaseRequest)(nil),             // 110: publira.v1.StartStorePurchaseRequest
 	(*StartStorePurchaseResponse)(nil),            // 111: publira.v1.StartStorePurchaseResponse
-	(*StartTipCheckoutRequest)(nil),               // 112: publira.v1.StartTipCheckoutRequest
-	(*StartTipCheckoutResponse)(nil),              // 113: publira.v1.StartTipCheckoutResponse
-	(*StartStoreTipRequest)(nil),                  // 114: publira.v1.StartStoreTipRequest
-	(*StartStoreTipResponse)(nil),                 // 115: publira.v1.StartStoreTipResponse
-	(*ConfirmStorePurchaseRequest)(nil),           // 116: publira.v1.ConfirmStorePurchaseRequest
-	(*ConfirmStorePurchaseResponse)(nil),          // 117: publira.v1.ConfirmStorePurchaseResponse
-	(*ProcessAppStoreNotificationRequest)(nil),    // 118: publira.v1.ProcessAppStoreNotificationRequest
-	(*ProcessAppStoreNotificationResponse)(nil),   // 119: publira.v1.ProcessAppStoreNotificationResponse
-	(*ProcessGooglePlayNotificationRequest)(nil),  // 120: publira.v1.ProcessGooglePlayNotificationRequest
-	(*ProcessGooglePlayNotificationResponse)(nil), // 121: publira.v1.ProcessGooglePlayNotificationResponse
-	(*GetMyTicketStateRequest)(nil),               // 122: publira.v1.GetMyTicketStateRequest
-	(*WaitFreeTicket)(nil),                        // 123: publira.v1.WaitFreeTicket
-	(*GetMyTicketStateResponse)(nil),              // 124: publira.v1.GetMyTicketStateResponse
-	(*UseTicketRequest)(nil),                      // 125: publira.v1.UseTicketRequest
-	(*UseTicketResponse)(nil),                     // 126: publira.v1.UseTicketResponse
-	nil,                                           // 127: publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
-	nil,                                           // 128: publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry
-	(*v1.TenantContext)(nil),                      // 129: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                         // 130: publira.types.v1.ClientSurface
-	(v1.SeriesStatus)(0),                          // 131: publira.types.v1.SeriesStatus
-	(*v1.Series)(nil),                             // 132: publira.types.v1.Series
-	(*v1.Episode)(nil),                            // 133: publira.types.v1.Episode
-	(v1.CommentMode)(0),                           // 134: publira.types.v1.CommentMode
-	(*v1.Volume)(nil),                             // 135: publira.types.v1.Volume
-	(*v1.Creator)(nil),                            // 136: publira.types.v1.Creator
-	(v1.SurfaceAvailability)(0),                   // 137: publira.types.v1.SurfaceAvailability
-	(*v1.EpisodeImage)(nil),                       // 138: publira.types.v1.EpisodeImage
-	(*v1.SeriesEyeCatchVariant)(nil),              // 139: publira.types.v1.SeriesEyeCatchVariant
-	(v1.SeriesAgeRating)(0),                       // 140: publira.types.v1.SeriesAgeRating
-	(v1.PurchaseKind)(0),                          // 141: publira.types.v1.PurchaseKind
-	(*v1.SeriesBundle)(nil),                       // 142: publira.types.v1.SeriesBundle
-	(*v1.PurchasedCoinPack)(nil),                  // 143: publira.types.v1.PurchasedCoinPack
+	(*PreviewPromotionCodeRequest)(nil),           // 112: publira.v1.PreviewPromotionCodeRequest
+	(*PreviewPromotionCodeResponse)(nil),          // 113: publira.v1.PreviewPromotionCodeResponse
+	(*StartTipCheckoutRequest)(nil),               // 114: publira.v1.StartTipCheckoutRequest
+	(*StartTipCheckoutResponse)(nil),              // 115: publira.v1.StartTipCheckoutResponse
+	(*StartStoreTipRequest)(nil),                  // 116: publira.v1.StartStoreTipRequest
+	(*StartStoreTipResponse)(nil),                 // 117: publira.v1.StartStoreTipResponse
+	(*ConfirmStorePurchaseRequest)(nil),           // 118: publira.v1.ConfirmStorePurchaseRequest
+	(*ConfirmStorePurchaseResponse)(nil),          // 119: publira.v1.ConfirmStorePurchaseResponse
+	(*ProcessAppStoreNotificationRequest)(nil),    // 120: publira.v1.ProcessAppStoreNotificationRequest
+	(*ProcessAppStoreNotificationResponse)(nil),   // 121: publira.v1.ProcessAppStoreNotificationResponse
+	(*ProcessGooglePlayNotificationRequest)(nil),  // 122: publira.v1.ProcessGooglePlayNotificationRequest
+	(*ProcessGooglePlayNotificationResponse)(nil), // 123: publira.v1.ProcessGooglePlayNotificationResponse
+	(*GetMyTicketStateRequest)(nil),               // 124: publira.v1.GetMyTicketStateRequest
+	(*WaitFreeTicket)(nil),                        // 125: publira.v1.WaitFreeTicket
+	(*GetMyTicketStateResponse)(nil),              // 126: publira.v1.GetMyTicketStateResponse
+	(*UseTicketRequest)(nil),                      // 127: publira.v1.UseTicketRequest
+	(*UseTicketResponse)(nil),                     // 128: publira.v1.UseTicketResponse
+	nil,                                           // 129: publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
+	nil,                                           // 130: publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry
+	(*v1.TenantContext)(nil),                      // 131: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                         // 132: publira.types.v1.ClientSurface
+	(v1.SeriesStatus)(0),                          // 133: publira.types.v1.SeriesStatus
+	(*v1.Series)(nil),                             // 134: publira.types.v1.Series
+	(*v1.Episode)(nil),                            // 135: publira.types.v1.Episode
+	(v1.CommentMode)(0),                           // 136: publira.types.v1.CommentMode
+	(*v1.Volume)(nil),                             // 137: publira.types.v1.Volume
+	(*v1.Creator)(nil),                            // 138: publira.types.v1.Creator
+	(v1.SurfaceAvailability)(0),                   // 139: publira.types.v1.SurfaceAvailability
+	(*v1.EpisodeImage)(nil),                       // 140: publira.types.v1.EpisodeImage
+	(*v1.SeriesEyeCatchVariant)(nil),              // 141: publira.types.v1.SeriesEyeCatchVariant
+	(v1.SeriesAgeRating)(0),                       // 142: publira.types.v1.SeriesAgeRating
+	(v1.PurchaseKind)(0),                          // 143: publira.types.v1.PurchaseKind
+	(*v1.SeriesBundle)(nil),                       // 144: publira.types.v1.SeriesBundle
+	(*v1.PurchasedCoinPack)(nil),                  // 145: publira.types.v1.PurchasedCoinPack
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	129, // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 1: publira.v1.ListPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 1: publira.v1.ListPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	30,  // 2: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
-	129, // 3: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 3: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,   // 4: publira.v1.ListPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
-	131, // 5: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	130, // 6: publira.v1.ListPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	132, // 7: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	129, // 8: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 9: publira.v1.GetSeriesDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	132, // 10: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
-	133, // 11: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
-	134, // 12: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	133, // 5: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	132, // 6: publira.v1.ListPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 7: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	131, // 8: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 9: publira.v1.GetSeriesDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 10: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	135, // 11: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	136, // 12: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
 	16,  // 13: publira.v1.GetSeriesDetailResponse.wait_free:type_name -> publira.v1.WaitFreeRule
-	135, // 14: publira.v1.GetSeriesDetailResponse.volumes:type_name -> publira.types.v1.Volume
-	129, // 15: publira.v1.GetSeriesEpisodeAccessRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 16: publira.v1.GetSeriesEpisodeAccessRequest.surface:type_name -> publira.types.v1.ClientSurface
+	137, // 14: publira.v1.GetSeriesDetailResponse.volumes:type_name -> publira.types.v1.Volume
+	131, // 15: publira.v1.GetSeriesEpisodeAccessRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 16: publira.v1.GetSeriesEpisodeAccessRequest.surface:type_name -> publira.types.v1.ClientSurface
 	1,   // 17: publira.v1.SeriesEpisodeAccess.access:type_name -> publira.v1.EpisodeAccess
 	2,   // 18: publira.v1.SeriesEpisodeAccess.entitlement_source:type_name -> publira.v1.EpisodeEntitlementSource
 	19,  // 19: publira.v1.GetSeriesEpisodeAccessResponse.episodes:type_name -> publira.v1.SeriesEpisodeAccess
 	21,  // 20: publira.v1.GetSeriesEpisodeAccessResponse.remainder:type_name -> publira.v1.SeriesRemainderOffer
-	129, // 21: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 22: publira.v1.GetEpisodeDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	136, // 23: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
-	137, // 24: publira.v1.EpisodeNeighbor.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	133, // 25: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
-	132, // 26: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	138, // 27: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	131, // 21: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 22: publira.v1.GetEpisodeDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	138, // 23: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
+	139, // 24: publira.v1.EpisodeNeighbor.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	135, // 25: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	134, // 26: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	140, // 27: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
 	1,   // 28: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
 	23,  // 29: publira.v1.GetEpisodeDetailResponse.previous_episode:type_name -> publira.v1.EpisodeNeighbor
 	23,  // 30: publira.v1.GetEpisodeDetailResponse.next_episode:type_name -> publira.v1.EpisodeNeighbor
 	2,   // 31: publira.v1.GetEpisodeDetailResponse.entitlement_source:type_name -> publira.v1.EpisodeEntitlementSource
-	138, // 32: publira.v1.GetEpisodeDetailResponse.preview_images:type_name -> publira.types.v1.EpisodeImage
+	140, // 32: publira.v1.GetEpisodeDetailResponse.preview_images:type_name -> publira.types.v1.EpisodeImage
 	23,  // 33: publira.v1.GetEpisodeDetailResponse.next_free_episode:type_name -> publira.v1.EpisodeNeighbor
-	138, // 34: publira.v1.GetEpisodeDetailResponse.preview_pages:type_name -> publira.types.v1.EpisodeImage
-	129, // 35: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 36: publira.v1.ListPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	140, // 34: publira.v1.GetEpisodeDetailResponse.preview_pages:type_name -> publira.types.v1.EpisodeImage
+	131, // 35: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 36: publira.v1.ListPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	25,  // 37: publira.v1.ListPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	129, // 38: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 39: publira.v1.GetPublishedCreatorDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 38: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 39: publira.v1.GetPublishedCreatorDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
 	25,  // 40: publira.v1.GetPublishedCreatorDetailResponse.creator:type_name -> publira.v1.PublishedCreator
-	132, // 41: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
-	139, // 42: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	129, // 43: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 44: publira.v1.GetPublishedLabelDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 41: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
+	141, // 42: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	131, // 43: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 44: publira.v1.GetPublishedLabelDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
 	30,  // 45: publira.v1.GetPublishedLabelDetailResponse.label:type_name -> publira.v1.PublishedLabel
-	132, // 46: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
+	134, // 46: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
 	34,  // 47: publira.v1.PublishedGenre.featured_series:type_name -> publira.v1.PublishedGenreFeaturedSeries
-	139, // 48: publira.v1.PublishedGenre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	139, // 49: publira.v1.PublishedGenreFeaturedSeries.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	129, // 50: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 51: publira.v1.ListPublishedGenresRequest.surface:type_name -> publira.types.v1.ClientSurface
+	141, // 48: publira.v1.PublishedGenre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	141, // 49: publira.v1.PublishedGenreFeaturedSeries.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	131, // 50: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 51: publira.v1.ListPublishedGenresRequest.surface:type_name -> publira.types.v1.ClientSurface
 	33,  // 52: publira.v1.ListPublishedGenresResponse.genres:type_name -> publira.v1.PublishedGenre
-	129, // 53: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 54: publira.v1.ListPublishedTagsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 53: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 54: publira.v1.ListPublishedTagsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	37,  // 55: publira.v1.ListPublishedTagsResponse.tags:type_name -> publira.v1.PublishedTag
-	129, // 56: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 57: publira.v1.SearchPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 56: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 57: publira.v1.SearchPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
 	0,   // 58: publira.v1.SearchPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
-	131, // 59: publira.v1.SearchPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	132, // 60: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	129, // 61: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 62: publira.v1.SearchPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	133, // 59: publira.v1.SearchPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	134, // 60: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	131, // 61: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 62: publira.v1.SearchPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	25,  // 63: publira.v1.SearchPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	129, // 64: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 65: publira.v1.SearchPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 64: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 65: publira.v1.SearchPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	30,  // 66: publira.v1.SearchPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
-	129, // 67: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 68: publira.v1.ListRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	132, // 69: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
+	131, // 67: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 68: publira.v1.ListRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 69: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
 	3,   // 70: publira.v1.ListRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
-	129, // 71: publira.v1.ListMyRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 72: publira.v1.ListMyRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	132, // 73: publira.v1.ListMyRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
+	131, // 71: publira.v1.ListMyRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 72: publira.v1.ListMyRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 73: publira.v1.ListMyRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
 	3,   // 74: publira.v1.ListMyRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
-	132, // 75: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
-	129, // 76: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	134, // 75: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
+	131, // 76: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	4,   // 77: publira.v1.ListRankedSeriesRequest.period:type_name -> publira.v1.RankingPeriod
-	130, // 78: publira.v1.ListRankedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	140, // 79: publira.v1.ListRankedSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	132, // 78: publira.v1.ListRankedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	142, // 79: publira.v1.ListRankedSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	50,  // 80: publira.v1.ListRankedSeriesResponse.ranked_series:type_name -> publira.v1.RankedSeries
-	129, // 81: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 82: publira.v1.ListRelatedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	132, // 83: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
+	131, // 81: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 82: publira.v1.ListRelatedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 83: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
 	5,   // 84: publira.v1.SitemapEntry.kind:type_name -> publira.v1.SitemapEntryKind
-	129, // 85: publira.v1.ListSitemapEntriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 85: publira.v1.ListSitemapEntriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	55,  // 86: publira.v1.ListSitemapEntriesResponse.entries:type_name -> publira.v1.SitemapEntry
-	139, // 87: publira.v1.CampaignBanner.image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	129, // 88: publira.v1.ListCampaignBannersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	141, // 87: publira.v1.CampaignBanner.image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	131, // 88: publira.v1.ListCampaignBannersRequest.tenant:type_name -> publira.types.v1.TenantContext
 	58,  // 89: publira.v1.ListCampaignBannersResponse.banners:type_name -> publira.v1.CampaignBanner
-	129, // 90: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 91: publira.v1.MarkEpisodeAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
-	129, // 92: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 93: publira.v1.SaveReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 90: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 91: publira.v1.MarkEpisodeAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 92: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 93: publira.v1.SaveReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
 	63,  // 94: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	129, // 95: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 96: publira.v1.GetMyReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 95: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 96: publira.v1.GetMyReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
 	63,  // 97: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	129, // 98: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 99: publira.v1.GetMySeriesProgressRequest.surface:type_name -> publira.types.v1.ClientSurface
-	133, // 100: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
+	131, // 98: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 99: publira.v1.GetMySeriesProgressRequest.surface:type_name -> publira.types.v1.ClientSurface
+	135, // 100: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
 	63,  // 101: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
 	69,  // 102: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
-	132, // 103: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
-	133, // 104: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
+	134, // 103: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
+	135, // 104: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
 	63,  // 105: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
-	129, // 106: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 107: publira.v1.ListMyRecentSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 106: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 107: publira.v1.ListMyRecentSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
 	71,  // 108: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
-	132, // 109: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
-	133, // 110: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
-	129, // 111: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 112: publira.v1.ListMyEpisodeReadsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 109: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
+	135, // 110: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
+	131, // 111: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 112: publira.v1.ListMyEpisodeReadsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	74,  // 113: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
 	6,   // 114: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
-	129, // 115: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 115: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
 	77,  // 116: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
-	130, // 117: publira.v1.GetMyFollowStatusRequest.surface:type_name -> publira.types.v1.ClientSurface
-	129, // 118: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 117: publira.v1.GetMyFollowStatusRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 118: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
 	77,  // 119: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
-	130, // 120: publira.v1.FollowRequest.surface:type_name -> publira.types.v1.ClientSurface
-	129, // 121: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 120: publira.v1.FollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 121: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
 	77,  // 122: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
-	130, // 123: publira.v1.UnfollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	132, // 123: publira.v1.UnfollowRequest.surface:type_name -> publira.types.v1.ClientSurface
 	6,   // 124: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
-	129, // 125: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 126: publira.v1.ListMyFollowsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 125: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 126: publira.v1.ListMyFollowsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	84,  // 127: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
-	132, // 128: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
-	133, // 129: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
-	129, // 130: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 131: publira.v1.ListMyFollowUpdatesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	134, // 128: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
+	135, // 129: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
+	131, // 130: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 131: publira.v1.ListMyFollowUpdatesRequest.surface:type_name -> publira.types.v1.ClientSurface
 	87,  // 132: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
-	129, // 133: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 134: publira.v1.RateEpisodeRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 133: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 134: publira.v1.RateEpisodeRequest.surface:type_name -> publira.types.v1.ClientSurface
 	7,   // 135: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	129, // 136: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 137: publira.v1.GetMyEpisodeRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 136: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 137: publira.v1.GetMyEpisodeRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
 	7,   // 138: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	129, // 139: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 140: publira.v1.GetMySeriesRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 139: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 140: publira.v1.GetMySeriesRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
 	8,   // 141: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
-	129, // 142: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 142: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
 	96,  // 143: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
-	130, // 144: publira.v1.RecordContentViewRequest.surface:type_name -> publira.types.v1.ClientSurface
-	129, // 145: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 144: publira.v1.RecordContentViewRequest.surface:type_name -> publira.types.v1.ClientSurface
+	131, // 145: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
 	10,  // 146: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	141, // 147: publira.v1.StartEpisodeCheckoutRequest.kind:type_name -> publira.types.v1.PurchaseKind
-	129, // 148: publira.v1.StartVolumeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	143, // 147: publira.v1.StartEpisodeCheckoutRequest.kind:type_name -> publira.types.v1.PurchaseKind
+	131, // 148: publira.v1.StartVolumeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
 	10,  // 149: publira.v1.StartVolumeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	129, // 150: publira.v1.StartSeriesRemainderCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 150: publira.v1.StartSeriesRemainderCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
 	10,  // 151: publira.v1.StartSeriesRemainderCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	133, // 152: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
-	132, // 153: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
-	141, // 154: publira.v1.MyPurchase.kind:type_name -> publira.types.v1.PurchaseKind
-	135, // 155: publira.v1.MyPurchase.volume:type_name -> publira.types.v1.Volume
-	142, // 156: publira.v1.MyPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
-	143, // 157: publira.v1.MyPurchase.coin_pack:type_name -> publira.types.v1.PurchasedCoinPack
-	129, // 158: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 159: publira.v1.ListMyPurchasesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	135, // 152: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
+	134, // 153: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
+	143, // 154: publira.v1.MyPurchase.kind:type_name -> publira.types.v1.PurchaseKind
+	137, // 155: publira.v1.MyPurchase.volume:type_name -> publira.types.v1.Volume
+	144, // 156: publira.v1.MyPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
+	145, // 157: publira.v1.MyPurchase.coin_pack:type_name -> publira.types.v1.PurchasedCoinPack
+	131, // 158: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 159: publira.v1.ListMyPurchasesRequest.surface:type_name -> publira.types.v1.ClientSurface
 	105, // 160: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
-	129, // 161: publira.v1.ProcessPaymentWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
-	127, // 162: publira.v1.ProcessPaymentWebhookRequest.headers:type_name -> publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
-	129, // 163: publira.v1.StartStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 161: publira.v1.ProcessPaymentWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
+	129, // 162: publira.v1.ProcessPaymentWebhookRequest.headers:type_name -> publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
+	131, // 163: publira.v1.StartStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,   // 164: publira.v1.StartStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
-	129, // 165: publira.v1.StartTipCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10,  // 166: publira.v1.StartTipCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	129, // 167: publira.v1.StartStoreTipRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,   // 168: publira.v1.StartStoreTipRequest.store:type_name -> publira.v1.InAppPurchaseStore
-	129, // 169: publira.v1.ConfirmStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,   // 170: publira.v1.ConfirmStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
-	105, // 171: publira.v1.ConfirmStorePurchaseResponse.purchase:type_name -> publira.v1.MyPurchase
-	129, // 172: publira.v1.ProcessAppStoreNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	129, // 173: publira.v1.ProcessGooglePlayNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	128, // 174: publira.v1.ProcessGooglePlayNotificationRequest.headers:type_name -> publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry
-	129, // 175: publira.v1.GetMyTicketStateRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 176: publira.v1.GetMyTicketStateRequest.surface:type_name -> publira.types.v1.ClientSurface
-	123, // 177: publira.v1.GetMyTicketStateResponse.open_tickets:type_name -> publira.v1.WaitFreeTicket
-	129, // 178: publira.v1.UseTicketRequest.tenant:type_name -> publira.types.v1.TenantContext
-	130, // 179: publira.v1.UseTicketRequest.surface:type_name -> publira.types.v1.ClientSurface
-	123, // 180: publira.v1.UseTicketResponse.ticket:type_name -> publira.v1.WaitFreeTicket
-	11,  // 181: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	13,  // 182: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	15,  // 183: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	18,  // 184: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
-	22,  // 185: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	26,  // 186: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
-	28,  // 187: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
-	31,  // 188: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
-	35,  // 189: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
-	38,  // 190: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
-	40,  // 191: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
-	42,  // 192: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
-	44,  // 193: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
-	46,  // 194: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
-	48,  // 195: publira.v1.CatalogService.ListMyRecommendedSeries:input_type -> publira.v1.ListMyRecommendedSeriesRequest
-	51,  // 196: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
-	53,  // 197: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
-	56,  // 198: publira.v1.CatalogService.ListSitemapEntries:input_type -> publira.v1.ListSitemapEntriesRequest
-	59,  // 199: publira.v1.CatalogService.ListCampaignBanners:input_type -> publira.v1.ListCampaignBannersRequest
-	61,  // 200: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
-	64,  // 201: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
-	66,  // 202: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
-	68,  // 203: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
-	72,  // 204: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
-	75,  // 205: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
-	78,  // 206: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
-	80,  // 207: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
-	82,  // 208: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
-	85,  // 209: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
-	88,  // 210: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
-	90,  // 211: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
-	92,  // 212: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
-	94,  // 213: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
-	97,  // 214: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
-	99,  // 215: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
-	101, // 216: publira.v1.PurchaseService.StartVolumeCheckout:input_type -> publira.v1.StartVolumeCheckoutRequest
-	103, // 217: publira.v1.PurchaseService.StartSeriesRemainderCheckout:input_type -> publira.v1.StartSeriesRemainderCheckoutRequest
-	106, // 218: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
-	108, // 219: publira.v1.PurchaseService.ProcessPaymentWebhook:input_type -> publira.v1.ProcessPaymentWebhookRequest
-	110, // 220: publira.v1.PurchaseService.StartStorePurchase:input_type -> publira.v1.StartStorePurchaseRequest
-	116, // 221: publira.v1.PurchaseService.ConfirmStorePurchase:input_type -> publira.v1.ConfirmStorePurchaseRequest
-	118, // 222: publira.v1.PurchaseService.ProcessAppStoreNotification:input_type -> publira.v1.ProcessAppStoreNotificationRequest
-	120, // 223: publira.v1.PurchaseService.ProcessGooglePlayNotification:input_type -> publira.v1.ProcessGooglePlayNotificationRequest
-	112, // 224: publira.v1.PurchaseService.StartTipCheckout:input_type -> publira.v1.StartTipCheckoutRequest
-	114, // 225: publira.v1.PurchaseService.StartStoreTip:input_type -> publira.v1.StartStoreTipRequest
-	122, // 226: publira.v1.WaitFreeService.GetMyTicketState:input_type -> publira.v1.GetMyTicketStateRequest
-	125, // 227: publira.v1.WaitFreeService.UseTicket:input_type -> publira.v1.UseTicketRequest
-	12,  // 228: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	14,  // 229: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	17,  // 230: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	20,  // 231: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
-	24,  // 232: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	27,  // 233: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
-	29,  // 234: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
-	32,  // 235: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
-	36,  // 236: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
-	39,  // 237: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
-	41,  // 238: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
-	43,  // 239: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
-	45,  // 240: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
-	47,  // 241: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
-	49,  // 242: publira.v1.CatalogService.ListMyRecommendedSeries:output_type -> publira.v1.ListMyRecommendedSeriesResponse
-	52,  // 243: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
-	54,  // 244: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
-	57,  // 245: publira.v1.CatalogService.ListSitemapEntries:output_type -> publira.v1.ListSitemapEntriesResponse
-	60,  // 246: publira.v1.CatalogService.ListCampaignBanners:output_type -> publira.v1.ListCampaignBannersResponse
-	62,  // 247: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
-	65,  // 248: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
-	67,  // 249: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
-	70,  // 250: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
-	73,  // 251: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
-	76,  // 252: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
-	79,  // 253: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
-	81,  // 254: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
-	83,  // 255: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
-	86,  // 256: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
-	89,  // 257: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
-	91,  // 258: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
-	93,  // 259: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
-	95,  // 260: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
-	98,  // 261: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
-	100, // 262: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
-	102, // 263: publira.v1.PurchaseService.StartVolumeCheckout:output_type -> publira.v1.StartVolumeCheckoutResponse
-	104, // 264: publira.v1.PurchaseService.StartSeriesRemainderCheckout:output_type -> publira.v1.StartSeriesRemainderCheckoutResponse
-	107, // 265: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
-	109, // 266: publira.v1.PurchaseService.ProcessPaymentWebhook:output_type -> publira.v1.ProcessPaymentWebhookResponse
-	111, // 267: publira.v1.PurchaseService.StartStorePurchase:output_type -> publira.v1.StartStorePurchaseResponse
-	117, // 268: publira.v1.PurchaseService.ConfirmStorePurchase:output_type -> publira.v1.ConfirmStorePurchaseResponse
-	119, // 269: publira.v1.PurchaseService.ProcessAppStoreNotification:output_type -> publira.v1.ProcessAppStoreNotificationResponse
-	121, // 270: publira.v1.PurchaseService.ProcessGooglePlayNotification:output_type -> publira.v1.ProcessGooglePlayNotificationResponse
-	113, // 271: publira.v1.PurchaseService.StartTipCheckout:output_type -> publira.v1.StartTipCheckoutResponse
-	115, // 272: publira.v1.PurchaseService.StartStoreTip:output_type -> publira.v1.StartStoreTipResponse
-	124, // 273: publira.v1.WaitFreeService.GetMyTicketState:output_type -> publira.v1.GetMyTicketStateResponse
-	126, // 274: publira.v1.WaitFreeService.UseTicket:output_type -> publira.v1.UseTicketResponse
-	228, // [228:275] is the sub-list for method output_type
-	181, // [181:228] is the sub-list for method input_type
-	181, // [181:181] is the sub-list for extension type_name
-	181, // [181:181] is the sub-list for extension extendee
-	0,   // [0:181] is the sub-list for field type_name
+	105, // 165: publira.v1.StartStorePurchaseResponse.purchase:type_name -> publira.v1.MyPurchase
+	131, // 166: publira.v1.PreviewPromotionCodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	143, // 167: publira.v1.PreviewPromotionCodeRequest.kind:type_name -> publira.types.v1.PurchaseKind
+	10,  // 168: publira.v1.PreviewPromotionCodeRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	131, // 169: publira.v1.StartTipCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10,  // 170: publira.v1.StartTipCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	131, // 171: publira.v1.StartStoreTipRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,   // 172: publira.v1.StartStoreTipRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	131, // 173: publira.v1.ConfirmStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,   // 174: publira.v1.ConfirmStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	105, // 175: publira.v1.ConfirmStorePurchaseResponse.purchase:type_name -> publira.v1.MyPurchase
+	131, // 176: publira.v1.ProcessAppStoreNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	131, // 177: publira.v1.ProcessGooglePlayNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	130, // 178: publira.v1.ProcessGooglePlayNotificationRequest.headers:type_name -> publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry
+	131, // 179: publira.v1.GetMyTicketStateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 180: publira.v1.GetMyTicketStateRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 181: publira.v1.GetMyTicketStateResponse.open_tickets:type_name -> publira.v1.WaitFreeTicket
+	131, // 182: publira.v1.UseTicketRequest.tenant:type_name -> publira.types.v1.TenantContext
+	132, // 183: publira.v1.UseTicketRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 184: publira.v1.UseTicketResponse.ticket:type_name -> publira.v1.WaitFreeTicket
+	11,  // 185: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	13,  // 186: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	15,  // 187: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	18,  // 188: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
+	22,  // 189: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	26,  // 190: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
+	28,  // 191: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
+	31,  // 192: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
+	35,  // 193: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
+	38,  // 194: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
+	40,  // 195: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
+	42,  // 196: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
+	44,  // 197: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
+	46,  // 198: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
+	48,  // 199: publira.v1.CatalogService.ListMyRecommendedSeries:input_type -> publira.v1.ListMyRecommendedSeriesRequest
+	51,  // 200: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
+	53,  // 201: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
+	56,  // 202: publira.v1.CatalogService.ListSitemapEntries:input_type -> publira.v1.ListSitemapEntriesRequest
+	59,  // 203: publira.v1.CatalogService.ListCampaignBanners:input_type -> publira.v1.ListCampaignBannersRequest
+	61,  // 204: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
+	64,  // 205: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
+	66,  // 206: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
+	68,  // 207: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
+	72,  // 208: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
+	75,  // 209: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
+	78,  // 210: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
+	80,  // 211: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
+	82,  // 212: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
+	85,  // 213: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
+	88,  // 214: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
+	90,  // 215: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
+	92,  // 216: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
+	94,  // 217: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
+	97,  // 218: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
+	99,  // 219: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
+	101, // 220: publira.v1.PurchaseService.StartVolumeCheckout:input_type -> publira.v1.StartVolumeCheckoutRequest
+	103, // 221: publira.v1.PurchaseService.StartSeriesRemainderCheckout:input_type -> publira.v1.StartSeriesRemainderCheckoutRequest
+	106, // 222: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
+	108, // 223: publira.v1.PurchaseService.ProcessPaymentWebhook:input_type -> publira.v1.ProcessPaymentWebhookRequest
+	110, // 224: publira.v1.PurchaseService.StartStorePurchase:input_type -> publira.v1.StartStorePurchaseRequest
+	112, // 225: publira.v1.PurchaseService.PreviewPromotionCode:input_type -> publira.v1.PreviewPromotionCodeRequest
+	118, // 226: publira.v1.PurchaseService.ConfirmStorePurchase:input_type -> publira.v1.ConfirmStorePurchaseRequest
+	120, // 227: publira.v1.PurchaseService.ProcessAppStoreNotification:input_type -> publira.v1.ProcessAppStoreNotificationRequest
+	122, // 228: publira.v1.PurchaseService.ProcessGooglePlayNotification:input_type -> publira.v1.ProcessGooglePlayNotificationRequest
+	114, // 229: publira.v1.PurchaseService.StartTipCheckout:input_type -> publira.v1.StartTipCheckoutRequest
+	116, // 230: publira.v1.PurchaseService.StartStoreTip:input_type -> publira.v1.StartStoreTipRequest
+	124, // 231: publira.v1.WaitFreeService.GetMyTicketState:input_type -> publira.v1.GetMyTicketStateRequest
+	127, // 232: publira.v1.WaitFreeService.UseTicket:input_type -> publira.v1.UseTicketRequest
+	12,  // 233: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	14,  // 234: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	17,  // 235: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	20,  // 236: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
+	24,  // 237: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	27,  // 238: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
+	29,  // 239: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
+	32,  // 240: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
+	36,  // 241: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
+	39,  // 242: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
+	41,  // 243: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
+	43,  // 244: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
+	45,  // 245: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
+	47,  // 246: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
+	49,  // 247: publira.v1.CatalogService.ListMyRecommendedSeries:output_type -> publira.v1.ListMyRecommendedSeriesResponse
+	52,  // 248: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
+	54,  // 249: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
+	57,  // 250: publira.v1.CatalogService.ListSitemapEntries:output_type -> publira.v1.ListSitemapEntriesResponse
+	60,  // 251: publira.v1.CatalogService.ListCampaignBanners:output_type -> publira.v1.ListCampaignBannersResponse
+	62,  // 252: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
+	65,  // 253: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
+	67,  // 254: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
+	70,  // 255: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
+	73,  // 256: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
+	76,  // 257: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
+	79,  // 258: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
+	81,  // 259: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
+	83,  // 260: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
+	86,  // 261: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
+	89,  // 262: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
+	91,  // 263: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
+	93,  // 264: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
+	95,  // 265: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
+	98,  // 266: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
+	100, // 267: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
+	102, // 268: publira.v1.PurchaseService.StartVolumeCheckout:output_type -> publira.v1.StartVolumeCheckoutResponse
+	104, // 269: publira.v1.PurchaseService.StartSeriesRemainderCheckout:output_type -> publira.v1.StartSeriesRemainderCheckoutResponse
+	107, // 270: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
+	109, // 271: publira.v1.PurchaseService.ProcessPaymentWebhook:output_type -> publira.v1.ProcessPaymentWebhookResponse
+	111, // 272: publira.v1.PurchaseService.StartStorePurchase:output_type -> publira.v1.StartStorePurchaseResponse
+	113, // 273: publira.v1.PurchaseService.PreviewPromotionCode:output_type -> publira.v1.PreviewPromotionCodeResponse
+	119, // 274: publira.v1.PurchaseService.ConfirmStorePurchase:output_type -> publira.v1.ConfirmStorePurchaseResponse
+	121, // 275: publira.v1.PurchaseService.ProcessAppStoreNotification:output_type -> publira.v1.ProcessAppStoreNotificationResponse
+	123, // 276: publira.v1.PurchaseService.ProcessGooglePlayNotification:output_type -> publira.v1.ProcessGooglePlayNotificationResponse
+	115, // 277: publira.v1.PurchaseService.StartTipCheckout:output_type -> publira.v1.StartTipCheckoutResponse
+	117, // 278: publira.v1.PurchaseService.StartStoreTip:output_type -> publira.v1.StartStoreTipResponse
+	126, // 279: publira.v1.WaitFreeService.GetMyTicketState:output_type -> publira.v1.GetMyTicketStateResponse
+	128, // 280: publira.v1.WaitFreeService.UseTicket:output_type -> publira.v1.UseTicketResponse
+	233, // [233:281] is the sub-list for method output_type
+	185, // [185:233] is the sub-list for method input_type
+	185, // [185:185] is the sub-list for extension type_name
+	185, // [185:185] is the sub-list for extension extendee
+	0,   // [0:185] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -10485,7 +10813,7 @@ func file_publira_v1_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   118,
+			NumMessages:   120,
 			NumExtensions: 0,
 			NumServices:   7,
 		},

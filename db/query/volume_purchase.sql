@@ -126,7 +126,9 @@ INSERT INTO purchases (
     is_test,
     currency,
     kind,
-    provider_promotion_code_id
+    provider_promotion_code_id,
+    list_price,
+    promotion_code_id
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -140,7 +142,9 @@ VALUES (
     sqlc.arg('is_test')::boolean,
     sqlc.arg('currency')::text,
     'purchase',
-    sqlc.narg('provider_promotion_code_id')::text
+    sqlc.narg('provider_promotion_code_id')::text,
+    sqlc.narg('list_price')::integer,
+    sqlc.narg('promotion_code_id')::uuid
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
@@ -152,11 +156,14 @@ RETURNING *;
 -- amount is spread in proportion to the episodes' own prices, or evenly when
 -- none of them has one, and each part is what the running total up to and
 -- including it comes to less what the total before it came to, each rounded
--- down, so the parts add up to the amount exactly.
+-- down, so the parts add up to the amount exactly. The purchase's royalty
+-- basis, its list price before a promotion code's discount, is spread the same
+-- way as royalty_price, which is what a statement credits instead.
 WITH items AS (
     SELECT p.tenant_id,
         p.id AS purchase_id,
         p.price_at_purchase::bigint AS paid,
+        purchase_royalty_basis(p.list_price, p.price_at_purchase)::bigint AS basis,
         ve.episode_id,
         ve."position",
         COALESCE(el.price, 0) AS list_price
@@ -190,12 +197,14 @@ INSERT INTO volume_purchase_episodes (
     episode_id,
     "position",
     list_price,
-    price
+    price,
+    royalty_price
 )
 SELECT running.tenant_id,
     running.purchase_id,
     running.episode_id,
     running."position",
     running.list_price,
-    (running.paid * running.up_to / running.total - running.paid * (running.up_to - running.weight) / running.total)::integer
+    (running.paid * running.up_to / running.total - running.paid * (running.up_to - running.weight) / running.total)::integer,
+    (running.basis * running.up_to / running.total - running.basis * (running.up_to - running.weight) / running.total)::integer
 FROM running;

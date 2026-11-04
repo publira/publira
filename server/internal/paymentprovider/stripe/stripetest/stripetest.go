@@ -88,6 +88,12 @@ func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	if purchase.Kind != "" {
 		metadata[stripe.MetadataKind] = string(purchase.Kind)
 	}
+	// Written whenever either is set, so a purchase naming one without the
+	// other stands for a checkout the provider would have to refuse.
+	if purchase.PromotionCodeID != uuid.Nil || purchase.ListPrice != 0 {
+		metadata[stripe.MetadataListPrice] = strconv.FormatInt(int64(purchase.ListPrice), 10)
+		metadata[stripe.MetadataPromotionCodeID] = purchase.PromotionCodeID.String()
+	}
 	return metadata
 }
 

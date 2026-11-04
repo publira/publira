@@ -207,6 +207,13 @@ func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	expectTenantCurrency(mock, tenantID, "")
 }
 
+// expectNoPromotionCodes answers that the tenant holds no live promotion code.
+func expectNoPromotionCodes(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.TenantHasLivePromotionCode)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"has_live_code"}).AddRow(false))
+}
+
 // expectTenantCurrency answers the payment settings GetTenant reads the
 // currency from: a disabled Stripe row in currency, or none when currency is
 // empty, which leaves the tenant on the platform's JPY.
@@ -267,6 +274,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	expectSiteCopy(mock, tenantID, "ja", "ja", "© Publira", "Site description", "Tagline")
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -333,6 +341,7 @@ func TestGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
 	expectSiteCopy(mock, tenantID, "en", "ja", "© Hoshi Shobo", "Comics from Hoshi Shobo", "Read tonight")
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -375,6 +384,7 @@ func TestGetTenantAnswersTheTaxRateAndTheInvoiceDetails(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"rate_bps", "applies_from"}).AddRow(int32(1000), now))
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -413,6 +423,7 @@ func TestGetTenantStatesNoRateAfterAChangeToNone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"rate_bps", "applies_from"}).AddRow(nil, now))
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -494,6 +505,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -590,6 +602,7 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -628,6 +641,7 @@ func TestGetTenantAnswersTheBrandMarksWithoutWhoAcceptedThem(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -737,6 +751,7 @@ func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 			expectNoSiteCopy(env.mock, tenantID)
 			expectNoTaxRate(env.mock, tenantID)
 			expectPaymentsUnavailable(env.mock, tenantID)
+			expectNoPromotionCodes(env.mock, tenantID)
 			tt.expectTheme(env.mock, tenantID, now)
 
 			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
@@ -768,6 +783,7 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -804,6 +820,7 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -840,6 +857,7 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -911,6 +929,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 	expectNoTaxRate(env.mock, tenantID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectTenantCurrency(env.mock, tenantID, "JPY")
+	expectNoPromotionCodes(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -950,6 +969,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(stripePaymentConfigRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
 	expectTenantCurrency(env.mock, tenantID, "JPY")
+	expectNoPromotionCodes(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -996,6 +1016,7 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 			expectNoSiteCopy(mock, tenantID)
 			expectNoTaxRate(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
+			expectNoPromotionCodes(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -1033,6 +1054,7 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 	expectNoSiteCopy(mock, tenantID)
 	expectNoTaxRate(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
+	expectNoPromotionCodes(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -1136,6 +1158,7 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 			expectNoSiteCopy(mock, tenantID)
 			expectNoTaxRate(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
+			expectNoPromotionCodes(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -1209,6 +1232,7 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 			expectNoSiteCopy(mock, tenantID)
 			expectNoTaxRate(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
+			expectNoPromotionCodes(mock, tenantID)
 			if tc.want == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
 				expectStoreReadinessUnavailable(mock, tenantID, now)
 			}

@@ -367,6 +367,8 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.ProcessPaymentWebhookRequest request);
   $async.Future<$1.StartStorePurchaseResponse> startStorePurchase(
       $pb.ServerContext ctx, $1.StartStorePurchaseRequest request);
+  $async.Future<$1.PreviewPromotionCodeResponse> previewPromotionCode(
+      $pb.ServerContext ctx, $1.PreviewPromotionCodeRequest request);
   $async.Future<$1.ConfirmStorePurchaseResponse> confirmStorePurchase(
       $pb.ServerContext ctx, $1.ConfirmStorePurchaseRequest request);
   $async.Future<$1.ProcessAppStoreNotificationResponse>
@@ -394,6 +396,8 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
         return $1.ProcessPaymentWebhookRequest();
       case 'StartStorePurchase':
         return $1.StartStorePurchaseRequest();
+      case 'PreviewPromotionCode':
+        return $1.PreviewPromotionCodeRequest();
       case 'ConfirmStorePurchase':
         return $1.ConfirmStorePurchaseRequest();
       case 'ProcessAppStoreNotification':
@@ -428,6 +432,9 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
             ctx, request as $1.ProcessPaymentWebhookRequest);
       case 'StartStorePurchase':
         return startStorePurchase(ctx, request as $1.StartStorePurchaseRequest);
+      case 'PreviewPromotionCode':
+        return previewPromotionCode(
+            ctx, request as $1.PreviewPromotionCodeRequest);
       case 'ConfirmStorePurchase':
         return confirmStorePurchase(
             ctx, request as $1.ConfirmStorePurchaseRequest);

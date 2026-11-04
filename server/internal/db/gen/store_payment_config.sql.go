@@ -88,10 +88,28 @@ app_prices AS (
         -- A campaign that no longer undercuts the listing never opens, as
         -- open_episode_campaign_prices reads it, so it sells nothing.
         AND cp.price < ae.price
+),
+discounted_prices AS (
+    SELECT ap.episode_id,
+        ap.price
+    FROM app_prices ap
+    UNION
+    SELECT ap.episode_id,
+        promotion_code_discounted_price(pc.discount_kind, pc.discount_value, ap.price) AS price
+    FROM app_prices ap
+        JOIN promotion_codes pc ON pc.tenant_id = $1
+        AND pc.deleted_at IS NULL
+        AND pc.paused_at IS NULL
+        AND (
+            pc.ends_at IS NULL
+            OR pc.ends_at > NOW()
+        )
+    WHERE promotion_code_applies(pc.target_kind, pc.target_id, ap.episode_id, NULL)
+        AND promotion_code_discounted_price(pc.discount_kind, pc.discount_value, ap.price) > 0
 )
 SELECT price,
     COUNT(*)::integer AS episode_count
-FROM app_prices
+FROM discounted_prices
 GROUP BY price
 ORDER BY price
 `
@@ -102,10 +120,14 @@ type ListTenantStoreProductPricesRow struct {
 }
 
 // The prices a tenant's app sells episodes at, so each one has a store product:
-// each episode's own price, and the price of every campaign on it that has not
-// ended. Drafts, scheduled episodes, and scheduled campaigns count: their
-// product has to exist before they go on sale. An episode counts once at a
-// price, however many of its campaigns share it.
+// each episode's own price, the price of every campaign on it that has not
+// ended, and each of those prices once a promotion code that applies to the
+// episode has taken its discount off, for every code neither deleted, paused,
+// nor past its end. Drafts, scheduled episodes, scheduled campaigns, and codes
+// whose window has not opened count: their product has to exist before they
+// go on sale. A code that takes the whole price off needs no product, since
+// such a purchase is granted without one. An episode counts once at a price,
+// however many of its campaigns and codes share it.
 func (q *Queries) ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantStoreProductPrices, tenantID)
 	if err != nil {

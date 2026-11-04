@@ -114,6 +114,13 @@ const (
 	// so moving from one to another, or from the web to the app, buys a reader
 	// no more requests.
 	actionStartPurchaseCheckout readerAction = "purchase_checkout.start"
+	// A promotion code looked up: quoted by PreviewPromotionCode, or carried
+	// by a checkout or a store purchase started with it, which spends this on
+	// top of actionStartPurchaseCheckout. A code is a secret the tenant handed
+	// out, so this is charged before the code is read, and its budget is what
+	// bounds how fast one account can guess at a tenant's codes. The quote and
+	// the purchases share it, so guessing through either buys no more tries.
+	actionPreviewPromotionCode readerAction = "promotion_code.preview"
 	// An archive of what the install keeps about the reader asked for. It
 	// writes one row, but has the worker read every table that holds the
 	// reader's rows and store the result in the bucket, so it is counted in
@@ -163,6 +170,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionStartSubscriptionCheckout:      minuteDayRules(policy.SubscriptionCheckout),
 		actionPayWithCoins:                   minuteDayRules(policy.CoinPayment),
 		actionStartPurchaseCheckout:          minuteDayRules(policy.PurchaseCheckout),
+		actionPreviewPromotionCode:           minuteDayRules(policy.PromotionCodeAttempt),
 		actionRequestDataExport:              hourDayRules(policy.DataExport),
 	}
 }
