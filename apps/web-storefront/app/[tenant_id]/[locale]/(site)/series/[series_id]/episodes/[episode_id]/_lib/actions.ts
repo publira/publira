@@ -7,6 +7,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import { StartEpisodeCheckoutRequest_Client } from "@publira/api-client/public/catalog";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -263,6 +264,90 @@ export const applyEpisodePromotionCodeAction = async (
 
     throw error;
   }
+};
+
+/** The form of the tip dialog: the amount is the button the reader pressed. */
+const tipFormSchema = episodeFormSchema.extend({
+  amount: z.coerce.number().int().positive(),
+});
+
+/**
+ * Hand the reader to the provider's checkout of a tip to the episode's Authors.
+ *
+ * The provider returns them to the episode with `tip` in the query. A refusal
+ * comes back to the episode saying the tip did not start, because nothing else
+ * on it would change: the amounts a tenant changed since the shared read are
+ * the one thing it could show differently, so that read is dropped first.
+ */
+export const startTipCheckoutAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+
+  const parsed = tipFormSchema.safeParse(
+    toFormDataInput(formData, {
+      amount: "value",
+      episodeId: "value",
+      episodePublicId: "value",
+      locale: "value",
+      seriesPublicId: "value",
+      tenantId: "value",
+    })
+  );
+
+  if (!parsed.success) {
+    redirect("/");
+  }
+
+  const {
+    amount,
+    episodeId,
+    episodePublicId,
+    locale,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
+
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
+  const tenant = await getTenantSiteInfo(tenantId);
+
+  if (!tenant?.acceptsPayments) {
+    redirect(await tenantLocalePath(tenantId, locale, returnTo));
+  }
+
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
+
+  let checkoutURL = "";
+
+  try {
+    const response = await apiClient.purchase.startTipCheckout(
+      {
+        amount,
+        client: StartEpisodeCheckoutRequest_Client.WEB,
+        episodeId,
+        locale,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+
+    checkoutURL = response.checkoutUrl.trim();
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      await redirectToLogin(locale, returnTo, tenantId);
+    }
+
+    rethrowUnclassifiedRpcError(error);
+
+    if (isRpcError(error, Code.FailedPrecondition)) {
+      updateTag(tenantSeriesDetailTag(tenantId));
+    }
+  }
+
+  redirect(
+    checkoutURL ||
+      (await tenantLocalePath(tenantId, locale, `${returnTo}?tip=error`))
+  );
 };
 
 const waitFreeErrorPath = (

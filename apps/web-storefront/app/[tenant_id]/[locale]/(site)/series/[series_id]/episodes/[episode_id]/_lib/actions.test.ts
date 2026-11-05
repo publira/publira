@@ -3,7 +3,10 @@ import {
   ConnectError,
   ErrorInfoSchema,
 } from "@publira/api-client/errors";
-import { PromotionCodeQuote_Refusal } from "@publira/api-client/public/catalog";
+import {
+  PromotionCodeQuote_Refusal,
+  StartEpisodeCheckoutRequest_Client,
+} from "@publira/api-client/public/catalog";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +19,7 @@ const {
   mockRedirectToLogin,
   mockRequirePublicSession,
   mockStartEpisodeCheckout,
+  mockStartTipCheckout,
   mockUpdateTag,
   mockUseTicket,
 } = vi.hoisted(() => ({
@@ -31,6 +35,7 @@ const {
   }),
   mockRequirePublicSession: vi.fn(),
   mockStartEpisodeCheckout: vi.fn(),
+  mockStartTipCheckout: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUseTicket: vi.fn(),
 }));
@@ -45,6 +50,7 @@ vi.mock("#lib/api-client", () => ({
     purchase: {
       previewPromotionCode: mockPreviewPromotionCode,
       startEpisodeCheckout: mockStartEpisodeCheckout,
+      startTipCheckout: mockStartTipCheckout,
     },
     waitFree: { useTicket: mockUseTicket },
   },
@@ -226,6 +232,130 @@ describe("startEpisodeCheckoutAction", () => {
     await expect(startEpisodeCheckoutAction(checkoutForm())).rejects.toThrow(
       "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001?checkout=error"
     );
+  });
+});
+
+const tipForm = (amount = "300"): FormData => {
+  const data = checkoutForm();
+  data.set("amount", amount);
+
+  return data;
+};
+
+describe("startTipCheckoutAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTenantSiteInfo.mockResolvedValue({ acceptsPayments: true });
+    mockRequirePublicSession.mockResolvedValue("session-token");
+  });
+
+  it("Send the reader to the checkout of the amount they pressed", async () => {
+    mockStartTipCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://checkout.stripe.test/tip",
+    });
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:https://checkout.stripe.test/tip"
+    );
+    expect(mockStartTipCheckout).toHaveBeenCalledWith(
+      {
+        amount: 300,
+        client: StartEpisodeCheckoutRequest_Client.WEB,
+        episodeId,
+        locale: "en",
+        tenant: { tenantId },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it.each(["", "0", "-100", "12.5", "abc"])(
+    "Refuse a crafted amount of %j before reaching the API",
+    async (amount) => {
+      const { startTipCheckoutAction } = await import("./actions");
+
+      await expect(startTipCheckoutAction(tipForm(amount))).rejects.toThrow(
+        "NEXT_REDIRECT:/"
+      );
+      expect(mockStartTipCheckout).not.toHaveBeenCalled();
+    }
+  );
+
+  it("Attempt no checkout on a site that takes no payments", async () => {
+    mockGetTenantSiteInfo.mockResolvedValueOnce({ acceptsPayments: false });
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001"
+    );
+    expect(mockRequirePublicSession).not.toHaveBeenCalled();
+    expect(mockStartTipCheckout).not.toHaveBeenCalled();
+  });
+
+  it("Send a reader whose session was rejected to sign in and back", async () => {
+    mockStartTipCheckout.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/login?returnTo=/series/SERIES_001/episodes/EP_001"
+    );
+  });
+
+  it("Say the tip did not start, and drop the amounts a refusal may have outdated", async () => {
+    mockStartTipCheckout.mockRejectedValueOnce(
+      new ConnectError("not offered", Code.FailedPrecondition)
+    );
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001?tip=error"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${tenantId}:series:detail`
+    );
+  });
+
+  it.each([
+    ["a reader the episode credits", Code.PermissionDenied],
+    ["too many attempts", Code.ResourceExhausted],
+    ["an API out of reach", Code.Unavailable],
+  ])("Say the tip did not start for %s", async (_, code) => {
+    mockStartTipCheckout.mockRejectedValueOnce(new ConnectError("no", code));
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001?tip=error"
+    );
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("Say the tip did not start when the API answers no URL", async () => {
+    mockStartTipCheckout.mockResolvedValueOnce({ checkoutUrl: " " });
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001?tip=error"
+    );
+  });
+
+  it("Let a failure nothing classifies reach the error boundary", async () => {
+    mockStartTipCheckout.mockRejectedValueOnce(
+      new ConnectError("bug", Code.Internal)
+    );
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(tipForm())).rejects.toThrow("bug");
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });
 

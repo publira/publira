@@ -176,7 +176,7 @@ describe("listMyPurchases", () => {
     ).toEqual([true, false]);
   });
 
-  it("says which purchases are rentals", async () => {
+  it("says which purchases are rentals and which are tips", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",
       previousToken: "",
@@ -188,6 +188,7 @@ describe("listMyPurchases", () => {
         },
         { id: "PURCHASE02", kind: PurchaseKind.PURCHASE },
         { id: "PURCHASE03" },
+        { id: "PURCHASE04", kind: PurchaseKind.TIP },
       ],
     });
 
@@ -197,6 +198,7 @@ describe("listMyPurchases", () => {
       { id: "PURCHASE01", kind: "rental" },
       { id: "PURCHASE02", kind: "purchase" },
       { id: "PURCHASE03", kind: "purchase" },
+      { id: "PURCHASE04", kind: "tip" },
     ]);
   });
 

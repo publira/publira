@@ -5814,6 +5814,14 @@
         "status_error": "無法顯示你的回應",
         "status_failed": "無法載入你的回應。請稍後再試。"
       },
+      "tip": {
+        "authors": "致{$authors}",
+        "button": "打賞作者",
+        "cancelled": "打賞已取消，未產生任何扣款。",
+        "description": "打賞將送達本章節署名的作者。打賞不會解鎖任何可閱讀的內容。",
+        "start_failed": "無法開始打賞。請稍後再試。",
+        "thanks": "感謝您的打賞。打賞將送達本章節的作者。"
+      },
       "reading_period": "閱讀期限",
       "reading_period_hours": "{$hours :integer}小時",
       "reading_period_unlimited": "無期限",
@@ -5914,11 +5922,12 @@
       "empty_title": "您還沒有購買任何章節",
       "expired": "已過期",
       "expires_at": "有效期至",
-      "history_description": "閱讀期限已結束、已退款或已取消的購買記錄，以及您購買的套餐。您仍然可以開啟章節頁面。",
+      "history_description": "閱讀期限已結束、已退款或已取消的購買記錄，您購買的套餐，以及您的打賞。您仍然可以開啟章節頁面。",
       "history_heading": "購買記錄",
       "kind": "類型",
       "kind_purchase": "購買",
       "kind_rental": "租閱",
+      "kind_tip": "打賞",
       "list_error": "無法顯示您購買的內容",
       "list_failed": "無法載入您購買的內容。請稍後再試。",
       "no_expiry": "無期限",

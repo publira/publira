@@ -5814,6 +5814,14 @@
         "status_error": "リアクション状態を表示できませんでした",
         "status_failed": "リアクション状態を取得できませんでした。時間をおいて再試行してください。"
       },
+      "tip": {
+        "authors": "{$authors}へ",
+        "button": "著者にチップを贈る",
+        "cancelled": "チップの手続きをキャンセルしました。料金は発生していません。",
+        "description": "チップはこのエピソードにクレジットされている著者に届きます。チップで読めるエピソードは増えません。",
+        "start_failed": "チップの手続きを開始できませんでした。時間をおいて再試行してください。",
+        "thanks": "チップをありがとうございます。このエピソードの著者に届けます。"
+      },
       "reading_period": "閲覧期限",
       "reading_period_hours": "{$hours :integer}時間",
       "reading_period_unlimited": "制限なし",
@@ -5914,11 +5922,12 @@
       "empty_title": "購入済みのエピソードはありません",
       "expired": "期限切れ",
       "expires_at": "有効期限",
-      "history_description": "有効期限が終了した購入と、返金または取り消しされた購入、購入したパックです。エピソードの詳細を確認できます。",
+      "history_description": "有効期限が終了した購入と、返金または取り消しされた購入、購入したパック、贈ったチップです。エピソードの詳細を確認できます。",
       "history_heading": "購入履歴",
       "kind": "種別",
       "kind_purchase": "購入",
       "kind_rental": "レンタル",
+      "kind_tip": "チップ",
       "list_error": "購入済み一覧を表示できませんでした",
       "list_failed": "購入済み一覧を取得できませんでした。時間をおいて再試行してください。",
       "no_expiry": "期限なし",

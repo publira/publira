@@ -21,15 +21,11 @@ const getFullscreenContainer = (): HTMLElement | null =>
 const getNullOnServer = () => null;
 
 /**
- * The comments dialog's portal, which follows the element the reader made full
- * screen: a popup appended to `<body>` is not painted while another element
- * owns the screen.
+ * The portal of a dialog opened from the reader, which follows the element the
+ * reader made full screen: a popup appended to `<body>` is not painted while
+ * another element owns the screen.
  */
-export const EpisodeCommentDialogPortal = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+export const EpisodeDialogPortal = ({ children }: { children: ReactNode }) => {
   const fullscreenContainer = useSyncExternalStore(
     subscribeToFullscreen,
     getFullscreenContainer,

@@ -458,7 +458,10 @@
     },
     {
       "name": "Tipping the Authors at the end of an episode",
-      "web": {},
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]/episodes/[episode_id]"],
+        "rpcs": ["StartTipCheckout"]
+      },
       "mobile": {
         "routes": ["/series/:seriesId/episodes/:episodeId", "/checkout/return"],
         "rpcs": ["StartTipCheckout", "StartStoreTip", "ConfirmStorePurchase"]

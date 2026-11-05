@@ -5814,6 +5814,14 @@
         "status_error": "반응 상태를 표시하지 못했습니다",
         "status_failed": "반응 상태를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
       },
+      "tip": {
+        "authors": "{$authors}에게",
+        "button": "작가에게 팁 보내기",
+        "cancelled": "팁 보내기를 취소했습니다. 요금은 청구되지 않았습니다.",
+        "description": "팁은 이 에피소드에 크레딧된 작가에게 전달됩니다. 팁으로 열리는 에피소드는 없습니다.",
+        "start_failed": "팁 보내기를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "thanks": "팁을 보내 주셔서 감사합니다. 이 에피소드의 작가에게 전달됩니다."
+      },
       "reading_period": "열람 기한",
       "reading_period_hours": "{$hours :integer}시간",
       "reading_period_unlimited": "제한 없음",
@@ -5914,11 +5922,12 @@
       "empty_title": "구매한 에피소드가 없습니다",
       "expired": "기한 만료",
       "expires_at": "만료일",
-      "history_description": "열람 기간이 끝났거나 환불 또는 취소된 구매와 구매한 팩입니다. 에피소드 페이지는 계속 열 수 있습니다.",
+      "history_description": "열람 기간이 끝났거나 환불 또는 취소된 구매, 구매한 팩, 보낸 팁입니다. 에피소드 페이지는 계속 열 수 있습니다.",
       "history_heading": "구매 내역",
       "kind": "유형",
       "kind_purchase": "구매",
       "kind_rental": "대여",
+      "kind_tip": "팁",
       "list_error": "구매 목록을 표시할 수 없습니다",
       "list_failed": "구매 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "no_expiry": "기한 없음",

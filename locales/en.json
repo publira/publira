@@ -5814,6 +5814,14 @@
         "status_error": "Could not show your reaction",
         "status_failed": "Could not load your reaction. Please try again later."
       },
+      "tip": {
+        "authors": "To {$authors}",
+        "button": "Tip the Authors",
+        "cancelled": "The tip was cancelled. You have not been charged.",
+        "description": "A tip goes to the Authors credited on this episode. It does not open anything to read.",
+        "start_failed": "Could not start the tip. Try again later.",
+        "thanks": "Thank you for your tip. It goes to the Authors of this episode."
+      },
       "reading_period": "Viewing period",
       "reading_period_hours": ".input {$hours :integer}\n.match $hours\none {{{$hours} hour}}\n* {{{$hours} hours}}",
       "reading_period_unlimited": "Unlimited",
@@ -5914,11 +5922,12 @@
       "empty_title": "You have not bought any episodes",
       "expired": "Expired",
       "expires_at": "Expires",
-      "history_description": "Purchases whose reading period has ended, or that were refunded or canceled, and the packs you bought. You can still open the episode page.",
+      "history_description": "Purchases whose reading period has ended, or that were refunded or canceled, the packs you bought, and the tips you gave. You can still open the episode page.",
       "history_heading": "Purchase history",
       "kind": "Type",
       "kind_purchase": "Purchase",
       "kind_rental": "Rental",
+      "kind_tip": "Tip",
       "list_error": "Could not display your purchases",
       "list_failed": "Could not load your purchases. Please try again later.",
       "no_expiry": "No expiry",

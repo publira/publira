@@ -34,6 +34,7 @@ import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation"
 import { EpisodeNextEpisodeOffer } from "./episode-next-episode-offer";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+import { EpisodeTipControl } from "./episode-tip-control";
 
 /**
  * The reader itself, with the page it opens at and the recorders that keep
@@ -46,10 +47,11 @@ import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recor
  * to once the reader is already looking at the first page. The viewer
  * preferences are read beside it, so a wide viewer is wide from its first paint.
  *
- * What a reader does once they have finished — react to the episode, open the
- * next one, read what others said about it, say something themselves — is the
- * page after the last one. None of it is offered before the pages have been
- * turned, because none of it is a reader's to give or to read until then.
+ * What a reader does once they have finished — react to the episode, tip its
+ * Authors, open the next one, read what others said about it, say something
+ * themselves — is the page after the last one. None of it is offered before
+ * the pages have been turned, because none of it is a reader's to give or to
+ * read until then.
  */
 export const EpisodeViewer = async ({
   commentMode,
@@ -62,6 +64,7 @@ export const EpisodeViewer = async ({
   sales,
   series,
   timeZone,
+  tipAmounts,
 }: {
   /** The series' resolved comment mode from GetSeriesDetail. */
   commentMode: SeriesCommentMode;
@@ -80,6 +83,8 @@ export const EpisodeViewer = async ({
   series: EpisodeSeriesSummary;
   /** The tenant's time zone, for the end of a campaign on the next episode. */
   timeZone: string;
+  /** What a reader may tip the Authors, in the minor unit of the currency. */
+  tipAmounts: readonly number[];
 }) => {
   // An episode whose pages are not published yet says so and nothing else,
   // so the catalog the reader's own chrome needs is read past the guard.
@@ -114,6 +119,8 @@ export const EpisodeViewer = async ({
     getMyViewerPreferences({ accessToken, tenantId }),
   ]);
 
+  const returnTo = episodePath(series.publicId, episode.publicId);
+
   const nextHref = nextEpisode
     ? episodePath(series.publicId, nextEpisode.publicId)
     : undefined;
@@ -130,23 +137,35 @@ export const EpisodeViewer = async ({
       <EpisodeComicViewer
         endPage={
           <div className="grid justify-items-center gap-6">
-            <SectionErrorBoundary
-              title={
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="storefront.episode.reaction.control_error" />
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="storefront.episode.reaction.control_error" />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={<EpisodeReaction.Skeleton />}>
+                  <EpisodeReactionControl
+                    episodeId={episode.id}
+                    ratingCount={episode.ratingCount}
+                    returnTo={returnTo}
+                    seriesPublicId={series.publicId}
+                    tenantId={tenantId}
+                  />
                 </Suspense>
-              }
-            >
-              <Suspense fallback={<EpisodeReaction.Skeleton />}>
-                <EpisodeReactionControl
-                  episodeId={episode.id}
-                  ratingCount={episode.ratingCount}
-                  returnTo={episodePath(series.publicId, episode.publicId)}
+              </SectionErrorBoundary>
+              <Suspense fallback={null}>
+                <EpisodeTipControl
+                  amounts={tipAmounts}
+                  episode={episode}
+                  returnTo={returnTo}
+                  sales={sales}
                   seriesPublicId={series.publicId}
                   tenantId={tenantId}
                 />
               </Suspense>
-            </SectionErrorBoundary>
+            </div>
             <EpisodeNextEpisodeOffer
               sales={sales}
               episodePublicId={episode.publicId}

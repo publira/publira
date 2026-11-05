@@ -167,6 +167,7 @@ const props: Parameters<typeof EpisodeBody>[0] = {
   taxIncluded: false,
   tenantId: "TENANT_001",
   timeZone: "UTC",
+  tipAmounts: [],
 };
 
 const renderBody = async (overrides: Partial<typeof props> = {}) =>

@@ -165,6 +165,8 @@ A signed-in reader can be told in the browser when a new episode is published. `
 
 The checkout button on a paid episode sends the reader to the URL `StartEpisodeCheckout` answers, which is the checkout of the payment provider the tenant chose. The reader comes back to the episode with `checkout=success` or `checkout=cancelled`, but the return opens nothing: the purchase the provider's notification records grants access to the body images. web-storefront holds no provider credentials. The return URL and the webhook are received on the tenant's public domain; the flow and each provider's setup are in the [server README](../../server/README.md#episode-purchases).
 
+**Tip the Authors** on the page after an episode's last page starts a checkout the same way, through `StartTipCheckout`, and only for a site that takes payments and a tenant that takes tips. The reader comes back with `tip=success` or `tip=cancelled`, which the episode says once and takes off the URL; the provider's notification records the tip, which opens nothing.
+
 `POST /api/v1/webhook/payment/<provider>` receives every payment provider's notifications and forwards the raw body and the request headers to `ProcessPaymentWebhook` with the provider id; signatures are verified only on the API server. `POST /api/v1/webhook/payment/app-store` receives App Store Server Notifications V2 and forwards the raw body to `ProcessAppStoreNotification`. `POST /api/v1/webhook/payment/google-play` receives the Google Play real-time developer notifications Cloud Pub/Sub pushes and forwards the raw body and the request headers to `ProcessGooglePlayNotification`, which verifies the push's OIDC token.
 
 ### Inbound email

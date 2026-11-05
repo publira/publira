@@ -15,6 +15,7 @@ import {
   EPISODE_RENTALS_READERS,
   EPISODE_RENTALS_SCENARIO,
   EPISODE_RENTALS_SERIES,
+  EPISODE_RENTALS_TIP,
   EPISODE_RENTALS_VOLUME,
   episodeRentalPath,
   episodeRentalsSeriesPath,
@@ -27,6 +28,7 @@ import {
   WEB_ADMIN_RENTALS_BASE_URL,
   WEB_STOREFRONT_RENTALS_BASE_URL,
 } from "../src/urls";
+import { turnToEndPage } from "../src/viewer";
 
 /**
  * Readers buying through Stripe Checkout, against the stack's stand-in for
@@ -35,7 +37,8 @@ import {
  * buys a volume from the series page and a fifth every episode of the series
  * at the discount the admin sets on the series form. Each pays on the
  * checkout page, returns to the page the sale was started from with what the
- * webhook opened, and finds the sale in the library.
+ * webhook opened, and finds the sale in the library. Another tips the Authors
+ * from the end of an episode, the same way.
  *
  * Last, the admin issues a promotion code from the console: a sixth reader
  * applies it at episode 1's gate, pays the discounted price on a checkout page
@@ -87,18 +90,27 @@ const takePaymentsThroughStripe = async (page: Page) => {
 
 /**
  * Pay on the stand-in's checkout page, which is headed by what was sold and
- * shows the total, and come back to the storefront page `path` names.
+ * shows the total.
  */
+const payOnCheckoutPage = async (
+  page: Page,
+  heading: string,
+  amount: string
+) => {
+  await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
+  await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+  await expect(page.getByText(amount, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Pay" }).click();
+};
+
+/** Pay, and come back to the storefront page `path` names. */
 const pay = async (
   page: Page,
   heading: string,
   amount: string,
   path: string
 ) => {
-  await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
-  await expect(page.getByRole("heading", { name: heading })).toBeVisible();
-  await expect(page.getByText(amount, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Pay" }).click();
+  await payOnCheckoutPage(page, heading, amount);
 
   await page.waitForURL(
     (url) =>
@@ -284,6 +296,63 @@ test.describe("web-storefront checkout", () => {
       card.getByRole("definition").filter({ hasText: "Purchase" })
     ).toBeVisible();
     await expect(card.getByText("No expiry")).toBeVisible();
+  });
+
+  test("a reader tips the Authors at the end of an episode, is thanked, and finds the tip in the library", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      EPISODE_RENTALS_READERS.tipper,
+      episodeRentalPath,
+      WEB_STOREFRONT_RENTALS_BASE_URL
+    );
+
+    const control = page.getByRole("button", { name: "Tip the Authors" });
+
+    expect(await turnToEndPage(page, control)).toBe(true);
+    await control.click();
+
+    const dialog = page.getByRole("dialog", { name: "Tip the Authors" });
+
+    await expect(dialog).toContainText(`To ${EPISODE_RENTALS_AUTHOR.name}`);
+    await Promise.all(
+      EPISODE_RENTALS_TIP.amounts.map((name) =>
+        expect(dialog.getByRole("button", { name })).toBeVisible()
+      )
+    );
+    await dialog.getByRole("button", { name: "¥1,000" }).click();
+
+    await payOnCheckoutPage(
+      page,
+      `Tip for the Authors of ${EPISODE_RENTALS_EPISODE.title}`,
+      "¥1,000"
+    );
+
+    await expect(
+      page.getByText(
+        "Thank you for your tip. It goes to the Authors of this episode."
+      )
+    ).toBeVisible();
+    // The notice is said once, so a reload or a shared link thanks nobody.
+    await expect(page).toHaveURL(
+      `${WEB_STOREFRONT_RENTALS_BASE_URL}${episodeRentalPath}`
+    );
+
+    const card = page.getByRole("article").filter({ hasText: "¥1,000" });
+
+    // The webhook records the tip, and the library reads it once it has.
+    await expect(async () => {
+      await page.goto(`${WEB_STOREFRONT_RENTALS_BASE_URL}/my/library`);
+      await expect(card).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
+    await expect(
+      card.getByRole("definition").filter({ hasText: "Tip" })
+    ).toBeVisible();
+    await expect(
+      card.getByRole("term").filter({ hasText: "Expires" })
+    ).toHaveCount(0);
+    await expect(card.getByText("Expired")).toHaveCount(0);
   });
 
   test("a reader sees an episode's campaign price and its end, buys it at that price, and finds what they paid in the library", async ({

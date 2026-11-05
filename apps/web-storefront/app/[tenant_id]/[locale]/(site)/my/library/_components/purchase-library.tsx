@@ -141,6 +141,29 @@ const purchasedItemLink = (
   }
 };
 
+/** The purchase's `kind` in the reader's words. */
+const PurchaseKindLabel = ({
+  kind,
+  t,
+}: {
+  kind: PurchaseItem["kind"];
+  t: StorefrontMessageAccessor;
+}) => {
+  switch (kind) {
+    case "rental": {
+      return t("storefront.library.kind_rental");
+    }
+
+    case "tip": {
+      return t("storefront.library.kind_tip");
+    }
+
+    default: {
+      return t("storefront.library.kind_purchase");
+    }
+  }
+};
+
 const PurchaseCard = async ({
   issuer,
   purchase,
@@ -154,8 +177,11 @@ const PurchaseCard = async ({
   const t = await getMessagesFor(locale);
   const { href, open, title } = purchasedItemLink(purchase, t);
   // A pack is no reading right: it neither expires nor is read, so it says
-  // when it was bought and what was paid, and whether it was refunded.
+  // when it was bought and what was paid, and whether it was refunded. A tip
+  // is none either, and it is the one of the two that has a type to name.
   const isCoinPack = purchase.item.kind === "coin_pack";
+  const isTip = purchase.kind === "tip";
+  const opensNothing = isCoinPack || isTip;
 
   const expiryLabel = purchase.expiresAt
     ? formatDateTime(purchase.expiresAt, { fallback: "-", locale, timeZone })
@@ -190,7 +216,7 @@ const PurchaseCard = async ({
             {t("storefront.library.canceled")}
           </span>
         ) : null}
-        {purchase.refundedAt || purchase.revokedAt || isCoinPack ? null : (
+        {purchase.refundedAt || purchase.revokedAt || opensNothing ? null : (
           <span
             className={
               purchase.isActive
@@ -209,9 +235,7 @@ const PurchaseCard = async ({
           <div>
             <dt>{t("storefront.library.kind")}</dt>
             <dd className="mt-1 text-foreground">
-              {purchase.kind === "rental"
-                ? t("storefront.library.kind_rental")
-                : t("storefront.library.kind_purchase")}
+              <PurchaseKindLabel kind={purchase.kind} t={t} />
             </dd>
           </div>
         )}
@@ -245,7 +269,7 @@ const PurchaseCard = async ({
             )}
           </dd>
         </div>
-        {isCoinPack ? null : (
+        {opensNothing ? null : (
           <div>
             <dt>{t("storefront.library.expires_at")}</dt>
             <dd className="mt-1 text-foreground">

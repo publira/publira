@@ -48,6 +48,7 @@ import { EpisodeAccessReason } from "./_components/episode-access-reason";
 import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import { EpisodeRatingGate } from "./_components/episode-rating-gate";
+import { TipNotice } from "./_components/tip-notice";
 import { WaitFreeNotice } from "./_components/wait-free-notice";
 import {
   COMMENT_TOKEN_PARAM,
@@ -327,6 +328,7 @@ const EpisodeContent = async (
     previewPages,
     previousEpisode,
     series,
+    tipAmounts,
   } = result.value;
 
   const { commentMode, labelPublicId, waitFree, workCredits } =
@@ -444,6 +446,7 @@ const EpisodeContent = async (
                     taxIncluded={sales.taxIncluded}
                     tenantId={tenantId}
                     timeZone={timeZone}
+                    tipAmounts={tipAmounts}
                     waitFree={waitFree}
                   />
                 </Suspense>
@@ -463,6 +466,7 @@ const EpisodeContent = async (
                 coins={purchaseSearchParams.coins}
               />
               <WaitFreeNotice waitFree={purchaseSearchParams.wait_free} />
+              <TipNotice tip={purchaseSearchParams.tip} />
 
               {/* A running head: which instalment this is. The number is part of
               the title line rather than a chip beside it, because a serial

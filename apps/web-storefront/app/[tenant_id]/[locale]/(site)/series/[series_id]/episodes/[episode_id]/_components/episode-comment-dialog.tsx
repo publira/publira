@@ -12,7 +12,7 @@ import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
 import { postEpisodeCommentAction } from "../_lib/comment-actions";
-import { EpisodeCommentDialogPortal } from "./episode-comment-dialog-portal";
+import { EpisodeDialogPortal } from "./episode-dialog-portal";
 
 /**
  * The box to write in, whole: the placeholder is an attribute and waits on the
@@ -93,7 +93,7 @@ export const EpisodeCommentDialog = ({
         <Message message="storefront.episode.comments.title" />
       </Suspense>
     </Dialog.Trigger>
-    <EpisodeCommentDialogPortal>
+    <EpisodeDialogPortal>
       <Dialog.Backdrop />
       <Dialog.Viewport>
         <Dialog.Popup className="flex max-h-[min(85svh,48rem)] flex-col gap-4 text-left">
@@ -153,6 +153,6 @@ export const EpisodeCommentDialog = ({
           </Dialog.Close>
         </Dialog.Popup>
       </Dialog.Viewport>
-    </EpisodeCommentDialogPortal>
+    </EpisodeDialogPortal>
   </Dialog.Root>
 );

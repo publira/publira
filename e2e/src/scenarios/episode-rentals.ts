@@ -3,7 +3,8 @@
  * it deletes the tenant and writes it again, which takes the payment settings
  * the suite stores and the sales its readers paid for with it.
  *
- * The series takes 10% off the rest of it bought in one checkout.
+ * The series takes 10% off the rest of it bought in one checkout, and the
+ * tenant takes tips.
  */
 
 export const EPISODE_RENTALS_SCENARIO = "550_episode_rentals";
@@ -23,7 +24,7 @@ export const EPISODE_RENTALS_SERIES = {
 
 /** The Author episode 1 credits, with half of each sale. */
 export const EPISODE_RENTALS_AUTHOR = {
-  name: "Rental Artist",
+  name: "Mina Ito",
   publicId: "RntlAUTHAAA1",
 } as const;
 
@@ -31,6 +32,13 @@ export const EPISODE_RENTALS_AUTHOR = {
 export const EPISODE_RENTALS_EPISODE = {
   publicId: "RntlEPSDAAA1",
   title: "Rental Episode 001-01",
+} as const;
+
+/** The amounts the tenant takes tips in, on top of the one the tipper gave. */
+export const EPISODE_RENTALS_TIP = {
+  amounts: ["¥100", "¥300", "¥1,000"],
+  /** What the tipper gave before the suite starts. */
+  given: "¥300",
 } as const;
 
 /**
@@ -95,6 +103,12 @@ export const EPISODE_RENTALS_READERS = {
     email: "rental-renter@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA1",
+  },
+  /** Holds episode 1 and gave a tip of 300 yen on it, and tips again. */
+  tipper: {
+    email: "rental-tipper@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA9",
   },
   /** Buys the volume from the series page. */
   volumeBuyer: {
