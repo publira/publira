@@ -4,6 +4,12 @@
 # Publira's own manifest, then the production flavor, unsigned, from a manifest
 # whose app name Xcode would misread if it were not escaped. Needs macOS with
 # Xcode, and `task mobile:deps` run first.
+#
+#   ios-build-test.sh [dev|production-simulator|production-device]
+#
+# With no argument it runs every part, one after another. Each part generates
+# the configuration it builds from, so `Test / Mobile iOS` runs them in jobs of
+# their own: a part added here is a matrix entry in ci.yml too.
 set -euo pipefail
 
 MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,23 +55,13 @@ expect_associated_domains() {
   done
 }
 
-status_before="$(git status --porcelain --untracked-files=all)"
-
-echo '--- dev flavor, simulator, Publira'"'"'s own manifest'
-dart run scripts/app_manifest.dart --generate
-flutter build ios --simulator --debug --flavor dev
-expect_info "${simulator_app}" CFBundleIdentifier dev.publira.app.dev
-expect_info "${simulator_app}" CFBundleDisplayName 'Publira Dev'
-# A manifest naming no Google client registers its bundle identifier instead.
-expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 dev.publira.app
-expect_associated_domains "${simulator_app}" 'applinks:localhost?mode=developer' \
-  'webcredentials:localhost?mode=developer'
-
 # `//` starts an xcconfig comment, `$(...)` a reference, and a trailing `;` is
 # dropped, so each reaches the app only when the generator escaped it.
 app_name='Reader // $(HOME) $5 Club;'
 manifest="${work}/app.yaml"
-cat > "${manifest}" << YAML
+
+write_tenant_manifest() {
+  cat > "${manifest}" << YAML
 schemaVersion: 1
 app:
   name: '${app_name}'
@@ -77,60 +73,96 @@ ios:
   bundleIdentifier: com.example.reader
   googleSignInClientId: 123456789012-abc123.apps.googleusercontent.com
 YAML
-export PUBLIRA_BASE_URL=https://reader.example.com
+  export PUBLIRA_BASE_URL=https://reader.example.com
+}
 
-echo '--- production flavor, simulator, a tenant manifest'
-dart run scripts/build.dart "${manifest}" ios --simulator --debug
-expect_info "${simulator_app}" CFBundleIdentifier com.example.reader
-expect_info "${simulator_app}" CFBundleDisplayName "${app_name}"
-expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
-  com.googleusercontent.apps.123456789012-abc123
-expect_associated_domains "${simulator_app}" \
-  'applinks:reader.example.com?mode=developer' \
-  'webcredentials:reader.example.com?mode=developer'
+run_dev() {
+  echo '--- dev flavor, simulator, Publira'"'"'s own manifest'
+  dart run scripts/app_manifest.dart --generate
+  flutter build ios --simulator --debug --flavor dev
+  expect_info "${simulator_app}" CFBundleIdentifier dev.publira.app.dev
+  expect_info "${simulator_app}" CFBundleDisplayName 'Publira Dev'
+  # A manifest naming no Google client registers its bundle identifier instead.
+  expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 dev.publira.app
+  expect_associated_domains "${simulator_app}" 'applinks:localhost?mode=developer' \
+    'webcredentials:localhost?mode=developer'
+}
 
-echo '--- production flavor refusing another tenant host'
-# Straight to Flutter, since scripts/build.dart refuses a host of its own.
-if flutter build ios --simulator --debug --flavor production \
-  --dart-define=PUBLIRA_TENANT_HOST=other.example.com \
-  --dart-define=PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL}" 2>&1 | tee "${work}/refused.log"; then
-  fail 'a production build for another tenant host was not refused'
-fi
-grep -F 'Production builds require --dart-define=PUBLIRA_TENANT_HOST=reader.example.com' \
-  "${work}/refused.log" > /dev/null ||
-  fail 'the production build failed without the tenant host check refusing it'
-
-echo '--- production flavor, device, unsigned, a tenant manifest'
-dart run scripts/build.dart "${manifest}" ios --no-codesign
-expect_info "${device_app}" CFBundleIdentifier com.example.reader
-expect_info "${device_app}" CFBundleDisplayName "${app_name}"
-expect_info "${device_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
-  com.googleusercontent.apps.123456789012-abc123
-
-# An unsigned build carries no entitlements, and iOS refuses ad hoc signing,
-# so the store configuration's are checked where Xcode resolves them from.
-release_settings="$(xcodebuild -project ios/Runner.xcodeproj -target Runner \
-  -configuration Release-production -showBuildSettings 2> /dev/null)"
 release_setting() {
   awk -v name="$1" '$1 == name && $2 == "=" { sub(/^[^=]*= /, ""); print; exit }' \
     <<< "${release_settings}"
 }
-entitlements="$(release_setting CODE_SIGN_ENTITLEMENTS)"
-[[ "${entitlements}" == Runner/RunnerRelease.entitlements ]] ||
-  fail "Release-production signs with '${entitlements}', not Runner/RunnerRelease.entitlements"
-[[ "$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)" == reader.example.com ]] ||
-  fail "Release-production resolves PUBLIRA_ASSOCIATED_DOMAIN to '$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)'"
-# The links the app opens, and the site's passkeys it signs in with.
-index=0
-for service in applinks webcredentials; do
-  # shellcheck disable=SC2016 # The reference Xcode expands, written literally.
-  domain="${service}"':$(PUBLIRA_ASSOCIATED_DOMAIN)'
-  [[ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.developer.associated-domains:${index}" \
-    "ios/${entitlements}")" == "${domain}" ]] ||
-    fail "ios/${entitlements} does not claim ${domain}"
-  echo "Release-production: ${entitlements} claims ${domain} = ${service}:reader.example.com"
-  index=$((index + 1))
-done
+
+run_production_simulator() {
+  write_tenant_manifest
+
+  echo '--- production flavor, simulator, a tenant manifest'
+  dart run scripts/build.dart "${manifest}" ios --simulator --debug
+  expect_info "${simulator_app}" CFBundleIdentifier com.example.reader
+  expect_info "${simulator_app}" CFBundleDisplayName "${app_name}"
+  expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
+    com.googleusercontent.apps.123456789012-abc123
+  expect_associated_domains "${simulator_app}" \
+    'applinks:reader.example.com?mode=developer' \
+    'webcredentials:reader.example.com?mode=developer'
+
+  echo '--- production flavor refusing another tenant host'
+  # Straight to Flutter, since scripts/build.dart refuses a host of its own.
+  if flutter build ios --simulator --debug --flavor production \
+    --dart-define=PUBLIRA_TENANT_HOST=other.example.com \
+    --dart-define=PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL}" 2>&1 | tee "${work}/refused.log"; then
+    fail 'a production build for another tenant host was not refused'
+  fi
+  grep -F 'Production builds require --dart-define=PUBLIRA_TENANT_HOST=reader.example.com' \
+    "${work}/refused.log" > /dev/null ||
+    fail 'the production build failed without the tenant host check refusing it'
+}
+
+run_production_device() {
+  write_tenant_manifest
+
+  echo '--- production flavor, device, unsigned, a tenant manifest'
+  dart run scripts/build.dart "${manifest}" ios --no-codesign
+  expect_info "${device_app}" CFBundleIdentifier com.example.reader
+  expect_info "${device_app}" CFBundleDisplayName "${app_name}"
+  expect_info "${device_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
+    com.googleusercontent.apps.123456789012-abc123
+
+  # An unsigned build carries no entitlements, and iOS refuses ad hoc signing,
+  # so the store configuration's are checked where Xcode resolves them from.
+  release_settings="$(xcodebuild -project ios/Runner.xcodeproj -target Runner \
+    -configuration Release-production -showBuildSettings 2> /dev/null)"
+  entitlements="$(release_setting CODE_SIGN_ENTITLEMENTS)"
+  [[ "${entitlements}" == Runner/RunnerRelease.entitlements ]] ||
+    fail "Release-production signs with '${entitlements}', not Runner/RunnerRelease.entitlements"
+  [[ "$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)" == reader.example.com ]] ||
+    fail "Release-production resolves PUBLIRA_ASSOCIATED_DOMAIN to '$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)'"
+  # The links the app opens, and the site's passkeys it signs in with.
+  index=0
+  for service in applinks webcredentials; do
+    # shellcheck disable=SC2016 # The reference Xcode expands, written literally.
+    domain="${service}"':$(PUBLIRA_ASSOCIATED_DOMAIN)'
+    [[ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.developer.associated-domains:${index}" \
+      "ios/${entitlements}")" == "${domain}" ]] ||
+      fail "ios/${entitlements} does not claim ${domain}"
+    echo "Release-production: ${entitlements} claims ${domain} = ${service}:reader.example.com"
+    index=$((index + 1))
+  done
+}
+
+status_before="$(git status --porcelain --untracked-files=all)"
+
+case "${1:-all}" in
+  dev) run_dev ;;
+  production-simulator) run_production_simulator ;;
+  production-device) run_production_device ;;
+  all)
+    run_dev
+    run_production_simulator
+    run_production_device
+    ;;
+  *) fail "unknown part '$1': dev, production-simulator, or production-device" ;;
+esac
 
 status_after="$(git status --porcelain --untracked-files=all)"
 if [[ "${status_after}" != "${status_before}" ]]; then

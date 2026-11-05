@@ -162,7 +162,7 @@ Implementation:
 | `Test / Mobile Android` | A production APK from `mobile/config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E Build` | `task server:build` once, uploaded as `mobile-e2e-build` for `Test / Mobile E2E (live)`. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
 | `Test / Mobile E2E (<group>)` | `task mobile:test-integration` on an Android emulator of its own: `device` runs every group the app answers on the device and saves the Gradle cache every Android job restores, and `live`, after `Test / Mobile E2E Build`, runs the live group against the public API, the worker, and the seed, on a stack of only the containers it reads. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
-| `Test / Mobile iOS` | `task mobile:test-ios-build` on macOS: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile iOS (<part>)` | `task mobile:test-ios-build -- <part>` on macOS, each part on a runner of its own: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. `dev` builds the dev flavor for the simulator, `production-simulator` the production flavor for the simulator and its refusal of another tenant host, and `production-device` the production flavor for a device and the entitlements of its store configuration. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E Build` | `task e2e:build` once, uploaded as `e2e-build` for every `Test / E2E` entry. | [`e2e/README.md`](../../e2e/README.md#ci) |
 | `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main`, `admin`, or `docs-screenshots`: readiness, Playwright, teardown, on a stack of its own. The `tracing` entry alone runs its stack with `PUBLIRA_E2E_TRACING=on`. On `main`, saves the Playwright browser cache every E2E job restores. | [`e2e/README.md`](../../e2e/README.md#groups) |
 | `Test / E2E Report` | Only when a `Test / E2E` entry failed: every entry's blob report merged into one HTML report. | [`e2e/README.md`](../../e2e/README.md#ci) |
@@ -215,7 +215,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile`, `Test / Mobile Android` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Flutter and Android setup actions |
-| `Test / Mobile iOS` | The inputs of the Xcode build: `mobile/ios/**`, `mobile/pubspec.yaml` and `mobile/pubspec.lock`, `mobile/config/**`, the app manifest and build scripts (`mobile/scripts/app_manifest.dart`, `mobile/scripts/app_manifest/**`, `mobile/scripts/build.dart`), `mobile/scripts/ios-check-app-config.sh`, `mobile/scripts/ios-build-test.sh`, `mobile/Taskfile.yaml`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Flutter setup action. Dart under `mobile/lib/` is left to `Test / Mobile` and `Test / Mobile Android` |
+| `Test / Mobile iOS (<part>)` | The inputs of the Xcode build: `mobile/ios/**`, `mobile/pubspec.yaml` and `mobile/pubspec.lock`, `mobile/config/**`, the app manifest and build scripts (`mobile/scripts/app_manifest.dart`, `mobile/scripts/app_manifest/**`, `mobile/scripts/build.dart`), `mobile/scripts/ios-check-app-config.sh`, `mobile/scripts/ios-build-test.sh`, `mobile/Taskfile.yaml`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Flutter setup action. Dart under `mobile/lib/` is left to `Test / Mobile` and `Test / Mobile Android` |
 | `Test / Mobile E2E Build`, `Test / Mobile E2E (<group>)` | mobile, E2E lifecycle scripts and the image the server runs in (`e2e/server/**`), domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Flutter and Android setup actions |
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, locales, server, db, the documentation's PNG screenshots under `docs/`, build inputs, storage init and seed |
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, `server/internal/platformsearch/**`, the outbox handler, the search handlers and the `publiractl search` command, `db/query/catalog_index.sql`, `db/query/platform_search.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, the image the server runs in, Taskfile, Playwright configuration, the catalog search and search settings specs with `e2e/src/**` and the Platform Console's search screen, and `db/seeds/**` |
@@ -279,7 +279,7 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 ## Flutter SDK setup
 
-`Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E (<group>)`, and `Test / Mobile iOS` set Flutter up through the [`flutter-setup`](../actions/flutter-setup/action.yml) action, which restores the SDK from its cache or installs it with [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh). The version is `FLUTTER_VERSION` in the `env` block of [`ci.yml`](./ci.yml), the single source of truth for it. The script reads `FLUTTER_VERSION`, `FLUTTER_ROOT`, `PUBLIRA_FLUTTER_PRECACHE`, `GITHUB_TOKEN`, and `GITHUB_PATH` from the environment, so it installs the same pinned SDK on a workstation as it does on a runner.
+`Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E (<group>)`, and `Test / Mobile iOS (<part>)` set Flutter up through the [`flutter-setup`](../actions/flutter-setup/action.yml) action, which restores the SDK from its cache or installs it with [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh). The version is `FLUTTER_VERSION` in the `env` block of [`ci.yml`](./ci.yml), the single source of truth for it. The script reads `FLUTTER_VERSION`, `FLUTTER_ROOT`, `PUBLIRA_FLUTTER_PRECACHE`, `GITHUB_TOKEN`, and `GITHUB_PATH` from the environment, so it installs the same pinned SDK on a workstation as it does on a runner.
 
 ## Failure triage
 
@@ -299,7 +299,7 @@ The job then runs against its own Postgres service and must succeed through `mig
    | `Test / Mobile E2E Build` | `task server:build` |
    | `Test / Mobile E2E (device)` | `PUBLIRA_LIVE_API=false task mobile:test-integration`, with an emulator booted and no stack |
    | `Test / Mobile E2E (live)` | `task mobile:e2e -- --plain-name 'live public API'` |
-   | `Test / Mobile iOS` | `task mobile:deps` then `task mobile:test-ios-build`, on a Mac with Xcode |
+   | `Test / Mobile iOS (<part>)` | `task mobile:deps` then `task mobile:test-ios-build -- <part>`, on a Mac with Xcode, or every part with `task mobile:test-ios-build` |
    | `Test / E2E Build` | `task e2e:build` |
    | `Test / E2E (<group> <shard>)` | `PUBLIRA_E2E_GROUP=<group> task e2e -- --shard=<shard>` |
    | `Test / E2E (tracing 1/1)` | `task e2e:tracing` |
