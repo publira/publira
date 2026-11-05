@@ -402,7 +402,7 @@ A tenant admin creates API keys for the tenant's own systems through `AdminApiKe
 
 Each request a key makes is charged to it against the platform policy's `api_key_request` limit, on the same counters as the reader limits, and one past it answers `resource_exhausted` with `Retry-After`.
 
-The edge does not forward the admin API yet, so a key reaches `publira server` only over the network the web apps call it on (#5357).
+The edge does not forward the admin API, so a key reaches `publira server` only over the network the web apps call it on.
 
 ## Tenant webhooks
 
