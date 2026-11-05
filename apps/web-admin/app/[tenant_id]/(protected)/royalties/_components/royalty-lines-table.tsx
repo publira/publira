@@ -6,10 +6,11 @@ import { formatPlainYearMonth } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import type { AdminMessageKey } from "#components/message";
 import { formatShareBps } from "#lib/credit-share";
 import { formatTenantAmount } from "#lib/price";
 import { groupRoyaltyLinesByCreator } from "#lib/royalty-lines";
-import type { RoyaltyLine } from "#lib/royalty-lines";
+import type { RoyaltyLine, RoyaltyLineSource } from "#lib/royalty-lines";
 
 interface RoyaltyLinesTableProps {
   /**
@@ -26,6 +27,21 @@ const LEADING_COLUMN_COUNT = 7;
 
 /** The tax rate and the tax, after the payout, on a month that states tax. */
 const TAX_COLUMN_COUNT = 2;
+
+/** What a line that is not one of sales says under its episode. */
+const SOURCE_LABELS: Record<
+  Exclude<RoyaltyLineSource, "sale">,
+  AdminMessageKey
+> = {
+  subscription: "admin.royalties.lines.subscription",
+  tip: "admin.royalties.lines.tip",
+};
+
+const SOURCE_SUBTOTAL_LABELS: Record<RoyaltyLineSource, AdminMessageKey> = {
+  sale: "admin.royalties.lines.sale_subtotal",
+  subscription: "admin.royalties.lines.subscription_subtotal",
+  tip: "admin.royalties.lines.tip_subtotal",
+};
 
 /** A subtotal's cells under the tax columns: none, or the tax it includes. */
 const TaxSubtotalCells = ({
@@ -50,9 +66,9 @@ const TaxSubtotalCells = ({
  * and what those lines pay them. Each group is its own `<tbody>`, so the author
  * row heads exactly the rows under it. An adjustment names the closed month it
  * takes refunds back from under its episode, which is what tells its negative
- * figures from a line of the month's own sales. A line of subscription payments
- * says so under its episode too, and an author who has one is given a subtotal
- * for sales and one for subscription shares above their total. Where a line
+ * figures from a line of the month's own sales. A line of tips or of
+ * subscription payments says so under its episode too, and an author who has
+ * one is given a subtotal for each source above their total. Where a line
  * has a tax rate, every line gives its rate and the tax its payout includes,
  * and the Author's total the tax of their lines.
  */
@@ -148,13 +164,13 @@ export const RoyaltyLinesTable = ({
               <Table.Cell>{line.seriesTitle}</Table.Cell>
               <Table.Cell>
                 {line.episodeTitle}
-                {line.source === "subscription" ? (
+                {line.source === "sale" ? null : (
                   <span className="block text-xs text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-3 w-28" />}>
-                      <Message message="admin.royalties.lines.subscription" />
+                      <Message message={SOURCE_LABELS[line.source]} />
                     </Suspense>
                   </span>
-                ) : null}
+                )}
                 {line.adjustedPeriod ? (
                   <span className="block text-xs text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
@@ -208,60 +224,30 @@ export const RoyaltyLinesTable = ({
               ) : null}
             </Table.Row>
           ))}
-          {group.sourceSubtotals ? (
-            <>
-              <Table.Row>
-                <Table.Cell
-                  className="text-right text-muted-foreground"
-                  colSpan={LEADING_COLUMN_COUNT}
+          {group.sourceSubtotals?.map(({ payoutAmount, source }) => (
+            <Table.Row key={source}>
+              <Table.Cell
+                className="text-right text-muted-foreground"
+                colSpan={LEADING_COLUMN_COUNT}
+              >
+                <Suspense
+                  fallback={<SkeletonLine className="ml-auto h-4 w-32" />}
                 >
-                  <Suspense
-                    fallback={<SkeletonLine className="ml-auto h-4 w-24" />}
-                  >
-                    <Message message="admin.royalties.lines.sale_subtotal" />
-                  </Suspense>
-                </Table.Cell>
-                <Table.Cell className="text-right">
-                  {formatTenantAmount(group.sourceSubtotals.sale, {
-                    currency,
-                    locale,
-                  })}
-                </Table.Cell>
-                {withTax ? (
-                  <TaxSubtotalCells
-                    currency={currency}
-                    locale={locale}
-                    tax={null}
-                  />
-                ) : null}
-              </Table.Row>
-              <Table.Row>
-                <Table.Cell
-                  className="text-right text-muted-foreground"
-                  colSpan={LEADING_COLUMN_COUNT}
-                >
-                  <Suspense
-                    fallback={<SkeletonLine className="ml-auto h-4 w-32" />}
-                  >
-                    <Message message="admin.royalties.lines.subscription_subtotal" />
-                  </Suspense>
-                </Table.Cell>
-                <Table.Cell className="text-right">
-                  {formatTenantAmount(group.sourceSubtotals.subscription, {
-                    currency,
-                    locale,
-                  })}
-                </Table.Cell>
-                {withTax ? (
-                  <TaxSubtotalCells
-                    currency={currency}
-                    locale={locale}
-                    tax={null}
-                  />
-                ) : null}
-              </Table.Row>
-            </>
-          ) : null}
+                  <Message message={SOURCE_SUBTOTAL_LABELS[source]} />
+                </Suspense>
+              </Table.Cell>
+              <Table.Cell className="text-right">
+                {formatTenantAmount(payoutAmount, { currency, locale })}
+              </Table.Cell>
+              {withTax ? (
+                <TaxSubtotalCells
+                  currency={currency}
+                  locale={locale}
+                  tax={null}
+                />
+              ) : null}
+            </Table.Row>
+          ))}
           <Table.Row>
             <Table.Cell
               className="text-right text-muted-foreground"

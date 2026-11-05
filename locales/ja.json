@@ -4755,10 +4755,12 @@
         "subtotal": "小計",
         "sale_subtotal": "販売の小計",
         "subscription_subtotal": "サブスクリプションの小計",
+        "tip_subtotal": "チップの小計",
         "no_role": "—",
         "no_tax_rate": "—",
         "adjustment": "{$period}分の返金の調整",
         "subscription": "サブスクリプションの分配",
+        "tip": "チップ",
         "columns": {
           "creator": "著者",
           "series": "シリーズ",

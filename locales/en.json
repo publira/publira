@@ -4755,10 +4755,12 @@
         "subtotal": "Subtotal",
         "sale_subtotal": "Sales subtotal",
         "subscription_subtotal": "Subscription subtotal",
+        "tip_subtotal": "Tip subtotal",
         "no_role": "—",
         "no_tax_rate": "—",
         "adjustment": "Refund adjustment for {$period}",
         "subscription": "Subscription share",
+        "tip": "Tip",
         "columns": {
           "creator": "Author",
           "series": "Series",

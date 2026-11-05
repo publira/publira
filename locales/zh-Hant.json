@@ -4755,10 +4755,12 @@
         "subtotal": "小計",
         "sale_subtotal": "銷售小計",
         "subscription_subtotal": "訂閱小計",
+        "tip_subtotal": "打賞小計",
         "no_role": "—",
         "no_tax_rate": "—",
         "adjustment": "{$period}的退款調整",
         "subscription": "訂閱分潤",
+        "tip": "打賞",
         "columns": {
           "creator": "作者",
           "series": "系列",

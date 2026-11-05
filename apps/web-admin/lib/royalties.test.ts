@@ -101,6 +101,24 @@ const mappedSubscriptionLine = {
   source: "subscription",
 };
 
+const wireTipLine = {
+  ...wireLine,
+  grossAmount: 300n,
+  lineNumber: 4,
+  payoutAmount: 90n,
+  saleCount: 1,
+  source: RoyaltyLineSource.TIP,
+};
+
+const mappedTipLine = {
+  ...mappedLine,
+  grossAmount: 300,
+  lineNumber: 4,
+  payoutAmount: 90,
+  saleCount: 1,
+  source: "tip",
+};
+
 const wireTotals = {
   adjustment: -500n,
   gross: 5000n,
@@ -212,7 +230,7 @@ describe("royalties", () => {
     mockApi.previewRoyaltyStatement.mockResolvedValueOnce({
       currency: "USD",
       endsAt: "2026-08-31T15:00:00Z",
-      lines: [wireLine, wireAdjustment, wireSubscriptionLine],
+      lines: [wireLine, wireAdjustment, wireSubscriptionLine, wireTipLine],
       period: "2026-08",
       startsAt: "2026-07-31T15:00:00Z",
       timeZone: "Asia/Tokyo",
@@ -225,7 +243,12 @@ describe("royalties", () => {
         creatorSubtotals: [],
         currency: "USD",
         endsAt: "2026-08-31T15:00:00Z",
-        lines: [mappedLine, mappedAdjustment, mappedSubscriptionLine],
+        lines: [
+          mappedLine,
+          mappedAdjustment,
+          mappedSubscriptionLine,
+          mappedTipLine,
+        ],
         ok: true,
         period: "2026-08",
         startsAt: "2026-07-31T15:00:00Z",

@@ -184,6 +184,24 @@ type RawLine = Pick<
   | "taxRateBps"
 >;
 
+const mapLineSource = (source: RawLine["source"]): RoyaltyLine["source"] => {
+  switch (source) {
+    case RoyaltyLineSource.SUBSCRIPTION: {
+      return "subscription";
+    }
+
+    case RoyaltyLineSource.TIP: {
+      return "tip";
+    }
+
+    // A line the release before closed, or a server that predates the field,
+    // states no source, and every line it knew was a sale.
+    default: {
+      return "sale";
+    }
+  }
+};
+
 const mapLine = (line: RawLine): RoyaltyLine => ({
   adjustedPeriod: line.adjustedPeriod ?? "",
   creatorName: line.creatorName ?? "",
@@ -197,10 +215,7 @@ const mapLine = (line: RawLine): RoyaltyLine => ({
   saleCount: line.saleCount ?? 0,
   seriesTitle: line.seriesTitle ?? "",
   shareBps: line.shareBps ?? 0,
-  // A line the release before closed, or a server that predates the field,
-  // states no source, and every line it knew was a sale.
-  source:
-    line.source === RoyaltyLineSource.SUBSCRIPTION ? "subscription" : "sale",
+  source: mapLineSource(line.source),
   taxAmount: optionalAmount(line.taxAmount),
   taxRateBps: line.taxRateBps ?? null,
 });

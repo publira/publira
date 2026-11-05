@@ -62,8 +62,44 @@ describe("groupRoyaltyLinesByCreator", () => {
     ]);
 
     expect(artist?.payoutSubtotal).toBe(1764);
-    expect(artist?.sourceSubtotals).toEqual({ sale: 1500, subscription: 264 });
+    expect(artist?.sourceSubtotals).toEqual([
+      { payoutAmount: 1500, source: "sale" },
+      { payoutAmount: 264, source: "subscription" },
+    ]);
     expect(writer?.sourceSubtotals).toBeNull();
+  });
+
+  it("subtotals a tip line and its adjustment apart from sales", () => {
+    const adjustment = {
+      ...line(3, "ARTIST", "Artist", -20, "tip"),
+      adjustedPeriod: "2026-07",
+    };
+
+    const [artist] = groupRoyaltyLinesByCreator([
+      line(1, "ARTIST", "Artist", 1500),
+      line(2, "ARTIST", "Artist", 90, "tip"),
+      adjustment,
+    ]);
+
+    expect(artist?.payoutSubtotal).toBe(1570);
+    expect(artist?.sourceSubtotals).toEqual([
+      { payoutAmount: 1500, source: "sale" },
+      { payoutAmount: 70, source: "tip" },
+    ]);
+  });
+
+  it("gives an author with every source a subtotal for each, in the order of the lines", () => {
+    const [artist] = groupRoyaltyLinesByCreator([
+      line(1, "ARTIST", "Artist", 1500),
+      line(2, "ARTIST", "Artist", 90, "tip"),
+      line(3, "ARTIST", "Artist", 294, "subscription"),
+    ]);
+
+    expect(artist?.sourceSubtotals).toEqual([
+      { payoutAmount: 1500, source: "sale" },
+      { payoutAmount: 90, source: "tip" },
+      { payoutAmount: 294, source: "subscription" },
+    ]);
   });
 
   it("keeps two authors with the same name apart", () => {
