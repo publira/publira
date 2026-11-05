@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-11-02
+updated: 2026-11-05
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -16,7 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
-| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, mail, and anonymous read limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
+| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, mail, reader action, and anonymous read limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, viewer, and notification settings limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -89,10 +89,18 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 | **Email requests per source per hour** and **per day** | The same mail counted by the client address that asked for it, across every address and every tenant, so one client cannot mail a long list of strangers |
 | **In-app purchase confirmations per reader per minute** and **per day** | Store transactions one reader hands the server to verify with Apple or Google |
 | **Wait-for-free ticket uses per reader per minute** and **per day** | One reader's requests to spend a wait-for-free ticket. A spent ticket is already limited by its series' recharge time; this bounds the refused attempts |
+| **Terms agreements per reader per minute** and **per day** | The agreements one reader sends to their tenant's terms of service and privacy policy when asked to agree to a revised version |
+| **Account link requests per reader per minute** and **per day** | One reader's requests to link an Apple or Google account to their account |
+| **Icon changes per reader per minute** and **per day** | The times one reader uploads, picks, or removes their icon |
+| **Passkey actions per reader per minute** and **per day** | The times one reader begins registering a passkey or confirming a request with one, or renames or removes one |
+| **Checkouts of the rest of a series per reader per minute** and **per day** | The checkouts of the rest of a series one reader starts |
+| **Subscriptions started per reader per minute** and **per day** | The subscriptions one reader starts, through a checkout on the site or through the store in the tenant's app, counted together |
+| **Coin payments per reader per minute** and **per day** | The episodes one reader pays for with coins |
+| **Purchases started per reader per minute** and **per day** | The purchases of an episode, a volume, or a coin pack one reader starts, on the web or through the app's store, counted together |
+| **Promotion code lookups per reader per minute** and **per day** | The promotion codes one reader has looked up, by a quote or by a purchase started with one, counted together. Each lookup counts before the code is read, so this bounds how fast one account can guess at a tenant's codes |
+| **Data download requests per reader per hour** and **per day** | The copies of their data one reader asks for, as [Reader accounts](../4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. Each one reads every record the install keeps about the reader |
 
-![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, and wait-for-free ticket uses, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
-
-Nine more limits of this kind have no field on the Security page yet: the agreements one reader sends to their tenant's terms of service and privacy policy when asked to agree to a revised version, 10 per minute and 50 per day unless set with `publiractl policy set --legal-page-agreement-per-minute` and `--legal-page-agreement-per-day`; the requests one reader makes to link an Apple or Google account to their account, 5 per minute and 20 per day unless set with `--identity-link-per-minute` and `--identity-link-per-day`; the times one reader uploads, picks, or removes their icon, 5 per minute and 20 per day unless set with `--icon-change-per-minute` and `--icon-change-per-day`; the times one reader begins registering a passkey or confirming a request with one, or renames or removes one, 10 per minute and 50 per day unless set with `--passkey-per-minute` and `--passkey-per-day`; the checkouts of the rest of a series one reader starts, 10 per minute and 50 per day unless set with `--series-remainder-checkout-per-minute` and `--series-remainder-checkout-per-day`; the subscriptions one reader starts, through a checkout on the site or through the store in the tenant's app, counted together, 10 per minute and 50 per day unless set with `--subscription-checkout-per-minute` and `--subscription-checkout-per-day`; the episodes one reader pays for with coins, 20 per minute and 500 per day unless set with `--coin-payment-per-minute` and `--coin-payment-per-day`; the purchases of an episode, a volume, or a coin pack one reader starts, on the web or through the app's store, counted together, 10 per minute and 100 per day unless set with `--purchase-checkout-per-minute` and `--purchase-checkout-per-day`; and the copies of their data one reader asks for, as [Reader accounts](../4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes, 1 per hour and 1 per day unless set with `--data-export-per-hour` and `--data-export-per-day`, since each one reads every record the install keeps about the reader. Saving the Security page keeps whatever they are set to.
+![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, wait-for-free ticket uses, and what one reader does, from agreeing to the terms to asking for a copy of their data, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 

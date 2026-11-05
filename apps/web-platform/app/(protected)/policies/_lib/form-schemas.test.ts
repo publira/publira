@@ -14,6 +14,16 @@ const securityValues = {
   anonymous_read_images_per_10_seconds: "2400",
   anonymous_read_public_api_per_10_seconds: "640",
   anonymous_read_search_per_10_seconds: "80",
+  coin_payment_per_day: "500",
+  coin_payment_per_minute: "20",
+  data_export_per_day: "1",
+  data_export_per_hour: "1",
+  icon_change_per_day: "20",
+  icon_change_per_minute: "5",
+  identity_link_per_day: "20",
+  identity_link_per_minute: "5",
+  legal_page_agreement_per_day: "50",
+  legal_page_agreement_per_minute: "10",
   login_attempts_per_account_per_day: "50",
   login_attempts_per_account_per_minute: "5",
   login_attempts_per_source_per_day: "300",
@@ -22,11 +32,21 @@ const securityValues = {
   mail_requests_per_address_per_hour: "5",
   mail_requests_per_source_per_day: "150",
   mail_requests_per_source_per_hour: "30",
+  passkey_per_day: "50",
+  passkey_per_minute: "10",
   password_verification_per_day: "50",
   password_verification_per_minute: "5",
+  promotion_code_attempt_per_day: "30",
+  promotion_code_attempt_per_minute: "5",
+  purchase_checkout_per_day: "100",
+  purchase_checkout_per_minute: "10",
   revision: "3",
+  series_remainder_checkout_per_day: "50",
+  series_remainder_checkout_per_minute: "10",
   store_purchase_confirmation_per_day: "100",
   store_purchase_confirmation_per_minute: "10",
+  subscription_checkout_per_day: "50",
+  subscription_checkout_per_minute: "10",
   wait_free_ticket_use_per_day: "100",
   wait_free_ticket_use_per_minute: "10",
 };
@@ -106,6 +126,102 @@ describe("securityPolicyFormSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  describe.each([
+    {
+      field: "legalPageAgreement",
+      name: "legal_page_agreement",
+      setting: "Terms agreements",
+      window: "Minute",
+    },
+    {
+      field: "identityLink",
+      name: "identity_link",
+      setting: "Account link requests",
+      window: "Minute",
+    },
+    {
+      field: "iconChange",
+      name: "icon_change",
+      setting: "Icon changes",
+      window: "Minute",
+    },
+    {
+      field: "passkey",
+      name: "passkey",
+      setting: "Passkey actions",
+      window: "Minute",
+    },
+    {
+      field: "seriesRemainderCheckout",
+      name: "series_remainder_checkout",
+      setting: "Checkouts of the rest of a series",
+      window: "Minute",
+    },
+    {
+      field: "subscriptionCheckout",
+      name: "subscription_checkout",
+      setting: "Subscriptions started",
+      window: "Minute",
+    },
+    {
+      field: "coinPayment",
+      name: "coin_payment",
+      setting: "Coin payments",
+      window: "Minute",
+    },
+    {
+      field: "purchaseCheckout",
+      name: "purchase_checkout",
+      setting: "Purchases started",
+      window: "Minute",
+    },
+    {
+      field: "promotionCodeAttempt",
+      name: "promotion_code_attempt",
+      setting: "Promotion code lookups",
+      window: "Minute",
+    },
+    {
+      field: "dataExport",
+      name: "data_export",
+      setting: "Data download requests",
+      window: "Hour",
+    },
+  ])("the $setting limit", ({ field, name, setting, window }) => {
+    const shorter = `${name}_per_${window.toLowerCase()}`;
+
+    it("reads both of its values", async () => {
+      const result = await parseSecurity({
+        [`${name}_per_day`]: "70",
+        [shorter]: "7",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        [`${field}PerDay`]: 70,
+        [`${field}Per${window}`]: 7,
+      });
+    });
+
+    it("refuses a daily value below the shorter window's and names the limit", async () => {
+      const result = await parseSecurity({
+        [`${name}_per_day`]: "6",
+        [shorter]: "7",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.message)).toContain(
+        `The daily limit for ${setting} must be at least its per-${window.toLowerCase()} limit.`
+      );
+    });
+
+    it("refuses a value of zero", async () => {
+      const result = await parseSecurity({ [shorter]: "0" });
+
+      expect(result.success).toBe(false);
+    });
   });
 
   it("reads the sign-in attempt limits", async () => {

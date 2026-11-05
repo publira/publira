@@ -54,7 +54,27 @@ export const updatePlatformSecurityPolicyAction = async (
           publicApi: data.anonymousReadPublicApi,
           search: data.anonymousReadSearch,
         },
+        coinPayment: {
+          perDay: data.coinPaymentPerDay,
+          perMinute: data.coinPaymentPerMinute,
+        },
+        dataExport: {
+          perDay: data.dataExportPerDay,
+          perHour: data.dataExportPerHour,
+        },
         disposableEmailDomainsUrl: data.disposableEmailDomainsUrl,
+        iconChange: {
+          perDay: data.iconChangePerDay,
+          perMinute: data.iconChangePerMinute,
+        },
+        identityLink: {
+          perDay: data.identityLinkPerDay,
+          perMinute: data.identityLinkPerMinute,
+        },
+        legalPageAgreement: {
+          perDay: data.legalPageAgreementPerDay,
+          perMinute: data.legalPageAgreementPerMinute,
+        },
         loginAttemptsPerAccount: {
           perDay: data.loginAttemptsPerAccountPerDay,
           perMinute: data.loginAttemptsPerAccountPerMinute,
@@ -73,13 +93,33 @@ export const updatePlatformSecurityPolicyAction = async (
         },
         mfaRequiredForPlatformOperator: data.mfaRequiredForPlatformOperator,
         mfaRequiredForTenantAdmin: data.mfaRequiredForTenantAdmin,
+        passkey: {
+          perDay: data.passkeyPerDay,
+          perMinute: data.passkeyPerMinute,
+        },
         passwordVerification: {
           perDay: data.passwordVerificationPerDay,
           perMinute: data.passwordVerificationPerMinute,
         },
+        promotionCodeAttempt: {
+          perDay: data.promotionCodeAttemptPerDay,
+          perMinute: data.promotionCodeAttemptPerMinute,
+        },
+        purchaseCheckout: {
+          perDay: data.purchaseCheckoutPerDay,
+          perMinute: data.purchaseCheckoutPerMinute,
+        },
+        seriesRemainderCheckout: {
+          perDay: data.seriesRemainderCheckoutPerDay,
+          perMinute: data.seriesRemainderCheckoutPerMinute,
+        },
         storePurchaseConfirmation: {
           perDay: data.storePurchaseConfirmationPerDay,
           perMinute: data.storePurchaseConfirmationPerMinute,
+        },
+        subscriptionCheckout: {
+          perDay: data.subscriptionCheckoutPerDay,
+          perMinute: data.subscriptionCheckoutPerMinute,
         },
         tenantCoinsAllowed: data.tenantCoinsAllowed,
         waitFreeTicketUse: {

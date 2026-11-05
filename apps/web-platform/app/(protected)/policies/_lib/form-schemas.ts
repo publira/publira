@@ -115,9 +115,49 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "anonymous_read_search_per_10_seconds",
   },
+  coinPaymentPerDay: {
+    kind: "value",
+    name: "coin_payment_per_day",
+  },
+  coinPaymentPerMinute: {
+    kind: "value",
+    name: "coin_payment_per_minute",
+  },
+  dataExportPerDay: {
+    kind: "value",
+    name: "data_export_per_day",
+  },
+  dataExportPerHour: {
+    kind: "value",
+    name: "data_export_per_hour",
+  },
   disposableEmailDomainsUrl: {
     kind: "value",
     name: "disposable_email_domains_url",
+  },
+  iconChangePerDay: {
+    kind: "value",
+    name: "icon_change_per_day",
+  },
+  iconChangePerMinute: {
+    kind: "value",
+    name: "icon_change_per_minute",
+  },
+  identityLinkPerDay: {
+    kind: "value",
+    name: "identity_link_per_day",
+  },
+  identityLinkPerMinute: {
+    kind: "value",
+    name: "identity_link_per_minute",
+  },
+  legalPageAgreementPerDay: {
+    kind: "value",
+    name: "legal_page_agreement_per_day",
+  },
+  legalPageAgreementPerMinute: {
+    kind: "value",
+    name: "legal_page_agreement_per_minute",
   },
   loginAttemptsPerAccountPerDay: {
     kind: "value",
@@ -159,6 +199,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "mfa_required_for_tenant_admin",
   },
+  passkeyPerDay: {
+    kind: "value",
+    name: "passkey_per_day",
+  },
+  passkeyPerMinute: {
+    kind: "value",
+    name: "passkey_per_minute",
+  },
   passwordVerificationPerDay: {
     kind: "value",
     name: "password_verification_per_day",
@@ -167,7 +215,31 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "password_verification_per_minute",
   },
+  promotionCodeAttemptPerDay: {
+    kind: "value",
+    name: "promotion_code_attempt_per_day",
+  },
+  promotionCodeAttemptPerMinute: {
+    kind: "value",
+    name: "promotion_code_attempt_per_minute",
+  },
+  purchaseCheckoutPerDay: {
+    kind: "value",
+    name: "purchase_checkout_per_day",
+  },
+  purchaseCheckoutPerMinute: {
+    kind: "value",
+    name: "purchase_checkout_per_minute",
+  },
   revision: "value",
+  seriesRemainderCheckoutPerDay: {
+    kind: "value",
+    name: "series_remainder_checkout_per_day",
+  },
+  seriesRemainderCheckoutPerMinute: {
+    kind: "value",
+    name: "series_remainder_checkout_per_minute",
+  },
   storePurchaseConfirmationPerDay: {
     kind: "value",
     name: "store_purchase_confirmation_per_day",
@@ -175,6 +247,14 @@ export const securityPolicyFormFields = {
   storePurchaseConfirmationPerMinute: {
     kind: "value",
     name: "store_purchase_confirmation_per_minute",
+  },
+  subscriptionCheckoutPerDay: {
+    kind: "value",
+    name: "subscription_checkout_per_day",
+  },
+  subscriptionCheckoutPerMinute: {
+    kind: "value",
+    name: "subscription_checkout_per_minute",
   },
   tenantCoinsAllowed: {
     kind: "value",
@@ -209,6 +289,36 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
     "platform.policy.security.login_attempts_per_source_title"
   );
 
+  const legalPageAgreement = t(
+    "platform.policy.security.legal_page_agreement_title"
+  );
+
+  const identityLink = t("platform.policy.security.identity_link_title");
+
+  const iconChange = t("platform.policy.security.icon_change_title");
+
+  const passkey = t("platform.policy.security.passkey_title");
+
+  const seriesRemainderCheckout = t(
+    "platform.policy.security.series_remainder_checkout_title"
+  );
+
+  const subscriptionCheckout = t(
+    "platform.policy.security.subscription_checkout_title"
+  );
+
+  const coinPayment = t("platform.policy.security.coin_payment_title");
+
+  const purchaseCheckout = t(
+    "platform.policy.security.purchase_checkout_title"
+  );
+
+  const promotionCodeAttempt = t(
+    "platform.policy.security.promotion_code_attempt_title"
+  );
+
+  const dataExport = t("platform.policy.security.data_export_title");
+
   const listUrlInvalid = t(
     "platform.policy.security.disposable_email_domains_url_invalid"
   );
@@ -230,12 +340,22 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
         t("platform.policy.security.anonymous_read_search_title"),
         MIN_ANONYMOUS_READS.search
       ),
+      coinPaymentPerDay: limitSchema(t, coinPayment),
+      coinPaymentPerMinute: limitSchema(t, coinPayment),
+      dataExportPerDay: limitSchema(t, dataExport),
+      dataExportPerHour: limitSchema(t, dataExport),
       disposableEmailDomainsUrl: optionalTrimmedString(
         MAX_LIST_URL_BYTES,
         listUrlInvalid
       )
         .refine(fitsListUrlBytes, listUrlInvalid)
         .refine(isListUrl, listUrlInvalid),
+      iconChangePerDay: limitSchema(t, iconChange),
+      iconChangePerMinute: limitSchema(t, iconChange),
+      identityLinkPerDay: limitSchema(t, identityLink),
+      identityLinkPerMinute: limitSchema(t, identityLink),
+      legalPageAgreementPerDay: limitSchema(t, legalPageAgreement),
+      legalPageAgreementPerMinute: limitSchema(t, legalPageAgreement),
       loginAttemptsPerAccountPerDay: limitSchema(t, loginPerAccount),
       loginAttemptsPerAccountPerMinute: limitSchema(t, loginPerAccount),
       loginAttemptsPerSourcePerDay: limitSchema(t, loginPerSource),
@@ -252,11 +372,21 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
         (value) => value === "on",
         z.boolean()
       ),
+      passkeyPerDay: limitSchema(t, passkey),
+      passkeyPerMinute: limitSchema(t, passkey),
       passwordVerificationPerDay: limitSchema(t, password),
       passwordVerificationPerMinute: limitSchema(t, password),
+      promotionCodeAttemptPerDay: limitSchema(t, promotionCodeAttempt),
+      promotionCodeAttemptPerMinute: limitSchema(t, promotionCodeAttempt),
+      purchaseCheckoutPerDay: limitSchema(t, purchaseCheckout),
+      purchaseCheckoutPerMinute: limitSchema(t, purchaseCheckout),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
+      seriesRemainderCheckoutPerDay: limitSchema(t, seriesRemainderCheckout),
+      seriesRemainderCheckoutPerMinute: limitSchema(t, seriesRemainderCheckout),
       storePurchaseConfirmationPerDay: limitSchema(t, storePurchase),
       storePurchaseConfirmationPerMinute: limitSchema(t, storePurchase),
+      subscriptionCheckoutPerDay: limitSchema(t, subscriptionCheckout),
+      subscriptionCheckoutPerMinute: limitSchema(t, subscriptionCheckout),
       tenantCoinsAllowed: z.preprocess((value) => value === "on", z.boolean()),
       waitFreeTicketUsePerDay: limitSchema(t, waitFreeTicketUse),
       waitFreeTicketUsePerMinute: limitSchema(t, waitFreeTicketUse),
@@ -305,6 +435,76 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: loginPerSource,
           }),
           short: "loginAttemptsPerSourcePerHour",
+        },
+        {
+          day: "legalPageAgreementPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: legalPageAgreement,
+          }),
+          short: "legalPageAgreementPerMinute",
+        },
+        {
+          day: "identityLinkPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: identityLink,
+          }),
+          short: "identityLinkPerMinute",
+        },
+        {
+          day: "iconChangePerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: iconChange,
+          }),
+          short: "iconChangePerMinute",
+        },
+        {
+          day: "passkeyPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: passkey,
+          }),
+          short: "passkeyPerMinute",
+        },
+        {
+          day: "seriesRemainderCheckoutPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: seriesRemainderCheckout,
+          }),
+          short: "seriesRemainderCheckoutPerMinute",
+        },
+        {
+          day: "subscriptionCheckoutPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: subscriptionCheckout,
+          }),
+          short: "subscriptionCheckoutPerMinute",
+        },
+        {
+          day: "coinPaymentPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: coinPayment,
+          }),
+          short: "coinPaymentPerMinute",
+        },
+        {
+          day: "purchaseCheckoutPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: purchaseCheckout,
+          }),
+          short: "purchaseCheckoutPerMinute",
+        },
+        {
+          day: "promotionCodeAttemptPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: promotionCodeAttempt,
+          }),
+          short: "promotionCodeAttemptPerMinute",
+        },
+        {
+          day: "dataExportPerDay",
+          message: t("platform.policy.day_below_hour", {
+            setting: dataExport,
+          }),
+          short: "dataExportPerHour",
         },
       ])
     );

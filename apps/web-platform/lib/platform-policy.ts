@@ -46,16 +46,26 @@ export interface ReadLimits {
 
 export interface PlatformSecurityPolicy {
   anonymousReadLimits: ReadLimits;
+  coinPayment: MinuteDay;
+  dataExport: HourDay;
   /** Where the disposable email domain list is read from; empty for none. */
   disposableEmailDomainsUrl: string;
+  iconChange: MinuteDay;
+  identityLink: MinuteDay;
+  legalPageAgreement: MinuteDay;
   loginAttemptsPerAccount: MinuteDay;
   loginAttemptsPerSource: HourDay;
   mailRequestsPerAddress: HourDay;
   mailRequestsPerSource: HourDay;
   mfaRequiredForPlatformOperator: boolean;
   mfaRequiredForTenantAdmin: boolean;
+  passkey: MinuteDay;
   passwordVerification: MinuteDay;
+  promotionCodeAttempt: MinuteDay;
+  purchaseCheckout: MinuteDay;
+  seriesRemainderCheckout: MinuteDay;
   storePurchaseConfirmation: MinuteDay;
+  subscriptionCheckout: MinuteDay;
   tenantCoinsAllowed: boolean;
   waitFreeTicketUse: MinuteDay;
 }
@@ -128,16 +138,26 @@ type RawCommunityLimitDefaults = Pick<
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
   | "anonymousReadLimits"
+  | "coinPayment"
   | "communityLimitDefaults"
+  | "dataExport"
   | "disposableEmailDomainsUrl"
+  | "iconChange"
+  | "identityLink"
+  | "legalPageAgreement"
   | "loginAttemptsPerAccount"
   | "loginAttemptsPerSource"
   | "mailRequestsPerAddress"
   | "mailRequestsPerSource"
   | "mfaRequiredForPlatformOperator"
   | "mfaRequiredForTenantAdmin"
+  | "passkey"
   | "passwordVerification"
+  | "promotionCodeAttempt"
+  | "purchaseCheckout"
+  | "seriesRemainderCheckout"
   | "storePurchaseConfirmation"
+  | "subscriptionCheckout"
   | "tenantCoinsAllowed"
   | "waitFreeTicketUse"
 >;
@@ -179,11 +199,25 @@ const toCommunityLimits = (
   viewerPreferences: toMinuteDay(community?.viewerPreferences),
 });
 
+const toReaderLimits = (policy: RawPlatformPolicy | undefined) => ({
+  coinPayment: toMinuteDay(policy?.coinPayment),
+  dataExport: toHourDay(policy?.dataExport),
+  iconChange: toMinuteDay(policy?.iconChange),
+  identityLink: toMinuteDay(policy?.identityLink),
+  legalPageAgreement: toMinuteDay(policy?.legalPageAgreement),
+  passkey: toMinuteDay(policy?.passkey),
+  promotionCodeAttempt: toMinuteDay(policy?.promotionCodeAttempt),
+  purchaseCheckout: toMinuteDay(policy?.purchaseCheckout),
+  seriesRemainderCheckout: toMinuteDay(policy?.seriesRemainderCheckout),
+  subscriptionCheckout: toMinuteDay(policy?.subscriptionCheckout),
+});
+
 export const toPlatformPolicy = (
   policy: RawPlatformPolicy | undefined
 ): PlatformPolicy => ({
   community: toCommunityLimits(policy?.communityLimitDefaults),
   security: {
+    ...toReaderLimits(policy),
     anonymousReadLimits: toReadLimits(policy?.anonymousReadLimits),
     disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     loginAttemptsPerAccount: toMinuteDay(policy?.loginAttemptsPerAccount),

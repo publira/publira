@@ -294,9 +294,7 @@ for (const locale of DOCS_LOCALES) {
               page.getByLabel(t("platform.policy.security.password_per_minute"))
             ),
             docsField(
-              page.getByLabel(
-                t("platform.policy.security.wait_free_ticket_use_per_day")
-              )
+              page.getByLabel(t("platform.policy.security.data_export_per_day"))
             ),
           ],
           locale,

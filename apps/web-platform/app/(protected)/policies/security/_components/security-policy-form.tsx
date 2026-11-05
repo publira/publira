@@ -137,6 +137,186 @@ export const SecurityPolicyForm = ({
               <Message message="platform.policy.security.wait_free_ticket_use_per_day" />
             </Suspense>
           </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.legalPageAgreement.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="legal_page_agreement_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.legal_page_agreement_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.legalPageAgreement.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="legal_page_agreement_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.legal_page_agreement_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.identityLink.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="identity_link_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.identity_link_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.identityLink.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="identity_link_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.identity_link_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.iconChange.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="icon_change_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.icon_change_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.iconChange.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="icon_change_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.icon_change_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.passkey.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="passkey_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.passkey_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.passkey.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="passkey_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.passkey_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.seriesRemainderCheckout.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="series_remainder_checkout_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.series_remainder_checkout_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.seriesRemainderCheckout.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="series_remainder_checkout_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.series_remainder_checkout_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.subscriptionCheckout.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="subscription_checkout_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.subscription_checkout_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.subscriptionCheckout.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="subscription_checkout_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.subscription_checkout_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.coinPayment.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="coin_payment_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.coin_payment_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.coinPayment.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="coin_payment_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.coin_payment_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.purchaseCheckout.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="purchase_checkout_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.purchase_checkout_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.purchaseCheckout.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="purchase_checkout_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.purchase_checkout_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.promotionCodeAttempt.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="promotion_code_attempt_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.promotion_code_attempt_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.promotionCodeAttempt.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="promotion_code_attempt_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.promotion_code_attempt_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.dataExport.perHour}
+            disabled={Boolean(loadErrorMessage)}
+            name="data_export_per_hour"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.data_export_per_hour" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.dataExport.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="data_export_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.data_export_per_day" />
+            </Suspense>
+          </PolicyLimitField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <PolicyLimitField
