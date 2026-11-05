@@ -140,4 +140,6 @@ export { UsersIcon } from "./users-icon";
 
 export { WalletIcon } from "./wallet-icon";
 
+export { WebhookIcon } from "./webhook-icon";
+
 export { WifiOffIcon } from "./wifi-off-icon";

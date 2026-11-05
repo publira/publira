@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -119,7 +119,9 @@ On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBL
 
 ### The outbox
 
-The worker's metrics follow the outbox, through which every mail, push notification, and cache revalidation is sent, as [The outbox](./10-scheduled-jobs.md#the-outbox-mail-push-and-cache-revalidation) describes. Each carries the entry's kind as `outbox.event_type`.
+The worker's metrics follow the outbox, through which every mail, push notification, cache revalidation, and webhook delivery is sent, as [The outbox](./10-scheduled-jobs.md#the-outbox-mail-push-and-cache-revalidation) describes. Each carries the entry's kind as `outbox.event_type`.
+
+A `webhook_delivery` entry sends an event to a server a tenant runs, and is tried 20 times before it is given up, whatever `PUBLIRA_OUTBOX_MAX_ATTEMPTS` says. Its retries and dead entries say that a tenant's endpoint is down or refusing, which its Tenant admin sees and resends from the console, not that the install is failing. Alert on `outbox.event_type` `webhook_delivery` apart from the rest, or leave it out of the alert on dead entries.
 
 | Metric | What it counts | What to watch |
 | --- | --- | --- |

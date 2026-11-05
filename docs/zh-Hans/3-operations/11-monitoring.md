@@ -2,7 +2,8 @@
 title: 监控
 description: 通过/livez和/readyz探测每个进程，值得告警的日志行和指标，以及开启OpenTelemetry指标和链路追踪。
 published: 2026-11-03
-source_updated: 2026-11-01
+updated: 2026-11-04
+source_updated: 2026-11-04
 ---
 
 安装实例通过四种方式告诉您它的运行状况：每个进程都会响应存活检查和就绪检查，`publira server`和`publira worker`会写入结构化日志，这两者在开启后还会导出OpenTelemetry指标，而除`email-renderer`之外的每个进程都可以导出OpenTelemetry链路追踪。本页说明每种方式报告什么、如何将其接入编排系统和告警系统，以及哪些情况值得告警。由哪个监控系统接收这些数据由您决定；本页只说明安装实例发送什么。
@@ -119,7 +120,9 @@ worker进程的定时任务如何在日志和`river_job`表中记录失败，请
 
 ### 发件箱
 
-worker进程的指标跟踪发件箱，每封邮件、每条推送通知和每次缓存重新验证都通过它发送，详见[发件箱](./10-scheduled-jobs.md#发件箱邮件推送和缓存重新验证)。每个指标都以`outbox.event_type`带有条目的类型。
+worker进程的指标跟踪发件箱，每封邮件、每条推送通知、每次缓存重新验证和每次Webhook发送都通过它发送，详见[发件箱](./10-scheduled-jobs.md#发件箱邮件推送和缓存重新验证)。每个指标都以`outbox.event_type`带有条目的类型。
+
+`webhook_delivery`条目把事件发送到租户运行的服务器，无论`PUBLIRA_OUTBOX_MAX_ATTEMPTS`如何设置，都会尝试20次后才被放弃。它的重试和dead条目表示租户的端点停止运行或拒绝接收，而不是安装实例出现故障；租户管理员会在控制台中看到这些发送并重新发送。请将`outbox.event_type`为`webhook_delivery`的条目与其他条目分开告警，或将其排除在dead条目的告警之外。
 
 | 指标 | 统计的内容 | 关注点 |
 | --- | --- | --- |

@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -159,8 +159,11 @@ An entry that fails is tried again, waiting twice as long after each failure: on
 - **Mail** fails while the SMTP server, or `email-renderer` once it is on, refuses or cannot be reached, as [Email](./6-email.md#the-mail-the-install-sends) describes.
 - **A push notification** to a phone is skipped rather than failed while the tenant has no Firebase credentials saved, so it is not retried once they are. Browser notifications are sent only once Web Push is turned on, as [Web Push](./8-web-push.md) describes.
 - **A cache revalidation** fails while a web app is down. A worker without `PUBLIRA_REVALIDATE_TOKEN` fails every drop `publira server` or `publiractl` recorded, on every attempt; the drops of its own jobs it does not record at all, as [Free reading periods](#free-reading-periods-and-other-cached-pages) describes.
+- **A webhook delivery**, of `event_type` `webhook_delivery`, sends one event to an endpoint a Tenant admin saved, as [API keys and webhooks](../4-console/10-api-keys-and-webhooks.md#retries-and-resending) describes. It fails while that endpoint is down or answers anything but `2xx`, and is given up at once when it answers another `4xx` but `408` and `429`, or its host resolves to a private, loopback, link-local, or shared address. The endpoint is a server the tenant runs, so a failing delivery is the tenant's to fix rather than the install's. A delivery whose endpoint's signing secret no key in `PUBLIRA_SECRET_ENCRYPTION_KEYS` opens waits, without spending an attempt, until the key is back or the secret is rotated.
 
-`PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling, up to an hour between attempts, so a few more attempts let an entry outlast a much longer outage.
+`PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling, up to an hour between attempts, so a few more attempts let an entry outlast a much longer outage. A webhook delivery has a budget of its own of 20 attempts, about eight hours, whatever `PUBLIRA_OUTBOX_MAX_ATTEMPTS` says, since the server it goes to may be down for longer than an install's own services.
+
+The worker sends webhook deliveries over HTTPS to whatever host and port each endpoint names, so an install that restricts the worker's outbound traffic has to allow them for webhooks to arrive.
 
 ### Seeing what was given up
 
@@ -174,11 +177,12 @@ ORDER BY updated_at DESC
 LIMIT 20;
 ```
 
-A dead entry cannot be sent again. What it costs depends on its `event_type`:
+A dead entry cannot be sent again, but for a webhook delivery. What it costs depends on its `event_type`:
 
 - **A mail** never arrives. A reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
 - **A push notification** never arrives, and the notification stays in the reader's list on the site and in the app.
 - **A cache revalidation** leaves the pages it named showing what they showed before, until the next change to the same thing drops them again or their cache runs out.
+- **A webhook delivery** is listed as **Dead** on the tenant console's **API keys and webhooks**, where a Tenant admin resends it once the endpoint is fixed.
 
 ## Running a job by hand
 

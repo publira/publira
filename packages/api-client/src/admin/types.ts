@@ -6,6 +6,8 @@ export type { AdminAccessTicket } from "../gen/publira/admin/v1/access_ticket_pb
 
 export type { AdminAnnouncement } from "../gen/publira/admin/v1/announcement_pb.js";
 
+export type { ApiKey } from "../gen/publira/admin/v1/api_key_pb.js";
+
 export type { AdminAuditLog } from "../gen/publira/admin/v1/audit_pb.js";
 
 export type { AdminTenantBrandMark } from "../gen/publira/admin/v1/brand_mark_pb.js";
@@ -121,6 +123,11 @@ export type {
   AdminReader,
   AdminTenantUser,
 } from "../gen/publira/admin/v1/user_pb.js";
+
+export type {
+  WebhookDelivery,
+  WebhookEndpoint,
+} from "../gen/publira/admin/v1/webhook_pb.js";
 
 // platform.v1 limit messages, which the tenant settings RPCs embed as the
 // platform values a tenant's own limits are read and bounded against.

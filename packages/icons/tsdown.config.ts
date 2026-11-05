@@ -74,6 +74,7 @@ export default defineConfig({
     "src/user-icon.tsx",
     "src/users-icon.tsx",
     "src/wallet-icon.tsx",
+    "src/webhook-icon.tsx",
     "src/wifi-off-icon.tsx",
   ],
   format: "esm",

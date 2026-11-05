@@ -276,6 +276,7 @@ services:
         admin.crawlers.localhost
         admin.desk.localhost
         admin.google-tag.localhost
+        admin.hook-docs.localhost
         admin.langs.localhost
         admin.locale.localhost
         admin.measure.localhost
@@ -302,6 +303,7 @@ services:
         admin.team.localhost
         admin.verify.localhost
         admin.waitfree.localhost
+        admin.webhooks.localhost
       PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
       # The suite stands in for a hop in front of the edge that looks up the
       # reader's region: loopback, which every spec connects from, is trusted
