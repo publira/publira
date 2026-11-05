@@ -85,6 +85,10 @@ wait_http "google-tag-gateway/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "webhook-receiver/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 wait_http "worker/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
