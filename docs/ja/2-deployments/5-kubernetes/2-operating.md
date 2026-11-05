@@ -2,8 +2,8 @@
 title: Kubernetesでの運用
 description: Kubernetesクラスターで動かしているPubliraで、テナントを追加する、管理画面の認証情報をテナントのドメインから切り離す、画像と公開APIを別々に提供する、メトリクスを公開する、アップグレードするといった作業の手順を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 [Kubernetes](./index.md)の手順で運用を始めたPubliraに、後から加える変更を説明します。どの変更も、そのページと[Kubernetesでのリバースプロキシの設定](./1-edge.md)で作成したリソースに手を入れます。
@@ -24,7 +24,7 @@ GatewayにHTTPSリスナーを2つ追加します。テナントのドメイン�
 
 ## テナントのドメインから管理画面の認証情報を切り離す
 
-管理画面のAPIは、リバースプロキシによってすでにインターネットから遮断されています。それでも、テナントのドメインへのリクエストを受ける`publira-server`は管理画面のAPIも提供しており、そのためのデータベースのログインとWebサービストークンを持っています。管理画面のAPIとそのログインとトークンを、読者のリクエストを処理するプロセスから取り除くには、`--role storefront`を付けた2つ目のDeploymentを動かし、テナントのドメインと`web-storefront`の接続先をそちらに切り替えます。[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、これはリバースプロキシのルールとは別の防御層になります。Deploymentごとにレプリカ数を決められるので、[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)で説明しているように、読者のトラフィックを管理画面とは別にスケールできるようにもなります。
+管理画面のAPIは、APIキーによる読み取りを除いて、リバースプロキシによってすでにインターネットから遮断されています。それでも、テナントのドメインへのリクエストを受ける`publira-server`は管理画面のAPIも提供しており、そのためのデータベースのログインとWebサービストークンを持っています。管理画面のAPIとそのログインとトークンを、読者のリクエストを処理するプロセスから取り除くには、`--role storefront`を付けた2つ目のDeploymentを動かし、テナントのドメインと`web-storefront`の接続先をそちらに切り替えます。[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、これはリバースプロキシのルールとは別の防御層になります。Deploymentごとにレプリカ数を決められるので、[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)で説明しているように、読者のトラフィックを管理画面とは別にスケールできるようにもなります。
 
 ```yaml
 apiVersion: apps/v1
@@ -100,7 +100,7 @@ kubectl create secret generic publira-storefront \
 
 次に、`web-storefront`のHTTPRouteかIngressで、テナントのドメインへの`/images`と`/rpc`配下の公開APIに限って、バックエンドを`publira-server`から`publira-storefront`に変えます。`web-storefront`も公開APIしか呼び出さないので、接続先を`publira-storefront`にします。`web-storefront`のDeploymentで、`PUBLIRA_GRPC_URL`を`http://publira-storefront:8000/rpc`にしてください。管理画面のホストのルートと`web-admin`と`web-platform`は、[管理画面のサーバーから公開APIを外す](#管理画面のサーバーから公開apiを外す)で公開APIを外すまで、すべてのロールを提供する`publira-server`を呼び出し続けます。
 
-リバースプロキシは分割の前も後も、どのホストでも管理画面のAPIに`404`を返します。そこで、クラスターの中から2つのServiceを直接呼び出して確認します。
+リバースプロキシは分割の前も後も、どのホストでも管理画面のAPIのほとんどに`404`を返します。そこで、クラスターの中から2つのServiceを直接呼び出して確認します。
 
 ```bash
 for service in publira-storefront publira-server; do

@@ -2,7 +2,8 @@
 title: 概觀
 description: Publira安裝實例執行哪些部分，以及它依賴哪些服務。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 Publira安裝實例由四個常駐處理程序、它們依賴的幾項服務，以及一個需要手動執行的命令列工具組成。本頁說明能服務一個租戶的最小安裝實例：它的公開網站與主控台，並透過`publiractl`而非平台主控台來管理。
@@ -13,7 +14,7 @@ Publira安裝實例由四個常駐處理程序、它們依賴的幾項服務，�
 | --- | --- | --- |
 | `web-storefront` | 所有租戶的公開網站 | 邊緣，透過各租戶的網域 |
 | `web-admin` | 租戶主控台 | 邊緣，透過各租戶的主控台主機；除非為租戶指定了其他主機，否則為`admin.<domain>` |
-| `publira server` | 在同一個連接埠上提供`/rpc`下的API與圖片傳遞 | 邊緣，透過`/rpc`下的公開API與`/images`；`web-storefront`與`web-admin`，透過`/rpc` |
+| `publira server` | 在同一個連接埠上提供`/rpc`下的API與圖片傳遞 | 邊緣，透過`/rpc`下的公開API、API金鑰可進行的讀取與`/images`；`web-storefront`與`web-admin`，透過`/rpc` |
 | `publira worker` | 外寄郵件與推播通知、快取重新驗證，以及所有排程工作 | 無；它只回應健康檢查 |
 
 每個處理程序都會回應`GET /livez`與`GET /readyz`，讓協調工具能夠探測它。Web應用程式由同一個映像檔建置，`publira server`與`publira worker`則由另一個映像檔建置；[映像檔建置說明](https://github.com/publira/publira/blob/main/infra/docker/README.md)列出了這些映像檔。

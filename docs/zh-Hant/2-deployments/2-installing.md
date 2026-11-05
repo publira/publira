@@ -2,7 +2,8 @@
 title: 安裝
 description: 讓一個空的安裝實例開始提供服務，從它依賴的服務到首次登入租戶主控台。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本頁帶您將安裝實例從零開始，建置到第一位管理員能登入租戶主控台為止。內容依照步驟必須執行的順序排列，並說明每個步驟決定了什麼；各處理程序讀取的完整環境變數清單，以及`publiractl`的所有旗標，則留在各步驟所連結的參考文件中。
@@ -129,7 +130,7 @@ docker run --rm -it \
 - `admin.<domain>`或您選擇的主控台主機，路由到`web-admin`。
 - 租戶的網域，路由到`web-storefront`。
 - 任一主機上的`/rpc/publira.v1.`與`/images`，路由到`publira server`，預設連接埠為`8000`。
-- 任一主機上其餘的`/rpc`不路由到任何地方：由邊緣回應`404`。`publira server`在這些路徑上回應主控台的API，而Web應用程式是透過私人網路呼叫這些API的，如[只有公開API經過邊緣](./4-edge/index.md#只有公開api經過邊緣)所述。
+- 任一主機上其餘的`/rpc`不路由到任何地方：由邊緣回應`404`。`publira server`在這些路徑上回應主控台的API，而Web應用程式是透過私人網路呼叫這些API的，如[只有公開API經過邊緣](./4-edge/index.md#只有公開api經過邊緣)所述。使用API金鑰的租戶自有系統，需要在主控台主機上轉送其中的[少數幾項讀取](./4-edge/index.md#api金鑰可進行的讀取)。
 
 請在邊緣為兩個主機名稱終止TLS。無論邊緣由什麼構成，[邊緣必須做的事](./4-edge/index.md#邊緣必須做的事)都說明了它還需要做的其他事情：要傳遞與要移除的標頭、用戶端位址，以及必須放行的上傳與webhook。儲存庫中Traefik、nginx與Caddy的[設定範例](./4-edge/1-sample-configurations.md)是完成這一切的其中一種做法。
 

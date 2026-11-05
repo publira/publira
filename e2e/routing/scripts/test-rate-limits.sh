@@ -15,8 +15,9 @@ routing_log "=== rate limit probes ==="
 
 # What the edge serves without counting it, sent first while every allowance
 # of this client is full, so that a limit placed on it shows as a 429. Pages,
-# the webhooks an outside service posts, and the consoles' requests are
-# counted by no allowance, the consoles' since the server limits them itself.
+# the webhooks an outside service posts, and the consoles' requests but for an
+# API key's reads are counted by no allowance, the consoles' since the server
+# limits them itself.
 assert_not_rate_limited "pages on a site host are not limited" GET localhost / $((PUBLIRA_ROUTING_API_BURST * 2))
 assert_not_rate_limited "the payment webhook is not limited" POST localhost /api/v1/webhook/payment/stripe $((PUBLIRA_ROUTING_API_BURST * 2))
 assert_not_rate_limited "the inbound email webhook is not limited" POST localhost /api/v1/webhook/email/sendgrid $((PUBLIRA_ROUTING_API_BURST * 2))
@@ -41,6 +42,11 @@ assert_allowance_shared "the search page with a locale prefix once the allowance
 assert_rate_limited "images on an image host" GET pictures.example.net /images/cover "${PUBLIRA_ROUTING_IMAGES_BURST}" "${PUBLIRA_ROUTING_IMAGES_RATE}"
 assert_allowance_shared "images on a site host once the allowance is spent" GET localhost /images/cover "${PUBLIRA_ROUTING_IMAGES_BURST}" "${PUBLIRA_ROUTING_IMAGES_RATE}"
 
+# An API key's reads are the one allowance on a console host, shared by every
+# console host and every read.
+assert_rate_limited "an API key's read on a console host" GET admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" "${PUBLIRA_ROUTING_API_KEY_BURST}" "${PUBLIRA_ROUTING_API_KEY_RATE}"
+assert_allowance_shared "another API key read on another console host once the allowance is spent" GET studio.example.com "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[1]}" "${PUBLIRA_ROUTING_API_KEY_BURST}" "${PUBLIRA_ROUTING_API_KEY_RATE}"
+
 # Spending one allowance leaves the others and the unlimited paths alone.
 assert_route "pages on a site host are served once the allowances are spent" GET localhost /series web-storefront /series
 assert_route "rpc on a console host is served once the allowances are spent" GET admin.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
@@ -50,5 +56,7 @@ assert_route "rpc on a console host is served once the allowances are spent" GET
 # host's, which is spent above, and from every other client it names.
 assert_hop_rate_limited "rpc for one client through the trusted hop" localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" "${PUBLIRA_ROUTING_API_BURST}" "${PUBLIRA_ROUTING_API_RATE}" 198.51.100.21
 assert_hop_served "rpc for another client through the trusted hop" localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" 198.51.100.22
+assert_hop_rate_limited "an API key's read for one client through the trusted hop" admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" "${PUBLIRA_ROUTING_API_KEY_BURST}" "${PUBLIRA_ROUTING_API_KEY_RATE}" 198.51.100.23
+assert_hop_served "an API key's read for another client through the trusted hop" admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" 198.51.100.24
 
 routing_log "=== rate limit probes passed ==="

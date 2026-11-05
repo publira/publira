@@ -2,8 +2,8 @@
 title: リバースプロキシの設定
 description: Publiraの前に置くロードバランサー、リバースプロキシ、CDNが満たすべき要件を説明します。
 published: 2026-10-29
-updated: 2026-11-01
-source_updated: 2026-11-01
+updated: 2026-11-05
+source_updated: 2026-11-05
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -34,10 +34,11 @@ redirect_from:
 | --- | --- |
 | `/images`で始まるパス | `publira server` |
 | `/rpc/publira.v1.`で始まるパス | `publira server` |
+| 管理画面のホストの[APIキーによる読み取り](#apiキーによる読み取り) | `publira server` |
 | `/rpc`と、それ以外の`/rpc/`で始まるパス | なし (リバースプロキシが`404`を返します) |
 | それ以外のすべて | ホスト名で決まったWebアプリ |
 
-`/images`はページに表示するすべての画像で、`/rpc/publira.v1.`はブラウザーとモバイルアプリが呼び出す公開APIです。`/rpc`の下のそれ以外のパスは転送しません。理由は[リバースプロキシを通すのは公開APIだけ](#リバースプロキシを通すのは公開apiだけ)で説明しています。残りのパスは、`/api`も含めてすべてWebアプリのものです。Webアプリは、決済とメール受信のWebhookをはじめとする独自のエンドポイントを`/api/v1`の下で提供しています。
+`/images`はページに表示するすべての画像で、`/rpc/publira.v1.`はブラウザーとモバイルアプリが呼び出す公開APIです。`/rpc`の下のそれ以外のパスは、管理画面のホストの[APIキーによる読み取り](#apiキーによる読み取り)を除いて転送しません。理由は[リバースプロキシを通すのは公開APIだけ](#リバースプロキシを通すのは公開apiだけ)で説明しています。残りのパスは、`/api`も含めてすべてWebアプリのものです。Webアプリは、決済とメール受信のWebhookをはじめとする独自のエンドポイントを`/api/v1`の下で提供しています。
 
 公開APIのプレフィックスは`v1`の後ろのドットまでです。こうすることで、一致するのは`/rpc/publira.v1.<Service>/<Method>`の形のプロシージャだけになります。ドットを含めずに`/rpc/publira.v1`で照合すると、`publira.v1beta`のように先頭が同じだけの名前空間まで一致してしまいます。いちばん長いプレフィックスから照合するリバースプロキシなら、特に指定しなくても表の順に判定されます。
 
@@ -62,11 +63,42 @@ redirect_from:
 
 ### リバースプロキシを通すのは公開APIだけ
 
-`publira server`は、テナント管理画面とプラットフォーム管理画面のAPIである`publira.admin.v1`と`publira.platform.v1`も、公開APIと同じ`/rpc`の下で、リバースプロキシの転送先と同じポートで提供しています。ただ、これらのAPIにリバースプロキシを通して届くリクエストはありません。`web-admin`と`web-platform`は自分のサーバーから`PUBLIRA_GRPC_URL`を使ってプライベートネットワーク経由で呼び出し、モバイルアプリが呼び出すのは公開APIだけです。
+`publira server`は、テナント管理画面とプラットフォーム管理画面のAPIである`publira.admin.v1`と`publira.platform.v1`も、公開APIと同じ`/rpc`の下で、リバースプロキシの転送先と同じポートで提供しています。`web-admin`と`web-platform`は自分のサーバーから`PUBLIRA_GRPC_URL`を使ってプライベートネットワーク経由で呼び出し、モバイルアプリが呼び出すのは公開APIだけです。
 
-どのホストでも転送する必要がないので、管理画面のホストでもテナントのドメインでも、リバースプロキシが独自の`404`を返します。それでも転送すると、2つのAPIを意味もなくインターネットに公開することになります。ログイン、パスワードの再設定、メールアドレスの確認、プラットフォーム管理画面の最初のオペレーターの作成のように、セッションができる前に呼ばれる処理もすべて公開されます。各APIの認証はこのルールとは別にあり、引き続き働きます。詳しくは[管理画面のAPI](../../3-operations/12-security/index.md#管理画面のapi)を参照してください。
+どのホストでも転送する必要がないので、管理画面のホストでもテナントのドメインでも、リバースプロキシが独自の`404`を返します。唯一の例外は[APIキーによる読み取り](#apiキーによる読み取り)です。それ以上に転送すると、2つのAPIを意味もなくインターネットに公開することになります。ログイン、パスワードの再設定、メールアドレスの確認、プラットフォーム管理画面の最初のオペレーターの作成のように、セッションができる前に呼ばれる処理もすべて公開されます。各APIの認証はこのルールとは別にあり、引き続き働きます。詳しくは[管理画面のAPI](../../3-operations/12-security/index.md#管理画面のapi)を参照してください。
 
-テナントのドメインから届くプロセスを`publira server --role storefront`で動かすのは、これとは別の2つ目の防御です。リバースプロキシのルールは、管理画面のAPIのパスをインターネットから遮ります。`--role storefront`は、管理画面のデータベースログインとWebサービストークンを、読者が届くプロセスにそもそも持たせません。この場合も、管理画面のホストの`/images`は`web-admin`が`PUBLIRA_GRPC_URL`で呼び出す`publira server`に、`/rpc/publira.v1.`は`web-admin`が公開APIを呼び出す`publira server`に送ってください。`web-admin`の`PUBLIRA_PUBLIC_GRPC_URL`で`--role storefront`のものを指定していなければ、この2つは同じプロセスです。詳しくは[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)を参照してください。
+テナントのドメインから届くプロセスを`publira server --role storefront`で動かすのは、これとは別の2つ目の防御です。リバースプロキシのルールは、APIキーによる読み取りを除いて、管理画面のAPIのパスをインターネットから遮ります。`--role storefront`は、管理画面のデータベースログインとWebサービストークンを、読者が届くプロセスにそもそも持たせません。この場合も、管理画面のホストの`/images`は`web-admin`が`PUBLIRA_GRPC_URL`で呼び出す`publira server`に、`/rpc/publira.v1.`は`web-admin`が公開APIを呼び出す`publira server`に送ってください。`web-admin`の`PUBLIRA_PUBLIC_GRPC_URL`で`--role storefront`のものを指定していなければ、この2つは同じプロセスです。詳しくは[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)を参照してください。
+
+### APIキーによる読み取り
+
+CRMやデータウェアハウスのようなテナントの自社システムは、[APIキー](../../4-console/10-api-keys-and-webhooks.md#apiキー)を使い、インストールの外からテナントの作品と購入を読み取ります。リバースプロキシは、そのテナントの管理画面のホストでだけ、次のパスを`publira server`に転送します。転送するのはパス全体が一致するリクエストだけで、`publira.admin.v1`のほかのパスは転送しません。
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+これらのパスは、管理画面のAPIを提供する`publira server`、つまり`web-admin`が`PUBLIRA_GRPC_URL`で呼び出すものに送ってください。`--role storefront`で動かしているものは`404`を返します。パス全体で照合するのは、書き込みやほかの読み取りには引き続きリバースプロキシが`404`を返すようにするためです。キーは`Authorization`に入っているので、このヘッダーは届いたまま転送します。
+
+ほかのプロシージャをキーで呼び出しても`publira server`は拒否します。それでも、インストールの外のシステムに開いてよいのはこれらのパスだけなので、ルールはこの範囲にとどめてください。これらのパスを転送しなくても、ほかのものはすべて動きます。`404`が返るのは、プライベートネットワークの外から使うキーだけです。これらのパスは、[レート制限](../../3-operations/12-security/5-rate-limits.md#制限するもの)で説明しているとおり、クライアントごとに制限してください。
 
 ### TLS
 

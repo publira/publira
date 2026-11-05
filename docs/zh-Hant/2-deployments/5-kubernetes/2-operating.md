@@ -2,7 +2,8 @@
 title: 在Kubernetes上營運
 description: 在Kubernetes叢集上執行的安裝實例中新增租戶、讓主控台的認證資訊遠離租戶的網域、分開提供圖片與公開API、公開指標，以及升級。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本頁說明[Kubernetes](./index.md)讓安裝實例開始提供服務之後，對它所做的變更。每項變更都會修改該頁與[Kubernetes上的邊緣](./1-edge.md)所建立的資源。
@@ -18,7 +19,7 @@ source_updated: 2026-10-25
 
 ## 讓主控台的認證資訊遠離租戶的網域
 
-邊緣已經讓主控台的API不暴露於網際網路，但邊緣把租戶網域轉送過去的`publira-server`仍然提供這些API，並為此持有它們的資料庫登入與Web服務權杖。若要把這三者都移出讀者會接觸到的處理程序，作為與邊緣規則不同的另一層防護（如[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)所述），請以`--role storefront`執行第二個Deployment，並把租戶的網域與`web-storefront`路由到它。這樣拆分也能讓讀者的流量與主控台分開擴充，因為每個Deployment都有自己的副本，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述：
+邊緣已經讓主控台的API不暴露於網際網路（API金鑰可進行的讀取除外），但邊緣把租戶網域轉送過去的`publira-server`仍然提供這些API，並為此持有它們的資料庫登入與Web服務權杖。若要把這三者都移出讀者會接觸到的處理程序，作為與邊緣規則不同的另一層防護（如[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)所述），請以`--role storefront`執行第二個Deployment，並把租戶的網域與`web-storefront`路由到它。這樣拆分也能讓讀者的流量與主控台分開擴充，因為每個Deployment都有自己的副本，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述：
 
 ```yaml
 apiVersion: apps/v1
@@ -94,7 +95,7 @@ kubectl create secret generic publira-storefront \
 
 接著，只在租戶的網域上（也就是`web-storefront`的HTTPRoute或Ingress中），把`/images`與`/rpc`下公開API的後端從`publira-server`改為`publira-storefront`；`web-storefront`只呼叫公開API，因此也讓它指向`publira-storefront`：在其Deployment中把`PUBLIRA_GRPC_URL`設為`http://publira-storefront:8000/rpc`。主控台主機的路由、`web-admin`與`web-platform`則繼續呼叫提供所有角色的`publira-server`，直到[讓主控台的伺服器不提供公開API](#讓主控台的伺服器不提供公開api)把公開API從它身上移除。
 
-無論如何，邊緣都會在每個主機上對主控台API回應`404`，因此改從叢集內部呼叫這兩個Service來檢查：
+無論如何，邊緣都會在每個主機上對大部分主控台API回應`404`，因此改從叢集內部呼叫這兩個Service來檢查：
 
 ```bash
 for service in publira-storefront publira-server; do

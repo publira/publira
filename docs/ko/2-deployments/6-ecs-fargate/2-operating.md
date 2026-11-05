@@ -2,7 +2,8 @@
 title: ECS에서의 운영
 description: AWS Fargate의 Amazon ECS에서 실행되는 설치 환경에 테넌트를 추가하고, 콘솔의 자격 증명을 테넌트의 도메인에서 떼어 두고, 이미지와 공개 API를 분리해 제공하고, 업그레이드합니다.
 published: 2026-11-03
-source_updated: 2026-10-26
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 [AWS Fargate의 Amazon ECS](./index.md)와 [ECS 앞의 CloudFront](./1-cloudfront.md)로 서비스를 시작한 설치 환경에 이후 가하는 변경입니다. 명령은 그 페이지들에서 정의한 셸 변수와 함수를 사용합니다. 설치 환경을 구축한 셸이 아닌 다른 셸에서는 명령이 사용하는 것을 다시 정의하세요. [시작하기 전에](./index.md#시작하기-전에)의 변수, [마이그레이션 적용과 데이터베이스 역할 만들기](./index.md#4-마이그레이션-적용과-데이터베이스-역할-만들기)의 `run_publiractl` 함수, [네트워크 경로 열기](./index.md#3-네트워크-경로-열기)의 `SERVER_SG`, `NAMESPACE`, `registry` 함수, [로드 밸런서 만들기](./index.md#5-로드-밸런서-만들기)의 `target_group` 함수, [서비스 시작](./index.md#6-서비스-시작)의 `service` 함수, 그리고 `aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text`가 출력하는 `LISTENER`입니다.
@@ -20,7 +21,7 @@ source_updated: 2026-10-26
 
 ## 콘솔의 자격 증명을 테넌트의 도메인에서 떼어 두기
 
-로드 밸런서는 이미 콘솔의 API를 인터넷에서 차단하지만, 로드 밸런서가 테넌트의 도메인을 전달하는 `publira-server`는 여전히 그 API를 제공하며, 이를 위해 데이터베이스 로그인과 웹 서비스 토큰을 가지고 있습니다. [공개 API만 엣지를 거친다](../4-edge/index.md#공개-api만-엣지를-거친다)에서 설명하듯 엣지 규칙과는 별개의 계층으로서, 이 세 가지를 독자가 도달하는 프로세스에서 모두 빼려면 `--role storefront`로 두 번째 서비스를 실행하고 테넌트의 도메인과 `web-storefront`를 그쪽으로 라우팅하세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하듯, 각 서비스가 고유한 태스크를 실행하므로 이 분할로 독자 트래픽을 콘솔과 따로 확장할 수도 있습니다.
+로드 밸런서는 API 키로 보낼 수 있는 읽기 요청을 제외하면 이미 콘솔의 API를 인터넷에서 차단하지만, 로드 밸런서가 테넌트의 도메인을 전달하는 `publira-server`는 여전히 그 API를 제공하며, 이를 위해 데이터베이스 로그인과 웹 서비스 토큰을 가지고 있습니다. [공개 API만 엣지를 거친다](../4-edge/index.md#공개-api만-엣지를-거친다)에서 설명하듯 엣지 규칙과는 별개의 계층으로서, 이 세 가지를 독자가 도달하는 프로세스에서 모두 빼려면 `--role storefront`로 두 번째 서비스를 실행하고 테넌트의 도메인과 `web-storefront`를 그쪽으로 라우팅하세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하듯, 각 서비스가 고유한 태스크를 실행하므로 이 분할로 독자 트래픽을 콘솔과 따로 확장할 수도 있습니다.
 
 태스크 정의는 [서비스 시작](./index.md#6-서비스-시작)의 `publira-server.json`에서 패밀리와 컨테이너의 이름을 `publira-storefront`로 하고, 명령을 `["server", "--role", "storefront"]`로 하고, 시크릿을 그 역할이 읽는 것(암호화 키, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, `PUBLIRA_PUBLIC_DB_URL`)만으로 한 것입니다. 이를 등록하고, 로드 밸런서뿐 아니라 `web-storefront`도 호출하므로 전용 대상 그룹과 Cloud Map 이름을 둡니다.
 
@@ -57,7 +58,7 @@ aws elbv2 modify-rule --rule-arn "$RULE_900" \
 
 `web-storefront`는 공개 API만 호출하므로, 이것도 새 서비스를 가리키게 하세요. `web-storefront.json`에서 `PUBLIRA_GRPC_URL`을 `http://publira-storefront.publira.internal:8000/rpc`로 설정하고, 등록하고, `web-storefront` 서비스를 새 리비전으로 업데이트합니다. 콘솔 호스트, `web-admin`, `web-platform`은 [콘솔 서버에서 공개 API 빼기](#콘솔-서버에서-공개-api-빼기)에서 공개 API를 빼기 전까지, 모든 역할을 제공하는 `publira-server`에 계속 도달합니다.
 
-어느 경우든 로드 밸런서는 모든 호스트에서 콘솔 API에 `404`로 응답하므로, 대신 테넌트의 도메인이 새 서비스에 도달하는지 확인합니다. `aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`가 태스크를 `healthy`로 나열하고, [엣지 확인](./1-cloudfront.md#엣지-확인)의 공개 API 호출이 테넌트의 도메인에서 여전히 `invalid_argument`로 응답하며, 이제 그 응답은 `publira-storefront`에서 옵니다.
+어느 경우든 로드 밸런서는 모든 호스트에서 콘솔 API 대부분에 `404`로 응답하므로, 대신 테넌트의 도메인이 새 서비스에 도달하는지 확인합니다. `aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`가 태스크를 `healthy`로 나열하고, [엣지 확인](./1-cloudfront.md#엣지-확인)의 공개 API 호출이 테넌트의 도메인에서 여전히 `invalid_argument`로 응답하며, 이제 그 응답은 `publira-storefront`에서 옵니다.
 
 ### 콘솔 서버에서 공개 API 빼기
 

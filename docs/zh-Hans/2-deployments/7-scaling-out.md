@@ -2,8 +2,8 @@
 title: 横向扩展
 description: 当安装实例超出最初的规模时应增加哪些进程、所有副本必须共享什么，以及哪些部分无法横向扩展。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 安装实例变慢或即将增长时，要增加的是它已经在运行的进程：为繁忙的进程增加副本，按所响应的流量拆分`publira server`，按所做的工作拆分`publira worker`。本页说明哪些进程可以运行多个副本以及在此之前必须准备好什么、安装实例的负载落在哪里、`publira server`可以拆分到什么程度、`publira worker`如何拆分、随着副本增加数据库必须能接受什么、读者的目录读取和worker进程的每日重建如何转到数据库的只读副本上，以及哪些部分无论增加多少副本都无法缓解。本页适用于任何平台：[Kubernetes](./5-kubernetes/index.md)和[Fargate上的Amazon ECS](./6-ecs-fargate/index.md)给出了清单和命令。
@@ -64,7 +64,7 @@ source_updated: 2026-11-02
 
 1. **一个进程**。`publira server --with-worker`同时运行服务器和worker进程，就像[Docker Compose](./3-docker-compose.md)安装那样。增加一个副本就同时增加两者。
 2. **服务器和worker进程分开**。`publira server`和`publira worker`作为两个进程运行，就像[安装](./2-installing.md)中那样。各自独立扩展，并且worker进程的数据库登录不再位于边缘所转发到的进程中。
-3. **面向读者的服务器**。第二个`publira server`以`--role storefront`运行，承担每个租户域名的公开API和图片，`web-storefront`的`PUBLIRA_GRPC_URL`也指向它，因为`web-storefront`只调用公开API。第一个服务器继续为`web-admin`、`web-platform`和控制台主机提供服务。这样所有读者流量都到达专属的进程，您可以独立于控制台对它们进行扩展，而且这些进程既不持有任一控制台的数据库登录，也不持有Web服务凭据。[部署参考](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)列出了两者各自读取的内容。
+3. **面向读者的服务器**。第二个`publira server`以`--role storefront`运行，承担每个租户域名的公开API和图片，`web-storefront`的`PUBLIRA_GRPC_URL`也指向它，因为`web-storefront`只调用公开API。第一个服务器继续为`web-admin`、`web-platform`和控制台主机提供服务，其中包括[API密钥可调用的读取请求](./4-edge/index.md#api密钥可调用的读取请求)。这样所有读者流量都到达专属的进程，您可以独立于控制台对它们进行扩展，而且这些进程既不持有任一控制台的数据库登录，也不持有Web服务凭据。[部署参考](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)列出了两者各自读取的内容。
 4. **仅供控制台使用的服务器**。第一个`publira server`以`--role admin,platform`运行，把公开API留给面向读者的服务器。`web-admin`除了调用租户控制台的API之外，还会调用公开API来获取租户的主题和标签，因此它的`PUBLIRA_PUBLIC_GRPC_URL`指向面向读者的服务器，而它的`PUBLIRA_GRPC_URL`仍然指向第一个服务器。边缘也把控制台主机的公开API发送到面向读者的服务器（它在任何主机上都会响应），并把控制台主机的图片保留在第一个服务器上，因为`--role storefront`进程会对控制台主机的图片返回`404`。这样控制台的服务器不持有`publira_public`登录，也不做任何公开API的工作，而面向读者的服务器只随公开API的流量扩展。
 5. **各自的副本**。按流量需要为每个进程运行任意数量的副本。
 

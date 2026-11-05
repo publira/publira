@@ -2,14 +2,15 @@
 title: 速率限制
 description: 在安装实例前面应按客户端限制哪些请求、哪些请求绝不能限制，以及如何将限制写成AWS WAF、Cloud Armor或Cloudflare规则，或写入您运行的代理中。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 `publira server`会限制它能够区分的内容：密码尝试、它发送的邮件，以及每种读者操作，例如发表评论或使用等免费券，详见[速率限制](../9-platform-policies.md#速率限制)。它也会限制匿名浏览，但只是宽松的限制，详见[publira server自身的限制](#publira-server自身的限制)：在该限制之下，单个客户端仍然可以获取所有免费章节的每一页，或者不断执行搜索直到数据库跟不上，而第一个迹象就是`/readyz`失败。因此，这些请求还必须在它前面按客户端加以限制：由托管的WAF或CDN限制，或由边缘的代理限制。
 
 ## 应该限制什么
 
-在租户的域名及其图片主机上，按每位读者的地址进行限制，即[客户端地址](../../2-deployments/4-edge/index.md#客户端地址)要求边缘记录的地址：
+按每个客户端的地址进行限制，即[客户端地址](../../2-deployments/4-edge/index.md#客户端地址)要求边缘记录的地址。在租户的域名及其图片主机上：
 
 - **公开API**，即`/rpc/publira.v1.`，由移动应用调用。
 - **搜索**，它执行读者能发起的开销最大的查询：公开API的搜索过程`/rpc/publira.v1.CatalogService/SearchPublished…`，以及在服务器上执行相同搜索的网站搜索页面`/search`或`/<locale>/search`。请为它设置比API其余部分更低的限制。
@@ -17,7 +18,9 @@ source_updated: 2026-10-31
 
 对超出限制的请求以`429 Too Many Requests`应答。每项限制都按地址计数，因此位于同一地址后面的读者（例如运营商的NAT或办公网络）会共享它：请按您预计正当读者可能来自的最繁忙地址来设置，而不是按单个读者设置。
 
-控制台主机交给`publira server`自身的限制：它们的流量来自您的工作人员，而那里的章节上传和编辑页面是安装实例所提供的最重的内容。
+在控制台主机上，请限制[API密钥可调用的读取请求](../../2-deployments/4-edge/index.md#api密钥可调用的读取请求)，这是其中唯一由安装实例外部的系统调用的部分。`publira server`会自行统计每个密钥的请求，但只统计能够通过验证的密钥，因此不断尝试密钥的客户端要靠这项限制来约束。它所接受的量就是`publira server`默认给予单个密钥的量，即每分钟600次请求；如果您用`publiractl policy set --api-key-request-per-minute`提高了该限制，请一并提高它。
+
+控制台主机的其余部分交给`publira server`自身的限制：它的流量来自您的工作人员，而那里的章节上传和编辑页面是安装实例所提供的最重的内容。
 
 ## 绝不能限制的内容
 
@@ -30,7 +33,7 @@ source_updated: 2026-10-31
 
 云平台上的安装实例前面几乎总有托管的负载均衡器或CDN，随之提供的[Web应用防火墙](./4-waf.md)就是设置限制的地方。CloudFront或Application Load Balancer上的AWS WAF、Google Cloud负载均衡器上的Cloud Armor，以及Cloudflare的速率限制规则，都按连接到它们的地址统计读者，并在请求到达您运行的任何东西之前将其拒绝。在那里限制了上述路径后，其后面的代理就不需要自己的限制了。请删除这些限制，或者先[信任这一跳](../../2-deployments/4-edge/1-sample-configurations.md#代理前面的一跳)：不信任这一跳的代理会把每位读者都算作这一跳的地址，从而将他们一并拒绝。
 
-托管WAF在一个时间窗口内（例如10秒或一分钟）统计读者的请求，达到计数后在该窗口的剩余时间内拒绝请求。请为下表的每一行编写一条规则，在租户的域名和图片主机上匹配其路径，使其他任何内容（包括Webhook和健康检查）都不被计数。这些计数是示例配置在该时间内从单个客户端接受的最大数量：
+托管WAF在一个时间窗口内（例如10秒或一分钟）统计客户端的请求，达到计数后在该窗口的剩余时间内拒绝请求。请为下表的每一行编写一条规则，在上述主机上匹配其路径，使其他任何内容（包括Webhook和健康检查）都不被计数。这些计数是示例配置在该时间内从单个客户端接受的最大数量：
 
 | 请求 | 10秒内 | 一分钟内 |
 | --- | --- | --- |
@@ -38,12 +41,13 @@ source_updated: 2026-10-31
 | 搜索过程`/rpc/publira.v1.CatalogService/SearchPublished…` | 40 | 140 |
 | 搜索页面`/search`或`/<locale>/search` | 40 | 140 |
 | 图片`/images` | 1,200 | 4,200 |
+| 控制台主机上API密钥可调用的读取请求 | 160 | 660 |
 
 一个时间窗口会一次性接受其全部计数，因此请优先选择WAF提供的最短窗口。
 
 - **AWS WAF**：在CloudFront分配或负载均衡器的Web ACL中为每一行设置一条[基于速率的规则](https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-rate-based-high-level-settings.html)，使用匹配主机和路径的缩小范围语句，以源IP地址作为聚合键，评估窗口设为最短的60秒，并以一分钟的计数作为限制。请为其Block操作设置状态码为`429`的自定义响应；否则它会以`403`应答。
 - **Google Cloud Armor**：在负载均衡器后端服务的安全策略中为每一行设置一条[速率限制规则](https://cloud.google.com/armor/docs/rate-limiting-overview)，使用`throttle`操作，匹配表达式基于`request.headers['host']`和`request.path`，以`IP`作为键，间隔设为10秒或60秒并以相应计数作为阈值，超出后的操作为`deny(429)`。请优先使用`throttle`而不是`rate_based_ban`：封禁会在整个持续时间内一直拒绝读者，即使对方已经放慢了速度。
-- **Cloudflare**：为每一行设置一条[速率限制规则](https://developers.cloudflare.com/waf/rate-limiting-rules/)，匹配主机名和URI路径，按IP计数，周期为10秒或一分钟，操作为以`429`应答的Block。一个区域可以拥有的规则数由套餐决定：Free套餐一条（只能按10秒计数），Pro两条，Business五条；如果少于四条，请先限制搜索，因为它对数据库的开销最大。
+- **Cloudflare**：为每一行设置一条[速率限制规则](https://developers.cloudflare.com/waf/rate-limiting-rules/)，匹配主机名和URI路径，按IP计数，周期为10秒或一分钟，操作为以`429`应答的Block。一个区域可以拥有的规则数由套餐决定：Free套餐一条（只能按10秒计数），Pro两条，Business五条；如果少于五条，请先限制搜索，因为它对数据库的开销最大。
 
 ## 在您运行的代理中
 

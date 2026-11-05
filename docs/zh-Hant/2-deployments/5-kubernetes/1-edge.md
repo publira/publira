@@ -2,7 +2,8 @@
 title: Kubernetes上的邊緣
 description: 在Kubernetes叢集上的安裝實例前方設置Gateway或Ingress，由cert-manager簽發其憑證，並從叢集外部進行檢查。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本頁是[Kubernetes](./index.md)的第6步：在[設定安裝實例](./index.md#5-設定安裝實例)執行完畢後，將邊緣設置於[啟動處理程序](./index.md#4-啟動處理程序)所建立的Service前方。
@@ -18,7 +19,7 @@ source_updated: 2026-10-31
 | 租戶的主控台主機 | `/rpc`的其餘部分 | 無：由邊緣回應`404` |
 | 租戶的主控台主機 | 其他所有路徑 | `web-admin`，連接埠`4000` |
 
-在`/rpc`之下，只有公開API `publira.v1`會被轉送：主控台透過叢集的網路呼叫它們自己的API，因此邊緣會自行以`404`回應其餘請求，原因見[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)。路徑與`Host`標頭會以瀏覽器送出時的原樣抵達Service；請不要改寫其中任何一者。
+在`/rpc`之下，只有公開API `publira.v1`會被轉送：主控台透過叢集的網路呼叫它們自己的API，因此邊緣會自行以`404`回應其餘請求，原因見[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)。自有系統從叢集外部使用API金鑰的租戶，還需要轉送[金鑰可進行的讀取](../4-edge/index.md#api金鑰可進行的讀取)：請將它們逐一以完全相符的路徑加入該租戶主控台主機的路由，指向`publira-server`的連接埠`8000`，在HTTPRoute中為`type: Exact`，在Ingress中為`pathType: Exact`，這兩種資源都會先比對這些路徑，再比對`/rpc`的其餘部分。路徑與`Host`標頭會以瀏覽器送出時的原樣抵達Service；請不要改寫其中任何一者。
 
 公開API的前綴結束於路徑區段之中，也就是`v1`之後的句點，而Gateway的`PathPrefix`與Ingress的`Prefix`都是以整個區段比對，因此兩者都無法單獨表示這個前綴。兩種API也都沒有自行回應請求的方法。這兩件事都交由實作處理，以下各節會說明所採用的實作如何做到。
 

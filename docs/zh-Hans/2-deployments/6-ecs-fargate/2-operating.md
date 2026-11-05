@@ -2,7 +2,8 @@
 title: 在ECS上运维
 description: 为在Fargate上的Amazon ECS中运行的安装实例添加租户、让控制台的凭据远离租户的域名、分开提供图片和公开API，以及升级。
 published: 2026-11-03
-source_updated: 2026-10-26
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本页介绍[Fargate上的Amazon ECS](./index.md)和[ECS前方的CloudFront](./1-cloudfront.md)让安装实例投入使用之后，对它所做的各项更改。其中的命令会用到那些页面定义的shell变量和函数。如果不在构建安装实例时所用的那个shell中运行，请重新定义命令中用到的变量和函数：[开始之前](./index.md#开始之前)中的变量，[应用迁移并创建数据库角色](./index.md#4-应用迁移并创建数据库角色)中的`run_publiractl`函数，[开通网络路径](./index.md#3-开通网络路径)中的`SERVER_SG`、`NAMESPACE`和`registry`函数，[创建负载均衡器](./index.md#5-创建负载均衡器)中的`target_group`函数，[启动服务](./index.md#6-启动服务)中的`service`函数，以及`LISTENER`（可用`aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text`打印）。
@@ -20,7 +21,7 @@ source_updated: 2026-10-26
 
 ## 让控制台的凭据远离租户的域名
 
-负载均衡器已经让控制台的API无法从互联网访问，但它把租户域名转发到的`publira-server`仍然提供这些API，并为此持有它们的数据库登录和Web服务令牌。要把这三者都从读者能够访问的进程中移出（这是独立于边缘规则的另一层防护，如[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)所述），请运行第二个使用`--role storefront`的服务，并把租户的域名和`web-storefront`路由到它。拆分后，读者流量也可以独立于控制台进行扩缩，因为每个服务都运行自己的任务，如[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)所述。
+负载均衡器已经让控制台的API无法从互联网访问（[API密钥可调用的读取请求](../4-edge/index.md#api密钥可调用的读取请求)除外），但它把租户域名转发到的`publira-server`仍然提供这些API，并为此持有它们的数据库登录和Web服务令牌。要把这三者都从读者能够访问的进程中移出（这是独立于边缘规则的另一层防护，如[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)所述），请运行第二个使用`--role storefront`的服务，并把租户的域名和`web-storefront`路由到它。拆分后，读者流量也可以独立于控制台进行扩缩，因为每个服务都运行自己的任务，如[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)所述。
 
 它的任务定义就是[启动服务](./index.md#6-启动服务)中的`publira-server.json`，只是把family和容器命名为`publira-storefront`，命令为`["server", "--role", "storefront"]`，并且只包含该角色读取的密钥：加密密钥、`PUBLIRA_AUTH_JWT_SECRET`、`PUBLIRA_REVALIDATE_TOKEN`、`PUBLIRA_REDIS_URL`和`PUBLIRA_PUBLIC_DB_URL`。注册它，并为它提供单独的目标组和一个Cloud Map名称，因为除了负载均衡器，`web-storefront`也会调用它：
 
@@ -57,7 +58,7 @@ aws elbv2 modify-rule --rule-arn "$RULE_900" \
 
 让`web-storefront`也指向新服务，因为它只调用公开API：在`web-storefront.json`中把`PUBLIRA_GRPC_URL`设置为`http://publira-storefront.publira.internal:8000/rpc`，注册它，并把`web-storefront`服务更新到新的修订版。控制台主机名、`web-admin`和`web-platform`继续访问提供所有角色的`publira-server`，直到[让控制台的服务器不提供公开API](#让控制台的服务器不提供公开api)把公开API从它上面移除。
 
-无论哪种情况，负载均衡器在每个主机名上都会对控制台API返回`404`，所以改为检查租户的域名是否到达了新服务：`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`会把它的任务列为`healthy`，而[检查边缘](./1-cloudfront.md#检查边缘)中的公开API调用在租户域名上仍然返回`invalid_argument`，只是现在来自`publira-storefront`。
+无论哪种情况，负载均衡器在每个主机名上都会对大部分控制台API返回`404`，所以改为检查租户的域名是否到达了新服务：`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`会把它的任务列为`healthy`，而[检查边缘](./1-cloudfront.md#检查边缘)中的公开API调用在租户域名上仍然返回`invalid_argument`，只是现在来自`publira-storefront`。
 
 ### 让控制台的服务器不提供公开API
 

@@ -2,7 +2,8 @@
 title: 스케일 아웃
 description: 설치 환경이 처음 구성한 규모를 넘어설 때 무엇을 늘려야 하는지, 모든 복제본이 공유해야 하는 것은 무엇인지, 그리고 스케일 아웃되지 않는 부분을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 느려졌거나 곧 커질 설치 환경은 이미 실행 중인 프로세스를 늘려서 대응합니다. 바쁜 프로세스의 복제본을 늘리고, `publira server`는 응답하는 트래픽별로, `publira worker`는 처리하는 작업별로 나눕니다. 이 페이지에서는 어떤 프로세스를 여러 개 실행할 수 있고 그 전에 무엇을 갖춰야 하는지, 설치 환경의 부하가 어디로 가는지, `publira server`를 어디까지 나눌 수 있는지, `publira worker`를 어떻게 나누는지, 복제본이 늘어날 때 데이터베이스가 무엇을 받아들여야 하는지, 독자의 카탈로그 읽기와 워커의 일일 재구축을 데이터베이스의 레플리카로 옮기는 방법, 그리고 복제본을 아무리 늘려도 부하가 줄지 않는 부분을 설명합니다. 이 내용은 어느 플랫폼에나 적용되며, 매니페스트와 명령은 [Kubernetes](./5-kubernetes/index.md)와 [AWS Fargate의 Amazon ECS](./6-ecs-fargate/index.md)에 있습니다.
@@ -63,7 +64,7 @@ source_updated: 2026-11-02
 
 1. **프로세스 하나.** [Docker Compose](./3-docker-compose.md) 설치 환경처럼 `publira server --with-worker`로 서버와 워커를 함께 실행합니다. 복제본을 하나 늘리면 둘 다 늘어납니다.
 2. **서버와 워커를 분리.** [설치](./2-installing.md)에서처럼 `publira server`와 `publira worker`를 두 프로세스로 실행합니다. 각각 따로 확장할 수 있고, 워커의 데이터베이스 로그인이 엣지가 요청을 전달하는 프로세스에서 빠집니다.
-3. **독자용 서버.** `--role storefront`로 실행하는 두 번째 `publira server`가 모든 테넌트 도메인의 공개 API와 이미지를 맡고, `web-storefront`는 공개 API만 호출하므로 `web-storefront`의 `PUBLIRA_GRPC_URL`에도 이 서버를 지정합니다. 첫 번째 서버는 계속 `web-admin`, `web-platform`, 콘솔 호스트를 담당합니다. 그러면 모든 독자 트래픽이 전용 프로세스에 도달하고, 이 프로세스는 콘솔과 따로 확장할 수 있으며, 어느 콘솔의 데이터베이스 로그인도 웹 서비스 자격 증명도 갖지 않습니다. 둘이 각각 읽는 것은 [배포 레퍼런스](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)에 나와 있습니다.
+3. **독자용 서버.** `--role storefront`로 실행하는 두 번째 `publira server`가 모든 테넌트 도메인의 공개 API와 이미지를 맡고, `web-storefront`는 공개 API만 호출하므로 `web-storefront`의 `PUBLIRA_GRPC_URL`에도 이 서버를 지정합니다. 첫 번째 서버는 계속 `web-admin`, `web-platform`, 그리고 [API 키로 보낼 수 있는 읽기 요청](./4-edge/index.md#api-키로-보낼-수-있는-읽기-요청)을 포함한 콘솔 호스트를 담당합니다. 그러면 모든 독자 트래픽이 전용 프로세스에 도달하고, 이 프로세스는 콘솔과 따로 확장할 수 있으며, 어느 콘솔의 데이터베이스 로그인도 웹 서비스 자격 증명도 갖지 않습니다. 둘이 각각 읽는 것은 [배포 레퍼런스](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)에 나와 있습니다.
 4. **콘솔 전용 서버.** 첫 번째 `publira server`를 `--role admin,platform`으로 실행하고 공개 API는 독자용 서버에 맡깁니다. `web-admin`은 테넌트 콘솔의 API뿐 아니라 테넌트의 테마와 태그를 위해 공개 API도 호출하므로, `PUBLIRA_PUBLIC_GRPC_URL`에는 독자용 서버를 지정하고 `PUBLIRA_GRPC_URL`에는 계속 첫 번째 서버를 지정합니다. 엣지는 콘솔 호스트의 공개 API도 독자용 서버로 보내며, 독자용 서버는 어느 호스트에서 온 요청이든 응답합니다. 반면 콘솔 호스트의 이미지는 첫 번째 서버에 둡니다. `--role storefront` 프로세스는 콘솔 호스트의 이미지 요청에 `404`로 응답하기 때문입니다. 그러면 콘솔용 서버는 `publira_public` 로그인을 갖지 않고 공개 API의 작업도 하지 않으며, 독자용 서버는 공개 API의 트래픽만으로 확장할 수 있습니다.
 5. **각각의 복제본.** 각 프로세스를 트래픽에 필요한 만큼 복제해 실행합니다.
 

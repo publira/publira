@@ -2,6 +2,7 @@
 title: A web application firewall
 description: What a web application firewall in front of an install adds, which managed rules to turn on, the requests of Publira they refuse unless you make exceptions for them, and keeping the consoles to your own networks.
 published: 2026-10-30
+updated: 2026-11-05
 ---
 
 A web application firewall (WAF) in front of the edge inspects each request and refuses the ones that look like an attack, such as SQL injection, cross-site scripting, path traversal, and probes for known vulnerabilities in common software, before they reach anything you run. Publira does not rely on one to be safe. A WAF is a layer in front of the checks Publira makes itself, which also stops scanners and attacks on a vulnerability before an upgrade has fixed it, and keeps the consoles off the internet where your staff work from networks you know.
@@ -36,7 +37,7 @@ A WAF inspects only the start of a body: 8 KB on an Application Load Balancer an
 
 ## Keep the consoles to your networks
 
-A console host serves your staff and your operators alone: readers, the mobile app, and every webhook reach the tenant's site, never a console host. When your staff work from networks you know, such as an office or a VPN, allow only those addresses to the console hosts, with an IP set in AWS WAF, a rule matching the source address in Cloud Armor, or a custom rule in Cloudflare, and the consoles' sign-in pages are off the internet. A member of staff opening an invitation or a password reset from elsewhere is refused too, so tell them to use the network the console allows.
+A console host serves your staff and your operators: readers, the mobile app, and every webhook reach the tenant's site, never a console host. When your staff work from networks you know, such as an office or a VPN, allow only those addresses to the console hosts, with an IP set in AWS WAF, a rule matching the source address in Cloud Armor, or a custom rule in Cloudflare, and the consoles' sign-in pages are off the internet. A member of staff opening an invitation or a password reset from elsewhere is refused too, so tell them to use the network the console allows. So is a tenant's own system that calls [the reads an API key may make](../../2-deployments/4-edge/index.md#the-reads-an-api-key-may-make) on the console host, so add its addresses, or leave those paths out of the rule.
 
 ## Bot challenges
 

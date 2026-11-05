@@ -2,7 +2,8 @@
 title: API密钥与Webhook
 description: 为租户自己的系统提供只读的管理API密钥，向它们发送关于销售、退款、注册和订阅的签名事件，验证签名，以及重新发送已被放弃的发送。
 published: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 **集成** › **API密钥与Webhook**将租户与出版社自己运行的系统连接起来，例如CRM、数据仓库或会计系统。系统使用**API密钥**读取租户的作品目录和购买记录，并通过**Webhook端点**在销售、退款、新读者或订阅发生时立即获知。Webhook端点是系统自己的一个URL，每个事件都会发送到这里。**发送记录**列出发送给每个端点的内容以及被放弃的内容。
@@ -38,19 +39,21 @@ source_updated: 2026-11-04
 系统在管理API上以`Authorization: Bearer <key>`发送密钥，并用列表上方显示的**租户ID**指定租户，如下面这个获取租户系列的请求所示：
 
 ```bash
-curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
+curl https://<console host>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
   -H "Authorization: Bearer pbk_…" \
   -H "Content-Type: application/json" \
   -d '{"tenant": {"tenantId": "<Tenant ID>"}}'
 ```
 
-安装实例前面的边缘不会转发管理API，因此密钥由能直接访问`publira server`的系统使用，即通过Web应用调用它的那个网络进行访问。请向安装实例的运营人员询问该地址。
+请通过HTTPS将请求发送到此控制台所在的主机。安装实例前面的边缘会在那里转发密钥可以调用的过程，不转发其他过程，详见[API密钥可调用的读取请求](../2-deployments/4-edge/index.md#api密钥可调用的读取请求)。如果控制台只接受特定地址，请让安装实例的运营人员放行该系统的地址。
 
 各个过程及其字段见[管理API的定义](https://github.com/publira/publira/tree/main/proto/publira/admin/v1)。使用密钥的请求会在以下情况下收到这些响应：
 
 - **`unauthenticated`**：密钥已吊销或未知，或者请求指定了其他租户。
 - **`permission_denied`**：调用了其任何范围都不允许的过程，所有写入操作都包括在内。
 - **`resource_exhausted`**，附带`Retry-After`：超过了安装实例对使用密钥发出的请求的限制，即每分钟600次、每天100,000次，除非运营人员设置了其他值。
+
+边缘会对管理API下的其他任何请求以`404`应答。安装实例还可以限制来自同一地址的请求，超过限制时由边缘以`429`应答；示例配置的限制是一次60个、每秒10个。
 
 ### 吊销密钥
 

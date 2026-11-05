@@ -18,6 +18,7 @@ routing_log "=== route probes behind a trusted hop ==="
 assert_hop_client_address "web-storefront through the trusted hop" localhost / web-storefront
 assert_hop_client_address "web-admin through the trusted hop" admin.localhost / web-admin
 assert_hop_client_address "rpc through the trusted hop" localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_hop_client_address "an API key's read through the trusted hop" admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api
 assert_hop_client_address "images through the trusted hop" admin.localhost /images/cover api
 assert_hop_client_address "images on an image host through the trusted hop" pictures.example.net /images/cover api
 

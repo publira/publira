@@ -2,7 +2,8 @@
 title: 設定範例
 description: 儲存庫中能完成邊緣必須做的事的Traefik、nginx與Caddy設定範例，以及如何將其調整為適合您的安裝實例。
 published: 2026-11-03
-source_updated: 2026-10-30
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 儲存庫提供三個反向代理的設定範例，它們會依照[邊緣必須做的事](./index.md#邊緣必須做的事)的要求路由請求，並處理請求的標頭、本文與逾時：Traefik、nginx與Caddy各一個。其中有一項要求留給執行它的安裝實例負責：TLS listener。Traefik與nginx的範例留給您自行加入，Caddy的範例則在獲得要以HTTPS服務的主機名稱後自行加入。它們只是範例，而非邊緣的定義。[Docker Compose](../3-docker-compose.md)安裝實例執行的是Caddy範例，而自行執行代理伺服器的安裝實例可以從其中任何一個開始。由代管負載平衡器、Ingress或Gateway構成的邊緣只要遵循這些要求即可，不需要任何範例；[Kubernetes上的邊緣](../5-kubernetes/1-edge.md)展示了符合要求的Gateway與Ingress，[ECS前方的CloudFront](../6-ecs-fargate/1-cloudfront.md)則展示了位於Application Load Balancer前方的CloudFront。
@@ -23,7 +24,7 @@ source_updated: 2026-10-30
 - **追蹤脈絡**。每個範例都會移除這三個標頭。Traefik以`strip-trace-context`中介軟體執行，每個進入點除了`strip-forwarded`之外也都需要它。
 - **讀者的地區**。沒有任何範例會自行查詢地區，因此每個範例都會從每個請求中移除`X-Forwarded-CountryRegion`，但來自它所信任的[前方轉送節點](#代理伺服器前方的轉送節點)的請求除外，這種請求的值會被傳遞下去。Traefik在`web-storefront-trusted-hop`以外的每個路由器上以`strip-country-region`中介軟體執行，因此您加入的路由器也需要它。
 - **上傳與webhook**。除非您自行加入限制，否則Traefik與Caddy不會限制本文大小。nginx預設會拒絕超過1 MB的內容，其範例將主控台主機上`/api/v1/episode-pages`的上限提高為`256m`，`/api/v1/`下其餘路徑提高為`33m`，頁面路徑則提高為`11m`。除非另有設定，Traefik會中斷任何未在60秒內完整送達的請求，且此設定是依進入點而非依路徑設定，因此範例以`transport.respondingTimeouts.readTimeout`給予其`web`進入點上的每個請求300秒。nginx等待的是本文兩次讀取之間最多60秒，而非整個本文送達的時間，Caddy則完全不限制時間，因此這兩個範例都不變更它。
-- **請求速率**。Traefik與nginx範例會限制單一用戶端可以向租戶網域與圖片主機上的公開API、搜尋與圖片送出的請求數，如[速率限制](../../3-operations/12-security/5-rate-limits.md)所述，並對超過限制的請求自行回應`429`。允許量列於[路由規範](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)。nginx將其保存在`default.conf.template`的`limit_req_zone`行中，Traefik則在`dynamic/routes.yaml`中為每種允許量各設一個`rateLimit`中介軟體，套用在網站與圖片主機的路由器上，因此您為這些主機加入的路由器也需要它。Caddy範例中的`rate_limit`區塊已被註解掉：它需要[`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit)模組，而`caddy`映像檔不包含該模組，會因此拒絕Caddyfile。若要使用該區塊，請執行以該模組建置的Caddy，例如以`xcaddy build --with github.com/mholt/caddy-ratelimit`建置的Caddy，並取消註解。[Docker Compose](../3-docker-compose.md)安裝實例執行的是`caddy`映像檔，因此其邊緣不做任何限制。
+- **請求速率**。Traefik與nginx範例會限制單一用戶端可以向租戶網域與圖片主機上的公開API、搜尋與圖片，以及主控台主機上API金鑰可進行的讀取送出的請求數，如[速率限制](../../3-operations/12-security/5-rate-limits.md)所述，並對超過限制的請求自行回應`429`。允許量列於[路由規範](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)。nginx將其保存在`default.conf.template`的`limit_req_zone`行中，Traefik則在`dynamic/routes.yaml`中為每種允許量各設一個`rateLimit`中介軟體，套用在網站與圖片主機的路由器上，因此您為這些主機加入的路由器也需要它。Caddy範例中的`rate_limit`區塊已被註解掉：它需要[`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit)模組，而`caddy`映像檔不包含該模組，會因此拒絕Caddyfile。若要使用該區塊，請執行以該模組建置的Caddy，例如以`xcaddy build --with github.com/mholt/caddy-ratelimit`建置的Caddy，並取消註解。[Docker Compose](../3-docker-compose.md)安裝實例執行的是`caddy`映像檔，因此其邊緣不做任何限制。
 - **TLS**。每個範例都會以純HTTP接聽，直到您為它加入TLS listener，或為Caddy提供要以HTTPS服務的主機名稱為止，如[在範例中終止TLS](#在範例中終止tls)所述。
 
 調整範例時，請保留上述每一項，並為您加入的進入點或`server`區塊設定相同的標頭、限制與逾時。

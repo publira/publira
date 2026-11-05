@@ -2,8 +2,8 @@
 title: スケールアウト
 description: 最初の構成では足りなくなったときに増やすプロセス、どのインスタンスにも共有させるもの、増やしても負荷が分散しない部分を説明します。
 published: 2026-10-29
-updated: 2026-11-02
-source_updated: 2026-11-02
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 Publiraの動作が遅くなってきたときや、これから利用が増える見込みのときは、いま動かしているプロセスを増やして対応します。負荷の高いプロセスのインスタンスを増やし、`publira server`は受け持つトラフィックごとに、`publira worker`は受け持つ処理ごとに分けます。このページでは次のことを説明します。
@@ -95,7 +95,7 @@ Publiraの処理で最も重いのは画像の変換です。`publira server`は
 
 ### 3. 読者向けのサーバーを置く
 
-`--role storefront`を付けた2つ目の`publira server`に、すべてのテナントのドメインへの公開APIと画像を任せます。`web-storefront`は公開APIしか呼び出さないので、`web-storefront`の`PUBLIRA_GRPC_URL`にもこのサーバーを指定します。1つ目のサーバーは引き続き`web-admin`と`web-platform`と管理画面のホストを受け持ちます。
+`--role storefront`を付けた2つ目の`publira server`に、すべてのテナントのドメインへの公開APIと画像を任せます。`web-storefront`は公開APIしか呼び出さないので、`web-storefront`の`PUBLIRA_GRPC_URL`にもこのサーバーを指定します。1つ目のサーバーは引き続き`web-admin`と`web-platform`と、[APIキーによる読み取り](./4-edge/index.md#apiキーによる読み取り)を含む管理画面のホストを受け持ちます。
 
 これで読者のトラフィックはすべて専用のプロセスに届き、管理画面とは別にスケールできるようになります。このプロセスは、どちらの管理画面のデータベースのログイン情報も、Webサービスの認証情報も持ちません。2つのサーバーがそれぞれ読む設定は、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)に一覧があります。
 

@@ -46,31 +46,61 @@ An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empt
 
 ### Path rules
 
-| Path                              | Backend                       |
-| --------------------------------- | ----------------------------- |
-| `/images…`                        | `api`                         |
-| Everything else, on an image host | none: the edge answers 404    |
-| `/rpc/publira.v1.…`               | `api`                         |
-| `/rpc`, `/rpc/…` otherwise        | none: the edge answers 404    |
-| Everything else                   | the app the host rules picked |
+| Path | Backend |
+| --- | --- |
+| `/images…` | `api` |
+| Everything else, on an image host | none: the edge answers 404 |
+| `/rpc/publira.v1.…` | `api` |
+| [An API key's reads](#the-reads-an-api-key-may-make), on a console host | `api` |
+| `/rpc`, `/rpc/…` otherwise | none: the edge answers 404 |
+| Everything else | the app the host rules picked |
 
 No rule rewrites the path.
 
-Only the public API is forwarded under `/rpc`. `publira server` answers the tenant console's and the Platform Console's namespaces, `publira.admin.v1` and `publira.platform.v1`, on the same paths, but `web-admin` and `web-platform` call them over the private network, and the mobile app calls `publira.v1` alone, so no host needs them, and the edge answers them itself rather than expose two authenticated APIs to the internet for nothing. The prefix ends at the dot after `v1`, so that `publira.v1.<Service>/<Method>` is all it matches: `publira.v1beta.…` and a bare `/rpc/publira.v1` are answered by the edge as well.
+The public API is what is forwarded under `/rpc`, with the reads below on a console host. `publira server` answers the tenant console's and the Platform Console's namespaces, `publira.admin.v1` and `publira.platform.v1`, on the same paths, but `web-admin` and `web-platform` call them over the private network, and the mobile app calls `publira.v1` alone, so no host needs the rest of them, and the edge answers it itself rather than expose two authenticated APIs to the internet for nothing. The prefix ends at the dot after `v1`, so that `publira.v1.<Service>/<Method>` is all it matches: `publira.v1beta.…` and a bare `/rpc/publira.v1` are answered by the edge as well.
 
-The path rules apply on every host an app answers: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` answers 404 on all of them. An image host takes the first two rows alone. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
+The path rules apply on every host an app answers: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` answers 404 on all of them, an API key's reads on the tenant site and the platform console included. An image host takes the first two rows alone. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 
 A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. It is one of the Route Handlers each app mounts under `/api/v1`, which the last row above routes to the app with every other path, so no proxy names a webhook path.
 
+### The reads an API key may make
+
+A tenant's own systems, such as a CRM or a data warehouse, call the admin API from outside the install with one of the tenant's API keys. On a console host, and on no other host, the edge forwards to `api` these paths and nothing else of `publira.admin.v1`. A console host belongs to its tenant, as the API does, and the reader-facing hosts stay free of the admin API.
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+They are exactly what `apiKeyProcedures` in `server/api/adminapi/api_key_principal.go` admits, each matched as a whole path, and `TestAPIKeyProceduresAreWhatTheEdgeForwards` fails when that list, this one, a sample, the routing check's probes, or the edge's documentation part. A procedure added to one is added to all of them. The tenant is named in the request, not by the host, so the key is what the server authenticates, and a key is refused every other procedure there as well.
+
 ### Request bodies
 
-A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-storefront` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Every request to the public API is admitted with a body of up to 15 MiB: a reader's icon upload carries an image of up to 10 MiB, which `publira server` reads in the base64 of the JSON encoding along with the fields beside it. Every other path, on the site host and on a console host alike, is admitted with a body of up to 11 MiB: a Server Action posts to the path of its page, and a reader's icon sent to `web-storefront` and an image uploaded from the tenant console to `web-admin` each reach theirs as an image of up to 10 MiB, which the app reads up to 11 MiB of with the multipart framing and the fields beside it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
+A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-storefront` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Every request to the public API is admitted with a body of up to 15 MiB: a reader's icon upload carries an image of up to 10 MiB, which `publira server` reads in the base64 of the JSON encoding along with the fields beside it. An API key's read is admitted with a body of up to 1 MiB, which is nginx's default and more than a request naming a tenant and a page takes. Every other path, on the site host and on a console host alike, is admitted with a body of up to 11 MiB: a Server Action posts to the path of its page, and a reader's icon sent to `web-storefront` and an image uploaded from the tenant console to `web-admin` each reach theirs as an image of up to 10 MiB, which the app reads up to 11 MiB of with the multipart framing and the fields beside it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
 
 That upload is given 300 seconds to arrive, which takes 256 MiB over an uplink of about 7.2 Mbit/s. It is as long as `web-admin`'s Node.js server gives a request to arrive whole, so an edge that streams the body on gains nothing by waiting longer. Traefik gives a request 60 seconds, body included, unless configured otherwise, and it sets that per entry point rather than per router, so every Traefik edge here gives every request on the `web` entry point 300 seconds. nginx limits only the wait between two reads of a body, 60 seconds by default, and passes the body on once all of it has arrived; Caddy sets no limit on reading a body. Neither sample changes its default.
 
 ### Request rates
 
-The edge limits how many requests one client may send to the paths below, on a tenant's site and image hosts, so that one client cannot fetch every image of every free episode or run the search until the database falls behind. Each allowance lets a client send its burst at once, and over any span of time admits no more than the burst and what its rate refills in that span; a request past it is answered `429` by the edge itself, and no backend sees it. How the allowance comes back is up to the proxy: nginx and Traefik refill it at the rate, a request at a time, while Caddy's module counts the requests of the last window, so a client that sent the whole burst at once is refused until the window has passed and then has all of it again.
+The edge limits how many requests one client may send to the paths below, so that one client cannot fetch every image of every free episode, run the search until the database falls behind, or try API keys faster than the server's own limit, which counts only a key that opened. Each allowance lets a client send its burst at once, and over any span of time admits no more than the burst and what its rate refills in that span; a request past it is answered `429` by the edge itself, and no backend sees it. How the allowance comes back is up to the proxy: nginx and Traefik refill it at the rate, a request at a time, while Caddy's module counts the requests of the last window, so a client that sent the whole burst at once is refused until the window has passed and then has all of it again.
 
 | Requests | Hosts | Burst | Refilled per second |
 | --- | --- | --- | --- |
@@ -78,6 +108,7 @@ The edge limits how many requests one client may send to the paths below, on a t
 | `/rpc/publira.v1.CatalogService/SearchPublished…` | Site hosts | 20 | 2 |
 | `/search`, with or without a locale prefix (`/zh-Hans/search`) | Site hosts | 20 | 2 |
 | `/images…` | Site and image hosts | 600 | 60 |
+| [An API key's reads](#the-reads-an-api-key-may-make) | Console hosts | 60 | 10 |
 
 Each row is an allowance of its own: a client that has spent the public API's still has the search's, and the search page and the search RPC are counted apart. Within a row the hosts share it, so a client that has spent the images allowance on an image host is refused on a site host too. The catalog search runs the most expensive query a reader can ask for, which is why it gets an allowance of its own both on the public API and on the page that runs it on the server.
 
@@ -85,12 +116,14 @@ A client is the address the edge records it by: the peer address, or, behind a [
 
 `publira server` limits the two public API rows and the images itself, behind the edge, by default at twice what each row admits in 10 seconds, so that a reader behind a working edge is refused here first. Those limits are part of the platform policy, which refuses a value below what a row admits in 10 seconds. `server/internal/platformpolicy` holds this table as `EdgeReadRates`, and its test fails when the two part, so a change to a row here is a change there too. `web-storefront` limits the search page itself in the same way, at twice what its row admits in 10 seconds; `apps/web-storefront/lib/search-page-rate-limit.ts` holds the row as `EDGE_SEARCH_PAGE_RATE`, and its test fails when the two part.
 
-Nothing else is limited. A console host is left to the limits `publira server` keeps itself, on sign-in, mail, and each reader action, since the consoles' traffic is their staff's, and their uploads and editing screens are the heaviest an install serves. The pages of a tenant's site other than the search, and the webhooks under `/api/v1/webhook/`, are not limited either: a provider that is refused retries, and a payment or a reader's reply arrives late or not at all.
+An API key's reads refill at what the platform policy gives one key by default, 600 requests a minute, so a system that keeps to its key's limit is not refused here, and `publira server` counts each key itself. An install that raises `api_key_request` in the policy raises this row with it.
+
+Nothing else is limited. The rest of a console host is left to the limits `publira server` keeps itself, on sign-in, mail, and each reader action, since the consoles' traffic is their staff's, and their uploads and editing screens are the heaviest an install serves. The pages of a tenant's site other than the search, and the webhooks under `/api/v1/webhook/`, are not limited either: a provider that is refused retries, and a payment or a reader's reply arrives late or not at all.
 
 Each sample writes the allowances in its own terms:
 
-- **nginx** has a `limit_req_zone` per row in `default.conf.template`, at the rate in the table, and a `limit_req` with the burst and `nodelay` in the location of its paths. A zone counts a client by `$publira_rate_limit_key`, which the site and image hosts' server blocks set to `$binary_remote_addr` and the console hosts' leave empty, which nginx counts nowhere.
-- **Traefik** has a `rateLimit` middleware per row in `dynamic/routes.yaml`, with the rate as `average` over a period of `1s` and the burst as `burst`, on the routers of the site and image hosts. The console hosts have routers of their own, `rpc-console` and `images-console`, without one. Traefik keeps the count per router, so each row is one router's. A `rateLimit` counts the address that connected unless told to read `X-Forwarded-For`, and then counts every request that did not come through the hop as one client, since Traefik removed that header from theirs; so with `PUBLIRA_EDGE_TRUSTED_PROXIES` set, each limited router has a `-trusted-hop` copy that matches the hop's addresses, with a `-trusted-hop` copy of its middleware that reads the header past them.
+- **nginx** has a `limit_req_zone` per row in `default.conf.template`, at the rate in the table, and a `limit_req` with the burst and `nodelay` in the location of its paths. A zone counts a client by `$publira_rate_limit_key`, which the site and image hosts' server blocks set to `$binary_remote_addr` and the console hosts' leave empty, which nginx counts nowhere. The zone of an API key's reads counts `$binary_remote_addr` itself, and only the tenant console's server block has a location that uses it.
+- **Traefik** has a `rateLimit` middleware per row in `dynamic/routes.yaml`, with the rate as `average` over a period of `1s` and the burst as `burst`, on the routers of the site and image hosts. The console hosts have routers of their own, `rpc-console` and `images-console`, without one, and `rpc-api-key`, with the one its row names. Traefik keeps the count per router, so each row is one router's. A `rateLimit` counts the address that connected unless told to read `X-Forwarded-For`, and then counts every request that did not come through the hop as one client, since Traefik removed that header from theirs; so with `PUBLIRA_EDGE_TRUSTED_PROXIES` set, each limited router has a `-trusted-hop` copy that matches the hop's addresses, with a `-trusted-hop` copy of its middleware that reads the header past them.
 - **Caddy** has a `rate_limit` zone per row in the Caddyfile, with the burst as `events` and the time the rate takes to refill it as `window`, so that no window admits more than the other samples would, keyed by `{client_ip}`. The handler is the [`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit) module, which the `caddy` image does not carry and refuses the Caddyfile with, so the block is commented out: a deployment that runs a Caddy built with the module, with `xcaddy build --with github.com/mholt/caddy-ratelimit`, uncomments it. The Compose install in [`infra/deploy/`](../deploy/README.md) runs the `caddy` image and limits nothing at the edge.
 
 ### Precedence
@@ -101,8 +134,9 @@ Highest first. A proxy with no numeric priorities reaches the same result by ord
 2. `/images…`
 3. The rest of an image host, answered by the edge itself
 4. `/rpc/publira.v1.…`
-5. The rest of `/rpc`, answered by the edge itself
-6. The app whose list names the host
+5. An API key's reads, on a console host
+6. The rest of `/rpc`, answered by the edge itself
+7. The app whose list names the host
 
 ### Request headers
 

@@ -2,7 +2,8 @@
 title: 安装
 description: 让一个空的安装实例投入使用，从它依赖的服务一直到首次登录租户控制台。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本页将一个安装实例从零开始，带到第一位管理员可以登录的租户控制台。它按照各步骤必须执行的顺序展开，并说明每一步决定了什么；每个进程读取的完整变量列表以及`publiractl`的所有参数，仍保留在各步骤所链接的参考文档中。
@@ -129,7 +130,7 @@ docker run --rm -it \
 - `admin.<domain>`或您选择的控制台主机，路由到`web-admin`。
 - 租户的域名，路由到`web-storefront`。
 - 两个主机上的`/rpc/publira.v1.`和`/images`，路由到`publira server`，默认端口为`8000`。
-- 两个主机上`/rpc`的其余部分不路由到任何地方：由边缘以`404`应答。那里是`publira server`应答控制台API的位置，Web应用通过私有网络调用这些API，详见[只有公开API经过边缘](./4-edge/index.md#只有公开api经过边缘)。
+- 两个主机上`/rpc`的其余部分不路由到任何地方：由边缘以`404`应答。那里是`publira server`应答控制台API的位置，Web应用通过私有网络调用这些API，详见[只有公开API经过边缘](./4-edge/index.md#只有公开api经过边缘)。使用API密钥的租户自有系统需要在控制台主机上转发其中的[少数读取请求](./4-edge/index.md#api密钥可调用的读取请求)。
 
 在边缘为两个主机名终止TLS。无论边缘由什么构成，[边缘必须做什么](./4-edge/index.md#边缘必须做什么)都说明了它还需要做的其余事项：它要传递和要移除的请求头、客户端地址，以及它必须放行的上传和Webhook。仓库中针对Traefik、nginx和Caddy的[示例配置](./4-edge/1-sample-configurations.md)是实现这一切的方式之一。
 

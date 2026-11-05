@@ -2,7 +2,8 @@
 title: Kubernetes에서의 운영
 description: Kubernetes 클러스터에서 실행되는 설치 환경에 테넌트를 추가하고, 콘솔의 자격 증명을 테넌트의 도메인에서 떼어 두고, 이미지와 공개 API를 분리해 제공하고, 메트릭을 노출하고, 업그레이드합니다.
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 [Kubernetes](./index.md)로 서비스를 시작한 설치 환경에 이후 가하는 변경입니다. 각각은 그 페이지와 [Kubernetes의 엣지](./1-edge.md)에서 만든 리소스를 변경합니다.
@@ -18,7 +19,7 @@ cert-manager의 챌린지가 엣지에 도달하도록, 변경을 적용하기 �
 
 ## 콘솔의 자격 증명을 테넌트의 도메인에서 떼어 두기
 
-엣지는 이미 콘솔의 API를 인터넷에서 차단하지만, 엣지가 테넌트의 도메인을 전달하는 `publira-server`는 여전히 그 API를 제공하며, 이를 위해 데이터베이스 로그인과 웹 서비스 토큰을 가지고 있습니다. [공개 API만 엣지를 거친다](../4-edge/index.md#공개-api만-엣지를-거친다)에서 설명하듯 엣지 규칙과는 별개의 계층으로서, 이 세 가지를 독자가 도달하는 프로세스에서 모두 빼려면 `--role storefront`로 두 번째 Deployment를 실행하고 테넌트의 도메인과 `web-storefront`를 그쪽으로 라우팅하세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하듯, 각 Deployment가 고유한 복제본을 가지므로 이 분할로 독자 트래픽을 콘솔과 따로 확장할 수도 있습니다.
+엣지는 API 키로 보낼 수 있는 읽기 요청을 제외하면 이미 콘솔의 API를 인터넷에서 차단하지만, 엣지가 테넌트의 도메인을 전달하는 `publira-server`는 여전히 그 API를 제공하며, 이를 위해 데이터베이스 로그인과 웹 서비스 토큰을 가지고 있습니다. [공개 API만 엣지를 거친다](../4-edge/index.md#공개-api만-엣지를-거친다)에서 설명하듯 엣지 규칙과는 별개의 계층으로서, 이 세 가지를 독자가 도달하는 프로세스에서 모두 빼려면 `--role storefront`로 두 번째 Deployment를 실행하고 테넌트의 도메인과 `web-storefront`를 그쪽으로 라우팅하세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하듯, 각 Deployment가 고유한 복제본을 가지므로 이 분할로 독자 트래픽을 콘솔과 따로 확장할 수도 있습니다.
 
 ```yaml
 apiVersion: apps/v1
@@ -94,7 +95,7 @@ kubectl create secret generic publira-storefront \
 
 그런 다음 `web-storefront` HTTPRoute 또는 Ingress에서 테넌트 도메인의 `/images`와 `/rpc` 아래 공개 API의 백엔드만 `publira-server`에서 `publira-storefront`로 바꾸고, 공개 API만 호출하는 `web-storefront`도 그쪽을 가리키게 하세요. 즉 `web-storefront`의 Deployment에서 `PUBLIRA_GRPC_URL`을 `http://publira-storefront:8000/rpc`로 설정합니다. 콘솔 호스트의 라우트, `web-admin`, `web-platform`은 [콘솔 서버에서 공개 API 빼기](#콘솔-서버에서-공개-api-빼기)에서 공개 API를 빼기 전까지, 모든 역할을 제공하는 `publira-server`를 계속 호출합니다.
 
-어느 경우든 엣지는 모든 호스트에서 콘솔 API에 `404`로 응답하므로, 확인은 대신 클러스터 안에서 두 Service를 호출해 수행합니다.
+어느 경우든 엣지는 모든 호스트에서 콘솔 API 대부분에 `404`로 응답하므로, 확인은 대신 클러스터 안에서 두 Service를 호출해 수행합니다.
 
 ```bash
 for service in publira-storefront publira-server; do

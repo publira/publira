@@ -2,7 +2,7 @@
 title: The edge on Kubernetes
 description: Put a Gateway or an Ingress in front of an install on a Kubernetes cluster, with cert-manager issuing its certificates, and check it from outside the cluster.
 published: 2026-10-21
-updated: 2026-10-31
+updated: 2026-11-05
 ---
 
 This page is step 6 of [Kubernetes](./index.md): it puts the edge in front of the Services that [Start the processes](./index.md#4-start-the-processes) created, once [Set the install up](./index.md#5-set-the-install-up) has run.
@@ -18,7 +18,7 @@ The edge routes each host and path to the right Service, terminates TLS, and rem
 | The tenant's console host | The rest of `/rpc` | None: the edge answers `404` |
 | The tenant's console host | Everything else | `web-admin`, port `4000` |
 
-Under `/rpc`, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the cluster's network, so the edge answers the rest with a `404` of its own, as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) explains. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
+Under `/rpc`, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the cluster's network, so the edge answers the rest with a `404` of its own, as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) explains. A tenant whose own systems use an API key from outside the cluster also needs [the reads a key may make](../4-edge/index.md#the-reads-an-api-key-may-make) forwarded: add each of them to its console host's route as an exact path to `publira-server`, port `8000`, `type: Exact` in an HTTPRoute and `pathType: Exact` in an Ingress, which both resources try ahead of the rest of `/rpc`. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
 
 The public API's prefix ends inside a path segment, at the dot after `v1`, and a Gateway's `PathPrefix` and an Ingress's `Prefix` both match whole segments, so neither can name it by itself. Neither API has a way to answer a request itself, either. Both are left to the implementation, and each section below says how the one it uses does them.
 

@@ -2,8 +2,8 @@
 title: 構成の概要
 description: Publiraで動かすプロセスと、Publiraが依存するサービスを説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 Publiraは、常駐する4つのプロセスと、それらが依存するいくつかのサービス、手動で実行する1つのコマンドラインツールでできています。このページでは、テナントの公開サイトと管理画面を提供できる最小の構成を説明します。この構成では、プラットフォーム管理画面を使わず`publiractl`でPubliraを管理します。
@@ -14,7 +14,7 @@ Publiraは、常駐する4つのプロセスと、それらが依存するいく
 | --- | --- | --- |
 | `web-storefront` | すべてのテナントの公開サイト | 各テナントのドメインへのリクエストを転送するリバースプロキシ |
 | `web-admin` | テナント管理画面 | 各テナントの管理画面のホストへのリクエストを転送するリバースプロキシ。管理画面のホストは、別のホストを割り当てていなければ`admin.<domain>`です |
-| `publira server` | `/rpc`配下のAPIと画像配信。どちらも1つのポートで提供します | `/rpc`配下の公開APIと`/images`へのリクエストを転送するリバースプロキシと、`/rpc`を呼び出す`web-storefront`と`web-admin` |
+| `publira server` | `/rpc`配下のAPIと画像配信。どちらも1つのポートで提供します | `/rpc`配下の公開API、APIキーによる読み取り、`/images`へのリクエストを転送するリバースプロキシと、`/rpc`を呼び出す`web-storefront`と`web-admin` |
 | `publira worker` | メールとプッシュ通知の送信、キャッシュの再検証、すべての定期ジョブ | なし。ヘルスチェックに応答するだけです |
 
 どのプロセスも`GET /livez`と`GET /readyz`に応答するので、オーケストレーターから死活を確認できます。Webアプリは1つのイメージから、`publira server`と`publira worker`は別のもう1つのイメージからビルドします。イメージの一覧は[イメージのビルド手順](https://github.com/publira/publira/blob/main/infra/docker/README.md)にあります。

@@ -2,7 +2,8 @@
 title: 边缘
 description: 安装实例前面的负载均衡器、代理或CDN必须做什么。
 published: 2026-11-03
-source_updated: 2026-11-01
+updated: 2026-11-05
+source_updated: 2026-11-05
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -29,14 +30,15 @@ redirect_from:
 
 在上述每个主机上，再由路径决定是Web应用应答、`publira server`应答，还是边缘自己应答，按以下顺序判断：
 
-| 路径                              | 进程                |
-| --------------------------------- | ------------------- |
-| 以`/images`开头                   | `publira server`    |
-| 以`/rpc/publira.v1.`开头          | `publira server`    |
+| 路径 | 进程 |
+| --- | --- |
+| 以`/images`开头 | `publira server` |
+| 以`/rpc/publira.v1.`开头 | `publira server` |
+| 控制台主机上的[API密钥可调用的读取请求](#api密钥可调用的读取请求) | `publira server` |
 | `/rpc`，或其他以`/rpc/`开头的路径 | 无：由边缘应答`404` |
-| 其他任何路径                      | 主机所选定的Web应用 |
+| 其他任何路径 | 主机所选定的Web应用 |
 
-`/images`是页面上显示的所有图片，`/rpc/publira.v1.`是浏览器和移动应用调用的公开API。`/rpc`下的其他内容一律不转发，原因见[只有公开API经过边缘](#只有公开api经过边缘)。其他一切都属于Web应用，包括`/api`：它们在`/api/v1`下应答自己的端点，其中包括支付和入站邮件的Webhook。
+`/images`是页面上显示的所有图片，`/rpc/publira.v1.`是浏览器和移动应用调用的公开API。`/rpc`下的其他内容一律不转发，原因见[只有公开API经过边缘](#只有公开api经过边缘)，但控制台主机上的[API密钥可调用的读取请求](#api密钥可调用的读取请求)除外。其他一切都属于Web应用，包括`/api`：它们在`/api/v1`下应答自己的端点，其中包括支付和入站邮件的Webhook。
 
 公开API的前缀止于`v1`之后的点号，这样它只匹配过程调用，即`/rpc/publira.v1.<Service>/<Method>`。如果匹配不带点号的`/rpc/publira.v1`，还会匹配到只是开头相同的命名空间，例如`publira.v1beta`。优先匹配最长前缀的边缘，无需额外指定就能得到表中的顺序。
 
@@ -61,9 +63,40 @@ redirect_from:
 
 ### 只有公开API经过边缘
 
-`publira server`在`/rpc`下、在公开API旁边提供租户控制台和平台控制台的API，即`publira.admin.v1`和`publira.platform.v1`，使用的是边缘转发到的同一个端口。没有任何请求通过边缘到达它们：`web-admin`和`web-platform`从它们自己的服务器端，通过私有网络上的`PUBLIRA_GRPC_URL`调用这些API，而移动应用只调用公开API。没有任何主机需要转发它们，因此边缘会用自己的`404`应答它们，在控制台主机上和在租户域名上都是如此。仍然转发它们的边缘会白白将两个API暴露在互联网上，连同它们在建立会话之前运行的每个调用：登录、重置密码、确认电子邮件地址，以及创建平台控制台的第一位运营人员。它们自身的身份验证（详见[控制台API](../../3-operations/12-security/index.md#控制台api)）在边缘规则之后依然有效。
+`publira server`在`/rpc`下、在公开API旁边提供租户控制台和平台控制台的API，即`publira.admin.v1`和`publira.platform.v1`，使用的是边缘转发到的同一个端口。`web-admin`和`web-platform`从它们自己的服务器端，通过私有网络上的`PUBLIRA_GRPC_URL`调用这些API，而移动应用只调用公开API。没有任何主机需要转发它们，因此边缘会用自己的`404`应答它们，在控制台主机上和在租户域名上都是如此，唯一的例外是[API密钥可调用的读取请求](#api密钥可调用的读取请求)。转发更多内容的边缘会白白将两个API暴露在互联网上，连同它们在建立会话之前运行的每个调用：登录、重置密码、确认电子邮件地址，以及创建平台控制台的第一位运营人员。它们自身的身份验证（详见[控制台API](../../3-operations/12-security/index.md#控制台api)）在边缘规则之后依然有效。
 
-以`publira server --role storefront`运行租户域名所到达的进程，是另一层独立的防护。边缘规则让控制台API的路径远离互联网；`--role storefront`则让控制台的数据库登录和Web服务令牌根本不出现在读者所到达的进程中。请继续将控制台主机的`/images`发送到`web-admin`通过`PUBLIRA_GRPC_URL`调用的那个`publira server`，并将它们的`/rpc/publira.v1.`发送到`web-admin`调用公开API时所用的那个：两者是同一个进程，除非`web-admin`的`PUBLIRA_PUBLIC_GRPC_URL`指向一个`--role storefront`进程，详见[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)。
+以`publira server --role storefront`运行租户域名所到达的进程，是另一层独立的防护。边缘规则让控制台API的路径远离互联网（这些读取请求除外）；`--role storefront`则让控制台的数据库登录和Web服务令牌根本不出现在读者所到达的进程中。请继续将控制台主机的`/images`发送到`web-admin`通过`PUBLIRA_GRPC_URL`调用的那个`publira server`，并将它们的`/rpc/publira.v1.`发送到`web-admin`调用公开API时所用的那个：两者是同一个进程，除非`web-admin`的`PUBLIRA_PUBLIC_GRPC_URL`指向一个`--role storefront`进程，详见[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)。
+
+### API密钥可调用的读取请求
+
+租户自己的系统（例如CRM或数据仓库）使用[API密钥](../../4-console/10-api-keys-and-webhooks.md#api密钥)从安装实例外部读取租户的目录和购买记录。在租户的控制台主机上（且仅在该主机上），边缘将以下路径逐条按完整路径转发到`publira server`，`publira.admin.v1`的其他内容一律不转发：
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+请将它们发送到为控制台提供服务的`publira server`，即`web-admin`通过`PUBLIRA_GRPC_URL`调用的那个：以`--role storefront`运行的进程会以`404`应答它们。每一条都是完整路径，这样紧邻它的写入操作或其他读取操作仍由边缘以`404`应答；`Authorization`要按到达时的原样传递，因为它携带着密钥。
+
+`publira server`会拒绝密钥调用其他任何过程，但这些路径是安装实例外部的系统所能到达的全部内容，因此请将规则限定在这些路径上。未包含这些路径的边缘仍然提供其他所有内容：只有从私有网络外部使用的密钥才会收到`404`。请按客户端限制它们，详见[速率限制](../../3-operations/12-security/5-rate-limits.md#应该限制什么)。
 
 ### TLS
 

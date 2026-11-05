@@ -85,6 +85,33 @@ PUBLIRA_ROUTING_PUBLIC_PROCEDURE="publira.v1.CatalogService/ListPublishedSeries"
 # A procedure of the catalog search, which has an allowance of its own.
 PUBLIRA_ROUTING_SEARCH_PROCEDURE="publira.v1.CatalogService/SearchPublishedSeries"
 
+# The reads a tenant's API key may make, which the edge forwards on a console
+# host alone. server/api/adminapi's TestAPIKeyProceduresAreWhatTheEdgeForwards
+# compares this list with apiKeyProcedures, so no other procedure of the admin
+# API is named in this file.
+PUBLIRA_ROUTING_API_KEY_READS=(
+  publira.admin.v1.AdminSeriesService/ListSeries
+  publira.admin.v1.AdminSeriesService/GetSeries
+  publira.admin.v1.AdminSeriesService/ListEpisodes
+  publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+  publira.admin.v1.AdminSeriesService/GetEpisode
+  publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+  publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+  publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+  publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+  publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+  publira.admin.v1.AdminSeriesService/ListVolumes
+  publira.admin.v1.AdminLabelService/ListLabels
+  publira.admin.v1.AdminLabelService/GetLabel
+  publira.admin.v1.AdminGenreService/ListGenres
+  publira.admin.v1.AdminCreatorService/ListCreators
+  publira.admin.v1.AdminCreatorService/GetCreator
+  publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+  publira.admin.v1.AdminPurchaseService/ListPurchases
+  publira.admin.v1.AdminPurchaseService/GetPurchase
+  publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+)
+
 # The allowances infra/proxy/README.md lists, as the burst a client may send at
 # once and the requests per second that refill it.
 PUBLIRA_ROUTING_API_BURST=120
@@ -93,6 +120,8 @@ PUBLIRA_ROUTING_SEARCH_BURST=20
 PUBLIRA_ROUTING_SEARCH_RATE=2
 PUBLIRA_ROUTING_IMAGES_BURST=600
 PUBLIRA_ROUTING_IMAGES_RATE=60
+PUBLIRA_ROUTING_API_KEY_BURST=60
+PUBLIRA_ROUTING_API_KEY_RATE=10
 
 # Logs for one stack run. Concurrent stacks that override ports or
 # PUBLIRA_ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
@@ -235,6 +264,7 @@ PUBLIRA_ROUTING_ROUTERS=(
   rpc
   rpc-search
   rpc-console
+  rpc-api-key
   images
   images-console
 )
@@ -244,8 +274,8 @@ fi
 
 # Middleware names from the same file. The first two are attached to the
 # `web` entrypoint in the static configuration, the third to every router, and
-# the rate limits to the routers of a tenant's site and image hosts, so a
-# router refuses requests until the file provider has advertised them;
+# the rate limits to the routers of a tenant's site and image hosts and to
+# rpc-api-key, so a router refuses requests until the file provider has advertised them;
 # waiting for them turns that into one readable message instead of a wall of
 # failing probes.
 PUBLIRA_ROUTING_MIDDLEWARES=(
@@ -256,6 +286,7 @@ PUBLIRA_ROUTING_MIDDLEWARES=(
   rate-limit-search-rpc
   rate-limit-search-page
   rate-limit-images
+  rate-limit-api-key
 )
 
 # W3C Trace Context a caller could forge. echo.ts reports each of these

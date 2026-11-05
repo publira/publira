@@ -25,7 +25,10 @@
 # The rest of /rpc, past the public API's publira.v1 prefix, is answered the
 # same way: the host routers leave it out, and no other router takes it. What
 # the server answers there is the consoles' APIs, which web-admin and
-# web-platform call over the private network, so no host needs them.
+# web-platform call over the private network, so no host needs them. The one
+# exception is the reads a tenant's API key may make, which a tenant's own
+# systems call from outside on the tenant's console host: rpc-api-key names
+# each of them, and no other path of the admin API reaches a router.
 #
 # The reader's region reaches web-storefront in X-Forwarded-CountryRegion from
 # a trusted hop alone. Traefik keeps a trusted hop's X-Forwarded-* headers and
@@ -39,7 +42,8 @@
 # How many requests one client may send, as infra/proxy/README.md lists them,
 # is a rateLimit middleware per allowance, on the routers of a tenant's site
 # and image hosts; the console hosts have routers of their own without one,
-# since they are left to the server's own limits. Each lets a client send its
+# since they are left to the server's own limits, but for the allowance of the
+# API key reads on rpc-api-key. Each lets a client send its
 # burst at once and refills at its average, and answers a request past that
 # with a 429 of its own, which no backend sees. Traefik keeps the count per
 # router, so each allowance is one router's. A rateLimit counts a client by the
@@ -51,6 +55,9 @@
 # middleware that reads the header.
 {{- define "hosts" -}}
   {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
+{{- end -}}
+{{- define "paths" -}}
+  {{- range $i, $path := . }}{{ if $i }} || {{ end }}Path(`{{ $path }}`){{ end -}}
 {{- end -}}
 {{- define "clientIPs" -}}
   {{- range $i, $address := . }}{{ if $i }} || {{ end }}ClientIP(`{{ $address }}`){{ end -}}
@@ -80,11 +87,33 @@
 {{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`)" }}
 {{- $searchPage := "PathRegexp(`^(/[a-z]{2}(-[A-Za-z]{4})?)?/search/?$`)" }}
 {{- $searchRPC := "PathPrefix(`/rpc/publira.v1.CatalogService/SearchPublished`)" }}
+{{- $apiKeyReads := list
+  "/rpc/publira.admin.v1.AdminSeriesService/ListSeries"
+  "/rpc/publira.admin.v1.AdminSeriesService/GetSeries"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate"
+  "/rpc/publira.admin.v1.AdminSeriesService/GetEpisode"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices"
+  "/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings"
+  "/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings"
+  "/rpc/publira.admin.v1.AdminSeriesService/ListVolumes"
+  "/rpc/publira.admin.v1.AdminLabelService/ListLabels"
+  "/rpc/publira.admin.v1.AdminLabelService/GetLabel"
+  "/rpc/publira.admin.v1.AdminGenreService/ListGenres"
+  "/rpc/publira.admin.v1.AdminCreatorService/ListCreators"
+  "/rpc/publira.admin.v1.AdminCreatorService/GetCreator"
+  "/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles"
+  "/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases"
+  "/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase"
+  "/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases" }}
 {{- $allowances := list
   (dict "name" "api" "average" 20 "burst" 120)
   (dict "name" "search-rpc" "average" 2 "burst" 20)
   (dict "name" "search-page" "average" 2 "burst" 20)
-  (dict "name" "images" "average" 60 "burst" 600) }}
+  (dict "name" "images" "average" 60 "burst" 600)
+  (dict "name" "api-key" "average" 10 "burst" 60) }}
 http:
   middlewares:
     # The trust boundary for W3C Trace Context. Traefik drops a request header
@@ -204,6 +233,25 @@ http:
       entryPoints: [web]
       service: web-admin
       middlewares: [strip-country-region]
+
+    # The reads a tenant's API key may make, on the tenant console's host alone
+    # and with an allowance of their own. Each is a whole path, so that the
+    # rest of the admin API stays out of every router.
+    rpc-api-key:
+      rule: '({{ template "hosts" $admin }}) && ({{ template "paths" $apiKeyReads }})'
+      priority: 105
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-api-key]
+{{- if $hops }}
+
+    rpc-api-key-trusted-hop:
+      rule: '({{ template "hosts" $admin }}) && ({{ template "paths" $apiKeyReads }}) && ({{ template "clientIPs" $hops }})'
+      priority: 106
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-api-key-trusted-hop]
+{{- end }}
 {{- end }}
 {{- if $platform }}
 

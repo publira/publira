@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-11-01
+updated: 2026-11-05
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -29,14 +29,15 @@ Every tenant has a domain and a console host of its own, and a host name belongs
 
 On every one of those hosts, the path then decides whether the web app answers, `publira server` does, or the edge answers itself, in this order:
 
-| Path                                       | Process                      |
-| ------------------------------------------ | ---------------------------- |
-| Starting with `/images`                    | `publira server`             |
-| Starting with `/rpc/publira.v1.`           | `publira server`             |
+| Path | Process |
+| --- | --- |
+| Starting with `/images` | `publira server` |
+| Starting with `/rpc/publira.v1.` | `publira server` |
+| [The reads an API key may make](#the-reads-an-api-key-may-make), on a console host | `publira server` |
 | `/rpc`, or starting with `/rpc/` otherwise | None: the edge answers `404` |
-| Anything else                              | The web app the host picked  |
+| Anything else | The web app the host picked |
 
-`/images` is every image a page shows, and `/rpc/publira.v1.` the public API the browser and the mobile app call. Nothing else under `/rpc` is forwarded, as [Only the public API goes through the edge](#only-the-public-api-goes-through-the-edge) explains. Everything else belongs to the web apps, `/api` included: they answer their own endpoints under `/api/v1`, the payment and inbound email webhooks among them.
+`/images` is every image a page shows, and `/rpc/publira.v1.` the public API the browser and the mobile app call. Nothing else under `/rpc` is forwarded, as [Only the public API goes through the edge](#only-the-public-api-goes-through-the-edge) explains, but for [the reads an API key may make](#the-reads-an-api-key-may-make) on a console host. Everything else belongs to the web apps, `/api` included: they answer their own endpoints under `/api/v1`, the payment and inbound email webhooks among them.
 
 The public API's prefix ends at the dot after `v1`, so that a procedure, `/rpc/publira.v1.<Service>/<Method>`, is all it matches. A match on `/rpc/publira.v1` without the dot would also take a namespace that only starts the same way, such as `publira.v1beta`. An edge that matches the longest prefix first gets the order of the table right without being told it.
 
@@ -61,9 +62,40 @@ The image host can reach `publira server` through the same edge as the tenant's 
 
 ### Only the public API goes through the edge
 
-`publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, on the one port the edge forwards to. Nothing reaches them through the edge: `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains. An edge that forwards them anyway exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../../3-operations/12-security/index.md#the-console-apis) describes, stays in place behind the edge rule.
+`publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, on the one port the edge forwards to. `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains, with [the reads an API key may make](#the-reads-an-api-key-may-make) as the one exception. An edge that forwards anything more exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../../3-operations/12-security/index.md#the-console-apis) describes, stays in place behind the edge rule.
 
-Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/images` to the `publira server` `web-admin` calls on `PUBLIRA_GRPC_URL`, and their `/rpc/publira.v1.` to the one it calls the public API on: the same process, unless `web-admin`'s `PUBLIRA_PUBLIC_GRPC_URL` names a `--role storefront` one, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes.
+Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet, those reads aside; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/images` to the `publira server` `web-admin` calls on `PUBLIRA_GRPC_URL`, and their `/rpc/publira.v1.` to the one it calls the public API on: the same process, unless `web-admin`'s `PUBLIRA_PUBLIC_GRPC_URL` names a `--role storefront` one, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes.
+
+### The reads an API key may make
+
+A tenant's own systems, such as a CRM or a data warehouse, read its catalog and its purchases from outside the install with an [API key](../../4-console/10-api-keys-and-webhooks.md#api-keys). On the tenant's console host, and on no other host, the edge forwards these paths, each as a whole path, to `publira server`, and nothing else of `publira.admin.v1`:
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+Send them to a `publira server` that serves the consoles, the one `web-admin` calls on `PUBLIRA_GRPC_URL`: one run with `--role storefront` answers them with `404`. Each is a whole path, so that a write or another read beside it stays with the edge's `404`, and `Authorization` is passed on as it arrived, since it carries the key.
+
+`publira server` refuses a key any other procedure, but those paths are all a system outside the install may reach, so keep the rule to them. An edge that leaves them out still serves everything else: only a key used from outside the private network is answered with a `404`. Limit them per client, as [Rate limits](../../3-operations/12-security/5-rate-limits.md#what-to-limit) says.
 
 ### TLS
 

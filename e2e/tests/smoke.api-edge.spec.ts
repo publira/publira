@@ -9,7 +9,8 @@ import {
 } from "../src/urls";
 
 const CATALOG_PROCEDURE = "/publira.v1.CatalogService/ListPublishedSeries";
-const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
+const ADMIN_PROCEDURE = "/publira.admin.v1.AdminAuditLogService/ListAuditLogs";
+const API_KEY_READ = "/publira.admin.v1.AdminSeriesService/ListSeries";
 
 const PLATFORM_PROCEDURE =
   "/publira.platform.v1.PlatformTenantService/ListTenants";
@@ -74,7 +75,8 @@ const postThroughEdge = async (
  * One process serves all three Connect namespaces under `/rpc`, but
  * the edge forwards only the public one: the consoles call theirs over the
  * private network, so no host needs them, and the edge answers them itself on
- * every host. The tenant console's procedure names a tenant that exists, so a
+ * every host, but for the reads a tenant's API key may make on the tenant
+ * console's. The tenant console's procedure names a tenant that exists, so a
  * request that did reach the server would be refused for its caller, with a
  * `401`, rather than for its tenant.
  */
@@ -97,6 +99,35 @@ test.describe("the edge forwards only the public API namespace", () => {
       // The public namespace is answered on the same host and path prefix.
       const catalog = await postThroughEdge(page, `/rpc${CATALOG_PROCEDURE}`);
       expect(catalog.status).not.toBe(404);
+    });
+  }
+
+  test("forwards a read an API key may make on the tenant console", async ({
+    page,
+  }) => {
+    await page.goto(WEB_ADMIN_BASE_URL);
+
+    expect(
+      await postThroughEdge(page, `/rpc${API_KEY_READ}`, {
+        tenant: { tenantId: SEED_TENANT_ID },
+      })
+    ).toEqual({ code: "unauthenticated", status: 401 });
+  });
+
+  for (const [label, baseUrl] of [
+    ["the tenant site", WEB_STOREFRONT_BASE_URL],
+    ["the platform console", WEB_PLATFORM_BASE_URL],
+  ]) {
+    test(`answers a read an API key may make with 404 on ${label}`, async ({
+      page,
+    }) => {
+      await page.goto(baseUrl);
+
+      expect(
+        await postThroughEdge(page, `/rpc${API_KEY_READ}`, {
+          tenant: { tenantId: SEED_TENANT_ID },
+        })
+      ).toEqual({ code: undefined, status: 404 });
     });
   }
 });

@@ -2,7 +2,7 @@
 title: Operating on Kubernetes
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, serve the images and the public API apart, expose the metrics, and upgrade an install that runs on a Kubernetes cluster.
 published: 2026-10-21
-updated: 2026-10-25
+updated: 2026-11-05
 ---
 
 These are the changes made to an install once [Kubernetes](./index.md) has brought it into service. Each one changes the resources that page and [The edge on Kubernetes](./1-edge.md) created.
@@ -18,7 +18,7 @@ Point both names at the edge's address before you apply the change, so cert-mana
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains and `web-storefront` to it. The split also lets reader traffic scale apart from the consoles, since each Deployment has replicas of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes:
+The edge already keeps the consoles' APIs off the internet, the reads an API key may make aside, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains and `web-storefront` to it. The split also lets reader traffic scale apart from the consoles, since each Deployment has replicas of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes:
 
 ```yaml
 apiVersion: apps/v1
@@ -94,7 +94,7 @@ kubectl create secret generic publira-storefront \
 
 Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`, and point `web-storefront` at it too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in its Deployment to `http://publira-storefront:8000/rpc`. The console hosts' routes, `web-admin`, and `web-platform` keep calling `publira-server`, which serves every role, until [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) takes the public API off it.
 
-The edge answers a console API with `404` on every host either way, so the check calls the two Services from inside the cluster instead:
+The edge answers most of the console APIs with `404` on every host either way, so the check calls the two Services from inside the cluster instead:
 
 ```bash
 for service in publira-storefront publira-server; do

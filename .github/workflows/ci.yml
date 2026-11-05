@@ -186,10 +186,17 @@ jobs:
               - '.github/actions/go-setup/**'
               - '.github/actions/main-cache-save/**'
             # The routing contract whose allowances the server's read limits
-            # are tested against, which test_go leaves out with the rest of
-            # the Markdown.
+            # are tested against, and everything that lists the reads a
+            # tenant's API key may make, which the admin API's list is tested
+            # against. test_go leaves the Markdown out, and the rest has no
+            # reason to run it otherwise.
             test_go_docs:
               - 'infra/proxy/README.md'
+              - 'infra/proxy/traefik/dynamic/routes.yaml'
+              - 'infra/proxy/nginx/snippets/api-key-reads.conf'
+              - 'infra/proxy/caddy/Caddyfile'
+              - 'e2e/routing/scripts/lib.sh'
+              - 'docs/*/2-deployments/4-edge/index.md'
             test_ts:
               - *docs_excluded
               - 'apps/**'

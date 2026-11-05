@@ -88,6 +88,32 @@ const listLabelsWith = async (key: string): Promise<number> => {
   return response.status;
 };
 
+/**
+ * What the admin API answers `ListSeries` with for `key`, sent from the page so
+ * that it goes through the edge on the tenant console's own host, as a system
+ * outside the install calls it.
+ */
+const listSeriesThroughEdge = (page: Page, key: string): Promise<number> =>
+  page.evaluate(
+    async ([bearer, tenantId]) => {
+      const response = await fetch(
+        "/rpc/publira.admin.v1.AdminSeriesService/ListSeries",
+        {
+          body: JSON.stringify({ tenant: { tenantId } }),
+          credentials: "omit",
+          headers: {
+            Authorization: `Bearer ${bearer}`,
+            "content-type": "application/json",
+          },
+          method: "POST",
+        }
+      );
+
+      return response.status;
+    },
+    [key, TENANT_UUID] as const
+  );
+
 /** Reads the audit log until an entry for `action` appears. */
 const expectAuditEntry = async (page: Page, action: string): Promise<void> => {
   const entry = page.getByRole("row").filter({ hasText: action });
@@ -160,6 +186,7 @@ test.describe("API keys and webhooks", () => {
 
       // The key reads what its scope admits.
       expect(await listLabelsWith(key)).toBe(200);
+      expect(await listSeriesThroughEdge(page, key)).toBe(200);
 
       // Reloading shows its start and nothing more.
       await page.reload();
@@ -180,6 +207,7 @@ test.describe("API keys and webhooks", () => {
         row.getByRole("button", { name: "Revoke Warehouse" })
       ).toHaveCount(0);
       expect(await listLabelsWith(key)).toBe(401);
+      expect(await listSeriesThroughEdge(page, key)).toBe(401);
 
       await expectAuditEntry(page, "API key revoked");
     });

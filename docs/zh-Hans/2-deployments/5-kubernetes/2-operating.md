@@ -2,7 +2,8 @@
 title: 在Kubernetes上运维
 description: 为在Kubernetes集群上运行的安装实例添加租户、让控制台的凭据远离租户的域名、分开提供图片和公开API、公开指标，以及升级。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本页介绍[Kubernetes](./index.md)让安装实例投入使用之后，对它所做的各项更改。每项更改都会修改该页和[Kubernetes上的边缘](./1-edge.md)所创建的资源。
@@ -18,7 +19,7 @@ source_updated: 2026-10-25
 
 ## 让控制台的凭据远离租户的域名
 
-边缘已经让控制台的API无法从互联网访问，但边缘把租户域名转发到的`publira-server`仍然提供这些API，并为此持有它们的数据库登录和Web服务令牌。要把这三者都从读者能够访问的进程中移出（这是独立于边缘规则的另一层防护，如[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)所述），请运行第二个使用`--role storefront`的Deployment，并把租户的域名和`web-storefront`路由到它。拆分后，读者流量也可以独立于控制台进行扩缩，因为每个Deployment都有自己的副本，如[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)所述：
+边缘已经让控制台的API无法从互联网访问（[API密钥可调用的读取请求](../4-edge/index.md#api密钥可调用的读取请求)除外），但边缘把租户域名转发到的`publira-server`仍然提供这些API，并为此持有它们的数据库登录和Web服务令牌。要把这三者都从读者能够访问的进程中移出（这是独立于边缘规则的另一层防护，如[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)所述），请运行第二个使用`--role storefront`的Deployment，并把租户的域名和`web-storefront`路由到它。拆分后，读者流量也可以独立于控制台进行扩缩，因为每个Deployment都有自己的副本，如[按角色拆分服务器](../7-scaling-out.md#按角色拆分服务器)所述：
 
 ```yaml
 apiVersion: apps/v1
@@ -94,7 +95,7 @@ kubectl create secret generic publira-storefront \
 
 然后只在租户域名上，在`web-storefront`的HTTPRoute或Ingress中，把`/images`和`/rpc`下公开API的后端从`publira-server`改为`publira-storefront`；并让`web-storefront`也指向它，因为它只调用公开API：在其Deployment中把`PUBLIRA_GRPC_URL`设置为`http://publira-storefront:8000/rpc`。控制台主机名的路由、`web-admin`和`web-platform`继续调用提供所有角色的`publira-server`，直到[让控制台的服务器不提供公开API](#让控制台的服务器不提供公开api)把公开API从它上面移除。
 
-无论哪种情况，边缘在每个主机名上都会对控制台API返回`404`，所以改为从集群内部调用这两个Service来检查：
+无论哪种情况，边缘在每个主机名上都会对大部分控制台API返回`404`，所以改为从集群内部调用这两个Service来检查：
 
 ```bash
 for service in publira-storefront publira-server; do

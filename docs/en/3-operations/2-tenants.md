@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain, console host, and image host, change them later, and suspend a tenant.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-11-05
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -30,7 +30,7 @@ The console host does not have to be under the tenant's domain: a site on `examp
 
 Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security/2-two-step-verification.md#tenant-staff) describes.
 
-The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge/1-sample-configurations.md) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge/index.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
+The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge/1-sample-configurations.md) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge/index.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host, but for [the reads an API key may make](../2-deployments/4-edge/index.md#the-reads-an-api-key-may-make), which a tenant's own systems call on the console host from addresses of their own.
 
 ### An image host
 

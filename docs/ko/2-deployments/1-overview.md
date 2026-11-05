@@ -2,7 +2,8 @@
 title: 개요
 description: Publira 설치 환경이 실행하는 것과 그것이 의존하는 서비스를 설명합니다.
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 Publira 설치 환경은 상시 실행되는 네 개의 프로세스, 이들이 의존하는 몇 가지 서비스, 그리고 직접 실행하는 명령줄 도구 하나로 이루어집니다. 이 페이지에서는 테넌트 하나를 서비스하는 가장 작은 설치 환경을 설명합니다. 테넌트의 공개 사이트와 콘솔을 제공하며, 플랫폼 콘솔이 아니라 `publiractl`로 관리하는 구성입니다.
@@ -13,7 +14,7 @@ Publira 설치 환경은 상시 실행되는 네 개의 프로세스, 이들이 
 | --- | --- | --- |
 | `web-storefront` | 모든 테넌트의 공개 사이트 | 엣지. 각 테넌트의 도메인으로 |
 | `web-admin` | 테넌트 콘솔 | 엣지. 각 테넌트의 콘솔 호스트로. 테넌트에 다른 호스트를 지정하지 않았다면 `admin.<domain>` |
-| `publira server` | `/rpc` 아래의 API와 이미지 전송을 하나의 포트로 | 엣지는 `/rpc` 아래의 공개 API와 `/images`로, `web-storefront`와 `web-admin`은 `/rpc`로 |
+| `publira server` | `/rpc` 아래의 API와 이미지 전송을 하나의 포트로 | 엣지는 `/rpc` 아래의 공개 API, API 키로 보낼 수 있는 읽기 요청, `/images`로, `web-storefront`와 `web-admin`은 `/rpc`로 |
 | `publira worker` | 발신 메일과 푸시 알림, 캐시 재검증, 모든 예약 작업 | 없음. 헬스 체크에만 응답합니다 |
 
 모든 프로세스가 `GET /livez`와 `GET /readyz`에 응답하므로 오케스트레이터가 이를 프로브로 사용할 수 있습니다. 웹 앱은 하나의 이미지로, `publira server`와 `publira worker`는 또 다른 이미지로 빌드됩니다. [이미지 빌드 안내](https://github.com/publira/publira/blob/main/infra/docker/README.md)에 그 목록이 있습니다.

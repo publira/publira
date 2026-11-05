@@ -32,7 +32,8 @@ assert_route "images on an image host" GET pictures.internal /images/cover api /
 assert_unrouted "rpc on an image host" GET pictures.internal "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_unrouted "page on an image host" GET pictures.internal /
 assert_route "api/v1 on a listed host" POST reader.internal /api/v1/revalidate web-storefront /api/v1/revalidate
-assert_unrouted "console API on a listed host" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/ListSeries
+assert_route "an API key's read on a console host" POST studio.internal "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}"
+assert_unrouted "console API on a listed host" POST admin.localhost /rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
 assert_unrouted "platform API on a listed host" POST operators.internal /rpc/publira.platform.v1.PlatformTenantService/ListTenants
 
 assert_trace_context_stripped "trace context on web-storefront" GET localhost / web-storefront /

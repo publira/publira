@@ -2,7 +2,8 @@
 title: 概览
 description: Publira安装实例运行什么，以及它依赖哪些服务。
 published: 2026-11-03
-source_updated: 2026-10-25
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 一个Publira安装实例由四个长期运行的进程、它们依赖的几项服务，以及一个由您手动运行的命令行工具组成。本页介绍能为一个租户提供服务的最小安装实例：它的公开网站和控制台，通过`publiractl`而不是平台控制台来管理。
@@ -13,7 +14,7 @@ source_updated: 2026-10-25
 | --- | --- | --- |
 | `web-storefront` | 每个租户的公开网站 | 边缘，在每个租户的域名上 |
 | `web-admin` | 租户控制台 | 边缘，在每个租户的控制台主机上，除非为租户另行指定，否则为`admin.<domain>` |
-| `publira server` | 位于`/rpc`下的API以及图片分发，使用同一个端口 | 边缘，在`/rpc`下的公开API和`/images`上；`web-storefront`和`web-admin`，在`/rpc`上 |
+| `publira server` | 位于`/rpc`下的API以及图片分发，使用同一个端口 | 边缘，在`/rpc`下的公开API、API密钥可调用的读取请求和`/images`上；`web-storefront`和`web-admin`，在`/rpc`上 |
 | `publira worker` | 外发邮件和推送通知、缓存重新验证，以及所有定时任务 | 无；它只应答健康检查 |
 
 每个进程都会应答`GET /livez`和`GET /readyz`，因此编排系统可以对它进行探测。各个Web应用由同一个镜像构建，`publira server`和`publira worker`则由另一个镜像构建；[镜像构建说明](https://github.com/publira/publira/blob/main/infra/docker/README.md)列出了它们。

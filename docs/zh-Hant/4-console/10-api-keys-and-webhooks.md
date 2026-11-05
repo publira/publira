@@ -2,7 +2,8 @@
 title: API金鑰與Webhook
 description: 為租戶自有的系統提供管理API的唯讀金鑰、向它們傳送銷售、退款、註冊與訂閱的簽章事件、驗證簽章，以及重新傳送已被放棄的傳送。
 published: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 **整合** › **API金鑰與Webhook**會將租戶與出版社自己運作的系統連接起來，例如CRM、資料倉儲或會計系統。系統以**API金鑰**讀取租戶的作品目錄與購買記錄，並透過**Webhook端點**在銷售、退款、新讀者或訂閱發生的當下得知。Webhook端點是系統自己的一個URL，每個事件都會傳送到那裡。**傳送記錄**會列出傳送給每個端點的內容，以及被放棄的內容。
@@ -38,19 +39,21 @@ source_updated: 2026-11-04
 系統在管理API上以`Authorization: Bearer <key>`傳送金鑰，並以列表上方顯示的**租戶ID**指定租戶，如以下這個取得租戶系列的請求：
 
 ```bash
-curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
+curl https://<console host>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
   -H "Authorization: Bearer pbk_…" \
   -H "Content-Type: application/json" \
   -d '{"tenant": {"tenantId": "<Tenant ID>"}}'
 ```
 
-安裝實例前方的邊緣不會轉送管理API，因此金鑰是由能直接連到`publira server`的系統使用，也就是透過Web應用程式呼叫它的那個網路。請向安裝實例的營運人員詢問該位址。
+請透過HTTPS將請求傳送到此主控台所在的主機。安裝實例前方的邊緣會在那裡轉送金鑰可以呼叫的程序，其他程序一律不轉送，如[API金鑰可進行的讀取](../2-deployments/4-edge/index.md#api金鑰可進行的讀取)所述。若主控台只接受特定位址，請要求安裝實例的營運人員允許該系統的位址。
 
 各個程序及其欄位請見[管理API的定義](https://github.com/publira/publira/tree/main/proto/publira/admin/v1)。使用金鑰的請求在下列情況會收到這些回應：
 
 - **`unauthenticated`**：金鑰已撤銷或不明，或請求指定了其他租戶時。
 - **`permission_denied`**：呼叫的程序不在其任何範圍允許之列時，所有寫入都包含在內。
 - **`resource_exhausted`**，附帶`Retry-After`：超過安裝實例對使用金鑰之請求的限制時，也就是每分鐘600次、每天100,000次，除非營運人員設定了其他值。
+
+邊緣會對管理API下的其他任何路徑回應`404`。安裝實例也可以限制來自同一位址的請求，超過限制時由邊緣回應`429`；範例設定的限制是同時60個、每秒10個。
 
 ### 撤銷金鑰
 

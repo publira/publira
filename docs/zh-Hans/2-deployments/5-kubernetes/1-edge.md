@@ -2,7 +2,8 @@
 title: Kubernetes上的边缘
 description: 在Kubernetes集群上的安装实例前方部署Gateway或Ingress，由cert-manager签发其证书，并从集群外部进行检查。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本页是[Kubernetes](./index.md)的第6步：在[设置安装实例](./index.md#5-设置安装实例)运行完成后，把边缘部署在[启动进程](./index.md#4-启动进程)所创建的Service前方。
@@ -18,7 +19,7 @@ source_updated: 2026-10-31
 | 租户的控制台主机名 | `/rpc`的其余部分 | 无：边缘返回`404` |
 | 租户的控制台主机名 | 其他所有路径 | `web-admin`，端口`4000` |
 
-在`/rpc`之下，只转发公开API `publira.v1`：控制台通过集群网络调用它们自己的API，所以边缘对其余请求自行返回`404`，原因见[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)。路径和`Host`请求头要按浏览器发送时的原样到达Service；不要对两者做任何改写。
+在`/rpc`之下，只转发公开API `publira.v1`：控制台通过集群网络调用它们自己的API，所以边缘对其余请求自行返回`404`，原因见[只有公开API经过边缘](../4-edge/index.md#只有公开api经过边缘)。如果租户自己的系统从集群外部使用API密钥，该租户还需要转发[密钥可调用的读取请求](../4-edge/index.md#api密钥可调用的读取请求)：请将它们逐条作为精确路径添加到其控制台主机的路由中，指向`publira-server`的`8000`端口，在HTTPRoute中使用`type: Exact`，在Ingress中使用`pathType: Exact`，这两种资源都会先于`/rpc`的其余部分尝试这些路径。路径和`Host`请求头要按浏览器发送时的原样到达Service；不要对两者做任何改写。
 
 公开API的前缀结束于一个路径段的中间，即`v1`之后的点号处，而Gateway的`PathPrefix`和Ingress的`Prefix`都按完整的路径段匹配，所以两者都无法单独表示它。两种API也都没有自行应答请求的方法。这两件事都留给了具体实现，下面每一节都会说明其所用的实现如何做到。
 

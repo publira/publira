@@ -2,7 +2,8 @@
 title: 엣지
 description: 설치 환경 앞에 놓이는 로드 밸런서, 프록시, CDN이 해야 하는 일을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-11-01
+updated: 2026-11-05
+source_updated: 2026-11-05
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -29,14 +30,15 @@ redirect_from:
 
 이 모든 호스트에서, 다음으로 경로에 따라 웹 앱이 응답할지, `publira server`가 응답할지, 엣지가 직접 응답할지가 이 순서대로 정해집니다.
 
-| 경로                                | 프로세스                  |
-| ----------------------------------- | ------------------------- |
-| `/images`로 시작                    | `publira server`          |
-| `/rpc/publira.v1.`로 시작           | `publira server`          |
+| 경로 | 프로세스 |
+| --- | --- |
+| `/images`로 시작 | `publira server` |
+| `/rpc/publira.v1.`로 시작 | `publira server` |
+| 콘솔 호스트의 [API 키로 보낼 수 있는 읽기 요청](#api-키로-보낼-수-있는-읽기-요청) | `publira server` |
 | 그 밖에 `/rpc`이거나 `/rpc/`로 시작 | 없음: 엣지가 `404`로 응답 |
-| 그 밖의 모든 경로                   | 호스트로 정해진 웹 앱     |
+| 그 밖의 모든 경로 | 호스트로 정해진 웹 앱 |
 
-`/images`는 페이지에 표시되는 모든 이미지이고, `/rpc/publira.v1.`은 브라우저와 모바일 앱이 호출하는 공개 API입니다. [공개 API만 엣지를 거친다](#공개-api만-엣지를-거친다)에서 설명하듯 `/rpc` 아래의 다른 경로는 전달하지 않습니다. 그 밖의 모든 경로는 `/api`를 포함해 웹 앱의 몫입니다. 웹 앱은 결제 웹훅과 수신 이메일 웹훅을 비롯한 자체 엔드포인트에 `/api/v1` 아래에서 응답합니다.
+`/images`는 페이지에 표시되는 모든 이미지이고, `/rpc/publira.v1.`은 브라우저와 모바일 앱이 호출하는 공개 API입니다. [공개 API만 엣지를 거친다](#공개-api만-엣지를-거친다)에서 설명하듯, 콘솔 호스트의 [API 키로 보낼 수 있는 읽기 요청](#api-키로-보낼-수-있는-읽기-요청)을 제외하면 `/rpc` 아래의 다른 경로는 전달하지 않습니다. 그 밖의 모든 경로는 `/api`를 포함해 웹 앱의 몫입니다. 웹 앱은 결제 웹훅과 수신 이메일 웹훅을 비롯한 자체 엔드포인트에 `/api/v1` 아래에서 응답합니다.
 
 공개 API의 접두사는 `v1` 뒤의 점에서 끝나므로, 일치하는 것은 프로시저 `/rpc/publira.v1.<Service>/<Method>`뿐입니다. 점 없이 `/rpc/publira.v1`로 일치시키면 `publira.v1beta`처럼 앞부분만 같은 네임스페이스까지 일치하게 됩니다. 가장 긴 접두사부터 일치시키는 엣지라면 따로 지정하지 않아도 표의 순서대로 처리됩니다.
 
@@ -61,9 +63,40 @@ redirect_from:
 
 ### 공개 API만 엣지를 거친다
 
-`publira server`는 테넌트 콘솔과 플랫폼 콘솔의 API인 `publira.admin.v1`과 `publira.platform.v1`을 공개 API와 함께 `/rpc` 아래에서, 엣지가 전달하는 하나의 포트로 제공합니다. 이 API들에는 엣지를 거쳐 도달하는 것이 없습니다. `web-admin`과 `web-platform`은 자기 서버에서 사설 네트워크를 통해 `PUBLIRA_GRPC_URL`로 호출하며, 모바일 앱은 공개 API만 호출합니다. 어떤 호스트도 이 API들의 전달이 필요하지 않으므로, 엣지는 테넌트의 도메인에서와 마찬가지로 콘솔 호스트에서도 자체적으로 `404`를 응답합니다. 그래도 전달하는 엣지는 아무 이득 없이 두 API를 인터넷에 노출하며, 세션이 생기기 전에 실행되는 호출, 즉 로그인, 비밀번호 재설정, 이메일 주소 확인, 플랫폼 콘솔의 첫 운영자 생성도 함께 노출합니다. [콘솔 API](../../3-operations/12-security/index.md#콘솔-api)에서 설명하는 이 API들 자체의 인증은 엣지 규칙 뒤에서 그대로 유지됩니다.
+`publira server`는 테넌트 콘솔과 플랫폼 콘솔의 API인 `publira.admin.v1`과 `publira.platform.v1`을 공개 API와 함께 `/rpc` 아래에서, 엣지가 전달하는 하나의 포트로 제공합니다. `web-admin`과 `web-platform`은 자기 서버에서 사설 네트워크를 통해 `PUBLIRA_GRPC_URL`로 호출하며, 모바일 앱은 공개 API만 호출합니다. 어떤 호스트도 이 API들의 전달이 필요하지 않으므로, 엣지는 테넌트의 도메인에서와 마찬가지로 콘솔 호스트에서도 자체적으로 `404`를 응답하며, 유일한 예외는 [API 키로 보낼 수 있는 읽기 요청](#api-키로-보낼-수-있는-읽기-요청)입니다. 그 이상을 전달하는 엣지는 아무 이득 없이 두 API를 인터넷에 노출하며, 세션이 생기기 전에 실행되는 호출, 즉 로그인, 비밀번호 재설정, 이메일 주소 확인, 플랫폼 콘솔의 첫 운영자 생성도 함께 노출합니다. [콘솔 API](../../3-operations/12-security/index.md#콘솔-api)에서 설명하는 이 API들 자체의 인증은 엣지 규칙 뒤에서 그대로 유지됩니다.
 
-테넌트의 도메인이 도달하는 프로세스를 `publira server --role storefront`로 실행하는 것은 이와 별개인 두 번째 방어층입니다. 엣지 규칙은 콘솔 API의 경로를 인터넷에서 떼어 놓고, `--role storefront`는 콘솔의 데이터베이스 로그인과 웹 서비스 토큰을 독자가 도달하는 프로세스에 아예 두지 않습니다. 콘솔 호스트의 `/images`는 계속 `web-admin`이 `PUBLIRA_GRPC_URL`로 호출하는 `publira server`로 보내고, `/rpc/publira.v1.`은 `web-admin`이 공개 API를 호출하는 서버로 보내세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하는 대로 `web-admin`의 `PUBLIRA_PUBLIC_GRPC_URL`이 `--role storefront` 서버를 가리키지 않는 한 둘은 같은 프로세스입니다.
+테넌트의 도메인이 도달하는 프로세스를 `publira server --role storefront`로 실행하는 것은 이와 별개인 두 번째 방어층입니다. 엣지 규칙은 그 읽기 요청을 제외한 콘솔 API의 경로를 인터넷에서 떼어 놓고, `--role storefront`는 콘솔의 데이터베이스 로그인과 웹 서비스 토큰을 독자가 도달하는 프로세스에 아예 두지 않습니다. 콘솔 호스트의 `/images`는 계속 `web-admin`이 `PUBLIRA_GRPC_URL`로 호출하는 `publira server`로 보내고, `/rpc/publira.v1.`은 `web-admin`이 공개 API를 호출하는 서버로 보내세요. [역할별로 서버 나누기](../7-scaling-out.md#역할별로-서버-나누기)에서 설명하는 대로 `web-admin`의 `PUBLIRA_PUBLIC_GRPC_URL`이 `--role storefront` 서버를 가리키지 않는 한 둘은 같은 프로세스입니다.
+
+### API 키로 보낼 수 있는 읽기 요청
+
+CRM이나 데이터 웨어하우스 같은 테넌트 자체 시스템은 [API 키](../../4-console/10-api-keys-and-webhooks.md#api-키)로 설치 환경 밖에서 테넌트의 카탈로그와 구매를 읽습니다. 엣지는 테넌트의 콘솔 호스트에서만 다음 경로를 각각 경로 전체가 일치할 때 `publira server`로 전달하며, 다른 어떤 호스트에서도 전달하지 않습니다. `publira.admin.v1`의 나머지는 전달하지 않습니다.
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+이 경로들은 콘솔을 제공하는 `publira server`, 즉 `web-admin`이 `PUBLIRA_GRPC_URL`로 호출하는 서버로 보내세요. `--role storefront`로 실행하는 서버는 이 경로들에 `404`로 응답합니다. 각 항목을 경로 전체로 지정하는 것은 그 옆의 쓰기나 다른 읽기 요청이 엣지의 `404`를 받도록 하기 위해서이며, `Authorization`에는 키가 담겨 있으므로 도착한 그대로 전달합니다.
+
+`publira server`는 키가 호출하는 그 밖의 프로시저를 거부하지만, 설치 환경 밖의 시스템이 도달해도 되는 것은 이 경로들뿐이므로 규칙을 이 경로들로 한정하세요. 이 경로들을 빼는 엣지도 그 밖의 모든 것은 그대로 제공하며, 사설 네트워크 밖에서 사용하는 키만 `404`를 받습니다. [요청 제한](../../3-operations/12-security/5-rate-limits.md#제한할-것)에서 설명하듯이 이 경로들은 클라이언트별로 제한하세요.
 
 ### TLS
 

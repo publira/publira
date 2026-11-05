@@ -2,6 +2,7 @@
 title: API keys and webhooks
 description: Give the tenant's own systems a read-only key for the admin API, send them signed events for sales, refunds, sign-ups, and subscriptions, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
+updated: 2026-11-05
 ---
 
 **Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases with an **API key**, and learns of a sale, a refund, a new reader, or a subscription as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
@@ -37,19 +38,21 @@ The list then shows the key by its **Prefix**, `pbk_` and the twelve characters 
 A system sends the key as `Authorization: Bearer <key>` on the admin API, and names the tenant by the **Tenant ID** shown above the list, as in this request for the tenant's series:
 
 ```bash
-curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
+curl https://<console host>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
   -H "Authorization: Bearer pbk_…" \
   -H "Content-Type: application/json" \
   -d '{"tenant": {"tenantId": "<Tenant ID>"}}'
 ```
 
-The edge in front of the install does not forward the admin API, so a key is used by a system that reaches `publira server` itself, on the network the web apps call it on. Ask the install's operator for that address.
+Send it to the host this console is on, over HTTPS. The edge in front of the install forwards the procedures a key may call there, and no others, as [The reads an API key may make](../2-deployments/4-edge/index.md#the-reads-an-api-key-may-make) describes. If the console accepts only certain addresses, ask the install's operator to admit the system's.
 
 The procedures and their fields are in the [admin API's definitions](https://github.com/publira/publira/tree/main/proto/publira/admin/v1). A key is answered:
 
 - **`unauthenticated`** when it is revoked or unknown, or the request names another tenant.
 - **`permission_denied`** on a procedure none of its scopes admits, every write included.
 - **`resource_exhausted`**, with `Retry-After`, past the install's limit on requests made with a key: 600 a minute and 100,000 a day, unless the operator set another.
+
+The edge answers `404` on anything else under the admin API. An install can also limit the requests from one address, which the edge answers with `429` past its limit: in the sample configurations, 60 at once and 10 a second.
 
 ### Revoking a key
 

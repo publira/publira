@@ -2,8 +2,8 @@
 title: 水平擴展
 description: 安裝實例超出起初的規模時該多執行哪些處理程序、每個副本必須共用什麼，以及哪些部分無法水平擴展。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 安裝實例變慢或即將成長時，要增加的是它原本就在執行的處理程序：繁忙的處理程序多執行幾個副本，`publira server`依其回應的流量拆分，`publira worker`依其負責的工作拆分。本頁說明哪些處理程序可以執行多個副本、在那之前必須先準備好什麼、安裝實例的負載落在哪裡、`publira server`可以拆分到什麼程度、`publira worker`如何拆分、副本增加時資料庫必須能接受什麼、如何把讀者的目錄讀取與worker處理程序的每日重建移到資料庫的複本上，以及哪些部分無論增加多少副本都無法減輕負擔。本頁適用於任何平台，[Kubernetes](./5-kubernetes/index.md)與[在AWS Fargate上執行Amazon ECS](./6-ecs-fargate/index.md)頁面備有對應的資訊清單與指令。
@@ -64,7 +64,7 @@ source_updated: 2026-11-02
 
 1. **一個處理程序**。`publira server --with-worker`同時執行伺服器與worker處理程序，[Docker Compose](./3-docker-compose.md)安裝實例就是這樣做。增加一個副本就會同時增加兩者。
 2. **伺服器與worker處理程序分開**。以兩個處理程序分別執行`publira server`與`publira worker`，就像[安裝](./2-installing.md)中所做的。兩者各自擴展，而且worker處理程序的資料庫登入不再位於邊緣轉送請求的處理程序中。
-3. **專供讀者的伺服器**。以`--role storefront`執行第二個`publira server`，負責每個租戶網域的公開API與圖片；由於`web-storefront`只呼叫公開API，它的`PUBLIRA_GRPC_URL`也指向這個伺服器。第一個伺服器繼續服務`web-admin`、`web-platform`與主控台主機。這樣所有讀者流量都會抵達專屬的處理程序，可以與主控台分開擴展，而且這些處理程序既不持有任一主控台的資料庫登入，也不持有Web服務認證資訊。兩者各自讀取的內容列於[部署參考文件](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)。
+3. **專供讀者的伺服器**。以`--role storefront`執行第二個`publira server`，負責每個租戶網域的公開API與圖片；由於`web-storefront`只呼叫公開API，它的`PUBLIRA_GRPC_URL`也指向這個伺服器。第一個伺服器繼續服務`web-admin`、`web-platform`與主控台主機，包括[API金鑰可進行的讀取](./4-edge/index.md#api金鑰可進行的讀取)。這樣所有讀者流量都會抵達專屬的處理程序，可以與主控台分開擴展，而且這些處理程序既不持有任一主控台的資料庫登入，也不持有Web服務認證資訊。兩者各自讀取的內容列於[部署參考文件](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes)。
 4. **專供主控台的伺服器**。第一個`publira server`以`--role admin,platform`執行，把公開API交給讀者的伺服器。`web-admin`除了租戶主控台的API之外，也會為了租戶的主題與標籤呼叫公開API，因此它的`PUBLIRA_PUBLIC_GRPC_URL`指向讀者的伺服器，而`PUBLIRA_GRPC_URL`仍指向第一個伺服器。邊緣也會把主控台主機的公開API送到讀者的伺服器（它在任何主機上都會回應），但主控台主機的圖片仍留在第一個伺服器上，因為`--role storefront`處理程序對主控台主機的圖片會回應`404`。這樣主控台的伺服器就不持有`publira_public`登入，也不做任何公開API的工作，而讀者的伺服器只需隨公開API的流量擴展。
 5. **各自的副本**。依各處理程序的流量需要，執行所需數量的副本。
 

@@ -2,7 +2,8 @@
 title: 在ECS上營運
 description: 在AWS Fargate上之Amazon ECS執行的安裝實例中新增租戶、讓主控台的認證資訊遠離租戶的網域、分開提供圖片與公開API，以及升級。
 published: 2026-11-03
-source_updated: 2026-10-26
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 本頁說明[在AWS Fargate上執行Amazon ECS](./index.md)與[ECS前方的CloudFront](./1-cloudfront.md)讓安裝實例開始提供服務之後，對它所做的變更。其指令會使用那兩頁所定義的shell變數與函式。若不是在建置安裝實例時所用的shell中執行，請重新定義指令中用到的變數與函式：[開始之前](./index.md#開始之前)的變數、[套用遷移並建立資料庫角色](./index.md#4-套用遷移並建立資料庫角色)的`run_publiractl`函式、[開通網路路徑](./index.md#3-開通網路路徑)的`SERVER_SG`、`NAMESPACE`與`registry`函式、[建立負載平衡器](./index.md#5-建立負載平衡器)的`target_group`函式、[啟動服務](./index.md#6-啟動服務)的`service`函式，以及可由`aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text`印出的`LISTENER`。
@@ -20,7 +21,7 @@ source_updated: 2026-10-26
 
 ## 讓主控台的認證資訊遠離租戶的網域
 
-負載平衡器已經讓主控台的API不暴露於網際網路，但它把租戶網域轉送過去的`publira-server`仍然提供這些API，並為此持有它們的資料庫登入與Web服務權杖。若要把這三者都移出讀者會接觸到的處理程序，作為與邊緣規則不同的另一層防護（如[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)所述），請以`--role storefront`執行第二個服務，並把租戶的網域與`web-storefront`路由到它。這樣拆分也能讓讀者的流量與主控台分開擴充，因為每個服務都執行自己的任務，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述。
+負載平衡器已經讓主控台的API不暴露於網際網路（API金鑰可進行的讀取除外），但它把租戶網域轉送過去的`publira-server`仍然提供這些API，並為此持有它們的資料庫登入與Web服務權杖。若要把這三者都移出讀者會接觸到的處理程序，作為與邊緣規則不同的另一層防護（如[只有公開API經過邊緣](../4-edge/index.md#只有公開api經過邊緣)所述），請以`--role storefront`執行第二個服務，並把租戶的網域與`web-storefront`路由到它。這樣拆分也能讓讀者的流量與主控台分開擴充，因為每個服務都執行自己的任務，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述。
 
 它的任務定義是[啟動服務](./index.md#6-啟動服務)中的`publira-server.json`，但family與容器名稱改為`publira-storefront`，指令改為`["server", "--role", "storefront"]`，並且只保留該角色會讀取的密鑰：加密金鑰、`PUBLIRA_AUTH_JWT_SECRET`、`PUBLIRA_REVALIDATE_TOKEN`、`PUBLIRA_REDIS_URL`與`PUBLIRA_PUBLIC_DB_URL`。註冊它，並為它建立專屬的目標群組與Cloud Map名稱，因為除了負載平衡器之外，`web-storefront`也會呼叫它：
 
@@ -57,7 +58,7 @@ aws elbv2 modify-rule --rule-arn "$RULE_900" \
 
 `web-storefront`只呼叫公開API，因此也讓它指向新的服務：在`web-storefront.json`中把`PUBLIRA_GRPC_URL`設為`http://publira-storefront.publira.internal:8000/rpc`，註冊它，並把`web-storefront`服務更新為新的修訂版本。主控台主機、`web-admin`與`web-platform`則繼續存取提供所有角色的`publira-server`，直到[讓主控台的伺服器不提供公開API](#讓主控台的伺服器不提供公開api)把公開API從它身上移除。
 
-無論如何，負載平衡器都會在每個主機上對主控台API回應`404`，因此改為確認租戶的網域已抵達新的服務：`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`會把其任務列為`healthy`，而[檢查邊緣](./1-cloudfront.md#檢查邊緣)中的公開API呼叫在租戶的網域上仍會回應`invalid_argument`，只是現在是由`publira-storefront`回應。
+無論如何，負載平衡器都會在每個主機上對大部分主控台API回應`404`，因此改為確認租戶的網域已抵達新的服務：`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`會把其任務列為`healthy`，而[檢查邊緣](./1-cloudfront.md#檢查邊緣)中的公開API呼叫在租戶的網域上仍會回應`invalid_argument`，只是現在是由`publira-storefront`回應。
 
 ### 讓主控台的伺服器不提供公開API
 

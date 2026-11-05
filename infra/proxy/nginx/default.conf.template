@@ -87,11 +87,14 @@ map $remote_addr $publira_forwarded {
 # address on a tenant's site and image host, the one a hop the lines above
 # trust named or else the peer's, and empty on a console host, since nginx
 # counts no request whose key is empty and the consoles are left to the
-# server's own limits.
+# server's own limits. The zone of the API key reads counts the client address
+# itself: only the tenant console's block has those paths, and it is the one
+# allowance a console host has.
 limit_req_zone $publira_rate_limit_key zone=publira_api:10m rate=20r/s;
 limit_req_zone $publira_rate_limit_key zone=publira_search_rpc:10m rate=2r/s;
 limit_req_zone $publira_rate_limit_key zone=publira_search_page:10m rate=2r/s;
 limit_req_zone $publira_rate_limit_key zone=publira_images:10m rate=60r/s;
+limit_req_zone $binary_remote_addr zone=publira_api_key:10m rate=10r/s;
 limit_req_status 429;
 
 # A host in no list: the edge answers it itself, and no backend sees the
@@ -128,6 +131,7 @@ server {
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;
+    include /etc/nginx/templates/snippets/api-key-reads.conf;
 
     # The episode edit screen adds a whole episode's pages in one upload of up
     # to 256 MiB. A longer prefix than app-routes.conf's /api/v1/, so it wins.

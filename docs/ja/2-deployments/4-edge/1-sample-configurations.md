@@ -2,8 +2,8 @@
 title: リバースプロキシの設定例
 description: リバースプロキシの要件を満たすTraefik、nginx、Caddyの設定例と、それを自分のPubliraに合わせて使う方法を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-30
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 リポジトリには、Traefik、nginx、Caddyのリバースプロキシの設定例が1つずつあります。どれも[リバースプロキシで必要な設定](./index.md#リバースプロキシで必要な設定)のとおりにリクエストを振り分け、ヘッダー、本文、タイムアウトを扱います。設定例を使う側に残る要件は、TLSリスナーだけです。TraefikとnginxではTLSリスナーを自分で追加し、CaddyではHTTPSで提供するホスト名を渡すとCaddyが追加します。
@@ -55,7 +55,7 @@ source_updated: 2026-10-30
 
 ### リクエストのレート
 
-Traefikとnginxの設定例は、テナントのドメインと画像ホストで、1つのクライアントが公開API、検索、画像に送れるリクエストの数を制限します。何をどれだけ制限するかは[レート制限](../../3-operations/12-security/5-rate-limits.md)で説明していて、上限の値は[ルーティングの仕様](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)にあります。上限を超えたリクエストには、設定例が自分で`429`を返します。
+Traefikとnginxの設定例は、テナントのドメインと画像ホストで、1つのクライアントが公開API、検索、画像に送れるリクエストの数を制限します。テナントの管理画面のホストでは、APIキーによる読み取りのリクエストの数も制限します。何をどれだけ制限するかは[レート制限](../../3-operations/12-security/5-rate-limits.md)で説明していて、上限の値は[ルーティングの仕様](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)にあります。上限を超えたリクエストには、設定例が自分で`429`を返します。
 
 | プロキシ | 上限を設定している場所 |
 | --- | --- |

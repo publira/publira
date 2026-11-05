@@ -2,7 +2,8 @@
 title: 邊緣
 description: 安裝實例前方的負載平衡器、代理伺服器或CDN必須做的事。
 published: 2026-11-03
-source_updated: 2026-11-01
+updated: 2026-11-05
+source_updated: 2026-11-05
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -29,14 +30,15 @@ redirect_from:
 
 在上述每個主機上，接著由路徑決定是由Web應用程式回應、由`publira server`回應，還是由邊緣自行回應，判斷順序如下：
 
-| 路徑                              | 處理程序                  |
-| --------------------------------- | ------------------------- |
-| 以`/images`開頭                   | `publira server`          |
-| 以`/rpc/publira.v1.`開頭          | `publira server`          |
-| `/rpc`，或其他以`/rpc/`開頭的路徑 | 無：由邊緣回應`404`       |
-| 其他所有路徑                      | 由主機所決定的Web應用程式 |
+| 路徑 | 處理程序 |
+| --- | --- |
+| 以`/images`開頭 | `publira server` |
+| 以`/rpc/publira.v1.`開頭 | `publira server` |
+| 主控台主機上的[API金鑰可進行的讀取](#api金鑰可進行的讀取) | `publira server` |
+| `/rpc`，或其他以`/rpc/`開頭的路徑 | 無：由邊緣回應`404` |
+| 其他所有路徑 | 由主機所決定的Web應用程式 |
 
-`/images`是頁面上顯示的所有圖片，`/rpc/publira.v1.`則是瀏覽器與行動應用程式呼叫的公開API。`/rpc`下的其他路徑都不會被轉送，如[只有公開API經過邊緣](#只有公開api經過邊緣)所述。其他所有路徑都屬於Web應用程式，包括`/api`：它們在`/api/v1`下回應自己的端點，其中包括付款與收信的webhook。
+`/images`是頁面上顯示的所有圖片，`/rpc/publira.v1.`則是瀏覽器與行動應用程式呼叫的公開API。`/rpc`下的其他路徑都不會被轉送，如[只有公開API經過邊緣](#只有公開api經過邊緣)所述，但主控台主機上[API金鑰可進行的讀取](#api金鑰可進行的讀取)除外。其他所有路徑都屬於Web應用程式，包括`/api`：它們在`/api/v1`下回應自己的端點，其中包括付款與收信的webhook。
 
 公開API的前置詞結束於`v1`之後的點，因此它只會比對到程序`/rpc/publira.v1.<Service>/<Method>`。若不含點，以`/rpc/publira.v1`比對，也會比對到只是開頭相同的命名空間，例如`publira.v1beta`。優先比對最長前置詞的邊緣，不需特別指定就能得到表格中的順序。
 
@@ -61,9 +63,40 @@ redirect_from:
 
 ### 只有公開API經過邊緣
 
-`publira server`會在`/rpc`下、公開API的旁邊，於邊緣所轉送的同一個連接埠上，提供租戶主控台與平台主控台的API，也就是`publira.admin.v1`與`publira.platform.v1`。沒有任何東西會經由邊緣存取它們：`web-admin`與`web-platform`從自己的伺服器端，透過私人網路以`PUBLIRA_GRPC_URL`呼叫它們，而行動應用程式只呼叫公開API。沒有任何主機需要轉送它們，因此邊緣會自行以`404`回應，在主控台主機上與在租戶網域上都一樣。仍然轉送它們的邊緣，會毫無意義地將兩個API暴露在網際網路上，連同它們在工作階段建立之前執行的所有呼叫：登入、重設密碼、確認電子郵件地址，以及建立平台主控台的第一位營運人員。它們本身的驗證機制（如[主控台的API](../../3-operations/12-security/index.md#主控台的api)所述）在邊緣規則之後仍然有效。
+`publira server`會在`/rpc`下、公開API的旁邊，於邊緣所轉送的同一個連接埠上，提供租戶主控台與平台主控台的API，也就是`publira.admin.v1`與`publira.platform.v1`。`web-admin`與`web-platform`從自己的伺服器端，透過私人網路以`PUBLIRA_GRPC_URL`呼叫它們，而行動應用程式只呼叫公開API。沒有任何主機需要轉送它們，因此邊緣會自行以`404`回應，在主控台主機上與在租戶網域上都一樣，唯一的例外是[API金鑰可進行的讀取](#api金鑰可進行的讀取)。除此之外還轉送其他路徑的邊緣，會毫無意義地將兩個API暴露在網際網路上，連同它們在工作階段建立之前執行的所有呼叫：登入、重設密碼、確認電子郵件地址，以及建立平台主控台的第一位營運人員。它們本身的驗證機制（如[主控台的API](../../3-operations/12-security/index.md#主控台的api)所述）在邊緣規則之後仍然有效。
 
-以`publira server --role storefront`執行租戶網域所存取的處理程序，是另一層獨立的防護。邊緣規則讓主控台API的路徑不暴露在網際網路上；`--role storefront`則讓主控台的資料庫登入帳戶與Web服務權杖完全不出現在讀者所存取的處理程序中。請繼續將主控台主機的`/images`送往`web-admin`以`PUBLIRA_GRPC_URL`呼叫的`publira server`，並將其`/rpc/publira.v1.`送往它呼叫公開API的那一個：兩者是同一個處理程序，除非`web-admin`的`PUBLIRA_PUBLIC_GRPC_URL`指向一個`--role storefront`的處理程序，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述。
+以`publira server --role storefront`執行租戶網域所存取的處理程序，是另一層獨立的防護。邊緣規則讓主控台API的路徑不暴露在網際網路上（這些讀取除外）；`--role storefront`則讓主控台的資料庫登入帳戶與Web服務權杖完全不出現在讀者所存取的處理程序中。請繼續將主控台主機的`/images`送往`web-admin`以`PUBLIRA_GRPC_URL`呼叫的`publira server`，並將其`/rpc/publira.v1.`送往它呼叫公開API的那一個：兩者是同一個處理程序，除非`web-admin`的`PUBLIRA_PUBLIC_GRPC_URL`指向一個`--role storefront`的處理程序，如[依角色拆分伺服器](../7-scaling-out.md#依角色拆分伺服器)所述。
+
+### API金鑰可進行的讀取
+
+租戶自有的系統（例如CRM或資料倉儲）會從安裝實例外部，以[API金鑰](../../4-console/10-api-keys-and-webhooks.md#api金鑰)讀取租戶的作品目錄與購買記錄。在租戶的主控台主機上，且僅在該主機上，邊緣會將下列路徑以完整路徑的方式轉送到`publira server`，`publira.admin.v1`的其他部分一律不轉送：
+
+```text
+/rpc/publira.admin.v1.AdminSeriesService/ListSeries
+/rpc/publira.admin.v1.AdminSeriesService/GetSeries
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+/rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+/rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+/rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+/rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+/rpc/publira.admin.v1.AdminLabelService/ListLabels
+/rpc/publira.admin.v1.AdminLabelService/GetLabel
+/rpc/publira.admin.v1.AdminGenreService/ListGenres
+/rpc/publira.admin.v1.AdminCreatorService/ListCreators
+/rpc/publira.admin.v1.AdminCreatorService/GetCreator
+/rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+/rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+/rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+/rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+```
+
+請將它們送往服務主控台的`publira server`，也就是`web-admin`以`PUBLIRA_GRPC_URL`呼叫的那一個：以`--role storefront`執行的處理程序會以`404`回應它們。每一項都是完整路徑，讓旁邊的寫入或其他讀取仍由邊緣回應`404`；`Authorization`則照抵達時的樣子傳遞，因為金鑰就在其中。
+
+`publira server`會拒絕金鑰呼叫其他程序，但安裝實例外部的系統能存取的只有這些路徑，因此請讓規則僅限於它們。未包含這些路徑的邊緣仍能提供其他所有服務：只有從私人網路外部使用的金鑰會收到`404`回應。請依用戶端限制它們，如[速率限制](../../3-operations/12-security/5-rate-limits.md#要限制的內容)所述。
 
 ### TLS
 

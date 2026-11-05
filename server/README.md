@@ -402,7 +402,7 @@ A tenant admin creates API keys for the tenant's own systems through `AdminApiKe
 
 Each request a key makes is charged to it against the platform policy's `api_key_request` limit, on the same counters as the reader limits, and one past it answers `resource_exhausted` with `Retry-After`.
 
-The edge does not forward the admin API yet, so a key reaches `publira server` only over the network the web apps call it on (#5357).
+The edge forwards these procedures on a tenant's console host, and no others, so a key is called from outside the install there. [The contract](../infra/proxy/README.md#the-reads-an-api-key-may-make) lists them; `TestAPIKeyProceduresAreWhatTheEdgeForwards` fails when it and `apiKeyProcedures` part.
 
 ## Tenant webhooks
 
@@ -702,7 +702,7 @@ A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration`
 - `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
 - `publira.platform.v1` — the Platform Console's API
 
-The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` to it, prefixes kept, on every host, and answers the rest of `/rpc` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session, the [web service credential](#web-service-credential), or, on the admin API, one of the tenant's [API keys](#tenant-api-keys) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` to it, prefixes kept, on every host, the reads a tenant's API key may make on a console host, and answers the rest of `/rpc` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session, the [web service credential](#web-service-credential), or, on the admin API, one of the tenant's [API keys](#tenant-api-keys) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 

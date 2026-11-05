@@ -2,7 +2,8 @@
 title: API 키와 웹훅
 description: 테넌트 자체 시스템에 관리 API용 읽기 전용 키를 주고, 판매·환불·가입·구독에 대한 서명된 이벤트를 보내며, 서명을 검증하고, 포기된 전송을 다시 보냅니다.
 published: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 **연동** › **API 키와 웹훅**은 CRM, 데이터 웨어하우스, 회계 시스템처럼 출판사가 직접 운영하는 시스템과 테넌트를 연결합니다. 시스템은 **API 키**로 테넌트의 카탈로그와 구매를 읽고, 각 이벤트를 받을 시스템 자체의 URL인 **웹훅 엔드포인트**를 통해 판매, 환불, 새 독자, 구독을 일어나는 즉시 알게 됩니다. **전송 내역**에는 각 엔드포인트로 보낸 것과 포기한 것이 나열됩니다.
@@ -38,19 +39,21 @@ source_updated: 2026-11-04
 시스템은 관리 API에 키를 `Authorization: Bearer <key>`로 보내고, 테넌트의 시리즈를 요청하는 다음 예처럼 목록 위에 표시된 **테넌트 ID**로 테넌트를 지정합니다.
 
 ```bash
-curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
+curl https://<console host>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
   -H "Authorization: Bearer pbk_…" \
   -H "Content-Type: application/json" \
   -d '{"tenant": {"tenantId": "<Tenant ID>"}}'
 ```
 
-설치 환경 앞의 엣지는 관리 API를 전달하지 않으므로, 키는 웹 앱이 `publira server`를 호출하는 네트워크에서 `publira server`에 직접 접근하는 시스템이 사용합니다. 그 주소는 설치 환경의 운영자에게 문의하세요.
+이 콘솔이 있는 호스트로 HTTPS를 통해 보내세요. 설치 환경 앞의 엣지는 [API 키로 보낼 수 있는 읽기 요청](../2-deployments/4-edge/index.md#api-키로-보낼-수-있는-읽기-요청)에서 설명하듯이 키로 호출할 수 있는 프로시저를 그곳에서 전달하며, 그 밖의 것은 전달하지 않습니다. 콘솔이 특정 주소만 받는다면 설치 환경의 운영자에게 시스템의 주소를 허용해 달라고 요청하세요.
 
 프로시저와 그 필드는 [관리 API의 정의](https://github.com/publira/publira/tree/main/proto/publira/admin/v1)에 있습니다. 키로 보낸 요청에는 다음과 같이 응답합니다.
 
 - **`unauthenticated`**: 키가 폐기되었거나 알 수 없는 키일 때, 또는 요청이 다른 테넌트를 지정할 때.
 - **`permission_denied`**: 키의 어느 범위도 허용하지 않는 프로시저일 때. 모든 쓰기가 여기에 해당합니다.
 - **`resource_exhausted`**: 키로 보내는 요청에 대한 설치 환경의 제한을 넘었을 때이며, `Retry-After`가 붙습니다. 운영자가 따로 정하지 않았다면 제한은 1분에 600건, 하루 100,000건입니다.
+
+엣지는 관리 API 아래의 그 밖의 모든 것에 `404`로 응답합니다. 주소 하나의 요청 수를 제한하는 설치 환경에서는 제한을 넘으면 엣지가 `429`로 응답합니다. 샘플 구성의 제한은 한 번에 60건, 초당 10건입니다.
 
 ### 키 폐기
 

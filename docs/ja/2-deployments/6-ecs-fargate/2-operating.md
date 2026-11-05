@@ -2,8 +2,8 @@
 title: Amazon ECSでの運用
 description: Amazon ECS (Fargate) で動かすPubliraで、テナントを追加する方法、管理画面の認証情報をテナントのドメインから切り離す方法、画像と公開APIを分けて配信する方法、アップグレードの方法を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-26
+updated: 2026-11-05
+source_updated: 2026-11-05
 ---
 
 このページでは、[Amazon ECS (Fargate)](./index.md) と[CloudFrontを使った公開](./1-cloudfront.md)の手順で稼働を始めたPubliraに、あとから加える変更を説明します。コマンドはそれらのページで定義したシェル変数と関数を使います。Publiraを構築したときとは別のシェルで実行する場合は、コマンドが使う変数と関数を次のページから定義し直してください。
@@ -28,7 +28,7 @@ source_updated: 2026-10-26
 
 ## 管理画面の認証情報をテナントのドメインから切り離す
 
-管理画面のAPIは、ロードバランサーの設定によってすでにインターネットから呼び出せなくなっています。それでも、ロードバランサーがテナントのドメインのリクエストを転送する`publira-server`は管理画面のAPIを提供しており、そのためのデータベースのログインとWebサービストークンを持っています。管理画面のAPI、そのログイン、Webサービストークンの3つを読者のリクエストが届くプロセスから外すには、`--role storefront`を付けた2つ目のサービスを動かし、テナントのドメインと`web-storefront`をそちらに振り分けます。[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、これはリバースプロキシのルールとは別の守りになります。それぞれのサービスが自分のタスクで動くので、読者のトラフィックを管理画面と切り離してスケールできるようにもなります。これは[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)で説明しています。
+管理画面のAPIは、APIキーによる読み取りを除いて、ロードバランサーの設定によってすでにインターネットから呼び出せなくなっています。それでも、ロードバランサーがテナントのドメインのリクエストを転送する`publira-server`は管理画面のAPIを提供しており、そのためのデータベースのログインとWebサービストークンを持っています。管理画面のAPI、そのログイン、Webサービストークンの3つを読者のリクエストが届くプロセスから外すには、`--role storefront`を付けた2つ目のサービスを動かし、テナントのドメインと`web-storefront`をそちらに振り分けます。[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、これはリバースプロキシのルールとは別の守りになります。それぞれのサービスが自分のタスクで動くので、読者のトラフィックを管理画面と切り離してスケールできるようにもなります。これは[サーバーをロールごとに分ける](../7-scaling-out.md#サーバーをロールごとに分ける)で説明しています。
 
 タスク定義は、[サービスを起動する](./index.md#6-サービスを起動する)の`publira-server.json`をもとに作ります。ファミリーとコンテナの名前を`publira-storefront`に、コマンドを`["server", "--role", "storefront"]`にし、シークレットはこのロールが読むものだけにします。暗号化キー、`PUBLIRA_AUTH_JWT_SECRET`、`PUBLIRA_REVALIDATE_TOKEN`、`PUBLIRA_REDIS_URL`、`PUBLIRA_PUBLIC_DB_URL`の5つです。このサービスはロードバランサーだけでなく`web-storefront`からも呼び出されるので、タスク定義を登録したら、専用のターゲットグループとCloud Mapの名前も用意します。
 
@@ -65,7 +65,7 @@ aws elbv2 modify-rule --rule-arn "$RULE_900" \
 
 `web-storefront`が呼び出すのは公開APIだけなので、`web-storefront`の接続先も新しいサービスにします。`web-storefront.json`の`PUBLIRA_GRPC_URL`を`http://publira-storefront.publira.internal:8000/rpc`にして登録し、`web-storefront`サービスを新しいリビジョンに更新してください。管理画面のホスト、`web-admin`、`web-platform`は、すべてのロールを提供する`publira-server`に引き続き接続します。この状態は、[管理画面用のサーバーから公開APIを外す](#管理画面用のサーバーから公開apiを外す)で`publira-server`から公開APIを外すまで続きます。
 
-ロードバランサーは、この変更の前も後も、すべてのホストで管理画面のAPIに`404`を返します。そこで、テナントのドメインのリクエストが新しいサービスに届いていることを別の方法で確かめます。`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`でタスクが`healthy`と表示されることと、[VPCの外からの確認](./1-cloudfront.md#vpcの外からの確認)の公開APIの呼び出しがテナントのドメインで引き続き`invalid_argument`を返すことを確かめてください。この応答は、今度は`publira-storefront`が返しています。
+ロードバランサーは、この変更の前も後も、すべてのホストで管理画面のAPIのほとんどに`404`を返します。そこで、テナントのドメインのリクエストが新しいサービスに届いていることを別の方法で確かめます。`aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"`でタスクが`healthy`と表示されることと、[VPCの外からの確認](./1-cloudfront.md#vpcの外からの確認)の公開APIの呼び出しがテナントのドメインで引き続き`invalid_argument`を返すことを確かめてください。この応答は、今度は`publira-storefront`が返しています。
 
 ### 管理画面用のサーバーから公開APIを外す
 

@@ -51,7 +51,7 @@ assert_route "rpc on a platform host of no convention" GET operators.example.net
 # the dot after v1, so a namespace that only starts like it is answered by the
 # edge too.
 for host in localhost reader.example.org admin.localhost studio.example.com platform.localhost operators.example.net; do
-  assert_unrouted "admin namespace on ${host}" POST "${host}" /rpc/publira.admin.v1.AdminSeriesService/ListSeries
+  assert_unrouted "admin namespace on ${host}" POST "${host}" /rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
   assert_unrouted "platform namespace on ${host}" POST "${host}" /rpc/publira.platform.v1.PlatformTenantService/ListTenants
 done
 assert_unrouted "bare /rpc" GET localhost /rpc
@@ -60,6 +60,28 @@ assert_unrouted "rpc deeper path" GET localhost /rpc/foo/bar
 assert_unrouted "rpc namespace without the dot" GET localhost /rpc/publira.v1
 assert_unrouted "rpc namespace sharing the prefix" POST localhost /rpc/publira.v1beta.CatalogService/ListPublishedSeries
 assert_unrouted "rpc types namespace" POST localhost /rpc/publira.types.v1.Foo/Bar
+
+# The reads an API key may make are the one exception, on a console host alone,
+# and each is a whole path. Whatever else a tenant's own systems could call,
+# the edge answers: a write beside them, a read a key is refused, signing in,
+# and a path that only starts or ends like one of them.
+for procedure in "${PUBLIRA_ROUTING_API_KEY_READS[@]}"; do
+  assert_route "${procedure} on a console host" POST admin.localhost "/rpc/${procedure}" api "/rpc/${procedure}"
+done
+assert_route "an API key's read on a console host of no convention" POST studio.example.com "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}"
+assert_route "an API key's read on a console host with port" POST admin.localhost:3080 "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}"
+assert_webhook_delivered "an API key reaches the server as it was sent" admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api 64 "Authorization: Bearer pbk_routing_key" "Content-Type: application/json"
+for host in localhost reader.example.org platform.localhost operators.example.net pictures.example.net; do
+  assert_unrouted "an API key's read on ${host}" POST "${host}" "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}"
+done
+assert_unrouted "a write beside an API key's reads" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/CreateSeries
+assert_unrouted "a read an API key is refused" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/ListEpisodeImages
+assert_unrouted "signing in to the admin API" POST admin.localhost /rpc/publira.admin.v1.AdminAuthService/Login
+assert_unrouted "a path that extends an API key's read" POST admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}Archive"
+assert_unrouted "a path below an API key's read" POST admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}/x"
+assert_unrouted "an API key's read with a trailing slash" POST admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}/"
+assert_unrouted "the service of an API key's read" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/
+assert_unrouted "an API key's read in the platform namespace" POST admin.localhost /rpc/publira.platform.v1.AdminSeriesService/ListSeries
 
 # The prefix ends at the path segment: /rpcabc is a path of the app the host
 # rules picked.
@@ -148,6 +170,7 @@ assert_trace_context_stripped "web-admin drops trace context" GET admin.localhos
 assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
 assert_trace_context_stripped "rpc drops trace context" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_trace_context_stripped "rpc on admin host drops trace context" GET admin.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_trace_context_stripped "an API key's read drops trace context" POST admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}"
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_trace_context_stripped "images drop trace context" GET localhost /images/cover api /images/cover
 assert_trace_context_stripped "images on admin host drop trace context" GET admin.localhost /images/cover api /images/cover
@@ -163,6 +186,7 @@ assert_forwarded_headers "web-storefront is given the edge's forwarded headers" 
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
 assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_forwarded_headers "an API key's read is given the edge's forwarded headers" POST admin.localhost "/rpc/${PUBLIRA_ROUTING_API_KEY_READS[0]}" api
 assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
 assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api
 assert_forwarded_headers "images on an image host are given the edge's forwarded headers" GET pictures.example.net /images/cover api

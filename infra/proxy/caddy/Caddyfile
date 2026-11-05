@@ -87,6 +87,33 @@
 	header_up -baggage
 }
 
+# The reads a tenant's API key may make, which a tenant's own systems call from
+# outside on the tenant's console host. A snippet, because the matcher in the
+# site block and the zone of the rate_limit block both need the list. Each is a
+# whole path, so that the rest of the admin API matches neither.
+(publira_api_key_reads) {
+	path /rpc/publira.admin.v1.AdminSeriesService/ListSeries
+	path /rpc/publira.admin.v1.AdminSeriesService/GetSeries
+	path /rpc/publira.admin.v1.AdminSeriesService/ListEpisodes
+	path /rpc/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate
+	path /rpc/publira.admin.v1.AdminSeriesService/GetEpisode
+	path /rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCredits
+	path /rpc/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows
+	path /rpc/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices
+	path /rpc/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings
+	path /rpc/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings
+	path /rpc/publira.admin.v1.AdminSeriesService/ListVolumes
+	path /rpc/publira.admin.v1.AdminLabelService/ListLabels
+	path /rpc/publira.admin.v1.AdminLabelService/GetLabel
+	path /rpc/publira.admin.v1.AdminGenreService/ListGenres
+	path /rpc/publira.admin.v1.AdminCreatorService/ListCreators
+	path /rpc/publira.admin.v1.AdminCreatorService/GetCreator
+	path /rpc/publira.admin.v1.AdminCreatorRoleService/ListCreatorRoles
+	path /rpc/publira.admin.v1.AdminPurchaseService/ListPurchases
+	path /rpc/publira.admin.v1.AdminPurchaseService/GetPurchase
+	path /rpc/publira.admin.v1.AdminPurchaseService/ListReaderPurchases
+}
+
 :80 {$PUBLIRA_EDGE_TLS_HOSTS} {
 	# The host matcher ignores the port the Host header carries, so
 	# admin.localhost:3080 is a console host when admin.localhost is listed.
@@ -118,6 +145,11 @@
 	# publira.v1.<Service>/<Method> is all it matches.
 	@rpc path /rpc/publira.v1.*
 
+	@api_key_read {
+		host no/host {$PUBLIRA_EDGE_ADMIN_HOSTS}
+		import publira_api_key_reads
+	}
+
 	# The rest of /rpc is forwarded nowhere: what the server answers there is
 	# the consoles' APIs, which web-admin and web-platform call over the
 	# private network, so no host needs them.
@@ -136,8 +168,8 @@
 		# whole burst at once waits the window out, where nginx and Traefik
 		# admit the rate each second; no window admits more than they would.
 		# {client_ip} is the address a hop the global options trust named, or
-		# else the peer's. The console hosts are in no zone: they are left to
-		# the server's own limits.
+		# else the peer's. The console hosts are in no zone but api_key: they
+		# are left to the server's own limits.
 		#
 		# rate_limit {
 		# 	zone api {
@@ -177,6 +209,15 @@
 		# 		events 600
 		# 		window 10s
 		# 	}
+		# 	zone api_key {
+		# 		match {
+		# 			host no/host {$PUBLIRA_EDGE_ADMIN_HOSTS}
+		# 			import publira_api_key_reads
+		# 		}
+		# 		key {client_ip}
+		# 		events 60
+		# 		window 6s
+		# 	}
 		# }
 
 		# A host in no list: the edge answers it itself, and no backend sees
@@ -205,6 +246,13 @@
 		# The public API, reached with the path as it is: the server's own
 		# routes carry /rpc.
 		handle @rpc {
+			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
+				import publira_forwarded
+			}
+		}
+
+		# The reads a tenant's API key may make, on the tenant's console host.
+		handle @api_key_read {
 			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
 				import publira_forwarded
 			}
