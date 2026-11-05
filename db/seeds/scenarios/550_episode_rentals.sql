@@ -10,7 +10,9 @@
 -- The admin then issues a promotion code from the console, which a sixth
 -- reader applies at episode 1's gate and buys it with, and a seventh enters a
 -- code the tenant does not hold. Episode 1 credits an Author, so the open
--- month's royalties show what the code's sale is paid on.
+-- month's royalties show what the code's sale is paid on. Another reader, who
+-- already holds episode 1 and tipped its Author, tips again. The
+-- documentation's shots of a tip are taken here too.
 -- The payment settings decide whether the storefront sells anything, so no
 -- tenant another suite reads can absorb them.
 --
@@ -26,14 +28,17 @@
 --            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer),
 --            RntlMMBRAAA5 (Campaign Buyer), RntlMMBRAAA6 (Code Buyer),
 --            RntlMMBRAAA7 (Code Mistyper),
---            RntlMMBRAAA8 (Volume Code Buyer)
---   author   RntlAUTHAAA1 (Rental Artist), credited on episode 1
+--            RntlMMBRAAA8 (Volume Code Buyer),
+--            RntlMMBRAAA9 (Rental Tipper), who holds episode 1 and gave a tip
+--            of 300 yen on it
+--   creator  RntlCRTRAAA1 (Mina Ito), credited on episode 1
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
 --   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
 --            RntlEPSDAAA2 to RntlEPSDAAA4 (200 yen each), RntlEPSDAAA4 at
 --            150 until 2036-03-30T15:00:00Z (campaign RntlCMPNAAA1)
 --   volume   RntlVOLMAAA1, episodes 2 and 3 for 350 yen
+--   tips     on, in amounts of 100, 300, and 1,000 yen
 
 DELETE FROM promotion_code_redemptions
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
@@ -96,7 +101,14 @@ VALUES (
 \set seed_tenant RntlTNNTAAA1
 \ir ../creator_roles.sql
 
--- The admin and the seven readers. The password hash is the same as
+-- What a tip is offered in, once the payments the suite takes let the site
+-- take one.
+INSERT INTO tenant_config (tenant_id, tips_enabled, tip_amounts)
+SELECT t.id, true, ARRAY[100, 300, 1000]
+FROM tenants t
+WHERE t.public_id = 'RntlTNNTAAA1';
+
+-- The admin and the nine readers. The password hash is the same as
 -- `adminpass` for the admin and `memberpass` for the readers.
 INSERT INTO users (
     id,
@@ -182,6 +194,13 @@ CROSS JOIN (
             'volume-code-buyer@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Volume Code Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-00000000000a'::uuid,
+            'RntlMMBRAAA9',
+            'rental-tipper@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Rental Tipper'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -284,8 +303,8 @@ INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
     '018f1100-000c-7000-8000-000000000001'::uuid,
     t.id,
-    'RntlAUTHAAA1',
-    'Rental Artist',
+    'RntlCRTRAAA1',
+    'Mina Ito',
     ''
 FROM tenants t
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -432,3 +451,45 @@ FROM episodes e
 JOIN tenants t ON t.id = e.tenant_id
 CROSS JOIN generate_series(1, 3) AS page_number
 WHERE t.public_id = 'RntlTNNTAAA1';
+
+\ir ../episode_creators.sql
+
+-- The tipper's copy of episode 1, which opens it to them, and the tip they
+-- gave on it, at instants that stay the same in the documentation's shots.
+INSERT INTO purchases (
+    id,
+    user_id,
+    episode_id,
+    kind,
+    price_at_purchase,
+    currency,
+    purchased_at,
+    tenant_id
+)
+SELECT
+    p.id,
+    u.id,
+    e.id,
+    p.kind,
+    p.price,
+    'JPY',
+    p.purchased_at,
+    e.tenant_id
+FROM episodes e
+JOIN users u ON u.tenant_id = e.tenant_id AND u.public_id = 'RntlMMBRAAA9'
+CROSS JOIN (
+    VALUES
+        (
+            '018f1100-000d-7000-8000-000000000001'::uuid,
+            'purchase',
+            300,
+            '2026-02-01T09:00:00Z'::timestamptz
+        ),
+        (
+            '018f1100-000d-7000-8000-000000000002'::uuid,
+            'tip',
+            300,
+            '2026-02-01T09:30:00Z'::timestamptz
+        )
+) AS p(id, kind, price, purchased_at)
+WHERE e.public_id = 'RntlEPSDAAA1';

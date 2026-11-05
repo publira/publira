@@ -50,10 +50,11 @@ export interface PurchaseItem {
   isActive: boolean;
   item: PurchasedItem;
   /**
-   * Which of the episode's sales the reader bought. A rental always carries
+   * Which of the episode's sales the reader bought, or `tip` for a tip to its
+   * Authors, which opens nothing and is never active. A rental always carries
    * `expiresAt`, and a volume or the rest of a series is always a purchase.
    */
-  kind: "purchase" | "rental";
+  kind: "purchase" | "rental" | "tip";
   /**
    * The price before a promotion code took its discount off, equal to
    * `priceAtPurchase` on a purchase no code discounted.
@@ -156,8 +157,23 @@ type RawPurchase = Pick<
 >;
 
 /** Unspecified, which the server never answers, reads as the permanent copy. */
-const toPurchaseKind = (kind: PurchaseKind | undefined): PurchaseItem["kind"] =>
-  kind === PurchaseKind.RENTAL ? "rental" : "purchase";
+const toPurchaseKind = (
+  kind: PurchaseKind | undefined
+): PurchaseItem["kind"] => {
+  switch (kind) {
+    case PurchaseKind.RENTAL: {
+      return "rental";
+    }
+
+    case PurchaseKind.TIP: {
+      return "tip";
+    }
+
+    default: {
+      return "purchase";
+    }
+  }
+};
 
 /**
  * The API sets exactly one of the four. A purchase that names none reads as

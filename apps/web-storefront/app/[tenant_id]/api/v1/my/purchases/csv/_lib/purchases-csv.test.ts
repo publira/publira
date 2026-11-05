@@ -36,6 +36,32 @@ describe("renderPurchasesCsv", () => {
     expect(renderPurchasesCsv([])).toBe(`\uFEFF${HEADER}`);
   });
 
+  it("writes a tip as `tip` with the episode it was given on, active until it is refunded or revoked", () => {
+    const tip = { isActive: false, kind: "tip", priceAtPurchase: 300 } as const;
+
+    const csv = renderPurchasesCsv([
+      purchase(tip),
+      purchase({
+        ...tip,
+        id: "PURCHASE02",
+        refundedAmount: 300,
+        refundedAt: "2026-10-02T09:00:00Z",
+        revokedAt: "2026-10-02T09:00:00Z",
+      }),
+      purchase({
+        ...tip,
+        id: "PURCHASE03",
+        revokedAt: "2026-10-02T09:00:00Z",
+      }),
+    ]);
+
+    expect(csv.split("\r\n").slice(1, 4)).toEqual([
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,3.00,0.00,USD,,,active,tip,,,,",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,3.00,3.00,USD,,2026-10-02T09:00:00Z,refunded,tip,,,,",
+      "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,3.00,0.00,USD,,,canceled,tip,,,,",
+    ]);
+  });
+
   it("writes amounts in the currency itself, with its own decimal places", () => {
     const csv = renderPurchasesCsv([
       purchase(),

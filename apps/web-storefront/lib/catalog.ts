@@ -2179,6 +2179,12 @@ export const getEpisodeDetail = async (
      */
     publishedLocales: readonly Locale[];
     series: EpisodeSeriesSummary;
+    /**
+     * The amounts a reader may tip the episode's Authors, in the minor unit of
+     * the tenant's currency, in ascending order, and empty while the tenant
+     * takes no tips. They are the tenant's, the same for every reader.
+     */
+    tipAmounts: readonly number[];
   } | null>
 > => {
   "use cache";
@@ -2263,6 +2269,7 @@ export const getEpisodeDetail = async (
         episode.locale
       ),
       series,
+      tipAmounts: response.tipAmounts ?? [],
     },
   };
 };

@@ -35,12 +35,22 @@ const coinsStateSchema = searchParamEnum(
   { fallback: "" }
 );
 
+/**
+ * How a tip ended: `success` and `cancelled` are where the provider returns the
+ * reader to, and `error` is set by the Action that could not start the tip.
+ */
+const tipStateSchema = searchParamEnum(
+  ["cancelled", "error", "success"] as const,
+  { fallback: "" }
+);
+
 const purchaseSearchParamsSchema = z.object({
   checkout: checkoutStateSchema,
   coin_pack: coinPackSchema,
   coins: coinsStateSchema,
   promotion_code: promotionCodeSearchParamSchema,
   session_id: checkoutSessionIDSchema,
+  tip: tipStateSchema,
   wait_free: waitFreeStateSchema,
 });
 
@@ -50,6 +60,7 @@ interface ParsePurchaseSearchParamsInput {
   coins?: SearchParamValue;
   promotion_code?: SearchParamValue;
   session_id?: SearchParamValue;
+  tip?: SearchParamValue;
   wait_free?: SearchParamValue;
 }
 

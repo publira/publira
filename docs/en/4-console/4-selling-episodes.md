@@ -238,7 +238,19 @@ A tip is paid the way the episode would be bought:
 - **On the site**, through the payment provider, so the site takes tips only while one is **Ready**, as [Choosing a payment provider](#choosing-a-payment-provider) describes.
 - **In the app**, through the same provider in the phone's browser with **Web checkout**, and through the store with **In-app purchase**, as the product of its amount that **Store products** lists. The app tells a reader that an amount whose product the store does not have cannot be given in the app, so create each product in App Store Connect and in Play Console when you add its amount.
 
+On the site, a reader who has turned past the last page of an episode finds **Tip the Authors** beside the reaction button. It opens a dialog naming the episode's Authors, with each of the tenant's amounts as a button, and pressing one takes the reader to the payment provider's checkout page. A reader who is not signed in is sent to sign in and back to the episode. Coming back from the checkout page, the episode thanks them, and the tip is recorded when the provider's notification reaches the install. A reader can tip the same episode again, whatever they hold of it. A reader the episode credits is offered no tip, and one they try to give is refused.
+
+![The page after an episode's last page: the reaction button with Tip the Authors beside it, above the offer of the next episode.](./selling-episodes-tip-control.png)
+
+![The Tip the Authors dialog: what a tip is, the Author it goes to, and a button for each of ¥100, ¥300, and ¥1,000.](./selling-episodes-tip-dialog.png)
+
+**Purchase history** lists a tip under the episode it was given on, as **Tip**, with what was given and no reading period. **Download as CSV** writes it with `tip` in its `item` column and the columns of that episode filled.
+
+![Purchase history: a tip on an episode, of type Tip, with when it was given and the amount, and no expiry.](./selling-episodes-tip-purchase-history.png)
+
 **Payments** › **Purchases** lists a tip under its episode, marked **Tip**, and it is refunded as a purchase is, as [Refunding from the console](#refunding-from-the-console) describes. A refund takes it off the Authors' tips, as it takes a refunded sale off their sales.
+
+A tip paid in the provider's test mode, from the App Store sandbox, or by a Play license tester is recorded as a test and left out of royalty statements, as a purchase is.
 
 ## Promotion codes
 

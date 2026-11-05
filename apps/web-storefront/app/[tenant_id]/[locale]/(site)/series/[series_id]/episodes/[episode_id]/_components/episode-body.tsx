@@ -104,6 +104,7 @@ export const EpisodeBody = async ({
   taxIncluded,
   tenantId,
   timeZone,
+  tipAmounts,
   waitFree,
 }: {
   acceptsPayments: boolean;
@@ -155,6 +156,8 @@ export const EpisodeBody = async ({
   tenantId: string;
   /** The tenant's time zone, for the instant a recharging ticket is ready. */
   timeZone: string;
+  /** Passed to the viewer, which offers them after the last page. */
+  tipAmounts: readonly number[];
   /** The series' wait-for-free rule; absent when it offers none. */
   waitFree?: SeriesWaitFreeRule;
 }) => {
@@ -175,6 +178,7 @@ export const EpisodeBody = async ({
         previousEpisode={previousEpisode}
         series={series}
         timeZone={timeZone}
+        tipAmounts={tipAmounts}
       />
     );
   }
@@ -305,6 +309,7 @@ export const EpisodeBody = async ({
         }
         series={series}
         timeZone={timeZone}
+        tipAmounts={tipAmounts}
       />
     );
   }

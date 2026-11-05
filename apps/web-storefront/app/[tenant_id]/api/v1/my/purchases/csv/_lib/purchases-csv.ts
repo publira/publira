@@ -14,7 +14,11 @@ const formatAmount = (amount: number, currency: string): string => {
   return (amount / 10 ** digits).toFixed(digits);
 };
 
-/** The badge the library shows the purchase under, decided the same way. */
+/**
+ * The badge the library shows the purchase under, decided the same way. A tip
+ * opens nothing, so the API never answers it active, and it has no reading
+ * period to run out: one neither refunded nor revoked stands as given.
+ */
 const purchaseStatus = (purchase: PurchaseItem): string => {
   if (purchase.refundedAt) {
     return "refunded";
@@ -24,23 +28,30 @@ const purchaseStatus = (purchase: PurchaseItem): string => {
     return "canceled";
   }
 
-  return purchase.isActive ? "active" : "expired";
+  return purchase.isActive || purchase.kind === "tip" ? "active" : "expired";
 };
 
 /**
- * The episode columns of a row: filled for a purchase of an episode, and empty
- * for a volume and the rest of a series, which name no one episode.
+ * The episode columns of a row: filled for a purchase of an episode and a tip
+ * to its Authors, and empty for a volume and the rest of a series, which name
+ * no one episode.
  */
 const episodeFields = ({ item }: PurchaseItem): [string, string] =>
   item.kind === "episode" ? [String(item.orderIndex), item.title] : ["", ""];
 
 /**
  * What the purchase bought, as the `item` column names it. The rest of a
- * series is `remaining_episodes`, which is what the reader bought it as, and a
- * pack of coins is `coin_pack`.
+ * series is `remaining_episodes`, which is what the reader bought it as, a pack
+ * of coins is `coin_pack`, and a tip is `tip`, the same word as the app's
+ * export writes.
  */
-const itemType = ({ item }: PurchaseItem): string =>
-  item.kind === "series_bundle" ? "remaining_episodes" : item.kind;
+const itemType = ({ item, kind }: PurchaseItem): string => {
+  if (kind === "tip") {
+    return "tip";
+  }
+
+  return item.kind === "series_bundle" ? "remaining_episodes" : item.kind;
+};
 
 const HEADER = [
   "purchase_id",
@@ -85,9 +96,9 @@ const coinFields = ({ item }: PurchaseItem): [string, string] =>
  * header row, then one row per purchase in the order given. The times are RFC
  * 3339 in UTC as the API answers them, and empty where the purchase has none;
  * `status` is `active`, `expired`, `refunded`, or `canceled`, and `item` is
- * `episode`, `volume`, `remaining_episodes`, or `coin_pack`, whose `coins` are
- * what the pack granted, its `bonus_coins` included. An episode paid with
- * coins has a `price` of 0 and the coins it took in `coins_spent`. The columns
+ * `episode`, `volume`, `remaining_episodes`, `coin_pack`, whose `coins` are
+ * what the pack granted, its `bonus_coins` included, or `tip`, whose episode
+ * columns name the episode it was given on. An episode paid with coins has a `price` of 0 and the coins it took in `coins_spent`. The columns
  * that came later are appended, so a sheet that reads the earlier ones by
  * position keeps reading them.
  *
