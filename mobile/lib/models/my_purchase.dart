@@ -41,6 +41,17 @@ enum PurchasedItem {
   final String wireName;
 }
 
+/// The tax a purchase's price includes, recorded when it was made.
+class PurchaseTax {
+  const PurchaseTax({required this.amount, required this.rateBps});
+
+  /// In the same unit as [MyPurchase.price].
+  final int amount;
+
+  /// The tenant's rate when the purchase was made, in basis points.
+  final int rateBps;
+}
+
 /// One purchase belonging to the signed-in reader, as `publira.v1.MyPurchase`
 /// describes it.
 class MyPurchase {
@@ -69,6 +80,8 @@ class MyPurchase {
     this.expiresAt,
     this.refundedAt,
     this.revokedAt,
+    this.tax,
+    this.store = '',
   });
 
   final String id;
@@ -162,6 +175,19 @@ class MyPurchase {
   /// ran out — refunded in full, disputed, or refunded by staff — and `null`
   /// for one that never did.
   final DateTime? revokedAt;
+
+  /// The tax [price] includes, and `null` on a purchase that recorded none:
+  /// one made while the tenant stated no rate, a pack of coins, and an episode
+  /// paid with coins.
+  final PurchaseTax? tax;
+
+  /// The store that charged the reader, `app_store` or `google_play`, and
+  /// empty on every other purchase.
+  final String store;
+
+  /// Whether a store charged the reader and issued their receipt, so the
+  /// tenant's name and registration number are not what it was charged under.
+  bool get chargedByStore => store.isNotEmpty;
 
   /// Why the purchase does or does not open its episode, decided the way the
   /// site's purchase library decides it: a full refund first, then any other

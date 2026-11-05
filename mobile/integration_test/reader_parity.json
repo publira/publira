@@ -552,6 +552,22 @@
       }
     },
     {
+      "name": "Prices that say they include tax, and the tax and invoice details on a purchase",
+      "web": {
+        "routes": ["[locale]/(site)/my/library"],
+        "rpcs": ["GetTenant", "ListMyPurchases"]
+      },
+      "mobile": {
+        "routes": ["/account/purchases"],
+        "rpcs": ["GetTenant", "ListMyPurchases"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a tenant with a tax rate says so on a price",
+        "a purchase states its tax and who charged it"
+      ]
+    },
+    {
       "name": "Saving the purchase history as a CSV file",
       "web": {
         "routes": ["api/v1/my/purchases/csv"],

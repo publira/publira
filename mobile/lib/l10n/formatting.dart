@@ -52,6 +52,27 @@ extension AppMessagesFormatting on AppMessages {
     return format.format(amount / pow(10, format.decimalDigits ?? 0));
   }
 
+  /// [amount] as [formatPrice] writes it, saying it includes tax where
+  /// [taxIncluded] does. For a price that stands alone: a sentence naming a
+  /// price has a `*_tax_included` message of its own, since where the words go
+  /// differs by language.
+  String formatOfferedPrice(
+    int amount,
+    String currency, {
+    required bool taxIncluded,
+  }) {
+    final price = formatPrice(amount, currency);
+    return taxIncluded ? commonPriceTaxIncluded(price: price) : price;
+  }
+
+  /// [bps], a rate in basis points the way the API sends a tax rate, written
+  /// the way this locale writes a percentage — `10%`, `7.5%`.
+  String formatBasisPoints(int bps) {
+    final format = NumberFormat.percentPattern(intlLocale)
+      ..maximumFractionDigits = 2;
+    return format.format(bps / 10000);
+  }
+
   /// [percent], a whole percentage the way the API sends a discount, written
   /// the way this locale writes a percentage — `10%` under `en-US`.
   String formatPercent(int percent) =>

@@ -28,6 +28,7 @@ import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -296,6 +297,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// The tenant's currency, `null` until it is read or when it cannot be.
   String? _currency;
 
+  /// Whether the tenant states a tax rate, which the prices here then say
+  /// they include. False while it could not be read.
+  var _taxIncluded = false;
+
   /// Whether the tenant sells through its web checkout, which is the only way
   /// a rental, a volume, or the rest of a series is sold: the store sells the
   /// permanent copy of one episode alone.
@@ -529,7 +534,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
-    final (holdings, acceptsPayments, currency, route) = await (
+    final (holdings, acceptsPayments, currency, route, invoice) = await (
       purchase
           .seriesEpisodeAccess(widget.detail.series.internalId)
           .then<SeriesPurchaseState?>((holdings) => holdings)
@@ -543,6 +548,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           .appPurchaseRoute()
           .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
+      purchase.invoice().onError<PurchaseFailure>((_, _) => TenantInvoice.none),
     ).wait;
     if (!mounted || read != _purchaseReads || readerId != _readerId) {
       return;
@@ -553,6 +559,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       // A price nobody can read is no purchase to offer.
       _acceptsPayments = acceptsPayments && currency != null;
       _currency = currency;
+      _taxIncluded = invoice.taxIncluded;
       _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
   }
@@ -616,10 +623,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         !_buyable(episode)) {
       return null;
     }
-    return messages.purchaseRentFor(
-      period: messages.purchaseRentalPeriod(hours: episode.rentalPeriodHours),
-      price: messages.formatPrice(episode.rentalPrice, _currency!),
+    final period = messages.purchaseRentalPeriod(
+      hours: episode.rentalPeriodHours,
     );
+    final price = messages.formatPrice(episode.rentalPrice, _currency!);
+    return _taxIncluded
+        ? messages.purchaseRentForTaxIncluded(period: period, price: price)
+        : messages.purchaseRentFor(period: period, price: price);
   }
 
   /// Where [readerId] stands in the series. A guest has no place to keep, so
@@ -859,6 +869,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       return null;
     }
     final theme = Theme.of(context);
+    final price = messages.formatPrice(remainder.price, currency);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -866,10 +877,15 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         children: [
           BuyBundleButton(
             key: const ValueKey('series-remainder-buy'),
-            label: messages.seriesRemainderBuy(
-              count: remainder.episodeCount,
-              price: messages.formatPrice(remainder.price, currency),
-            ),
+            label: _taxIncluded
+                ? messages.seriesRemainderBuyTaxIncluded(
+                    count: remainder.episodeCount,
+                    price: price,
+                  )
+                : messages.seriesRemainderBuy(
+                    count: remainder.episodeCount,
+                    price: price,
+                  ),
             start: (repository, locale) =>
                 repository.startSeriesRemainderCheckout(
                   widget.detail.series.internalId,
@@ -1145,6 +1161,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     volume: volume,
                     series: series,
                     currency: _currency,
+                    taxIncluded: _taxIncluded,
                     control: _volumeControl(messages, volume),
                   ),
               ],
@@ -1219,6 +1236,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                           ? campaign?.price ?? episode.price
                           : 0,
                       currency: _currency,
+                      taxIncluded: _taxIncluded,
                       soldOnWeb:
                           _acceptsPayments &&
                           episode.purchaseSurface == EpisodePurchaseSurface.web,
@@ -1240,6 +1258,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                               episodeInternalId: episode.internalId,
                               price: campaign?.price ?? episode.price,
                               currency: _currency!,
+                              taxIncluded: _taxIncluded,
                               compact: true,
                               signInReturnTo: AppRoutes.episodeViewerPath(
                                 series.id,
@@ -1459,6 +1478,7 @@ class _VolumeTile extends StatelessWidget {
     required this.volume,
     required this.series,
     required this.currency,
+    required this.taxIncluded,
     required this.control,
   });
 
@@ -1468,6 +1488,9 @@ class _VolumeTile extends StatelessWidget {
   /// The currency the price is shown in, or `null` while the tenant's could
   /// not be read, when the card shows no price.
   final String? currency;
+
+  /// Whether the price says it includes tax.
+  final bool taxIncluded;
 
   /// What the reader can do about the volume, or `null` for nothing.
   final Widget? control;
@@ -1512,7 +1535,11 @@ class _VolumeTile extends StatelessWidget {
                       count: volume.episodeIds.length,
                     ),
                     if (currency != null)
-                      messages.formatPrice(volume.price, currency),
+                      messages.formatOfferedPrice(
+                        volume.price,
+                        currency,
+                        taxIncluded: taxIncluded,
+                      ),
                   ].join(' · '),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -1662,6 +1689,7 @@ class _EpisodeTrailing extends StatelessWidget {
   const _EpisodeTrailing({
     required this.price,
     required this.currency,
+    required this.taxIncluded,
     required this.soldOnWeb,
     required this.includedInPlan,
     required this.saved,
@@ -1674,6 +1702,9 @@ class _EpisodeTrailing extends StatelessWidget {
   /// The currency [price] is shown in, or `null` while the tenant's could not
   /// be read, when the row shows no price.
   final String? currency;
+
+  /// Whether [price] says it includes tax.
+  final bool taxIncluded;
 
   /// Whether the episode is sold on the website alone, which the row says in
   /// place of a price the app cannot take.
@@ -1720,7 +1751,13 @@ class _EpisodeTrailing extends StatelessWidget {
             messages.purchaseSoldOnWeb,
           )
         else if (price > 0 && currency != null)
-          AutospacedText(messages.formatPrice(price, currency!)),
+          AutospacedText(
+            messages.formatOfferedPrice(
+              price,
+              currency!,
+              taxIncluded: taxIncluded,
+            ),
+          ),
       ],
     );
   }

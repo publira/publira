@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -89,6 +89,8 @@ Every price is tax-inclusive: what a reader pays is the price as it is entered, 
 The receipt the tenant sends for a purchase on the site states the tax and the rate, such as "Tax included (10%): ¥100", and, once they are entered, the tenant's **Legal name** and **Registration number**, as [Email](./3-setup/7-email.md#what-goes-through-it) describes.
 
 While a rate is set, every price the site offers says it includes tax, such as `¥1,100 incl. tax`: an episode's price and its campaign price, the price on the buttons that buy or rent it, a volume's price, the price of the rest of a series, and a subscription plan's price. A pack of coins says nothing of tax. Under **Purchases** on the reader's account, a purchase that recorded tax shows it as **Tax included** with its rate, such as `¥100 (10%)`, and, once they are entered, the tenant's **Legal name** as **Issued by** and its **Registration number**. A purchase made through the App Store or Google Play shows its tax alone, because the store issued its receipt. The file **Download as CSV** saves gains a `tax_rate_percent` and a `tax_amount` column when a purchase in it recorded tax.
+
+The app says the same beside the prices it names itself: an episode's price, the price on the buttons that buy or rent it, a volume's price, and the price of the rest of a series. A price the store writes, such as a subscription plan's or a tip's on the store's own payment sheet, says nothing of tax: the store sets what it charges in the reader's country. Under **Purchases** in the app, a purchase that recorded tax states it, such as `Tax included ¥100 (10%)`, and, once they are entered, the tenant's **Legal name** and **Registration number**. A purchase made through the App Store or Google Play shows its tax alone and says which of the two issued its receipt. The file **Export as CSV** creates gains the same two columns as the site's.
 
 ## Choosing a payment provider
 

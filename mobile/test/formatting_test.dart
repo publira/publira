@@ -43,6 +43,38 @@ void main() {
     expect(AppMessages.forLocale(const Locale('ja'))!.formatPercent(25), '25%');
   });
 
+  test('a tax rate keeps the fraction a reduced rate has', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatBasisPoints(1000), '10%');
+    expect(en.formatBasisPoints(800), '8%');
+    expect(en.formatBasisPoints(750), '7.5%');
+    expect(en.formatBasisPoints(1025), '10.25%');
+  });
+
+  test('a price standing alone says it includes tax in every locale', () {
+    String offered(Locale locale) => AppMessages.forLocale(
+      locale,
+    )!.formatOfferedPrice(1100, 'JPY', taxIncluded: true);
+
+    expect(offered(const Locale('en')), '¥1,100 incl. tax');
+    expect(offered(const Locale('ja')), contains('税込'));
+    expect(offered(const Locale('ko')), contains('세금 포함'));
+    expect(
+      offered(const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans')),
+      contains('含税'),
+    );
+    expect(
+      offered(const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')),
+      contains('含稅'),
+    );
+    expect(
+      AppMessages.forLocale(
+        const Locale('en'),
+      )!.formatOfferedPrice(1100, 'JPY', taxIncluded: false),
+      '¥1,100',
+    );
+  });
+
   test('a byte count takes the largest unit that keeps it whole', () {
     final en = AppMessages.forLocale(const Locale('en'))!;
     expect(en.formatByteSize(0), '0 B');

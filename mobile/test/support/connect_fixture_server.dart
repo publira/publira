@@ -1079,6 +1079,10 @@ class ConnectFixtureServer {
   /// lists was paid in.
   String currency;
 
+  /// What `GetTenant` answers for `invoice`, unset on a tenant that states
+  /// nothing about its tax.
+  pb.TenantInvoiceDetails? invoice;
+
   /// What `GetTenant` answers for the app purchase route and whether each
   /// store can take the app's payment.
   pb.AppPurchaseRoute appPurchaseRoute;
@@ -2200,6 +2204,7 @@ class ConnectFixtureServer {
           // The wire format omits a false.
           acceptsPayments: acceptsPayments ? true : null,
           currency: currency,
+          invoice: invoice,
           appPurchaseRoute: appPurchaseRoute,
           acceptsAppStorePayments: acceptsAppStorePayments ? true : null,
           acceptsGooglePlayPayments: acceptsGooglePlayPayments ? true : null,

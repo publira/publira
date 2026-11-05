@@ -1172,6 +1172,92 @@ void main() {
       });
     });
 
+    testApp('a tenant with a tax rate says so on a price', (tester) async {
+      server
+        ..acceptsPayments = true
+        ..entitledEpisodes = const {}
+        ..invoice = pb.TenantInvoiceDetails(taxRateBps: 1000);
+      await withFailureScreenshot(tester, 'fixture-tax-price', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+          session: memberSession(),
+        );
+        final buy = find.byKey(
+          const ValueKey('episode-buy-${ConnectFixtureServer.paidEpisodeId}'),
+        );
+        await pumpUntilRouteSettled(tester, buy);
+
+        expect(
+          find.descendant(of: buy, matching: find.textContaining('incl. tax')),
+          findsOne,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a purchase states its tax and who charged it', (tester) async {
+      pb.MyPurchase purchase(String id, {String? store}) => pb.MyPurchase(
+        id: id,
+        episode: pb.Episode(
+          publicId: ConnectFixtureServer.paidEpisodeId,
+          title: 'Seed Episode 001-10',
+          orderIndex: 10,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: 'Seed Series 001',
+        ),
+        priceAtPurchase: 500,
+        currency: 'JPY',
+        isActive: true,
+        taxRateBps: 1000,
+        taxAmount: 46,
+        store: store,
+      );
+      server
+        ..invoice = pb.TenantInvoiceDetails(
+          taxRateBps: 1000,
+          legalName: 'Seed Publishing LLC',
+          registrationNumber: 'T1234567890123',
+        )
+        ..myPurchases = [
+          purchase('purchase-site'),
+          purchase('purchase-store', store: 'google_play'),
+        ];
+      await withFailureScreenshot(tester, 'fixture-tax-purchase', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.accountPurchases,
+          session: memberSession(),
+        );
+        final site = find.byKey(const ValueKey('purchase-tax-purchase-site'));
+        await pumpUntilRouteSettled(
+          tester,
+          find.descendant(
+            of: site,
+            matching: find.textContaining('T1234567890123'),
+          ),
+        );
+
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('purchase-tax-purchase-store')),
+            matching: find.text('Tax included ¥46 (10%)'),
+          ),
+          findsOne,
+        );
+        expect(
+          find.byKey(const ValueKey('purchase-store-receipt-purchase-store')),
+          findsOne,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
     testApp('a tip given in the browser thanks the reader', (tester) async {
       const total = ConnectFixtureServer.seedEpisodePageCount;
       server

@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/purchase/store_subscriber.dart';
@@ -299,6 +300,13 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error, and
   /// for an answer that names no currency.
   Future<String> currency();
+
+  /// The tax the tenant's prices include and who its invoices name, as the
+  /// `invoice` `GetTenant` answers with states them. A server that names none
+  /// answers [TenantInvoice.none].
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error.
+  Future<TenantInvoice> invoice();
 
   /// What the reader in front of the app may do with each published episode
   /// of the series [seriesInternalId] names, which of them they own, and what

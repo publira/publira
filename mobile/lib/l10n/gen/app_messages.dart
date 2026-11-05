@@ -1657,6 +1657,11 @@ final class AppMessages {
     return _format('mobile.common.open_link_failed');
   }
 
+  /// `mobile.common.price_tax_included`
+  String commonPriceTaxIncluded({required String price}) {
+    return _format('mobile.common.price_tax_included', {'price': price});
+  }
+
   /// `mobile.common.regular_price`
   String commonRegularPrice({required String price}) {
     return _format('mobile.common.regular_price', {'price': price});
@@ -3110,6 +3115,11 @@ final class AppMessages {
     return _format('mobile.purchase.buy', {'price': price});
   }
 
+  /// `mobile.purchase.buy_tax_included`
+  String purchaseBuyTaxIncluded({required String price}) {
+    return _format('mobile.purchase.buy_tax_included', {'price': price});
+  }
+
   /// `mobile.purchase.cancelled`
   String get purchaseCancelled {
     return _format('mobile.purchase.cancelled');
@@ -3230,6 +3240,17 @@ final class AppMessages {
     });
   }
 
+  /// `mobile.purchase.rent_for_tax_included`
+  String purchaseRentForTaxIncluded({
+    required String period,
+    required String price,
+  }) {
+    return _format('mobile.purchase.rent_for_tax_included', {
+      'period': period,
+      'price': price,
+    });
+  }
+
   /// `mobile.purchase.rental_period`
   String purchaseRentalPeriod({required num hours}) {
     return _format('mobile.purchase.rental_period', {'hours': hours});
@@ -3331,6 +3352,11 @@ final class AppMessages {
     return _format('mobile.purchases.failed');
   }
 
+  /// `mobile.purchases.issuer`
+  String purchasesIssuer({required String name}) {
+    return _format('mobile.purchases.issuer', {'name': name});
+  }
+
   /// `mobile.purchases.no_expiry`
   String get purchasesNoExpiry {
     return _format('mobile.purchases.no_expiry');
@@ -3361,6 +3387,11 @@ final class AppMessages {
     return _format('mobile.purchases.refunded');
   }
 
+  /// `mobile.purchases.registration_number`
+  String purchasesRegistrationNumber({required String number}) {
+    return _format('mobile.purchases.registration_number', {'number': number});
+  }
+
   /// `mobile.purchases.rental`
   String get purchasesRental {
     return _format('mobile.purchases.rental');
@@ -3374,6 +3405,21 @@ final class AppMessages {
   /// `mobile.purchases.sign_in_prompt`
   String get purchasesSignInPrompt {
     return _format('mobile.purchases.sign_in_prompt');
+  }
+
+  /// `mobile.purchases.store_receipt_app_store`
+  String get purchasesStoreReceiptAppStore {
+    return _format('mobile.purchases.store_receipt_app_store');
+  }
+
+  /// `mobile.purchases.store_receipt_google_play`
+  String get purchasesStoreReceiptGooglePlay {
+    return _format('mobile.purchases.store_receipt_google_play');
+  }
+
+  /// `mobile.purchases.tax`
+  String purchasesTax({required String amount, required String rate}) {
+    return _format('mobile.purchases.tax', {'amount': amount, 'rate': rate});
   }
 
   /// `mobile.purchases.time_left_hours`
@@ -3768,6 +3814,17 @@ final class AppMessages {
   /// `mobile.series.remainder_buy`
   String seriesRemainderBuy({required num count, required String price}) {
     return _format('mobile.series.remainder_buy', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.series.remainder_buy_tax_included`
+  String seriesRemainderBuyTaxIncluded({
+    required num count,
+    required String price,
+  }) {
+    return _format('mobile.series.remainder_buy_tax_included', {
       'count': count,
       'price': price,
     });
@@ -4778,6 +4835,7 @@ const _jaSources = <String, String>{
   'mobile.common.list_two': '{\$first}、{\$rest}',
   'mobile.common.more_series_failed': 'シリーズの続きを表示できませんでした。もう一度お試しください。',
   'mobile.common.open_link_failed': '遷移先を開けませんでした。',
+  'mobile.common.price_tax_included': '{\$price}税込',
   'mobile.common.regular_price': '通常価格{\$price}',
   'mobile.common.retry': '再試行',
   'mobile.common.series_count': '公開中シリーズ{\$count}件',
@@ -5097,6 +5155,7 @@ const _jaSources = <String, String>{
   'mobile.passkeys.unnamed': '名前のないパスキー',
   'mobile.purchase.already_subscribed': 'すでにプランを利用しています。アカウント画面で確認できます。',
   'mobile.purchase.buy': '{\$price}で購入',
+  'mobile.purchase.buy_tax_included': '税込{\$price}で購入',
   'mobile.purchase.cancelled': '購入手続きをキャンセルしました。料金は発生していません。',
   'mobile.purchase.check_again': 'もう一度確認',
   'mobile.purchase.confirming': '決済を確認しています。購入が反映されると本文を表示します。',
@@ -5125,6 +5184,7 @@ const _jaSources = <String, String>{
   'mobile.purchase.plans_terms': '利用規約',
   'mobile.purchase.plans_title': 'サブスクリプションプラン',
   'mobile.purchase.rent_for': '{\$period}レンタル ({\$price})',
+  'mobile.purchase.rent_for_tax_included': '{\$period}レンタル (税込{\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}時間',
   'mobile.purchase.see_plans': 'プランを見る',
   'mobile.purchase.sold_on_web': 'ウェブサイトで販売',
@@ -5148,15 +5208,20 @@ const _jaSources = <String, String>{
   'mobile.purchases.export_csv': 'CSVで書き出す',
   'mobile.purchases.export_failed': '購入履歴を書き出せませんでした。もう一度お試しください。',
   'mobile.purchases.failed': '購入済み一覧を表示できませんでした。もう一度お試しください。',
+  'mobile.purchases.issuer': '発行事業者{\$name}',
   'mobile.purchases.no_expiry': '期限なし',
   'mobile.purchases.price': '購入価格{\$price}',
   'mobile.purchases.purchased_at': '{\$date}に購入',
   'mobile.purchases.readable': '閲覧可能',
   'mobile.purchases.readable_until': '{\$date}まで閲覧可能',
   'mobile.purchases.refunded': '返金済み',
+  'mobile.purchases.registration_number': '登録番号{\$number}',
   'mobile.purchases.rental': 'レンタル',
   'mobile.purchases.series_bundle_title': '残りの{\$count :integer}話',
   'mobile.purchases.sign_in_prompt': 'サインインすると、購入したエピソードを確認できます。',
+  'mobile.purchases.store_receipt_app_store': 'この購入の領収書はApp Storeが発行しています。',
+  'mobile.purchases.store_receipt_google_play': 'この購入の領収書はGoogle Playが発行しています。',
+  'mobile.purchases.tax': 'うち税額{\$amount} ({\$rate})',
   'mobile.purchases.time_left_hours': '残り{\$hours :integer}時間',
   'mobile.purchases.time_left_hours_minutes':
       '残り{\$hours :integer}時間{\$minutes :integer}分',
@@ -5242,6 +5307,8 @@ const _jaSources = <String, String>{
   'mobile.series.read_from_first': '第1話から読む',
   'mobile.series.related_heading': 'こちらもおすすめ',
   'mobile.series.remainder_buy': '残りの{\$count :integer}話を{\$price}で購入',
+  'mobile.series.remainder_buy_tax_included':
+      '残りの{\$count :integer}話を税込{\$price}で購入',
   'mobile.series.remainder_discount': '1話ずつ買うと{\$list_price}のところ{\$percent}オフ',
   'mobile.series.remainder_failed': '残りのエピソードの価格を表示できませんでした',
   'mobile.series.save_offline': 'オフライン用に保存',
@@ -5798,6 +5865,7 @@ const _enSources = <String, String>{
   'mobile.common.list_two': '{\$first} and {\$rest}',
   'mobile.common.more_series_failed': 'Could not show more series. Try again.',
   'mobile.common.open_link_failed': 'Could not open the link.',
+  'mobile.common.price_tax_included': '{\$price} incl. tax',
   'mobile.common.regular_price': 'Regular price {\$price}',
   'mobile.common.retry': 'Retry',
   'mobile.common.series_count': '{\$count} published series',
@@ -6174,6 +6242,7 @@ const _enSources = <String, String>{
   'mobile.purchase.already_subscribed':
       'You already have a plan. See it on the account screen.',
   'mobile.purchase.buy': 'Buy for {\$price}',
+  'mobile.purchase.buy_tax_included': 'Buy for {\$price} incl. tax',
   'mobile.purchase.cancelled':
       'The purchase was cancelled. You have not been charged.',
   'mobile.purchase.check_again': 'Check again',
@@ -6207,6 +6276,8 @@ const _enSources = <String, String>{
   'mobile.purchase.plans_terms': 'Terms of use',
   'mobile.purchase.plans_title': 'Subscription plans',
   'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
+  'mobile.purchase.rent_for_tax_included':
+      'Rent for {\$period} ({\$price} incl. tax)',
   'mobile.purchase.rental_period':
       '.input {\$hours :integer}\n.match \$hours\none {{{\$hours} hour}}\n* {{{\$hours} hours}}',
   'mobile.purchase.see_plans': 'See plans',
@@ -6234,16 +6305,23 @@ const _enSources = <String, String>{
   'mobile.purchases.export_failed':
       'Could not export your purchases. Try again.',
   'mobile.purchases.failed': 'Could not show your purchases. Try again.',
+  'mobile.purchases.issuer': 'Issued by {\$name}',
   'mobile.purchases.no_expiry': 'No expiry',
   'mobile.purchases.price': 'Paid {\$price}',
   'mobile.purchases.purchased_at': 'Purchased {\$date}',
   'mobile.purchases.readable': 'Readable',
   'mobile.purchases.readable_until': 'Readable until {\$date}',
   'mobile.purchases.refunded': 'Refunded',
+  'mobile.purchases.registration_number': 'Registration number {\$number}',
   'mobile.purchases.rental': 'Rental',
   'mobile.purchases.series_bundle_title':
       'Remaining episodes ({\$count :integer})',
   'mobile.purchases.sign_in_prompt': 'Sign in to see the episodes you bought.',
+  'mobile.purchases.store_receipt_app_store':
+      'The App Store issued the receipt for this purchase.',
+  'mobile.purchases.store_receipt_google_play':
+      'Google Play issued the receipt for this purchase.',
+  'mobile.purchases.tax': 'Tax included {\$amount} ({\$rate})',
   'mobile.purchases.time_left_hours': '{\$hours :integer} hr left',
   'mobile.purchases.time_left_hours_minutes':
       '{\$hours :integer} hr {\$minutes :integer} min left',
@@ -6342,6 +6420,8 @@ const _enSources = <String, String>{
   'mobile.series.related_heading': 'You may also like',
   'mobile.series.remainder_buy':
       'Buy remaining episodes ({\$count :integer}) for {\$price}',
+  'mobile.series.remainder_buy_tax_included':
+      'Buy remaining episodes ({\$count :integer}) for {\$price} incl. tax',
   'mobile.series.remainder_discount':
       '{\$percent} off the {\$list_price} they cost one by one',
   'mobile.series.remainder_failed':
@@ -6853,6 +6933,7 @@ const _koSources = <String, String>{
   'mobile.common.list_two': '{\$first} 및 {\$rest}',
   'mobile.common.more_series_failed': '시리즈를 더 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.common.open_link_failed': '링크를 열 수 없습니다.',
+  'mobile.common.price_tax_included': '{\$price} 세금 포함',
   'mobile.common.regular_price': '정가 {\$price}',
   'mobile.common.retry': '다시 시도',
   'mobile.common.series_count': '공개 중인 시리즈 {\$count}건',
@@ -7183,6 +7264,7 @@ const _koSources = <String, String>{
   'mobile.purchase.already_subscribed':
       '이미 이용 중인 플랜이 있습니다. 계정 화면에서 확인할 수 있습니다.',
   'mobile.purchase.buy': '{\$price}에 구매',
+  'mobile.purchase.buy_tax_included': '{\$price}(세금 포함)에 구매',
   'mobile.purchase.cancelled': '구매를 취소했습니다. 요금은 청구되지 않았습니다.',
   'mobile.purchase.check_again': '다시 확인',
   'mobile.purchase.confirming': '결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.',
@@ -7212,6 +7294,7 @@ const _koSources = <String, String>{
   'mobile.purchase.plans_terms': '이용약관',
   'mobile.purchase.plans_title': '구독 플랜',
   'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
+  'mobile.purchase.rent_for_tax_included': '{\$period} 대여 ({\$price}, 세금 포함)',
   'mobile.purchase.rental_period': '{\$hours :integer}시간',
   'mobile.purchase.see_plans': '플랜 보기',
   'mobile.purchase.sold_on_web': '웹사이트에서 판매',
@@ -7235,15 +7318,21 @@ const _koSources = <String, String>{
   'mobile.purchases.export_csv': 'CSV로 내보내기',
   'mobile.purchases.export_failed': '구매 내역을 내보낼 수 없습니다. 다시 시도해 주세요.',
   'mobile.purchases.failed': '구매 목록을 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.purchases.issuer': '발행자 {\$name}',
   'mobile.purchases.no_expiry': '기한 없음',
   'mobile.purchases.price': '구매 가격 {\$price}',
   'mobile.purchases.purchased_at': '{\$date}에 구매',
   'mobile.purchases.readable': '열람 가능',
   'mobile.purchases.readable_until': '{\$date}까지 열람 가능',
   'mobile.purchases.refunded': '환불됨',
+  'mobile.purchases.registration_number': '등록번호 {\$number}',
   'mobile.purchases.rental': '대여',
   'mobile.purchases.series_bundle_title': '남은 {\$count :integer}화',
   'mobile.purchases.sign_in_prompt': '로그인하면 구매한 에피소드를 볼 수 있습니다.',
+  'mobile.purchases.store_receipt_app_store': '이 구매의 영수증은 App Store에서 발행했습니다.',
+  'mobile.purchases.store_receipt_google_play':
+      '이 구매의 영수증은 Google Play에서 발행했습니다.',
+  'mobile.purchases.tax': '포함된 세금 {\$amount} ({\$rate})',
   'mobile.purchases.time_left_hours': '{\$hours :integer}시간 남음',
   'mobile.purchases.time_left_hours_minutes':
       '{\$hours :integer}시간 {\$minutes :integer}분 남음',
@@ -7328,6 +7417,8 @@ const _koSources = <String, String>{
   'mobile.series.read_from_first': '1화부터 읽기',
   'mobile.series.related_heading': '이런 작품은 어떠세요',
   'mobile.series.remainder_buy': '남은 {\$count :integer}화를 {\$price}에 구매',
+  'mobile.series.remainder_buy_tax_included':
+      '남은 {\$count :integer}화를 {\$price}(세금 포함)에 구매',
   'mobile.series.remainder_discount':
       '한 화씩 사면 {\$list_price}인 것을 {\$percent} 할인',
   'mobile.series.remainder_failed': '남은 에피소드의 가격을 표시할 수 없습니다',
@@ -7787,6 +7878,7 @@ const _zhHansSources = <String, String>{
   'mobile.common.list_two': '{\$first}和{\$rest}',
   'mobile.common.more_series_failed': '无法显示更多系列。请重试。',
   'mobile.common.open_link_failed': '无法打开链接。',
+  'mobile.common.price_tax_included': '{\$price}含税',
   'mobile.common.regular_price': '原价{\$price}',
   'mobile.common.retry': '重试',
   'mobile.common.series_count': '已发布{\$count}部系列',
@@ -8081,6 +8173,7 @@ const _zhHansSources = <String, String>{
   'mobile.passkeys.unnamed': '未命名的通行密钥',
   'mobile.purchase.already_subscribed': '您已有方案，可在账户页面查看。',
   'mobile.purchase.buy': '以{\$price}购买',
+  'mobile.purchase.buy_tax_included': '以含税价{\$price}购买',
   'mobile.purchase.cancelled': '购买已取消，未产生任何扣款。',
   'mobile.purchase.check_again': '再次确认',
   'mobile.purchase.confirming': '我们正在确认您的付款。购买生效后即可打开该章节。',
@@ -8106,6 +8199,7 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.plans_terms': '使用条款',
   'mobile.purchase.plans_title': '订阅方案',
   'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
+  'mobile.purchase.rent_for_tax_included': '租阅{\$period}（含税{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小时',
   'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在网站上销售',
@@ -8125,15 +8219,20 @@ const _zhHansSources = <String, String>{
   'mobile.purchases.export_csv': '导出CSV',
   'mobile.purchases.export_failed': '无法导出您的购买记录。请重试。',
   'mobile.purchases.failed': '无法显示您的购买内容。请重试。',
+  'mobile.purchases.issuer': '开票方{\$name}',
   'mobile.purchases.no_expiry': '无期限',
   'mobile.purchases.price': '支付金额{\$price}',
   'mobile.purchases.purchased_at': '{\$date}购买',
   'mobile.purchases.readable': '可阅读',
   'mobile.purchases.readable_until': '可阅读至{\$date}',
   'mobile.purchases.refunded': '已退款',
+  'mobile.purchases.registration_number': '登记编号{\$number}',
   'mobile.purchases.rental': '租阅',
   'mobile.purchases.series_bundle_title': '剩余的{\$count :integer}章',
   'mobile.purchases.sign_in_prompt': '登录后即可查看您购买的章节。',
+  'mobile.purchases.store_receipt_app_store': '此购买的收据由App Store开具。',
+  'mobile.purchases.store_receipt_google_play': '此购买的收据由Google Play开具。',
+  'mobile.purchases.tax': '其中税额{\$amount}（{\$rate}）',
   'mobile.purchases.time_left_hours': '剩余{\$hours :integer}小时',
   'mobile.purchases.time_left_hours_minutes':
       '剩余{\$hours :integer}小时{\$minutes :integer}分钟',
@@ -8214,6 +8313,8 @@ const _zhHansSources = <String, String>{
   'mobile.series.read_from_first': '从第1章开始阅读',
   'mobile.series.related_heading': '您可能也喜欢',
   'mobile.series.remainder_buy': '以{\$price}购买剩余的{\$count :integer}章',
+  'mobile.series.remainder_buy_tax_included':
+      '以含税价{\$price}购买剩余的{\$count :integer}章',
   'mobile.series.remainder_discount': '逐章购买需{\$list_price}，现优惠{\$percent}',
   'mobile.series.remainder_failed': '无法显示剩余章节的价格',
   'mobile.series.save_offline': '保存以供离线阅读',
@@ -8655,6 +8756,7 @@ const _zhHantSources = <String, String>{
   'mobile.common.list_two': '{\$first}和{\$rest}',
   'mobile.common.more_series_failed': '無法顯示更多系列。請重試。',
   'mobile.common.open_link_failed': '無法開啟連結。',
+  'mobile.common.price_tax_included': '{\$price}含稅',
   'mobile.common.regular_price': '原價{\$price}',
   'mobile.common.retry': '重試',
   'mobile.common.series_count': '已發布{\$count}部系列',
@@ -8950,6 +9052,7 @@ const _zhHantSources = <String, String>{
   'mobile.passkeys.unnamed': '未命名的通行金鑰',
   'mobile.purchase.already_subscribed': '您已有方案，可在帳戶頁面查看。',
   'mobile.purchase.buy': '以{\$price}購買',
+  'mobile.purchase.buy_tax_included': '以含稅價{\$price}購買',
   'mobile.purchase.cancelled': '購買已取消，未產生任何扣款。',
   'mobile.purchase.check_again': '再次確認',
   'mobile.purchase.confirming': '我們正在確認您的付款。購買生效後即可開啟該章節。',
@@ -8975,6 +9078,7 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.plans_terms': '使用條款',
   'mobile.purchase.plans_title': '訂閱方案',
   'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
+  'mobile.purchase.rent_for_tax_included': '租閱{\$period}（含稅{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小時',
   'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在網站上販售',
@@ -8994,15 +9098,20 @@ const _zhHantSources = <String, String>{
   'mobile.purchases.export_csv': '匯出CSV',
   'mobile.purchases.export_failed': '無法匯出您的購買紀錄。請重試。',
   'mobile.purchases.failed': '無法顯示您購買的內容。請重試。',
+  'mobile.purchases.issuer': '開立者{\$name}',
   'mobile.purchases.no_expiry': '無期限',
   'mobile.purchases.price': '支付金額{\$price}',
   'mobile.purchases.purchased_at': '{\$date}購買',
   'mobile.purchases.readable': '可閱讀',
   'mobile.purchases.readable_until': '可閱讀至{\$date}',
   'mobile.purchases.refunded': '已退款',
+  'mobile.purchases.registration_number': '登記編號{\$number}',
   'mobile.purchases.rental': '租閱',
   'mobile.purchases.series_bundle_title': '剩餘的{\$count :integer}章',
   'mobile.purchases.sign_in_prompt': '登入後即可查看您購買的章節。',
+  'mobile.purchases.store_receipt_app_store': '此購買的收據由App Store開立。',
+  'mobile.purchases.store_receipt_google_play': '此購買的收據由Google Play開立。',
+  'mobile.purchases.tax': '其中稅額{\$amount}（{\$rate}）',
   'mobile.purchases.time_left_hours': '剩餘{\$hours :integer}小時',
   'mobile.purchases.time_left_hours_minutes':
       '剩餘{\$hours :integer}小時{\$minutes :integer}分鐘',
@@ -9083,6 +9192,8 @@ const _zhHantSources = <String, String>{
   'mobile.series.read_from_first': '從第1章開始閱讀',
   'mobile.series.related_heading': '你可能也喜歡',
   'mobile.series.remainder_buy': '以{\$price}購買剩餘的{\$count :integer}章',
+  'mobile.series.remainder_buy_tax_included':
+      '以含稅價{\$price}購買剩餘的{\$count :integer}章',
   'mobile.series.remainder_discount': '逐章購買需{\$list_price}，現優惠{\$percent}',
   'mobile.series.remainder_failed': '無法顯示剩餘章節的價格',
   'mobile.series.save_offline': '儲存以供離線閱讀',
