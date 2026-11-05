@@ -5843,7 +5843,8 @@
       "coin_pack_cancelled": "The purchase was cancelled. You have not been charged.",
       "coin_price_changed": "The price of this episode in {$coin_name} has changed. Check the new price and try again.",
       "coin_pay_error": "Could not pay with {$coin_name}. Please try again later.",
-      "checkout_paid": "Amount paid"
+      "checkout_paid": "Amount paid",
+      "checkout_paid_error": "Could not show the amount paid"
     },
     "errors": {
       "not_found_description": "The page may have been removed, or its URL may have changed. Open the home page.",

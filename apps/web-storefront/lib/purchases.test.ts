@@ -1,8 +1,9 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tenantPurchasesTag } from "./cache-tags";
-import { listMyPurchases } from "./purchases";
+import { findMyEpisodePurchase, listMyPurchases } from "./purchases";
 
 const { mockCacheTag, mockListMyPurchases, mockResolveAccessToken } =
   vi.hoisted(() => ({
@@ -265,5 +266,72 @@ describe("listMyPurchases", () => {
         revokedAt: "",
       }),
     ]);
+  });
+});
+
+const purchaseOf = (publicId: string, id: string, isActive = true) => ({
+  episode: { publicId },
+  id,
+  isActive,
+  kind: PurchaseKind.PURCHASE,
+});
+
+describe("findMyEpisodePurchase", () => {
+  beforeEach(() => {
+    mockResolveAccessToken.mockResolvedValue(ACCESS_TOKEN);
+  });
+
+  it("finds the newest purchase that opens the episode", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      purchases: [
+        purchaseOf("EP_OTHER", "other"),
+        purchaseOf("EP_001", "current"),
+        purchaseOf("EP_001", "older"),
+      ],
+    });
+
+    const purchase = await findMyEpisodePurchase(TENANT_ID, "EP_001", "en");
+
+    expect(purchase?.id).toBe("current");
+  });
+
+  it("does not take a rental that ran out, a refund, or a tip for the checkout still on its way", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      purchases: [purchaseOf("EP_001", "expired", false)],
+    });
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+  });
+
+  it("finds nothing for a guest", async () => {
+    mockResolveAccessToken.mockResolvedValueOnce("");
+    mockListMyPurchases.mockClear();
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+    expect(mockListMyPurchases).not.toHaveBeenCalled();
+  });
+
+  it("finds nothing when the list could not be read", async () => {
+    mockListMyPurchases.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+  });
+
+  it("throws an answer it cannot account for, for the notice's boundary", async () => {
+    const failure = new ConnectError("internal", Code.Internal);
+
+    mockListMyPurchases.mockRejectedValueOnce(failure);
+
+    await expect(findMyEpisodePurchase(TENANT_ID, "EP_001", "en")).rejects.toBe(
+      failure
+    );
   });
 });

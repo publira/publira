@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PaidPrice } from "#components/paid-price";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { findMyEpisodePurchase } from "#lib/purchases";
@@ -115,9 +116,20 @@ export const CheckoutNotice = ({
             <Message message="storefront.episode.checkout_success" />
           </Suspense>
         </span>
-        <Suspense fallback={null}>
-          <CheckoutPaid episodePublicId={episodePublicId} tenantId={tenantId} />
-        </Suspense>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="storefront.episode.checkout_paid_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={null}>
+            <CheckoutPaid
+              episodePublicId={episodePublicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
         <span>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.episode.checkout_charged" />

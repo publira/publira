@@ -5843,7 +5843,8 @@
       "coin_pack_cancelled": "购买已取消，未产生任何扣款。",
       "coin_price_changed": "本章的{$coin_name}价格已变更。请确认新价格后再试。",
       "coin_pay_error": "无法使用{$coin_name}支付。请稍后再试。",
-      "checkout_paid": "支付金额"
+      "checkout_paid": "支付金额",
+      "checkout_paid_error": "无法显示支付金额"
     },
     "errors": {
       "not_found_description": "该页面可能已被删除，或其URL已变更。",

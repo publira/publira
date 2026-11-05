@@ -372,10 +372,17 @@ export const listAllMyPurchases = async (
 };
 
 /**
- * The reader's newest purchase of the episode `episodePublicId`, looked for in
- * the first page of their purchases, which lists the newest first. `null` while
- * the provider's notification has not recorded it yet, and when the list could
- * not be read: a caller says what was paid where it can, and nothing else.
+ * The purchase that opens the episode `episodePublicId` for the reader now,
+ * looked for in the first page of their purchases, which lists the newest
+ * first. `null` while the provider's notification has not recorded it yet, and
+ * when the list could not be read: a caller says what was paid where it can,
+ * and nothing else.
+ *
+ * Active purchases alone, because the list keeps the rest: a rental that ran
+ * out, a refund, and a tip would otherwise pass for the checkout the reader
+ * just came back from, whose purchase is still on its way. The gate offers a
+ * checkout only to a reader the episode is closed to, so nothing active can
+ * predate it.
  *
  * Uncached, unlike the library's read: it is asked for on the return from a
  * payment, which is the moment the purchase is recorded.
@@ -406,8 +413,10 @@ export const findMyEpisodePurchase = async (
       (response.purchases ?? [])
         .map(mapPurchase)
         .find(
-          ({ item }) =>
-            item.kind === "episode" && item.publicId === episodePublicId
+          ({ isActive, item }) =>
+            isActive &&
+            item.kind === "episode" &&
+            item.publicId === episodePublicId
         ) ?? null
     );
   } catch (error) {
