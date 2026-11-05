@@ -1540,6 +1540,10 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/ListMyRecommendedSeries')) {
       final body = recorded.decode(pb.ListMyRecommendedSeriesRequest());
+      if (_isSignedUpSession(request)) {
+        await _writeMessage(request, pb.ListMyRecommendedSeriesResponse());
+        return;
+      }
       if (!await _writeUnlessAuthorized(request)) {
         return;
       }
@@ -1863,12 +1867,15 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/GetMyDataExport')) {
       recorded.decode(pb.GetMyDataExportRequest());
-      if (!await _writeUnlessAuthorized(request)) {
+      final isSignedUp = _isSignedUpSession(request);
+      if (!isSignedUp && !await _writeUnlessAuthorized(request)) {
         return;
       }
       await _writeMessage(
         request,
-        pb.GetMyDataExportResponse(dataExport: memberDataExport),
+        pb.GetMyDataExportResponse(
+          dataExport: isSignedUp ? null : memberDataExport,
+        ),
       );
       return;
     }
@@ -2311,12 +2318,15 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/GetMySubscription')) {
       recorded.decode(pb.GetMySubscriptionRequest());
-      if (!await _writeUnlessAuthorized(request)) {
+      final isSignedUp = _isSignedUpSession(request);
+      if (!isSignedUp && !await _writeUnlessAuthorized(request)) {
         return;
       }
       await _writeMessage(
         request,
-        pb.GetMySubscriptionResponse(subscription: mySubscription),
+        pb.GetMySubscriptionResponse(
+          subscription: isSignedUp ? null : mySubscription,
+        ),
       );
       return;
     }
@@ -3518,6 +3528,11 @@ class ConnectFixtureServer {
       await _writeUnavailable(request, notificationStatus);
       return;
     }
+    if (path.endsWith('/CountUnreadNotifications') &&
+        _isSignedUpSession(request)) {
+      await _writeMessage(request, pb.CountUnreadNotificationsResponse());
+      return;
+    }
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
@@ -3723,6 +3738,10 @@ class ConnectFixtureServer {
     final position = path.endsWith('/GetMyReadingPosition')
         ? recorded.decode(pb.GetMyReadingPositionRequest())
         : null;
+    if (recent != null && _isSignedUpSession(request)) {
+      await _writeMessage(request, pb.ListMyRecentSeriesResponse());
+      return;
+    }
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
@@ -4865,6 +4884,10 @@ class ConnectFixtureServer {
 
   /// Whether [request] carries the session `Login` issued for an account a
   /// test signed up here.
+  ///
+  /// A read the app makes right after signing in answers this session with an
+  /// account that holds nothing yet. `unauthenticated` would say the API has
+  /// stopped accepting it, and some of those reads sign the reader out on that.
   bool _isSignedUpSession(HttpRequest request) =>
       _signedUpSession != null &&
       request.headers.value(HttpHeaders.authorizationHeader) ==

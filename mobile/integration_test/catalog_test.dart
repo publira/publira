@@ -1702,6 +1702,15 @@ void main() {
         );
 
         await pumpUntilFound(tester, signedInAccountEntry());
+        // The first frame after signing in proves nothing about the session:
+        // the screens it opens are still to read the new account, and a read
+        // the API refused would sign the reader back out.
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey(('account-data-export', 'none'))),
+          300,
+          scrollable: accountList(),
+        );
+        expect(signedInAccountEntry(), findsOneWidget);
         expect(server.signups[email]!.verified, isTrue);
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
