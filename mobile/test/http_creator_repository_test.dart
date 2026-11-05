@@ -185,6 +185,17 @@ void main() {
                 .CreatorStatementLineSource
                 .CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION,
           ),
+          pb.MyCreatorStatementLine(
+            lineNumber: 5,
+            source:
+                pb.CreatorStatementLineSource.CREATOR_STATEMENT_LINE_SOURCE_TIP,
+          ),
+          pb.MyCreatorStatementLine(
+            lineNumber: 1,
+            source: pb
+                .CreatorStatementLineSource
+                .CREATOR_STATEMENT_LINE_SOURCE_SALE,
+          ),
         ],
       ),
     );
@@ -207,10 +218,12 @@ void main() {
     );
     expect(detail.statement.closedAt.toUtc(), DateTime.utc(2026, 1, 5, 10));
     expect(detail.statement.payoutAmount, 1200);
-    final line = detail.lines.single;
+    final [line, tipLine, saleLine] = detail.lines;
     expect(line.isAdjustment, isTrue);
     expect(line.source, CreatorStatementLineSource.subscription);
     expect(line.grossAmount, -500);
+    expect(tipLine.source, CreatorStatementLineSource.tip);
+    expect(saleLine.source, CreatorStatementLineSource.sale);
   });
 
   test('reads a page of the comments on the Author\'s episodes', () async {

@@ -109,12 +109,28 @@ void main() {
       source: CreatorStatementLineSource.subscription,
     ),
     line(
+      lineNumber: 5,
+      saleCount: 2,
+      grossAmount: 600,
+      payoutAmount: 180,
+      source: CreatorStatementLineSource.tip,
+    ),
+    line(
       lineNumber: 7,
       saleCount: -1,
       grossAmount: -500,
       refundedAmount: -500,
       payoutAmount: -150,
       adjustedPeriod: '2025-11',
+    ),
+    line(
+      lineNumber: 9,
+      saleCount: -1,
+      grossAmount: -300,
+      refundedAmount: -300,
+      payoutAmount: -90,
+      adjustedPeriod: '2025-11',
+      source: CreatorStatementLineSource.tip,
     ),
   ];
 
@@ -487,6 +503,39 @@ void main() {
       );
     });
 
+    testWidgets('labels a tip line, and the adjustment of one, as a tip', (
+      tester,
+    ) async {
+      await openDecember(tester);
+
+      expect(
+        find.byKey(const ValueKey('creator-statement-tip-1')),
+        findsNothing,
+      );
+      expect(
+        textIn(find.byKey(const ValueKey('creator-statement-tip-5'))),
+        'Tip',
+      );
+      expect(
+        find.byKey(const ValueKey('creator-statement-adjustment-5')),
+        findsNothing,
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('creator-statement-line-9')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        textIn(find.byKey(const ValueKey('creator-statement-tip-9'))),
+        'Tip',
+      );
+      expect(
+        textIn(find.byKey(const ValueKey('creator-statement-adjustment-9'))),
+        'Refund adjustment for November 2025',
+      );
+    });
+
     testWidgets('shares every line as the CSV the site downloads', (
       tester,
     ) async {
@@ -509,7 +558,11 @@ void main() {
         '2025-12,,SERIES000001,Night Ferry,EPISODE00001,The Harbor,'
         '8,4000,0,12.50,1200,JPY,,subscription\r\n'
         '2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,'
-        '-1,-500,-500,30.00,-150,JPY,2025-11,sale\r\n',
+        '2,600,0,30.00,180,JPY,,tip\r\n'
+        '2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,'
+        '-1,-500,-500,30.00,-150,JPY,2025-11,sale\r\n'
+        '2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,'
+        '-1,-300,-300,30.00,-90,JPY,2025-11,tip\r\n',
       );
     });
 

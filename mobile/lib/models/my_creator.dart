@@ -156,6 +156,9 @@ enum CreatorStatementLineSource {
   /// The episode's sales.
   sale('sale'),
 
+  /// The tips readers gave on the episode.
+  tip('tip'),
+
   /// The parts of the month's subscription payments shared to the episode.
   subscription('subscription');
 
@@ -202,7 +205,7 @@ class MyCreatorStatementLine {
   final int payoutAmount;
 
   /// `YYYY-MM` of the closed month an adjustment line adjusts, and empty for a
-  /// line of the month's own sales or subscription payments.
+  /// line of the month's own sales, tips, or subscription payments.
   final String adjustedPeriod;
   final CreatorStatementLineSource source;
 

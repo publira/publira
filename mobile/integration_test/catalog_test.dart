@@ -3670,6 +3670,10 @@ void main() {
         );
         expect(find.text('December 2025 statement'), findsOneWidget);
         expect(find.text('Seed Episode 001-10'), findsWidgets);
+        expect(
+          find.byKey(const ValueKey('creator-statement-tip-4')),
+          findsOneWidget,
+        );
       });
     });
 

@@ -189,13 +189,17 @@ class HttpCreatorRepository implements CreatorRepository {
               shareBps: line.shareBps,
               payoutAmount: line.payoutAmount.toInt(),
               adjustedPeriod: line.adjustedPeriod,
-              source:
-                  line.source ==
-                      pb
-                          .CreatorStatementLineSource
-                          .CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION
-                  ? CreatorStatementLineSource.subscription
-                  : CreatorStatementLineSource.sale,
+              source: switch (line.source) {
+                pb
+                    .CreatorStatementLineSource
+                    .CREATOR_STATEMENT_LINE_SOURCE_TIP =>
+                  CreatorStatementLineSource.tip,
+                pb
+                    .CreatorStatementLineSource
+                    .CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION =>
+                  CreatorStatementLineSource.subscription,
+                _ => CreatorStatementLineSource.sale,
+              },
             ),
         ]),
         nextToken: body.nextToken,
