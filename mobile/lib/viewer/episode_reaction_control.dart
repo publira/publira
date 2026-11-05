@@ -25,9 +25,23 @@ import 'package:publira/typography/autospaced_text.dart';
 /// told why in place of the control: an author knows the episode is theirs,
 /// while a member of staff reads it as any reader would.
 class EpisodeReactionControl extends StatefulWidget {
-  const EpisodeReactionControl({super.key, required this.episode});
+  const EpisodeReactionControl({
+    super.key,
+    required this.episode,
+    this.uncreditedOffer,
+  });
 
   final EpisodeItem episode;
+
+  /// What is drawn below the control for a reader the episode does not credit.
+  ///
+  /// `GetEpisodeDetail` reports a credit only as what opens a priced episode,
+  /// so the private state read here is what says so on a free one too, and the
+  /// offer follows it rather than reading it a second time. A guest has no
+  /// state to read and is shown the offer. A member is not shown it until
+  /// their state has been read, nor when it could not be, because the API may
+  /// refuse them; the control says when the read failed.
+  final Widget? uncreditedOffer;
 
   @override
   State<EpisodeReactionControl> createState() => _EpisodeReactionControlState();
@@ -134,8 +148,32 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
       request.accessToken == _accessToken &&
       request.episodeId == widget.episode.id;
 
+  List<String> get _refusalReasons {
+    final error = _error;
+    return error is CatalogFailure ? error.reasons : const [];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final control = _buildControl(context);
+    final offer = widget.uncreditedOffer;
+    final reaction = _reaction;
+    final uncredited =
+        !AuthScope.of(context).isSignedIn ||
+        (reaction != null &&
+            !reaction.readerCredited &&
+            !_refusalReasons.contains(readerCreditedOnEpisodeReason));
+    if (offer == null || !uncredited) {
+      return control;
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [control, offer],
+    );
+  }
+
+  Widget _buildControl(BuildContext context) {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     final reaction = _reaction;
@@ -166,7 +204,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     // refused again on every press, and says so rather than asking for
     // another try.
     final error = _error;
-    final reasons = error is CatalogFailure ? error.reasons : const <String>[];
+    final reasons = _refusalReasons;
     final refusedAsCredited = reasons.contains(readerCreditedOnEpisodeReason);
     final refusedAsStaff = reasons.contains(readerIsTenantStaffReason);
 

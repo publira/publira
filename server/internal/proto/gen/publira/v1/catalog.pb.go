@@ -1940,9 +1940,10 @@ type GetEpisodeDetailResponse struct {
 	// tenant takes tips, and empty while it does not. They are the tenant's,
 	// the same on every episode and for every reader, so a reader the episode
 	// credits, whom StartTipCheckout refuses, is answered them too; such a
-	// reader is told apart by entitlement_source. A tip is paid on the site
-	// through StartTipCheckout, and in an app that sells through the stores as
-	// the product `tip_` followed by the amount, through StartStoreTip.
+	// reader is told apart by GetMyEpisodeRatingResponse.reader_credited, since
+	// entitlement_source says so only of a priced episode. A tip is paid on the
+	// site through StartTipCheckout, and in an app that sells through the stores
+	// as the product `tip_` followed by the amount, through StartStoreTip.
 	TipAmounts    []int32 `protobuf:"varint,13,rep,packed,name=tip_amounts,json=tipAmounts,proto3" json:"tip_amounts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

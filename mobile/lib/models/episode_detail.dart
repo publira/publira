@@ -303,8 +303,8 @@ class EpisodeReaction {
   final bool allowsMultiplePresses;
 
   /// Whether the reader's account is linked to a creator the episode credits,
-  /// free or not. The API refuses such a reader's rating, so the control is
-  /// not offered to them.
+  /// free or not. The API refuses such a reader's rating and tip, so neither
+  /// is offered to them.
   final bool readerCredited;
 
   /// Whether the reader's account holds a staff role in the tenant, free

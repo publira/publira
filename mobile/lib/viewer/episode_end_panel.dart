@@ -84,13 +84,13 @@ class EpisodeEndPanel extends StatelessWidget {
       _ => null,
     };
     // A tip is given by the payment the app can take, in the tenant's
-    // currency, and the API refuses one from a reader the episode credits.
+    // currency. The API refuses one from a reader the episode credits, which
+    // the reaction control below is what finds out.
     final currency = this.currency;
     final tips =
         acceptsPayments &&
         currency != null &&
         detail.tipAmounts.isNotEmpty &&
-        detail.entitlementSource != EpisodeEntitlementSource.creator &&
         PurchaseScope.maybeOf(context) != null;
     return Center(
       key: const ValueKey('episode-end-panel'),
@@ -125,14 +125,17 @@ class EpisodeEndPanel extends StatelessWidget {
               ),
               const SizedBox(height: 24),
             ],
-            EpisodeReactionControl(episode: detail.episode),
-            if (tips)
-              TipAuthorsButton(
-                episodeInternalId: detail.episode.internalId,
-                creators: detail.creators,
-                amounts: detail.tipAmounts,
-                currency: currency,
-              ),
+            EpisodeReactionControl(
+              episode: detail.episode,
+              uncreditedOffer: tips
+                  ? TipAuthorsButton(
+                      episodeInternalId: detail.episode.internalId,
+                      creators: detail.creators,
+                      amounts: detail.tipAmounts,
+                      currency: currency,
+                    )
+                  : null,
+            ),
             if (onOpenComments != null)
               OutlinedButton.icon(
                 key: const ValueKey('episode-end-comments'),
