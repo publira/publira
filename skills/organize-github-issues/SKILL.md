@@ -107,6 +107,8 @@ Such work lands as two stacked pull requests, one per layer, and every pull requ
 
 Web edits that only follow from the backend change and have no screen of their own — an audit-log label and its catalog entries, a new entry in a table the web apps keep, a new service on an `@publira/api-client` client, a type or a call site re-fitted to regenerated code — ride in the backend pull request, as the stacking section of `AGENTS.md` lists. Name them in the backend Issue's scope; they are not a frontend Issue, and work whose web side is only such edits is one backend Issue.
 
+A backend Issue whose behaviour no screen exposes once it lands carries no `docs/` page in its scope or acceptance criteria. The `docs/` pages of the feature, with their screenshots, belong to the frontend Issue that first exposes it: a page written earlier describes settings and controls no one can find yet, and has no screen to show. This is about `docs/` alone. Name in the backend Issue's scope every `README.md`, `AGENTS.md`, doc comment, and `proto/` comment the backend change makes wrong or incomplete, because those travel with the code they describe, and keep in it a `docs/` page about behaviour a screen or an operator can already reach, such as an environment variable or a deployment step.
+
 Give each its own title naming its layer's outcome, its own Effort, its own `area/*` label, and its own milestone, and put both under the same parent when the work has one. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
 
 ### A reader-facing feature: the storefront and the mobile app together
@@ -163,6 +165,7 @@ Confirm all applicable invariants:
 - dependencies represent prerequisites rather than mere association
 - no Issue has multiple parents
 - every open reader-facing `area/web-storefront` Issue has an `area/mobile` counterpart under the same parent, or states in its body why it does not; the counterpart is in the same milestone, or in a later one with its own body saying why the app waits
+- no open backend Issue asks for a `docs/` page about behaviour that only a later layer exposes; the page is on the frontend Issue that first exposes it
 - counts and sampled read-backs match the migration plan
 - repository files remain unchanged unless configuration changes were explicitly required
 
