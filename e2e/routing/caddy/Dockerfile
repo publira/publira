@@ -4,7 +4,7 @@
 # The same Caddy version as the image compose.caddy.yaml runs, with that one
 # module added.
 
-FROM caddy:2.11.8-builder-alpine@sha256:661f29bb0de2c3ea5eb9cae5783e1c907ef7daa13a4b7db5207c710f51854e4a AS builder
+FROM caddy:2.11.8-builder-alpine@sha256:e42a64b3bc70aa3a1387bde85b930e507a378fecae5852d5bfde9dcd37d0b999 AS builder
 
 # renovate: datasource=go depName=github.com/mholt/caddy-ratelimit
 ARG CADDY_RATELIMIT_VERSION=v0.1.1-0.20260612195517-5625512f24f6
