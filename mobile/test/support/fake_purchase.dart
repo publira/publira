@@ -35,6 +35,16 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// The product [startStorePurchase] answers every episode with.
   String storeProductId = 'episode_500';
 
+  /// The product [startStorePurchase] answers a purchase with a code with.
+  String promotionStoreProductId = 'episode_400';
+
+  /// Whether a code takes the whole price off, which [startStorePurchase]
+  /// answers as a purchase recorded at once.
+  bool storeRecordsPromotionCode = false;
+
+  /// The code each call to [startStorePurchase] carried, in order.
+  final List<String> storePromotionCodes = <String>[];
+
   /// Thrown by [startStorePurchase].
   PurchaseFailure? storeStartFailure;
 
@@ -135,6 +145,26 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// The sale each call to [startEpisodeCheckout] asked for, in order.
   final List<PurchaseKind> checkoutKinds = <PurchaseKind>[];
 
+  /// The code each call to [startEpisodeCheckout] carried, in order.
+  final List<String> checkoutPromotionCodes = <String>[];
+
+  /// What [acceptsPromotionCodes] answers.
+  bool promotionCodes = false;
+
+  /// What [previewPromotionCode] answers for each sale, a sale missing from
+  /// it answered as not applying.
+  Map<PromotionCodeSale, PromotionCodeQuote> promotionQuotes = const {};
+
+  /// Thrown by [previewPromotionCode].
+  PurchaseFailure? promotionFailure;
+
+  /// Held open by a test that needs [previewPromotionCode] in flight.
+  Completer<void>? promotionGate;
+
+  /// Every call to [previewPromotionCode], in order.
+  final List<({String code, List<PromotionCodeSale> sales, bool store})>
+  promotionPreviews = [];
+
   /// The pages [listMyPurchases] answers, in order. The token of a page is
   /// its own index written out, the way the fixture server writes a cursor.
   List<List<MyPurchase>> pages;
@@ -160,6 +190,31 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<String> currency() async => tenantCurrency;
+
+  @override
+  Future<bool> acceptsPromotionCodes() async => promotionCodes;
+
+  @override
+  Future<List<PromotionCodeQuote>> previewPromotionCode(
+    String code,
+    List<PromotionCodeSale> sales, {
+    bool store = false,
+  }) async {
+    promotionPreviews.add((code: code, sales: sales, store: store));
+    await promotionGate?.future;
+    if (promotionFailure case final failure?) {
+      throw failure;
+    }
+    return [
+      for (final sale in sales)
+        promotionQuotes[sale] ??
+            const PromotionCodeQuote(
+              listPrice: 0,
+              price: 0,
+              refusal: PromotionCodeSaleRefusal.notApplicable,
+            ),
+    ];
+  }
 
   @override
   Future<TenantInvoice> invoice() async {
@@ -232,10 +287,12 @@ class FakePurchaseRepository implements PurchaseRepository {
     String episodeInternalId, {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
+    String promotionCode = '',
   }) async {
     checkouts.add(episodeInternalId);
     checkoutLocales.add(locale);
     checkoutKinds.add(kind);
+    checkoutPromotionCodes.add(promotionCode);
     final failure = checkoutFailure;
     if (failure != null) {
       throw failure;
@@ -249,6 +306,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Volumes [startVolumeCheckout] was asked for, in order.
   final List<String> volumeCheckouts = <String>[];
 
+  /// The code each call to [startVolumeCheckout] carried, in order.
+  final List<String> volumePromotionCodes = <String>[];
+
   /// Series [startSeriesRemainderCheckout] was asked for, in order.
   final List<String> remainderCheckouts = <String>[];
 
@@ -257,8 +317,12 @@ class FakePurchaseRepository implements PurchaseRepository {
   final List<String> remainderCheckoutLocales = <String>[];
 
   @override
-  Future<Uri> startVolumeCheckout(String volumeInternalId) async {
+  Future<Uri> startVolumeCheckout(
+    String volumeInternalId, {
+    String promotionCode = '',
+  }) async {
     volumeCheckouts.add(volumeInternalId);
+    volumePromotionCodes.add(promotionCode);
     final failure = bundleCheckoutFailure;
     if (failure != null) {
       throw failure;
@@ -286,13 +350,24 @@ class FakePurchaseRepository implements PurchaseRepository {
   @override
   Future<StorePurchaseIntent> startStorePurchase(
     String episodeInternalId,
-    InAppPurchaseStore store,
-  ) async {
+    InAppPurchaseStore store, {
+    String promotionCode = '',
+  }) async {
     storeIntents.add(episodeInternalId);
+    storePromotionCodes.add(promotionCode);
     await storeStartGate?.future;
     final failure = storeStartFailure;
     if (failure != null) {
       throw failure;
+    }
+    if (promotionCode.isNotEmpty) {
+      if (storeRecordsPromotionCode) {
+        return const StorePurchaseIntent.recorded();
+      }
+      return StorePurchaseIntent(
+        intentId: intentFor(episodeInternalId),
+        productId: promotionStoreProductId,
+      );
     }
     return StorePurchaseIntent(
       intentId: intentFor(episodeInternalId),

@@ -478,7 +478,13 @@
         ],
         "rpcs": ["PreviewPromotionCode"]
       },
-      "exception": "Not in the app yet: #4942."
+      "mobile": {
+        "routes": [
+          "/series/:seriesId",
+          "/series/:seriesId/episodes/:episodeId"
+        ],
+        "rpcs": ["PreviewPromotionCode"]
+      }
     },
     {
       "name": "Buying a volume or the rest of a series from the series page",

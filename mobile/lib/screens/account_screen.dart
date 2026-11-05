@@ -994,6 +994,13 @@ class _PlanSectionState extends State<_PlanSection> {
             PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.promotionCodeInvalid ||
+            PurchaseFailureKind.promotionCodeExpired ||
+            PurchaseFailureKind.promotionCodeExhausted ||
+            PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+            PurchaseFailureKind.promotionCodeNotApplicable ||
+            PurchaseFailureKind.promotionCodeNotInApp ||
+            PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           report(messages.accountBillingFailed);
       }
@@ -1081,6 +1088,13 @@ class _PlanSectionState extends State<_PlanSection> {
             PurchaseFailureKind.notSold ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.promotionCodeInvalid ||
+            PurchaseFailureKind.promotionCodeExpired ||
+            PurchaseFailureKind.promotionCodeExhausted ||
+            PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+            PurchaseFailureKind.promotionCodeNotApplicable ||
+            PurchaseFailureKind.promotionCodeNotInApp ||
+            PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           report(messages.accountRestoreFailed);
       }

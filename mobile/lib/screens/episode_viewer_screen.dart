@@ -25,6 +25,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -32,6 +33,7 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
 import 'package:publira/purchase/payment_lock.dart';
+import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -179,6 +181,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// a rental is sold: the store sells the permanent copy alone.
   var _sellsOnWeb = false;
 
+  /// Whether the tenant holds a promotion code, so the purchase offers a
+  /// field for one. False while it could not be read.
+  var _acceptsPromotionCodes = false;
+
+  /// What the code the reader entered makes of the sales on the gate, which
+  /// the field reports and the purchase buttons read their price from.
+  PromotionCodeState _promotion = const NoPromotionCode();
+
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
   /// page is recorded as the screen goes away, when an inherited widget can no
@@ -302,6 +312,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     _locale = locale;
     _pageOnScreen = null;
     _readerId = AuthScope.of(context).session?.userPublicId ?? '';
+    // A code is quoted for the reader who entered it.
+    _promotion = const NoPromotionCode();
     // A saver belongs to the session it records against. The page the reader
     // before this one was on is theirs and cannot be written with this
     // session, so a waiting page is dropped rather than carried over, and the
@@ -385,7 +397,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Future<void> _loadAcceptsPayments(PurchaseRepository purchase) async {
     // Either read failing offers no purchase, and a currency that cannot be
     // read shows no price.
-    final (accepts, currency, route, invoice) = await (
+    final (accepts, currency, route, invoice, promotionCodes) = await (
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
       purchase
           .currency()
@@ -396,6 +408,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
       purchase.invoice().onError<PurchaseFailure>((_, _) => TenantInvoice.none),
+      purchase.acceptsPromotionCodes().onError<PurchaseFailure>(
+        (_, _) => false,
+      ),
     ).wait;
     if (!mounted) {
       return;
@@ -405,6 +420,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       _currency = currency;
       _taxIncluded = invoice.taxIncluded;
       _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
+      _acceptsPromotionCodes = promotionCodes;
     });
   }
 
@@ -838,11 +854,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             lock: _paymentLock,
           )
         : null;
+    final buySale = PromotionCodeSale.episode(detail.episode.internalId);
+    final buyQuote = _promotion.quoteOf(buySale);
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
-            price: campaign?.price ?? detail.episode.price,
+            price: buyQuote?.price ?? campaign?.price ?? detail.episode.price,
+            listPrice: buyQuote?.listPrice,
+            promotionCode: _promotion.codeFor(buySale),
+            onPromotionCodeRefused: _refusePromotionCode,
             // A purchase is offered only once the currency is known.
             currency: _currency!,
             taxIncluded: _taxIncluded,
@@ -854,16 +875,35 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         : null;
     // A rented episode is offered both ways, each naming what it costs, since
     // the choice is between those two prices.
+    final rentSale = PromotionCodeSale.episode(
+      detail.episode.internalId,
+      kind: PurchaseKind.rental,
+    );
+    final rentQuote = _promotion.quoteOf(rentSale);
     final rent = buy != null && _sellsOnWeb && detail.episode.isRented
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
-            price: detail.episode.rentalPrice,
+            price: rentQuote?.price ?? detail.episode.rentalPrice,
+            listPrice: rentQuote?.listPrice,
+            promotionCode: _promotion.codeFor(rentSale),
+            onPromotionCodeRefused: _refusePromotionCode,
             rentalPeriodHours: detail.episode.rentalPeriodHours,
             currency: _currency!,
             taxIncluded: _taxIncluded,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
+            lock: _paymentLock,
+          )
+        : null;
+    final promotionCodeField = buy != null && signedIn && _acceptsPromotionCodes
+        ? PromotionCodeField(
+            sales: [buySale, if (rent != null) rentSale],
+            store: !_sellsOnWeb,
+            state: _promotion,
+            onChanged: (state) => setState(() {
+              _promotion = state;
+            }),
             lock: _paymentLock,
           )
         : null;
@@ -970,6 +1010,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         ?ticket,
         ?accessAction,
         ?rent,
+        ?promotionCodeField,
         ?seePlans,
         _backToSeries(messages),
       ],
@@ -987,6 +1028,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             ),
     );
     return afterPreview ? _preview(detail, gate) : gate;
+  }
+
+  /// Puts the buttons back at their prices and says why, for a code that
+  /// stopped working between being quoted and being used.
+  void _refusePromotionCode(PurchaseFailureKind reason) {
+    setState(() {
+      _promotion = RefusedPromotionCode(code: _promotion.code, reason: reason);
+    });
   }
 
   /// [detail]'s preview pages in the reader, with [gate] as the screen after
@@ -1189,6 +1238,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             _reload();
           case PurchaseFailureKind.notSettled ||
               PurchaseFailureKind.otherAccount ||
+              PurchaseFailureKind.promotionCodeInvalid ||
+              PurchaseFailureKind.promotionCodeExpired ||
+              PurchaseFailureKind.promotionCodeExhausted ||
+              PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+              PurchaseFailureKind.promotionCodeNotApplicable ||
+              PurchaseFailureKind.promotionCodeNotInApp ||
+              PurchaseFailureKind.promotionCodeRateLimited ||
               PurchaseFailureKind.unexpected:
             report(messages.purchaseSubscriptionFailed);
         }

@@ -644,6 +644,28 @@ class ConnectFixtureServer {
   /// to answer them.
   String? bundleCheckoutRefusal;
 
+  /// The ErrorInfo reason [bundleCheckoutRefusal] and a store start refused
+  /// through [storeStartStatus] carry, or `null` for none.
+  String? purchaseRefusalReason;
+
+  /// What `GetTenant` answers for `accepts_promotion_codes`.
+  bool acceptsPromotionCodes = false;
+
+  /// What `PreviewPromotionCode` answers a signed-in member.
+  pb.PreviewPromotionCodeResponse promotionCodePreview =
+      pb.PreviewPromotionCodeResponse();
+
+  /// The Connect code `PreviewPromotionCode` refuses a signed-in member with,
+  /// or `null` to answer it.
+  String? promotionCodeRefusal;
+
+  /// The ErrorInfo reason [promotionCodeRefusal] carries, or `null` for none.
+  String? promotionCodeRefusalReason;
+
+  /// The purchase `StartStorePurchase` answers recorded at once, for a code
+  /// that took the whole price off, or `null` to open an intent.
+  pb.MyPurchase? storeRecordedPurchase;
+
   /// What `GetMyTicketState` answers the signed-in member on whichever series
   /// is asked about. Empty is a ticket ready now and none open.
   pb.GetMyTicketStateResponse ticketState = pb.GetMyTicketStateResponse();
@@ -2203,6 +2225,7 @@ class ConnectFixtureServer {
           timezone: tenantTimeZone,
           // The wire format omits a false.
           acceptsPayments: acceptsPayments ? true : null,
+          acceptsPromotionCodes: acceptsPromotionCodes ? true : null,
           currency: currency,
           invoice: invoice,
           appPurchaseRoute: appPurchaseRoute,
@@ -2332,6 +2355,29 @@ class ConnectFixtureServer {
         request,
         recorded.decode(pb.StartEpisodeCheckoutRequest()),
       );
+      return;
+    }
+
+    if (path.endsWith('/PreviewPromotionCode')) {
+      recorded.decode(pb.PreviewPromotionCodeRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      final refusal = promotionCodeRefusal;
+      if (refusal != null) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          refusal,
+          'code refused',
+          details: [
+            if (promotionCodeRefusalReason case final reason?)
+              errorInfoDetail(reason),
+          ],
+        );
+        return;
+      }
+      await _writeMessage(request, promotionCodePreview);
       return;
     }
 
@@ -2797,6 +2843,9 @@ class ConnectFixtureServer {
         HttpStatus.badRequest,
         refusal,
         'checkout refused',
+        details: [
+          if (purchaseRefusalReason case final reason?) errorInfoDetail(reason),
+        ],
       );
       return;
     }
@@ -3037,16 +3086,22 @@ class ConnectFixtureServer {
         status,
         start ? storeStartErrorCode : storeConfirmErrorCode,
         'refused',
+        details: [
+          if (purchaseRefusalReason case final reason?) errorInfoDetail(reason),
+        ],
       );
       return;
     }
+    final recorded = storeRecordedPurchase;
     await _writeMessage(
       request,
       start
-          ? pb.StartStorePurchaseResponse(
-              intentId: storeIntentId,
-              productId: storeProductId,
-            )
+          ? recorded != null
+                ? pb.StartStorePurchaseResponse(purchase: recorded)
+                : pb.StartStorePurchaseResponse(
+                    intentId: storeIntentId,
+                    productId: storeProductId,
+                  )
           : pb.ConfirmStorePurchaseResponse(purchase: pb.MyPurchase()),
     );
   }

@@ -220,6 +220,16 @@ What each store needs, from the key the install verifies purchases with to testi
 
 An episode a reader saved in the app keeps opening on that device without a network for up to seven days after the app last opened it online, so a refund closes a saved episode within that time rather than at once, as [Offline reading](../5-mobile-app/7-offline-reading.md#paid-episodes-seven-days-without-the-install) describes. The next time the app opens it online, it is locked and deleted from the device.
 
+### Entering a code in the app
+
+A reader enters a code in the app where they do on the site: on a locked episode, and once in the volumes section of a series, where it applies to every volume they can still buy. While the tenant holds a code that is neither paused, deleted, nor past its end, a signed-in reader finds **Promotion code** and **Apply** there. A guest sees them once they sign in. With **In-app purchase** the volumes section offers no field, since a store sells no volume, and the rest-of-series offer takes no code.
+
+Each button the code applies to then names the discounted price, with the price before the code struck through beside it, and a button it does not apply to keeps its price. With **Web checkout**, the button opens the site's checkout in the phone's browser at that price. With **In-app purchase**, it opens the store's payment sheet for the product of that price, and a code that takes the whole price off opens no sheet. The app keeps a code while the screen is open, and emptying the field and choosing **Apply** takes it off.
+
+A code that does not work is refused under the field, as [When a code is refused](#when-a-code-is-refused) lists, and the button keeps its price. With **In-app purchase**, a code whose discounted price the store has no product for is refused too, and the app tells the reader to use it on the website, where it works.
+
+**Purchases** in the app shows the price before the code struck through beside what the reader paid, and names the code.
+
 ## Tips
 
 A reader who has finished an episode can give its Authors one of the amounts the tenant offers, at the end of the episode, on the site and in the app. The **Tips** section, between **In-app purchase** and **Store products**, sets whether they can and what they can give:

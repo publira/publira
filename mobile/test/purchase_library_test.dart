@@ -36,16 +36,21 @@ void main() {
     DateTime? revokedAt,
     PurchaseTax? tax,
     String store = '',
+    int price = 500,
+    int listPrice = 500,
+    String promotionCode = '',
   }) => MyPurchase(
     id: id,
     tax: tax,
     store: store,
+    listPrice: listPrice,
+    promotionCode: promotionCode,
     seriesId: series.id,
     seriesTitle: series.title,
     episodeId: paidEpisodeId,
     episodeTitle: episodeTitle ?? 'The paid episode',
     orderIndex: series.episodeCount,
-    price: 500,
+    price: price,
     currency: 'JPY',
     isActive: isActive,
     kind: kind,
@@ -144,6 +149,81 @@ void main() {
       );
 
       expect(find.byKey(const ValueKey('account-purchases')), findsNothing);
+    });
+  });
+
+  group('what a purchase cost', () {
+    testWidgets('strikes the price before a code and names the code', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [
+          purchase(
+            'purchase-1',
+            price: 400,
+            listPrice: 500,
+            promotionCode: 'SPRING10',
+          ),
+        ],
+      ];
+      await pumpApp(tester, initialLocation: AppRoutes.accountPurchases);
+      final discount = find.byKey(
+        const ValueKey('purchase-discount-purchase-1'),
+      );
+      await pumpUntilFound(tester, discount);
+
+      final within = find.descendant(of: discount, matching: find.byType(Text));
+      expect(
+        find.descendant(of: discount, matching: find.text('Paid ¥400')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: discount, matching: find.text('Code SPRING10')),
+        findsOne,
+      );
+      final struck = find.descendant(of: discount, matching: find.text('¥500'));
+      expect(struck, findsOne);
+      expect(within, findsNWidgets(3));
+      expect(
+        tester
+            .widget<AutospacedText>(
+              find.ancestor(of: struck, matching: find.byType(AutospacedText)),
+            )
+            .style
+            ?.decoration,
+        TextDecoration.lineThrough,
+      );
+      expect(find.textContaining('Paid ¥500'), findsNothing);
+    });
+
+    testWidgets('names no code for a discount taken on the provider\'s page', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [purchase('purchase-1', price: 400, listPrice: 500)],
+      ];
+      await pumpApp(tester, initialLocation: AppRoutes.accountPurchases);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-discount-purchase-1')),
+      );
+
+      expect(find.textContaining('Code '), findsNothing);
+    });
+
+    testWidgets('shows only the amount of a purchase no code discounted', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      await pumpApp(tester, initialLocation: AppRoutes.accountPurchases);
+      await pumpUntilFound(tester, find.textContaining('Paid ¥500'));
+
+      expect(
+        find.byKey(const ValueKey('purchase-discount-purchase-1')),
+        findsNothing,
+      );
     });
   });
 

@@ -82,6 +82,17 @@ const coinPriceChangedReason = 'COIN_PRICE_CHANGED';
 /// balance falls short of the price.
 const coinBalanceInsufficientReason = 'COIN_BALANCE_INSUFFICIENT';
 
+/// The ErrorInfo reasons a promotion code is refused with, under
+/// `failed_precondition`. `PreviewPromotionCode` fails a call with the first
+/// four, and a checkout or a store purchase started with a code with any of
+/// them.
+const promotionCodeInvalidReason = 'PROMOTION_CODE_INVALID';
+const promotionCodeExpiredReason = 'PROMOTION_CODE_EXPIRED';
+const promotionCodeExhaustedReason = 'PROMOTION_CODE_EXHAUSTED';
+const promotionCodeAlreadyRedeemedReason = 'PROMOTION_CODE_ALREADY_REDEEMED';
+const promotionCodeNotApplicableReason = 'PROMOTION_CODE_NOT_APPLICABLE';
+const promotionCodeNoStoreProductReason = 'PROMOTION_CODE_NO_STORE_PRODUCT';
+
 /// The fields the `google.rpc.BadRequest` details of a Connect error body's
 /// `details` name.
 ///

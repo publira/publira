@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
@@ -23,6 +24,8 @@ class BuyBundleButton extends StatefulWidget {
     required this.start,
     required this.onRefused,
     this.onOpened,
+    this.listPrice,
+    this.onPromotionCodeRefused,
   });
 
   /// What the button says, naming the price where the screen does not say it
@@ -41,6 +44,14 @@ class BuyBundleButton extends StatefulWidget {
   /// The browser took the checkout page, which is the reader starting a new
   /// purchase.
   final VoidCallback? onOpened;
+
+  /// The price a promotion code was taken off, formatted for the reader, which
+  /// the button strikes through beside [label]. `null` without a code.
+  final String? listPrice;
+
+  /// The checkout was refused for the code [start] sent, which has stopped
+  /// working since it was quoted, for this `PurchaseFailureKind`.
+  final ValueChanged<PurchaseFailureKind>? onPromotionCodeRefused;
 
   @override
   State<BuyBundleButton> createState() => _BuyBundleButtonState();
@@ -89,9 +100,17 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
           _signIn();
         case PurchaseFailureKind.network:
           report(messages.errorsRpcUnavailable);
+        case PurchaseFailureKind.promotionCodeInvalid ||
+            PurchaseFailureKind.promotionCodeExpired ||
+            PurchaseFailureKind.promotionCodeExhausted ||
+            PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+            PurchaseFailureKind.promotionCodeNotApplicable ||
+            PurchaseFailureKind.promotionCodeNotInApp:
+          widget.onPromotionCodeRefused?.call(failure.kind);
         case PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           report(messages.purchaseStartFailed);
       }
@@ -110,9 +129,12 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
 
   @override
   Widget build(BuildContext context) {
+    final listPrice = widget.listPrice;
     return OutlinedButton(
       onPressed: _starting ? null : () => unawaited(_buy()),
-      child: AutospacedText(widget.label),
+      child: listPrice == null
+          ? AutospacedText(widget.label)
+          : DiscountedButtonLabel(label: widget.label, listPrice: listPrice),
     );
   }
 }

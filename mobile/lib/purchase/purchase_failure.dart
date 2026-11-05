@@ -31,6 +31,29 @@ enum PurchaseFailureKind {
   /// account.
   otherAccount,
 
+  /// No code of the tenant's is spelled so, or it is deleted, paused, or has
+  /// not started.
+  promotionCodeInvalid,
+
+  /// The promotion code's window has closed.
+  promotionCodeExpired,
+
+  /// The promotion code has been redeemed as often as it may be.
+  promotionCodeExhausted,
+
+  /// The reader has redeemed the promotion code as often as one reader may.
+  promotionCodeAlreadyRedeemed,
+
+  /// The promotion code does not apply to what the reader is buying.
+  promotionCodeNotApplicable,
+
+  /// The tenant's store sells no product at the price the promotion code
+  /// leaves, so the app cannot charge it.
+  promotionCodeNotInApp,
+
+  /// The reader has entered promotion codes too many times in a short while.
+  promotionCodeRateLimited,
+
   /// Anything else, including a tenant that has stopped taking payments.
   unexpected,
 }

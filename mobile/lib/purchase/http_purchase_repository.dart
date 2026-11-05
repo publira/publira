@@ -1,6 +1,7 @@
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/subscription.pb.dart' as pb;
@@ -69,6 +70,72 @@ class HttpPurchaseRepository implements PurchaseRepository {
       registrationNumber: invoice.registrationNumber.trim(),
     );
   }
+
+  @override
+  Future<bool> acceptsPromotionCodes() async =>
+      (await _tenant()).acceptsPromotionCodes;
+
+  @override
+  Future<List<PromotionCodeQuote>> previewPromotionCode(
+    String code,
+    List<PromotionCodeSale> sales, {
+    bool store = false,
+  }) async {
+    // Read once and sent explicitly, so the lookup is spent from the allowance
+    // of the reader who tapped and no one else's.
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.PurchaseServiceApi(_client).previewPromotionCode(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.PreviewPromotionCodeRequest(
+          client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+          code: code,
+          sales: [for (final sale in sales) _promotionCodeSale(sale)],
+          store: store,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return [
+        for (final quote in body.quotes)
+          PromotionCodeQuote(
+            listPrice: quote.listPrice,
+            price: quote.price,
+            refusal: switch (quote.refusal) {
+              pb.PromotionCodeQuote_Refusal.REFUSAL_UNSPECIFIED => null,
+              pb.PromotionCodeQuote_Refusal.REFUSAL_NO_STORE_PRODUCT =>
+                PromotionCodeSaleRefusal.noStoreProduct,
+              pb.PromotionCodeQuote_Refusal.REFUSAL_NOT_APPLICABLE =>
+                PromotionCodeSaleRefusal.notApplicable,
+              _ => PromotionCodeSaleRefusal.notOffered,
+            },
+          ),
+      ];
+    } on ConnectException catch (error) {
+      if (error.code == 'resource_exhausted') {
+        throw PurchaseFailure(
+          PurchaseFailureKind.promotionCodeRateLimited,
+          message: error.message,
+        );
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  static pb.PromotionCodeSale _promotionCodeSale(PromotionCodeSale sale) {
+    if (sale.volumeInternalId case final volumeId?) {
+      return pb.PromotionCodeSale(volumeId: volumeId);
+    }
+    return pb.PromotionCodeSale(
+      episodeId: sale.episodeInternalId,
+      kind: _purchaseKind(sale.kind),
+    );
+  }
+
+  static pb.PurchaseKind _purchaseKind(PurchaseKind kind) => switch (kind) {
+    PurchaseKind.purchase => pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
+    PurchaseKind.rental => pb.PurchaseKind.PURCHASE_KIND_RENTAL,
+  };
 
   /// An ISO 4217 code as the API spells it.
   static final _currencyPattern = RegExp(r'^[A-Z]{3}$');
@@ -319,6 +386,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
     String episodeInternalId, {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
+    String promotionCode = '',
   }) async {
     // The token is read here and sent explicitly, so a checkout is never
     // started for a reader other than the one who tapped.
@@ -336,11 +404,9 @@ class HttpPurchaseRepository implements PurchaseRepository {
         pb.StartEpisodeCheckoutRequest(
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
           episodeId: episodeInternalId,
-          kind: switch (kind) {
-            PurchaseKind.purchase => pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
-            PurchaseKind.rental => pb.PurchaseKind.PURCHASE_KIND_RENTAL,
-          },
+          kind: _purchaseKind(kind),
           locale: locale,
+          promotionCode: promotionCode,
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );
@@ -351,7 +417,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<Uri> startVolumeCheckout(String volumeInternalId) async {
+  Future<Uri> startVolumeCheckout(
+    String volumeInternalId, {
+    String promotionCode = '',
+  }) async {
     // Read once and sent explicitly, so the checkout is started for the reader
     // who tapped and no one else.
     final accessToken = _requireAccessToken();
@@ -361,6 +430,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.StartVolumeCheckoutRequest(
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+          promotionCode: promotionCode,
           tenant: pb.TenantContext(tenantId: tenantId),
           volumeId: volumeInternalId,
         ),
@@ -436,10 +506,13 @@ class HttpPurchaseRepository implements PurchaseRepository {
   @override
   Future<StorePurchaseIntent> startStorePurchase(
     String episodeInternalId,
-    InAppPurchaseStore store,
-  ) => _startStorePurchase(
+    InAppPurchaseStore store, {
+    String promotionCode = '',
+  }) => _startStorePurchase(
     store,
-    (request) => request.episodeId = episodeInternalId,
+    (request) => request
+      ..episodeId = episodeInternalId
+      ..promotionCode = promotionCode,
   );
 
   @override
@@ -494,6 +567,9 @@ class HttpPurchaseRepository implements PurchaseRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         request,
       );
+      if (body.hasPurchase()) {
+        return const StorePurchaseIntent.recorded();
+      }
       return _intent(body.intentId, body.productId);
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -717,6 +793,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
       kind: purchase.kind == pb.PurchaseKind.PURCHASE_KIND_RENTAL
           ? PurchaseKind.rental
           : PurchaseKind.purchase,
+      listPrice: purchase.listPrice,
+      promotionCode: purchase.promotionCode.trim(),
       refundedAmount: purchase.refundedAmount,
       purchasedAt: _readInstant(purchase.purchasedAt),
       expiresAt: _readInstant(purchase.expiresAt),
@@ -749,7 +827,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         message: error.message,
       ),
       'failed_precondition' => PurchaseFailure(
-        PurchaseFailureKind.notSold,
+        _preconditionKind(error.reasons),
         message: error.message,
       ),
       _ => PurchaseFailure(
@@ -757,5 +835,27 @@ class HttpPurchaseRepository implements PurchaseRepository {
         message: error.message,
       ),
     };
+  }
+
+  /// A refused promotion code names itself in its ErrorInfo reason, and any
+  /// other `failed_precondition` is a sale the tenant is not making.
+  static PurchaseFailureKind _preconditionKind(List<String> reasons) {
+    for (final reason in reasons) {
+      switch (reason) {
+        case promotionCodeInvalidReason:
+          return PurchaseFailureKind.promotionCodeInvalid;
+        case promotionCodeExpiredReason:
+          return PurchaseFailureKind.promotionCodeExpired;
+        case promotionCodeExhaustedReason:
+          return PurchaseFailureKind.promotionCodeExhausted;
+        case promotionCodeAlreadyRedeemedReason:
+          return PurchaseFailureKind.promotionCodeAlreadyRedeemed;
+        case promotionCodeNotApplicableReason:
+          return PurchaseFailureKind.promotionCodeNotApplicable;
+        case promotionCodeNoStoreProductReason:
+          return PurchaseFailureKind.promotionCodeNotInApp;
+      }
+    }
+    return PurchaseFailureKind.notSold;
   }
 }

@@ -157,13 +157,23 @@ class StorePurchaser {
   /// episode's price is sold as, and the sheet is opened for that product
   /// with the intent as `appAccountToken` (iOS, StoreKit 2) or
   /// `obfuscatedAccountId` (Android). A purchase the store holds for approval
-  /// is shown as being confirmed.
+  /// is shown as being confirmed. [promotionCode] makes the product the one of
+  /// the discounted price, and one that takes the whole price off opens no
+  /// sheet: the purchase is already recorded.
   ///
   /// Throws [PurchaseFailure]: [PurchaseFailureKind.storeUnavailable] when the
   /// device cannot pay, [PurchaseFailureKind.notSold] when the store has no
   /// product for the episode, and whatever [PurchaseRepository] throws.
-  Future<StorePurchaseOutcome> buy(String episodeInternalId) =>
-      _buy(() => repository.startStorePurchase(episodeInternalId, store));
+  Future<StorePurchaseOutcome> buy(
+    String episodeInternalId, {
+    String promotionCode = '',
+  }) => _buy(
+    () => repository.startStorePurchase(
+      episodeInternalId,
+      store,
+      promotionCode: promotionCode,
+    ),
+  );
 
   /// Opens the payment sheet for the pack of the tenant's coins [coinPackId]
   /// names, as [buy] does for an episode. The server grants the coins once it
@@ -237,6 +247,9 @@ class StorePurchaser {
     // before a new order of the same price.
     await reconcile();
     final intent = await start();
+    if (intent.recorded) {
+      return StorePurchaseOutcome.purchased;
+    }
     final product = await _product(intent.productId);
     final open = _OpenPurchase(intent);
     _open = open;
