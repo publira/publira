@@ -331,6 +331,67 @@ describe("OpenMonth", () => {
     expect(ben?.getByText("Subtotal")).toBeDefined();
   });
 
+  it("marks a tip line and subtotals an author's sales and tips apart", () => {
+    render(
+      <OpenMonth
+        creatorSubtotals={[]}
+        withholdingRateBps={null}
+        closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
+        lines={[
+          line(1, "ARTIST", "Aki"),
+          line(2, "ARTIST", "Aki", {
+            grossAmount: 300,
+            payoutAmount: 90,
+            saleCount: 1,
+            source: "tip",
+          }),
+          line(3, "ARTIST", "Aki", {
+            adjustedPeriod: "2026-07",
+            grossAmount: -100,
+            payoutAmount: -30,
+            saleCount: -1,
+            source: "tip",
+          }),
+        ]}
+        currency="JPY"
+        locale="en"
+        period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
+        tenantId="TENANT001"
+        timeZone="UTC"
+        totals={{
+          adjustment: -100,
+          gross: 5300,
+          payout: 1560,
+          refunded: 0,
+          tax: null,
+          withholding: null,
+        }}
+      />
+    );
+
+    const [aki] = screen
+      .getAllByRole("rowgroup")
+      .slice(1)
+      .map((group) => within(group));
+
+    const rows = aki?.getAllByRole("row") ?? [];
+    expect(within(rows[1]).queryByText("Tip")).toBeNull();
+    expect(within(rows[2]).getByText("Tip")).toBeDefined();
+    expect(within(rows[3]).getByText("Tip")).toBeDefined();
+    expect(
+      within(rows[3]).getByText("Refund adjustment for July 2026")
+    ).toBeDefined();
+    expect(within(rows[4]).getByText("Sales subtotal")).toBeDefined();
+    expect(within(rows[4]).getByText("¥1,500")).toBeDefined();
+    expect(within(rows[5]).getByText("Tip subtotal")).toBeDefined();
+    expect(within(rows[5]).getByText("¥60")).toBeDefined();
+    expect(aki?.queryByText("Subscription subtotal")).toBeNull();
+    expect(within(rows[6]).getByText("Subtotal")).toBeDefined();
+    expect(within(rows[6]).getByText("¥1,560")).toBeDefined();
+  });
+
   it("asks to confirm the period and total payout of a month ready to close", () => {
     render(
       <OpenMonth

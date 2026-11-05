@@ -4755,10 +4755,12 @@
         "subtotal": "소계",
         "sale_subtotal": "판매 소계",
         "subscription_subtotal": "구독 소계",
+        "tip_subtotal": "팁 소계",
         "no_role": "—",
         "no_tax_rate": "—",
         "adjustment": "{$period}분 환불 조정",
         "subscription": "구독 배분",
+        "tip": "팁",
         "columns": {
           "creator": "작가",
           "series": "시리즈",

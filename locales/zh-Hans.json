@@ -4755,10 +4755,12 @@
         "subtotal": "小计",
         "sale_subtotal": "销售小计",
         "subscription_subtotal": "订阅小计",
+        "tip_subtotal": "打赏小计",
         "no_role": "—",
         "no_tax_rate": "—",
         "adjustment": "{$period}的退款调整",
         "subscription": "订阅分成",
+        "tip": "打赏",
         "columns": {
           "creator": "作者",
           "series": "系列",

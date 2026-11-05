@@ -1,13 +1,14 @@
 /**
- * What a line credits: the episode's sales, or the parts of subscription
- * payments shared to it. An adjustment has the source of the line it adjusts.
+ * What a line credits: the episode's sales, the tips readers gave its Authors,
+ * or the parts of subscription payments shared to it. An adjustment has the
+ * source of the line it adjusts.
  */
-export type RoyaltyLineSource = "sale" | "subscription";
+export type RoyaltyLineSource = "sale" | "subscription" | "tip";
 
 /**
- * One creator's credit on one episode for one role, with the month's sales or
- * the parts of its subscription payments, or an adjustment that takes back the
- * refunds recorded on a closed month's line since that month was closed.
+ * One creator's credit on one episode for one role, with the month's sales,
+ * tips, or parts of its subscription payments, or an adjustment that takes back
+ * the refunds recorded on a closed month's line since that month was closed.
  */
 export interface RoyaltyLine {
   lineNumber: number;
@@ -54,6 +55,12 @@ export interface RoyaltyCreatorSubtotal {
   withholdingAmount: number | null;
 }
 
+/** What the lines of one source pay a creator, adjustments to them included. */
+export interface RoyaltySourceSubtotal {
+  source: RoyaltyLineSource;
+  payoutAmount: number;
+}
+
 export interface RoyaltyCreatorGroup {
   key: string;
   creatorName: string;
@@ -65,25 +72,46 @@ export interface RoyaltyCreatorGroup {
    */
   taxSubtotal: number | null;
   /**
-   * What the lines of each source pay the creator, adjustments counted with
-   * the source of the line they adjust. `null` for a creator with no
-   * subscription line, whose one subtotal is the sales'.
+   * What the sales pay the creator, then the tips and the subscription shares
+   * where the creator has a line of them. `null` for a creator with only lines
+   * of sales, whose one subtotal is the sales'.
    */
-  sourceSubtotals: Record<RoyaltyLineSource, number> | null;
+  sourceSubtotals: RoyaltySourceSubtotal[] | null;
 }
 
-const sumPayouts = (
-  lines: readonly RoyaltyLine[],
-  source: RoyaltyLineSource
-): number =>
-  lines
-    .filter((line) => line.source === source)
-    .reduce((sum, line) => sum + line.payoutAmount, 0);
+/** The order a statement's lines come in, which its subtotals follow. */
+const LINE_SOURCES: readonly RoyaltyLineSource[] = [
+  "sale",
+  "tip",
+  "subscription",
+];
+
+const subtotalBySource = (
+  lines: readonly RoyaltyLine[]
+): RoyaltySourceSubtotal[] | null => {
+  const subtotals = LINE_SOURCES.flatMap((source) => {
+    const sourceLines = lines.filter((line) => line.source === source);
+
+    return source === "sale" || sourceLines.length > 0
+      ? [
+          {
+            payoutAmount: sourceLines.reduce(
+              (sum, line) => sum + line.payoutAmount,
+              0
+            ),
+            source,
+          },
+        ]
+      : [];
+  });
+
+  return subtotals.length > 1 ? subtotals : null;
+};
 
 /**
  * The lines regrouped by creator, in the order each creator first appears, with
  * what the given lines pay that creator, adjustments included, and apart for
- * sales and for subscription payments once a creator has a subscription line. The API orders
+ * each source once a creator has a line of anything but sales. The API orders
  * the month's own lines by series and episode and puts the adjustments after
  * them, so on a paged statement a subtotal covers only the page it came from.
  *
@@ -122,15 +150,8 @@ export const groupRoyaltyLinesByCreator = (
     }
   }
 
-  return [...groups.values()].map((group) =>
-    group.lines.some((line) => line.source === "subscription")
-      ? {
-          ...group,
-          sourceSubtotals: {
-            sale: sumPayouts(group.lines, "sale"),
-            subscription: sumPayouts(group.lines, "subscription"),
-          },
-        }
-      : group
-  );
+  return [...groups.values()].map((group) => ({
+    ...group,
+    sourceSubtotals: subtotalBySource(group.lines),
+  }));
 };
