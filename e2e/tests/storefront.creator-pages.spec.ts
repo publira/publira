@@ -146,8 +146,14 @@ test.describe("web-storefront Author pages", () => {
     ]);
 
     const rows = lineRows(page);
-    await expect(rows).toHaveCount(2);
-    await expect(rows.nth(1)).toContainText(CREATOR_PAGES_DECEMBER.adjustment);
+    await expect(rows).toHaveCount(3);
+
+    const tipLabel = (row: number) =>
+      rows.nth(row).getByText(CREATOR_PAGES_DECEMBER.tip, { exact: true });
+
+    await expect(tipLabel(0)).toHaveCount(0);
+    await expect(tipLabel(1)).toBeVisible();
+    await expect(rows.nth(2)).toContainText(CREATOR_PAGES_DECEMBER.adjustment);
 
     await expect(page.getByRole("table")).not.toContainText(
       new RegExp(CREATOR_PAGES_OTHER_AUTHORS_SERIES.join("|"), "u")

@@ -374,10 +374,11 @@ describe("listMyCreatorComments", () => {
 });
 
 describe("getMyCreatorStatement", () => {
-  it("maps the Author's lines, a subscription line and an adjustment among them", async () => {
+  it("maps the Author's lines, a line of tips, a subscription line, and an adjustment among them", async () => {
     mockGetMyCreatorStatement.mockResolvedValue({
       lines: [
         line(1),
+        line(2, { source: CreatorStatementLineSource.TIP }),
         line(4, { source: CreatorStatementLineSource.SUBSCRIPTION }),
         line(9, {
           adjustedPeriod: "2025-11",
@@ -418,6 +419,7 @@ describe("getMyCreatorStatement", () => {
         }))
     ).toEqual([
       { adjustedPeriod: "", payoutAmount: 1200, source: "sale" },
+      { adjustedPeriod: "", payoutAmount: 1200, source: "tip" },
       { adjustedPeriod: "", payoutAmount: 1200, source: "subscription" },
       { adjustedPeriod: "2025-11", payoutAmount: -150, source: "sale" },
     ]);

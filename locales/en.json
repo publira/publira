@@ -6039,7 +6039,7 @@
       "statement_failed": "Could not load the statement. Please try again later.",
       "statement_error": "Could not show the statement",
       "lines_heading": "Lines",
-      "lines_description": "Each line that credits you: the month's sales, then its subscription payments, then the adjustments for refunds of closed months.",
+      "lines_description": "Each line that credits you: the month's sales, then its tips, then its subscription payments, then the adjustments for refunds of closed months.",
       "lines_empty": "No line in this month credits this author.",
       "lines_pagination_aria": "Statement line pages",
       "role": "Role",
@@ -6047,6 +6047,7 @@
       "no_role": "—",
       "adjustment": "Refund adjustment for {$period}",
       "subscription": "Subscription share",
+      "tip": "Tip",
       "download_csv": "Download CSV",
       "back_to_creator": "Back to {$name}",
       "comments": {

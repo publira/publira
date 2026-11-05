@@ -120,7 +120,7 @@ export interface MyCreatorStatementLineItem {
   seriesTitle: string;
   /** Basis points, 10000 being all of it. */
   shareBps: number;
-  source: "sale" | "subscription";
+  source: "sale" | "subscription" | "tip";
 }
 
 export interface MyCreatorStatementDetail {
@@ -311,8 +311,21 @@ type RawStatementLine = Pick<
 /** Unspecified, which the server never answers, reads as a line of sales. */
 const toLineSource = (
   source: CreatorStatementLineSource
-): MyCreatorStatementLineItem["source"] =>
-  source === CreatorStatementLineSource.SUBSCRIPTION ? "subscription" : "sale";
+): MyCreatorStatementLineItem["source"] => {
+  switch (source) {
+    case CreatorStatementLineSource.SUBSCRIPTION: {
+      return "subscription";
+    }
+
+    case CreatorStatementLineSource.TIP: {
+      return "tip";
+    }
+
+    default: {
+      return "sale";
+    }
+  }
+};
 
 const toStatementLineItem = (
   line: RawStatementLine

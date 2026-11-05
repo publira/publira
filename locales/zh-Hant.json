@@ -6039,7 +6039,7 @@
       "statement_failed": "無法載入明細。請稍後再試。",
       "statement_error": "無法顯示明細",
       "lines_heading": "明細行",
-      "lines_description": "署名您的明細行，依序為當月銷售、訂閱付款，以及已結算月份退款的調整。",
+      "lines_description": "署名您的明細行，依序為當月銷售、打賞、訂閱付款，以及已結算月份退款的調整。",
       "lines_empty": "本月沒有署名此作者的明細行。",
       "lines_pagination_aria": "明細行分頁",
       "role": "職責",
@@ -6047,6 +6047,7 @@
       "no_role": "—",
       "adjustment": "{$period}的退款調整",
       "subscription": "訂閱分潤",
+      "tip": "打賞",
       "download_csv": "下載CSV",
       "back_to_creator": "返回{$name}",
       "comments": {
