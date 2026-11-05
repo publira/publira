@@ -672,6 +672,22 @@ export const GOOGLE_TAG_GATEWAY_BASE_URL = envUrl(
 );
 
 /**
+ * The stand-in for a tenant's webhook receiver
+ * (`scripts/webhook-receiver.ts`), by the plain HTTP port a spec hands it a
+ * signing secret and reads back what it received on.
+ */
+export const WEBHOOK_RECEIVER_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEBHOOK_RECEIVER_BASE_URL",
+  "http://127.0.0.1:8700"
+);
+
+/** The https port of the same process, which the worker delivers to. */
+export const WEBHOOK_RECEIVER_HTTPS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_BASE_URL",
+  "https://127.0.0.1:8701"
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

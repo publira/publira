@@ -2,6 +2,7 @@
 title: API keys and webhooks
 description: Give the tenant's own systems a read-only key for the admin API, send them signed events for sales, refunds, sign-ups, and subscriptions, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
+updated: 2026-11-05
 ---
 
 **Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases with an **API key**, and learns of a sale, a refund, a new reader, or a subscription as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
@@ -74,7 +75,7 @@ Under **Add an endpoint**:
 
 The endpoint's signing secret is shown once, under **The endpoint's signing secret**. Copy it now and give it to the receiver, which checks the signature of each delivery with it, as [Verifying a delivery](#verifying-a-delivery) describes. Afterwards the endpoint shows only its hint under **Signing secret**: `whsec_`, a mask, and the secret's last four characters.
 
-A delivery is never sent to a host that resolves to a private, loopback, link-local, or shared address, and never follows a redirect. Where the host resolves is checked at every delivery, so a URL that resolves somewhere else later is refused then.
+A delivery is not sent to a host that resolves to a private, loopback, link-local, or shared address, unless the install's operator has [allowed that address](../3-operations/12-security/index.md#webhooks-to-your-own-network), and never follows a redirect. Where the host resolves is checked at every delivery, so a URL that resolves somewhere else later is refused then.
 
 ### Changing, testing, and deleting an endpoint
 

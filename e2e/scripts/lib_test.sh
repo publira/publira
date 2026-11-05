@@ -40,6 +40,8 @@ stack_env() {
     -u PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT \
     -u PUBLIRA_E2E_STRIPE_PORT \
     -u PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT \
+    -u PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT \
+    -u PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT \
     -u PUBLIRA_E2E_EDGE_PORT \
     -u PUBLIRA_E2E_OPENSEARCH_PORT \
     -u PUBLIRA_E2E_SEARCH_BACKEND \
@@ -141,6 +143,24 @@ elif [[ "${google_tag_gateway_override_dir}" != *"-gt8610-"* ]]; then
   fail "PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT override dir ${google_tag_gateway_override_dir} does not encode gt8610"
 else
   pass "PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT override isolates RUN_DIR"
+fi
+
+webhook_receiver_override_dir="$(compute_run_dir PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT=8710)"
+if [[ "${webhook_receiver_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT override still uses ${webhook_receiver_override_dir}"
+elif [[ "${webhook_receiver_override_dir}" != *"-wr8710-"* ]]; then
+  fail "PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT override dir ${webhook_receiver_override_dir} does not encode wr8710"
+else
+  pass "PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT override isolates RUN_DIR"
+fi
+
+webhook_receiver_https_override_dir="$(compute_run_dir PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT=8711)"
+if [[ "${webhook_receiver_https_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT override still uses ${webhook_receiver_https_override_dir}"
+elif [[ "${webhook_receiver_https_override_dir}" != *"-8711-"* ]]; then
+  fail "PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT override dir ${webhook_receiver_https_override_dir} does not encode 8711"
+else
+  pass "PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT override isolates RUN_DIR"
 fi
 
 opensearch_override_dir="$(compute_run_dir PUBLIRA_E2E_OPENSEARCH_PORT=9211)"

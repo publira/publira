@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
@@ -9,16 +11,23 @@ import {
   WEBHOOKS_SCENARIO,
 } from "../src/scenarios/webhooks";
 import { PUBLIC_API_BASE_URL, WEB_ADMIN_WEBHOOKS_BASE_URL } from "../src/urls";
+import {
+  setWebhookReceiverSecret,
+  webhookReceiverDeliveries,
+  webhookReceiverEndpoint,
+} from "../src/webhook-receiver";
 
 /**
  * A tenant administrator handing the tenant's own systems an API key and a
  * webhook endpoint: the key and the signing secret are shown once and only
  * their start afterwards, a revoked key is refused, an `http` URL is refused
- * on the form, and a test event that is given up can be resent.
+ * on the form, a test event that is given up can be resent, and one sent to a
+ * receiver arrives signed.
  *
- * The worker the stack runs dials only a public address, so the endpoint is
- * one on the loopback address: the worker gives each delivery to it up at
- * once, which is the dead delivery **Resend** is offered on.
+ * The worker the stack runs dials a public address and the receiver's alone,
+ * `127.0.0.1`, so {@link ENDPOINT_URL} is on another loopback address: the
+ * worker gives each delivery to it up at once, which is the dead delivery
+ * **Resend** is offered on.
  */
 
 const PAGE_PATH = "/integrations/api-keys-and-webhooks";
@@ -27,7 +36,11 @@ const TITLE = "API keys and webhooks";
 /** The tenant of `800_webhooks.sql`, by the ID the admin API names it by. */
 const TENANT_UUID = "018f1ac0-0001-7000-8000-000000000001";
 
-const ENDPOINT_URL = "https://127.0.0.1:9/publira-e2e";
+const ENDPOINT_URL = "https://127.0.0.2:9/publira-e2e";
+
+/** Apart for each run, since the receiver keeps what it was sent. */
+const RECEIVER_NAME = randomUUID();
+const RECEIVER_URL = webhookReceiverEndpoint(RECEIVER_NAME);
 
 const adminUrl = (pathname: string): string =>
   new URL(pathname, WEB_ADMIN_WEBHOOKS_BASE_URL).toString();
@@ -258,7 +271,7 @@ test.describe("API keys and webhooks", () => {
       ).toBeVisible();
 
       // The worker gives the delivery up on its first attempt, since the
-      // endpoint is on the loopback address.
+      // endpoint is on a loopback address it was not told to allow.
       const deliveries = section(page, "Deliveries");
 
       const testDelivery = deliveries
@@ -329,6 +342,55 @@ test.describe("API keys and webhooks", () => {
           hasText: ENDPOINT_URL,
         })
       ).toHaveCount(0);
+    });
+
+    test("delivers a test event to a receiver, which verifies its signature", async ({
+      page,
+    }) => {
+      await openPage(page);
+      const form = addEndpointForm(page);
+
+      await form.getByLabel("URL").fill(RECEIVER_URL);
+      await form.getByRole("checkbox", { name: "Purchase completed" }).check();
+      await form.getByRole("checkbox", { name: "Reader signed up" }).check();
+      await form.getByRole("button", { name: "Add the endpoint" }).click();
+
+      await expect(form.getByText("The endpoint was added.")).toBeVisible();
+      await setWebhookReceiverSecret(
+        RECEIVER_NAME,
+        await textOf(form.getByText(SECRET_PATTERN))
+      );
+
+      await endpointRegion(page, RECEIVER_URL)
+        .getByRole("button", { name: "Send test event" })
+        .click();
+      await expect(
+        endpointRegion(page, RECEIVER_URL).getByText(
+          "A test event was queued. It is listed under Deliveries."
+        )
+      ).toBeVisible();
+
+      const testDelivery = section(page, "Deliveries")
+        .getByRole("row")
+        .filter({ hasText: "Test event" });
+
+      await expect(async () => {
+        await page.reload();
+        await expect(testDelivery).toContainText("Delivered", {
+          timeout: 3000,
+        });
+      }).toPass({ timeout: 60_000 });
+      await expect(testDelivery).toContainText(RECEIVER_URL);
+      await expect(testDelivery.getByRole("cell").nth(3)).toHaveText("1");
+
+      const received = await webhookReceiverDeliveries(RECEIVER_NAME);
+
+      expect(received).toHaveLength(1);
+      expect(received[0]).toMatchObject({
+        body: { type: "webhook.test" },
+        event: "webhook.test",
+        verified: true,
+      });
     });
   });
 });

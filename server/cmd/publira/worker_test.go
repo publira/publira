@@ -102,7 +102,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.DataExportReadyNotificationHandlerConfig{},
 		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
 		outbox.SubscriptionCancelHandlerConfig{},
-		nil, nil, nil)
+		nil, nil, nil, nil)
 
 	messages := []string{
 		outbox.EventTypeReaderEmailVerificationEmail,

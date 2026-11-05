@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"slices"
 	"strings"
@@ -174,6 +175,14 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		payments = providers.New(paymentsConfig)
 	}
 
+	var webhookAllowedAddresses []netip.Prefix
+	if queues.outbox {
+		webhookAllowedAddresses, err = tenantwebhooks.ParseAllowedAddresses(os.Getenv("PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES"))
+		if err != nil {
+			return half{}, failed("PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES is invalid", err)
+		}
+	}
+
 	pools, err := openWorkerPools(queues, sqldb.Open)
 	if err != nil {
 		return half{}, err
@@ -325,7 +334,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		outbox.SubscriptionCancelHandlerConfig{DB: db, Encryptor: encryptor, Providers: payments},
-		invalidator, catalogIndexer, searchCacheRecorder)
+		invalidator, catalogIndexer, searchCacheRecorder, webhookAllowedAddresses)
 	cfg.Queues = queues.riverQueues()
 	worker, err := outbox.Start(context.Background(), db, cfg)
 	if err != nil {
@@ -447,6 +456,7 @@ func workerConfig(
 	invalidator outbox.CacheInvalidator,
 	catalogIndexer outbox.CatalogIndexer,
 	searchCacheRecorder outbox.CacheInvalidationRecorder,
+	webhookAllowedAddresses []netip.Prefix,
 ) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
@@ -498,9 +508,10 @@ func workerConfig(
 	// A webhook goes to a server the tenant runs, which may be down for longer
 	// than the default budget spans.
 	handlers.RegisterWithAttempts(outbox.EventTypeWebhookDelivery, outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{
-		DB:        emailHandlers.DB,
-		Encryptor: emailHandlers.Encryptor,
-		Logger:    logger,
+		DB:               emailHandlers.DB,
+		Encryptor:        emailHandlers.Encryptor,
+		Logger:           logger,
+		AllowedAddresses: webhookAllowedAddresses,
 	}), tenantwebhooks.MaxAttempts)
 	return outbox.Config{
 		Logger:            logger,

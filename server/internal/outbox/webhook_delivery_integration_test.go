@@ -2,8 +2,10 @@ package outbox_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -214,6 +216,44 @@ func TestWebhookDeliveryGivesUpWhatNoRetryCanFix(t *testing.T) {
 	}
 	if delivery := env.delivery(t, ctx, deliveryID); delivery.Status != tenantwebhooks.StatusDead {
 		t.Fatalf("delivery to a loopback address = %s, want dead", delivery.Status)
+	}
+
+	// So is a private address, which no attempt ever dials.
+	deliveryID, event = env.endpoint(t, ctx, "https://10.0.0.1/hook")
+	err = outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{DB: env.pg.DB, Encryptor: env.encryptor})(ctx, event)
+	if !outbox.IsPermanent(err) {
+		t.Fatalf("delivery to a private address = %v, want it given up", err)
+	}
+	if delivery := env.delivery(t, ctx, deliveryID); delivery.Status != tenantwebhooks.StatusDead {
+		t.Fatalf("delivery to a private address = %s, want dead", delivery.Status)
+	}
+}
+
+// The operator's allowed addresses reach the client the handler sends with:
+// the receiver's certificate, which that client does not trust, is what stops
+// this delivery, and that is tried again rather than given up.
+func TestWebhookDeliveryToAnAllowedAddressIsAttempted(t *testing.T) {
+	t.Parallel()
+
+	env := newWebhookEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	receiver := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("a delivery was sent to a server with an untrusted certificate")
+	}))
+	t.Cleanup(receiver.Close)
+	deliveryID, event := env.endpoint(t, ctx, receiver.URL)
+	err := outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{
+		DB:               env.pg.DB,
+		Encryptor:        env.encryptor,
+		AllowedAddresses: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+	})(ctx, event)
+	if err == nil || outbox.IsPermanent(err) || errors.Is(err, tenantwebhooks.ErrRestrictedAddress) {
+		t.Fatalf("delivery to an allowed address = %v, want it tried again", err)
+	}
+	if delivery := env.delivery(t, ctx, deliveryID); delivery.Status != tenantwebhooks.StatusFailed {
+		t.Fatalf("delivery to an allowed address = %s, want failed", delivery.Status)
 	}
 }
 
