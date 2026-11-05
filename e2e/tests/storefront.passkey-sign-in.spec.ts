@@ -23,7 +23,9 @@ import {
  * one the passkey is bound to. That keeps this suite to the sign-in page, with
  * adding a passkey from Settings › Security left to
  * `storefront.passkey-settings.spec.ts`, and it leaves the page without a
- * session cookie, so the sign-in that follows is the passkey's alone.
+ * session cookie, so the sign-in that follows is the passkey's alone. It does
+ * so on a page that offers no passkey: on the sign-in page the autofill would
+ * answer the moment the passkey exists, and sign the reader in behind the test.
  *
  * The sign-in page offers the passkey twice, from **Sign in with a passkey**
  * and in the email field's autofill, and the virtual authenticator answers the
@@ -58,8 +60,7 @@ const passkeyButton = (page: Page) =>
   page.getByRole("button", { name: "Sign in with a passkey" });
 
 const registerPasskey = async (page: Page): Promise<void> => {
-  await page.goto(storefrontUrl("/login"));
-  await expect(passkeyButton(page)).toBeVisible();
+  await page.goto(storefrontUrl("/reset-password"));
 
   const registered = await page.evaluate(
     async ({ email, password, tenantId }) => {
