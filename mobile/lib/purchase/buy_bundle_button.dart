@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -26,6 +27,7 @@ class BuyBundleButton extends StatefulWidget {
     this.onOpened,
     this.listPrice,
     this.onPromotionCodeRefused,
+    this.lock,
   });
 
   /// What the button says, naming the price where the screen does not say it
@@ -53,6 +55,10 @@ class BuyBundleButton extends StatefulWidget {
   /// working since it was quoted, for this `PurchaseFailureKind`.
   final ValueChanged<PurchaseFailureKind>? onPromotionCodeRefused;
 
+  /// Shared with the field that quotes a code, so a checkout does not start
+  /// without the code while it is being quoted.
+  final PaymentLock? lock;
+
   @override
   State<BuyBundleButton> createState() => _BuyBundleButtonState();
 }
@@ -74,6 +80,10 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     void report(String message) =>
         messenger.showSnackBar(SnackBar(content: AutospacedText(message)));
+    final lock = widget.lock;
+    if (lock != null && !lock.acquire()) {
+      return;
+    }
     setState(() {
       _starting = true;
     });
@@ -115,6 +125,7 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
           report(messages.purchaseStartFailed);
       }
     } finally {
+      lock?.release();
       if (mounted) {
         setState(() {
           _starting = false;
@@ -129,9 +140,22 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
 
   @override
   Widget build(BuildContext context) {
+    final lock = widget.lock;
+    if (lock == null) {
+      return _button();
+    }
+    return ListenableBuilder(
+      listenable: lock,
+      builder: (context, _) => _button(),
+    );
+  }
+
+  Widget _button() {
     final listPrice = widget.listPrice;
     return OutlinedButton(
-      onPressed: _starting ? null : () => unawaited(_buy()),
+      onPressed: _starting || (widget.lock?.held ?? false)
+          ? null
+          : () => unawaited(_buy()),
       child: listPrice == null
           ? AutospacedText(widget.label)
           : DiscountedButtonLabel(label: widget.label, listPrice: listPrice),

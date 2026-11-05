@@ -183,6 +183,43 @@ void main() {
       expect(tester.widget<FilledButton>(buy).onPressed, isNotNull);
     });
 
+    testWidgets('takes the code off when the campaign it priced ends', (
+      tester,
+    ) async {
+      catalog = FakeCatalogRepository(
+        series: fixtureSeries,
+        details: fixtureDetails(),
+        episodes: fixtureEpisodes(
+          access: EpisodeAccess.locked,
+          campaign: EpisodeCampaign(
+            price: 300,
+            endsAt: DateTime.now().add(const Duration(hours: 1)),
+          ),
+        ),
+      );
+      purchases.promotionQuotes = {
+        sale: const PromotionCodeQuote(listPrice: 300, price: 240),
+      };
+      await pumpApp(tester);
+      await applyCode(tester, 'SPRING10');
+
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥240')),
+        findsOne,
+      );
+
+      await tester.pump(const Duration(hours: 1, seconds: 1));
+
+      expect(struck(buy), findsNothing);
+      expect(message, findsNothing);
+
+      await tester.tap(buy);
+      await tester.pump();
+      await tester.pump();
+
+      expect(purchases.checkoutPromotionCodes, ['']);
+    });
+
     testWidgets('takes the code off when the field is emptied', (tester) async {
       purchases.promotionQuotes = {
         sale: const PromotionCodeQuote(listPrice: 500, price: 400),
@@ -386,6 +423,34 @@ void main() {
 
       expect(purchases.volumeCheckouts, ['volume-1', 'volume-2']);
       expect(purchases.volumePromotionCodes, ['SPRING10', '']);
+    });
+
+    testWidgets('holds the volumes while a code is being quoted', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      purchases
+        ..promotionGate = gate
+        ..promotionQuotes = {
+          saleOne: const PromotionCodeQuote(listPrice: 350, price: 175),
+        };
+      await pumpApp(tester, initialLocation: seriesPath);
+      await applyCode(tester, 'SPRING10');
+
+      await tester.tap(buyOne, warnIfMissed: false);
+      await tester.pump();
+      await tester.pump();
+
+      expect(purchases.volumeCheckouts, isEmpty);
+
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(buyOne);
+      await tester.pump();
+      await tester.pump();
+
+      expect(purchases.volumePromotionCodes, ['SPRING10']);
     });
 
     testWidgets('quotes only the volumes the reader can still buy', (

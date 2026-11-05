@@ -572,9 +572,18 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       _campaignEnd = null;
       return;
     }
+    final ended = soonest;
     _campaignEnd = Timer(soonest.difference(now), () {
       if (mounted) {
-        setState(() => _scheduleCampaignEnd(detail));
+        setState(() {
+          // A code was quoted against the campaign's price, and the checkout
+          // now takes it off the regular one, so the quote names nothing the
+          // reader would be charged.
+          if (ended == detail.episode.campaign?.endsAt) {
+            _promotion = const NoPromotionCode();
+          }
+          _scheduleCampaignEnd(detail);
+        });
       }
     });
   }

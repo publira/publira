@@ -35,6 +35,7 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_bundle_button.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -315,6 +316,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// reports and the volumes' buttons read their price from.
   PromotionCodeState _promotion = const NoPromotionCode();
 
+  /// Shared by the field and the volumes' buttons, so a checkout does not
+  /// start without a code that is still being quoted.
+  final _volumePaymentLock = PaymentLock();
+
   /// How many reads of [_access] this screen has started, so that only the
   /// latest one's answer is shown: the read the screen opened with can answer
   /// after the one the return from the viewer made, with an episode locked
@@ -463,6 +468,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
 
   @override
   void dispose() {
+    _volumePaymentLock.dispose();
     _windowClose?.cancel();
     unawaited(_libraryChanges?.cancel());
     unawaited(_progressWrites?.cancel());
@@ -886,6 +892,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           repository.startVolumeCheckout(volume.id, promotionCode: code),
       onRefused: _reloadPurchase,
       onOpened: _checkoutOpened,
+      lock: _volumePaymentLock,
       onPromotionCodeRefused: (reason) => setState(() {
         _promotion = RefusedPromotionCode(
           code: _promotion.code,
@@ -924,6 +931,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         onChanged: (state) => setState(() {
           _promotion = state;
         }),
+        lock: _volumePaymentLock,
       ),
     );
   }
