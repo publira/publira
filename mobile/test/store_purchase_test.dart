@@ -14,6 +14,7 @@ import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -388,6 +389,121 @@ void main() {
 
       await tester.tap(buy);
       await pumpUntilFound(tester, pages);
+    });
+  });
+
+  group('a promotion code on the store route', () {
+    final internalId = fixtureInternalId(paidEpisodeId);
+    final sale = PromotionCodeSale.episode(internalId);
+    final input = find.byKey(const ValueKey('promotion-code-input'));
+    final apply = find.byKey(const ValueKey('promotion-code-apply'));
+    final message = find.byKey(const ValueKey('promotion-code-message'));
+
+    Future<void> applyCode(WidgetTester tester, String code) async {
+      await pumpUntilFound(tester, input);
+      await tester.enterText(input, code);
+      await tester.tap(apply);
+      await tester.pump();
+      await tester.pump();
+    }
+
+    setUp(() {
+      purchases.promotionCodes = true;
+      platform.products = {'episode_500', 'episode_400'};
+    });
+
+    testWidgets('buys the product of the discounted price', (tester) async {
+      purchases.promotionQuotes = {
+        sale: const PromotionCodeQuote(listPrice: 500, price: 400),
+      };
+      await pumpApp(tester, session: fakeSession);
+      await applyCode(tester, 'SPRING10');
+
+      expect(purchases.promotionPreviews.single.store, isTrue);
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥400')),
+        findsOne,
+      );
+
+      await tester.tap(buy);
+      await pumpUntilFound(tester, pages);
+
+      expect(purchases.storePromotionCodes, ['SPRING10']);
+      expect(platform.bought.single.productDetails.id, 'episode_400');
+      expect(platform.bought.single.applicationUserName, intentId);
+    });
+
+    testWidgets('refuses a code whose price the store does not sell', (
+      tester,
+    ) async {
+      purchases.promotionQuotes = {
+        sale: const PromotionCodeQuote(
+          listPrice: 500,
+          price: 500,
+          refusal: PromotionCodeSaleRefusal.noStoreProduct,
+        ),
+      };
+      await pumpApp(tester, session: fakeSession);
+      await applyCode(tester, 'SPRING10');
+
+      expect(
+        tester.widget<AutospacedText>(message).data,
+        'This code can\'t be used in the app for this episode; use it on '
+        'the website.',
+      );
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+
+      await tester.tap(buy);
+      await pumpUntilFound(tester, pages);
+
+      expect(purchases.storePromotionCodes, ['']);
+      expect(platform.bought.single.productDetails.id, 'episode_500');
+    });
+
+    testWidgets('that lost its product puts the button back at its price', (
+      tester,
+    ) async {
+      purchases
+        ..promotionQuotes = {
+          sale: const PromotionCodeQuote(listPrice: 500, price: 400),
+        }
+        ..storeStartFailure = const PurchaseFailure(
+          PurchaseFailureKind.promotionCodeNotInApp,
+        );
+      await pumpApp(tester, session: fakeSession);
+      await applyCode(tester, 'SPRING10');
+      await tester.tap(buy);
+      await pumpUntilFound(tester, message);
+      await tester.pump();
+
+      expect(
+        tester.widget<AutospacedText>(message).data,
+        contains('use it on the website'),
+      );
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+      expect(platform.bought, isEmpty);
+    });
+
+    testWidgets('taking the whole price off opens no sheet', (tester) async {
+      purchases
+        ..promotionQuotes = {
+          sale: const PromotionCodeQuote(listPrice: 500, price: 0),
+        }
+        ..storeRecordsPromotionCode = true;
+      await pumpApp(tester, session: fakeSession);
+      await applyCode(tester, 'FREE');
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.entitled);
+
+      await tester.tap(buy);
+      await pumpUntilFound(tester, pages);
+
+      expect(platform.bought, isEmpty);
     });
   });
 

@@ -651,6 +651,227 @@ void main() {
     );
   });
 
+  group('a promotion code', () {
+    final episodeId = ConnectFixtureServer.internalIdOf(paidEpisodeId);
+
+    setUp(() {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+    });
+
+    test('is offered as the tenant says it is', () async {
+      expect(await repository().acceptsPromotionCodes(), isFalse);
+
+      server.acceptsPromotionCodes = true;
+
+      expect(await repository().acceptsPromotionCodes(), isTrue);
+    });
+
+    test('is quoted against every sale in one call', () async {
+      server.promotionCodePreview = pb.PreviewPromotionCodeResponse(
+        currency: 'JPY',
+        quotes: [
+          pb.PromotionCodeQuote(
+            listPrice: 500,
+            discountAmount: 100,
+            price: 400,
+          ),
+          pb.PromotionCodeQuote(
+            listPrice: 100,
+            price: 100,
+            refusal: pb.PromotionCodeQuote_Refusal.REFUSAL_NOT_APPLICABLE,
+          ),
+          pb.PromotionCodeQuote(
+            listPrice: 350,
+            price: 350,
+            refusal: pb.PromotionCodeQuote_Refusal.REFUSAL_NO_STORE_PRODUCT,
+          ),
+          pb.PromotionCodeQuote(
+            refusal: pb.PromotionCodeQuote_Refusal.REFUSAL_HELD,
+          ),
+        ],
+      );
+
+      final quotes = await repository().previewPromotionCode('SPRING10', [
+        PromotionCodeSale.episode(episodeId),
+        PromotionCodeSale.episode(episodeId, kind: PurchaseKind.rental),
+        const PromotionCodeSale.volume('volume-1'),
+        const PromotionCodeSale.volume('volume-2'),
+      ]);
+
+      expect(quotes.map((quote) => quote.refusal), [
+        null,
+        PromotionCodeSaleRefusal.notApplicable,
+        PromotionCodeSaleRefusal.noStoreProduct,
+        PromotionCodeSaleRefusal.notOffered,
+      ]);
+      expect(quotes.first.listPrice, 500);
+      expect(quotes.first.price, 400);
+      final call = server.requestsTo('PreviewPromotionCode').single;
+      final request = call.decode(pb.PreviewPromotionCodeRequest());
+      expect(request.code, 'SPRING10');
+      expect(
+        request.client,
+        pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+      );
+      expect(request.store, isFalse);
+      expect(request.sales.map((sale) => sale.episodeId), [
+        episodeId,
+        episodeId,
+        '',
+        '',
+      ]);
+      expect(request.sales[1].kind, pb.PurchaseKind.PURCHASE_KIND_RENTAL);
+      expect(request.sales.map((sale) => sale.volumeId), [
+        '',
+        '',
+        'volume-1',
+        'volume-2',
+      ]);
+      expect(call.headers['authorization'], 'Bearer $accessToken');
+    });
+
+    test('is quoted against the store on the store route', () async {
+      await repository().previewPromotionCode('SPRING10', [
+        PromotionCodeSale.episode(episodeId),
+      ], store: true);
+
+      final requests = server.requestsOf(pb.PreviewPromotionCodeRequest.new);
+      expect(requests.single.store, isTrue);
+    });
+
+    test('is not looked up for a guest', () async {
+      accessToken = '';
+
+      await expectLater(
+        repository().previewPromotionCode('SPRING10', [
+          PromotionCodeSale.episode(episodeId),
+        ]),
+        failsWith(PurchaseFailureKind.sessionExpired),
+      );
+      expect(server.requestsTo('PreviewPromotionCode'), isEmpty);
+    });
+
+    test('names why it is refused', () async {
+      for (final (reason, kind) in [
+        ('PROMOTION_CODE_INVALID', PurchaseFailureKind.promotionCodeInvalid),
+        ('PROMOTION_CODE_EXPIRED', PurchaseFailureKind.promotionCodeExpired),
+        (
+          'PROMOTION_CODE_EXHAUSTED',
+          PurchaseFailureKind.promotionCodeExhausted,
+        ),
+        (
+          'PROMOTION_CODE_ALREADY_REDEEMED',
+          PurchaseFailureKind.promotionCodeAlreadyRedeemed,
+        ),
+      ]) {
+        server
+          ..promotionCodeRefusal = 'failed_precondition'
+          ..promotionCodeRefusalReason = reason;
+
+        await expectLater(
+          repository().previewPromotionCode('SPRING10', [
+            PromotionCodeSale.episode(episodeId),
+          ]),
+          failsWith(kind),
+        );
+      }
+    });
+
+    test('says a reader past their allowance is to wait', () async {
+      server.promotionCodeRefusal = 'resource_exhausted';
+
+      await expectLater(
+        repository().previewPromotionCode('SPRING10', [
+          PromotionCodeSale.episode(episodeId),
+        ]),
+        failsWith(PurchaseFailureKind.promotionCodeRateLimited),
+      );
+    });
+
+    test('is carried into each way of buying', () async {
+      await repository().startEpisodeCheckout(
+        episodeId,
+        locale: 'en',
+        promotionCode: 'SPRING10',
+      );
+      await repository().startVolumeCheckout(
+        'volume-1',
+        promotionCode: 'SPRING10',
+      );
+      await repository().startStorePurchase(
+        episodeId,
+        InAppPurchaseStore.appStore,
+        promotionCode: 'SPRING10',
+      );
+
+      expect(
+        server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single,
+        isA<pb.StartEpisodeCheckoutRequest>().having(
+          (request) => request.promotionCode,
+          'promotionCode',
+          'SPRING10',
+        ),
+      );
+      expect(
+        server.requestsOf(pb.StartVolumeCheckoutRequest.new).single,
+        isA<pb.StartVolumeCheckoutRequest>().having(
+          (request) => request.promotionCode,
+          'promotionCode',
+          'SPRING10',
+        ),
+      );
+      expect(
+        server.requestsOf(pb.StartStorePurchaseRequest.new).single,
+        isA<pb.StartStorePurchaseRequest>().having(
+          (request) => request.promotionCode,
+          'promotionCode',
+          'SPRING10',
+        ),
+      );
+    });
+
+    test('that does not apply refuses the checkout as such', () async {
+      server
+        ..bundleCheckoutRefusal = 'failed_precondition'
+        ..purchaseRefusalReason = 'PROMOTION_CODE_NOT_APPLICABLE';
+
+      await expectLater(
+        repository().startVolumeCheckout('volume-1', promotionCode: 'SPRING10'),
+        failsWith(PurchaseFailureKind.promotionCodeNotApplicable),
+      );
+    });
+
+    test(
+      'whose price has no store product cannot be used in the app',
+      () async {
+        server
+          ..storeStartStatus = HttpStatus.badRequest
+          ..purchaseRefusalReason = 'PROMOTION_CODE_NO_STORE_PRODUCT';
+
+        await expectLater(
+          repository().startStorePurchase(
+            episodeId,
+            InAppPurchaseStore.appStore,
+            promotionCode: 'SPRING10',
+          ),
+          failsWith(PurchaseFailureKind.promotionCodeNotInApp),
+        );
+      },
+    );
+
+    test('taking the whole price off records the purchase at once', () async {
+      server.storeRecordedPurchase = pb.MyPurchase(id: 'purchase-1');
+
+      final intent = await repository().startStorePurchase(
+        episodeId,
+        InAppPurchaseStore.appStore,
+        promotionCode: 'FREE',
+      );
+
+      expect(intent.recorded, isTrue);
+    });
+  });
+
   test('a guest is not sent to the API for a checkout', () async {
     await expectLater(
       repository().startEpisodeCheckout(

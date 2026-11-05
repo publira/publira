@@ -7,6 +7,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/payment_lock.dart';
+import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -39,6 +40,9 @@ class BuyEpisodeButton extends StatefulWidget {
     required this.onAlreadyPurchased,
     required this.onStorePurchase,
     this.taxIncluded = false,
+    this.listPrice,
+    this.promotionCode = '',
+    this.onPromotionCodeRefused,
     this.rentalPeriodHours,
     this.signInReturnTo,
     this.compact = false,
@@ -52,8 +56,9 @@ class BuyEpisodeButton extends StatefulWidget {
   final String episodeInternalId;
 
   /// What the sale costs: the permanent copy's price, its campaign price while
-  /// one is open, or the rental's. It is only what the button says; the
-  /// checkout and the store charge whatever price they resolve themselves.
+  /// one is open, or the rental's, less the discount of [promotionCode]. It is
+  /// only what the button says; the checkout and the store charge whatever
+  /// price they resolve themselves.
   final int price;
 
   /// The ISO 4217 code of the currency [price] is in, the tenant's.
@@ -69,6 +74,18 @@ class BuyEpisodeButton extends StatefulWidget {
 
   /// Whether the tenant states a tax rate, so the price says it includes tax.
   final bool taxIncluded;
+
+  /// The price [promotionCode] was taken off, which the button strikes
+  /// through beside [price]. `null` without a code.
+  final int? listPrice;
+
+  /// The code the purchase is started with, empty without one. The screen that
+  /// owns the field hands it over with the [price] it quoted.
+  final String promotionCode;
+
+  /// The purchase was refused for [promotionCode], which has stopped working
+  /// since it was quoted, for this `PurchaseFailureKind`.
+  final ValueChanged<PurchaseFailureKind>? onPromotionCodeRefused;
 
   /// How long the rental opens the episode, set on a button that rents it
   /// rather than buys it.
@@ -130,7 +147,10 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         if (purchaser == null) {
           throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
         }
-        final outcome = await purchaser.buy(widget.episodeInternalId);
+        final outcome = await purchaser.buy(
+          widget.episodeInternalId,
+          promotionCode: widget.promotionCode,
+        );
         if (mounted && outcome != StorePurchaseOutcome.cancelled) {
           widget.onStorePurchase();
         }
@@ -140,6 +160,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         widget.episodeInternalId,
         locale: locale,
         kind: kind,
+        promotionCode: widget.promotionCode,
       );
       final opened = await purchase.launcher!.open(url);
       if (!opened) {
@@ -170,9 +191,17 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
           messenger.showSnackBar(
             SnackBar(content: AutospacedText(messages.purchaseNotSoldInApp)),
           );
+        case PurchaseFailureKind.promotionCodeInvalid ||
+            PurchaseFailureKind.promotionCodeExpired ||
+            PurchaseFailureKind.promotionCodeExhausted ||
+            PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+            PurchaseFailureKind.promotionCodeNotApplicable ||
+            PurchaseFailureKind.promotionCodeNotInApp:
+          widget.onPromotionCodeRefused?.call(failure.kind);
         case PurchaseFailureKind.gone ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           messenger.showSnackBar(
             SnackBar(content: AutospacedText(messages.purchaseStartFailed)),
@@ -210,10 +239,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     final messages = AppMessages.of(context);
     final price = messages.formatPrice(widget.price, widget.currency);
     final rentalPeriodHours = widget.rentalPeriodHours;
-    final label = AutospacedText(switch ((
-      rentalPeriodHours,
-      widget.taxIncluded,
-    )) {
+    final text = switch ((rentalPeriodHours, widget.taxIncluded)) {
       (null, false) => messages.purchaseBuy(price: price),
       (null, true) => messages.purchaseBuyTaxIncluded(price: price),
       (final hours?, false) => messages.purchaseRentFor(
@@ -224,7 +250,14 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         period: messages.purchaseRentalPeriod(hours: hours),
         price: price,
       ),
-    }, textAlign: TextAlign.center);
+    };
+    final listPrice = widget.listPrice;
+    final label = listPrice == null
+        ? AutospacedText(text, textAlign: TextAlign.center)
+        : DiscountedButtonLabel(
+            label: text,
+            listPrice: messages.formatPrice(listPrice, widget.currency),
+          );
     final key = ValueKey(
       rentalPeriodHours == null
           ? 'episode-buy-${widget.episodeId}'

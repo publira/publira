@@ -74,6 +74,8 @@ class MyPurchase {
     required this.price,
     required this.currency,
     required this.isActive,
+    this.listPrice = 0,
+    this.promotionCode = '',
     this.kind = PurchaseKind.purchase,
     this.refundedAmount = 0,
     this.purchasedAt,
@@ -146,6 +148,18 @@ class MyPurchase {
   /// What the reader paid, in the minor unit of [currency]. 0 on an episode
   /// paid with coins, which [coinsSpent] says the cost of.
   final int price;
+
+  /// The price before a promotion code took its discount off, in the same
+  /// unit as [price] and equal to it on a purchase no code discounted.
+  final int listPrice;
+
+  /// The tenant's promotion code the reader entered, spelled as the tenant
+  /// created it. Empty on a purchase no code of the tenant's discounted,
+  /// including one discounted on the provider's own checkout page.
+  final String promotionCode;
+
+  /// Whether a promotion code took something off [listPrice].
+  bool get discounted => listPrice > price;
 
   /// The ISO 4217 code of the currency the reader paid in. Empty for a row
   /// that names none, whose price is not shown.

@@ -3232,6 +3232,73 @@ final class AppMessages {
     return _format('mobile.purchase.plans_title');
   }
 
+  /// `mobile.purchase.promotion_code`
+  String get purchasePromotionCode {
+    return _format('mobile.purchase.promotion_code');
+  }
+
+  /// `mobile.purchase.promotion_code_already_redeemed`
+  String get purchasePromotionCodeAlreadyRedeemed {
+    return _format('mobile.purchase.promotion_code_already_redeemed');
+  }
+
+  /// `mobile.purchase.promotion_code_applied`
+  String purchasePromotionCodeApplied({required String code}) {
+    return _format('mobile.purchase.promotion_code_applied', {'code': code});
+  }
+
+  /// `mobile.purchase.promotion_code_apply`
+  String get purchasePromotionCodeApply {
+    return _format('mobile.purchase.promotion_code_apply');
+  }
+
+  /// `mobile.purchase.promotion_code_error`
+  String get purchasePromotionCodeError {
+    return _format('mobile.purchase.promotion_code_error');
+  }
+
+  /// `mobile.purchase.promotion_code_exhausted`
+  String get purchasePromotionCodeExhausted {
+    return _format('mobile.purchase.promotion_code_exhausted');
+  }
+
+  /// `mobile.purchase.promotion_code_expired`
+  String get purchasePromotionCodeExpired {
+    return _format('mobile.purchase.promotion_code_expired');
+  }
+
+  /// `mobile.purchase.promotion_code_invalid`
+  String get purchasePromotionCodeInvalid {
+    return _format('mobile.purchase.promotion_code_invalid');
+  }
+
+  /// `mobile.purchase.promotion_code_list_price`
+  String purchasePromotionCodeListPrice({required String price}) {
+    return _format('mobile.purchase.promotion_code_list_price', {
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.promotion_code_not_applicable_episode`
+  String get purchasePromotionCodeNotApplicableEpisode {
+    return _format('mobile.purchase.promotion_code_not_applicable_episode');
+  }
+
+  /// `mobile.purchase.promotion_code_not_applicable_volumes`
+  String get purchasePromotionCodeNotApplicableVolumes {
+    return _format('mobile.purchase.promotion_code_not_applicable_volumes');
+  }
+
+  /// `mobile.purchase.promotion_code_not_in_app`
+  String get purchasePromotionCodeNotInApp {
+    return _format('mobile.purchase.promotion_code_not_in_app');
+  }
+
+  /// `mobile.purchase.promotion_code_rate_limited`
+  String get purchasePromotionCodeRateLimited {
+    return _format('mobile.purchase.promotion_code_rate_limited');
+  }
+
   /// `mobile.purchase.rent_for`
   String purchaseRentFor({required String period, required String price}) {
     return _format('mobile.purchase.rent_for', {
@@ -3365,6 +3432,11 @@ final class AppMessages {
   /// `mobile.purchases.price`
   String purchasesPrice({required String price}) {
     return _format('mobile.purchases.price', {'price': price});
+  }
+
+  /// `mobile.purchases.promotion_code`
+  String purchasesPromotionCode({required String code}) {
+    return _format('mobile.purchases.promotion_code', {'code': code});
   }
 
   /// `mobile.purchases.purchased_at`
@@ -5183,6 +5255,23 @@ const _jaSources = <String, String>{
       'サブスクリプションは、Google Playの定期購入で解約するまで自動的に更新されます。',
   'mobile.purchase.plans_terms': '利用規約',
   'mobile.purchase.plans_title': 'サブスクリプションプラン',
+  'mobile.purchase.promotion_code': 'プロモーションコード',
+  'mobile.purchase.promotion_code_already_redeemed': 'このコードはすでに使用済みです。',
+  'mobile.purchase.promotion_code_applied': 'コード{\$code}を適用しました。',
+  'mobile.purchase.promotion_code_apply': '適用',
+  'mobile.purchase.promotion_code_error': 'コードを確認できませんでした。もう一度お試しください。',
+  'mobile.purchase.promotion_code_exhausted': 'このコードは利用回数の上限に達しました。',
+  'mobile.purchase.promotion_code_expired': 'このコードは有効期限が切れています。',
+  'mobile.purchase.promotion_code_invalid': 'このコードは無効です。',
+  'mobile.purchase.promotion_code_list_price': '割引前の価格{\$price}',
+  'mobile.purchase.promotion_code_not_applicable_episode':
+      'このコードはこのエピソードには使えません。',
+  'mobile.purchase.promotion_code_not_applicable_volumes':
+      'このコードはこれらの巻には使えません。',
+  'mobile.purchase.promotion_code_not_in_app':
+      'このエピソードにはアプリでこのコードを使えません。ウェブサイトでご利用ください。',
+  'mobile.purchase.promotion_code_rate_limited':
+      'コードの入力回数が多すぎます。しばらく待ってからもう一度お試しください。',
   'mobile.purchase.rent_for': '{\$period}レンタル ({\$price})',
   'mobile.purchase.rent_for_tax_included': '{\$period}レンタル (税込{\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}時間',
@@ -5211,6 +5300,7 @@ const _jaSources = <String, String>{
   'mobile.purchases.issuer': '発行事業者{\$name}',
   'mobile.purchases.no_expiry': '期限なし',
   'mobile.purchases.price': '購入価格{\$price}',
+  'mobile.purchases.promotion_code': 'コード{\$code}',
   'mobile.purchases.purchased_at': '{\$date}に購入',
   'mobile.purchases.readable': '閲覧可能',
   'mobile.purchases.readable_until': '{\$date}まで閲覧可能',
@@ -6275,6 +6365,26 @@ const _enSources = <String, String>{
       'The subscription renews automatically until you cancel it in your Google Play subscriptions.',
   'mobile.purchase.plans_terms': 'Terms of use',
   'mobile.purchase.plans_title': 'Subscription plans',
+  'mobile.purchase.promotion_code': 'Promotion code',
+  'mobile.purchase.promotion_code_already_redeemed':
+      'You have already used this code.',
+  'mobile.purchase.promotion_code_applied': 'Code {\$code} applied.',
+  'mobile.purchase.promotion_code_apply': 'Apply',
+  'mobile.purchase.promotion_code_error':
+      'The code could not be checked. Try again.',
+  'mobile.purchase.promotion_code_exhausted': 'This code has been used up.',
+  'mobile.purchase.promotion_code_expired': 'This code has expired.',
+  'mobile.purchase.promotion_code_invalid': 'This code isn\'t valid.',
+  'mobile.purchase.promotion_code_list_price':
+      'Price before the code {\$price}',
+  'mobile.purchase.promotion_code_not_applicable_episode':
+      'This code can\'t be used on this episode.',
+  'mobile.purchase.promotion_code_not_applicable_volumes':
+      'This code can\'t be used on these volumes.',
+  'mobile.purchase.promotion_code_not_in_app':
+      'This code can\'t be used in the app for this episode; use it on the website.',
+  'mobile.purchase.promotion_code_rate_limited':
+      'Too many codes entered. Wait a moment and try again.',
   'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
   'mobile.purchase.rent_for_tax_included':
       'Rent for {\$period} ({\$price} incl. tax)',
@@ -6308,6 +6418,7 @@ const _enSources = <String, String>{
   'mobile.purchases.issuer': 'Issued by {\$name}',
   'mobile.purchases.no_expiry': 'No expiry',
   'mobile.purchases.price': 'Paid {\$price}',
+  'mobile.purchases.promotion_code': 'Code {\$code}',
   'mobile.purchases.purchased_at': 'Purchased {\$date}',
   'mobile.purchases.readable': 'Readable',
   'mobile.purchases.readable_until': 'Readable until {\$date}',
@@ -7293,6 +7404,23 @@ const _koSources = <String, String>{
       '구독은 Google Play 정기 결제에서 해지할 때까지 자동으로 갱신됩니다.',
   'mobile.purchase.plans_terms': '이용약관',
   'mobile.purchase.plans_title': '구독 플랜',
+  'mobile.purchase.promotion_code': '프로모션 코드',
+  'mobile.purchase.promotion_code_already_redeemed': '이미 사용한 코드입니다.',
+  'mobile.purchase.promotion_code_applied': '{\$code} 코드가 적용되었습니다.',
+  'mobile.purchase.promotion_code_apply': '적용',
+  'mobile.purchase.promotion_code_error': '코드를 확인하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.purchase.promotion_code_exhausted': '사용 횟수 한도에 도달한 코드입니다.',
+  'mobile.purchase.promotion_code_expired': '기간이 만료된 코드입니다.',
+  'mobile.purchase.promotion_code_invalid': '유효하지 않은 코드입니다.',
+  'mobile.purchase.promotion_code_list_price': '할인 전 가격 {\$price}',
+  'mobile.purchase.promotion_code_not_applicable_episode':
+      '이 에피소드에는 사용할 수 없는 코드입니다.',
+  'mobile.purchase.promotion_code_not_applicable_volumes':
+      '이 권에는 사용할 수 없는 코드입니다.',
+  'mobile.purchase.promotion_code_not_in_app':
+      '이 에피소드에는 앱에서 이 코드를 사용할 수 없습니다. 웹사이트에서 사용해 주세요.',
+  'mobile.purchase.promotion_code_rate_limited':
+      '코드 입력 횟수가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
   'mobile.purchase.rent_for_tax_included': '{\$period} 대여 ({\$price}, 세금 포함)',
   'mobile.purchase.rental_period': '{\$hours :integer}시간',
@@ -7321,6 +7449,7 @@ const _koSources = <String, String>{
   'mobile.purchases.issuer': '발행자 {\$name}',
   'mobile.purchases.no_expiry': '기한 없음',
   'mobile.purchases.price': '구매 가격 {\$price}',
+  'mobile.purchases.promotion_code': '코드 {\$code}',
   'mobile.purchases.purchased_at': '{\$date}에 구매',
   'mobile.purchases.readable': '열람 가능',
   'mobile.purchases.readable_until': '{\$date}까지 열람 가능',
@@ -8198,6 +8327,19 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.plans_renews_google_play': '订阅会自动续期，直到您在Google Play的订阅中取消。',
   'mobile.purchase.plans_terms': '使用条款',
   'mobile.purchase.plans_title': '订阅方案',
+  'mobile.purchase.promotion_code': '优惠码',
+  'mobile.purchase.promotion_code_already_redeemed': '您已使用过此优惠码。',
+  'mobile.purchase.promotion_code_applied': '已使用优惠码{\$code}。',
+  'mobile.purchase.promotion_code_apply': '使用',
+  'mobile.purchase.promotion_code_error': '无法验证优惠码，请重试。',
+  'mobile.purchase.promotion_code_exhausted': '此优惠码的使用次数已达上限。',
+  'mobile.purchase.promotion_code_expired': '此优惠码已过期。',
+  'mobile.purchase.promotion_code_invalid': '此优惠码无效。',
+  'mobile.purchase.promotion_code_list_price': '优惠前价格{\$price}',
+  'mobile.purchase.promotion_code_not_applicable_episode': '此优惠码不适用于本章。',
+  'mobile.purchase.promotion_code_not_applicable_volumes': '此优惠码不适用于这些卷。',
+  'mobile.purchase.promotion_code_not_in_app': '此优惠码无法在应用中用于本章，请在网站上使用。',
+  'mobile.purchase.promotion_code_rate_limited': '输入优惠码的次数过多，请稍后再试。',
   'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
   'mobile.purchase.rent_for_tax_included': '租阅{\$period}（含税{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小时',
@@ -8222,6 +8364,7 @@ const _zhHansSources = <String, String>{
   'mobile.purchases.issuer': '开票方{\$name}',
   'mobile.purchases.no_expiry': '无期限',
   'mobile.purchases.price': '支付金额{\$price}',
+  'mobile.purchases.promotion_code': '优惠码{\$code}',
   'mobile.purchases.purchased_at': '{\$date}购买',
   'mobile.purchases.readable': '可阅读',
   'mobile.purchases.readable_until': '可阅读至{\$date}',
@@ -9077,6 +9220,19 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.plans_renews_google_play': '訂閱會自動續期，直到您在Google Play的訂閱中取消。',
   'mobile.purchase.plans_terms': '使用條款',
   'mobile.purchase.plans_title': '訂閱方案',
+  'mobile.purchase.promotion_code': '促銷代碼',
+  'mobile.purchase.promotion_code_already_redeemed': '您已使用過此促銷代碼。',
+  'mobile.purchase.promotion_code_applied': '已套用促銷代碼{\$code}。',
+  'mobile.purchase.promotion_code_apply': '套用',
+  'mobile.purchase.promotion_code_error': '無法驗證促銷代碼，請重試。',
+  'mobile.purchase.promotion_code_exhausted': '此促銷代碼的使用次數已達上限。',
+  'mobile.purchase.promotion_code_expired': '此促銷代碼已過期。',
+  'mobile.purchase.promotion_code_invalid': '此促銷代碼無效。',
+  'mobile.purchase.promotion_code_list_price': '折扣前價格{\$price}',
+  'mobile.purchase.promotion_code_not_applicable_episode': '此促銷代碼不適用於本章。',
+  'mobile.purchase.promotion_code_not_applicable_volumes': '此促銷代碼不適用於這些卷。',
+  'mobile.purchase.promotion_code_not_in_app': '此促銷代碼無法在應用程式中用於本章，請在網站上使用。',
+  'mobile.purchase.promotion_code_rate_limited': '輸入促銷代碼的次數過多，請稍後再試。',
   'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
   'mobile.purchase.rent_for_tax_included': '租閱{\$period}（含稅{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小時',
@@ -9101,6 +9257,7 @@ const _zhHantSources = <String, String>{
   'mobile.purchases.issuer': '開立者{\$name}',
   'mobile.purchases.no_expiry': '無期限',
   'mobile.purchases.price': '支付金額{\$price}',
+  'mobile.purchases.promotion_code': '促銷代碼{\$code}',
   'mobile.purchases.purchased_at': '{\$date}購買',
   'mobile.purchases.readable': '可閱讀',
   'mobile.purchases.readable_until': '可閱讀至{\$date}',

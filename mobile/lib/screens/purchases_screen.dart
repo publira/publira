@@ -13,6 +13,7 @@ import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_history_csv.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
@@ -385,6 +386,13 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       PurchaseFailureKind.notSold ||
       PurchaseFailureKind.notSettled ||
       PurchaseFailureKind.otherAccount ||
+      PurchaseFailureKind.promotionCodeInvalid ||
+      PurchaseFailureKind.promotionCodeExpired ||
+      PurchaseFailureKind.promotionCodeExhausted ||
+      PurchaseFailureKind.promotionCodeAlreadyRedeemed ||
+      PurchaseFailureKind.promotionCodeNotApplicable ||
+      PurchaseFailureKind.promotionCodeNotInApp ||
+      PurchaseFailureKind.promotionCodeRateLimited ||
       PurchaseFailureKind.unexpected => messages.purchasesFailed,
     };
   }
@@ -449,7 +457,7 @@ class _PurchaseRow extends StatelessWidget {
             coinName: purchase.coinName,
           ),
         )
-      else if (purchase.currency.isNotEmpty)
+      else if (purchase.currency.isNotEmpty && !purchase.discounted)
         messages.purchasesPrice(
           price: messages.formatPrice(purchase.price, purchase.currency),
         ),
@@ -528,6 +536,8 @@ class _PurchaseRow extends StatelessWidget {
               locale: purchase.seriesTextLocale,
             ),
           AutospacedText(details.join(' · ')),
+          if (purchase.currency.isNotEmpty && purchase.discounted)
+            _DiscountedPaid(purchase: purchase),
           if (taxLine != null)
             AutospacedText(
               key: ValueKey('purchase-tax-${purchase.id}'),
@@ -692,6 +702,39 @@ class _PurchasesPageFooter extends StatelessWidget {
         message: message,
         onRetry: onRetry,
       ),
+    );
+  }
+}
+
+/// What a purchase a promotion code discounted cost: the amount paid, the
+/// price before the code struck through beside it, and the tenant's code. A
+/// discount taken on the provider's own page names no code, since the tenant
+/// did not issue it.
+class _DiscountedPaid extends StatelessWidget {
+  const _DiscountedPaid({required this.purchase});
+
+  final MyPurchase purchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return Wrap(
+      key: ValueKey('purchase-discount-${purchase.id}'),
+      spacing: 8,
+      children: [
+        AutospacedText(
+          messages.purchasesPrice(
+            price: messages.formatPrice(purchase.price, purchase.currency),
+          ),
+        ),
+        PriceBeforePromotionCode(
+          price: messages.formatPrice(purchase.listPrice, purchase.currency),
+        ),
+        if (purchase.promotionCode.isNotEmpty)
+          AutospacedText(
+            messages.purchasesPromotionCode(code: purchase.promotionCode),
+          ),
+      ],
     );
   }
 }

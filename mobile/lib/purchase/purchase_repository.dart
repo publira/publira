@@ -66,8 +66,74 @@ enum InAppPurchaseStore { appStore, googlePlay }
 class StorePurchaseIntent {
   const StorePurchaseIntent({required this.intentId, required this.productId});
 
+  /// The purchase was recorded at once, because a promotion code took the
+  /// whole price off, so there is nothing to ask the store to charge.
+  const StorePurchaseIntent.recorded() : intentId = '', productId = '';
+
   final String intentId;
   final String productId;
+
+  bool get recorded => intentId.isEmpty;
+}
+
+/// One sale a promotion code is quoted against, as
+/// `publira.v1.PromotionCodeSale` names it: the permanent copy or the rental
+/// of an episode, or a volume.
+class PromotionCodeSale {
+  const PromotionCodeSale.episode(
+    String this.episodeInternalId, {
+    this.kind = PurchaseKind.purchase,
+  }) : volumeInternalId = null;
+
+  const PromotionCodeSale.volume(String this.volumeInternalId)
+    : episodeInternalId = null,
+      kind = PurchaseKind.purchase;
+
+  final String? episodeInternalId;
+  final PurchaseKind kind;
+  final String? volumeInternalId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PromotionCodeSale &&
+      other.episodeInternalId == episodeInternalId &&
+      other.kind == kind &&
+      other.volumeInternalId == volumeInternalId;
+
+  @override
+  int get hashCode => Object.hash(episodeInternalId, kind, volumeInternalId);
+}
+
+/// Why a promotion code takes nothing off one sale, as
+/// `publira.v1.PromotionCodeQuote.Refusal` names it.
+enum PromotionCodeSaleRefusal {
+  notApplicable,
+
+  /// The tenant's store sells no product at the discounted price.
+  noStoreProduct,
+
+  /// The surface does not sell the sale, the reader holds what it would open,
+  /// or their account is linked to an Author it credits.
+  notOffered,
+}
+
+/// What a promotion code makes of one sale, as `publira.v1.PromotionCodeQuote`
+/// quotes it. Amounts are in the minor unit of the tenant currency.
+class PromotionCodeQuote {
+  const PromotionCodeQuote({
+    required this.listPrice,
+    required this.price,
+    this.refusal,
+  });
+
+  /// The price before the code.
+  final int listPrice;
+
+  /// What the reader would pay, 0 when the code takes the whole price off.
+  final int price;
+
+  /// Why the code takes nothing off the sale, `null` when it does.
+  final PromotionCodeSaleRefusal? refusal;
 }
 
 /// What the rest of a series would cost the reader in one checkout, as
@@ -326,6 +392,26 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<List<SubscriptionPlan>> subscriptionPlans();
 
+  /// Whether the tenant holds a promotion code a reader could enter now or
+  /// once it starts, which is when a purchase offers a field for one.
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error.
+  Future<bool> acceptsPromotionCodes();
+
+  /// What the promotion code [code] takes off each of [sales], in their order,
+  /// for one lookup from the signed-in reader's allowance. With [store] the
+  /// sales are purchases through the app's store, and the quote checks that
+  /// the store sells the discounted price.
+  ///
+  /// Throws [PurchaseFailure]; a `promotionCode` kind when the code itself is
+  /// refused, and [PurchaseFailureKind.promotionCodeRateLimited] for a reader
+  /// past their allowance. A refusal of one sale is on its quote instead.
+  Future<List<PromotionCodeQuote>> previewPromotionCode(
+    String code,
+    List<PromotionCodeSale> sales, {
+    bool store = false,
+  });
+
   /// The signed-in reader's subscription, or `null` for a reader who has
   /// never subscribed. A guest holds none, so they are answered `null`
   /// without a request.
@@ -353,25 +439,35 @@ abstract class PurchaseRepository {
   /// The checkout page the signed-in reader pays for the [kind] of the
   /// episode [episodeInternalId] names on, which `StartEpisodeCheckout` with
   /// `client: CLIENT_MOBILE` builds to return to the app. The page names the
-  /// episode in its translation in [locale], the reader's.
+  /// episode in its translation in [locale], the reader's. [promotionCode],
+  /// when not empty, takes its discount off before the page is opened; one
+  /// that takes the whole price off answers the page the checkout would have
+  /// returned the reader to.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
-  /// there is nothing to pay for, and [PurchaseFailureKind.notSold] for a
-  /// rental of an episode that is not rented.
+  /// there is nothing to pay for, [PurchaseFailureKind.notSold] for a rental
+  /// of an episode that is not rented, and a `promotionCode` kind when the
+  /// code is refused.
   Future<Uri> startEpisodeCheckout(
     String episodeInternalId, {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
+    String promotionCode = '',
   });
 
   /// The checkout page the signed-in reader pays for the volume
-  /// [volumeInternalId] names on, built to return to the app on its series.
+  /// [volumeInternalId] names on, built to return to the app on its series,
+  /// with [promotionCode] applied as [startEpisodeCheckout] applies it.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when the
   /// reader already holds the volume, [PurchaseFailureKind.gone] when it is no
-  /// longer sold in the app, and [PurchaseFailureKind.notSold] when the app
-  /// sells through the store, which has no product for a volume.
-  Future<Uri> startVolumeCheckout(String volumeInternalId);
+  /// longer sold in the app, [PurchaseFailureKind.notSold] when the app sells
+  /// through the store, which has no product for a volume, and a
+  /// `promotionCode` kind when the code is refused.
+  Future<Uri> startVolumeCheckout(
+    String volumeInternalId, {
+    String promotionCode = '',
+  });
 
   /// The checkout page the signed-in reader pays for every episode of the
   /// series [seriesInternalId] they do not own yet on, built to return to the
@@ -416,15 +512,21 @@ abstract class PurchaseRepository {
   });
 
   /// Opens a purchase of the episode [episodeInternalId] names through [store]
-  /// for the signed-in reader.
+  /// for the signed-in reader, at the product of the price [promotionCode]
+  /// leaves when it is not empty. A code that takes the whole price off is
+  /// answered [StorePurchaseIntent.recorded].
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
-  /// there is nothing to pay for, and [PurchaseFailureKind.notSold] when the
-  /// tenant does not sell it through [store] right now.
+  /// there is nothing to pay for, [PurchaseFailureKind.notSold] when the
+  /// tenant does not sell it through [store] right now, and a `promotionCode`
+  /// kind when the code is refused,
+  /// [PurchaseFailureKind.promotionCodeNotInApp] when the store sells no
+  /// product at the price it leaves.
   Future<StorePurchaseIntent> startStorePurchase(
     String episodeInternalId,
-    InAppPurchaseStore store,
-  );
+    InAppPurchaseStore store, {
+    String promotionCode = '',
+  });
 
   /// Opens a purchase of the pack of the tenant's coins [coinPackId] names
   /// through [store] for the signed-in reader. Asking again for the same pack

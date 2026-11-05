@@ -35,6 +35,8 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_bundle_button.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/payment_lock.dart';
+import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
@@ -306,6 +308,18 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// permanent copy of one episode alone.
   var _sellsOnWeb = false;
 
+  /// Whether the tenant holds a promotion code, so the volumes offer a field
+  /// for one. False while it could not be read.
+  var _acceptsPromotionCodes = false;
+
+  /// What the code the reader entered makes of the volumes, which the field
+  /// reports and the volumes' buttons read their price from.
+  PromotionCodeState _promotion = const NoPromotionCode();
+
+  /// Shared by the field and the volumes' buttons, so a checkout does not
+  /// start without a code that is still being quoted.
+  final _volumePaymentLock = PaymentLock();
+
   /// How many reads of [_access] this screen has started, so that only the
   /// latest one's answer is shown: the read the screen opened with can answer
   /// after the one the return from the viewer made, with an episode locked
@@ -454,6 +468,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
 
   @override
   void dispose() {
+    _volumePaymentLock.dispose();
     _windowClose?.cancel();
     unawaited(_libraryChanges?.cancel());
     unawaited(_progressWrites?.cancel());
@@ -512,6 +527,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     _progress = SeriesProgress.none;
     _ownRating = null;
     _ownRatingFailed = false;
+    _promotion = const NoPromotionCode();
     unawaited(_loadProgress(catalog, readerId));
     unawaited(_loadOwnRating(catalog, readerId));
     final purchase = PurchaseScope.maybeOf(context)?.repository;
@@ -534,7 +550,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
-    final (holdings, acceptsPayments, currency, route, invoice) = await (
+    final (
+      holdings,
+      acceptsPayments,
+      currency,
+      route,
+      invoice,
+      promotionCodes,
+    ) = await (
       purchase
           .seriesEpisodeAccess(widget.detail.series.internalId)
           .then<SeriesPurchaseState?>((holdings) => holdings)
@@ -549,6 +572,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
       purchase.invoice().onError<PurchaseFailure>((_, _) => TenantInvoice.none),
+      purchase.acceptsPromotionCodes().onError<PurchaseFailure>(
+        (_, _) => false,
+      ),
     ).wait;
     if (!mounted || read != _purchaseReads || readerId != _readerId) {
       return;
@@ -561,6 +587,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       _currency = currency;
       _taxIncluded = invoice.taxIncluded;
       _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
+      _acceptsPromotionCodes = promotionCodes;
     });
   }
 
@@ -840,12 +867,72 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         messages.purchaseSoldOnWeb,
       );
     }
+    final sale = PromotionCodeSale.volume(volume.id);
+    final quote = _promotion.quoteOf(sale);
+    final currency = _currency;
+    final code = _promotion.codeFor(sale);
+    // Without a code the card's own line names the price, so the button need
+    // not. With one the button says what the checkout will charge.
+    final discounted = quote != null && currency != null;
     return BuyBundleButton(
       key: ValueKey('volume-buy-${volume.publicId}'),
-      label: messages.seriesVolumeBuy,
-      start: (repository, _) => repository.startVolumeCheckout(volume.id),
+      label: !discounted
+          ? messages.seriesVolumeBuy
+          : _taxIncluded
+          ? messages.purchaseBuyTaxIncluded(
+              price: messages.formatPrice(quote.price, currency),
+            )
+          : messages.purchaseBuy(
+              price: messages.formatPrice(quote.price, currency),
+            ),
+      listPrice: discounted
+          ? messages.formatPrice(quote.listPrice, currency)
+          : null,
+      start: (repository, _) =>
+          repository.startVolumeCheckout(volume.id, promotionCode: code),
       onRefused: _reloadPurchase,
       onOpened: _checkoutOpened,
+      lock: _volumePaymentLock,
+      onPromotionCodeRefused: (reason) => setState(() {
+        _promotion = RefusedPromotionCode(
+          code: _promotion.code,
+          reason: reason,
+        );
+      }),
+    );
+  }
+
+  /// The field for a promotion code, once above the volumes, for a signed-in
+  /// reader who can still buy one of them: `null` for anyone else, and where
+  /// the tenant sells through the store, which has no product for a volume.
+  /// The rest of the series takes no code.
+  Widget? _volumePromotionCodeField() {
+    final holdings = _holdings;
+    if (holdings == null ||
+        !_acceptsPayments ||
+        !_acceptsPromotionCodes ||
+        !_sellsOnWeb ||
+        !AuthScope.of(context).isSignedIn) {
+      return null;
+    }
+    final sales = [
+      for (final volume in widget.detail.volumes)
+        if (!holdings.owns(volume)) PromotionCodeSale.volume(volume.id),
+    ].take(promotionCodeMaxSales).toList();
+    if (sales.isEmpty) {
+      return null;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: PromotionCodeField(
+        sales: sales,
+        store: false,
+        state: _promotion,
+        onChanged: (state) => setState(() {
+          _promotion = state;
+        }),
+        lock: _volumePaymentLock,
+      ),
     );
   }
 
@@ -1156,6 +1243,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     key: const ValueKey('series-volumes-ownership-failed'),
                     message: messages.seriesVolumeOwnershipFailed,
                   ),
+                ?_volumePromotionCodeField(),
                 for (final volume in widget.detail.volumes)
                   _VolumeTile(
                     volume: volume,
