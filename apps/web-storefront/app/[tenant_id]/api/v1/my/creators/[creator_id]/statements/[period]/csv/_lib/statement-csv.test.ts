@@ -57,6 +57,16 @@ describe("renderStatementCsv", () => {
           shareBps: 1250,
           source: "subscription",
         }),
+        line({ lineNumber: 5, source: "tip" }),
+        line({
+          adjustedPeriod: "2025-11",
+          grossAmount: -100,
+          lineNumber: 6,
+          payoutAmount: -30,
+          refundedAmount: -100,
+          saleCount: -1,
+          source: "tip",
+        }),
         line({
           adjustedPeriod: "2025-11",
           grossAmount: -500,
@@ -73,6 +83,8 @@ describe("renderStatementCsv", () => {
       `\uFEFF${HEADER}` +
         "2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,8,4000,0,30.00,1200,JPY,,sale\r\n" +
         "2025-12,,SERIES000001,Night Ferry,EPISODE00001,The Harbor,8,4000,0,12.50,1200,JPY,,subscription\r\n" +
+        "2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,8,4000,0,30.00,1200,JPY,,tip\r\n" +
+        "2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,-1,-100,-100,30.00,-30,JPY,2025-11,tip\r\n" +
         "2025-12,Artist,SERIES000001,Night Ferry,EPISODE00001,The Harbor,-1,-500,-500,30.00,-150,JPY,2025-11,sale\r\n"
     );
   });

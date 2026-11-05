@@ -314,7 +314,7 @@ Names are as they were at the close, and the IDs keep a line tied to its Author 
 A reader whose account is linked to an Author, as [Authors and Author roles](./1-catalog/4-authors.md#linking-an-author-to-a-reader-account) describes, can read that Author's part of every closed statement once the tenant turns on its Author pages and shows its Authors their sales. They read:
 
 - For each closed month, the number of sales, the gross, the refunds, and the payout of the Author's own lines, each summed, adjustments included. A month that credited the Author nothing shows zeros.
-- The Author's own lines of a month, in the order of the statement, with each line's series, episode, role, number of sales, gross, refunds, share, and payout, whether it is a line of sales or of [subscription payments](#subscription-payments), and the month an adjustment adjusts.
+- The Author's own lines of a month, in the order of the statement, with each line's series, episode, role, number of sales, gross, refunds, share, and payout, whether it is a line of sales, of [tips](./4-selling-episodes.md#tips), or of [subscription payments](#subscription-payments), and the month an adjustment adjusts.
 
 They never read the statement's totals, another Author's lines, or the open month. Lines are as they were at the close, like everything else on a statement.
 

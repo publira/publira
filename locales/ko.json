@@ -6039,7 +6039,7 @@
       "statement_failed": "명세를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
       "statement_error": "명세를 표시할 수 없습니다",
       "lines_heading": "명세 행",
-      "lines_description": "회원님이 크레딧된 명세 행입니다. 당월 판매, 구독 결제, 마감된 달의 환불 조정 순서로 보여 줍니다.",
+      "lines_description": "회원님이 크레딧된 명세 행입니다. 당월 판매, 팁, 구독 결제, 마감된 달의 환불 조정 순서로 보여 줍니다.",
       "lines_empty": "이 달에 이 작가가 크레딧된 명세 행이 없습니다.",
       "lines_pagination_aria": "명세 행 페이지",
       "role": "역할",
@@ -6047,6 +6047,7 @@
       "no_role": "—",
       "adjustment": "{$period}분 환불 조정",
       "subscription": "구독 배분",
+      "tip": "팁",
       "download_csv": "CSV로 다운로드",
       "back_to_creator": "{$name}(으)로 돌아가기",
       "comments": {

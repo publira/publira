@@ -28,21 +28,23 @@ export const CREATOR_PAGES_OTHER_AUTHORS_SERIES = [
 
 /**
  * December 2025 as `Seed Author 001` reads it: a line of the month's own sales
- * of `Seed Episode 001-10`, and an adjustment taking back a November sale of
- * it that was refunded in full.
+ * of `Seed Episode 001-10`, a line of the tips it received, and an adjustment
+ * taking back a November sale of it that was refunded in full.
  */
 export const CREATOR_PAGES_DECEMBER = {
   adjustment: "Refund adjustment for November 2025",
   csvRows: [
     "2025-12,Original Author,SeedSERSAAA1,Seed Series 001,SeedEPSDAA1A,Seed Episode 001-10,6,3000,0,50.00,1500,JPY,,sale",
+    "2025-12,Original Author,SeedSERSAAA1,Seed Series 001,SeedEPSDAA1A,Seed Episode 001-10,2,300,0,50.00,150,JPY,,tip",
     "2025-12,Original Author,SeedSERSAAA1,Seed Series 001,SeedEPSDAA1A,Seed Episode 001-10,-1,-500,0,50.00,-250,JPY,2025-11,sale",
   ],
   fileName: "royalties-SeedAUTHAAA1-2025-12.csv",
-  gross: "¥2,500",
+  gross: "¥2,800",
   label: "December 2025",
-  payout: "¥1,250",
+  payout: "¥1,400",
   period: "2025-12",
-  sales: "5",
+  sales: "7",
+  tip: "Tip",
 } as const;
 
 /**

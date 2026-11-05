@@ -62,10 +62,10 @@ const StatementLinesHeader = () => (
 
 /**
  * The Author's lines of one closed month, in the statement's order. A line of
- * subscription payments says so under its episode, and an adjustment names
- * the closed month it takes refunds back from there too, which is what tells
- * its negative figures from a line of the month's own sales — as the console's
- * statement marks them.
+ * tips or of subscription payments says so under its episode, and an adjustment
+ * names the closed month it takes refunds back from there too, which is what
+ * tells its negative figures from a line of the month's own sales — as the
+ * console's statement marks them.
  */
 export const StatementLines = ({
   currency,
@@ -95,6 +95,13 @@ export const StatementLines = ({
                 <span className="block text-xs text-muted-foreground">
                   <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
                     <Message message="storefront.my_creator.subscription" />
+                  </Suspense>
+                </span>
+              ) : null}
+              {line.source === "tip" ? (
+                <span className="block text-xs text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-3 w-8" />}>
+                    <Message message="storefront.my_creator.tip" />
                   </Suspense>
                 </span>
               ) : null}
