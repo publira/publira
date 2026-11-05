@@ -1,17 +1,25 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
+import { PromotionCodeQuote_Refusal } from "@publira/api-client/public/catalog";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
   mockGetTenantSiteInfo,
+  mockPreviewPromotionCode,
   mockRedirect,
   mockRedirectToLogin,
   mockRequirePublicSession,
   mockStartSeriesRemainderCheckout,
   mockStartVolumeCheckout,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetTenantSiteInfo: vi.fn(),
+  mockPreviewPromotionCode: vi.fn(),
   mockRedirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   }),
@@ -21,13 +29,17 @@ const {
   mockRequirePublicSession: vi.fn(),
   mockStartSeriesRemainderCheckout: vi.fn(),
   mockStartVolumeCheckout: vi.fn(),
+  mockUpdateTag: vi.fn(),
 }));
+
+vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/api-client", () => ({
   apiClient: {
     purchase: {
+      previewPromotionCode: mockPreviewPromotionCode,
       startSeriesRemainderCheckout: mockStartSeriesRemainderCheckout,
       startVolumeCheckout: mockStartVolumeCheckout,
     },
@@ -65,6 +77,34 @@ const volumeForm = (): FormData => {
   return data;
 };
 
+const promotionCodeRefusal = (reason: string) =>
+  new ConnectError(
+    "promotion code refused",
+    Code.FailedPrecondition,
+    undefined,
+    [{ desc: ErrorInfoSchema, value: { domain: "publira", reason } }]
+  );
+
+const quoted = (quote: {
+  listPrice: number;
+  price: number;
+  refusal?: PromotionCodeQuote_Refusal;
+}) => ({ refusal: PromotionCodeQuote_Refusal.UNSPECIFIED, ...quote });
+
+const volumeCodeForm = (code: string, ...volumeIds: string[]): FormData => {
+  const data = new FormData();
+  data.set("locale", "en");
+  data.set("promotionCode", code);
+  data.set("seriesPublicId", "SERIES_001");
+  data.set("tenantId", tenantId);
+
+  for (const id of volumeIds) {
+    data.append("volumeIds", id);
+  }
+
+  return data;
+};
+
 const remainderForm = (): FormData => {
   const data = new FormData();
   data.set("locale", "ja");
@@ -93,8 +133,44 @@ describe("startVolumeCheckoutAction", () => {
       "NEXT_REDIRECT:https://checkout.stripe.test/volume"
     );
     expect(mockStartVolumeCheckout).toHaveBeenCalledWith(
-      { tenant: { tenantId }, volumeId },
+      { promotionCode: "", tenant: { tenantId }, volumeId },
       { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("Carry the code the section applied into the checkout", async () => {
+    mockStartVolumeCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://checkout.stripe.test/volume",
+    });
+
+    const form = volumeForm();
+    form.set("promotionCode", "SPRING10");
+
+    const { startVolumeCheckoutAction } = await import("./actions");
+
+    await expect(startVolumeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://checkout.stripe.test/volume"
+    );
+    expect(mockStartVolumeCheckout).toHaveBeenCalledWith(
+      { promotionCode: "SPRING10", tenant: { tenantId }, volumeId },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockUpdateTag).toHaveBeenCalledTimes(2);
+  });
+
+  it("Bring a code that stopped applying back to the section to say why", async () => {
+    mockStartVolumeCheckout.mockRejectedValueOnce(
+      promotionCodeRefusal("PROMOTION_CODE_EXHAUSTED")
+    );
+
+    const form = volumeForm();
+    form.set("promotionCode", "SPRING10");
+
+    const { startVolumeCheckoutAction } = await import("./actions");
+
+    await expect(startVolumeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001?promotion_code=SPRING10"
     );
   });
 
@@ -234,5 +310,125 @@ describe("startSeriesRemainderCheckoutAction", () => {
     await expect(
       startSeriesRemainderCheckoutAction(remainderForm())
     ).rejects.toThrow("NEXT_REDIRECT:/ja/series/SERIES_001?checkout=error");
+  });
+});
+
+describe("applyVolumePromotionCodeAction", () => {
+  const otherVolumeId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+
+  it("Quote every volume in one call", async () => {
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 350, price: 280 }),
+        quoted({ listPrice: 500, price: 400 }),
+      ],
+    });
+
+    const { applyVolumePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyVolumePromotionCodeAction(
+        { kind: "none" },
+        volumeCodeForm("spring10", volumeId, otherVolumeId)
+      )
+    ).resolves.toEqual({
+      code: "spring10",
+      kind: "applied",
+      quotes: {
+        [otherVolumeId]: { listPrice: 500, price: 400 },
+        [volumeId]: { listPrice: 350, price: 280 },
+      },
+    });
+    expect(mockPreviewPromotionCode).toHaveBeenCalledOnce();
+    expect(mockPreviewPromotionCode.mock.calls[0]?.[0]).toEqual({
+      code: "spring10",
+      sales: [{ volumeId }, { volumeId: otherVolumeId }],
+      tenant: { tenantId },
+    });
+  });
+
+  it("Leave a volume the code does not apply to at its price", async () => {
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 350, price: 280 }),
+        quoted({
+          listPrice: 500,
+          price: 500,
+          refusal: PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+        }),
+      ],
+    });
+
+    const { applyVolumePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyVolumePromotionCodeAction(
+        { kind: "none" },
+        volumeCodeForm("SPRING10", volumeId, otherVolumeId)
+      )
+    ).resolves.toEqual({
+      code: "SPRING10",
+      kind: "applied",
+      quotes: { [volumeId]: { listPrice: 350, price: 280 } },
+    });
+  });
+
+  it("Say the code applies to none of the volumes", async () => {
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({
+          listPrice: 350,
+          price: 350,
+          refusal: PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+        }),
+      ],
+    });
+
+    const { applyVolumePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyVolumePromotionCodeAction(
+        { kind: "none" },
+        volumeCodeForm("SPRING10", volumeId)
+      )
+    ).resolves.toEqual({
+      code: "SPRING10",
+      kind: "refused",
+      reason: "not_applicable",
+    });
+  });
+
+  it("Word a refusal of the code itself", async () => {
+    mockPreviewPromotionCode.mockRejectedValueOnce(
+      promotionCodeRefusal("PROMOTION_CODE_EXPIRED")
+    );
+
+    const { applyVolumePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyVolumePromotionCodeAction(
+        { kind: "none" },
+        volumeCodeForm("SPRING10", volumeId)
+      )
+    ).resolves.toEqual({
+      code: "SPRING10",
+      kind: "refused",
+      reason: "expired",
+    });
+  });
+
+  it("Send a reader whose session ended to sign in", async () => {
+    mockPreviewPromotionCode.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { applyVolumePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyVolumePromotionCodeAction(
+        { kind: "none" },
+        volumeCodeForm("SPRING10", volumeId)
+      )
+    ).rejects.toThrow("NEXT_REDIRECT:/en/login?returnTo=/series/SERIES_001");
   });
 });

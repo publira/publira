@@ -150,6 +150,7 @@ const series: EpisodeSeriesSummary = {
 
 const props: Parameters<typeof EpisodeBody>[0] = {
   acceptsPayments: true,
+  acceptsPromotionCodes: false,
   access: "locked",
   appPayments: { appStore: false, googlePlay: false },
   checkoutSessionId: "",
@@ -161,6 +162,7 @@ const props: Parameters<typeof EpisodeBody>[0] = {
   labelPublicId: "",
   previewImages: [page("blurred_1", 1)],
   previewPages: [],
+  promotionCode: "",
   series,
   taxIncluded: false,
   tenantId: "TENANT_001",

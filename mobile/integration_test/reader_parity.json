@@ -467,6 +467,17 @@
       "tests": ["a tip given in the browser thanks the reader"]
     },
     {
+      "name": "Entering a promotion code before checkout",
+      "web": {
+        "routes": [
+          "[locale]/(site)/series/[series_id]",
+          "[locale]/(site)/series/[series_id]/episodes/[episode_id]"
+        ],
+        "rpcs": ["PreviewPromotionCode"]
+      },
+      "exception": "Not in the app yet: #4942."
+    },
+    {
       "name": "Buying a volume or the rest of a series from the series page",
       "web": {
         "routes": ["[locale]/(site)/series/[series_id]"],

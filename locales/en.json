@@ -5842,7 +5842,9 @@
       "coin_pack_success": "Thank you. Your {$coin_name} are added once the payment is confirmed, and you can then pay for this episode with them.",
       "coin_pack_cancelled": "The purchase was cancelled. You have not been charged.",
       "coin_price_changed": "The price of this episode in {$coin_name} has changed. Check the new price and try again.",
-      "coin_pay_error": "Could not pay with {$coin_name}. Please try again later."
+      "coin_pay_error": "Could not pay with {$coin_name}. Please try again later.",
+      "checkout_paid": "Amount paid",
+      "checkout_paid_error": "Could not show the amount paid"
     },
     "errors": {
       "not_found_description": "The page may have been removed, or its URL may have changed. Open the home page.",
@@ -6532,6 +6534,21 @@
       "updated_error": "Could not show the updated works",
       "updated_heading": "Recently updated",
       "view_all": "View all"
+    },
+    "promotion_code": {
+      "label": "Promotion code",
+      "apply": "Apply",
+      "applied": "Code {$code} applied.",
+      "list_price": "Price before the code",
+      "code": "Code {$code}",
+      "invalid": "This code isn't valid.",
+      "expired": "This code has expired.",
+      "exhausted": "This code has been used up.",
+      "already_redeemed": "You have already used this code.",
+      "not_applicable_episode": "This code can't be used on this episode.",
+      "not_applicable_volumes": "This code can't be used on these volumes.",
+      "rate_limited": "Too many codes entered. Wait a moment and try again.",
+      "error": "The code could not be checked. Try again."
     }
   },
   "mobile": {

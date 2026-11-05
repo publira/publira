@@ -8,6 +8,7 @@ import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
 import {
   EPISODE_RENTALS_ADMIN,
+  EPISODE_RENTALS_AUTHOR,
   EPISODE_RENTALS_CAMPAIGN,
   EPISODE_RENTALS_EPISODE,
   EPISODE_RENTALS_LATER_EPISODES,
@@ -35,6 +36,12 @@ import {
  * at the discount the admin sets on the series form. Each pays on the
  * checkout page, returns to the page the sale was started from with what the
  * webhook opened, and finds the sale in the library.
+ *
+ * Last, the admin issues a promotion code from the console: a sixth reader
+ * applies it at episode 1's gate, pays the discounted price on a checkout page
+ * that offers no code of its own, and finds what they paid in the library,
+ * while the open month's royalties credit the sale at the price before the
+ * code; a seventh enters a code the tenant does not hold and is told so.
  */
 
 /**
@@ -43,10 +50,12 @@ import {
  * under the secret key entered, as an operator registers it in Stripe's
  * dashboard, and the signing secret that answers is stored beside the key.
  *
- * The key is a new one each run, a test account of its own: the stand-in
- * answers a checkout the server starts again for the same reader with the
- * session paid under the same key, as Stripe answers a repeated idempotency
- * key, and a run that starts over has deleted the sale that session made.
+ * The key is a new one each run, an account of its own: the stand-in answers
+ * a checkout the server starts again for the same reader with the session
+ * paid under the same key, as Stripe answers a repeated idempotency key, and
+ * a run that starts over has deleted the sale that session made. It is a
+ * live-mode key, so the purchases are sales the royalties count rather than
+ * test purchases.
  */
 const takePaymentsThroughStripe = async (page: Page) => {
   await signInAsAdmin(
@@ -62,7 +71,7 @@ const takePaymentsThroughStripe = async (page: Page) => {
 
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   const secretKey = page.getByLabel(/^Secret key/u);
-  await secretKey.fill(`sk_test_${randomUUID().replaceAll("-", "")}`);
+  await secretKey.fill(`sk_live_${randomUUID().replaceAll("-", "")}`);
 
   const webhookSecret = await registerStripeWebhook(
     await secretKey.inputValue(),
@@ -160,6 +169,35 @@ const libraryCard = async (page: Page) => {
   return card;
 };
 
+/** The gate's code field, opened from its disclosure. */
+const applyCode = async (page: Page, typed: string) => {
+  await page.locator("summary").filter({ hasText: "Promotion code" }).click();
+  await page.getByRole("textbox", { name: "Promotion code" }).fill(typed);
+  await page.getByRole("button", { exact: true, name: "Apply" }).click();
+};
+
+/**
+ * The current month's sales on the royalties screen, which every credited sale
+ * adds its basis to. The screen opens on the oldest month still open, so the
+ * month a sale made now falls in, in the tenant's UTC, is named.
+ */
+const openMonthSales = async (admin: Page): Promise<number> => {
+  const period = Temporal.Now.plainDateISO("UTC").toPlainYearMonth().toString();
+
+  await admin.goto(`${WEB_ADMIN_RENTALS_BASE_URL}/royalties?period=${period}`);
+
+  const sales = admin
+    .locator("dt")
+    .filter({ hasText: /^Sales$/u })
+    .locator("xpath=following-sibling::dd[1]");
+
+  await expect(sales).toBeVisible();
+
+  const text = await sales.textContent();
+
+  return Number((text ?? "").replaceAll(/\D/gu, ""));
+};
+
 test.describe.configure({ mode: "serial" });
 
 test.describe("web-storefront checkout", () => {
@@ -198,6 +236,10 @@ test.describe("web-storefront checkout", () => {
     );
 
     await expect(page.getByText("You cannot read this episode")).toBeVisible();
+    // The tenant holds no promotion code yet, so the gate offers no field.
+    await expect(
+      page.getByRole("textbox", { name: "Promotion code" })
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Buy for ¥300" })
     ).toBeVisible();
@@ -404,5 +446,171 @@ test.describe("web-storefront checkout", () => {
     await expect(
       card.getByRole("link", { name: "Remaining episodes (4)" })
     ).toBeVisible();
+  });
+
+  test.describe("with a promotion code", () => {
+    /** A new spelling each run, which a retry can create again. */
+    const code = `HALF${randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
+
+    test.beforeAll(async ({ browser }) => {
+      const admin = await browser.newPage();
+
+      try {
+        await signInAsAdmin(
+          admin,
+          EPISODE_RENTALS_ADMIN,
+          "/promotion-codes/new",
+          WEB_ADMIN_RENTALS_BASE_URL
+        );
+        await admin.getByRole("textbox", { name: /^Code/u }).fill(code);
+        await admin.getByRole("spinbutton", { name: /Percentage/u }).fill("50");
+        await admin
+          .getByRole("radio", { exact: true, name: "Whole catalog" })
+          .click();
+        await admin
+          .getByRole("button", { exact: true, name: "Create promotion code" })
+          .click();
+        await expect(admin).toHaveURL(/\/promotion-codes\?code=[0-9a-f-]{36}/u);
+      } finally {
+        await admin.close();
+      }
+    });
+
+    test("a reader applies the admin's code at the gate, pays the discounted price, and the royalties credit the price before it", async ({
+      browser,
+      page,
+    }) => {
+      const admin = await browser.newPage();
+
+      try {
+        await signInAsAdmin(
+          admin,
+          EPISODE_RENTALS_ADMIN,
+          "/royalties",
+          WEB_ADMIN_RENTALS_BASE_URL
+        );
+        const salesBefore = await openMonthSales(admin);
+
+        await signInAsMember(
+          page,
+          EPISODE_RENTALS_READERS.codeBuyer,
+          episodeRentalPath,
+          WEB_STOREFRONT_RENTALS_BASE_URL
+        );
+        await expect(
+          page.getByRole("button", { name: "Buy for ¥300" })
+        ).toBeVisible();
+
+        // Typed in lower case, which the code is matched without regard to.
+        await applyCode(page, code.toLowerCase());
+        await expect(
+          page.getByText(`Code ${code.toLowerCase()} applied.`)
+        ).toBeVisible();
+        const buy = page.getByRole("button", { name: /^Buy for ¥150/u });
+        await expect(buy).toBeVisible();
+        await expect(buy.locator("s")).toHaveText("Price before the code ¥300");
+        await expect(
+          page.getByRole("button", { name: /^Rent for 48 hours \(¥50\)/u })
+        ).toBeVisible();
+
+        // The code is kept in the URL, so a reload quotes it again.
+        await expect(page).toHaveURL(/[?&]promotion_code=/u);
+        await page.reload();
+        await expect(buy).toBeVisible();
+
+        await buy.click();
+        await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
+        // The checkout already carries the code's discount, so the payment
+        // page offers no code input of its own.
+        await expect(page.getByLabel("Add promotion code")).toHaveCount(0);
+        await payAndReturn(page, EPISODE_RENTALS_EPISODE.title, "¥150");
+        await expect(page.getByText("Amount paid")).toBeVisible();
+        await expect(
+          page.getByText(`Code ${code}`, { exact: true })
+        ).toBeVisible();
+
+        const card = await libraryCard(page);
+        await expect(card.getByText("¥150", { exact: true })).toBeVisible();
+        await expect(card.locator("s")).toHaveText(
+          "Price before the code ¥300"
+        );
+        await expect(
+          card.getByText(`Code ${code}`, { exact: true })
+        ).toBeVisible();
+
+        // The Author is paid on the 300 yen the episode sells for, not the
+        // 150 the reader paid.
+        await expect(async () => {
+          expect(await openMonthSales(admin)).toBe(salesBefore + 300);
+        }).toPass({ timeout: 30_000 });
+        await expect(
+          admin.getByRole("rowheader", { name: EPISODE_RENTALS_AUTHOR.name })
+        ).toBeVisible();
+      } finally {
+        await admin.close();
+      }
+    });
+
+    test("a reader applies the admin's code to the volumes and buys one at the discounted price", async ({
+      page,
+    }) => {
+      await signInAsMember(
+        page,
+        EPISODE_RENTALS_READERS.volumeCodeBuyer,
+        episodeRentalsSeriesPath,
+        WEB_STOREFRONT_RENTALS_BASE_URL
+      );
+
+      const volume = volumeCard(page);
+      await expect(
+        volume.getByRole("button", { name: "Buy volume" })
+      ).toBeVisible();
+
+      await applyCode(page, code);
+      await expect(page.getByText(`Code ${code} applied.`)).toBeVisible();
+      const buy = volume.getByRole("button", { name: /^Buy for ¥175/u });
+      await expect(buy).toBeVisible();
+      await expect(buy.locator("s")).toHaveText("Price before the code ¥350");
+      await expect(page).toHaveURL(new RegExp(`promotion_code=${code}`, "u"));
+
+      // A reload quotes the code the URL kept.
+      await page.reload();
+      await expect(buy).toBeVisible();
+
+      await buy.click();
+      await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
+      await expect(page.getByLabel("Add promotion code")).toHaveCount(0);
+      await pay(
+        page,
+        EPISODE_RENTALS_VOLUME.title,
+        "¥175",
+        episodeRentalsSeriesPath
+      );
+      await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
+      await expect(
+        volume.getByText("You own every episode in this volume")
+      ).toBeVisible();
+    });
+
+    test("a reader who enters a code the tenant does not hold is told so, and the prices stay", async ({
+      page,
+    }) => {
+      await signInAsMember(
+        page,
+        EPISODE_RENTALS_READERS.codeMistyper,
+        episodeRentalPath,
+        WEB_STOREFRONT_RENTALS_BASE_URL
+      );
+
+      await applyCode(page, "NOSUCHCODE");
+      await expect(page.getByText("This code isn't valid.")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Buy for ¥300" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Rent for 48 hours (¥100)" })
+      ).toBeVisible();
+      await expect(page).not.toHaveURL(/[?&]promotion_code=/u);
+    });
   });
 });

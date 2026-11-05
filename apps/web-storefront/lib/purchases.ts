@@ -54,7 +54,18 @@ export interface PurchaseItem {
    * `expiresAt`, and a volume or the rest of a series is always a purchase.
    */
   kind: "purchase" | "rental";
+  /**
+   * The price before a promotion code took its discount off, equal to
+   * `priceAtPurchase` on a purchase no code discounted.
+   */
+  listPrice: number;
   priceAtPurchase: number;
+  /**
+   * The tenant's code the reader entered, as the tenant spelled it; empty on a
+   * purchase none of the tenant's codes discounted, including one discounted
+   * on the payment provider's own page.
+   */
+  promotionCode: string;
   purchasedAt: string;
   /** What has been refunded so far, in the same unit as priceAtPurchase. */
   refundedAmount: number;
@@ -129,7 +140,9 @@ type RawPurchase = Pick<
   | "id"
   | "isActive"
   | "kind"
+  | "listPrice"
   | "priceAtPurchase"
+  | "promotionCode"
   | "purchasedAt"
   | "refundedAmount"
   | "refundedAt"
@@ -192,6 +205,16 @@ const toPurchasedItem = ({
   };
 };
 
+/**
+ * The price before any promotion code. A server that predates the codes
+ * answers 0, and discounted nothing, so the price paid stands in for it.
+ */
+const toListPrice = ({
+  listPrice,
+  priceAtPurchase,
+}: Pick<RawPurchase, "listPrice" | "priceAtPurchase">): number =>
+  (listPrice ?? 0) > 0 ? (listPrice ?? 0) : (priceAtPurchase ?? 0);
+
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   chargedByStore: Boolean(purchase.store),
   coinsSpent: purchase.coinsSpent
@@ -203,7 +226,9 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   isActive: purchase.isActive ?? false,
   item: toPurchasedItem(purchase),
   kind: toPurchaseKind(purchase.kind),
+  listPrice: toListPrice(purchase),
   priceAtPurchase: purchase.priceAtPurchase ?? 0,
+  promotionCode: purchase.promotionCode ?? "",
   purchasedAt: purchase.purchasedAt ?? "",
   refundedAmount: purchase.refundedAmount ?? 0,
   refundedAt: purchase.refundedAt ?? "",
@@ -344,4 +369,61 @@ export const listAllMyPurchases = async (
         ...(await listAllMyPurchases(tenantId, accessToken, locale, nextToken)),
       ]
     : purchases;
+};
+
+/**
+ * The purchase that opens the episode `episodePublicId` for the reader now,
+ * looked for in the first page of their purchases, which lists the newest
+ * first. `null` while the provider's notification has not recorded it yet, and
+ * when the list could not be read: a caller says what was paid where it can,
+ * and nothing else.
+ *
+ * Active purchases alone, because the list keeps the rest: a rental that ran
+ * out, a refund, and a tip would otherwise pass for the checkout the reader
+ * just came back from, whose purchase is still on its way. The gate offers a
+ * checkout only to a reader the episode is closed to, so nothing active can
+ * predate it.
+ *
+ * Uncached, unlike the library's read: it is asked for on the return from a
+ * payment, which is the moment the purchase is recorded.
+ */
+export const findMyEpisodePurchase = async (
+  tenantId: string,
+  episodePublicId: string,
+  locale: Locale
+): Promise<PurchaseItem | null> => {
+  const accessToken = await resolveAccessToken();
+
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.purchase.listMyPurchases(
+      {
+        limit: defaultPurchasePageSize,
+        locale,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(accessToken)
+    );
+
+    return (
+      (response.purchases ?? [])
+        .map(mapPurchase)
+        .find(
+          ({ isActive, item }) =>
+            isActive &&
+            item.kind === "episode" &&
+            item.publicId === episodePublicId
+        ) ?? null
+    );
+  } catch (error) {
+    if (rpcErrorDisposition(error) === "unexpected") {
+      throw error;
+    }
+
+    return null;
+  }
 };

@@ -24,6 +24,7 @@ import type { TenantImageVariant } from "#lib/tenant";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
 import { episodeOffersCoins, toCoinOffer } from "../_lib/coin-offer";
+import { toPromotionCodeOffer } from "../_lib/promotion-code-offer";
 import { renewEpisodePageUrlsAction } from "../_lib/renew-page-urls-action";
 import { offersSubscription } from "../_lib/subscription-offer";
 import {
@@ -79,6 +80,7 @@ const EpisodeGatePlacement = ({
 
 export const EpisodeBody = async ({
   acceptsPayments,
+  acceptsPromotionCodes,
   access,
   appPayments,
   appStoreBadge,
@@ -97,6 +99,7 @@ export const EpisodeBody = async ({
   previewImages,
   previewPages,
   previousEpisode,
+  promotionCode,
   series,
   taxIncluded,
   tenantId,
@@ -104,6 +107,8 @@ export const EpisodeBody = async ({
   waitFree,
 }: {
   acceptsPayments: boolean;
+  /** Whether the tenant holds a promotion code a reader could enter. */
+  acceptsPromotionCodes: boolean;
   access: EpisodeAccessState;
   /** Where the tenant's app can sell an episode the site sends there. */
   appPayments: TenantAppPayments;
@@ -142,6 +147,8 @@ export const EpisodeBody = async ({
    */
   previewPages: EpisodeImageItem[];
   previousEpisode?: EpisodeNeighborItem;
+  /** The promotion code the URL carries for the gate; empty where none. */
+  promotionCode: string;
   series: EpisodeSeriesSummary;
   /** Whether the tenant states a tax rate, which every price includes. */
   taxIncluded: boolean;
@@ -308,13 +315,23 @@ export const EpisodeBody = async ({
   // while the tenant offers them.
   const coinsOffered = episodeOffersCoins(episode);
 
-  const [ticketState, coinBalance, coinSettings] = await Promise.all([
-    waitFreeEpisodeEligible(waitFree, episode.id)
-      ? getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
-      : undefined,
-    coinsOffered ? getMyCoinBalance(tenantId, locale) : undefined,
-    coinsOffered ? getCoinSettings(tenantId, locale) : undefined,
-  ]);
+  const [ticketState, coinBalance, coinSettings, promotionCodeOffer] =
+    await Promise.all([
+      waitFreeEpisodeEligible(waitFree, episode.id)
+        ? getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
+        : undefined,
+      coinsOffered ? getMyCoinBalance(tenantId, locale) : undefined,
+      coinsOffered ? getCoinSettings(tenantId, locale) : undefined,
+      toPromotionCodeOffer({
+        acceptsPayments,
+        acceptsPromotionCodes,
+        appPayments,
+        code: promotionCode,
+        episode,
+        sessionId,
+        tenantId,
+      }),
+    ]);
 
   const coinOffer = coinBalance
     ? toCoinOffer({
@@ -353,6 +370,7 @@ export const EpisodeBody = async ({
         nextFreeEpisode={nextFreeEpisode}
         previewEnded={viewer.value.previewPages.length > 0}
         price={episode.price}
+        promotionCode={promotionCodeOffer}
         purchaseSurface={episode.purchaseSurface}
         rentalPeriodHours={episode.rentalPeriodHours}
         rentalPrice={episode.rentalPrice}

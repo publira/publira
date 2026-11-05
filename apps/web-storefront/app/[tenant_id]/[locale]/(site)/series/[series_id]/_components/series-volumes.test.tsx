@@ -7,7 +7,9 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as PromotionCode from "#components/promotion-code";
 import type { VolumeItem } from "#lib/catalog";
+import type { PromotionCodeState } from "#lib/promotion-code";
 
 import {
   VolumeBookstoreLinks,
@@ -40,8 +42,20 @@ vi.mock("#lib/series-purchases", () => ({
   getMySeriesPurchaseState: mockGetMySeriesPurchaseState,
 }));
 
+vi.mock("#components/client-message", () => ({
+  useClientMessages: () => (message: string) => message,
+}));
+
 vi.mock("../_lib/actions", () => ({
+  applyVolumePromotionCodeAction: vi.fn(),
   startVolumeCheckoutAction: vi.fn(),
+}));
+
+vi.mock("#lib/api-client", () => ({ resolveAccessToken: vi.fn() }));
+
+vi.mock("../_lib/volume-promotion-code-offer", () => ({
+  quotableVolumeIds: vi.fn(),
+  toVolumePromotionCodeOffer: vi.fn(),
 }));
 
 afterEach(cleanup);
@@ -72,9 +86,11 @@ const renderControl = async (canSell = true) =>
     <div>
       {await VolumePurchaseControl({
         canSell,
+        currency: "JPY",
         locale: "en",
         seriesId: "SERIES_ID",
         seriesPublicId: "SERIES_001",
+        taxIncluded: false,
         tenantId: "TENANT_001",
         volume: VOLUME,
       })}
@@ -204,5 +220,61 @@ describe("VolumeBookstoreLinks", () => {
 
     expect(container.textContent).toBe("");
     expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+const renderUnder = async (
+  state: PromotionCodeState<string>,
+  action = vi.fn()
+) => {
+  mockGetMySeriesPurchaseState.mockResolvedValueOnce(owning());
+
+  const control = await VolumePurchaseControl({
+    canSell: true,
+    currency: "JPY",
+    locale: "en",
+    seriesId: "SERIES_ID",
+    seriesPublicId: "SERIES_001",
+    taxIncluded: false,
+    tenantId: "TENANT_001",
+    volume: VOLUME,
+  });
+
+  return render(
+    <PromotionCode.Root action={action} initialState={state}>
+      {control}
+    </PromotionCode.Root>
+  );
+};
+
+const hiddenCode = (button: HTMLElement) =>
+  button
+    .closest("form")
+    ?.querySelector<HTMLInputElement>('input[name="promotionCode"]')?.value;
+
+describe("the button of a volume a code applies to", () => {
+  it("names the discounted price and carries the code into the checkout", async () => {
+    await renderUnder({
+      code: "SPRING10",
+      kind: "applied",
+      quotes: { [VOLUME.id]: { listPrice: 350, price: 280 } },
+    });
+
+    const button = screen.getByRole("button");
+
+    expect(button.querySelector("s")).not.toBeNull();
+    expect(hiddenCode(button)).toBe("SPRING10");
+  });
+
+  it("keeps its price when the code does not apply to it", async () => {
+    await renderUnder({
+      code: "SPRING10",
+      kind: "applied",
+      quotes: { OTHER_VOLUME: { listPrice: 500, price: 400 } },
+    });
+
+    const button = screen.getByRole("button", { name: "Buy volume" });
+
+    expect(hiddenCode(button)).toBeUndefined();
   });
 });

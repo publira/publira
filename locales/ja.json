@@ -5842,7 +5842,9 @@
       "coin_pack_success": "ご購入ありがとうございます。決済が確認されると{$coin_name}が追加され、このエピソードの支払いに使えます。",
       "coin_pack_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
       "coin_price_changed": "このエピソードの{$coin_name}での価格が変わりました。新しい価格を確認して、もう一度お試しください。",
-      "coin_pay_error": "{$coin_name}で支払えませんでした。時間をおいて再試行してください。"
+      "coin_pay_error": "{$coin_name}で支払えませんでした。時間をおいて再試行してください。",
+      "checkout_paid": "お支払い金額",
+      "checkout_paid_error": "お支払い金額を表示できませんでした"
     },
     "errors": {
       "not_found_description": "お探しのページは削除されたか、URLが変更された可能性があります。ホームを開いてください。",
@@ -6532,6 +6534,21 @@
       "updated_error": "更新作品を表示できませんでした",
       "updated_heading": "更新作品",
       "view_all": "すべて見る"
+    },
+    "promotion_code": {
+      "label": "プロモーションコード",
+      "apply": "適用",
+      "applied": "コード{$code}を適用しました。",
+      "list_price": "割引前の価格",
+      "code": "コード{$code}",
+      "invalid": "このコードは無効です。",
+      "expired": "このコードは有効期限が切れています。",
+      "exhausted": "このコードは利用回数の上限に達しました。",
+      "already_redeemed": "このコードはすでに使用済みです。",
+      "not_applicable_episode": "このコードはこのエピソードには使えません。",
+      "not_applicable_volumes": "このコードはこれらの巻には使えません。",
+      "rate_limited": "コードの入力回数が多すぎます。しばらく待ってからもう一度お試しください。",
+      "error": "コードを確認できませんでした。もう一度お試しください。"
     }
   },
   "mobile": {

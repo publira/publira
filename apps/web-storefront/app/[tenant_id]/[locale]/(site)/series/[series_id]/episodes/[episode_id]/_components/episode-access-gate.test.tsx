@@ -27,6 +27,7 @@ vi.mock("#components/message", () => ({
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({ message }: { message: string }) => message,
+  useClientMessages: () => (message: string) => message,
 }));
 
 vi.mock("#components/locale-field", () => ({
@@ -76,6 +77,17 @@ const valuesOf = (button: HTMLElement | null) => {
     button.querySelector<HTMLElement>("[data-values]")?.dataset.values ?? "{}"
   );
 };
+
+const promotionCodeField = () =>
+  screen.queryByRole("textbox", {
+    name: "storefront.promotion_code.label",
+  });
+
+/** The promotion code a checkout button's form carries, if any. */
+const codeOf = (button: HTMLElement) =>
+  button
+    .closest("form")
+    ?.querySelector<HTMLInputElement>('input[name="promotionCode"]')?.value;
 
 const props = {
   appPayments: { appStore: false, googlePlay: false },
@@ -1011,6 +1023,116 @@ describe("EpisodeAccessGate", () => {
 
       expect(ticketButton()?.classList.contains("bg-secondary")).toBe(true);
       expect(coinPayButton()?.classList.contains("bg-secondary")).toBe(false);
+    });
+  });
+
+  describe("a promotion code", () => {
+    const sellable = {
+      ...props,
+      acceptsPayments: true,
+      rentalPeriodHours: 48,
+      rentalPrice: 199,
+    };
+
+    it("Is not offered on a tenant that holds no code a reader could enter", () => {
+      render(<EpisodeAccessGate {...sellable} />);
+
+      expect(promotionCodeField()).toBeNull();
+    });
+
+    it("Is not offered to a guest, who has no checkout to rewrite", () => {
+      render(
+        <EpisodeAccessGate
+          {...sellable}
+          promotionCode={{ kind: "none" }}
+          signedIn={false}
+        />
+      );
+
+      expect(promotionCodeField()).toBeNull();
+    });
+
+    it("Is offered under the checkout buttons, folded away until used", () => {
+      render(
+        <EpisodeAccessGate {...sellable} promotionCode={{ kind: "none" }} />
+      );
+
+      expect(promotionCodeField()).not.toBeNull();
+      expect(promotionCodeField()?.closest("details")?.open).toBe(false);
+      expect(codeOf(buyButton())).toBeUndefined();
+    });
+
+    it("Rewrite the price of each sale it applies to and carry it into that checkout", () => {
+      render(
+        <EpisodeAccessGate
+          {...sellable}
+          promotionCode={{
+            code: "SPRING10",
+            kind: "applied",
+            quotes: { purchase: { listPrice: 499, price: 399 } },
+          }}
+        />
+      );
+
+      const discounted = screen.getByRole("button", {
+        name: /storefront\.episode\.gate\.purchase_for.*\$4\.99/u,
+      });
+
+      expect(discounted.querySelector("s")?.textContent).toContain("$4.99");
+      expect(codeOf(discounted)).toBe("SPRING10");
+      expect(codeOf(rentButton())).toBeUndefined();
+      expect(valuesOf(rentButton())).toEqual({
+        period: "48 hours",
+        price: "$1.99",
+      });
+      expect(
+        screen.getByText("storefront.promotion_code.applied")
+      ).toBeDefined();
+      expect(promotionCodeField()?.closest("details")?.open).toBe(true);
+    });
+
+    it("Say the discounted price includes tax where the tenant states a rate", () => {
+      render(
+        <EpisodeAccessGate
+          {...sellable}
+          promotionCode={{
+            code: "SPRING10",
+            kind: "applied",
+            quotes: {
+              purchase: { listPrice: 499, price: 399 },
+              rental: { listPrice: 199, price: 159 },
+            },
+          }}
+          taxIncluded
+        />
+      );
+
+      expect(
+        screen.getByRole("button", {
+          name: /^storefront\.episode\.gate\.purchase_for_tax_included/u,
+        })
+      ).toBeDefined();
+      expect(
+        screen.getByRole("button", {
+          name: /^storefront\.episode\.gate\.rent_for_tax_included/u,
+        })
+      ).toBeDefined();
+    });
+
+    it("Say why a code was refused and leave the prices as they were", () => {
+      render(
+        <EpisodeAccessGate
+          {...sellable}
+          promotionCode={{ code: "NOPE", kind: "refused", reason: "expired" }}
+        />
+      );
+
+      expect(
+        screen.getByText("storefront.promotion_code.expired")
+      ).toBeDefined();
+      expect(valuesOf(buyButton())).toEqual({ price: "$4.99" });
+      expect(codeOf(buyButton())).toBeUndefined();
+      expect(promotionCodeField()?.closest("details")?.open).toBe(true);
     });
   });
 });

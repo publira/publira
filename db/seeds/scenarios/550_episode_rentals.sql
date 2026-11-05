@@ -7,6 +7,10 @@
 -- episodes 2 and 3 from the series page, a fourth buys every episode at the
 -- series' bundle discount, after the admin changes that discount on the
 -- series form, and a fifth buys episode 4 at the campaign price open on it.
+-- The admin then issues a promotion code from the console, which a sixth
+-- reader applies at episode 1's gate and buys it with, and a seventh enters a
+-- code the tenant does not hold. Episode 1 credits an Author, so the open
+-- month's royalties show what the code's sale is paid on.
 -- The payment settings decide whether the storefront sells anything, so no
 -- tenant another suite reads can absorb them.
 --
@@ -20,7 +24,10 @@
 --   admin    RntlADMNAAA1 (rentals-admin@example.com)
 --   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer),
 --            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer),
---            RntlMMBRAAA5 (Campaign Buyer)
+--            RntlMMBRAAA5 (Campaign Buyer), RntlMMBRAAA6 (Code Buyer),
+--            RntlMMBRAAA7 (Code Mistyper),
+--            RntlMMBRAAA8 (Volume Code Buyer)
+--   author   RntlAUTHAAA1 (Rental Artist), credited on episode 1
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
 --   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
@@ -28,7 +35,13 @@
 --            150 until 2036-03-30T15:00:00Z (campaign RntlCMPNAAA1)
 --   volume   RntlVOLMAAA1, episodes 2 and 3 for 350 yen
 
+DELETE FROM promotion_code_redemptions
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
+
 DELETE FROM purchases
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
+
+DELETE FROM promotion_codes
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
 
 DELETE FROM series_bundles
@@ -83,7 +96,7 @@ VALUES (
 \set seed_tenant RntlTNNTAAA1
 \ir ../creator_roles.sql
 
--- The admin and the five readers. The password hash is the same as
+-- The admin and the seven readers. The password hash is the same as
 -- `adminpass` for the admin and `memberpass` for the readers.
 INSERT INTO users (
     id,
@@ -148,6 +161,27 @@ CROSS JOIN (
             'campaign-buyer@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Campaign Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000007'::uuid,
+            'RntlMMBRAAA6',
+            'code-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Code Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000008'::uuid,
+            'RntlMMBRAAA7',
+            'code-mistyper@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Code Mistyper'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000009'::uuid,
+            'RntlMMBRAAA8',
+            'volume-code-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Volume Code Buyer'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -242,6 +276,39 @@ SELECT
     '2026-01-01T00:00:00Z'::timestamptz,
     e.tenant_id
 FROM episodes e
+WHERE e.public_id = 'RntlEPSDAAA1';
+
+-- Episode 1 credits an Author with half of each sale, so the open month's
+-- royalties have a line for it.
+INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
+SELECT
+    '018f1100-000c-7000-8000-000000000001'::uuid,
+    t.id,
+    'RntlAUTHAAA1',
+    'Rental Artist',
+    ''
+FROM tenants t
+WHERE t.public_id = 'RntlTNNTAAA1';
+
+INSERT INTO episode_creators (
+    tenant_id,
+    episode_id,
+    creator_id,
+    role_id,
+    display_order,
+    source,
+    share_bps
+)
+SELECT
+    e.tenant_id,
+    e.id,
+    '018f1100-000c-7000-8000-000000000001'::uuid,
+    r.id,
+    1,
+    'episode',
+    5000
+FROM episodes e
+JOIN creator_roles r ON r.tenant_id = e.tenant_id AND r.name = 'Artist'
 WHERE e.public_id = 'RntlEPSDAAA1';
 
 -- The later episodes are sold only to keep, for 200 yen each.

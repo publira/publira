@@ -5,6 +5,7 @@ import { resolveTenantIcons } from "./tenant-icon";
 
 const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   acceptsPayments: false,
+  acceptsPromotionCodes: false,
   ageVerification: "none",
   appPayments: { appStore: false, googlePlay: false },
   commentMode: "disabled",

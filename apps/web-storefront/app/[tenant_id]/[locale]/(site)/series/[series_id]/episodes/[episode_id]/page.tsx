@@ -35,6 +35,7 @@ import { shareText } from "#lib/share-text";
 import {
   getTenantSiteInfo,
   getTenantSiteLabel,
+  tenantAcceptsPromotionCodes,
   tenantSales,
 } from "#lib/tenant";
 import { resolveTenantBrandMarkVariant } from "#lib/tenant-brand-mark";
@@ -420,6 +421,7 @@ const EpisodeContent = async (
                   <EpisodeBody
                     access={access}
                     acceptsPayments={tenant?.acceptsPayments ?? false}
+                    acceptsPromotionCodes={tenantAcceptsPromotionCodes(tenant)}
                     appPayments={appPayments}
                     appStoreBadge={appStoreBadge}
                     appStoreUrl={tenant?.appStoreUrl}
@@ -437,6 +439,7 @@ const EpisodeContent = async (
                     previewImages={previewImages}
                     previewPages={previewPages}
                     previousEpisode={previousEpisode}
+                    promotionCode={purchaseSearchParams.promotion_code}
                     series={series}
                     taxIncluded={sales.taxIncluded}
                     tenantId={tenantId}
@@ -452,6 +455,8 @@ const EpisodeContent = async (
                 checkout={purchaseSearchParams.checkout}
                 coinName={episode.coinName}
                 coinPack={purchaseSearchParams.coin_pack}
+                episodePublicId={episode.publicId}
+                tenantId={tenantId}
               />
               <CoinsNotice
                 coinName={episode.coinName}

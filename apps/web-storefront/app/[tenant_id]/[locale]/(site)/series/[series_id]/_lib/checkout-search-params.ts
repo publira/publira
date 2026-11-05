@@ -2,6 +2,8 @@ import { searchParamEnum } from "@publira/utils/search-params";
 import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
+import { promotionCodeSearchParamSchema } from "#lib/promotion-code-search-param";
+
 /**
  * Where the reader comes back from a checkout started on the series page: the
  * provider's return names the outcome, and the Actions name `error` when the
@@ -13,10 +15,12 @@ const seriesCheckoutSearchParamsSchema = z.object({
   checkout: searchParamEnum(["cancelled", "error", "success"] as const, {
     fallback: "",
   }),
+  promotion_code: promotionCodeSearchParamSchema,
 });
 
 interface ParseSeriesCheckoutSearchParamsInput {
   checkout?: SearchParamValue;
+  promotion_code?: SearchParamValue;
 }
 
 export type SeriesCheckoutSearchParams = z.output<

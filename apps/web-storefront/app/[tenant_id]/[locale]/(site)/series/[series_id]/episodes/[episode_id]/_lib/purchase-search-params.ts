@@ -5,6 +5,8 @@ import {
 import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
+import { promotionCodeSearchParamSchema } from "#lib/promotion-code-search-param";
+
 const checkoutStateSchema = searchParamEnum(
   ["cancelled", "error", "success"] as const,
   { fallback: "" }
@@ -37,6 +39,7 @@ const purchaseSearchParamsSchema = z.object({
   checkout: checkoutStateSchema,
   coin_pack: coinPackSchema,
   coins: coinsStateSchema,
+  promotion_code: promotionCodeSearchParamSchema,
   session_id: checkoutSessionIDSchema,
   wait_free: waitFreeStateSchema,
 });
@@ -45,6 +48,7 @@ interface ParsePurchaseSearchParamsInput {
   checkout?: SearchParamValue;
   coin_pack?: SearchParamValue;
   coins?: SearchParamValue;
+  promotion_code?: SearchParamValue;
   session_id?: SearchParamValue;
   wait_free?: SearchParamValue;
 }

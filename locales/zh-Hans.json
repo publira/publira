@@ -5842,7 +5842,9 @@
       "coin_pack_success": "感谢您的购买。付款确认后将为您增加{$coin_name}，之后即可用于支付本章。",
       "coin_pack_cancelled": "购买已取消，未产生任何扣款。",
       "coin_price_changed": "本章的{$coin_name}价格已变更。请确认新价格后再试。",
-      "coin_pay_error": "无法使用{$coin_name}支付。请稍后再试。"
+      "coin_pay_error": "无法使用{$coin_name}支付。请稍后再试。",
+      "checkout_paid": "支付金额",
+      "checkout_paid_error": "无法显示支付金额"
     },
     "errors": {
       "not_found_description": "该页面可能已被删除，或其URL已变更。",
@@ -6532,6 +6534,21 @@
       "updated_error": "无法显示更新的作品",
       "updated_heading": "最近更新",
       "view_all": "查看全部"
+    },
+    "promotion_code": {
+      "label": "优惠码",
+      "apply": "使用",
+      "applied": "已使用优惠码{$code}。",
+      "list_price": "优惠前价格",
+      "code": "优惠码{$code}",
+      "invalid": "此优惠码无效。",
+      "expired": "此优惠码已过期。",
+      "exhausted": "此优惠码的使用次数已达上限。",
+      "already_redeemed": "您已使用过此优惠码。",
+      "not_applicable_episode": "此优惠码不适用于本章。",
+      "not_applicable_volumes": "此优惠码不适用于这些卷。",
+      "rate_limited": "输入优惠码的次数过多，请稍后再试。",
+      "error": "无法验证优惠码，请重试。"
     }
   },
   "mobile": {

@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -283,14 +283,23 @@ The list shows each code, newest first, with its discount, what it applies to, w
 
 Creating, editing, pausing, resuming, and deleting a code are each recorded in **Audit logs**.
 
+### Entering a code on the site
+
+A reader enters a code on the page of the episode they are buying, or once in the volumes section of a series, where it applies to every volume listed. While the tenant holds a code that is neither paused, deleted, nor past its end, a signed-in reader finds **Promotion code** under the episode's purchase buttons and above the volumes. A guest sees it once they sign in, and a tenant with no such code shows no field. The rest-of-series offer takes no code.
+
+The reader enters the code and chooses **Apply**. Each button the code applies to then names the discounted price, with the price before the code struck through beside it, and starts the checkout at that price: the payment page charges it and offers no code input of its own. A button the code does not apply to keeps its price. The code stays applied when the page is reloaded, and emptying the field and choosing **Apply** again takes it off.
+
+Back from the payment page of an episode, the episode says what the reader paid, with the price before the code struck through beside it and the code named. **Purchase history** under **Purchases** shows the same for an episode or a volume.
+
 ### When a code is refused
 
-A code that does not work is refused before the reader pays, and the reader is told why:
+A code that does not work is refused before the reader pays, and the reader is told why under the field:
 
 - No code of the tenant is spelled that way, or the code is deleted, paused, or has not started.
 - The code has ended.
 - The code does not apply to what the reader is buying.
 - The code has reached its **Total redemptions**, or the reader has made as many purchases with it as **Per reader** allows.
+- The reader has entered codes too many times in a short while, and is asked to wait and try again.
 
 ### When a code is redeemed
 

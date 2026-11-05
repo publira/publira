@@ -5,6 +5,7 @@ import { resolveTenantSignInImageVariant } from "./tenant-sign-in-image";
 
 const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   acceptsPayments: false,
+  acceptsPromotionCodes: false,
   ageVerification: "none",
   appPayments: { appStore: false, googlePlay: false },
   commentMode: "disabled",

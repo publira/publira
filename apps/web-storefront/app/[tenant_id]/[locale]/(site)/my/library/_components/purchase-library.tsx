@@ -2,13 +2,14 @@ import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDateTime, formatPrice } from "@publira/utils";
+import { formatDateTime } from "@publira/utils";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { PaidPrice } from "#components/paid-price";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -227,15 +228,21 @@ const PurchaseCard = async ({
         <div>
           <dt>{t("storefront.library.price")}</dt>
           <dd className="mt-1 text-foreground">
-            {purchase.coinsSpent
-              ? t("storefront.library.coins_spent", {
-                  coin_name: purchase.coinsSpent.coinName,
-                  count: purchase.coinsSpent.count,
-                })
-              : formatPrice(purchase.priceAtPurchase, {
-                  currency: purchase.currency,
-                  locale,
-                })}
+            {purchase.coinsSpent ? (
+              t("storefront.library.coins_spent", {
+                coin_name: purchase.coinsSpent.coinName,
+                count: purchase.coinsSpent.count,
+              })
+            ) : (
+              <PaidPrice
+                currency={purchase.currency}
+                listPrice={purchase.listPrice}
+                locale={locale}
+                price={purchase.priceAtPurchase}
+                promotionCode={purchase.promotionCode}
+                t={t}
+              />
+            )}
           </dd>
         </div>
         {isCoinPack ? null : (

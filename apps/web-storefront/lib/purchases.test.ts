@@ -1,8 +1,9 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tenantPurchasesTag } from "./cache-tags";
-import { listMyPurchases } from "./purchases";
+import { findMyEpisodePurchase, listMyPurchases } from "./purchases";
 
 const { mockCacheTag, mockListMyPurchases, mockResolveAccessToken } =
   vi.hoisted(() => ({
@@ -71,6 +72,42 @@ describe("listMyPurchases", () => {
 
     expect(result.purchases).toEqual([
       expect.objectContaining({ currency: "USD", priceAtPurchase: 499 }),
+    ]);
+  });
+
+  it("keeps the price before a promotion code and the code beside what was paid", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          currency: "JPY",
+          id: "PURCHASE01",
+          listPrice: 300,
+          priceAtPurchase: 240,
+          promotionCode: "SPRING10",
+        },
+        // A server that predates promotion codes answers no list price.
+        {
+          currency: "JPY",
+          id: "PURCHASE02",
+          listPrice: 0,
+          priceAtPurchase: 300,
+        },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(
+      result.purchases.map(({ listPrice, priceAtPurchase, promotionCode }) => ({
+        listPrice,
+        priceAtPurchase,
+        promotionCode,
+      }))
+    ).toEqual([
+      { listPrice: 300, priceAtPurchase: 240, promotionCode: "SPRING10" },
+      { listPrice: 300, priceAtPurchase: 300, promotionCode: "" },
     ]);
   });
 
@@ -229,5 +266,72 @@ describe("listMyPurchases", () => {
         revokedAt: "",
       }),
     ]);
+  });
+});
+
+const purchaseOf = (publicId: string, id: string, isActive = true) => ({
+  episode: { publicId },
+  id,
+  isActive,
+  kind: PurchaseKind.PURCHASE,
+});
+
+describe("findMyEpisodePurchase", () => {
+  beforeEach(() => {
+    mockResolveAccessToken.mockResolvedValue(ACCESS_TOKEN);
+  });
+
+  it("finds the newest purchase that opens the episode", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      purchases: [
+        purchaseOf("EP_OTHER", "other"),
+        purchaseOf("EP_001", "current"),
+        purchaseOf("EP_001", "older"),
+      ],
+    });
+
+    const purchase = await findMyEpisodePurchase(TENANT_ID, "EP_001", "en");
+
+    expect(purchase?.id).toBe("current");
+  });
+
+  it("does not take a rental that ran out, a refund, or a tip for the checkout still on its way", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      purchases: [purchaseOf("EP_001", "expired", false)],
+    });
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+  });
+
+  it("finds nothing for a guest", async () => {
+    mockResolveAccessToken.mockResolvedValueOnce("");
+    mockListMyPurchases.mockClear();
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+    expect(mockListMyPurchases).not.toHaveBeenCalled();
+  });
+
+  it("finds nothing when the list could not be read", async () => {
+    mockListMyPurchases.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(
+      findMyEpisodePurchase(TENANT_ID, "EP_001", "en")
+    ).resolves.toBeNull();
+  });
+
+  it("throws an answer it cannot account for, for the notice's boundary", async () => {
+    const failure = new ConnectError("internal", Code.Internal);
+
+    mockListMyPurchases.mockRejectedValueOnce(failure);
+
+    await expect(findMyEpisodePurchase(TENANT_ID, "EP_001", "en")).rejects.toBe(
+      failure
+    );
   });
 });

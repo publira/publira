@@ -3,8 +3,52 @@ import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { PaidPrice } from "#components/paid-price";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { findMyEpisodePurchase } from "#lib/purchases";
 
 import type { PurchaseSearchParams } from "../_lib/purchase-search-params";
+
+/**
+ * What the reader paid for the episode, once the provider's notification has
+ * recorded the purchase: the amount, and the price before a promotion code
+ * struck through beside it with the code named. Nothing while the purchase is
+ * not recorded yet; the library lists it from then on.
+ */
+const CheckoutPaid = async ({
+  episodePublicId,
+  tenantId,
+}: {
+  episodePublicId: string;
+  tenantId: string;
+}) => {
+  const locale = await getLocale();
+
+  const [purchase, t] = await Promise.all([
+    findMyEpisodePurchase(tenantId, episodePublicId, locale),
+    getMessagesFor(locale),
+  ]);
+
+  if (!purchase || purchase.coinsSpent) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-2 tabular-nums">
+      <span>{t("storefront.episode.checkout_paid")}</span>
+      <PaidPrice
+        currency={purchase.currency}
+        listPrice={purchase.listPrice}
+        locale={locale}
+        price={purchase.priceAtPurchase}
+        promotionCode={purchase.promotionCode}
+        t={t}
+      />
+    </span>
+  );
+};
 
 /**
  * What the episode says to a reader coming back from the payment provider.
@@ -19,8 +63,8 @@ import type { PurchaseSearchParams } from "../_lib/purchase-search-params";
  * It also says that the reader paid what the payment page showed. The checkout
  * prices the episode when it starts, so a campaign that ended after this page
  * quoted it was charged at the regular price, and a page rendered now no
- * longer knows which one the reader saw. The library is where what they paid
- * is written down.
+ * longer knows which one the reader saw. Once the purchase is recorded, the
+ * notice says what they paid, and the library keeps it written down.
  *
  * A reader the gate sent to buy a pack of coins comes back with the pack
  * named, and is told about the coins rather than the episode: the episode is
@@ -30,12 +74,16 @@ export const CheckoutNotice = ({
   checkout,
   coinName,
   coinPack,
+  episodePublicId,
+  tenantId,
 }: {
   checkout: PurchaseSearchParams["checkout"];
   /** The tenant's word for its coins in the reader's locale. */
   coinName: string;
   /** The public id of the pack the reader comes back from buying, or empty. */
   coinPack: PurchaseSearchParams["coin_pack"];
+  episodePublicId: string;
+  tenantId: string;
 }) => {
   if (coinPack && checkout === "success") {
     return (
@@ -68,6 +116,20 @@ export const CheckoutNotice = ({
             <Message message="storefront.episode.checkout_success" />
           </Suspense>
         </span>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="storefront.episode.checkout_paid_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={null}>
+            <CheckoutPaid
+              episodePublicId={episodePublicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
         <span>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.episode.checkout_charged" />

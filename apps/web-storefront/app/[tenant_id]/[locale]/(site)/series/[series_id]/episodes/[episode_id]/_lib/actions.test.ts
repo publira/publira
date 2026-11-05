@@ -3,6 +3,7 @@ import {
   ConnectError,
   ErrorInfoSchema,
 } from "@publira/api-client/errors";
+import { PromotionCodeQuote_Refusal } from "@publira/api-client/public/catalog";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,6 +11,7 @@ const {
   mockAssertSameOrigin,
   mockGetTenantSiteInfo,
   mockPayEpisodeWithCoins,
+  mockPreviewPromotionCode,
   mockRedirect,
   mockRedirectToLogin,
   mockRequirePublicSession,
@@ -20,6 +22,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockGetTenantSiteInfo: vi.fn(),
   mockPayEpisodeWithCoins: vi.fn(),
+  mockPreviewPromotionCode: vi.fn(),
   mockRedirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   }),
@@ -39,7 +42,10 @@ vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 vi.mock("#lib/api-client", () => ({
   apiClient: {
     coin: { payEpisodeWithCoins: mockPayEpisodeWithCoins },
-    purchase: { startEpisodeCheckout: mockStartEpisodeCheckout },
+    purchase: {
+      previewPromotionCode: mockPreviewPromotionCode,
+      startEpisodeCheckout: mockStartEpisodeCheckout,
+    },
     waitFree: { useTicket: mockUseTicket },
   },
   buildSessionHeaders: (sessionId: string) => ({
@@ -75,6 +81,14 @@ const checkoutForm = (): FormData => {
   return data;
 };
 
+const promotionCodeRefusal = (reason: string) =>
+  new ConnectError(
+    "promotion code refused",
+    Code.FailedPrecondition,
+    undefined,
+    [{ desc: ErrorInfoSchema, value: { domain: "publira", reason } }]
+  );
+
 describe("startEpisodeCheckoutAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,6 +110,7 @@ describe("startEpisodeCheckoutAction", () => {
       episodeId,
       kind: PurchaseKind.PURCHASE,
       locale: "en",
+      promotionCode: "",
       tenant: { tenantId },
     });
   });
@@ -163,6 +178,41 @@ describe("startEpisodeCheckoutAction", () => {
 
     await expect(startEpisodeCheckoutAction(checkoutForm())).rejects.toThrow(
       "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001"
+    );
+  });
+
+  it("Carry the applied promotion code into the checkout", async () => {
+    mockStartEpisodeCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://checkout.stripe.test/session",
+    });
+    const form = checkoutForm();
+    form.set("promotionCode", " SPRING10 ");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://checkout.stripe.test/session"
+    );
+    expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toMatchObject({
+      promotionCode: "SPRING10",
+    });
+    // A code that takes the whole price off records the purchase at once.
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${tenantId}:reader-access`
+    );
+  });
+
+  it("Return a code that stopped applying to the gate, which words why", async () => {
+    mockStartEpisodeCheckout.mockRejectedValueOnce(
+      promotionCodeRefusal("PROMOTION_CODE_EXHAUSTED")
+    );
+    const form = checkoutForm();
+    form.set("promotionCode", "SPRING10");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001?promotion_code=SPRING10"
     );
   });
 
@@ -403,6 +453,201 @@ describe("payEpisodeWithCoinsAction", () => {
 
     await expect(payEpisodeWithCoinsAction(coinPaymentForm())).rejects.toThrow(
       "boom"
+    );
+  });
+});
+
+const quoted = (quote: {
+  listPrice: number;
+  price: number;
+  refusal?: PromotionCodeQuote_Refusal;
+}) => ({ refusal: PromotionCodeQuote_Refusal.UNSPECIFIED, ...quote });
+
+const promotionCodeForm = (code: string, kinds = ["purchase"]): FormData => {
+  const data = checkoutForm();
+  data.set("promotionCode", code);
+
+  for (const kind of kinds) {
+    data.append("kinds", kind);
+  }
+
+  return data;
+};
+
+describe("applyEpisodePromotionCodeAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue("session-token");
+  });
+
+  it("Quote the code against each sale the gate offers", async () => {
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 300, price: 240 }),
+        quoted({ listPrice: 100, price: 80 }),
+      ],
+    });
+
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("spring10", ["purchase", "rental"])
+      )
+    ).resolves.toEqual({
+      code: "spring10",
+      kind: "applied",
+      quotes: {
+        purchase: { listPrice: 300, price: 240 },
+        rental: { listPrice: 100, price: 80 },
+      },
+    });
+    expect(mockPreviewPromotionCode).toHaveBeenCalledOnce();
+    expect(mockPreviewPromotionCode.mock.calls[0]?.[0]).toEqual({
+      code: "spring10",
+      sales: [
+        { episodeId, kind: PurchaseKind.PURCHASE },
+        { episodeId, kind: PurchaseKind.RENTAL },
+      ],
+      tenant: { tenantId },
+    });
+  });
+
+  it("Leave a sale the code does not apply to at its price", async () => {
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 300, price: 240 }),
+        quoted({
+          listPrice: 100,
+          price: 100,
+          refusal: PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+        }),
+      ],
+    });
+
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("SPRING10", ["purchase", "rental"])
+      )
+    ).resolves.toEqual({
+      code: "SPRING10",
+      kind: "applied",
+      quotes: { purchase: { listPrice: 300, price: 240 } },
+    });
+  });
+
+  it.each([
+    PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+    PromotionCodeQuote_Refusal.NOT_SOLD,
+    PromotionCodeQuote_Refusal.HELD,
+    PromotionCodeQuote_Refusal.READER_CREDITED,
+  ])(
+    "Say the code does not apply when every sale refuses it (%s)",
+    async (refusal) => {
+      mockPreviewPromotionCode.mockResolvedValueOnce({
+        quotes: [quoted({ listPrice: 300, price: 300, refusal })],
+      });
+
+      const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+      await expect(
+        applyEpisodePromotionCodeAction(
+          { kind: "none" },
+          promotionCodeForm("SPRING10")
+        )
+      ).resolves.toEqual({
+        code: "SPRING10",
+        kind: "refused",
+        reason: "not_applicable",
+      });
+    }
+  );
+
+  it.each([
+    ["PROMOTION_CODE_INVALID", "invalid"],
+    ["PROMOTION_CODE_EXPIRED", "expired"],
+    ["PROMOTION_CODE_EXHAUSTED", "exhausted"],
+    ["PROMOTION_CODE_ALREADY_REDEEMED", "already_redeemed"],
+  ])("Word the refusal %s as %s", async (reason, refusal) => {
+    mockPreviewPromotionCode.mockRejectedValueOnce(
+      promotionCodeRefusal(reason)
+    );
+
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("SPRING10")
+      )
+    ).resolves.toEqual({ code: "SPRING10", kind: "refused", reason: refusal });
+  });
+
+  it("Ask a reader past their allowance to wait", async () => {
+    mockPreviewPromotionCode.mockRejectedValueOnce(
+      new ConnectError("too many attempts", Code.ResourceExhausted)
+    );
+
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("SPRING10")
+      )
+    ).resolves.toEqual({
+      code: "SPRING10",
+      kind: "refused",
+      reason: "rate_limited",
+    });
+  });
+
+  it("Refuse a code no tenant could hold without spending a lookup", async () => {
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("SPRING-10")
+      )
+    ).resolves.toEqual({
+      code: "SPRING-10",
+      kind: "refused",
+      reason: "invalid",
+    });
+    expect(mockPreviewPromotionCode).not.toHaveBeenCalled();
+  });
+
+  it("Take the code off when the field is emptied", async () => {
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { code: "SPRING10", kind: "refused", reason: "invalid" },
+        promotionCodeForm("  ")
+      )
+    ).resolves.toEqual({ kind: "none" });
+    expect(mockPreviewPromotionCode).not.toHaveBeenCalled();
+  });
+
+  it("Send a reader whose session ended to sign in", async () => {
+    mockPreviewPromotionCode.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+    await expect(
+      applyEpisodePromotionCodeAction(
+        { kind: "none" },
+        promotionCodeForm("SPRING10")
+      )
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/en/login?returnTo=/series/SERIES_001/episodes/EP_001"
     );
   });
 });
