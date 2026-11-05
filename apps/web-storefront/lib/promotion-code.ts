@@ -5,6 +5,12 @@
  */
 export const PROMOTION_CODE_MAX_LENGTH = 32;
 
+/**
+ * The most sales one `PreviewPromotionCode` call quotes. The server refuses a
+ * longer list outright rather than quoting part of it.
+ */
+export const PROMOTION_CODE_MAX_SALES = 100;
+
 const PROMOTION_CODE_PATTERN = /^[A-Za-z0-9]{1,32}$/u;
 
 /**

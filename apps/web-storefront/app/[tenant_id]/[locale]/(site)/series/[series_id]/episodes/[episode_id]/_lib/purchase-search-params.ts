@@ -5,7 +5,7 @@ import {
 import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
-import { PROMOTION_CODE_MAX_LENGTH } from "#lib/promotion-code";
+import { promotionCodeSearchParamSchema } from "#lib/promotion-code-search-param";
 
 const checkoutStateSchema = searchParamEnum(
   ["cancelled", "error", "success"] as const,
@@ -35,21 +35,11 @@ const coinsStateSchema = searchParamEnum(
   { fallback: "" }
 );
 
-/**
- * The promotion code the reader applied at the gate, which the gate quotes
- * again when the page is reloaded. Longer than any code a tenant can hold is
- * no code.
- */
-const promotionCodeSchema = searchParamString({
-  fallback: "",
-  maxLength: PROMOTION_CODE_MAX_LENGTH,
-});
-
 const purchaseSearchParamsSchema = z.object({
   checkout: checkoutStateSchema,
   coin_pack: coinPackSchema,
   coins: coinsStateSchema,
-  promotion_code: promotionCodeSchema,
+  promotion_code: promotionCodeSearchParamSchema,
   session_id: checkoutSessionIDSchema,
   wait_free: waitFreeStateSchema,
 });

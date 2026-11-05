@@ -26,8 +26,11 @@ import { episodeCoinsPath } from "#lib/coins-path";
 import type { EpisodeCoinsOutcome } from "#lib/coins-path";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
-import { PROMOTION_CODE_MAX_LENGTH } from "#lib/promotion-code";
 import type { EpisodeSaleKind, PromotionCodeState } from "#lib/promotion-code";
+import {
+  promotionCodeFormSchema,
+  refusedForPromotionCode,
+} from "#lib/promotion-code-form";
 import { quoteEpisodePromotionCode } from "#lib/promotion-code-quote";
 import { recordIdSchema } from "#lib/record-id";
 import { getTenantSiteInfo } from "#lib/tenant";
@@ -51,29 +54,9 @@ const checkoutFormSchema = episodeFormSchema.extend({
   kind: z.enum(["purchase", "rental"]).default("purchase"),
 });
 
-/**
- * The code a checkout button carries once the gate applied one to its sale.
- * Empty, or absent, is no code.
- */
-const promotionCodeFormSchema = z
-  .string()
-  .trim()
-  .max(PROMOTION_CODE_MAX_LENGTH)
-  .default("");
-
 const episodeCheckoutFormSchema = checkoutFormSchema.extend({
   promotionCode: promotionCodeFormSchema,
 });
-
-/** Whether a checkout was refused for the code it carried. */
-const refusedForPromotionCode = (cause: unknown): boolean =>
-  [
-    RPC_ERROR_REASON.promotionCodeAlreadyRedeemed,
-    RPC_ERROR_REASON.promotionCodeExhausted,
-    RPC_ERROR_REASON.promotionCodeExpired,
-    RPC_ERROR_REASON.promotionCodeInvalid,
-    RPC_ERROR_REASON.promotionCodeNotApplicable,
-  ].some((reason) => rpcErrorHasReason(cause, reason));
 
 const purchaseKinds = {
   purchase: PurchaseKind.PURCHASE,
@@ -227,11 +210,11 @@ const promotionCodeQuoteFormSchema = episodeFormSchema.extend({
  * offer, for the gate to rewrite their prices with.
  *
  * The answer is the field's state, not a redirect: the quote spends one of the
- * reader's lookups per sale, and a page that read the code back from the URL
- * to show it would spend them again. An empty field takes the code off.
+ * reader's lookups, and a page that read the code back from the URL to show it
+ * would spend another. An empty field takes the code off.
  */
 export const applyEpisodePromotionCodeAction = async (
-  _previous: PromotionCodeState<EpisodeSaleKind>,
+  _previous: PromotionCodeState<string>,
   formData: FormData
 ): Promise<PromotionCodeState<EpisodeSaleKind>> => {
   await assertSameOrigin();

@@ -58,8 +58,10 @@ import { fallbackLanguage } from "#lib/served-locale";
 import { shareText } from "#lib/share-text";
 import {
   getTenantDisplayTimeZone,
-  getTenantSales,
+  getTenantSiteInfo,
   getTenantSiteLabel,
+  tenantAcceptsPromotionCodes,
+  tenantSales,
 } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
@@ -336,10 +338,10 @@ const SeriesDetailContent = async (
   // public site must not tell those apart. A failed read is a value as well:
   // a `"use cache"` fill that throws fails the whole request, so neither this
   // page nor any boundary would get to render anything.
-  const [result, timeZone, sales] = await Promise.all([
+  const [result, timeZone, tenant] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
     getTenantDisplayTimeZone(tenantId),
-    getTenantSales(tenantId),
+    getTenantSiteInfo(tenantId),
   ]);
 
   if (!result.ok) {
@@ -352,6 +354,7 @@ const SeriesDetailContent = async (
 
   const { episodes, series, volumes } = result.value;
   const [firstEpisode] = episodes;
+  const sales = tenantSales(tenant);
   const waitFreeExcludedIds = new Set(series.waitFree?.excludedEpisodeIds);
 
   // Read only for a series that carries a rating: an unrated page has nothing
@@ -610,8 +613,10 @@ const SeriesDetailContent = async (
               }
             >
               <SeriesVolumes
+                acceptsPromotionCodes={tenantAcceptsPromotionCodes(tenant)}
                 locale={locale}
                 sales={sales}
+                searchParams={props.searchParams}
                 seriesEyeCatchImageVariants={series.eyeCatchImageVariants}
                 seriesId={series.id}
                 seriesPublicId={series.publicId}

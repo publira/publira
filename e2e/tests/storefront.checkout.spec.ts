@@ -551,6 +551,47 @@ test.describe("web-storefront checkout", () => {
       }
     });
 
+    test("a reader applies the admin's code to the volumes and buys one at the discounted price", async ({
+      page,
+    }) => {
+      await signInAsMember(
+        page,
+        EPISODE_RENTALS_READERS.volumeCodeBuyer,
+        episodeRentalsSeriesPath,
+        WEB_STOREFRONT_RENTALS_BASE_URL
+      );
+
+      const volume = volumeCard(page);
+      await expect(
+        volume.getByRole("button", { name: "Buy volume" })
+      ).toBeVisible();
+
+      await applyCode(page, code);
+      await expect(page.getByText(`Code ${code} applied.`)).toBeVisible();
+      const buy = volume.getByRole("button", { name: /^Buy for ¥175/u });
+      await expect(buy).toBeVisible();
+      await expect(buy.locator("s")).toHaveText("Price before the code ¥350");
+      await expect(page).toHaveURL(new RegExp(`promotion_code=${code}`, "u"));
+
+      // A reload quotes the code the URL kept.
+      await page.reload();
+      await expect(buy).toBeVisible();
+
+      await buy.click();
+      await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
+      await expect(page.getByLabel("Add promotion code")).toHaveCount(0);
+      await pay(
+        page,
+        EPISODE_RENTALS_VOLUME.title,
+        "¥175",
+        episodeRentalsSeriesPath
+      );
+      await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
+      await expect(
+        volume.getByText("You own every episode in this volume")
+      ).toBeVisible();
+    });
+
     test("a reader who enters a code the tenant does not hold is told so, and the prices stay", async ({
       page,
     }) => {

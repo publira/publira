@@ -19,21 +19,20 @@ import type {
   PromotionCodeState,
 } from "#lib/promotion-code";
 
-import { applyEpisodePromotionCodeAction } from "../_lib/actions";
-
-type EpisodePromotionCodeState = PromotionCodeState<EpisodeSaleKind>;
+/** The state of the field, with each sale named by a string of its caller's. */
+type SalesPromotionCodeState = PromotionCodeState<string>;
 
 interface PromotionCodeContextValue {
   apply: (formData: FormData) => void;
   pending: boolean;
-  state: EpisodePromotionCodeState;
+  state: SalesPromotionCodeState;
 }
 
 const PromotionCodeContext = createContext<PromotionCodeContextValue | null>(
   null
 );
 
-/** The search parameter the gate reads an applied code back from. */
+/** The search parameter a page reads an applied code back from. */
 const PROMOTION_CODE_PARAM = "promotion_code";
 
 /**
@@ -54,24 +53,30 @@ const keepPromotionCodeInUrl = (code: string): void => {
 };
 
 /**
- * Holds the gate's code: what the field applied, and the price of each sale
- * it applies to, which the checkout buttons below render from. The buttons
- * and the field sit apart in the gate, so the state is shared through context
- * rather than through a common parent's markup.
+ * Holds a page's code: what the field applied, and the price of each sale it
+ * applies to, which the checkout buttons render from. The buttons and the
+ * field sit apart, so the state is shared through context rather than through
+ * a common parent's markup.
  *
- * `initialState` is the code the URL carried, quoted on the server; the gate
- * remounts this with a new `key` when the URL brings another one.
+ * `initialState` is the code the URL carried, quoted on the server; the page
+ * remounts this with a new `key` when the URL brings another one. `action`
+ * quotes the code the field posts.
  */
 export const PromotionCodeProvider = ({
+  action,
   children,
   initialState,
 }: {
+  action: (
+    previous: SalesPromotionCodeState,
+    formData: FormData
+  ) => Promise<SalesPromotionCodeState>;
   children: ReactNode;
-  initialState: EpisodePromotionCodeState;
+  initialState: SalesPromotionCodeState;
 }) => {
   const [state, apply, pending] = useActionState(
-    async (previous: EpisodePromotionCodeState, formData: FormData) => {
-      const next = await applyEpisodePromotionCodeAction(previous, formData);
+    async (previous: SalesPromotionCodeState, formData: FormData) => {
+      const next = await action(previous, formData);
       keepPromotionCodeInUrl(next.kind === "applied" ? next.code : "");
 
       return next;
@@ -87,8 +92,8 @@ export const PromotionCodeProvider = ({
   return <PromotionCodeContext value={value}>{children}</PromotionCodeContext>;
 };
 
-/** The code applied to `kind` and its price there, if the field applied one. */
-const useAppliedQuote = (kind: EpisodeSaleKind) => {
+/** The code applied to `sale` and its price there, if the field applied one. */
+const useAppliedQuote = (sale: string) => {
   const context = use(PromotionCodeContext);
   const state = context?.state;
 
@@ -96,7 +101,7 @@ const useAppliedQuote = (kind: EpisodeSaleKind) => {
     return null;
   }
 
-  const quote = state.quotes[kind];
+  const quote = state.quotes[sale];
 
   return quote ? { code: state.code, quote } : null;
 };
@@ -119,16 +124,17 @@ const DiscountedLabel = ({
   kind: EpisodeSaleKind;
   locale: Locale;
   quote: PromotionCodeQuote;
-  rentalPeriodHours: number;
+  rentalPeriodHours?: number;
   taxIncluded: boolean;
 }) => {
   const t = useClientMessages();
   const price = formatPrice(quote.price, { currency, locale });
-  const period = formatDuration({ hours: rentalPeriodHours }, { locale });
 
   let label = t("storefront.episode.gate.purchase_for", { price });
 
   if (kind === "rental") {
+    const period = formatDuration({ hours: rentalPeriodHours }, { locale });
+
     label = taxIncluded
       ? t("storefront.episode.gate.rent_for_tax_included", { period, price })
       : t("storefront.episode.gate.rent_for", { period, price });
@@ -150,34 +156,40 @@ const DiscountedLabel = ({
 };
 
 /**
- * A checkout button of the gate. Without a code it reads as `children`. Once
- * the field applied a code to its sale, it carries the code into the checkout
- * and names the discounted price.
+ * A checkout button. Without a code it reads as `children`. Once the field
+ * applied a code to its sale, it carries the code into the checkout and names
+ * the discounted price.
  */
 export const CheckoutSubmit = ({
   children,
   currency,
-  kind,
+  kind = "purchase",
   locale,
   rentalPeriodHours,
+  sale,
+  size,
   taxIncluded,
   variant,
 }: {
   /** What the button says while no code applies to its sale. */
   children: ReactNode;
   currency: string | null;
-  kind: EpisodeSaleKind;
+  /** Which wording the discounted price takes. */
+  kind?: EpisodeSaleKind;
   locale: Locale;
-  rentalPeriodHours: number;
+  rentalPeriodHours?: number;
+  /** The key the page's `action` answers this sale's quote under. */
+  sale: string;
+  size?: "lg";
   /** Whether the tenant states a tax rate, which every price includes. */
   taxIncluded: boolean;
   variant: "outline" | "secondary";
 }) => {
-  const applied = useAppliedQuote(kind);
+  const applied = useAppliedQuote(sale);
 
   if (!applied || !currency) {
     return (
-      <Button size="lg" type="submit" variant={variant}>
+      <Button size={size} type="submit" variant={variant}>
         {children}
       </Button>
     );
@@ -186,7 +198,7 @@ export const CheckoutSubmit = ({
   return (
     <>
       <input name="promotionCode" type="hidden" value={applied.code} />
-      <Button size="lg" type="submit" variant={variant}>
+      <Button size={size} type="submit" variant={variant}>
         <DiscountedLabel
           currency={currency}
           kind={kind}
@@ -201,7 +213,13 @@ export const CheckoutSubmit = ({
 };
 
 /** What the field says under itself for each refusal. */
-const RefusalMessage = ({ reason }: { reason: PromotionCodeRefusal }) => {
+const RefusalMessage = ({
+  reason,
+  subject,
+}: {
+  reason: PromotionCodeRefusal;
+  subject: PromotionCodeSubject;
+}) => {
   const t = useClientMessages();
 
   switch (reason) {
@@ -222,7 +240,9 @@ const RefusalMessage = ({ reason }: { reason: PromotionCodeRefusal }) => {
     }
 
     case "not_applicable": {
-      return t("storefront.promotion_code.not_applicable_episode");
+      return subject === "volumes"
+        ? t("storefront.promotion_code.not_applicable_volumes")
+        : t("storefront.promotion_code.not_applicable_episode");
     }
 
     case "rate_limited": {
@@ -235,31 +255,28 @@ const RefusalMessage = ({ reason }: { reason: PromotionCodeRefusal }) => {
   }
 };
 
+/** What the code is quoted against, which a refusal names. */
+type PromotionCodeSubject = "episode" | "volumes";
+
 interface PromotionCodeFieldProps {
-  episodeId: string;
-  episodePublicId: string;
-  /** The sales the gate's buttons offer. */
-  kinds: readonly EpisodeSaleKind[];
-  seriesPublicId: string;
-  tenantId: string;
+  /** The hidden fields `action` reads beside the code. */
+  children: ReactNode;
+  subject: PromotionCodeSubject;
 }
 
 /**
- * The gate's **Promotion code** disclosure: a field and **Apply**, which
- * quote the code against each sale in `kinds`. It opens by itself while a
- * code is applied or refused, so the answer is never folded away.
+ * The **Promotion code** disclosure: a field and **Apply**, which quote the
+ * code against the sales on the page. It opens by itself while a code is
+ * applied or refused, so the answer is never folded away.
  *
  * Applied, it names the code; refused, it says why under the field and leaves
  * the buttons at their prices. Emptying the field and applying takes the code
  * off.
  */
 const PromotionCodeDisclosure = ({
+  children,
   context: { apply, pending, state },
-  episodeId,
-  episodePublicId,
-  kinds,
-  seriesPublicId,
-  tenantId,
+  subject,
 }: PromotionCodeFieldProps & { context: PromotionCodeContextValue }) => {
   const t = useClientMessages();
   const code = state.kind === "none" ? "" : state.code;
@@ -271,13 +288,7 @@ const PromotionCodeDisclosure = ({
       </summary>
       <form action={apply} className="mt-3 grid gap-2 text-left">
         <LocaleField />
-        <input name="tenantId" type="hidden" value={tenantId} />
-        <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
-        <input name="episodePublicId" type="hidden" value={episodePublicId} />
-        <input name="episodeId" type="hidden" value={episodeId} />
-        {kinds.map((kind) => (
-          <input key={kind} name="kinds" type="hidden" value={kind} />
-        ))}
+        {children}
         <Field.Root>
           <Field.Label className="sr-only">
             {t("storefront.promotion_code.label")}
@@ -301,7 +312,7 @@ const PromotionCodeDisclosure = ({
         </Field.Root>
         {state.kind === "refused" ? (
           <FormMessage variant="destructive">
-            <RefusalMessage reason={state.reason} />
+            <RefusalMessage reason={state.reason} subject={subject} />
           </FormMessage>
         ) : null}
         {state.kind === "applied" ? (
@@ -314,7 +325,7 @@ const PromotionCodeDisclosure = ({
   );
 };
 
-/** Nothing where the gate offers no code, outside `PromotionCodeProvider`. */
+/** Nothing where a page offers no code, outside `PromotionCodeProvider`. */
 export const PromotionCodeField = (props: PromotionCodeFieldProps) => {
   const context = use(PromotionCodeContext);
 

@@ -6545,6 +6545,7 @@
       "exhausted": "此促銷代碼的使用次數已達上限。",
       "already_redeemed": "您已使用過此促銷代碼。",
       "not_applicable_episode": "此促銷代碼不適用於本章。",
+      "not_applicable_volumes": "此促銷代碼不適用於這些卷。",
       "rate_limited": "輸入促銷代碼的次數過多，請稍後再試。",
       "error": "無法驗證促銷代碼，請重試。"
     }

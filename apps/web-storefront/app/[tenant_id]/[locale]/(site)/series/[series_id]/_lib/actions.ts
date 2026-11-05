@@ -6,6 +6,7 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -13,8 +14,16 @@ import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
+import { tenantPurchasesTag, tenantReaderAccessTag } from "#lib/cache-tags";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { PROMOTION_CODE_MAX_SALES } from "#lib/promotion-code";
+import type { PromotionCodeState } from "#lib/promotion-code";
+import {
+  promotionCodeFormSchema,
+  refusedForPromotionCode,
+} from "#lib/promotion-code-form";
+import { quoteVolumePromotionCode } from "#lib/promotion-code-quote";
 import { recordIdSchema } from "#lib/record-id";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -26,7 +35,17 @@ const seriesFormSchema = z.object({
 });
 
 const volumeCheckoutFormSchema = seriesFormSchema.extend({
+  promotionCode: promotionCodeFormSchema,
   volumeId: recordIdSchema,
+});
+
+/**
+ * The volumes section's code field: the code the reader typed and the volumes
+ * on sale there, which are the ones the code is quoted against.
+ */
+const volumePromotionCodeFormSchema = seriesFormSchema.extend({
+  promotionCode: promotionCodeFormSchema,
+  volumeIds: z.array(recordIdSchema).min(1).max(PROMOTION_CODE_MAX_SALES),
 });
 
 const remainderCheckoutFormSchema = seriesFormSchema.extend({
@@ -45,10 +64,17 @@ const seriesPath = (seriesPublicId: string): string =>
  * Every refusal the page already words leads back to it, which reads what the
  * reader holds again and says what is true now: a volume or a rest of the
  * series already bought, one taken off sale, or one with nothing left to sell.
- * Anything else is the page's `checkout=error` notice.
+ * A code that stopped applying between the quote and the press leads back with
+ * the code, which quotes it again and says why. Anything else is the page's
+ * `checkout=error` notice.
  */
 const startCheckout = async (
-  { locale, seriesPublicId, tenantId }: SeriesForm,
+  {
+    locale,
+    promotionCode = "",
+    seriesPublicId,
+    tenantId,
+  }: SeriesForm & { promotionCode?: string },
   start: (sessionId: string) => Promise<{ checkoutUrl: string }>
 ): Promise<never> => {
   // `returnTo` stays locale-less, the shape `sanitizeRedirectPath` stores;
@@ -74,6 +100,16 @@ const startCheckout = async (
       await redirectToLogin(locale, returnTo, tenantId);
     }
 
+    if (promotionCode && refusedForPromotionCode(error)) {
+      redirect(
+        await tenantLocalePath(
+          tenantId,
+          locale,
+          `${returnTo}?${new URLSearchParams({ promotion_code: promotionCode }).toString()}`
+        )
+      );
+    }
+
     if (
       isRpcError(
         error,
@@ -94,6 +130,13 @@ const startCheckout = async (
     );
   }
 
+  // A code that takes the whole price off records the purchase at once, and
+  // the URL answered is the page's own return from a payment.
+  if (promotionCode) {
+    updateTag(tenantReaderAccessTag(tenantId));
+    updateTag(tenantPurchasesTag(tenantId));
+  }
+
   redirect(checkoutURL);
 };
 
@@ -106,6 +149,7 @@ export const startVolumeCheckoutAction = async (
   const parsed = volumeCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
+      promotionCode: "value",
       seriesPublicId: "value",
       tenantId: "value",
       volumeId: "value",
@@ -116,13 +160,63 @@ export const startVolumeCheckoutAction = async (
     redirect("/");
   }
 
-  const { tenantId, volumeId } = parsed.data;
+  const { promotionCode, tenantId, volumeId } = parsed.data;
   await startCheckout(parsed.data, (sessionId) =>
     apiClient.purchase.startVolumeCheckout(
-      { tenant: { tenantId }, volumeId },
+      { promotionCode, tenant: { tenantId }, volumeId },
       buildSessionHeaders(sessionId)
     )
   );
+};
+
+/**
+ * Quote the code the reader typed in the volumes section against the volumes
+ * on sale there, for the section to rewrite their buttons with.
+ *
+ * The answer is the field's state, not a redirect: the quote spends one of the
+ * reader's lookups, and a page that read the code back from the URL to show it
+ * would spend another. An empty field takes the code off.
+ */
+export const applyVolumePromotionCodeAction = async (
+  _previous: PromotionCodeState<string>,
+  formData: FormData
+): Promise<PromotionCodeState<string>> => {
+  await assertSameOrigin();
+
+  const parsed = volumePromotionCodeFormSchema.safeParse(
+    toFormDataInput(formData, {
+      locale: "value",
+      promotionCode: "value",
+      seriesPublicId: "value",
+      tenantId: "value",
+      volumeIds: "values",
+    })
+  );
+
+  if (!parsed.success) {
+    redirect("/");
+  }
+
+  const { locale, promotionCode, seriesPublicId, tenantId, volumeIds } =
+    parsed.data;
+
+  const returnTo = seriesPath(seriesPublicId);
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
+
+  try {
+    return await quoteVolumePromotionCode({
+      code: promotionCode,
+      sessionId,
+      tenantId,
+      volumeIds: [...new Set(volumeIds)],
+    });
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      await redirectToLogin(locale, returnTo, tenantId);
+    }
+
+    throw error;
+  }
 };
 
 /**

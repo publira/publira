@@ -6545,6 +6545,7 @@
       "exhausted": "This code has been used up.",
       "already_redeemed": "You have already used this code.",
       "not_applicable_episode": "This code can't be used on this episode.",
+      "not_applicable_volumes": "This code can't be used on these volumes.",
       "rate_limited": "Too many codes entered. Wait a moment and try again.",
       "error": "The code could not be checked. Try again."
     }

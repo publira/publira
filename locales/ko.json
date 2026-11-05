@@ -6545,6 +6545,7 @@
       "exhausted": "사용 횟수 한도에 도달한 코드입니다.",
       "already_redeemed": "이미 사용한 코드입니다.",
       "not_applicable_episode": "이 에피소드에는 사용할 수 없는 코드입니다.",
+      "not_applicable_volumes": "이 권에는 사용할 수 없는 코드입니다.",
       "rate_limited": "코드 입력 횟수가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
       "error": "코드를 확인하지 못했습니다. 다시 시도해 주세요."
     }

@@ -25,7 +25,8 @@
 --   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer),
 --            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer),
 --            RntlMMBRAAA5 (Campaign Buyer), RntlMMBRAAA6 (Code Buyer),
---            RntlMMBRAAA7 (Code Mistyper)
+--            RntlMMBRAAA7 (Code Mistyper),
+--            RntlMMBRAAA8 (Volume Code Buyer)
 --   author   RntlAUTHAAA1 (Rental Artist), credited on episode 1
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
@@ -174,6 +175,13 @@ CROSS JOIN (
             'code-mistyper@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Code Mistyper'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000009'::uuid,
+            'RntlMMBRAAA8',
+            'volume-code-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Volume Code Buyer'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';

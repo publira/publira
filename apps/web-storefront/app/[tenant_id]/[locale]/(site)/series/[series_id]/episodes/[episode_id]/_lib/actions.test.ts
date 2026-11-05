@@ -3,6 +3,7 @@ import {
   ConnectError,
   ErrorInfoSchema,
 } from "@publira/api-client/errors";
+import { PromotionCodeQuote_Refusal } from "@publira/api-client/public/catalog";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -456,6 +457,12 @@ describe("payEpisodeWithCoinsAction", () => {
   });
 });
 
+const quoted = (quote: {
+  listPrice: number;
+  price: number;
+  refusal?: PromotionCodeQuote_Refusal;
+}) => ({ refusal: PromotionCodeQuote_Refusal.UNSPECIFIED, ...quote });
+
 const promotionCodeForm = (code: string, kinds = ["purchase"]): FormData => {
   const data = checkoutForm();
   data.set("promotionCode", code);
@@ -474,9 +481,12 @@ describe("applyEpisodePromotionCodeAction", () => {
   });
 
   it("Quote the code against each sale the gate offers", async () => {
-    mockPreviewPromotionCode
-      .mockResolvedValueOnce({ listPrice: 300, price: 240 })
-      .mockResolvedValueOnce({ listPrice: 100, price: 80 });
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 300, price: 240 }),
+        quoted({ listPrice: 100, price: 80 }),
+      ],
+    });
 
     const { applyEpisodePromotionCodeAction } = await import("./actions");
 
@@ -493,30 +503,28 @@ describe("applyEpisodePromotionCodeAction", () => {
         rental: { listPrice: 100, price: 80 },
       },
     });
-    expect(
-      mockPreviewPromotionCode.mock.calls.map(([request]) => request)
-    ).toEqual([
-      {
-        code: "spring10",
-        episodeId,
-        kind: PurchaseKind.PURCHASE,
-        tenant: { tenantId },
-      },
-      {
-        code: "spring10",
-        episodeId,
-        kind: PurchaseKind.RENTAL,
-        tenant: { tenantId },
-      },
-    ]);
+    expect(mockPreviewPromotionCode).toHaveBeenCalledOnce();
+    expect(mockPreviewPromotionCode.mock.calls[0]?.[0]).toEqual({
+      code: "spring10",
+      sales: [
+        { episodeId, kind: PurchaseKind.PURCHASE },
+        { episodeId, kind: PurchaseKind.RENTAL },
+      ],
+      tenant: { tenantId },
+    });
   });
 
   it("Leave a sale the code does not apply to at its price", async () => {
-    mockPreviewPromotionCode
-      .mockResolvedValueOnce({ listPrice: 300, price: 240 })
-      .mockRejectedValueOnce(
-        promotionCodeRefusal("PROMOTION_CODE_NOT_APPLICABLE")
-      );
+    mockPreviewPromotionCode.mockResolvedValueOnce({
+      quotes: [
+        quoted({ listPrice: 300, price: 240 }),
+        quoted({
+          listPrice: 100,
+          price: 100,
+          refusal: PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+        }),
+      ],
+    });
 
     const { applyEpisodePromotionCodeAction } = await import("./actions");
 
@@ -533,11 +541,37 @@ describe("applyEpisodePromotionCodeAction", () => {
   });
 
   it.each([
+    PromotionCodeQuote_Refusal.NOT_APPLICABLE,
+    PromotionCodeQuote_Refusal.NOT_SOLD,
+    PromotionCodeQuote_Refusal.HELD,
+    PromotionCodeQuote_Refusal.READER_CREDITED,
+  ])(
+    "Say the code does not apply when every sale refuses it (%s)",
+    async (refusal) => {
+      mockPreviewPromotionCode.mockResolvedValueOnce({
+        quotes: [quoted({ listPrice: 300, price: 300, refusal })],
+      });
+
+      const { applyEpisodePromotionCodeAction } = await import("./actions");
+
+      await expect(
+        applyEpisodePromotionCodeAction(
+          { kind: "none" },
+          promotionCodeForm("SPRING10")
+        )
+      ).resolves.toEqual({
+        code: "SPRING10",
+        kind: "refused",
+        reason: "not_applicable",
+      });
+    }
+  );
+
+  it.each([
     ["PROMOTION_CODE_INVALID", "invalid"],
     ["PROMOTION_CODE_EXPIRED", "expired"],
     ["PROMOTION_CODE_EXHAUSTED", "exhausted"],
     ["PROMOTION_CODE_ALREADY_REDEEMED", "already_redeemed"],
-    ["PROMOTION_CODE_NOT_APPLICABLE", "not_applicable"],
   ])("Word the refusal %s as %s", async (reason, refusal) => {
     mockPreviewPromotionCode.mockRejectedValueOnce(
       promotionCodeRefusal(reason)

@@ -102,6 +102,12 @@ export const EPISODE_RENTALS_READERS = {
     password: "memberpass",
     publicId: "RntlMMBRAAA3",
   },
+  /** Applies the admin's promotion code to the volumes and buys one. */
+  volumeCodeBuyer: {
+    email: "volume-code-buyer@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA8",
+  },
 } as const;
 
 export const episodeRentalsSeriesPath = `/series/${EPISODE_RENTALS_SERIES.publicId}`;
