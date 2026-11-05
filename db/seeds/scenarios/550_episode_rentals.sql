@@ -31,7 +31,7 @@
 --            RntlMMBRAAA8 (Volume Code Buyer),
 --            RntlMMBRAAA9 (Rental Tipper), who holds episode 1 and gave a tip
 --            of 300 yen on it
---   author   RntlAUTHAAA1 (Mina Ito), credited on episode 1
+--   creator  RntlCRTRAAA1 (Mina Ito), credited on episode 1
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
 --   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
@@ -303,7 +303,7 @@ INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
     '018f1100-000c-7000-8000-000000000001'::uuid,
     t.id,
-    'RntlAUTHAAA1',
+    'RntlCRTRAAA1',
     'Mina Ito',
     ''
 FROM tenants t

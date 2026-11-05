@@ -8,8 +8,8 @@ import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
 import {
   EPISODE_RENTALS_ADMIN,
-  EPISODE_RENTALS_AUTHOR,
   EPISODE_RENTALS_CAMPAIGN,
+  EPISODE_RENTALS_CREATOR,
   EPISODE_RENTALS_EPISODE,
   EPISODE_RENTALS_LATER_EPISODES,
   EPISODE_RENTALS_READERS,
@@ -315,7 +315,7 @@ test.describe("web-storefront checkout", () => {
 
     const dialog = page.getByRole("dialog", { name: "Tip the Authors" });
 
-    await expect(dialog).toContainText(`To ${EPISODE_RENTALS_AUTHOR.name}`);
+    await expect(dialog).toContainText(`To ${EPISODE_RENTALS_CREATOR.name}`);
     await Promise.all(
       EPISODE_RENTALS_TIP.amounts.map((name) =>
         expect(dialog.getByRole("button", { name })).toBeVisible()
@@ -613,7 +613,7 @@ test.describe("web-storefront checkout", () => {
           expect(await openMonthSales(admin)).toBe(salesBefore + 300);
         }).toPass({ timeout: 30_000 });
         await expect(
-          admin.getByRole("rowheader", { name: EPISODE_RENTALS_AUTHOR.name })
+          admin.getByRole("rowheader", { name: EPISODE_RENTALS_CREATOR.name })
         ).toBeVisible();
       } finally {
         await admin.close();

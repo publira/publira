@@ -23,9 +23,9 @@ export const EPISODE_RENTALS_SERIES = {
 } as const;
 
 /** The Author episode 1 credits, with half of each sale. */
-export const EPISODE_RENTALS_AUTHOR = {
+export const EPISODE_RENTALS_CREATOR = {
   name: "Mina Ito",
-  publicId: "RntlAUTHAAA1",
+  publicId: "RntlCRTRAAA1",
 } as const;
 
 /** 300 yen to keep, or 100 yen for 48 hours. */

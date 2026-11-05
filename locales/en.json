@@ -5815,9 +5815,10 @@
         "status_failed": "Could not load your reaction. Please try again later."
       },
       "tip": {
-        "authors": "To {$authors}",
         "button": "Tip the Authors",
         "cancelled": "The tip was cancelled. You have not been charged.",
+        "control_error": "Could not show the tip control",
+        "creators": "To {$creators}",
         "description": "A tip goes to the Authors credited on this episode. It does not open anything to read.",
         "start_failed": "Could not start the tip. Try again later.",
         "thanks": "Thank you for your tip. It goes to the Authors of this episode."

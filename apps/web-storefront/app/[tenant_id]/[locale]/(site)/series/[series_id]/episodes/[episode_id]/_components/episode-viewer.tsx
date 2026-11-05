@@ -155,16 +155,24 @@ export const EpisodeViewer = async ({
                   />
                 </Suspense>
               </SectionErrorBoundary>
-              <Suspense fallback={null}>
-                <EpisodeTipControl
-                  amounts={tipAmounts}
-                  episode={episode}
-                  returnTo={returnTo}
-                  sales={sales}
-                  seriesPublicId={series.publicId}
-                  tenantId={tenantId}
-                />
-              </Suspense>
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="storefront.episode.tip.control_error" />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={null}>
+                  <EpisodeTipControl
+                    amounts={tipAmounts}
+                    episode={episode}
+                    returnTo={returnTo}
+                    sales={sales}
+                    seriesPublicId={series.publicId}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
             </div>
             <EpisodeNextEpisodeOffer
               sales={sales}

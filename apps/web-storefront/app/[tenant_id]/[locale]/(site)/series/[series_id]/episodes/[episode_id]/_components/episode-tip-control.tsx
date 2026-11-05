@@ -36,8 +36,8 @@ const TipButtonLabel = () => (
  * says the read failed.
  *
  * The site offers it only where it could take the payment: the tenant takes
- * tips, and a provider is ready. A guest goes to sign in and comes back to the episode, since a tip is given
- * by an account.
+ * tips, and a provider is ready. A guest goes to sign in and comes back to the
+ * episode, since a tip is given by an account.
  */
 export const EpisodeTipControl = async ({
   amounts,
@@ -86,7 +86,7 @@ export const EpisodeTipControl = async ({
   }
 
   // One person credited in two roles is one Author to give to.
-  const authors = [...new Set(episode.credits.map(({ name }) => name))].filter(
+  const creators = [...new Set(episode.credits.map(({ name }) => name))].filter(
     Boolean
   );
 
@@ -109,12 +109,12 @@ export const EpisodeTipControl = async ({
                 </Suspense>
               </Dialog.Description>
             </Dialog.Header>
-            {authors.length > 0 ? (
+            {creators.length > 0 ? (
               <p className="text-sm font-medium">
                 <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                   <Message
-                    message="storefront.episode.tip.authors"
-                    values={{ authors: formatList(authors, { locale }) }}
+                    message="storefront.episode.tip.creators"
+                    values={{ creators: formatList(creators, { locale }) }}
                   />
                 </Suspense>
               </p>

@@ -5815,9 +5815,10 @@
         "status_failed": "無法載入你的回應。請稍後再試。"
       },
       "tip": {
-        "authors": "致{$authors}",
         "button": "打賞作者",
         "cancelled": "打賞已取消，未產生任何扣款。",
+        "control_error": "無法顯示打賞操作",
+        "creators": "致{$creators}",
         "description": "打賞將送達本章節署名的作者。打賞不會解鎖任何可閱讀的內容。",
         "start_failed": "無法開始打賞。請稍後再試。",
         "thanks": "感謝您的打賞。打賞將送達本章節的作者。"
