@@ -62,7 +62,7 @@ const keepPromotionCodeInUrl = (code: string): void => {
  * remounts this with a new `key` when the URL brings another one. `action`
  * quotes the code the field posts.
  */
-export const PromotionCodeProvider = ({
+const PromotionCodeRoot = ({
   action,
   children,
   initialState,
@@ -160,7 +160,7 @@ const DiscountedLabel = ({
  * applied a code to its sale, it carries the code into the checkout and names
  * the discounted price.
  */
-export const CheckoutSubmit = ({
+const PromotionCodeCheckoutSubmit = ({
   children,
   currency,
   kind = "purchase",
@@ -325,11 +325,17 @@ const PromotionCodeDisclosure = ({
   );
 };
 
-/** Nothing where a page offers no code, outside `PromotionCodeProvider`. */
-export const PromotionCodeField = (props: PromotionCodeFieldProps) => {
+/** Nothing where a page offers no code, outside `Root`. */
+const PromotionCodeField = (props: PromotionCodeFieldProps) => {
   const context = use(PromotionCodeContext);
 
   return context ? (
     <PromotionCodeDisclosure {...props} context={context} />
   ) : null;
+};
+
+export {
+  PromotionCodeCheckoutSubmit as CheckoutSubmit,
+  PromotionCodeField as Field,
+  PromotionCodeRoot as Root,
 };

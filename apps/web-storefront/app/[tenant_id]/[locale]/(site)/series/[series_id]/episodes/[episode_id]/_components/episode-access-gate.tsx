@@ -17,11 +17,7 @@ import { CoinPackCheckoutForm } from "#components/coin-pack-checkout-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import {
-  CheckoutSubmit,
-  PromotionCodeField,
-  PromotionCodeProvider,
-} from "#components/promotion-code-field";
+import * as PromotionCode from "#components/promotion-code";
 import {
   episodeSaleDestination,
   toTenantSaleChannels,
@@ -291,7 +287,7 @@ const CheckoutForm = ({
     <input name="episodePublicId" type="hidden" value={episodePublicId} />
     <input name="episodeId" type="hidden" value={episodeId} />
     <input name="kind" type="hidden" value={kind} />
-    <CheckoutSubmit
+    <PromotionCode.CheckoutSubmit
       currency={currency}
       kind={kind}
       locale={locale}
@@ -302,7 +298,7 @@ const CheckoutForm = ({
       variant={variant}
     >
       {children}
-    </CheckoutSubmit>
+    </PromotionCode.CheckoutSubmit>
   </form>
 );
 
@@ -325,7 +321,7 @@ const CheckoutForm = ({
  * while the tenant states a rate.
  *
  * A promotion code the gate's field applied rewrites the price of each button
- * whose sale it applies to (`CheckoutSubmit`).
+ * whose sale it applies to (`PromotionCode.CheckoutSubmit`).
  */
 const CheckoutActions = ({
   campaign,
@@ -464,13 +460,13 @@ const PromotionCodeScope = ({
   offer?: PromotionCodeState<EpisodeSaleKind>;
 }) =>
   offer ? (
-    <PromotionCodeProvider
+    <PromotionCode.Root
       action={applyEpisodePromotionCodeAction}
       initialState={offer}
       key={offer.kind === "none" ? "" : offer.code}
     >
       {children}
-    </PromotionCodeProvider>
+    </PromotionCode.Root>
   ) : (
     children
   );
@@ -1070,7 +1066,7 @@ export const EpisodeAccessGate = ({
             </Suspense>
           </LinkButton>
         </div>
-        <PromotionCodeField subject="episode">
+        <PromotionCode.Field subject="episode">
           <input name="tenantId" type="hidden" value={tenantId} />
           <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
           <input name="episodePublicId" type="hidden" value={episodePublicId} />
@@ -1078,7 +1074,7 @@ export const EpisodeAccessGate = ({
           {episodeSaleKinds({ rentalPeriodHours, rentalPrice }).map((kind) => (
             <input key={kind} name="kinds" type="hidden" value={kind} />
           ))}
-        </PromotionCodeField>
+        </PromotionCode.Field>
         {nextFreeEpisode ? (
           <LinkButton
             render={

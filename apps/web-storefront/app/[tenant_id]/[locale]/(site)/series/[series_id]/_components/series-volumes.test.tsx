@@ -7,7 +7,7 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PromotionCodeProvider } from "#components/promotion-code-field";
+import * as PromotionCode from "#components/promotion-code";
 import type { VolumeItem } from "#lib/catalog";
 import type { PromotionCodeState } from "#lib/promotion-code";
 
@@ -241,9 +241,9 @@ const renderUnder = async (
   });
 
   return render(
-    <PromotionCodeProvider action={action} initialState={state}>
+    <PromotionCode.Root action={action} initialState={state}>
       {control}
-    </PromotionCodeProvider>
+    </PromotionCode.Root>
   );
 };
 

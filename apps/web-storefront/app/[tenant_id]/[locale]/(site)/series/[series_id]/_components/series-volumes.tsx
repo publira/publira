@@ -10,11 +10,7 @@ import type { ReactNode } from "react";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
-import {
-  CheckoutSubmit,
-  PromotionCodeField,
-  PromotionCodeProvider,
-} from "#components/promotion-code-field";
+import * as PromotionCode from "#components/promotion-code";
 import { resolveAccessToken } from "#lib/api-client";
 import type { TenantSales } from "#lib/app-payments";
 import type {
@@ -58,7 +54,7 @@ const VolumeBuyForm = ({
     <input name="tenantId" type="hidden" value={tenantId} />
     <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
     <input name="volumeId" type="hidden" value={volumeId} />
-    <CheckoutSubmit
+    <PromotionCode.CheckoutSubmit
       currency={currency}
       locale={locale}
       sale={volumeId}
@@ -68,7 +64,7 @@ const VolumeBuyForm = ({
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message message="storefront.series.volume_buy" />
       </Suspense>
-    </CheckoutSubmit>
+    </PromotionCode.CheckoutSubmit>
   </form>
 );
 
@@ -267,12 +263,12 @@ const VolumePromotionCodeScope = async ({
   });
 
   return (
-    <PromotionCodeProvider
+    <PromotionCode.Root
       action={applyVolumePromotionCodeAction}
       initialState={offer}
       key={code}
     >
-      <PromotionCodeField subject="volumes">
+      <PromotionCode.Field subject="volumes">
         <input name="tenantId" type="hidden" value={tenantId} />
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         {volumeIds.map((volumeId) => (
@@ -283,9 +279,9 @@ const VolumePromotionCodeScope = async ({
             value={volumeId}
           />
         ))}
-      </PromotionCodeField>
+      </PromotionCode.Field>
       {children}
-    </PromotionCodeProvider>
+    </PromotionCode.Root>
   );
 };
 
