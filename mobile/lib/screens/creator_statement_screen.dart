@@ -415,22 +415,31 @@ class _LineRow extends StatelessWidget {
     final messages = AppMessages.of(context);
     final colors = Theme.of(context).colorScheme;
     final number = line.lineNumber;
-    // An adjustment takes back what it carries, so it is marked apart from
-    // the month's own lines; a subscription line is the episode's part of the
-    // month's subscription payments rather than its sales.
-    final mark = line.isAdjustment
-        ? (
-            key: ValueKey('creator-statement-adjustment-$number'),
-            label: messages.creatorPagesAdjustment(
-              period: messages.formatCalendarMonth(line.adjustedPeriod),
-            ),
-          )
-        : line.source == CreatorStatementLineSource.subscription
-        ? (
-            key: ValueKey('creator-statement-subscription-$number'),
-            label: messages.creatorPagesSubscription,
-          )
-        : null;
+    // A tip or subscription line is not the episode's sales, so it says what
+    // it is. An adjustment takes back what it carries and keeps the source of
+    // the line it adjusts, so it is marked apart beside that source.
+    final marks = [
+      if (line.source == CreatorStatementLineSource.tip)
+        (
+          key: ValueKey('creator-statement-tip-$number'),
+          label: messages.creatorPagesTip,
+          isAdjustment: false,
+        ),
+      if (line.source == CreatorStatementLineSource.subscription)
+        (
+          key: ValueKey('creator-statement-subscription-$number'),
+          label: messages.creatorPagesSubscription,
+          isAdjustment: false,
+        ),
+      if (line.isAdjustment)
+        (
+          key: ValueKey('creator-statement-adjustment-$number'),
+          label: messages.creatorPagesAdjustment(
+            period: messages.formatCalendarMonth(line.adjustedPeriod),
+          ),
+          isAdjustment: true,
+        ),
+    ];
     return ListTile(
       key: ValueKey('creator-statement-line-$number'),
       title: AutospacedText(line.episodeTitle),
@@ -439,22 +448,29 @@ class _LineRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           AutospacedText(line.seriesTitle),
-          if (mark != null)
+          if (marks.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Chip(
-                key: mark.key,
-                label: AutospacedText(mark.label),
-                backgroundColor: line.isAdjustment
-                    ? colors.errorContainer
-                    : colors.secondaryContainer,
-                labelStyle: TextStyle(
-                  color: line.isAdjustment
-                      ? colors.onErrorContainer
-                      : colors.onSecondaryContainer,
-                ),
-                side: BorderSide.none,
-                visualDensity: VisualDensity.compact,
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  for (final mark in marks)
+                    Chip(
+                      key: mark.key,
+                      label: AutospacedText(mark.label),
+                      backgroundColor: mark.isAdjustment
+                          ? colors.errorContainer
+                          : colors.secondaryContainer,
+                      labelStyle: TextStyle(
+                        color: mark.isAdjustment
+                            ? colors.onErrorContainer
+                            : colors.onSecondaryContainer,
+                      ),
+                      side: BorderSide.none,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
               ),
             ),
           CreatorFigureLine(

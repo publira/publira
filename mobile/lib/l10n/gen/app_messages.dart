@@ -2146,6 +2146,11 @@ final class AppMessages {
     return _format('mobile.creator_pages.subscription');
   }
 
+  /// `mobile.creator_pages.tip`
+  String get creatorPagesTip {
+    return _format('mobile.creator_pages.tip');
+  }
+
   /// `mobile.creator_pages.title`
   String get creatorPagesTitle {
     return _format('mobile.creator_pages.title');
@@ -4983,7 +4988,7 @@ const _jaSources = <String, String>{
   'mobile.creator_pages.followers': 'フォロワー',
   'mobile.creator_pages.gross': '売上',
   'mobile.creator_pages.lines_description':
-      'あなたがクレジットされている明細行です。当月の販売、サブスクリプションの支払い、締め済みの月の返金による調整の順に並べています。',
+      'あなたがクレジットされている明細行です。当月の販売、チップ、サブスクリプションの支払い、締め済みの月の返金による調整の順に並べています。',
   'mobile.creator_pages.lines_empty': 'この月にこの著者がクレジットされている明細行はありません。',
   'mobile.creator_pages.lines_heading': '明細行',
   'mobile.creator_pages.load_failed': '著者ページを表示できませんでした。もう一度お試しください。',
@@ -5013,6 +5018,7 @@ const _jaSources = <String, String>{
   'mobile.creator_pages.statements_heading': '締め済みの明細',
   'mobile.creator_pages.stats_failed': '数値を表示できませんでした。もう一度お試しください。',
   'mobile.creator_pages.subscription': 'サブスクリプションの分配',
+  'mobile.creator_pages.tip': 'チップ',
   'mobile.creator_pages.title': '著者ページ',
   'mobile.creators.empty': '公開中シリーズに紐づく著者はまだいません。',
   'mobile.creators.load_failed': '著者一覧を表示できませんでした。もう一度お試しください。',
@@ -6044,7 +6050,7 @@ const _enSources = <String, String>{
   'mobile.creator_pages.followers': 'Followers',
   'mobile.creator_pages.gross': 'Gross',
   'mobile.creator_pages.lines_description':
-      'Each line that credits you: the month\'s sales, then its subscription payments, then the adjustments for refunds of closed months.',
+      'Each line that credits you: the month\'s sales, then its tips, then its subscription payments, then the adjustments for refunds of closed months.',
   'mobile.creator_pages.lines_empty':
       'No line in this month credits this author.',
   'mobile.creator_pages.lines_heading': 'Lines',
@@ -6080,6 +6086,7 @@ const _enSources = <String, String>{
   'mobile.creator_pages.statements_heading': 'Closed statements',
   'mobile.creator_pages.stats_failed': 'Could not show the figures. Try again.',
   'mobile.creator_pages.subscription': 'Subscription share',
+  'mobile.creator_pages.tip': 'Tip',
   'mobile.creator_pages.title': 'Your author pages',
   'mobile.creators.empty': 'No authors are credited on a published series yet.',
   'mobile.creators.load_failed': 'Could not show the authors. Try again.',
@@ -7121,7 +7128,7 @@ const _koSources = <String, String>{
   'mobile.creator_pages.followers': '팔로워',
   'mobile.creator_pages.gross': '매출',
   'mobile.creator_pages.lines_description':
-      '회원님이 크레딧된 명세 행입니다. 당월 판매, 구독 결제, 마감된 달의 환불 조정 순서로 보여 줍니다.',
+      '회원님이 크레딧된 명세 행입니다. 당월 판매, 팁, 구독 결제, 마감된 달의 환불 조정 순서로 보여 줍니다.',
   'mobile.creator_pages.lines_empty': '이 달에 이 작가가 크레딧된 명세 행이 없습니다.',
   'mobile.creator_pages.lines_heading': '명세 행',
   'mobile.creator_pages.load_failed': '작가 페이지를 표시할 수 없습니다. 다시 시도해 주세요.',
@@ -7152,6 +7159,7 @@ const _koSources = <String, String>{
   'mobile.creator_pages.statements_heading': '마감된 명세',
   'mobile.creator_pages.stats_failed': '수치를 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.creator_pages.subscription': '구독 배분',
+  'mobile.creator_pages.tip': '팁',
   'mobile.creator_pages.title': '작가 페이지',
   'mobile.creators.empty': '공개 중인 시리즈에 연결된 작가가 아직 없습니다.',
   'mobile.creators.load_failed': '작가 목록을 표시할 수 없습니다. 다시 시도해 주세요.',
@@ -8077,7 +8085,7 @@ const _zhHansSources = <String, String>{
   'mobile.creator_pages.followers': '关注者',
   'mobile.creator_pages.gross': '销售额',
   'mobile.creator_pages.lines_description':
-      '署名您的明细行，依次为当月销售、订阅付款，以及已结算月份退款的调整。',
+      '署名您的明细行，依次为当月销售、打赏、订阅付款，以及已结算月份退款的调整。',
   'mobile.creator_pages.lines_empty': '本月没有署名此作者的明细行。',
   'mobile.creator_pages.lines_heading': '明细行',
   'mobile.creator_pages.load_failed': '无法显示您的作者页面。请重试。',
@@ -8105,6 +8113,7 @@ const _zhHansSources = <String, String>{
   'mobile.creator_pages.statements_heading': '已结算的明细',
   'mobile.creator_pages.stats_failed': '无法显示数据。请重试。',
   'mobile.creator_pages.subscription': '订阅分成',
+  'mobile.creator_pages.tip': '打赏',
   'mobile.creator_pages.title': '作者页面',
   'mobile.creators.empty': '还没有作者署名于已发布的系列。',
   'mobile.creators.load_failed': '无法显示作者列表。请重试。',
@@ -8970,7 +8979,7 @@ const _zhHantSources = <String, String>{
   'mobile.creator_pages.followers': '追蹤者',
   'mobile.creator_pages.gross': '銷售額',
   'mobile.creator_pages.lines_description':
-      '署名您的明細行，依序為當月銷售、訂閱付款，以及已結算月份退款的調整。',
+      '署名您的明細行，依序為當月銷售、打賞、訂閱付款，以及已結算月份退款的調整。',
   'mobile.creator_pages.lines_empty': '本月沒有署名此作者的明細行。',
   'mobile.creator_pages.lines_heading': '明細行',
   'mobile.creator_pages.load_failed': '無法顯示您的作者頁面。請重試。',
@@ -8998,6 +9007,7 @@ const _zhHantSources = <String, String>{
   'mobile.creator_pages.statements_heading': '已結算的明細',
   'mobile.creator_pages.stats_failed': '無法顯示數據。請重試。',
   'mobile.creator_pages.subscription': '訂閱分潤',
+  'mobile.creator_pages.tip': '打賞',
   'mobile.creator_pages.title': '作者頁面',
   'mobile.creators.empty': '還沒有作者署名於已發布的系列。',
   'mobile.creators.load_failed': '無法顯示作者列表。請重試。',
