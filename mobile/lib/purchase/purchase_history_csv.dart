@@ -45,6 +45,10 @@ const _header = [
   'coins_spent',
 ];
 
+/// The columns a file gains when a purchase in it recorded tax, written the
+/// way the site's download writes them.
+const _taxHeader = ['tax_rate_percent', 'tax_amount'];
+
 /// The reader's purchase history as CSV, in the columns and the encoding of
 /// the site's download, so the two files open the same way in a spreadsheet:
 /// UTF-8 with a byte order mark, CRLF line endings, and RFC 4180 quoting. A
@@ -58,8 +62,15 @@ const _header = [
 /// 0 and the coins it took in `coins_spent`, which is empty on every other
 /// purchase. The columns that came later are appended, so a sheet that reads
 /// the earlier ones by position keeps reading them.
+///
+/// The tax columns are appended only to a file holding a purchase that
+/// recorded tax: `tax_rate_percent` with two decimals, `10.00` for 10%, and
+/// `tax_amount`, the tax the price includes, both empty on a purchase that
+/// recorded none.
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
-  final rows = StringBuffer(csvBom)..write(encodeCsvRow(_header));
+  final taxed = purchases.any((purchase) => purchase.tax != null);
+  final rows = StringBuffer(csvBom)
+    ..write(encodeCsvRow([..._header, if (taxed) ..._taxHeader]));
   for (final purchase in purchases) {
     final episode =
         purchase.item == PurchasedItem.episode ||
@@ -83,6 +94,14 @@ String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
         if (coinPack) '${purchase.grantedCoins}' else '',
         if (coinPack) '${purchase.bonusCoins}' else '',
         if (purchase.paidWithCoins) '${purchase.coinsSpent}' else '',
+        if (taxed)
+          ...switch (purchase.tax) {
+            final tax? => [
+              (tax.rateBps / 100).toStringAsFixed(2),
+              _formatAmount(tax.amount, purchase.currency),
+            ],
+            null => const ['', ''],
+          },
       ]),
     );
   }

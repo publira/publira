@@ -18,6 +18,7 @@ MyPurchase _purchase({
   DateTime? expiresAt,
   DateTime? refundedAt,
   DateTime? revokedAt,
+  PurchaseTax? tax,
 }) => MyPurchase(
   id: id,
   seriesId: 'series-1',
@@ -35,6 +36,7 @@ MyPurchase _purchase({
   expiresAt: expiresAt,
   refundedAt: refundedAt,
   revokedAt: revokedAt,
+  tax: tax,
 );
 
 /// The rows after the header, without the empty string the final CRLF leaves.
@@ -55,6 +57,50 @@ void main() {
       'episode_title,price,refunded_amount,currency,expires_at,refunded_at,'
       'status,item,volume_title,coins,bonus_coins,coins_spent\r\n',
     );
+  });
+
+  group('a file holding a purchase that recorded tax', () {
+    const taxHeader =
+        '﻿purchase_id,purchased_at,series_title,episode_number,'
+        'episode_title,price,refunded_amount,currency,expires_at,refunded_at,'
+        'status,item,volume_title,coins,bonus_coins,coins_spent,'
+        'tax_rate_percent,tax_amount';
+
+    test('appends the rate and the tax after the columns of the site', () {
+      final csv = renderPurchaseHistoryCsv([
+        _purchase(tax: const PurchaseTax(amount: 46, rateBps: 1000)),
+      ]);
+
+      expect(csv.split('\r\n').first, taxHeader);
+      expect(_rows(csv).single, endsWith(',10.00,46'));
+    });
+
+    test('writes a reduced rate and an amount in cents', () {
+      final csv = renderPurchaseHistoryCsv([
+        _purchase(
+          currency: 'USD',
+          tax: const PurchaseTax(amount: 37, rateBps: 750),
+        ),
+      ]);
+
+      expect(_rows(csv).single, endsWith(',7.50,0.37'));
+    });
+
+    test('leaves both columns empty on a purchase that recorded none', () {
+      final csv = renderPurchaseHistoryCsv([
+        _purchase(tax: const PurchaseTax(amount: 46, rateBps: 1000)),
+        _purchase(id: 'purchase-2'),
+      ]);
+
+      expect(_rows(csv).last, endsWith(',,'));
+      expect(_rows(csv).last.split(','), hasLength(18));
+    });
+
+    test('keeps the columns it always had without one', () {
+      final csv = renderPurchaseHistoryCsv([_purchase()]);
+
+      expect(csv, isNot(contains('tax_amount')));
+    });
   });
 
   test('writes the times in UTC as the API sends them', () {

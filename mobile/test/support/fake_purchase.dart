@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:publira/coins/coin_repository.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -21,6 +22,12 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   /// What [currency] answers.
   String tenantCurrency;
+
+  /// What [invoice] answers.
+  TenantInvoice tenantInvoice = TenantInvoice.none;
+
+  /// Thrown by [invoice], standing in for an API that cannot answer.
+  PurchaseFailure? invoiceFailure;
 
   /// What [appPurchaseRoute] answers.
   AppPurchaseRoute route;
@@ -153,6 +160,14 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<String> currency() async => tenantCurrency;
+
+  @override
+  Future<TenantInvoice> invoice() async {
+    if (invoiceFailure case final failure?) {
+      throw failure;
+    }
+    return tenantInvoice;
+  }
 
   @override
   Future<SeriesPurchaseState> seriesEpisodeAccess(

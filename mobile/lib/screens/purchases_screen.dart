@@ -10,6 +10,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/my_purchase.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_history_csv.dart';
@@ -31,6 +32,11 @@ const _readAheadRows = 5;
 /// series, whether or not the purchase still opens it; a pack's row opens
 /// nothing. The app bar exports the whole list as the CSV file the site
 /// downloads.
+///
+/// A purchase that recorded tax states it, with the tenant's legal name and
+/// registration number, as the site's purchase history does: what a reader
+/// keeping the purchase as an invoice needs. A purchase a store charged names
+/// that store instead, which issued its receipt.
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
 
@@ -42,6 +48,10 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   /// Every page read so far as one list, and `null` while the first is still
   /// in flight.
   List<MyPurchase>? _purchases;
+
+  /// Who the tenant's invoices name. Left as it was while it could not be
+  /// read: the tax a purchase recorded stands on its own.
+  var _invoice = TenantInvoice.none;
 
   /// What the API calls the page under [_purchases]. Empty at the end of the
   /// list, which is what takes the footer away.
@@ -108,6 +118,21 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       return;
     }
     unawaited(_read(_reads, ''));
+    unawaited(_readInvoice());
+  }
+
+  Future<void> _readInvoice() async {
+    final repository = PurchaseScope.repositoryOf(context);
+    if (repository == null) {
+      return;
+    }
+    final invoice = await repository.invoice().onError<PurchaseFailure>(
+      (_, _) => _invoice,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _invoice = invoice);
   }
 
   /// Reads the list again from the top. The screen stays mounted while the
@@ -343,7 +368,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                 },
               );
             }
-            return _PurchaseRow(purchase: purchases[index]);
+            return _PurchaseRow(purchase: purchases[index], invoice: _invoice);
           },
         ),
       ),
@@ -366,9 +391,33 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
 }
 
 class _PurchaseRow extends StatelessWidget {
-  const _PurchaseRow({required this.purchase});
+  const _PurchaseRow({required this.purchase, required this.invoice});
 
   final MyPurchase purchase;
+  final TenantInvoice invoice;
+
+  /// The tax [purchase] recorded and who charged it, or `null` on a purchase
+  /// that recorded none. A store's purchase states its tax alone: the store
+  /// charged it, so the tenant's name and number are not what it went under.
+  String? _taxLine(AppMessages messages) {
+    final tax = purchase.tax;
+    if (tax == null) {
+      return null;
+    }
+    final legalName = invoice.legalName;
+    final registrationNumber = invoice.registrationNumber;
+    return [
+      messages.purchasesTax(
+        amount: messages.formatPrice(tax.amount, purchase.currency),
+        rate: messages.formatBasisPoints(tax.rateBps),
+      ),
+      if (!purchase.chargedByStore) ...[
+        if (legalName.isNotEmpty) messages.purchasesIssuer(name: legalName),
+        if (registrationNumber.isNotEmpty)
+          messages.purchasesRegistrationNumber(number: registrationNumber),
+      ],
+    ].join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +497,12 @@ class _PurchaseRow extends StatelessWidget {
       ),
     };
     final hasSeries = purchase.seriesTitle.isNotEmpty;
+    final taxLine = _taxLine(messages);
+    final storeReceipt = switch (purchase.store) {
+      'app_store' => messages.purchasesStoreReceiptAppStore,
+      'google_play' => messages.purchasesStoreReceiptGooglePlay,
+      _ => null,
+    };
     return ListTile(
       key: ValueKey('purchase-row-${purchase.id}'),
       // A pack is of no series, so its details are the only line under it.
@@ -473,6 +528,16 @@ class _PurchaseRow extends StatelessWidget {
               locale: purchase.seriesTextLocale,
             ),
           AutospacedText(details.join(' · ')),
+          if (taxLine != null)
+            AutospacedText(
+              key: ValueKey('purchase-tax-${purchase.id}'),
+              taxLine,
+            ),
+          if (storeReceipt != null)
+            AutospacedText(
+              key: ValueKey('purchase-store-receipt-${purchase.id}'),
+              storeReceipt,
+            ),
           if (rental && status == MyPurchaseStatus.active && expiresAt != null)
             _RentalTimeLeft(purchaseId: purchase.id, expiresAt: expiresAt),
         ],

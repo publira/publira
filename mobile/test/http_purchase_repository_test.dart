@@ -6,6 +6,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/subscription.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
@@ -59,6 +60,38 @@ void main() {
 
     server.currency = 'USD';
     expect(await repository().currency(), 'USD');
+  });
+
+  test('the tenant states its tax rate and who its invoices name', () async {
+    server.invoice = pb.TenantInvoiceDetails(
+      taxRateBps: 1000,
+      legalName: ' Seed Publishing LLC ',
+      registrationNumber: 'T1234567890123',
+    );
+
+    final invoice = await repository().invoice();
+
+    expect(invoice.taxIncluded, isTrue);
+    expect(invoice.taxRateBps, 1000);
+    expect(invoice.legalName, 'Seed Publishing LLC');
+    expect(invoice.registrationNumber, 'T1234567890123');
+  });
+
+  test('a name entered with no rate says no price includes tax', () async {
+    server.invoice = pb.TenantInvoiceDetails(legalName: 'Seed Publishing LLC');
+
+    final invoice = await repository().invoice();
+
+    expect(invoice.taxIncluded, isFalse);
+    expect(invoice.legalName, 'Seed Publishing LLC');
+  });
+
+  test('a server that names no invoice states no rate', () async {
+    final invoice = await repository().invoice();
+
+    expect(invoice.taxIncluded, isFalse);
+    expect(invoice.legalName, isEmpty);
+    expect(invoice.registrationNumber, isEmpty);
   });
 
   test('an answer that names no currency is a failure', () async {

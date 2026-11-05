@@ -26,6 +26,7 @@ class EpisodeEndPanel extends StatelessWidget {
     required this.nextSavedOffline,
     required this.acceptsPayments,
     required this.currency,
+    this.taxIncluded = false,
     required this.onOpenNext,
     required this.onOpenComments,
     required this.onBackToSeries,
@@ -46,6 +47,10 @@ class EpisodeEndPanel extends StatelessWidget {
   /// The ISO 4217 code of the currency a next episode's price is shown in, the
   /// tenant's, or `null` while it could not be read, when no price is shown.
   final String? currency;
+
+  /// Whether the tenant states a tax rate, so a next episode's price says it
+  /// includes tax.
+  final bool taxIncluded;
 
   /// Opens the episode the reader took. It is handed the neighbour this panel
   /// drew rather than reading it again, so the offer and what it opens cannot
@@ -105,6 +110,7 @@ class EpisodeEndPanel extends StatelessWidget {
                 savedOffline: nextSavedOffline,
                 acceptsPayments: acceptsPayments,
                 currency: currency,
+                taxIncluded: taxIncluded,
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
@@ -158,6 +164,7 @@ class _UpNext extends StatelessWidget {
     required this.savedOffline,
     required this.acceptsPayments,
     required this.currency,
+    required this.taxIncluded,
     required this.onOpen,
   });
 
@@ -165,6 +172,7 @@ class _UpNext extends StatelessWidget {
   final bool savedOffline;
   final bool acceptsPayments;
   final String? currency;
+  final bool taxIncluded;
   final VoidCallback onOpen;
 
   @override
@@ -184,7 +192,11 @@ class _UpNext extends StatelessWidget {
     } else if (currency case final currency?) {
       final open = episode.campaign;
       if (open != null && open.isOpenAt(DateTime.now())) {
-        price = messages.formatPrice(open.price, currency);
+        price = messages.formatOfferedPrice(
+          open.price,
+          currency,
+          taxIncluded: taxIncluded,
+        );
         campaign = CampaignPriceNote(
           key: const ValueKey('episode-end-next-campaign'),
           price: episode.price,
@@ -193,7 +205,11 @@ class _UpNext extends StatelessWidget {
           color: Colors.white70,
         );
       } else {
-        price = messages.formatPrice(episode.price, currency);
+        price = messages.formatOfferedPrice(
+          episode.price,
+          currency,
+          taxIncluded: taxIncluded,
+        );
       }
     } else {
       // A number in no currency is no price.

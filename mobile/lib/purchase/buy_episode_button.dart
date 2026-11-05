@@ -13,6 +13,11 @@ import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
+/// The widest a row's button gets. A row is a `ListTile`, which refuses a
+/// trailing widget that leaves its title no room, so a long label such as one
+/// saying the price includes tax wraps instead, on any phone and text size.
+const _compactMaxWidth = 144.0;
+
 /// "Buy for [price]": buys one episode the way the tenant's app sells it — the web
 /// checkout handed to the system browser, or the store's payment sheet.
 ///
@@ -33,6 +38,7 @@ class BuyEpisodeButton extends StatefulWidget {
     required this.currency,
     required this.onAlreadyPurchased,
     required this.onStorePurchase,
+    this.taxIncluded = false,
     this.rentalPeriodHours,
     this.signInReturnTo,
     this.compact = false,
@@ -60,6 +66,9 @@ class BuyEpisodeButton extends StatefulWidget {
   /// The store took the payment, or holds it for approval: the episode is
   /// opened the way a checkout the browser hands back opens it.
   final VoidCallback onStorePurchase;
+
+  /// Whether the tenant states a tax rate, so the price says it includes tax.
+  final bool taxIncluded;
 
   /// How long the rental opens the episode, set on a button that rents it
   /// rather than buys it.
@@ -201,14 +210,21 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     final messages = AppMessages.of(context);
     final price = messages.formatPrice(widget.price, widget.currency);
     final rentalPeriodHours = widget.rentalPeriodHours;
-    final label = AutospacedText(
-      rentalPeriodHours == null
-          ? messages.purchaseBuy(price: price)
-          : messages.purchaseRentFor(
-              period: messages.purchaseRentalPeriod(hours: rentalPeriodHours),
-              price: price,
-            ),
-    );
+    final label = AutospacedText(switch ((
+      rentalPeriodHours,
+      widget.taxIncluded,
+    )) {
+      (null, false) => messages.purchaseBuy(price: price),
+      (null, true) => messages.purchaseBuyTaxIncluded(price: price),
+      (final hours?, false) => messages.purchaseRentFor(
+        period: messages.purchaseRentalPeriod(hours: hours),
+        price: price,
+      ),
+      (final hours?, true) => messages.purchaseRentForTaxIncluded(
+        period: messages.purchaseRentalPeriod(hours: hours),
+        price: price,
+      ),
+    }, textAlign: TextAlign.center);
     final key = ValueKey(
       rentalPeriodHours == null
           ? 'episode-buy-${widget.episodeId}'
@@ -224,11 +240,14 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
       return OutlinedButton(key: key, onPressed: onPressed, child: label);
     }
     if (widget.compact) {
-      return FilledButton.tonal(
-        key: key,
-        style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
-        onPressed: onPressed,
-        child: label,
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _compactMaxWidth),
+        child: FilledButton.tonal(
+          key: key,
+          style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+          onPressed: onPressed,
+          child: label,
+        ),
       );
     }
     return FilledButton(key: key, onPressed: onPressed, child: label);

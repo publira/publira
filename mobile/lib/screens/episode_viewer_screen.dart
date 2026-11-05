@@ -26,6 +26,7 @@ import 'package:publira/links/app_link.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
@@ -169,6 +170,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   /// The tenant's currency, `null` until it is read or when it cannot be.
   String? _currency;
+
+  /// Whether the tenant states a tax rate, which the prices here then say
+  /// they include. False while it could not be read.
+  var _taxIncluded = false;
 
   /// Whether the tenant sells through its web checkout, which is the only way
   /// a rental is sold: the store sells the permanent copy alone.
@@ -380,7 +385,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Future<void> _loadAcceptsPayments(PurchaseRepository purchase) async {
     // Either read failing offers no purchase, and a currency that cannot be
     // read shows no price.
-    final (accepts, currency, route) = await (
+    final (accepts, currency, route, invoice) = await (
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
       purchase
           .currency()
@@ -390,6 +395,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           .appPurchaseRoute()
           .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
+      purchase.invoice().onError<PurchaseFailure>((_, _) => TenantInvoice.none),
     ).wait;
     if (!mounted) {
       return;
@@ -397,6 +403,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     setState(() {
       _acceptsPayments = accepts && currency != null;
       _currency = currency;
+      _taxIncluded = invoice.taxIncluded;
       _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
   }
@@ -726,6 +733,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           nextSavedOffline: next != null && _saved.contains(next.id),
           acceptsPayments: _acceptsPayments,
           currency: _currency,
+          taxIncluded: _taxIncluded,
           onOpenNext: _open,
           onOpenComments: _commentsOffered ? _openComments : null,
           onBackToSeries: () =>
@@ -837,6 +845,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             price: campaign?.price ?? detail.episode.price,
             // A purchase is offered only once the currency is known.
             currency: _currency!,
+            taxIncluded: _taxIncluded,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
             outlined: coins is CoinOffer && coins.leads,
@@ -852,6 +861,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             price: detail.episode.rentalPrice,
             rentalPeriodHours: detail.episode.rentalPeriodHours,
             currency: _currency!,
+            taxIncluded: _taxIncluded,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
             lock: _paymentLock,

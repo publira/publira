@@ -8,6 +8,7 @@ import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 
@@ -53,6 +54,20 @@ class HttpPurchaseRepository implements PurchaseRepository {
       );
     }
     return currency;
+  }
+
+  @override
+  Future<TenantInvoice> invoice() async {
+    final tenant = await _tenant();
+    if (!tenant.hasInvoice()) {
+      return TenantInvoice.none;
+    }
+    final invoice = tenant.invoice;
+    return TenantInvoice(
+      taxRateBps: invoice.hasTaxRateBps() ? invoice.taxRateBps : null,
+      legalName: invoice.legalName.trim(),
+      registrationNumber: invoice.registrationNumber.trim(),
+    );
   }
 
   /// An ISO 4217 code as the API spells it.
@@ -688,6 +703,15 @@ class HttpPurchaseRepository implements PurchaseRepository {
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),
       isActive: purchase.isActive,
+      // The wire format omits both on a purchase that recorded no tax, which
+      // is what tells it from one that recorded a tax of 0.
+      tax: purchase.hasTaxAmount() && purchase.hasTaxRateBps()
+          ? PurchaseTax(
+              amount: purchase.taxAmount,
+              rateBps: purchase.taxRateBps,
+            )
+          : null,
+      store: purchase.store.trim(),
       // Unspecified, which the server never answers, reads as the permanent
       // copy.
       kind: purchase.kind == pb.PurchaseKind.PURCHASE_KIND_RENTAL

@@ -8,9 +8,11 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/my_purchase.dart';
+import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -32,8 +34,12 @@ void main() {
     int refundedAmount = 0,
     DateTime? refundedAt,
     DateTime? revokedAt,
+    PurchaseTax? tax,
+    String store = '',
   }) => MyPurchase(
     id: id,
+    tax: tax,
+    store: store,
     seriesId: series.id,
     seriesTitle: series.title,
     episodeId: paidEpisodeId,
@@ -139,6 +145,126 @@ void main() {
 
       expect(find.byKey(const ValueKey('account-purchases')), findsNothing);
     });
+  });
+
+  group('the tax on a purchase', () {
+    const invoice = TenantInvoice(
+      taxRateBps: 1000,
+      legalName: 'Seed Publishing LLC',
+      registrationNumber: 'T1234567890123',
+    );
+    const tax = PurchaseTax(amount: 46, rateBps: 1000);
+
+    Finder taxLine(String id) => find.byKey(ValueKey('purchase-tax-$id'));
+    Finder receipt(String id) =>
+        find.byKey(ValueKey('purchase-store-receipt-$id'));
+
+    testWidgets('names the tax and who charged it', (tester) async {
+      purchases
+        ..tenantInvoice = invoice
+        ..pages = [
+          [purchase('taxed', tax: tax)],
+        ];
+      await openPurchases(tester);
+      await pumpUntilFound(tester, taxLine('taxed'));
+
+      expect(
+        tester.widget<AutospacedText>(taxLine('taxed')).data,
+        'Tax included ¥46 (10%) · Issued by Seed Publishing LLC · '
+        'Registration number T1234567890123',
+      );
+      expect(receipt('taxed'), findsNothing);
+    });
+
+    testWidgets('leaves out what the tenant has not entered', (tester) async {
+      purchases
+        ..tenantInvoice = const TenantInvoice(taxRateBps: 1000)
+        ..pages = [
+          [purchase('taxed', tax: tax)],
+        ];
+      await openPurchases(tester);
+      await pumpUntilFound(tester, taxLine('taxed'));
+
+      expect(
+        tester.widget<AutospacedText>(taxLine('taxed')).data,
+        'Tax included ¥46 (10%)',
+      );
+    });
+
+    testWidgets('stands on its own when the tenant cannot be read', (
+      tester,
+    ) async {
+      purchases
+        ..invoiceFailure = const PurchaseFailure(PurchaseFailureKind.network)
+        ..pages = [
+          [purchase('taxed', tax: tax)],
+        ];
+      await openPurchases(tester);
+      await pumpUntilFound(tester, taxLine('taxed'));
+
+      expect(
+        tester.widget<AutospacedText>(taxLine('taxed')).data,
+        'Tax included ¥46 (10%)',
+      );
+    });
+
+    testWidgets('states nothing on a purchase that recorded none', (
+      tester,
+    ) async {
+      purchases
+        ..tenantInvoice = invoice
+        ..pages = [
+          [purchase('untaxed')],
+        ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-untaxed')),
+      );
+
+      expect(taxLine('untaxed'), findsNothing);
+      expect(find.textContaining('Seed Publishing LLC'), findsNothing);
+    });
+
+    for (final (store, name) in [
+      ('app_store', 'The App Store'),
+      ('google_play', 'Google Play'),
+    ]) {
+      testWidgets('a purchase through $store points to the store', (
+        tester,
+      ) async {
+        purchases
+          ..tenantInvoice = invoice
+          ..pages = [
+            [purchase('store', tax: tax, store: store)],
+          ];
+        await openPurchases(tester);
+        await pumpUntilFound(tester, taxLine('store'));
+
+        // The store charged it, so the tenant's name would be the wrong one.
+        expect(
+          tester.widget<AutospacedText>(taxLine('store')).data,
+          'Tax included ¥46 (10%)',
+        );
+        expect(
+          tester.widget<AutospacedText>(receipt('store')).data,
+          '$name issued the receipt for this purchase.',
+        );
+      });
+    }
+
+    testWidgets(
+      'a store purchase that recorded no tax points to the store too',
+      (tester) async {
+        purchases.pages = [
+          [purchase('store', store: 'google_play')],
+        ];
+        await openPurchases(tester);
+        await pumpUntilFound(tester, receipt('store'));
+
+        expect(taxLine('store'), findsNothing);
+      },
+    );
   });
 
   group('the purchase library', () {
