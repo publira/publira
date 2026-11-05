@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, where each secret may go, and how to report a vulnerability.
 published: 2026-10-07
-updated: 2026-10-30
+updated: 2026-11-05
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, and where each secret may go. How to replace each secret, what two-step verification and the audit logs give you, and what a web application firewall and rate limits in front of the install should do, are on the pages under [In this section](#in-this-section).
@@ -48,6 +48,14 @@ Use the secret's `--<name>-env` flag only on a platform that sets secrets as env
 Generate a fresh set of every secret for each install: production, staging, and every developer's machine. Two installs that share the access token signing key accept each other's sessions for any account whose ID exists in both, which a staging database restored from a production backup has for every account.
 
 A copy restored from production can read its stored credentials only with production's encryption keys, and with them it holds production's SMTP account, payment provider keys, and every other credential its tenants saved. Run such a copy only where production's own secrets are allowed, and give it its own access token signing key, session keys, tokens, and role passwords.
+
+## Webhooks to your own network
+
+A tenant chooses the URLs its [webhook endpoints](../../4-console/10-api-keys-and-webhooks.md#webhook-endpoints) deliver to, and `publira worker` sends those deliveries from inside your network. So a delivery to a host that resolves to a private, loopback, link-local, or shared address is given up, which keeps a tenant from reaching what you never exposed.
+
+When a publisher's receiver runs on your own network, set `PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES` on the worker to the addresses or CIDR ranges it is on, separated by commas or spaces, such as `10.20.0.15, 10.30.0.0/24`. Any tenant on the install can then deliver to those addresses, so list the receiver alone rather than a whole network, and never the addresses of Publira's own processes, your database, or your cloud provider's metadata service. A range that covers every address, such as `0.0.0.0/0`, is refused, and so is a value that is not an address or a range: either stops the worker at startup.
+
+The setting changes only where a delivery may go. The endpoint's URL is still `https`, and the worker still verifies the receiver's certificate. A receiver whose certificate your own certificate authority issued needs that authority trusted: mount a file of PEM certificates in the worker's container and name it in `SSL_CERT_FILE`, which replaces the system's roots, so include the public roots if any tenant delivers to a public receiver.
 
 ## In this section
 

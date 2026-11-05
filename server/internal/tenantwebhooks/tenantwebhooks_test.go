@@ -1,7 +1,14 @@
 package tenantwebhooks
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,6 +88,77 @@ func TestPublicAddressRefusesWhatTheOperatorsNetworkHolds(t *testing.T) {
 	} {
 		if got := PublicAddress(netip.MustParseAddr(raw)); got != want {
 			t.Errorf("PublicAddress(%s) = %v, want %v", raw, got, want)
+		}
+	}
+}
+
+func TestParseAllowedAddressesReadsAddressesAndRanges(t *testing.T) {
+	t.Parallel()
+
+	got, err := ParseAllowedAddresses(" 10.0.0.0/8, 192.0.2.1\n::ffff:198.51.100.0/120 fd00::1 ")
+	if err != nil {
+		t.Fatalf("ParseAllowedAddresses: %v", err)
+	}
+	want := []netip.Prefix{
+		netip.MustParsePrefix("10.0.0.0/8"),
+		netip.MustParsePrefix("192.0.2.1/32"),
+		netip.MustParsePrefix("198.51.100.0/24"),
+		netip.MustParsePrefix("fd00::1/128"),
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("ParseAllowedAddresses = %v, want %v", got, want)
+	}
+
+	if got, err := ParseAllowedAddresses("  "); err != nil || len(got) != 0 {
+		t.Fatalf("ParseAllowedAddresses of nothing = %v, %v, want none", got, err)
+	}
+
+	for _, raw := range []string{"receiver.internal", "10.0.0.0/33", "0.0.0.0/0", "::/0", "::ffff:0.0.0.0/96", "::ffff:0.0.0.0/64", "fe80::1%eth0"} {
+		if got, err := ParseAllowedAddresses(raw); err == nil {
+			t.Errorf("ParseAllowedAddresses(%q) = %v, want refused", raw, got)
+		}
+	}
+}
+
+// The client reaches a loopback server only while that address is on the
+// list, whatever else the list allows, and refuses it the way a delivery is
+// given up for.
+func TestHTTPClientDialsARestrictedAddressOnlyWhenItIsAllowed(t *testing.T) {
+	t.Parallel()
+
+	receiver := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(receiver.Close)
+	roots := x509.NewCertPool()
+	roots.AddCert(receiver.Certificate())
+
+	post := func(t *testing.T, allowed []netip.Prefix) error {
+		t.Helper()
+		client := NewHTTPClient(5*time.Second, allowed)
+		transport, ok := client.Transport.(*http.Transport)
+		if !ok {
+			t.Fatalf("client.Transport = %T, want *http.Transport", client.Transport)
+		}
+		transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
+		t.Cleanup(client.CloseIdleConnections)
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, receiver.URL, nil)
+		if err != nil {
+			t.Fatalf("NewRequest: %v", err)
+		}
+		response, err := client.Do(request)
+		if err != nil {
+			return err
+		}
+		return response.Body.Close()
+	}
+
+	if err := post(t, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}); err != nil {
+		t.Fatalf("a delivery to an allowed address = %v, want it sent", err)
+	}
+	for _, allowed := range [][]netip.Prefix{nil, {netip.MustParsePrefix("10.0.0.0/8")}} {
+		if err := post(t, allowed); !errors.Is(err, ErrRestrictedAddress) {
+			t.Errorf("a delivery with %v allowed = %v, want %v", allowed, err, ErrRestrictedAddress)
 		}
 	}
 }

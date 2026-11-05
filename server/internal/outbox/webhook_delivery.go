@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,10 +36,13 @@ type WebhookDeliveryHandlerConfig struct {
 	DB        *sql.DB
 	Encryptor emailsettings.SecretManager
 	Logger    *slog.Logger
-	// Client sends the deliveries. Nil is [tenantwebhooks.NewHTTPClient],
-	// which dials public addresses alone; a test sending to a server on the
-	// loopback address hands its own.
+	// Client sends the deliveries. Nil is [tenantwebhooks.NewHTTPClient] with
+	// AllowedAddresses; a test sending to a server on the loopback address
+	// hands its own.
 	Client *http.Client
+	// AllowedAddresses are the addresses a delivery may reach besides public
+	// ones. Empty leaves it public addresses alone.
+	AllowedAddresses []netip.Prefix
 	// Now is the clock the signature's timestamp is read from. Nil is
 	// time.Now.
 	Now func() time.Time
@@ -59,7 +63,7 @@ func NewWebhookDeliveryHandler(cfg WebhookDeliveryHandlerConfig) Handler {
 	queries := dbmodels.New(cfg.DB)
 	client := cfg.Client
 	if client == nil {
-		client = tenantwebhooks.NewHTTPClient(webhookTimeout)
+		client = tenantwebhooks.NewHTTPClient(webhookTimeout, cfg.AllowedAddresses)
 	}
 	now := cfg.Now
 	if now == nil {
