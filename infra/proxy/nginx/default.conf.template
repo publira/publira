@@ -130,15 +130,16 @@ server {
     include /etc/nginx/templates/snippets/app-routes.conf;
 
     # The episode edit screen adds a whole episode's pages in one upload of up
-    # to 256 MiB. A longer prefix than app-routes.conf's /api/v1/, so it wins.
+    # to 128 MiB, 129 MiB with the multipart framing. A longer prefix than
+    # app-routes.conf's /api/v1/, so it wins.
     location ^~ /api/v1/episode-pages {
-        client_max_body_size 256m;
+        client_max_body_size 129m;
         proxy_pass http://$publira_app;
     }
 
-    # The import from a ZIP takes the same body, and answers only once every
-    # episode in it has been created, which can take far longer than the 60
-    # seconds nginx otherwise waits for an answer.
+    # The import from a ZIP takes a ZIP of up to 256 MiB, and answers only once
+    # every episode in it has been created, which can take far longer than the
+    # 60 seconds nginx otherwise waits for an answer.
     location ^~ /api/v1/series-import {
         client_max_body_size 256m;
         proxy_read_timeout 900s;

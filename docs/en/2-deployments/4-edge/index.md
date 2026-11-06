@@ -148,9 +148,9 @@ A reader's icon on the tenant's site, and the images uploaded in the tenant cons
 
 ### Uploads in the tenant console
 
-The episode edit screen in the tenant console adds an episode's pages in one upload of up to 256 MiB, posted to `/api/v1/episode-pages` on the console host. Every hop on the way has to admit a body that size there, a load balancer, a CDN, a web application firewall, and a proxy alike. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
+The episode edit screen in the tenant console adds an episode's pages in one upload of up to 128 MiB, posted to `/api/v1/episode-pages` on the console host in a body of up to 129 MiB with the multipart framing. Every hop on the way has to admit a body that size there, a load balancer, a CDN, a web application firewall, and a proxy alike. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
 
-**Import from a ZIP**, on the series list and on a series' episode list, posts a ZIP of the same size to `/api/v1/series-import` on the console host, so every hop has to admit the same body there.
+**Import from a ZIP**, on the series list and on a series' episode list, posts a ZIP of up to 256 MiB to `/api/v1/series-import` on the console host, so every hop has to admit a body that size there.
 
 The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB over an uplink of about 7.2 Mbit/s, and as long as `web-admin` gives a request to arrive whole. A hop that limits how long a request may take, rather than how long the connection may sit idle, has to allow at least that long on these paths.
 

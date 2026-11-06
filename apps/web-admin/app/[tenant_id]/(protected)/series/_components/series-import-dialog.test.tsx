@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 import {
   SERIES_IMPORT_MANIFEST_NAME,
+  SERIES_IMPORT_MAX_BYTES,
   SERIES_IMPORT_PATH,
 } from "#lib/series-import-manifest";
 import type { SeriesImportResponse } from "#lib/series-import-manifest";
@@ -120,15 +121,15 @@ describe("SeriesImportDialog", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("refuses a ZIP over the limit with the page upload's message", async () => {
+  it("refuses a ZIP over the limit", async () => {
     const file = zipFile(validManifest);
 
-    Object.defineProperty(file, "size", { value: 256 * 1024 * 1024 + 1 });
+    Object.defineProperty(file, "size", { value: SERIES_IMPORT_MAX_BYTES + 1 });
     await openAndPick(file);
 
     expect(
       await screen.findByText(
-        "The files are larger than one upload takes. Keep each upload to 256MB or less, or add the pages over several uploads."
+        "The ZIP is larger than one import takes. Keep each ZIP to 256MB or less, or import over several ZIPs."
       )
     ).toBeDefined();
   });
@@ -236,7 +237,7 @@ describe("SeriesImportDialog", () => {
     fireEvent.click(importButton());
 
     expect(
-      await screen.findByText(/larger than one upload takes/u)
+      await screen.findByText(/larger than one import takes/u)
     ).toBeDefined();
   });
 

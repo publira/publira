@@ -180,6 +180,8 @@ jobs:
               - 'infra/docker/opensearch/**'
               - 'infra/docker/elasticsearch/**'
               - 'scripts/go-test-share.sh'
+              # The console's upload limit, held to the server's by a test.
+              - 'apps/web-admin/lib/episode-pages-upload.ts'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'

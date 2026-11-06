@@ -20,6 +20,13 @@ import type { ReadingDirectionValue } from "./reading-layout";
  */
 export const SERIES_IMPORT_PATH = "/api/v1/series-import";
 
+/**
+ * The largest request body the import takes. It is unpacked here and goes up in
+ * several `UploadEpisodeImages`, so it can be larger than one upload; the
+ * screen's help text and the refusal state it as 256MB.
+ */
+export const SERIES_IMPORT_MAX_BYTES = 256 * 1024 * 1024;
+
 /** The file at the root of the ZIP that says what to import. */
 export const SERIES_IMPORT_MANIFEST_NAME = "publira-import.json";
 

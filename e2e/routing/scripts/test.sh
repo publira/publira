@@ -133,10 +133,10 @@ assert_upload_delivered "icon Server Action of 11 MiB on a page path reaches web
 assert_upload_delivered "image Server Action of 11 MiB on a page path reaches web-admin whole" admin.localhost /branding web-admin 11534336 0
 
 # The episode edit screen posts a whole episode's pages in one upload, which
-# web-admin reads up to 256 MiB of, and the edge gives it 300 seconds to
-# arrive. Spread over 75 seconds, it outlasts the 60 seconds Traefik gives a
-# request by default.
-assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 268435456 75
+# web-admin reads up to 129 MiB of, and a whole ZIP to import, up to 256 MiB,
+# and the edge gives either 300 seconds to arrive. Spread over 75 seconds, each
+# outlasts the 60 seconds Traefik gives a request by default.
+assert_upload_delivered "page upload of 129 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 135266304 75
 assert_upload_delivered "series import of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/series-import web-admin 268435456 75
 
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The

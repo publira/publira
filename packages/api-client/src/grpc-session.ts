@@ -69,7 +69,7 @@ export const retryRefusedStream: Interceptor = (next) => async (req) => {
  *
  * Node refuses a new stream on a session that holds more than
  * `maxSessionMemory` megabytes, 10 by default, and the request bodies still
- * waiting to be sent count toward it. An episode upload alone can be 256MB,
+ * waiting to be sent count toward it. An episode upload alone can be 128MB,
  * so with the default every call that starts while one is in flight fails
  * with `NGHTTP2_ENHANCE_YOUR_CALM`. Refusing those calls frees none of the
  * memory the upload holds, and the peer is publira's own API, so the session

@@ -88,7 +88,7 @@ const codeOf = async (call: Promise<unknown>) => {
 };
 
 describe("the gRPC transport the Next.js apps use", () => {
-  // Allocating 256 MiB and sending it is work a busy runner stretches well past
+  // Allocating 128 MiB and sending it is work a busy runner stretches well past
   // the default timeout, so this test is given its own.
   it("serves another call while a large upload is still being sent", async () => {
     const { baseUrl, close, release, uploadHeld } = await startServer();
@@ -100,7 +100,7 @@ describe("the gRPC transport the Next.js apps use", () => {
     // As large as the console lets an episode upload be.
     const upload = codeOf(
       client.series.uploadEpisodeImages({
-        archiveData: new Uint8Array(256 * 1024 * 1024),
+        archiveData: new Uint8Array(128 * 1024 * 1024),
       })
     );
 

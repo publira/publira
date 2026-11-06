@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -84,5 +87,26 @@ func TestCollectInputsBoundsWhatOneUploadCarries(t *testing.T) {
 	inputs, err := collectInputs([]*publiraadminv1.EpisodeImageUpload{{Data: half}, {Data: half}}, nil, "", "", true)
 	if err != nil || len(inputs) != 2 {
 		t.Errorf("an upload of exactly %d bytes: %d inputs, %v, want both images", MaxUploadBytes, len(inputs), err)
+	}
+}
+
+// The console refuses an upload over its own limit before it sends one, with a
+// message that states the number, so the number is this one: a console over it
+// would refuse nothing and leave the RPC to answer with a generic error.
+func TestMaxUploadBytesIsTheConsoles(t *testing.T) {
+	source, err := os.ReadFile("../../../apps/web-admin/lib/episode-pages-upload.ts")
+	if err != nil {
+		t.Fatalf("read the console's upload limit: %v", err)
+	}
+	match := regexp.MustCompile(`EPISODE_PAGES_UPLOAD_MAX_BYTES = (\d+) \* 1024 \* 1024;`).FindSubmatch(source)
+	if match == nil {
+		t.Fatal("the console's source states no EPISODE_PAGES_UPLOAD_MAX_BYTES in mebibytes")
+	}
+	mebibytes, err := strconv.Atoi(string(match[1]))
+	if err != nil {
+		t.Fatalf("parse %q: %v", match[1], err)
+	}
+	if got := mebibytes << 20; got != MaxUploadBytes {
+		t.Errorf("EPISODE_PAGES_UPLOAD_MAX_BYTES is %d bytes, want MaxUploadBytes, %d", got, MaxUploadBytes)
 	}
 }

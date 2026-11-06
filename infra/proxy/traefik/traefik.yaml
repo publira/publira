@@ -17,7 +17,7 @@ entryPoints:
         - strip-trace-context@file
         - strip-forwarded@file
     # Traefik gives a request 60 seconds to arrive, body included, unless told
-    # otherwise, and the tenant console posts a whole episode's pages in one
+    # otherwise, and the tenant console posts a whole ZIP to import in one
     # upload of up to 256 MiB: 60 seconds cut it off on any uplink slower than
     # about 36 Mbit/s. Traefik sets this per entry point, never per router, so
     # every request here is given the same 300 seconds, which is as long as

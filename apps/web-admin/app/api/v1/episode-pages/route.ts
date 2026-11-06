@@ -11,7 +11,10 @@ import {
   episodesCacheTag,
   uploadEpisodePages,
 } from "#lib/episode";
-import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
+import {
+  EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
+  EPISODE_PAGES_UPLOAD_MAX_BYTES,
+} from "#lib/episode-pages-upload";
 import {
   fileListFormSchema,
   optionalFileFormSchema,
@@ -106,18 +109,22 @@ const readUpload = (
   return { input: { archive, episodeId, seriesId, tenantId } };
 };
 
+const uploadedBytes = ({ archive, pages }: UploadInput) =>
+  (archive?.size ?? 0) +
+  (pages ?? []).reduce((total, page) => total + page.size, 0);
+
 /**
  * Adds the page images, ZIP, or ePub the episode edit screen submits.
  *
  * The tenant is the one the host names, the operator must be able to edit it,
- * and the declared length must be within {@link EPISODE_PAGES_UPLOAD_MAX_BYTES}
- * — all before the body is read, which is what this route is for. The
- * answer is JSON for the screen's `fetch`; a success expires the episode's
- * tags, and the screen refreshes itself.
+ * and the declared length must be within
+ * {@link EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES} — all before the body is read,
+ * which is what this route is for. The answer is JSON for the screen's `fetch`;
+ * a success expires the episode's tags, and the screen refreshes itself.
  */
 export const POST = async (request: NextRequest) => {
   const form = await readPageUploadForm(request, {
-    maxBytes: EPISODE_PAGES_UPLOAD_MAX_BYTES,
+    maxBytes: EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
     tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
   });
 
@@ -134,6 +141,12 @@ export const POST = async (request: NextRequest) => {
   }
 
   const { input } = upload;
+
+  // The framing allowance lets a body through with files a little over what
+  // publira server takes, which would be sent for nothing.
+  if (uploadedBytes(input) > EPISODE_PAGES_UPLOAD_MAX_BYTES) {
+    return refuse(t("admin.series.episodes.validation.upload_too_large"), 413);
+  }
 
   let result: Awaited<ReturnType<typeof uploadEpisodePages>>;
 
