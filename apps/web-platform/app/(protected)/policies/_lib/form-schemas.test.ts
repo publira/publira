@@ -14,6 +14,8 @@ const securityValues = {
   anonymous_read_images_per_10_seconds: "2400",
   anonymous_read_public_api_per_10_seconds: "640",
   anonymous_read_search_per_10_seconds: "80",
+  api_key_request_per_day: "100000",
+  api_key_request_per_minute: "600",
   coin_payment_per_day: "500",
   coin_payment_per_minute: "20",
   data_export_per_day: "1",
@@ -188,6 +190,12 @@ describe("securityPolicyFormSchema", () => {
       name: "data_export",
       setting: "Data download requests",
       window: "Hour",
+    },
+    {
+      field: "apiKeyRequest",
+      name: "api_key_request",
+      setting: "API key requests",
+      window: "Minute",
     },
   ])("the $setting limit", ({ field, name, setting, window }) => {
     const shorter = `${name}_per_${window.toLowerCase()}`;

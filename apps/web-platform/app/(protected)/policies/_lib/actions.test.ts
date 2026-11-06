@@ -49,6 +49,8 @@ const securityForm = (extra: Record<string, string> = {}): FormData => {
     anonymous_read_images_per_10_seconds: "2400",
     anonymous_read_public_api_per_10_seconds: "640",
     anonymous_read_search_per_10_seconds: "80",
+    api_key_request_per_day: "100000",
+    api_key_request_per_minute: "600",
     coin_payment_per_day: "500",
     coin_payment_per_minute: "20",
     data_export_per_day: "1",
@@ -133,6 +135,7 @@ describe("updatePlatformSecurityPolicyAction", () => {
 
     expect(mockUpdatePlatformSecurityPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
+        apiKeyRequest: { perDay: 100_000, perMinute: 600 },
         coinPayment: { perDay: 500, perMinute: 20 },
         dataExport: { perDay: 1, perHour: 1 },
         iconChange: { perDay: 20, perMinute: 5 },

@@ -54,6 +54,10 @@ export const updatePlatformSecurityPolicyAction = async (
           publicApi: data.anonymousReadPublicApi,
           search: data.anonymousReadSearch,
         },
+        apiKeyRequest: {
+          perDay: data.apiKeyRequestPerDay,
+          perMinute: data.apiKeyRequestPerMinute,
+        },
         coinPayment: {
           perDay: data.coinPaymentPerDay,
           perMinute: data.coinPaymentPerMinute,

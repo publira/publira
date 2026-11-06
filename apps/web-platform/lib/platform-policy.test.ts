@@ -171,6 +171,7 @@ describe("getPlatformPolicy", () => {
   it("reads the reader limits as part of the security policy", async () => {
     mockGetPlatformPolicy.mockResolvedValueOnce({
       policy: {
+        apiKeyRequest: { perDay: 90_000, perMinute: 500 },
         dataExport: { perDay: 3, perHour: 2 },
         promotionCodeAttempt: { perDay: 31, perMinute: 8 },
       },
@@ -180,6 +181,7 @@ describe("getPlatformPolicy", () => {
     await expect(getPlatformPolicy()).resolves.toMatchObject({
       values: {
         security: {
+          apiKeyRequest: { perDay: 90_000, perMinute: 500 },
           dataExport: { perDay: 3, perHour: 2 },
           promotionCodeAttempt: { perDay: 31, perMinute: 8 },
         },
@@ -208,6 +210,7 @@ const listUrl = "https://lists.example.com/disposable.conf";
 /** What the security screen submits, requiring two-step verification of operators. */
 const securityValues: PlatformSecurityPolicy = {
   anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+  apiKeyRequest: { perDay: 100_000, perMinute: 600 },
   coinPayment: { perDay: 500, perMinute: 20 },
   dataExport: { perDay: 1, perHour: 1 },
   disposableEmailDomainsUrl: "",
@@ -234,6 +237,7 @@ const securityValues: PlatformSecurityPolicy = {
 /** A stored policy that names a list, as `GetPlatformPolicy` answers it. */
 const storedPolicy = {
   anonymousReadLimits: { images: 3000, publicApi: 700, search: 90 },
+  apiKeyRequest: { perDay: 90_000, perMinute: 500 },
   coinPayment: { perDay: 600, perMinute: 30 },
   communityLimitDefaults: {
     commentPost: { perDay: 100, perMinute: 10 },
@@ -310,6 +314,7 @@ describe("savePlatformPolicy", () => {
     expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
         policy: expect.objectContaining({
+          apiKeyRequest: storedPolicy.apiKeyRequest,
           coinPayment: storedPolicy.coinPayment,
           dataExport: storedPolicy.dataExport,
           iconChange: storedPolicy.iconChange,
@@ -425,6 +430,7 @@ describe("savePlatformPolicy", () => {
     await updatePlatformSecurityPolicy(
       {
         anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+        apiKeyRequest: { perDay: 100_000, perMinute: 600 },
         coinPayment: { perDay: 500, perMinute: 20 },
         dataExport: { perDay: 1, perHour: 1 },
         disposableEmailDomainsUrl: "",

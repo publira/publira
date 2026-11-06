@@ -317,6 +317,24 @@ export const SecurityPolicyForm = ({
               <Message message="platform.policy.security.data_export_per_day" />
             </Suspense>
           </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.apiKeyRequest.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="api_key_request_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.api_key_request_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.apiKeyRequest.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="api_key_request_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.api_key_request_per_day" />
+            </Suspense>
+          </PolicyLimitField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <PolicyLimitField
