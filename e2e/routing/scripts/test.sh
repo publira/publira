@@ -137,6 +137,7 @@ assert_upload_delivered "image Server Action of 11 MiB on a page path reaches we
 # arrive. Spread over 75 seconds, it outlasts the 60 seconds Traefik gives a
 # request by default.
 assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 268435456 75
+assert_upload_delivered "series import of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/series-import web-admin 268435456 75
 
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The
 # Go servers adopt an inbound `traceparent` as the parent span, so a caller

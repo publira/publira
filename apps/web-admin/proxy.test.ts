@@ -317,12 +317,18 @@ describe("web-admin proxy", () => {
     ).toBe(false);
   });
 
-  it("keeps the page upload out of the proxy matcher", async () => {
+  it("keeps the upload routes out of the proxy matcher", async () => {
     const { config } = await import("./proxy");
 
     expect(
       unstable_doesMiddlewareMatch({ config, url: "/api/v1/episode-pages" })
     ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/series-import" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/series-importx" })
+    ).toBe(true);
     expect(
       unstable_doesMiddlewareMatch({
         config,

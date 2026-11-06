@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { strToU8, zipSync } from "fflate";
 
 import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
@@ -121,6 +122,55 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: "console/catalog/series",
           subject: "list",
+        });
+      });
+
+      test("the import from a ZIP, checked and ready to send", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, "/series");
+        await page
+          .getByRole("button", { name: t("admin.series.import.action") })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+
+        await dialog
+          .getByLabel(t("admin.series.import.file_label"))
+          .setInputFiles({
+            buffer: Buffer.from(
+              zipSync({
+                "ep01/001.png": strToU8("page"),
+                "ep02/001.png": strToU8("page"),
+                "publira-import.json": strToU8(
+                  JSON.stringify({
+                    episodes: [
+                      { pages: ["ep01/001.png"], title: "Episode 1" },
+                      { pages: ["ep02/001.png"], title: "Episode 2" },
+                    ],
+                    series: { title: "Northern Lights" },
+                    version: 1,
+                  })
+                ),
+              })
+            ),
+            mimeType: "application/zip",
+            name: "import.zip",
+          });
+
+        await expect(
+          dialog.getByRole("button", {
+            exact: true,
+            name: t("admin.series.import.submit"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "console/catalog/episodes",
+          subject: "import",
         });
       });
 

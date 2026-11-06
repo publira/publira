@@ -2,14 +2,14 @@
 title: Series
 description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes with links to where their printed books are sold.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
 
 Each row opens the series with **Edit**, or **View** for an Auditor, and its episodes with **Episodes**. A row's **Status** is **Published** once the series' **Publication date and time** has passed, **Scheduled** while that time is still ahead, and **Draft** without one. A series not shown on both the site and the app carries **Web only** or **App only** beside its title.
 
-![The Series list: Create series at the top, the Serialization status and Age rating filters with Apply and Reset, and rows giving each series' title, label, publication time, reading period, synopsis, serialization status, age rating, and status, with Edit and Episodes.](./series-list.png)
+![The Series list: Create series and Import from a ZIP at the top, the Serialization status and Age rating filters with Apply and Reset, and rows giving each series' title, label, publication time, reading period, synopsis, serialization status, age rating, and status, with Edit and Episodes.](./series-list.png)
 
 ## Creating a series
 

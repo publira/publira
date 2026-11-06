@@ -209,6 +209,9 @@ catalogs:
     '@types/react-dom':
       specifier: 19.3.0
       version: 19.3.0
+    fflate:
+      specifier: 0.8.3
+      version: 0.8.3
     jose:
       specifier: 6.2.15
       version: 6.2.15
@@ -422,6 +425,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: 3.32.2
         version: 3.32.2
+      fflate:
+        specifier: 'catalog:'
+        version: 0.8.3
       lru-cache:
         specifier: 'catalog:'
         version: 11.5.3
@@ -716,6 +722,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      fflate:
+        specifier: 'catalog:'
+        version: 0.8.3
       jose:
         specifier: 'catalog:'
         version: 6.2.15
@@ -3812,6 +3821,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   figures@6.1.0:
     resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
@@ -8188,6 +8200,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
 
   figures@6.1.0:
     dependencies:

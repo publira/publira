@@ -13,11 +13,13 @@ import { isSignedInTenantEditor } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
 import { buildQueryString } from "#lib/query-string";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { SeriesImportDialog } from "./_components/series-import-dialog";
 import { SeriesManager } from "./_components/series-manager";
 import { parseSeriesFilters } from "./_lib/search-params";
 
@@ -33,6 +35,16 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
+
+/**
+ * A manifest's prices are in the tenant's currency, so the import stays out
+ * while that cannot be read.
+ */
+const SeriesImportAction = async () => {
+  const currency = await getTenantCurrency(await getTenantId());
+
+  return currency ? <SeriesImportDialog currency={currency} /> : null;
+};
 
 const SeriesManagerData = async ({
   searchParams,
@@ -94,11 +106,19 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
       <Suspense fallback={null}>
         <TenantEditorOnly>
           <ConsolePage.Actions>
-            <LinkButton render={<Link href="/series/new" />} variant="outline">
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.series.new_action" />
+            <div className="flex flex-wrap gap-2">
+              <LinkButton
+                render={<Link href="/series/new" />}
+                variant="outline"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.series.new_action" />
+                </Suspense>
+              </LinkButton>
+              <Suspense fallback={null}>
+                <SeriesImportAction />
               </Suspense>
-            </LinkButton>
+            </div>
           </ConsolePage.Actions>
         </TenantEditorOnly>
       </Suspense>

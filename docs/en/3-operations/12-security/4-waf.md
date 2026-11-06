@@ -2,6 +2,7 @@
 title: A web application firewall
 description: What a web application firewall in front of an install adds, which managed rules to turn on, the requests of Publira they refuse unless you make exceptions for them, and keeping the consoles to your own networks.
 published: 2026-10-30
+updated: 2026-11-06
 ---
 
 A web application firewall (WAF) in front of the edge inspects each request and refuses the ones that look like an attack, such as SQL injection, cross-site scripting, path traversal, and probes for known vulnerabilities in common software, before they reach anything you run. Publira does not rely on one to be safe. A WAF is a layer in front of the checks Publira makes itself, which also stops scanners and attacks on a vulnerability before an upgrade has fixed it, and keeps the consoles off the internet where your staff work from networks you know.
@@ -26,7 +27,7 @@ The rule sets are written for the common web application, and some of what Publi
 
 | Requests | What they carry | What refuses them | What to do |
 | --- | --- | --- | --- |
-| The uploads: `/api/v1/episode-pages` on a console host, the rest of `/api/v1/`, the pages that upload an image, and a reader's icon sent to the public API | A body of up to 256 MiB, 33 MiB, 11 MiB, and 15 MiB, as [Uploads in the tenant console](../../2-deployments/4-edge/index.md#uploads-in-the-tenant-console) and [Image uploads from a page](../../2-deployments/4-edge/index.md#image-uploads-from-a-page) describe | AWS WAF's `SizeRestrictions_BODY`, which refuses every body over 8 KB | Set that rule to Count; the edge's own limit on the size of a body is the one that matters |
+| The uploads: `/api/v1/episode-pages` and `/api/v1/series-import` on a console host, the rest of `/api/v1/`, the pages that upload an image, and a reader's icon sent to the public API | A body of up to 256 MiB, 33 MiB, 11 MiB, and 15 MiB, as [Uploads in the tenant console](../../2-deployments/4-edge/index.md#uploads-in-the-tenant-console) and [Image uploads from a page](../../2-deployments/4-edge/index.md#image-uploads-from-a-page) describe | AWS WAF's `SizeRestrictions_BODY`, which refuses every body over 8 KB | Set that rule to Count; the edge's own limit on the size of a body is the one that matters |
 | The webhooks under `/api/v1/webhook/` | A payment provider's event, or a reader's whole emailed reply with its HTML and its attachments | The body rules for cross-site scripting, SQL injection, and file inclusion, which a mail's HTML and text trip | Skip the managed rules on this path. Publira checks the signature each provider puts on the body, so a forged request is refused without them, and a refused one is retried and then lost, as [Webhooks](../../2-deployments/4-edge/index.md#webhooks) describes |
 | What readers and staff write: comments, contact messages, and on a console host, pages, announcements, and replies | Text that may quote code, such as a reader asking why `<b>` shows up in a title | The body rules for cross-site scripting and SQL injection | Keep the rules. If the log shows them refusing such text, lower the sensitivity of the rule that does, or skip that rule on the console hosts alone, where only signed-in staff write |
 

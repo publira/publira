@@ -774,6 +774,8 @@ export const createSeries = async (
     availability: SurfaceAvailabilityValue;
     /** The empty value follows the tenant's default. */
     purchaseAvailability: PurchaseAvailabilityOverride;
+    /** The language `title` and `synopsis` are in. Absent writes the tenant's default. */
+    translationLocale?: Locale;
   } & SeriesListingInput &
     SeriesTaxonomyInput,
   locale: Locale
@@ -803,6 +805,7 @@ export const createSeries = async (
         genreIds: input.genreIds,
         isPublished: input.isPublished,
         labelId: input.labelId,
+        locale: input.translationLocale,
         publishedAt: input.publishedAt,
         purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
           input.purchaseAvailability

@@ -2789,6 +2789,58 @@
           "no_episodes": "开始销售前，请先为卷添加章节。",
           "failed": "无法更改卷的销售状态。请稍后重试。"
         }
+      },
+      "import": {
+        "action": "从ZIP导入",
+        "description": "使用包含页面图片和根目录publira-import.json清单的ZIP创建系列及其章节。如果清单指定了现有系列，则将章节添加到该系列。",
+        "description_series": "将ZIP中的章节添加到此系列。ZIP根目录的publira-import.json清单必须通过ID指定此系列。",
+        "file_label": "ZIP文件",
+        "file_help": "每个ZIP最大256MB，每章节最多1000页，每页最大20MB。",
+        "checking": "正在检查ZIP…",
+        "problems_heading": "无法导入此ZIP。未创建任何内容。",
+        "ready_new": ".input {$count :integer}\n.match $count\n* {{可以创建系列“{$title}”及其{$count}个章节。}}",
+        "ready_existing": ".input {$count :integer}\n.match $count\n* {{可以向系列{$id}添加{$count}个章节。}}",
+        "submit": "导入",
+        "submitting": "正在导入，请保持此窗口打开。",
+        "close": "关闭",
+        "refused": "无法导入此ZIP。",
+        "failed": "无法导入ZIP。请稍后重试。",
+        "interrupted": "导入过程中连接中断，部分内容可能已完成。再次导入前，请检查系列的章节。",
+        "finished": ".input {$count :integer}\n.match $count\n* {{已导入{$count}个章节。}}",
+        "stopped": "导入在失败的章节处停止。其之前的章节已创建。要继续，请从清单中移除已完成的章节，然后重新导入。",
+        "episode_failed": "无法添加此章节。",
+        "open_series": "打开系列的章节",
+        "result": {
+          "column_episode": "章节",
+          "column_pages": "页数",
+          "column_outcome": "结果",
+          "imported": "已导入",
+          "failed": "失败",
+          "not_started": "未开始"
+        },
+        "problem": {
+          "zip_invalid": "无法将该文件作为ZIP读取。",
+          "manifest_missing": "ZIP根目录中没有publira-import.json。",
+          "manifest_too_large": "publira-import.json超过1MB。",
+          "manifest_invalid": "publira-import.json不是有效的清单。",
+          "version_unsupported": "此控制台无法读取该版本的清单。请使用version 1。",
+          "unknown_key": "清单中有不支持的键：{$key}",
+          "series_required": "清单需要series：新系列填写title，现有系列填写id。",
+          "series_mismatch": "清单未指定此系列。请在series中填写此系列的id，或从系列列表导入。",
+          "series_unknown_key": "series中有不支持的键：{$key}",
+          "series_field_invalid": "series的{$field}无效。",
+          "episodes_required": "清单中没有章节。",
+          "episode_unknown_key": "{$episode}：有不支持的键：{$key}",
+          "episode_field_invalid": "{$episode}：{$field}无效。",
+          "scheduled_at_passed": "{$episode}：scheduled_at已过去。请设置未来的时间，或将其删除以创建草稿。",
+          "pages_required": "{$episode}：未列出页面。",
+          "pages_too_many": ".input {$count :integer}\n.match $count\n* {{{$episode}：页数超过{$count}。}}",
+          "page_missing": "{$episode}：ZIP中没有{$path}。",
+          "page_duplicated": "{$episode}：{$path}重复。",
+          "page_not_image": "{$episode}：{$path}不是JPEG、PNG、GIF或WebP图片。",
+          "page_too_large": "{$episode}：{$path}超过20MB。",
+          "page_unreadable": "{$episode}：{$path}为空，或使用了无法读取的压缩方式。"
+        }
       }
     },
     "settings": {

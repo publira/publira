@@ -12,9 +12,13 @@ import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
+import type { SeriesImportResponse } from "#lib/series-import-manifest";
 import { resolveTenantRouting, SUSPENDED_TENANT } from "#lib/tenant";
 
-export const respond = (body: EpisodePagesUploadResponse, status: number) =>
+export const respond = (
+  body: EpisodePagesUploadResponse | SeriesImportResponse,
+  status: number
+) =>
   NextResponse.json(body, {
     headers: { "Cache-Control": "private, no-store" },
     status,

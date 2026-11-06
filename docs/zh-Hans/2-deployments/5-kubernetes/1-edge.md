@@ -2,7 +2,8 @@
 title: Kubernetes上的边缘
 description: 在Kubernetes集群上的安装实例前方部署Gateway或Ingress，由cert-manager签发其证书，并从集群外部进行检查。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-06
+source_updated: 2026-11-06
 ---
 
 本页是[Kubernetes](./index.md)的第6步：在[设置安装实例](./index.md#5-设置安装实例)运行完成后，把边缘部署在[启动进程](./index.md#4-启动进程)所创建的Service前方。
@@ -203,7 +204,7 @@ spec:
 
 - **公开API和`404`**。匹配`/rpc/publira\.v1\..*`的路径会到达`publira-server`，因为Envoy Gateway先尝试正则表达式；`/rpc`的其余部分落入带有`not-found`过滤器的`PathPrefix`规则，而`/api`与其他所有路径一样到达Web应用。带有该过滤器的规则没有`backendRefs`：过滤器应答与之匹配的每个请求，不会转发任何内容。
 - **移除的请求头**。`traceparent`、`tracestate`和`baggage`按照[追踪上下文](../4-edge/index.md#追踪上下文)的要求移除。除非另行设置，Gateway会把调用方发送的`Forwarded`和`X-Forwarded-Host`原样传递下去，而Publira会读取两者，如[客户端地址](../4-edge/index.md#客户端地址)和[请求所发往的主机](../4-edge/index.md#请求所发往的主机)所述；在这里移除它们，就可以让每个进程的`PUBLIRA_FORWARDED_HEADER_ENABLED`保持默认值。`X-Forwarded-CountryRegion`按照[读者所在地区](../4-edge/index.md#读者所在地区)的要求移除：Envoy Gateway不会自行查询地区，所以租户的Google tag gateway不会向Google发送任何地区。如果Gateway前方有CDN把该请求头设置为读者所在的地区（如[ECS前方的CloudFront](../6-ecs-fargate/1-cloudfront.md#请求头)所示），那么只要`web-storefront`的规则把它从`remove`中去掉，它就会随请求到达`web-storefront`；但只有当该CDN是唯一能连接到Gateway的组件时，这样做才是安全的。
-- **上传超时**。`timeouts.request: 0s`按照Gateway API对零时长的定义，关闭对Web应用请求耗时的限制。没有它，规则会采用实现的默认值，而默认值可能短得多：Envoy Gateway的默认值是请求到达后15秒内必须应答。租户控制台中的章节上传可能需要最多300秒才能完整到达，如[租户控制台中的上传](../4-edge/index.md#租户控制台中的上传)所述，而Gateway API允许实现把这段时间也计算在内，即在`web-admin`保存页面并应答之前的时间。Web应用本身会给请求300秒的到达时间，所以边缘不需要自己的限制。Gateway API没有表示请求体大小的字段，Envoy Gateway除非由它自己的策略添加，否则不限制请求体大小；如果您的实现确实有此限制，请在控制台主机名的`/api/v1/episode-pages`上允许256 MiB，在租户域名的`/api/v1/webhook/email/`下允许33 MiB。
+- **上传超时**。`timeouts.request: 0s`按照Gateway API对零时长的定义，关闭对Web应用请求耗时的限制。没有它，规则会采用实现的默认值，而默认值可能短得多：Envoy Gateway的默认值是请求到达后15秒内必须应答。租户控制台中的章节上传可能需要最多300秒才能完整到达，如[租户控制台中的上传](../4-edge/index.md#租户控制台中的上传)所述，而Gateway API允许实现把这段时间也计算在内，即在`web-admin`保存页面并应答之前的时间。Web应用本身会给请求300秒的到达时间，所以边缘不需要自己的限制。Gateway API没有表示请求体大小的字段，Envoy Gateway除非由它自己的策略添加，否则不限制请求体大小；如果您的实现确实有此限制，请在控制台主机名的`/api/v1/episode-pages`和`/api/v1/series-import`上允许256 MiB，在租户域名的`/api/v1/webhook/email/`下允许33 MiB。
 - **重定向**。`https-redirect`只挂接到`http`监听器，把那里的每个请求都发送到HTTPS。在签发证书期间，cert-manager会在同一个监听器上添加它自己的路由来处理质询。该路由指定证书所针对的主机名，因此会从重定向中接管该主机名的普通HTTP请求；证书签发完毕、该路由被移除后，重定向会重新应答这些请求。
 
 YAML锚点`&strip-request-headers`在路由的每条规则上重复同一个过滤器；`kubectl apply`会将其展开。

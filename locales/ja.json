@@ -2789,6 +2789,58 @@
           "no_episodes": "販売を開始する前に、巻にエピソードを追加してください。",
           "failed": "巻の販売状態を変更できませんでした。時間をおいて再度お試しください。"
         }
+      },
+      "import": {
+        "action": "ZIPから取り込む",
+        "description": "ページ画像と、ルートに置いたpublira-import.jsonのマニフェストを収めたZIPから、シリーズとエピソードを作成します。マニフェストで既存のシリーズを指定すると、そのシリーズにエピソードを追加します。",
+        "description_series": "ZIPのエピソードをこのシリーズに追加します。ZIPのルートに置いたpublira-import.jsonのマニフェストで、このシリーズをIDで指定してください。",
+        "file_label": "ZIPファイル",
+        "file_help": "ZIPは1つ256MBまで、1話1000ページまで、1ページ20MBまでです。",
+        "checking": "ZIPを確認しています…",
+        "problems_heading": "このZIPは取り込めません。何も作成されていません。",
+        "ready_new": ".input {$count :integer}\n.match $count\n* {{シリーズ「{$title}」と{$count}話のエピソードを作成できます。}}",
+        "ready_existing": ".input {$count :integer}\n.match $count\n* {{シリーズ{$id}に{$count}話のエピソードを追加できます。}}",
+        "submit": "取り込む",
+        "submitting": "取り込んでいます。このウィンドウを開いたままにしてください。",
+        "close": "閉じる",
+        "refused": "このZIPは取り込めません。",
+        "failed": "ZIPを取り込めませんでした。しばらくしてからもう一度お試しください。",
+        "interrupted": "取り込みの途中で接続が切れたため、一部が完了している可能性があります。もう一度取り込む前に、シリーズのエピソードを確認してください。",
+        "finished": ".input {$count :integer}\n.match $count\n* {{{$count}話を取り込みました。}}",
+        "stopped": "失敗したエピソードで取り込みを止めました。それより前のエピソードは作成済みです。続けるには、完了したエピソードをマニフェストから外して、もう一度取り込んでください。",
+        "episode_failed": "このエピソードを追加できませんでした。",
+        "open_series": "シリーズのエピソードを開く",
+        "result": {
+          "column_episode": "エピソード",
+          "column_pages": "ページ数",
+          "column_outcome": "結果",
+          "imported": "取り込み済み",
+          "failed": "失敗",
+          "not_started": "未実施"
+        },
+        "problem": {
+          "zip_invalid": "ファイルをZIPとして読み取れませんでした。",
+          "manifest_missing": "ZIPのルートにpublira-import.jsonがありません。",
+          "manifest_too_large": "publira-import.jsonが1MBを超えています。",
+          "manifest_invalid": "publira-import.jsonがマニフェストとして正しくありません。",
+          "version_unsupported": "このコンソールが読めないバージョンのマニフェストです。versionは1にしてください。",
+          "unknown_key": "マニフェストに使えないキーがあります: {$key}",
+          "series_required": "マニフェストにseriesが必要です。新しいシリーズならtitleを、既存のシリーズならidを指定してください。",
+          "series_mismatch": "マニフェストがこのシリーズを指定していません。seriesにこのシリーズのidを指定するか、シリーズ一覧から取り込んでください。",
+          "series_unknown_key": "seriesに使えないキーがあります: {$key}",
+          "series_field_invalid": "seriesの{$field}が正しくありません。",
+          "episodes_required": "マニフェストにエピソードがありません。",
+          "episode_unknown_key": "{$episode}: 使えないキーがあります: {$key}",
+          "episode_field_invalid": "{$episode}: {$field}が正しくありません。",
+          "scheduled_at_passed": "{$episode}: scheduled_atが過去の日時です。未来の日時を指定するか、削除して下書きとして作成してください。",
+          "pages_required": "{$episode}: ページが指定されていません。",
+          "pages_too_many": ".input {$count :integer}\n.match $count\n* {{{$episode}: ページ数が{$count}を超えています。}}",
+          "page_missing": "{$episode}: {$path}がZIPにありません。",
+          "page_duplicated": "{$episode}: {$path}が重複しています。",
+          "page_not_image": "{$episode}: {$path}はJPEG、PNG、GIF、WebPの画像ではありません。",
+          "page_too_large": "{$episode}: {$path}が20MBを超えています。",
+          "page_unreadable": "{$episode}: {$path}は空か、読み取れない形式で圧縮されています。"
+        }
       }
     },
     "settings": {

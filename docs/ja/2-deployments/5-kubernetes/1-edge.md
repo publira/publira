@@ -2,8 +2,8 @@
 title: Kubernetesでのリバースプロキシの設定
 description: KubernetesクラスターでPubliraの前にGatewayかIngressを置き、cert-managerに証明書を発行させて、クラスターの外から動作を確認する手順を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-06
+source_updated: 2026-11-06
 ---
 
 このページは[Kubernetes](./index.md)の手順6で、[プロセスを起動する](./index.md#4-プロセスを起動する)で作成したServiceの前にリバースプロキシを置きます。[Publiraをセットアップする](./index.md#5-publiraをセットアップする)を済ませてから始めてください。
@@ -220,7 +220,7 @@ Gatewayは、特に指定しない限り、呼び出し元が送った`Forwarded
 
 `timeouts.request: 0s`は、Webアプリへのリクエストにかかる時間の上限をなくします。Gateway APIは、時間0をこの意味に定義しています。指定しないと、ルールには実装の既定値が適用され、それははるかに短いことがあります。Envoy Gatewayの既定値は、リクエストが届いてから応答するまでの15秒です。[テナント管理画面でのアップロード](../4-edge/index.md#テナント管理画面でのアップロード)で説明しているとおり、テナント管理画面でのエピソードのアップロードは、届くまでに最大300秒かかります。Gateway APIでは、`web-admin`がページを保存して応答する前のこの時間も、実装が計測に含めてよいことになっています。Webアプリ自身がリクエストの到着に300秒の上限を設けているので、リバースプロキシで別に上限を設ける必要はありません。
 
-Gateway APIには、ボディのサイズを指定するフィールドがありません。Envoy Gatewayは、独自のポリシーで追加しない限りボディのサイズを制限しません。使う実装がボディのサイズを制限する場合は、管理画面のホストの`/api/v1/episode-pages`で256MiBまで、テナントのドメインの`/api/v1/webhook/email/`配下で33MiBまで許可してください。
+Gateway APIには、ボディのサイズを指定するフィールドがありません。Envoy Gatewayは、独自のポリシーで追加しない限りボディのサイズを制限しません。使う実装がボディのサイズを制限する場合は、管理画面のホストの`/api/v1/episode-pages`と`/api/v1/series-import`で256MiBまで、テナントのドメインの`/api/v1/webhook/email/`配下で33MiBまで許可してください。
 
 ### リダイレクト
 

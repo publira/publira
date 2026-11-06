@@ -2789,6 +2789,58 @@
           "no_episodes": "Add an episode to the volume before putting it on sale.",
           "failed": "Could not change whether the volume is on sale. Please try again later."
         }
+      },
+      "import": {
+        "action": "Import from a ZIP",
+        "description": "Creates a series and its episodes from a ZIP of page images and a publira-import.json manifest at its root, or adds the episodes to the series the manifest names.",
+        "description_series": "Adds the episodes of a ZIP to this series. The publira-import.json manifest at the ZIP's root has to name this series by its ID.",
+        "file_label": "ZIP file",
+        "file_help": "One ZIP may be up to 256MB, an episode up to 1000 pages, and a page up to 20MB.",
+        "checking": "Checking the ZIP…",
+        "problems_heading": "This ZIP cannot be imported. Nothing has been created.",
+        "ready_new": ".input {$count :integer}\n.match $count\none {{Ready to create the series {$title} with {$count} episode.}}\n* {{Ready to create the series {$title} with {$count} episodes.}}",
+        "ready_existing": ".input {$count :integer}\n.match $count\none {{Ready to add {$count} episode to the series {$id}.}}\n* {{Ready to add {$count} episodes to the series {$id}.}}",
+        "submit": "Import",
+        "submitting": "Importing… Keep this window open.",
+        "close": "Close",
+        "refused": "This ZIP cannot be imported.",
+        "failed": "Could not import the ZIP. Please try again later.",
+        "interrupted": "The connection was lost during the import, so part of it may have finished. Check the series' episodes before importing again.",
+        "finished": ".input {$count :integer}\n.match $count\none {{Imported {$count} episode.}}\n* {{Imported {$count} episodes.}}",
+        "stopped": "The import stopped at the episode that failed. Episodes above it are in place. To continue, remove the finished episodes from the manifest and import again.",
+        "episode_failed": "Could not add this episode.",
+        "open_series": "Open the series' episodes",
+        "result": {
+          "column_episode": "Episode",
+          "column_pages": "Pages",
+          "column_outcome": "Outcome",
+          "imported": "Imported",
+          "failed": "Failed",
+          "not_started": "Not started"
+        },
+        "problem": {
+          "zip_invalid": "The file could not be read as a ZIP.",
+          "manifest_missing": "The ZIP has no publira-import.json at its root.",
+          "manifest_too_large": "publira-import.json is larger than 1MB.",
+          "manifest_invalid": "publira-import.json is not a valid manifest.",
+          "version_unsupported": "The manifest states a version this console does not read. Use version 1.",
+          "unknown_key": "The manifest has a key it does not take: {$key}",
+          "series_required": "The manifest needs a series: a title for a new one, or the id of an existing one.",
+          "series_mismatch": "The manifest does not name this series. Set series to this series' id, or import from the series list.",
+          "series_unknown_key": "The series has a key the manifest does not take: {$key}",
+          "series_field_invalid": "The series has an invalid {$field}.",
+          "episodes_required": "The manifest lists no episodes.",
+          "episode_unknown_key": "{$episode}: the manifest does not take the key {$key}.",
+          "episode_field_invalid": "{$episode}: {$field} is invalid.",
+          "scheduled_at_passed": "{$episode}: scheduled_at has already passed. Set a future time, or remove it to create a draft.",
+          "pages_required": "{$episode}: no pages are listed.",
+          "pages_too_many": ".input {$count :integer}\n.match $count\none {{{$episode}: more than {$count} page is listed.}}\n* {{{$episode}: more than {$count} pages are listed.}}",
+          "page_missing": "{$episode}: {$path} is not in the ZIP.",
+          "page_duplicated": "{$episode}: {$path} is listed or stored more than once.",
+          "page_not_image": "{$episode}: {$path} is not a JPEG, PNG, GIF, or WebP image.",
+          "page_too_large": "{$episode}: {$path} is larger than 20MB.",
+          "page_unreadable": "{$episode}: {$path} is empty, or compressed in a way that cannot be read."
+        }
       }
     },
     "settings": {
