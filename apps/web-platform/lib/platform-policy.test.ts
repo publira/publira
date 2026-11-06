@@ -168,6 +168,25 @@ describe("getPlatformPolicy", () => {
 
   // A server older than the allowance answers without the field, and a fresh
   // install has never saved it: both read as off.
+  it("reads the reader limits as part of the security policy", async () => {
+    mockGetPlatformPolicy.mockResolvedValueOnce({
+      policy: {
+        dataExport: { perDay: 3, perHour: 2 },
+        promotionCodeAttempt: { perDay: 31, perMinute: 8 },
+      },
+      revision: 2n,
+    });
+
+    await expect(getPlatformPolicy()).resolves.toMatchObject({
+      values: {
+        security: {
+          dataExport: { perDay: 3, perHour: 2 },
+          promotionCodeAttempt: { perDay: 31, perMinute: 8 },
+        },
+      },
+    });
+  });
+
   it("reads the tenant coin allowance, off when the answer leaves it out", async () => {
     mockGetPlatformPolicy.mockResolvedValueOnce({
       policy: { tenantCoinsAllowed: true },
@@ -189,15 +208,25 @@ const listUrl = "https://lists.example.com/disposable.conf";
 /** What the security screen submits, requiring two-step verification of operators. */
 const securityValues: PlatformSecurityPolicy = {
   anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+  coinPayment: { perDay: 500, perMinute: 20 },
+  dataExport: { perDay: 1, perHour: 1 },
   disposableEmailDomainsUrl: "",
+  iconChange: { perDay: 20, perMinute: 5 },
+  identityLink: { perDay: 20, perMinute: 5 },
+  legalPageAgreement: { perDay: 50, perMinute: 10 },
   loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
   loginAttemptsPerSource: { perDay: 300, perHour: 30 },
   mailRequestsPerAddress: { perDay: 20, perHour: 5 },
   mailRequestsPerSource: { perDay: 150, perHour: 30 },
   mfaRequiredForPlatformOperator: true,
   mfaRequiredForTenantAdmin: false,
+  passkey: { perDay: 50, perMinute: 10 },
   passwordVerification: { perDay: 50, perMinute: 5 },
+  promotionCodeAttempt: { perDay: 30, perMinute: 5 },
+  purchaseCheckout: { perDay: 100, perMinute: 10 },
+  seriesRemainderCheckout: { perDay: 50, perMinute: 10 },
   storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+  subscriptionCheckout: { perDay: 50, perMinute: 10 },
   tenantCoinsAllowed: false,
   waitFreeTicketUse: { perDay: 100, perMinute: 10 },
 };
@@ -205,16 +234,26 @@ const securityValues: PlatformSecurityPolicy = {
 /** A stored policy that names a list, as `GetPlatformPolicy` answers it. */
 const storedPolicy = {
   anonymousReadLimits: { images: 3000, publicApi: 700, search: 90 },
+  coinPayment: { perDay: 600, perMinute: 30 },
   communityLimitDefaults: {
     commentPost: { perDay: 100, perMinute: 10 },
     duplicateCommentWindowMinutes: 10,
   },
+  dataExport: { perDay: 3, perHour: 2 },
   disposableEmailDomainsUrl: listUrl,
+  iconChange: { perDay: 25, perMinute: 6 },
+  identityLink: { perDay: 26, perMinute: 7 },
+  legalPageAgreement: { perDay: 60, perMinute: 11 },
   loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
   loginAttemptsPerSource: { perDay: 400, perHour: 40 },
   mfaRequiredForPlatformOperator: true,
   mfaRequiredForTenantAdmin: true,
+  passkey: { perDay: 61, perMinute: 12 },
   passwordVerification: { perDay: 50, perMinute: 5 },
+  promotionCodeAttempt: { perDay: 31, perMinute: 8 },
+  purchaseCheckout: { perDay: 101, perMinute: 13 },
+  seriesRemainderCheckout: { perDay: 62, perMinute: 14 },
+  subscriptionCheckout: { perDay: 63, perMinute: 15 },
   tenantCoinsAllowed: true,
 };
 
@@ -265,6 +304,28 @@ describe("savePlatformPolicy", () => {
 
   // A stale revision and an install that cannot seal an authenticator share
   // failed_precondition; only the field names which one it was.
+  it("keeps the stored reader limits when the community limits are saved", async () => {
+    await updatePlatformCommunityLimits(community, 4n, "en");
+
+    expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policy: expect.objectContaining({
+          coinPayment: storedPolicy.coinPayment,
+          dataExport: storedPolicy.dataExport,
+          iconChange: storedPolicy.iconChange,
+          identityLink: storedPolicy.identityLink,
+          legalPageAgreement: storedPolicy.legalPageAgreement,
+          passkey: storedPolicy.passkey,
+          promotionCodeAttempt: storedPolicy.promotionCodeAttempt,
+          purchaseCheckout: storedPolicy.purchaseCheckout,
+          seriesRemainderCheckout: storedPolicy.seriesRemainderCheckout,
+          subscriptionCheckout: storedPolicy.subscriptionCheckout,
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
   it("says why the operator requirement cannot be switched on rather than reporting a conflict", async () => {
     mockUpdatePlatformPolicy.mockRejectedValueOnce(
       new ConnectError(
@@ -364,15 +425,25 @@ describe("savePlatformPolicy", () => {
     await updatePlatformSecurityPolicy(
       {
         anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+        coinPayment: { perDay: 500, perMinute: 20 },
+        dataExport: { perDay: 1, perHour: 1 },
         disposableEmailDomainsUrl: "",
+        iconChange: { perDay: 20, perMinute: 5 },
+        identityLink: { perDay: 20, perMinute: 5 },
+        legalPageAgreement: { perDay: 50, perMinute: 10 },
         loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
         loginAttemptsPerSource: { perDay: 300, perHour: 30 },
         mailRequestsPerAddress: { perDay: 20, perHour: 5 },
         mailRequestsPerSource: { perDay: 150, perHour: 30 },
         mfaRequiredForPlatformOperator: true,
         mfaRequiredForTenantAdmin: false,
+        passkey: { perDay: 50, perMinute: 10 },
         passwordVerification: { perDay: 50, perMinute: 5 },
+        promotionCodeAttempt: { perDay: 30, perMinute: 5 },
+        purchaseCheckout: { perDay: 100, perMinute: 10 },
+        seriesRemainderCheckout: { perDay: 50, perMinute: 10 },
         storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+        subscriptionCheckout: { perDay: 50, perMinute: 10 },
         tenantCoinsAllowed: false,
         waitFreeTicketUse: { perDay: 100, perMinute: 10 },
       },

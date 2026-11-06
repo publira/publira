@@ -21,6 +21,9 @@ import { SEED_PLATFORM_SUPER_ADMIN } from "../src/scenarios/platform-tenants";
  *
  * The anonymous read limits: an operator raises one and the server stores
  * it, and a value below what the edge admits is not submitted.
+ *
+ * The reader limits: each is shown as stored, and an operator's new value
+ * reaches the column the server charges a reader against.
  */
 
 const SECURITY_POLICY_PATH = "/policies/security";
@@ -63,14 +66,99 @@ const storedPublicApiReads = (): string =>
     "SELECT anonymous_read_public_api_limit_per_10_seconds::text FROM platform_policy_config WHERE singleton;"
   );
 
+/**
+ * Each limit's two labels with the columns they save to, in the order the
+ * page shows them. The values raise every built-in one, so that a save moves
+ * every column.
+ */
+const READER_LIMITS = [
+  {
+    column: "legal_page_agreement_limit",
+    label: "Terms agreements",
+    shorter: 11,
+    window: "minute",
+  },
+  {
+    column: "identity_link_limit",
+    label: "Account link requests",
+    shorter: 6,
+    window: "minute",
+  },
+  {
+    column: "icon_change_limit",
+    label: "Icon changes",
+    shorter: 7,
+    window: "minute",
+  },
+  {
+    column: "passkey_limit",
+    label: "Passkey actions",
+    shorter: 12,
+    window: "minute",
+  },
+  {
+    column: "series_remainder_checkout_limit",
+    label: "Checkouts of the rest of a series",
+    shorter: 13,
+    window: "minute",
+  },
+  {
+    column: "subscription_checkout_limit",
+    label: "Subscriptions started",
+    shorter: 14,
+    window: "minute",
+  },
+  {
+    column: "coin_payment_limit",
+    label: "Coin payments",
+    shorter: 21,
+    window: "minute",
+  },
+  {
+    column: "purchase_checkout_limit",
+    label: "Purchases started",
+    shorter: 15,
+    window: "minute",
+  },
+  {
+    column: "promotion_code_attempt_limit",
+    label: "Promotion code lookups",
+    shorter: 8,
+    window: "minute",
+  },
+  {
+    column: "data_export_limit",
+    label: "Data download requests",
+    shorter: 2,
+    window: "hour",
+  },
+] as const;
+
+const READER_LIMIT_COLUMNS = READER_LIMITS.flatMap(({ column, window }) => [
+  `${column}_per_${window}`,
+  `${column}_per_day`,
+]);
+
+const readerLimitField = (page: Page, label: string, window: string) =>
+  page.getByRole("spinbutton", { name: `${label} per reader per ${window}` });
+
+/** The stored values, in the order of `READER_LIMIT_COLUMNS`. */
+const storedReaderLimits = (): string[] =>
+  querySql(
+    `SELECT concat_ws(',', ${READER_LIMIT_COLUMNS.join(", ")}) FROM platform_policy_config WHERE singleton;`
+  ).split(",");
+
 const saveSecurityPolicy = async (page: Page): Promise<void> => {
   await page.getByRole("button", { name: "Save security policy" }).click();
 };
 
 test.describe.configure({ mode: "serial" });
 
+let readerLimitsBefore: string[];
+
 test.beforeAll(() => {
   applyScenarioSql(PLATFORM_TENANT_COINS_SCENARIO);
+  readerLimitsBefore = storedReaderLimits();
 });
 
 test.afterAll(() => {
@@ -83,6 +171,15 @@ test.afterAll(() => {
         updated_at = NOW()
     WHERE singleton
       AND anonymous_read_public_api_limit_per_10_seconds <> 640;
+  `);
+  querySql(`
+    UPDATE platform_policy_config
+    SET ${READER_LIMIT_COLUMNS.map(
+      (column, index) => `${column} = ${readerLimitsBefore[index]}`
+    ).join(", ")},
+        revision = revision + 1,
+        updated_at = NOW()
+    WHERE singleton;
   `);
 });
 
@@ -178,5 +275,54 @@ test.describe("anonymous read limits on Security", () => {
       )
     ).toBe(true);
     expect(storedPublicApiReads()).toBe(stored);
+  });
+});
+
+test.describe("reader limits on Security", () => {
+  test("an operator sees what is stored and saves all of them", async ({
+    page,
+  }) => {
+    await signInAsPlatformOperator(
+      page,
+      SEED_PLATFORM_SUPER_ADMIN,
+      SECURITY_POLICY_PATH
+    );
+
+    const stored = storedReaderLimits();
+
+    await Promise.all(
+      READER_LIMITS.flatMap(({ label, window }, index) => [
+        expect(readerLimitField(page, label, window)).toHaveValue(
+          String(stored[index * 2])
+        ),
+        expect(readerLimitField(page, label, "day")).toHaveValue(
+          String(stored[index * 2 + 1])
+        ),
+      ])
+    );
+
+    for (const { label, shorter, window } of READER_LIMITS) {
+      // oxlint-disable-next-line no-await-in-loop -- filling takes the focus, so two at once type into each other
+      await readerLimitField(page, label, window).fill(String(shorter));
+      // oxlint-disable-next-line no-await-in-loop -- as above
+      await readerLimitField(page, label, "day").fill(String(shorter * 100));
+    }
+
+    await saveSecurityPolicy(page);
+    await expect(formMessage(page)).toContainText("Security policy saved.");
+
+    expect(storedReaderLimits()).toEqual(
+      READER_LIMITS.flatMap(({ shorter }) => [
+        String(shorter),
+        String(shorter * 100),
+      ])
+    );
+
+    await page.reload();
+
+    const [{ label, shorter, window }] = READER_LIMITS;
+    await expect(readerLimitField(page, label, window)).toHaveValue(
+      String(shorter)
+    );
   });
 });
