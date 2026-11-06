@@ -1167,11 +1167,18 @@ jobs:
           if-no-files-found: ignore
 
   test-mobile-ios:
-    name: Test / Mobile iOS
+    name: Test / Mobile iOS (${{ matrix.part }})
     needs: changes
     if: needs.changes.outputs.test_mobile_ios == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
+    # One Xcode build takes about five minutes, so they run on runners of their
+    # own: mobile/scripts/ios-build-test.sh says what each part checks. `Summary`
+    # reads the entries as the one result `Test / Mobile iOS`.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [dev, production-simulator, production-device]
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1191,7 +1198,9 @@ jobs:
         run: task mobile:deps
 
       - name: Validate / iOS builds
-        run: task mobile:test-ios-build
+        env:
+          PART: ${{ matrix.part }}
+        run: task mobile:test-ios-build -- "${PART}"
 
       # What a build left changed in the tree is what has to be committed or
       # ignored, and the runner is the only place it can be read.
