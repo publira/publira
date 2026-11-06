@@ -22,6 +22,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const emptyValues: PlatformSecurityPolicy = {
   anonymousReadLimits: MIN_ANONYMOUS_READS,
+  apiKeyRequest: { perDay: 1, perMinute: 1 },
   coinPayment: { perDay: 1, perMinute: 1 },
   dataExport: { perDay: 1, perHour: 1 },
   disposableEmailDomainsUrl: "",

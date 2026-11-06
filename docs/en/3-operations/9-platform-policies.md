@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -16,7 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
-| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, mail, reader action, and anonymous read limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
+| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, mail, reader action, API key, and anonymous read limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, viewer, and notification settings limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -48,7 +48,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 
 ## Security
 
-**Security policy** holds the values that apply to every tenant alike, and that no tenant can change. Each one guards an account, an operation that sends mail, or one that touches money.
+**Security policy** holds the values that apply to every tenant alike, and that no tenant can change. Each one guards an account, an operation that sends mail, one that touches money, or the tenant console's API.
 
 ### Two-step verification for tenant administrators
 
@@ -99,8 +99,9 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 | **Purchases started per reader per minute** and **per day** | The purchases of an episode, a volume, or a coin pack one reader starts, on the web or through the app's store, counted together |
 | **Promotion code lookups per reader per minute** and **per day** | The promotion codes one reader has looked up, by a quote or by a purchase started with one, counted together. Each lookup counts before the code is read, so this bounds how fast one account can guess at a tenant's codes |
 | **Data download requests per reader per hour** and **per day** | The copies of their data one reader asks for, as [Reader accounts](../4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. Each one reads every record the install keeps about the reader |
+| **API key requests per key per minute** and **per day** | The requests one of a tenant's [API keys](../4-console/10-api-keys-and-webhooks.md#making-a-request) makes to the tenant console's API, counted per key. A key belongs to a system rather than a person, so the limit leaves room for a job reading a catalog page by page, and what it bounds is what one leaked key can cost the database |
 
-![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, wait-for-free ticket uses, and what one reader does, from agreeing to the terms to asking for a copy of their data, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
+![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, wait-for-free ticket uses, and what one reader does, from agreeing to the terms to asking for a copy of their data, followed by the requests one API key makes, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 

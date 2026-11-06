@@ -46,6 +46,7 @@ export interface ReadLimits {
 
 export interface PlatformSecurityPolicy {
   anonymousReadLimits: ReadLimits;
+  apiKeyRequest: MinuteDay;
   coinPayment: MinuteDay;
   dataExport: HourDay;
   /** Where the disposable email domain list is read from; empty for none. */
@@ -138,6 +139,7 @@ type RawCommunityLimitDefaults = Pick<
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
   | "anonymousReadLimits"
+  | "apiKeyRequest"
   | "coinPayment"
   | "communityLimitDefaults"
   | "dataExport"
@@ -219,6 +221,7 @@ export const toPlatformPolicy = (
   security: {
     ...toReaderLimits(policy),
     anonymousReadLimits: toReadLimits(policy?.anonymousReadLimits),
+    apiKeyRequest: toMinuteDay(policy?.apiKeyRequest),
     disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     loginAttemptsPerAccount: toMinuteDay(policy?.loginAttemptsPerAccount),
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),

@@ -115,6 +115,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "anonymous_read_search_per_10_seconds",
   },
+  apiKeyRequestPerDay: {
+    kind: "value",
+    name: "api_key_request_per_day",
+  },
+  apiKeyRequestPerMinute: {
+    kind: "value",
+    name: "api_key_request_per_minute",
+  },
   coinPaymentPerDay: {
     kind: "value",
     name: "coin_payment_per_day",
@@ -319,6 +327,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
 
   const dataExport = t("platform.policy.security.data_export_title");
 
+  const apiKeyRequest = t("platform.policy.security.api_key_request_title");
+
   const listUrlInvalid = t(
     "platform.policy.security.disposable_email_domains_url_invalid"
   );
@@ -340,6 +350,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
         t("platform.policy.security.anonymous_read_search_title"),
         MIN_ANONYMOUS_READS.search
       ),
+      apiKeyRequestPerDay: limitSchema(t, apiKeyRequest),
+      apiKeyRequestPerMinute: limitSchema(t, apiKeyRequest),
       coinPaymentPerDay: limitSchema(t, coinPayment),
       coinPaymentPerMinute: limitSchema(t, coinPayment),
       dataExportPerDay: limitSchema(t, dataExport),
@@ -505,6 +517,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: dataExport,
           }),
           short: "dataExportPerHour",
+        },
+        {
+          day: "apiKeyRequestPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: apiKeyRequest,
+          }),
+          short: "apiKeyRequestPerMinute",
         },
       ])
     );
