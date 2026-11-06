@@ -292,10 +292,52 @@ describe("runSeriesImport", () => {
     });
   });
 
+  it("logs an unclassified error while keeping the rows", async () => {
+    const consoleError = vi.spyOn(console, "error").mockReturnValue();
+    const cause = new ConnectError("broken", Code.Internal);
+
+    mockUploadEpisodePages.mockRejectedValueOnce(cause);
+
+    expect(await run(newSeriesPlan)).toMatchObject({
+      rows: [
+        {
+          episodePublicId: "public-Episode 1",
+          message: "admin.series.import.episode_failed",
+          status: "failed",
+        },
+        { status: "not_started" },
+      ],
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      "[web-admin] series import stopped",
+      cause
+    );
+
+    consoleError.mockRestore();
+  });
+
+  it("does not log an expired session", async () => {
+    const consoleError = vi.spyOn(console, "error").mockReturnValue();
+
+    mockUploadEpisodePages.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    await run(newSeriesPlan);
+
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it("names no episode when creating it throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockReturnValue();
+
     mockCreateEpisode.mockRejectedValueOnce(new Error("broken"));
 
     const result = await run(newSeriesPlan);
+
+    consoleError.mockRestore();
 
     expect(result).toMatchObject({
       rows: [

@@ -197,12 +197,16 @@ const importEpisode = async (
       }
     }
   } catch (error) {
-    return {
-      ...row,
-      message: isUnauthenticatedError(error)
-        ? t("errors.rpc.unauthenticated")
-        : t("admin.series.import.episode_failed"),
-    };
+    if (isUnauthenticatedError(error)) {
+      return { ...row, message: t("errors.rpc.unauthenticated") };
+    }
+
+    // Not rethrown, unlike any other unclassified error: by now the series or
+    // an episode exists, and the rows are the only account of which. The
+    // answer keeps them and the error goes to the log.
+    console.error("[web-admin] series import stopped", error);
+
+    return { ...row, message: t("admin.series.import.episode_failed") };
   }
 
   return { ...row, status: "imported" };
