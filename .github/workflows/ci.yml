@@ -260,6 +260,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - 'scripts/setup-flutter.sh'
               - '.github/actions/flutter-setup/**'
+              - '.github/actions/main-cache-save/**'
             test_mobile_e2e:
               - *docs_excluded
               - 'mobile/**'
@@ -1199,10 +1200,34 @@ jobs:
       - name: Dependencies / Install
         run: task mobile:deps
 
+      # What Xcode fetched, which it clones under the BUILD_DIR `flutter build`
+      # sets for it. Measured on macos-latest with Xcode 26.6: fetching took 42 to
+      # 136 seconds a part, and restoring this 454 MB entry takes 12 to 21.
+      #
+      # Compile time is left as it was, 94 to 280 seconds an Xcode build with or
+      # without this entry, varying with the runner more than with anything
+      # cached. Derived data stays out because it does not change that: restored
+      # with mobile/build/ios, it took 212 to 330 seconds, for an entry of 1.7 GB
+      # a part that takes 45 to 90 seconds to restore.
+      - name: Cache / Swift packages
+        id: swift-packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: mobile/build/ios/SourcePackages
+          key: swift-packages-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mobile/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
       - name: Validate / iOS builds
         env:
           PART: ${{ matrix.part }}
         run: task mobile:test-ios-build -- "${PART}"
+
+      # Every part resolves the same packages, so one of them saves the entry.
+      - name: Cache / Save Swift packages
+        if: github.ref == 'refs/heads/main' && matrix.part == 'dev' && steps.swift-packages.outputs.cache-hit != 'true'
+        uses: ./.github/actions/main-cache-save
+        with:
+          path: mobile/build/ios/SourcePackages
+          key: ${{ steps.swift-packages.outputs.cache-primary-key }}
 
       # What a build left changed in the tree is what has to be committed or
       # ignored, and the runner is the only place it can be read.
