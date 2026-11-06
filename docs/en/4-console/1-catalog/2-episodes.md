@@ -73,7 +73,7 @@ An app that sells through the stores buys an episode as the store product of its
 - **Use a ZIP** takes a ZIP file and adds the `.png`, `.jpg`, `.jpeg`, and `.gif` images inside it, in the order of their paths, so `page2.png` comes before `page10.png`. Other files in it are ignored, WebP images among them, and it may hold up to 1000 images.
 - **Use an ePub** takes an ePub file and adds the JPEG, PNG, GIF, or WebP images its pages show, in reading order, up to 1000 of them.
 
-Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each image may be up to 20 MB, and one upload up to 128 MB, whichever of the three it is, so a whole episode can be added as one ZIP or ePub. One larger than that is added over several uploads; each adds its pages after the last one. The card states these formats and limits under the file picker.
+Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each image may be up to 20 MB, and one upload up to 128 MB, whichever of the three it is, so a whole episode can be added as one ZIP or ePub. The images a ZIP or ePub unpacks to may add up to 256 MB. One larger than that is added over several uploads; each adds its pages after the last one. The card states these formats and limits under the file picker.
 
 ![The Add comic pages section: the series and episode the pages go to, the Upload method buttons, the Page images picker with its formats and limits, and Add page images.](./episodes-add-pages.png)
 

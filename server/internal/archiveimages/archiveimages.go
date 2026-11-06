@@ -44,13 +44,18 @@ func RejectionOf(err error) (Rejection, bool) {
 	return rejectionErr.rejection, true
 }
 
-func ExtractImageInputs(archiveData []byte, maxEntries int) ([]Input, error) {
+// ExtractImageInputs unpacks the images of a ZIP, at most maxEntries of them
+// adding up to at most maxBytes, and refuses an archive past either bound before
+// reading the entry that crosses it. The sizes added up are the ones the entries
+// state, which is enough: archive/zip fails a read past the size its entry states.
+func ExtractImageInputs(archiveData []byte, maxEntries int, maxBytes uint64) ([]Input, error) {
 	reader, err := zip.NewReader(bytes.NewReader(archiveData), int64(len(archiveData)))
 	if err != nil {
 		return nil, errors.New("archive_data must be a valid zip file")
 	}
 
 	inputs := make([]Input, 0, len(reader.File))
+	var unpacked uint64
 	for _, file := range reader.File {
 		normalizedName, err := normalizeEntryPath(file.Name)
 		if err != nil {
@@ -67,6 +72,10 @@ func ExtractImageInputs(archiveData []byte, maxEntries int) ([]Input, error) {
 		}
 		if file.UncompressedSize64 > imageproc.MaxUploadBytes {
 			return nil, fmt.Errorf("archive entry %q exceeds %d bytes", normalizedName, imageproc.MaxUploadBytes)
+		}
+		unpacked += file.UncompressedSize64
+		if unpacked > maxBytes {
+			return nil, fmt.Errorf("archive unpacks to more than %d bytes", maxBytes)
 		}
 
 		rc, err := file.Open()

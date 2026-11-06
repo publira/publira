@@ -1,9 +1,14 @@
 package episodeimages
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
+	"math/rand/v2"
 	"os"
 	"regexp"
 	"strconv"
@@ -12,8 +17,10 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connectproto"
+	"github.com/publira/epub"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
+	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/storage"
@@ -87,6 +94,113 @@ func TestCollectInputsBoundsWhatOneUploadCarries(t *testing.T) {
 	inputs, err := collectInputs([]*publiraadminv1.EpisodeImageUpload{{Data: half}, {Data: half}}, nil, "", "", true)
 	if err != nil || len(inputs) != 2 {
 		t.Errorf("an upload of exactly %d bytes: %d inputs, %v, want both images", MaxUploadBytes, len(inputs), err)
+	}
+}
+
+// pagePNG is a PNG header of the given size, its tail from fill.
+func pagePNG(t *testing.T, size int, fill func([]byte)) []byte {
+	t.Helper()
+	img := image.NewGray(image.Rect(0, 0, 1, 1))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	data := make([]byte, size)
+	fill(data[copy(data, buf.Bytes()):])
+	return data
+}
+
+func zipOfPages(t *testing.T, method uint16, pages ...[]byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	writer := zip.NewWriter(&buf)
+	for index, page := range pages {
+		entry, err := writer.CreateHeader(&zip.FileHeader{Name: fmt.Sprintf("%04d.png", index), Method: method})
+		if err != nil {
+			t.Fatalf("writer.CreateHeader: %v", err)
+		}
+		if _, err := entry.Write(page); err != nil {
+			t.Fatalf("entry.Write: %v", err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func epubOfPages(t *testing.T, pages ...[]byte) []byte {
+	t.Helper()
+	doc := &epub.Document{Title: "Episode", Direction: "rtl", Layout: epub.LayoutPrePaginated}
+	for _, page := range pages {
+		if _, _, err := doc.AddPageWithAsset(bytes.NewReader(page), int64(len(page)), "right"); err != nil {
+			t.Fatalf("doc.AddPageWithAsset: %v", err)
+		}
+	}
+	var buf bytes.Buffer
+	if err := epub.Encode(&buf, doc); err != nil {
+		t.Fatalf("epub.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// A small archive of pages that are all one run of zeros is what the limit on
+// the upload does not see: the pages here add up to more than the bound, in an
+// archive a fraction of the size of one of them.
+func TestCollectInputsRefusesAnArchiveThatUnpacksPastTheBound(t *testing.T) {
+	page := pagePNG(t, imageproc.MaxUploadBytes, func([]byte) {})
+	pages := make([][]byte, maxArchiveUnpackedBytes/imageproc.MaxUploadBytes+1)
+	for index := range pages {
+		pages[index] = page
+	}
+
+	for _, tc := range []struct {
+		name     string
+		archive  []byte
+		filename string
+	}{
+		{name: "zip", archive: zipOfPages(t, zip.Deflate, pages...), filename: "pages.zip"},
+		{name: "epub", archive: epubOfPages(t, pages...), filename: "pages.epub"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.archive) >= imageproc.MaxUploadBytes {
+				t.Fatalf("the archive is %d bytes, want it smaller than one of its pages", len(tc.archive))
+			}
+			_, err := collectInputs(nil, tc.archive, tc.filename, "", true)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "unpacks to more than") {
+				t.Errorf("collectInputs: %v, want invalid_argument for what it unpacks to", err)
+			}
+		})
+	}
+}
+
+// Pages that do not compress reach the archive at their own size, so the
+// largest archive an upload may carry unpacks to about that and stays inside.
+func TestCollectInputsTakesIncompressiblePagesAtTheUploadLimit(t *testing.T) {
+	source := rand.NewChaCha8([32]byte{})
+	const pageCount = (MaxUploadBytes - 1<<20) / imageproc.MaxUploadBytes
+	pages := make([][]byte, pageCount)
+	for index := range pages {
+		pages[index] = pagePNG(t, imageproc.MaxUploadBytes, func(tail []byte) { _, _ = source.Read(tail) })
+	}
+
+	for _, tc := range []struct {
+		name     string
+		archive  []byte
+		filename string
+	}{
+		{name: "zip", archive: zipOfPages(t, zip.Store, pages...), filename: "pages.zip"},
+		{name: "epub", archive: epubOfPages(t, pages...), filename: "pages.epub"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.archive) > MaxUploadBytes {
+				t.Fatalf("the archive is %d bytes, want it within MaxUploadBytes", len(tc.archive))
+			}
+			inputs, err := collectInputs(nil, tc.archive, tc.filename, "", true)
+			if err != nil || len(inputs) != pageCount {
+				t.Errorf("collectInputs: %d inputs, %v, want all %d pages", len(inputs), err, pageCount)
+			}
+		})
 	}
 }
 

@@ -3,8 +3,11 @@ package archiveimages
 import (
 	"archive/zip"
 	"bytes"
+	"strings"
 	"testing"
 )
+
+const testMaxBytes = 1 << 20
 
 var oneByOnePNG = []byte{
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
@@ -24,7 +27,7 @@ func TestExtractImageInputsSortsNaturally(t *testing.T) {
 		archiveEntry{name: "002.png", data: oneByOnePNG},
 	)
 
-	inputs, err := ExtractImageInputs(archive, 10)
+	inputs, err := ExtractImageInputs(archive, 10, testMaxBytes)
 	if err != nil {
 		t.Fatalf("ExtractImageInputs: %v", err)
 	}
@@ -42,9 +45,80 @@ func TestExtractImageInputsSortsNaturally(t *testing.T) {
 func TestExtractImageInputsRejectsTraversal(t *testing.T) {
 	archive := makeZipArchive(t, archiveEntry{name: "../001.png", data: oneByOnePNG})
 
-	_, err := ExtractImageInputs(archive, 10)
+	_, err := ExtractImageInputs(archive, 10, testMaxBytes)
 	if err == nil {
 		t.Fatal("ExtractImageInputs error = nil, want error")
+	}
+}
+
+func TestExtractImageInputsRefusesAHighlyCompressibleArchive(t *testing.T) {
+	const page = 1 << 20
+	zeros := make([]byte, page)
+	archive := makeZipArchive(t,
+		archiveEntry{name: "001.png", data: zeros},
+		archiveEntry{name: "002.png", data: zeros},
+		archiveEntry{name: "003.png", data: zeros},
+		archiveEntry{name: "004.png", data: zeros},
+	)
+	if len(archive) >= page {
+		t.Fatalf("the archive is %d bytes, want it far smaller than what it unpacks to", len(archive))
+	}
+
+	_, err := ExtractImageInputs(archive, 10, 4*page-1)
+	if err == nil || !strings.Contains(err.Error(), "unpacks to more than") {
+		t.Fatalf("ExtractImageInputs error = %v, want it refused for what it unpacks to", err)
+	}
+
+	inputs, err := ExtractImageInputs(archive, 10, 4*page)
+	if err != nil || len(inputs) != 4 {
+		t.Fatalf("at the bound: %d inputs, %v, want all four", len(inputs), err)
+	}
+}
+
+// The entry that crosses the bound holds no deflate stream, so reading it would
+// answer with a read error instead of the refusal.
+func TestExtractImageInputsRefusesBeforeReadingTheEntryPastTheBound(t *testing.T) {
+	var buf bytes.Buffer
+	writer := zip.NewWriter(&buf)
+	first, err := writer.Create("001.png")
+	if err != nil {
+		t.Fatalf("writer.Create: %v", err)
+	}
+	if _, err := first.Write(oneByOnePNG); err != nil {
+		t.Fatalf("first.Write: %v", err)
+	}
+	second, err := writer.CreateRaw(&zip.FileHeader{
+		Name:               "002.png",
+		Method:             zip.Deflate,
+		CompressedSize64:   4,
+		UncompressedSize64: 1 << 10,
+	})
+	if err != nil {
+		t.Fatalf("writer.CreateRaw: %v", err)
+	}
+	if _, err := second.Write([]byte{0xff, 0xff, 0xff, 0xff}); err != nil {
+		t.Fatalf("second.Write: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close: %v", err)
+	}
+
+	_, err = ExtractImageInputs(buf.Bytes(), 10, 1<<10)
+	if err == nil || !strings.Contains(err.Error(), "unpacks to more than") {
+		t.Fatalf("ExtractImageInputs error = %v, want it refused for what it unpacks to", err)
+	}
+}
+
+// Only the images are unpacked, so nothing else in the archive counts.
+func TestExtractImageInputsLeavesOtherEntriesOutOfTheBound(t *testing.T) {
+	archive := makeZipArchive(t,
+		archiveEntry{name: "notes.txt", data: make([]byte, 1<<10)},
+		archiveEntry{name: "001.png", data: oneByOnePNG},
+	)
+
+	inputs, err := ExtractImageInputs(archive, 10, uint64(len(oneByOnePNG)))
+	if err != nil || len(inputs) != 1 {
+		t.Fatalf("got %d inputs, %v, want the one image", len(inputs), err)
 	}
 }
 

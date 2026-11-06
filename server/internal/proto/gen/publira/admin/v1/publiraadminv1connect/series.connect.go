@@ -592,8 +592,10 @@ type AdminSeriesServiceClient interface {
 	// An upload carries at most 128 MiB, its archive or its images taken
 	// together, and a larger one is invalid_argument: a whole episode's pages
 	// fit in one ZIP or ePub of that size, and an episode of larger pages goes
-	// up in several requests. A request past what such an upload takes in the
-	// JSON encoding is resource_exhausted, refused while it is read.
+	// up in several requests. The images an archive unpacks to add up to at
+	// most 256 MiB, and an archive past that is invalid_argument too. A request
+	// past what such an upload takes in the JSON encoding is resource_exhausted,
+	// refused while it is read.
 	//
 	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)
@@ -736,8 +738,10 @@ type AdminSeriesServiceHandler interface {
 	// An upload carries at most 128 MiB, its archive or its images taken
 	// together, and a larger one is invalid_argument: a whole episode's pages
 	// fit in one ZIP or ePub of that size, and an episode of larger pages goes
-	// up in several requests. A request past what such an upload takes in the
-	// JSON encoding is resource_exhausted, refused while it is read.
+	// up in several requests. The images an archive unpacks to add up to at
+	// most 256 MiB, and an archive past that is invalid_argument too. A request
+	// past what such an upload takes in the JSON encoding is resource_exhausted,
+	// refused while it is read.
 	//
 	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)

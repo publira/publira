@@ -42,9 +42,22 @@ func RejectionOf(err error) (Rejection, bool) {
 	return rejectionErr.rejection, true
 }
 
-func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input, error) {
-	doc, err := epub.Decode(bytes.NewReader(epubData), int64(len(epubData)))
+// ExtractImageInputs unpacks the images an ePub's spine shows, at most maxEntries
+// of them adding up to at most maxBytes, and refuses an ePub past either bound
+// before reading what crosses it.
+//
+// The bound is held twice, because neither check covers the other. Decoding
+// inflates every entry of the manifest, whatever it is, so the sizes the entries
+// state are held to it before that starts. A spine, though, can show one image
+// any number of times, and each showing is a page of its own in memory, so the
+// pages are added up as well. archive/zip fails a read past the size its entry
+// states, so both can go by the stated sizes.
+func ExtractImageInputs(epubData []byte, maxEntries int, maxBytes uint64) ([]archiveimages.Input, error) {
+	doc, err := epub.Decode(bytes.NewReader(epubData), int64(len(epubData)), epub.WithMaxTotalUncompressedSize(int64(maxBytes)))
 	if err != nil {
+		if _, ok := errors.AsType[*epub.MaxTotalUncompressedSizeExceededError](err); ok {
+			return nil, unpackedTooLargeError(maxBytes)
+		}
 		return nil, &rejectionError{
 			err:       fmt.Errorf("archive_data must be a valid epub file: %w", err),
 			rejection: RejectionInvalidEPUB,
@@ -66,6 +79,7 @@ func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input,
 	}
 
 	inputs := make([]archiveimages.Input, 0, len(spineRefs))
+	var unpacked uint64
 	for _, spineRef := range spineRefs {
 		if spineRef.Asset == nil {
 			return nil, &rejectionError{
@@ -83,6 +97,10 @@ func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input,
 		ref := referencedAsset{href: href, asset: spineRef.Asset}
 		if len(inputs) >= maxEntries {
 			return nil, fmt.Errorf("archive contains more than %d images", maxEntries)
+		}
+		unpacked += ref.asset.Size
+		if unpacked > maxBytes {
+			return nil, unpackedTooLargeError(maxBytes)
 		}
 
 		data, readErr := readAssetData(ref)
@@ -109,6 +127,10 @@ func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input,
 	}
 
 	return inputs, nil
+}
+
+func unpackedTooLargeError(maxBytes uint64) error {
+	return fmt.Errorf("archive unpacks to more than %d bytes", maxBytes)
 }
 
 type referencedAsset struct {
