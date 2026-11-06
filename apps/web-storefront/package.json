@@ -45,7 +45,7 @@
     "@simplewebauthn/browser": "catalog:",
     "lru-cache": "catalog:",
     "next": "catalog:",
-    "p-retry": "8.0.1",
+    "p-retry": "9.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "10.1.0",
