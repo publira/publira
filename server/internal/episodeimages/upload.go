@@ -44,6 +44,17 @@ const (
 	// of twice the size about 1.6 GiB, measured with four-megabyte JPEG pages.
 	// The console holds its uploads to the same number.
 	MaxUploadBytes = 128 << 20
+	// maxArchiveUnpackedBytes is the most one archive may unpack to, its pages
+	// taken together. MaxUploadBytes bounds what is sent and says nothing of
+	// what that inflates to: deflate shrinks a run of zeros about a
+	// thousandfold, so a ZIP within it could otherwise hold a thousand pages of
+	// the 20 MiB each may be, 20 GiB in the process that answers readers.
+	//
+	// Twice MaxUploadBytes, because a page is rarely incompressible: deflate
+	// took under a tenth from a PNG and up to a third from a JPEG of little
+	// detail, and a ZIP of real pages at the upload limit is not to be refused
+	// for what it unpacks to. It stays within the memory measured above.
+	maxArchiveUnpackedBytes = 2 * MaxUploadBytes
 )
 
 type Querier interface {
@@ -145,9 +156,9 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 			err           error
 		)
 		if shouldExtractFromEPUB(archiveFilename, archiveType) {
-			archiveInputs, err = epubimages.ExtractImageInputs(archiveData, maxArchiveEntries)
+			archiveInputs, err = epubimages.ExtractImageInputs(archiveData, maxArchiveEntries, maxArchiveUnpackedBytes)
 		} else {
-			archiveInputs, err = archiveimages.ExtractImageInputs(archiveData, maxArchiveEntries)
+			archiveInputs, err = archiveimages.ExtractImageInputs(archiveData, maxArchiveEntries, maxArchiveUnpackedBytes)
 		}
 		if err != nil {
 			return nil, archiveRejectionError(err)
