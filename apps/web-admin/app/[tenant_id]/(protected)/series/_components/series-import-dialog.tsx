@@ -10,9 +10,9 @@ import { useState } from "react";
 import type { ChangeEvent } from "react";
 
 import { useClientMessages } from "#components/client-message";
-import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
 import {
   checkSeriesImport,
+  SERIES_IMPORT_MAX_BYTES,
   SERIES_IMPORT_PATH,
   seriesImportProblemText,
 } from "#lib/series-import-manifest";
@@ -84,10 +84,10 @@ const SeriesImportForm = ({
       return;
     }
 
-    if (file.size > EPISODE_PAGES_UPLOAD_MAX_BYTES) {
+    if (file.size > SERIES_IMPORT_MAX_BYTES) {
       setStep({
         kind: "refused",
-        problems: [t("admin.series.episodes.validation.upload_too_large")],
+        problems: [t("admin.series.import.too_large")],
       });
 
       return;
@@ -137,7 +137,7 @@ const SeriesImportForm = ({
     if (response.status === 413) {
       return {
         kind: "failed",
-        message: t("admin.series.episodes.validation.upload_too_large"),
+        message: t("admin.series.import.too_large"),
       };
     }
 

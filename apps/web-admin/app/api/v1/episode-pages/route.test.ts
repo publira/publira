@@ -3,7 +3,10 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as AdminAuthModule from "#lib/admin-auth";
-import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
+import {
+  EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
+  EPISODE_PAGES_UPLOAD_MAX_BYTES,
+} from "#lib/episode-pages-upload";
 
 const {
   mockAssertSameOrigin,
@@ -49,6 +52,9 @@ const EPISODE_ID = "018f0e6a-4000-7000-8000-000000000001";
 const SERIES_ID = "018f0e6a-3000-7000-8000-000000000001";
 const URL = "https://admin.example.test/api/v1/episode-pages";
 const REFERER = "https://admin.example.test/series/SERIES001/episodes/EP001";
+
+const TOO_LARGE =
+  "The files are larger than one upload takes. Keep each upload to 128MB or less, or add the pages over several uploads.";
 
 const pagesForm = (fields: Record<string, File | string>) => {
   const formData = new FormData();
@@ -153,18 +159,55 @@ describe("POST /api/v1/episode-pages", () => {
   it("refuses a body declared over the limit without reading it", async () => {
     const { request, response } = await upload(
       pagesForm({ upload_mode: "pages" }),
-      { "content-length": String(EPISODE_PAGES_UPLOAD_MAX_BYTES + 1) }
+      { "content-length": String(EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES + 1) }
     );
 
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({
-      message:
-        "The files are larger than one upload takes. Keep each upload to 256MB or less, or add the pages over several uploads.",
+      message: TOO_LARGE,
       ok: false,
     });
     expect(request.bodyUsed).toBe(false);
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();
   });
+
+  // A body this size is written and parsed for real, which a busy runner
+  // stretches past the default timeout.
+  it("adds a ZIP of exactly the limit, which arrives with its framing on top", async () => {
+    const { response } = await upload(
+      pagesForm({
+        archive: new File(
+          [new Uint8Array(EPISODE_PAGES_UPLOAD_MAX_BYTES)],
+          "pages.zip",
+          { type: "application/zip" }
+        ),
+        upload_mode: "zip",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUploadEpisodePages).toHaveBeenCalledOnce();
+  }, 30_000);
+
+  it("refuses page images over the limit in a body within it, without sending them to the API", async () => {
+    const formData = pagesForm({ upload_mode: "pages" });
+
+    for (const [name, bytes] of [
+      ["1.png", EPISODE_PAGES_UPLOAD_MAX_BYTES / 2 + 1],
+      ["2.png", EPISODE_PAGES_UPLOAD_MAX_BYTES / 2],
+    ] as const) {
+      formData.append(
+        "pages",
+        new File([new Uint8Array(bytes)], name, { type: "image/png" })
+      );
+    }
+
+    const { response } = await upload(formData);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ message: TOO_LARGE, ok: false });
+    expect(mockUploadEpisodePages).not.toHaveBeenCalled();
+  }, 30_000);
 
   it("refuses a body that declares no length", async () => {
     const { request, response } = await upload(

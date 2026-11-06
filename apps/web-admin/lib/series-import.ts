@@ -6,6 +6,7 @@ import {
   updateEpisodePublishSchedule,
   uploadEpisodePages,
 } from "./episode";
+import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "./episode-pages-upload";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { DEFAULT_SPREAD_START_INDEX } from "./reading-layout";
@@ -27,16 +28,13 @@ import type {
 import { DEFAULT_SURFACE_AVAILABILITY } from "./surface-availability";
 
 /**
- * The most one `UploadEpisodeImages` carries (`episodeimages.MaxUploadBytes`).
- * An episode over it goes up in several calls, each adding its pages after the
- * last, so the limit an import states is the size of its ZIP alone.
+ * The pages in order, cut into runs one upload can carry. An episode over that
+ * goes up in several calls, each adding its pages after the last, so the limit
+ * an import states is the size of its ZIP alone.
  */
-export const EPISODE_IMAGES_RPC_MAX_BYTES = 128 * 1024 * 1024;
-
-/** The pages in order, cut into runs one upload can carry. */
 export const batchSeriesImportPages = (
   pages: readonly SeriesImportPage[],
-  maxBytes = EPISODE_IMAGES_RPC_MAX_BYTES
+  maxBytes = EPISODE_PAGES_UPLOAD_MAX_BYTES
 ): SeriesImportPage[][] => {
   const batches: SeriesImportPage[][] = [];
   let batch: SeriesImportPage[] = [];

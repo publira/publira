@@ -13,15 +13,24 @@
 export const EPISODE_PAGES_UPLOAD_PATH = "/api/v1/episode-pages";
 
 /**
- * The largest request body the upload takes, files and multipart framing
- * together. The screen's help text and the refusal state it as 256MB.
+ * The most the files of one upload may add up to, which is what one
+ * `UploadEpisodeImages` carries (`episodeimages.MaxUploadBytes`); a test on
+ * that constant holds the two together. The screen's help text and the refusal
+ * state it as 128MB.
  *
  * The console and publira server each hold a submission whole, several times
  * over — the parsed form, the RPC message, and every page a ZIP or ePub
- * unpacks to — so this is what bounds the memory one upload can take. It fits
- * an episode of a hundred pages at 2MB each with room to spare.
+ * unpacks to — so this is what bounds the memory one upload can take.
  */
-export const EPISODE_PAGES_UPLOAD_MAX_BYTES = 256 * 1024 * 1024;
+export const EPISODE_PAGES_UPLOAD_MAX_BYTES = 128 * 1024 * 1024;
+
+/**
+ * The largest request body the upload takes: its files, and room for the
+ * multipart framing of a thousand pages and the fields beside them, so that
+ * files of exactly {@link EPISODE_PAGES_UPLOAD_MAX_BYTES} arrive.
+ */
+export const EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES =
+  EPISODE_PAGES_UPLOAD_MAX_BYTES + 1024 * 1024;
 
 /**
  * Where the episode edit screen sends the image that replaces one page. It

@@ -37,6 +37,12 @@ const (
 	// images taken together. A whole episode's pages fit in one ZIP or ePub of
 	// that size, around a hundred pages of a megabyte each, and an episode of
 	// larger pages goes up in several uploads.
+	//
+	// The process holds the message, the archive, and every page it unpacks to
+	// at once, in the process that answers readers: a ZIP of this size took
+	// about 1 GiB of resident memory to unpack and build its variants, and one
+	// of twice the size about 1.6 GiB, measured with four-megabyte JPEG pages.
+	// The console holds its uploads to the same number.
 	MaxUploadBytes = 128 << 20
 )
 

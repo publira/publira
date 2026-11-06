@@ -345,7 +345,7 @@ describe("EpisodePagesForm", () => {
     fireEvent.submit(formOf(fileInput()));
 
     expect(
-      await screen.findByText(/Keep each upload to 256MB or less/u)
+      await screen.findByText(/Keep each upload to 128MB or less/u)
     ).toBeTruthy();
   });
 
@@ -370,7 +370,7 @@ describe("EpisodePagesForm", () => {
     fireEvent.submit(formOf(fileInput()));
 
     expect(
-      await screen.findByText(/Keep each upload to 256MB or less/u)
+      await screen.findByText(/Keep each upload to 128MB or less/u)
     ).toBeTruthy();
     expect(fetch).not.toHaveBeenCalled();
   });

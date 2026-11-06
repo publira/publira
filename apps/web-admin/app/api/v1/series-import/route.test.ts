@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as AdminAuthModule from "#lib/admin-auth";
-import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
+import { SERIES_IMPORT_MAX_BYTES } from "#lib/series-import-manifest";
 
 const {
   mockAssertSameOrigin,
@@ -217,17 +217,17 @@ describe("POST /api/v1/series-import", () => {
     expect(mockRunSeriesImport).not.toHaveBeenCalled();
   });
 
-  it("refuses a declared length over the limit with the page upload's message, before reading", async () => {
+  it("refuses a declared length over the limit, before reading", async () => {
     const response = await post(
       { archive: zipFile(validManifest) },
-      { "content-length": String(EPISODE_PAGES_UPLOAD_MAX_BYTES + 1) }
+      { "content-length": String(SERIES_IMPORT_MAX_BYTES + 1) }
     );
 
     const body = await response.json();
 
     expect(response.status).toBe(413);
     expect(body.message).toBe(
-      "The files are larger than one upload takes. Keep each upload to 256MB or less, or add the pages over several uploads."
+      "The ZIP is larger than one import takes. Keep each ZIP to 256MB or less, or import over several ZIPs."
     );
     expect(mockRunSeriesImport).not.toHaveBeenCalled();
   });

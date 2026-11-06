@@ -31,7 +31,7 @@ assert_forwarded_headers "image host from outside the trusted range" GET picture
 # this pass starts from traefik.yaml; the others start from the Dev
 # Container's flags. nginx and Caddy start from the same sample either way.
 if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
-  assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 268435456 75
+  assert_upload_delivered "page upload of 129 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 135266304 75
   assert_upload_delivered "series import of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/series-import web-admin 268435456 75
 fi
 

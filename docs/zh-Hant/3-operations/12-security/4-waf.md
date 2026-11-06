@@ -28,7 +28,7 @@ source_updated: 2026-11-06
 
 | 請求 | 帶有的內容 | 拒絕它們的規則 | 處理方式 |
 | --- | --- | --- | --- |
-| 上傳：主控台主機上的`/api/v1/episode-pages`與`/api/v1/series-import`、`/api/v1/`的其餘部分、上傳圖片的頁面，以及傳送到公開API的讀者圖示 | 分別最多256 MiB、33 MiB、11 MiB和15 MiB的主體，如[租戶主控台中的上傳](../../2-deployments/4-edge/index.md#租戶主控台中的上傳)和[從頁面上傳圖片](../../2-deployments/4-edge/index.md#從頁面上傳圖片)所述 | AWS WAF的`SizeRestrictions_BODY`，它會拒絕所有超過8 KB的主體 | 將該規則設為Count；真正重要的是邊緣本身對主體大小的限制 |
+| 上傳：主控台主機上的`/api/v1/episode-pages`與`/api/v1/series-import`、`/api/v1/`的其餘部分、上傳圖片的頁面，以及傳送到公開API的讀者圖示 | 分別最多129 MiB和256 MiB、33 MiB、11 MiB和15 MiB的主體，如[租戶主控台中的上傳](../../2-deployments/4-edge/index.md#租戶主控台中的上傳)和[從頁面上傳圖片](../../2-deployments/4-edge/index.md#從頁面上傳圖片)所述 | AWS WAF的`SizeRestrictions_BODY`，它會拒絕所有超過8 KB的主體 | 將該規則設為Count；真正重要的是邊緣本身對主體大小的限制 |
 | `/api/v1/webhook/`下的Webhook | 付款服務商的事件，或讀者以電子郵件回覆的完整內容，包括其HTML和附件 | 針對跨網站指令碼、SQL注入和檔案引入的主體規則，郵件的HTML和文字會觸發它們 | 在此路徑上略過受管規則。Publira會檢查每個服務商在主體上附加的簽章，因此即使沒有這些規則，偽造的請求也會被拒絕，而被拒絕的請求會被重試然後遺失，如[Webhook](../../2-deployments/4-edge/index.md#webhook)所述 |
 | 讀者和工作人員撰寫的內容：留言、聯絡訊息，以及主控台主機上的頁面、公告和回覆 | 可能引用程式碼的文字，例如讀者詢問為何標題中會出現`<b>` | 針對跨網站指令碼和SQL注入的主體規則 | 保留這些規則。若日誌顯示它們拒絕了這類文字，請降低造成拒絕的規則的敏感度，或只在只有已登入工作人員會撰寫內容的主控台主機上略過該規則 |
 

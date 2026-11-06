@@ -6,7 +6,6 @@ import { z } from "zod";
 import { isUnauthenticatedError } from "#lib/admin-auth-shared";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import { episodesCacheTag } from "#lib/episode";
-import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
 import { optionalFileFormSchema } from "#lib/form-schemas";
 import {
   readPageUploadForm,
@@ -19,6 +18,7 @@ import { seriesCacheTag, seriesListCacheTag } from "#lib/series";
 import { runSeriesImport } from "#lib/series-import";
 import {
   checkSeriesImport,
+  SERIES_IMPORT_MAX_BYTES,
   seriesImportProblemText,
 } from "#lib/series-import-manifest";
 
@@ -47,8 +47,8 @@ const importFormSchema = z.object({
  */
 export const POST = async (request: NextRequest) => {
   const form = await readPageUploadForm(request, {
-    maxBytes: EPISODE_PAGES_UPLOAD_MAX_BYTES,
-    tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
+    maxBytes: SERIES_IMPORT_MAX_BYTES,
+    tooLarge: (t) => t("admin.series.import.too_large"),
   });
 
   if ("response" in form) {
