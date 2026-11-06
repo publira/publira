@@ -130,8 +130,11 @@ run_production_device() {
 
   # An unsigned build carries no entitlements, and iOS refuses ad hoc signing,
   # so the store configuration's are checked where Xcode resolves them from.
+  # Xcode resolves the packages before it prints a setting, and without the
+  # directory the build cloned them into it fetches them all a second time.
   release_settings="$(xcodebuild -project ios/Runner.xcodeproj -target Runner \
-    -configuration Release-production -showBuildSettings 2> /dev/null)"
+    -configuration Release-production -clonedSourcePackagesDirPath build/ios/SourcePackages \
+    -showBuildSettings 2> /dev/null)"
   entitlements="$(release_setting CODE_SIGN_ENTITLEMENTS)"
   [[ "${entitlements}" == Runner/RunnerRelease.entitlements ]] ||
     fail "Release-production signs with '${entitlements}', not Runner/RunnerRelease.entitlements"
