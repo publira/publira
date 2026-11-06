@@ -15,7 +15,7 @@
 
 services:
   proxy:
-    image: nginx:1.31.8-alpine3.24@sha256:a46f57e097e8effc26192437d2e715adf74bcbea836117651ee436c27983fa41
+    image: nginx:1.31.8-alpine3.24@sha256:b2f80f8f88146b0772fdcc7d92cea621aa8c2889fa8d07ed61d4884fcea53e09
     depends_on:
       app:
         condition: service_healthy
