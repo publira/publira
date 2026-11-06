@@ -249,9 +249,9 @@ const readPrice = (price: number, currency: string): number | null => {
 };
 
 /**
- * The instant to schedule an episode for, or why it cannot be: `CreateEpisode`
- * publishes at a time that has passed, which here would put an episode before
- * its readers, and tell its followers, while it has no pages yet.
+ * The instant to schedule an episode for, or why it cannot be. A time that has
+ * passed would publish the episode and tell its followers as soon as its pages
+ * are in, which a manifest that asks for a schedule did not ask for.
  */
 const readScheduledAt = (
   value: string,

@@ -22,7 +22,7 @@ const pageImage = readFileSync(EYE_CATCH_ASPECT_FIXTURES.portrait);
 
 /** A manifest as a test writes it. */
 interface Manifest {
-  episodes: { pages: string[]; title: string }[];
+  episodes: { pages: string[]; scheduled_at?: string; title: string }[];
   series: { reading_direction?: string; synopsis?: string; title: string };
   version: number;
 }
@@ -119,6 +119,37 @@ test.describe("web-admin series import from a ZIP", () => {
     await expectAuditEntry(page, "Series created");
     await expectAuditEntry(page, "Episode created");
     await expectAuditEntry(page, "Episode body image uploaded");
+  });
+
+  test("schedules an episode a manifest gives a time", async ({ page }) => {
+    test.slow();
+
+    await pickZip(page, {
+      episodes: [
+        {
+          pages: ["ep01/001.jpg"],
+          scheduled_at: "2035-01-01T00:00:00+09:00",
+          title: "Imported on time",
+        },
+      ],
+      series: { title: `Scheduled series ${uniqueSuffix()}` },
+      version: 1,
+    });
+
+    await page.getByRole("button", { exact: true, name: "Import" }).click();
+    await expect(page.getByText("Imported 1 episode.")).toBeVisible({
+      timeout: 120_000,
+    });
+
+    await page.getByRole("link", { name: "Open the series' episodes" }).click();
+    await page.waitForURL(/\/series\/(?<id>[^/]+)\/episodes$/u);
+
+    const seriesId = /\/series\/(?<id>[^/]+)\/episodes$/u.exec(page.url())
+      ?.groups?.id;
+
+    createdSeriesIds.push(seriesId ?? "");
+
+    await expect(page.getByText(/Status: Scheduled/u)).toBeVisible();
   });
 
   test("refuses a manifest naming a page not in the ZIP before anything is sent", async ({

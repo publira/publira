@@ -116,7 +116,7 @@ The ZIP holds the page images, in any folders, and a manifest named `publira-imp
 
 - `version` is `1`.
 - `series` says where the episodes go. To create a series, give its `title`, and optionally its `synopsis`, its `reading_direction` (`rtl` or `ltr`, right to left unless stated), and the `locale` its text and the episodes' titles are written in, which is the tenant's default language unless stated. The series is created as a draft. To add to a series that exists, give only `{ "id": "<ID>" }`, with the ID the series has in its address, `/series/<ID>`, and at the top of its episode list. On a series' episode list the manifest has to name that series.
-- `episodes` lists the episodes in the order they are created, after any the series already has. Each needs a `title` and its `pages`: paths inside the ZIP, exactly as stored in it, in reading order. `price` is written as in **Price**, in the tenant's currency, and is `0` unless stated. `scheduled_at` is a future time with its offset, and schedules the episode; without it the episode is a draft.
+- `episodes` lists the episodes in the order they are created, after any the series already has. Each needs a `title` and its `pages`: paths inside the ZIP, exactly as stored in it, in reading order. `price` is written as in **Price**, in the tenant's currency, and is `0` unless stated. `scheduled_at` is a future time with its offset, and schedules the episode once all its pages are in; without it the episode stays a draft.
 
 The manifest takes no other keys. Credits, covers, translations, genres, tags, and rentals are set in the console afterwards.
 
@@ -128,7 +128,7 @@ One ZIP may be up to 256 MB, an episode up to 1000 pages, and a page up to 20 MB
 
 Choose **Import** and keep the window open until the result appears, which may take several minutes: the ZIP is sent whole, and the console answers once the last episode is in. The result has a row for each episode, with **Imported**, **Failed**, or **Not started**.
 
-The import is not all or nothing. Episodes are created in turn, the first failure stops the ones after it, and what was created stays. To go on, remove the imported episodes from the manifest and import the ZIP again. A failed episode that links to its edit screen was created without all of its pages: add the rest there and remove it from the manifest too, or delete it and leave it in. If the connection is lost before the result appears, the import may still have finished, so check the series' episodes before importing again.
+The import is not all or nothing. Episodes are created in turn, the first failure stops the ones after it, and what was created stays. To go on, remove the imported episodes from the manifest and import the ZIP again. A failed episode that links to its edit screen was created and left as a draft, which may lack some of its pages: finish it there, adding the rest of its pages and its publication time, and remove it from the manifest too, or delete it and leave it in. If the connection is lost before the result appears, the import may still have finished, so check the series' episodes before importing again.
 
 An imported episode is the same as one created by hand: the [audit log](../../3-operations/12-security/3-audit-logs.md) shows the same actions, and a scheduled one goes through [review](#review-before-publishing) if the tenant requires it.
 

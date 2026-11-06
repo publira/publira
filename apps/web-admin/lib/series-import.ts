@@ -1,8 +1,13 @@
 import type { Locale } from "@publira/i18n";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
-import { createEpisode, uploadEpisodePages } from "./episode";
+import {
+  createEpisode,
+  updateEpisodePublishSchedule,
+  uploadEpisodePages,
+} from "./episode";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageAccessor } from "./messages";
 import { DEFAULT_SPREAD_START_INDEX } from "./reading-layout";
 import { createSeries, getSeriesForTenant } from "./series";
 import {
@@ -64,6 +69,7 @@ interface SeriesImportContext {
   currency: string;
   locale: Locale;
   tenantId: string;
+  t: AdminMessageAccessor;
   /** The language the episodes' titles are written in. */
   translationLocale?: Locale;
   zip: Uint8Array;
@@ -107,66 +113,99 @@ const resolveSeries = (
   );
 };
 
-/** Creates one episode and sends its pages, stopping at the first failure. */
+/**
+ * Creates one episode as a draft, sends its pages, and only then gives it its
+ * publication time. A time given to `CreateEpisode` would be in force while the
+ * pages are on their way, so one falling due during the import, or an upload
+ * that fails, would put an episode without all its pages in front of readers.
+ *
+ * Whatever goes wrong, thrown or answered, is returned as the row: once the
+ * episode exists the row has to name it, since a rerun of the manifest with
+ * that episode still in it would create it a second time.
+ */
 const importEpisode = async (
   episode: SeriesImportEpisode,
   position: number,
   series: { id: string; readingPeriodHours: number },
   context: SeriesImportContext
 ): Promise<SeriesImportRow> => {
-  const { currency, locale, tenantId, translationLocale, zip } = context;
+  const { currency, locale, t, tenantId, translationLocale, zip } = context;
 
-  const row: SeriesImportRow = {
+  let row: SeriesImportRow = {
     pageCount: episode.pages.length,
     position,
     status: "failed",
     title: episode.title,
   };
 
-  const created = await createEpisode(
-    {
-      availability: "",
-      currency,
-      previewPageCount: 0,
-      price: episode.price,
-      publishAt: episode.scheduledAt,
-      purchaseAvailability: "",
-      readingPeriodHours: series.readingPeriodHours,
-      rentalPeriodHours: 0,
-      rentalPrice: 0,
-      seriesId: series.id,
-      tenantId,
-      title: episode.title,
-      translationLocale,
-    },
-    locale
-  );
-
-  if (!created.ok) {
-    return { ...row, message: created.message };
-  }
-
-  const started = { ...row, episodePublicId: created.episode.publicId };
-
-  for (const batch of batchSeriesImportPages(episode.pages)) {
-    const inflated = readSeriesImportPages(zip, batch);
-
-    // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- each batch adds its pages after the one before it
-    const uploaded = await uploadEpisodePages(
+  try {
+    const created = await createEpisode(
       {
-        episodeId: created.episode.id,
-        pages: batch.map(({ path }) => pageFile(path, inflated[path])),
+        availability: "",
+        currency,
+        previewPageCount: 0,
+        price: episode.price,
+        publishAt: "",
+        purchaseAvailability: "",
+        readingPeriodHours: series.readingPeriodHours,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
+        seriesId: series.id,
         tenantId,
+        title: episode.title,
+        translationLocale,
       },
       locale
     );
 
-    if (!uploaded.ok) {
-      return { ...started, message: uploaded.message };
+    if (!created.ok) {
+      return { ...row, message: created.message };
     }
+
+    row = { ...row, episodePublicId: created.episode.publicId };
+
+    for (const batch of batchSeriesImportPages(episode.pages)) {
+      const inflated = readSeriesImportPages(zip, batch);
+
+      // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- each batch adds its pages after the one before it
+      const uploaded = await uploadEpisodePages(
+        {
+          episodeId: created.episode.id,
+          pages: batch.map(({ path }) => pageFile(path, inflated[path])),
+          tenantId,
+        },
+        locale
+      );
+
+      if (!uploaded.ok) {
+        return { ...row, message: uploaded.message };
+      }
+    }
+
+    if (episode.scheduledAt) {
+      const scheduled = await updateEpisodePublishSchedule(
+        {
+          episodeId: created.episode.id,
+          publishAt: episode.scheduledAt,
+          tenantId,
+        },
+        locale
+      );
+
+      if (!scheduled.ok) {
+        return { ...row, message: scheduled.message };
+      }
+    }
+  } catch (error) {
+    return {
+      ...row,
+      message: isUnauthenticatedError(error)
+        ? t("errors.rpc.unauthenticated")
+        : t("admin.series.import.episode_failed"),
+    };
   }
 
-  return { ...started, status: "imported" };
+  return { ...row, status: "imported" };
 };
 
 /**
@@ -192,6 +231,7 @@ export const runSeriesImport = async (
 ) => {
   const context: SeriesImportContext = {
     ...input,
+    t: await getMessagesFor(input.locale),
     translationLocale:
       plan.target.kind === "new" ? plan.target.locale : undefined,
   };
@@ -203,40 +243,27 @@ export const runSeriesImport = async (
   }
 
   const { series } = resolved;
-  const t = await getMessagesFor(input.locale);
   const rows: SeriesImportRow[] = [];
   let stopped = false;
 
   for (const [index, episode] of plan.episodes.entries()) {
     const position = index + 1;
 
-    const notImported = {
-      pageCount: episode.pages.length,
-      position,
-      title: episode.title,
-    };
-
     if (stopped) {
-      rows.push({ ...notImported, status: "not_started" });
+      rows.push({
+        pageCount: episode.pages.length,
+        position,
+        status: "not_started",
+        title: episode.title,
+      });
       continue;
     }
 
-    try {
-      // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- episodes are created in manifest order, and a failure stops the rest
-      const row = await importEpisode(episode, position, series, context);
+    // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- episodes are created in manifest order, and a failure stops the rest
+    const row = await importEpisode(episode, position, series, context);
 
-      rows.push(row);
-      stopped = row.status === "failed";
-    } catch (error) {
-      rows.push({
-        ...notImported,
-        message: isUnauthenticatedError(error)
-          ? t("errors.rpc.unauthenticated")
-          : t("admin.series.import.episode_failed"),
-        status: "failed",
-      });
-      stopped = true;
-    }
+    rows.push(row);
+    stopped = row.status === "failed";
   }
 
   return {

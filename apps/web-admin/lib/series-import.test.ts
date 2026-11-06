@@ -8,16 +8,19 @@ const {
   mockCreateEpisode,
   mockCreateSeries,
   mockGetSeriesForTenant,
+  mockUpdateEpisodePublishSchedule,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
   mockCreateEpisode: vi.fn(),
   mockCreateSeries: vi.fn(),
   mockGetSeriesForTenant: vi.fn(),
+  mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
 }));
 
 vi.mock("./episode", () => ({
   createEpisode: mockCreateEpisode,
+  updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   uploadEpisodePages: mockUploadEpisodePages,
 }));
 
@@ -92,6 +95,7 @@ describe("runSeriesImport", () => {
       })
     );
     mockUploadEpisodePages.mockResolvedValue({ ok: true, uploadedCount: 1 });
+    mockUpdateEpisodePublishSchedule.mockResolvedValue({ ok: true });
   });
 
   it("creates the series, then each episode with its pages in order", async () => {
@@ -116,11 +120,7 @@ describe("runSeriesImport", () => {
         title: "Episode 1",
         translationLocale: "ja",
       },
-      {
-        price: 500,
-        publishAt: "2030-01-01T00:00:00Z",
-        title: "Episode 2",
-      },
+      { price: 500, publishAt: "", title: "Episode 2" },
     ]);
 
     const [firstUpload] = mockUploadEpisodePages.mock.calls[0] ?? [];
@@ -157,6 +157,53 @@ describe("runSeriesImport", () => {
         },
       ],
       seriesPublicId: "SERIES001",
+    });
+  });
+
+  it("gives an episode its publication time only once every page is in", async () => {
+    await run(newSeriesPlan);
+
+    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledOnce();
+    expect(mockUpdateEpisodePublishSchedule.mock.calls[0]?.[0]).toEqual({
+      episodeId: "id-Episode 2",
+      publishAt: "2030-01-01T00:00:00Z",
+      tenantId: TENANT_ID,
+    });
+
+    const [lastUpload] =
+      mockUploadEpisodePages.mock.invocationCallOrder.slice(-1);
+
+    const [scheduled] =
+      mockUpdateEpisodePublishSchedule.mock.invocationCallOrder;
+
+    expect(scheduled).toBeGreaterThan(lastUpload ?? Number.POSITIVE_INFINITY);
+  });
+
+  it("leaves an episode a draft when its pages do not all arrive", async () => {
+    mockUploadEpisodePages
+      .mockResolvedValueOnce({ ok: true, uploadedCount: 2 })
+      .mockResolvedValueOnce({ message: "Storage is down.", ok: false });
+
+    await run(newSeriesPlan);
+
+    expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
+  });
+
+  it("names the episode whose publication time could not be set", async () => {
+    mockUpdateEpisodePublishSchedule.mockResolvedValue({
+      message: "Could not schedule.",
+      ok: false,
+    });
+
+    expect(await run(newSeriesPlan)).toMatchObject({
+      rows: [
+        { status: "imported" },
+        {
+          episodePublicId: "public-Episode 2",
+          message: "Could not schedule.",
+          status: "failed",
+        },
+      ],
     });
   });
 
@@ -228,7 +275,7 @@ describe("runSeriesImport", () => {
     });
   });
 
-  it("keeps the rows when a step throws", async () => {
+  it("keeps the rows, and the episode left behind, when an upload throws", async () => {
     mockUploadEpisodePages
       .mockResolvedValueOnce({ ok: true, uploadedCount: 2 })
       .mockRejectedValueOnce(new ConnectError("expired", Code.Unauthenticated));
@@ -236,9 +283,27 @@ describe("runSeriesImport", () => {
     expect(await run(newSeriesPlan)).toMatchObject({
       rows: [
         { status: "imported" },
-        { message: "errors.rpc.unauthenticated", status: "failed" },
+        {
+          episodePublicId: "public-Episode 2",
+          message: "errors.rpc.unauthenticated",
+          status: "failed",
+        },
       ],
     });
+  });
+
+  it("names no episode when creating it throws", async () => {
+    mockCreateEpisode.mockRejectedValueOnce(new Error("broken"));
+
+    const result = await run(newSeriesPlan);
+
+    expect(result).toMatchObject({
+      rows: [
+        { message: "admin.series.import.episode_failed", status: "failed" },
+        { status: "not_started" },
+      ],
+    });
+    expect(result.ok && result.rows[0]?.episodePublicId).toBeUndefined();
   });
 });
 
