@@ -1305,6 +1305,41 @@ void main() {
     );
   });
 
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'the reaction count reads on the black reader in the ${brightness.name} theme',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(brightness: brightness),
+            supportedLocales: AppMessages.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            home: AuthScope(
+              controller: fakeAuthController(),
+              child: CatalogScope(
+                repository: catalog,
+                child: Scaffold(
+                  body: EpisodeReactionControl(
+                    episode: fixtureDetails()[seriesId]!.episodes.first,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final count = tester.widget<RichText>(
+          find.descendant(
+            of: find.byKey(const ValueKey('episode-reaction-count')),
+            matching: find.byType(RichText),
+          ),
+        );
+        expect(count.text.style?.color, Colors.white70);
+      },
+    );
+  }
+
   testWidgets('a reaction response from a signed-out reader is discarded', (
     tester,
   ) async {

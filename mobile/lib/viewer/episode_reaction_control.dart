@@ -250,7 +250,9 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
           key: const ValueKey('episode-reaction-count'),
           messages.viewerReactionCount(count: ratingCount),
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.white70),
         ),
         if (error != null) ...[
           const SizedBox(height: 8),
