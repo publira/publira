@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:publira/app.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -33,6 +37,18 @@ void main() {
   late FakeInAppPurchasePlatform platform;
   late StorePurchaser purchaser;
 
+  /// The reaction state the API answers the signed-in reader for the episode.
+  void reaction({required bool readerCredited}) {
+    catalog.reactions = {
+      episodeInternalId: EpisodeReaction(
+        score: 0,
+        ratingCount: 2,
+        allowsMultiplePresses: false,
+        readerCredited: readerCredited,
+      ),
+    };
+  }
+
   setUp(() {
     catalog = FakeCatalogRepository(
       series: fixtureSeries,
@@ -42,6 +58,7 @@ void main() {
         creators: fixtureCreators,
       ),
     );
+    reaction(readerCredited: false);
     purchases = FakePurchaseRepository(seriesByEpisode: {episodeId: seriesId});
     launcher = FakeCheckoutLauncher();
     platform = FakeInAppPurchasePlatform(products: {'tip_300', 'tip_1000'});
@@ -125,7 +142,18 @@ void main() {
       expect(tip, findsNothing);
     });
 
-    testWidgets('offers no tip to a reader the episode credits', (
+    testWidgets('offers no tip to a reader credited on a free episode', (
+      tester,
+    ) async {
+      reaction(readerCredited: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(tip, findsNothing);
+    });
+
+    testWidgets('offers no tip to a reader credited on a priced episode', (
       tester,
     ) async {
       catalog.episodes = fixtureEpisodes(
@@ -134,8 +162,89 @@ void main() {
         tipAmounts: const [300, 1000],
         creators: fixtureCreators,
       );
+      reaction(readerCredited: true);
       await pumpApp(tester, session: fakeSession);
       await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(tip, findsNothing);
+    });
+
+    testWidgets('offers a tip to a reader not credited on a free episode', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+
+      await pumpUntilFound(tester, tip);
+      expect(tip, findsOne);
+    });
+
+    testWidgets('offers a tip to a reader not credited on a priced episode', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.purchase,
+        tipAmounts: const [300, 1000],
+        creators: fixtureCreators,
+      );
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+
+      await pumpUntilFound(tester, tip);
+      expect(tip, findsOne);
+    });
+
+    testWidgets('holds the tip back until the reader has been read', (
+      tester,
+    ) async {
+      final gate = Completer<EpisodeReaction?>();
+      catalog.reactionGate = gate;
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+
+      expect(tip, findsNothing);
+
+      gate.complete(
+        const EpisodeReaction(
+          score: 0,
+          ratingCount: 2,
+          allowsMultiplePresses: false,
+        ),
+      );
+      await pumpUntilFound(tester, tip);
+      expect(tip, findsOne);
+    });
+
+    testWidgets('offers no tip to a reader who could not be read', (
+      tester,
+    ) async {
+      catalog.reactionError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+      );
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(tip, findsNothing);
+    });
+
+    testWidgets('takes the tip back from a press refused as credited', (
+      tester,
+    ) async {
+      catalog.pressError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+        refused: true,
+        reasons: [readerCreditedOnEpisodeReason],
+      );
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await pumpUntilFound(tester, tip);
+
+      final press = find.byKey(const ValueKey('episode-reaction-press'));
+      tester.widget<FilledButton>(press).onPressed!.call();
+      await tester.pumpAndSettle();
 
       expect(tip, findsNothing);
     });
