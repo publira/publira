@@ -36,6 +36,7 @@ import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-setti
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { SeriesImportDialog } from "../../_components/series-import-dialog";
 import { EpisodeCampaignPricesDialog } from "./_components/episode-campaign-prices-dialog";
 import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
 import { EpisodeFreeWindowsDialog } from "./_components/episode-free-windows-dialog";
@@ -115,8 +116,8 @@ const SeriesEpisodeBulkActions = async ({
     return null;
   }
 
-  // A campaign price entered in no currency is a number nobody can read, so
-  // the action stays out while the currency cannot be read.
+  // A price entered in no currency is a number nobody can read, so the actions
+  // that take one stay out while the currency cannot be read.
   return (
     <>
       <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
@@ -132,6 +133,12 @@ const SeriesEpisodeBulkActions = async ({
           key={currency}
           seriesId={seriesResult.series.id}
           timeZone={timeZone}
+        />
+      ) : null}
+      {currency ? (
+        <SeriesImportDialog
+          currency={currency}
+          seriesPublicId={seriesResult.series.publicId}
         />
       ) : null}
     </>

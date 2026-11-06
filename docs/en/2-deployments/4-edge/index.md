@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-11-01
+updated: 2026-11-06
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -150,7 +150,11 @@ A reader's icon on the tenant's site, and the images uploaded in the tenant cons
 
 The episode edit screen in the tenant console adds an episode's pages in one upload of up to 256 MiB, posted to `/api/v1/episode-pages` on the console host. Every hop on the way has to admit a body that size there, a load balancer, a CDN, a web application firewall, and a proxy alike. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
 
-The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB over an uplink of about 7.2 Mbit/s, and as long as `web-admin` gives a request to arrive whole. A hop that limits how long a request may take, rather than how long the connection may sit idle, has to allow at least that long on this path.
+**Import from a ZIP**, on the series list and on a series' episode list, posts a ZIP of the same size to `/api/v1/series-import` on the console host, so every hop has to admit the same body there.
+
+The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB over an uplink of about 7.2 Mbit/s, and as long as `web-admin` gives a request to arrive whole. A hop that limits how long a request may take, rather than how long the connection may sit idle, has to allow at least that long on these paths.
+
+The import answers only once every episode in the ZIP has been created, so it also needs time after the body has arrived. A hop that limits how long it waits for an answer has to allow 15 minutes on `/api/v1/series-import`. A shorter limit makes the import look cut off to the staff member while it carries on, and the console asks them to check the series before importing again.
 
 ### Webhooks
 

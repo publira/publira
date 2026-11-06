@@ -1,15 +1,15 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, its rental, and its preview pages, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, and see what goes out when on the calendar.
+description: Create an episode, add, replace, and delete its pages, import a series and its episodes from a ZIP, change its title in each language, its price, its reading period, its rental, and its preview pages, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, and see what goes out when on the calendar.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
 
 The list shows each episode as its position and title, with its status, **Draft**, **Scheduled**, or **Published**, its price, and, for a scheduled one, the time it is due. While the tenant [requires review](#review-before-publishing), a scheduled episode waiting for a Tenant admin's decision is marked **In review**, and one sent back **Returned**. An episode not shown on both the site and the app is marked **Web only**, **App only**, or **Not shown anywhere**, and a paid one with [preview pages](#preview-pages) is marked with their number, such as **Preview: 3**, so a preview set across a series can be checked at a glance. **Edit** opens the episode, or **View** for an Auditor. Its edit screen has two tabs: **Cover image**, which [The cover image](#the-cover-image) describes, and **Basic information**, which holds every other section of the screen.
 
-![The episode list of a series: Create, Credits, Free reading period, Campaign price, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
+![The episode list of a series: Create, Credits, Free reading period, Campaign price, Import from a ZIP, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
 
 An episode is made of page images, whether the work is a comic or not. Novels written as text are not supported yet ([#505](https://github.com/publira/publira/issues/505)).
 
@@ -87,6 +87,50 @@ Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each im
 Pages added to an episode that is already published, a page replaced or deleted, and a new order of its pages reach readers as soon as they are saved. A published episode with no pages shows readers that its pages have not been published yet.
 
 Deleting pages leaves the episode's own **Spreads start** under [Page layout](#page-layout) as it was. If that page is now past the last one, the episode is shown without spreads until it has that many pages again.
+
+## Importing from a ZIP
+
+**Import from a ZIP**, on the **Series** list and on a series' episode list, creates a series and its episodes from one ZIP of page images, instead of creating each episode and adding its pages by hand. It is for moving a catalog from another service, or delivering a batch of episodes at once.
+
+The ZIP holds the page images, in any folders, and a manifest named `publira-import.json` at its root:
+
+```json
+{
+  "version": 1,
+  "series": {
+    "title": "The series title",
+    "synopsis": "What the series is about",
+    "locale": "en",
+    "reading_direction": "rtl"
+  },
+  "episodes": [
+    {
+      "title": "Episode 1",
+      "price": 0,
+      "scheduled_at": "2030-01-01T00:00:00+09:00",
+      "pages": ["ep01/001.png", "ep01/002.png"]
+    }
+  ]
+}
+```
+
+- `version` is `1`.
+- `series` says where the episodes go. To create a series, give its `title`, and optionally its `synopsis`, its `reading_direction` (`rtl` or `ltr`, right to left unless stated), and the `locale` its text and the episodes' titles are written in, which is the tenant's default language unless stated. The series is created as a draft. To add to a series that exists, give only `{ "id": "<ID>" }`, with the ID the series has in its address, `/series/<ID>`, and at the top of its episode list. On a series' episode list the manifest has to name that series.
+- `episodes` lists the episodes in the order they are created, after any the series already has. Each needs a `title` and its `pages`: paths inside the ZIP, exactly as stored in it, in reading order. `price` is written as in **Price**, in the tenant's currency, and is `0` unless stated. `scheduled_at` is a future time with its offset, and schedules the episode once all its pages are in; without it the episode stays a draft.
+
+The manifest takes no other keys. Credits, covers, translations, genres, tags, and rentals are set in the console afterwards.
+
+Choose the ZIP under **ZIP file**. The console checks it before sending anything, and lists everything it finds wrong by episode and path: a key the manifest does not take, a page missing from the ZIP, a path listed twice, a file that is not a JPEG, PNG, GIF, or WebP image, and anything over the limits. Nothing is created until the ZIP passes. If a path you can see in the ZIP is reported missing, write the folder and file names in ASCII: some tools store other characters in a form the manifest cannot match.
+
+![The Import from a ZIP dialog: its description, the ZIP file picker with the limits under it, the message that the ZIP is ready to create a series with two episodes, and Close and Import.](./episodes-import.png)
+
+One ZIP may be up to 256 MB, an episode up to 1000 pages, and a page up to 20 MB. A larger catalog is imported over several ZIPs that name the same series by its ID. An install on Cloud Run takes at most 32 MiB in one ZIP until [#4239](https://github.com/publira/publira/issues/4239) is resolved.
+
+Choose **Import** and keep the window open until the result appears, which may take several minutes: the ZIP is sent whole, and the console answers once the last episode is in. The result has a row for each episode, with **Imported**, **Failed**, or **Not started**.
+
+The import is not all or nothing. Episodes are created in turn, the first failure stops the ones after it, and what was created stays. To go on, remove the imported episodes from the manifest and import the ZIP again. A failed episode that links to its edit screen was created and left as a draft, which may lack some of its pages: finish it there, adding the rest of its pages and its publication time, and remove it from the manifest too, or delete it and leave it in. If the connection is lost before the result appears, the import may still have finished, so check the series' episodes before importing again.
+
+An imported episode is the same as one created by hand: the [audit log](../../3-operations/12-security/3-audit-logs.md) shows the same actions, and a scheduled one goes through [review](#review-before-publishing) if the tenant requires it.
 
 ## Page layout
 

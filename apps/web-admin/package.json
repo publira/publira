@@ -47,6 +47,7 @@
     "@tiptap/pm": "3.32.2",
     "@tiptap/react": "3.32.2",
     "@tiptap/starter-kit": "3.32.2",
+    "fflate": "catalog:",
     "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",

@@ -16,13 +16,12 @@ import {
 } from "#lib/episode-pages-upload";
 import { requiredRecordId } from "#lib/form-schemas";
 import type { AdminMessageAccessor } from "#lib/messages";
-
 import {
   readPageUploadForm,
   refuse,
   respond,
   signInAgain,
-} from "../_lib/page-upload-request";
+} from "#lib/page-upload-request";
 
 const replaceFormSchema = (t: AdminMessageAccessor) =>
   z.object({

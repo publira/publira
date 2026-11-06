@@ -2789,6 +2789,58 @@
           "no_episodes": "판매를 시작하기 전에 권에 에피소드를 추가하세요.",
           "failed": "권의 판매 상태를 변경할 수 없습니다. 잠시 후 다시 시도하세요."
         }
+      },
+      "import": {
+        "action": "ZIP에서 가져오기",
+        "description": "페이지 이미지와 루트에 둔 publira-import.json 매니페스트가 든 ZIP으로 시리즈과 에피소드를 만듭니다. 매니페스트에 기존 시리즈을 지정하면 그 시리즈에 에피소드를 추가합니다.",
+        "description_series": "ZIP의 에피소드를 이 시리즈에 추가합니다. ZIP 루트의 publira-import.json 매니페스트에 이 시리즈의 ID를 지정해야 합니다.",
+        "file_label": "ZIP 파일",
+        "file_help": "ZIP 하나는 256MB, 에피소드 하나는 1000페이지, 페이지 하나는 20MB까지입니다.",
+        "checking": "ZIP을 확인하는 중…",
+        "problems_heading": "이 ZIP은 가져올 수 없습니다. 아무것도 만들어지지 않았습니다.",
+        "ready_new": ".input {$count :integer}\n.match $count\n* {{시리즈 \"{$title}\"과(와) 에피소드 {$count}개를 만들 수 있습니다.}}",
+        "ready_existing": ".input {$count :integer}\n.match $count\n* {{시리즈 {$id}에 에피소드 {$count}개를 추가할 수 있습니다.}}",
+        "submit": "가져오기",
+        "submitting": "가져오는 중입니다. 이 창을 열어 두세요.",
+        "close": "닫기",
+        "refused": "이 ZIP은 가져올 수 없습니다.",
+        "failed": "ZIP을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "interrupted": "가져오는 도중 연결이 끊겨 일부가 완료되었을 수 있습니다. 다시 가져오기 전에 시리즈의 에피소드를 확인하세요.",
+        "finished": ".input {$count :integer}\n.match $count\n* {{에피소드 {$count}개를 가져왔습니다.}}",
+        "stopped": "실패한 에피소드에서 가져오기가 중단되었습니다. 그 앞의 에피소드는 만들어졌습니다. 계속하려면 완료된 에피소드를 매니페스트에서 빼고 다시 가져오세요.",
+        "episode_failed": "이 에피소드를 추가하지 못했습니다.",
+        "open_series": "시리즈의 에피소드 열기",
+        "result": {
+          "column_episode": "에피소드",
+          "column_pages": "페이지 수",
+          "column_outcome": "결과",
+          "imported": "가져옴",
+          "failed": "실패",
+          "not_started": "시작 안 됨"
+        },
+        "problem": {
+          "zip_invalid": "파일을 ZIP으로 읽을 수 없습니다.",
+          "manifest_missing": "ZIP 루트에 publira-import.json이 없습니다.",
+          "manifest_too_large": "publira-import.json이 1MB를 초과합니다.",
+          "manifest_invalid": "publira-import.json이 올바른 매니페스트가 아닙니다.",
+          "version_unsupported": "이 콘솔이 읽을 수 없는 버전의 매니페스트입니다. version은 1로 지정하세요.",
+          "unknown_key": "매니페스트에 사용할 수 없는 키가 있습니다: {$key}",
+          "series_required": "매니페스트에 series가 필요합니다. 새 시리즈은 title을, 기존 시리즈은 id를 지정하세요.",
+          "series_mismatch": "매니페스트가 이 시리즈을 지정하지 않습니다. series에 이 시리즈의 id를 지정하거나 시리즈 목록에서 가져오세요.",
+          "series_unknown_key": "series에 사용할 수 없는 키가 있습니다: {$key}",
+          "series_field_invalid": "series의 {$field} 값이 올바르지 않습니다.",
+          "episodes_required": "매니페스트에 에피소드가 없습니다.",
+          "episode_unknown_key": "{$episode}: 사용할 수 없는 키가 있습니다: {$key}",
+          "episode_field_invalid": "{$episode}: {$field} 값이 올바르지 않습니다.",
+          "scheduled_at_passed": "{$episode}: scheduled_at이 이미 지났습니다. 미래 시각을 지정하거나, 삭제해 초안으로 만드세요.",
+          "pages_required": "{$episode}: 페이지가 지정되지 않았습니다.",
+          "pages_too_many": ".input {$count :integer}\n.match $count\n* {{{$episode}: 페이지가 {$count}개를 초과합니다.}}",
+          "page_missing": "{$episode}: {$path}이(가) ZIP에 없습니다.",
+          "page_duplicated": "{$episode}: {$path}이(가) 중복되었습니다.",
+          "page_not_image": "{$episode}: {$path}은(는) JPEG, PNG, GIF, WebP 이미지가 아닙니다.",
+          "page_too_large": "{$episode}: {$path}이(가) 20MB를 초과합니다.",
+          "page_unreadable": "{$episode}: {$path}이(가) 비어 있거나 읽을 수 없는 방식으로 압축되었습니다."
+        }
       }
     },
     "settings": {

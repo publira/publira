@@ -2,6 +2,7 @@ import type * as ActionForm from "@publira/ui-components/action-form";
 import { useRouter } from "next/navigation";
 
 import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
+import { untilOnline } from "#lib/until-online";
 
 const readUploadResponse = async (
   response: Response
@@ -14,30 +15,6 @@ const readUploadResponse = async (
   } catch {
     return null;
   }
-};
-
-/**
- * Settles once the browser is online: at once when it already says so, or on
- * its `online` event.
- *
- * An upload started offline waits here instead of failing, as
- * `experimental.useOffline` holds a Server Action — which a `fetch` of our own
- * is outside of. Only the wait before sending is ours to take: neither adding
- * nor replacing pages is idempotent, and a `fetch` that rejects after it was
- * sent may have reached the server all the same, so a send is never repeated.
- */
-const untilOnline = (): Promise<"online"> => {
-  const { promise, resolve } = Promise.withResolvers<"online">();
-
-  if (navigator.onLine) {
-    resolve("online");
-  } else {
-    window.addEventListener("online", () => resolve("online"), {
-      once: true,
-    });
-  }
-
-  return promise;
 };
 
 const submittedBytes = (formData: FormData) =>

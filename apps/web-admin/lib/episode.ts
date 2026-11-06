@@ -691,6 +691,8 @@ export const createEpisode = async (
     availability: EpisodeAvailabilityOverride;
     /** The empty value follows the series. */
     purchaseAvailability: PurchaseAvailabilityOverride;
+    /** The language `title` is written in. Absent writes the tenant's default. */
+    translationLocale?: Locale;
   },
   locale: Locale
 ): Promise<CreateEpisodeResult> => {
@@ -713,6 +715,7 @@ export const createEpisode = async (
           ? SURFACE_AVAILABILITY_ENUM[input.availability]
           : undefined,
         currency: input.currency,
+        locale: input.translationLocale,
         // Omitting orderIndex makes the server append to the end.
         previewPageCount: input.previewPageCount,
         price: input.price,

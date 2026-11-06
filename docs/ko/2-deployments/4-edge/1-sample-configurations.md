@@ -2,7 +2,8 @@
 title: 샘플 구성
 description: 엣지가 해야 하는 일을 수행하는 저장소의 Traefik, nginx, Caddy 샘플 구성과, 이를 설치 환경에 맞게 고치는 방법을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-10-30
+updated: 2026-11-06
+source_updated: 2026-11-06
 ---
 
 저장소에는 [엣지가 해야 하는 일](./index.md#엣지가-해야-하는-일)의 요구 사항대로 요청을 라우팅하고 헤더, 본문, 타임아웃을 처리하는 리버스 프록시의 샘플 구성이 세 가지 들어 있습니다. Traefik, nginx, Caddy용이 각각 하나씩입니다. 요구 사항 중 하나는 샘플을 실행하는 설치 환경의 몫으로 남습니다. 바로 TLS 리스너로, Traefik과 nginx 샘플은 이를 여러분이 추가하도록 남겨 두며, Caddy 샘플은 HTTPS로 제공할 호스트 이름이 주어지면 직접 추가합니다. 이 샘플들은 예시일 뿐 엣지의 정의가 아닙니다. [Docker Compose](../3-docker-compose.md) 설치 환경은 Caddy 샘플을 실행하며, 직접 프록시를 운영하는 설치 환경은 어느 샘플에서든 시작할 수 있습니다. 관리형 로드 밸런서, Ingress, Gateway로 구성한 엣지는 그 요구 사항을 따르면 되며 샘플은 필요하지 않습니다. [Kubernetes의 엣지](../5-kubernetes/1-edge.md)에서는 이를 충족하는 Gateway와 Ingress를, [ECS 앞의 CloudFront](../6-ecs-fargate/1-cloudfront.md)에서는 Application Load Balancer 앞의 CloudFront를 소개합니다.
@@ -22,7 +23,7 @@ source_updated: 2026-10-30
 - **호스트.** 모든 샘플은 `Host`를 그대로 전달하고, `X-Forwarded-Host`와 `X-Forwarded-Proto`는 호출자의 값을 전달하지 않고 직접 설정합니다. 단, 신뢰하는 [앞단의 홉](#프록시-앞의-홉)이 있는 경우는 예외입니다.
 - **트레이스 컨텍스트.** 모든 샘플이 세 헤더를 제거합니다. Traefik은 `strip-trace-context` 미들웨어로 제거하며, 모든 엔트리 포인트에 `strip-forwarded`와 함께 이 미들웨어가 필요합니다.
 - **독자의 지역.** 어느 샘플도 직접 지역을 조회하지 않으므로, 각 샘플은 모든 요청에서 `X-Forwarded-CountryRegion`을 제거합니다. 단, 신뢰하는 [앞단의 홉](#프록시-앞의-홉)에서 온 요청은 예외로, 그 값을 전달합니다. Traefik은 `web-storefront-trusted-hop`을 제외한 모든 라우터에 `strip-country-region` 미들웨어를 두어 이를 처리하므로, 라우터를 추가할 때도 이 미들웨어가 필요합니다.
-- **업로드와 웹훅.** Traefik과 Caddy는 직접 추가하지 않는 한 본문 크기를 제한하지 않습니다. nginx는 기본적으로 1 MB를 넘는 본문을 거부하며, 샘플은 콘솔 호스트의 `/api/v1/episode-pages`에서 이를 `256m`으로, 그 밖의 `/api/v1/` 아래에서 `33m`으로, 페이지 경로에서 `11m`으로 올립니다. Traefik은 따로 지정하지 않으면 60초 안에 전체가 도착하지 않은 요청을 끊으며, 이 설정은 경로별이 아니라 엔트리 포인트별이므로 샘플은 `transport.respondingTimeouts.readTimeout`으로 `web` 엔트리 포인트의 모든 요청에 300초를 줍니다. nginx는 본문 전체가 아니라 본문의 두 읽기 사이를 최대 60초까지 기다리고, Caddy는 시간을 전혀 제한하지 않으므로, 두 샘플 모두 이를 변경하지 않습니다.
+- **업로드와 웹훅.** Traefik과 Caddy는 직접 추가하지 않는 한 본문 크기를 제한하지 않습니다. nginx는 기본적으로 1 MB를 넘는 본문을 거부하며, 샘플은 콘솔 호스트의 `/api/v1/episode-pages`와 `/api/v1/series-import`에서 이를 `256m`으로, 그 밖의 `/api/v1/` 아래에서 `33m`으로, 페이지 경로에서 `11m`으로 올립니다. Traefik은 따로 지정하지 않으면 60초 안에 전체가 도착하지 않은 요청을 끊으며, 이 설정은 경로별이 아니라 엔트리 포인트별이므로 샘플은 `transport.respondingTimeouts.readTimeout`으로 `web` 엔트리 포인트의 모든 요청에 300초를 줍니다. nginx는 본문 전체가 아니라 본문의 두 읽기 사이를 최대 60초까지 기다리고, Caddy는 시간을 전혀 제한하지 않으므로, 두 샘플 모두 이를 변경하지 않습니다.
 - **요청 빈도.** Traefik과 nginx 샘플은 [요청 제한](../../3-operations/12-security/5-rate-limits.md)에서 설명하는 대로, 한 클라이언트가 테넌트의 도메인과 이미지 호스트의 공개 API, 검색, 이미지로 보낼 수 있는 요청 수를 제한하고, 제한을 넘은 요청에는 자체적으로 `429`를 응답합니다. 허용량은 [라우팅 계약](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)에 나와 있습니다. nginx는 이를 `default.conf.template`의 `limit_req_zone` 줄에 두고, Traefik은 `dynamic/routes.yaml`에서 허용량마다 하나의 `rateLimit` 미들웨어를 사이트 호스트와 이미지 호스트의 라우터에 두므로, 이 호스트들에 라우터를 추가할 때도 이 미들웨어가 필요합니다. Caddy 샘플에는 `rate_limit` 블록이 주석 처리된 채 들어 있습니다. 이 블록에는 [`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit) 모듈이 필요한데, `caddy` 이미지에는 이 모듈이 없어 이 블록이 있는 Caddyfile을 거부합니다. 블록을 사용하려면 `xcaddy build --with github.com/mholt/caddy-ratelimit`로 빌드한 것처럼 이 모듈을 포함해 빌드한 Caddy를 실행하고 주석을 해제하세요. [Docker Compose](../3-docker-compose.md) 설치 환경은 `caddy` 이미지를 실행하므로 그 엣지는 아무것도 제한하지 않습니다.
 - **TLS.** [샘플에서 TLS 종단하기](#샘플에서-tls-종단하기)에서 설명하는 대로, 모든 샘플은 TLS 리스너를 추가하거나 Caddy에 HTTPS로 제공할 호스트 이름을 주기 전까지 일반 HTTP로 대기합니다.
 
