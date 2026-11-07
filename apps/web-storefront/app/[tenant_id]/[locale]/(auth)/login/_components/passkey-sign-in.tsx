@@ -104,8 +104,9 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    let active = true;
-    const offering = () => active && !buttonUsedRef.current;
+    const cleanup = new AbortController();
+
+    const offering = () => !(cleanup.signal.aborted || buttonUsedRef.current);
 
     const offerInAutofill = async () => {
       if (!(await browserSupportsWebAuthnAutofill()) || !offering()) {
@@ -123,7 +124,7 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
         useBrowserAutofill: true,
       });
 
-      if (!active) {
+      if (cleanup.signal.aborted) {
         return;
       }
 
@@ -143,7 +144,7 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
     offerUntilStopped();
 
     return () => {
-      active = false;
+      cleanup.abort();
       WebAuthnAbortService.cancelCeremony();
     };
   }, []);
