@@ -147,7 +147,7 @@ export const SeriesFilterForm = async ({
           htmlFor="series-filter-free"
         >
           <input
-            className="size-4 rounded-control border-input accent-primary"
+            className="size-4 shrink-0 rounded-control border-input accent-primary"
             defaultChecked={query.free}
             id="series-filter-free"
             name="free"
