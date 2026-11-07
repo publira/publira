@@ -2822,6 +2822,7 @@
         "problem": {
           "zip_invalid": "无法将该文件作为ZIP读取。",
           "manifest_missing": "ZIP根目录中没有publira-import.json。",
+          "manifest_duplicated": "ZIP中有多个publira-import.json。",
           "manifest_too_large": "publira-import.json超过1MB。",
           "manifest_invalid": "publira-import.json不是有效的清单。",
           "version_unsupported": "此控制台无法读取该版本的清单。请使用version 1。",
