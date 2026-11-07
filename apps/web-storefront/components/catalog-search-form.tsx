@@ -204,7 +204,7 @@ export const CatalogSearchForm = async ({
           htmlFor={`${id}-free`}
         >
           <input
-            className="size-4 rounded-control border-input accent-primary"
+            className="size-4 shrink-0 rounded-control border-input accent-primary"
             defaultChecked={defaultFilters.free}
             id={`${id}-free`}
             name="free"
