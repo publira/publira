@@ -680,10 +680,10 @@ packages:
     dependency: "direct main"
     description:
       name: passkeys_darwin
-      sha256: "6fed2e0138b5b37a61f149d1862c24811d00f26b4168904decdcd080d4058a91"
+      sha256: "83e4efcd1841f2031206cc9c9c5d30d6859e3624e1892c87fd100e97f612fb86"
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.7"
+    version: "0.4.8"
   passkeys_platform_interface:
     dependency: "direct main"
     description:
