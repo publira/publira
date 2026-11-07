@@ -656,7 +656,7 @@ const AudienceReach = ({
       return;
     }
 
-    let current = true;
+    const cleanup = new AbortController();
 
     const count = async () => {
       let result: CountAnnouncementAudienceResult = { ok: false };
@@ -671,7 +671,7 @@ const AudienceReach = ({
         // form usable rather than reaching an error boundary.
       }
 
-      if (current) {
+      if (!cleanup.signal.aborted) {
         setReach({ request, result });
       }
     };
@@ -679,7 +679,7 @@ const AudienceReach = ({
     const timer = setTimeout(count, REACH_DEBOUNCE_MS);
 
     return () => {
-      current = false;
+      cleanup.abort();
       clearTimeout(timer);
     };
   }, [request, tenantId]);
