@@ -120,6 +120,28 @@ const zipWithManifestTwice = () => {
   return zip;
 };
 
+/**
+ * The zip64 record, its locator, and the end record `fflate` reads the entry
+ * count from, with no entry behind them: a ZIP of 98 bytes stating `count`
+ * entries, all of them past its end.
+ */
+const zipStatingEntries = (count: number) => {
+  const zip = new Uint8Array(98);
+  const view = new DataView(zip.buffer);
+
+  view.setUint32(0, 0x06_06_4b_50, true);
+  view.setUint32(32, count, true);
+  view.setUint32(48, zip.length, true);
+  view.setUint32(56, 0x07_06_4b_50, true);
+  view.setUint32(76, 0x06_05_4b_50, true);
+  view.setUint16(84, 0xff_ff, true);
+
+  return zip;
+};
+
+/** Too many to walk within a test's timeout, were they all visited. */
+const ENTRIES_NO_TEST_CAN_WALK = 100_000_000;
+
 /** The fields of one episode a test overrides, right or wrong. */
 interface EpisodeOverrides {
   pages?: string[];
@@ -302,6 +324,22 @@ describe("checkSeriesImport", () => {
     ],
   ])("refuses %s", (_name, zip, problems) => {
     expect(problemsOf(zip)).toEqual(problems);
+  });
+
+  it("refuses a ZIP stating more entries than its length can hold without visiting them", () => {
+    expect(problemsOf(zipStatingEntries(ENTRIES_NO_TEST_CAN_WALK))).toEqual([
+      { code: "zip_invalid" },
+    ]);
+  });
+
+  it("reads a ZIP holding many entries of nothing", () => {
+    const empty = new Uint8Array(0);
+
+    const files = Object.fromEntries(
+      Array.from({ length: 10_000 }, (_, index) => [`other/${index}`, empty])
+    );
+
+    expect(check(zipOf(manifest(), { ...PAGES, ...files })).ok).toBe(true);
   });
 
   it("refuses a ZIP holding the manifest twice with neither inflated", () => {
