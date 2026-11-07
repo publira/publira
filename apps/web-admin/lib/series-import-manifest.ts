@@ -53,6 +53,9 @@ const PAGE_CONTENT_TYPES = new Map([
 const COMPRESSION_STORED = 0;
 const COMPRESSION_DEFLATE = 8;
 
+/** The fixed part of a central directory header, the least an entry takes. */
+const ZIP_CENTRAL_HEADER_MIN_BYTES = 46;
+
 /** The compression methods `fflate` reads. */
 const READABLE_COMPRESSIONS = new Set([
   COMPRESSION_STORED,
@@ -130,10 +133,20 @@ interface ZipEntry {
 /** Reads the entries from the central directory, inflating none of them. */
 const listZipEntries = (zip: Uint8Array): Map<string, ZipEntry> | null => {
   const entries = new Map<string, ZipEntry>();
+  // `fflate` walks the count the ZIP states, up to 32 bits of it, past the end
+  // of the data if that is where the count leads. Stopping here keeps the walk
+  // to what the ZIP's length explains.
+  let entriesLeft = Math.floor(zip.length / ZIP_CENTRAL_HEADER_MIN_BYTES);
 
   try {
     unzipSync(zip, {
       filter: ({ compression, name, originalSize, size }) => {
+        if (entriesLeft === 0) {
+          throw new Error("The ZIP states more entries than it can hold.");
+        }
+
+        entriesLeft -= 1;
+
         entries.set(name, {
           compression,
           duplicated: entries.has(name),
