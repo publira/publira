@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Every cache saved through here is chosen by creation time: `restore-keys`
+    # A cache saved through here can be chosen by creation time: `restore-keys`
     # reads the entry created last, and `Cache / Prune Go build` and `Cache /
     # Prune Playwright browsers` keep only the newest on main. Creation order
     # therefore has to follow commit order. Two pushes to main run side by
