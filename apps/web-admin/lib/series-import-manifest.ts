@@ -50,10 +50,16 @@ const PAGE_CONTENT_TYPES = new Map([
   ["webp", "image/webp"],
 ]);
 
-/** The compression methods `fflate` reads: stored and deflate. */
-const READABLE_COMPRESSIONS = new Set([0, 8]);
+const COMPRESSION_STORED = 0;
+const COMPRESSION_DEFLATE = 8;
 
-/** One page to send, with the size its ZIP entry declares. */
+/** The compression methods `fflate` reads. */
+const READABLE_COMPRESSIONS = new Set([
+  COMPRESSION_STORED,
+  COMPRESSION_DEFLATE,
+]);
+
+/** One page to send, with the most bytes reading its ZIP entry yields. */
 export interface SeriesImportPage {
   bytes: number;
   path: string;
@@ -87,6 +93,7 @@ export interface SeriesImportPlan {
 /** What is wrong with a ZIP, named so the operator can find it. */
 export type SeriesImportProblem =
   | { code: "episodes_required" }
+  | { code: "manifest_duplicated" }
   | { code: "manifest_invalid" }
   | { code: "manifest_missing" }
   | { code: "manifest_too_large" }
@@ -116,6 +123,7 @@ interface ZipEntry {
   compression: number;
   /** Set when the ZIP holds two entries of this name. */
   duplicated: boolean;
+  /** The most bytes `fflate` returns for it, which every limit is held to. */
   size: number;
 }
 
@@ -125,11 +133,14 @@ const listZipEntries = (zip: Uint8Array): Map<string, ZipEntry> | null => {
 
   try {
     unzipSync(zip, {
-      filter: ({ compression, name, originalSize }) => {
+      filter: ({ compression, name, originalSize, size }) => {
         entries.set(name, {
           compression,
           duplicated: entries.has(name),
-          size: originalSize,
+          // `fflate` copies a stored entry at its compressed size whatever size
+          // it states, and entries of one ZIP can share the same bytes, so the
+          // ZIP's own length does not bound that copy either.
+          size: compression === COMPRESSION_STORED ? size : originalSize,
         });
 
         return false;
@@ -150,6 +161,12 @@ const readManifestJson = (
 
   if (!entry) {
     return { problem: { code: "manifest_missing" } };
+  }
+
+  // The filter below takes every entry of this name, and `entry` is only the
+  // last of them, so nothing has held the others to the limit.
+  if (entry.duplicated) {
+    return { problem: { code: "manifest_duplicated" } };
   }
 
   if (entry.size > MANIFEST_MAX_BYTES) {
@@ -422,8 +439,8 @@ const planEpisode = (
  * screen.
  *
  * Only the manifest is inflated. A page is judged by what the central
- * directory says of it, and the size it states is not trusted past this:
- * `readSeriesImportPages` inflates into a buffer of that size.
+ * directory says of it, and that is not trusted past this:
+ * `readSeriesImportPages` cannot get more from an entry than the size kept.
  */
 export const checkSeriesImport = (
   zip: Uint8Array,
@@ -514,9 +531,10 @@ export const checkSeriesImport = (
 /**
  * Inflates the named pages of a checked ZIP.
  *
- * Each goes into a buffer of the size its entry states, which the check held
- * to one page's limit, so an entry that holds more than it states cannot grow
- * past that.
+ * A deflated entry goes into a buffer of the size it states and a stored one
+ * is copied at its compressed size, and those are the sizes the check held to
+ * one page's limit and the batches add up, so no entry can yield more than
+ * that.
  */
 export const readSeriesImportPages = (
   zip: Uint8Array,

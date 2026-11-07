@@ -1,4 +1,5 @@
-import { strToU8, zipSync } from "fflate";
+import { strFromU8, strToU8, zipSync } from "fflate";
+import type { Zippable } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -37,7 +38,7 @@ const PAGES = {
   "ep02/001.jpg": page,
 };
 
-const zipOf = (json: Manifest, files: Record<string, Uint8Array> = PAGES) =>
+const zipOf = (json: Manifest, files: Zippable = PAGES) =>
   zipSync({
     ...files,
     [SERIES_IMPORT_MANIFEST_NAME]: strToU8(JSON.stringify(json)),
@@ -50,6 +51,73 @@ const problemsOf = (zip: Uint8Array, seriesPublicId?: string) => {
   const result = check(zip, seriesPublicId);
 
   return result.ok ? [] : result.problems;
+};
+
+const END_OF_CENTRAL_DIRECTORY_BYTES = 22;
+const CENTRAL_HEADER_BYTES = 46;
+
+/**
+ * Each entry of a ZIP's central directory, to edit in place. It is the only
+ * place `fflate` reads an entry's name, method, and sizes from, so an edit here
+ * makes the ZIP a test needs and `zipSync` will not write.
+ */
+const centralHeaders = (zip: Uint8Array) => {
+  const end = new DataView(
+    zip.buffer,
+    zip.byteOffset + zip.length - END_OF_CENTRAL_DIRECTORY_BYTES
+  );
+
+  let offset = end.getUint32(16, true);
+
+  return Array.from({ length: end.getUint16(10, true) }, () => {
+    const header = new DataView(zip.buffer, zip.byteOffset + offset);
+    const nameLength = header.getUint16(28, true);
+
+    const name = zip.subarray(
+      offset + CENTRAL_HEADER_BYTES,
+      offset + CENTRAL_HEADER_BYTES + nameLength
+    );
+
+    offset +=
+      CENTRAL_HEADER_BYTES +
+      nameLength +
+      header.getUint16(30, true) +
+      header.getUint16(32, true);
+
+    return { header, name };
+  });
+};
+
+/** A ZIP whose entry of this name says it holds `size` bytes. */
+const stating = (zip: Uint8Array, path: string, size: number) => {
+  for (const { header, name } of centralHeaders(zip)) {
+    if (strFromU8(name) === path) {
+      header.setUint32(24, size, true);
+    }
+  }
+
+  return zip;
+};
+
+/**
+ * A ZIP holding the manifest twice, in a method nothing can read, so that
+ * inflating either one fails the check as `manifest_invalid`.
+ */
+const zipWithManifestTwice = () => {
+  const twin = `${SERIES_IMPORT_MANIFEST_NAME.slice(0, -1)}2`;
+  const zip = zipOf(manifest(), { ...PAGES, [twin]: page });
+
+  for (const { header, name } of centralHeaders(zip)) {
+    if (strFromU8(name) === twin) {
+      name.set(strToU8(SERIES_IMPORT_MANIFEST_NAME));
+    }
+
+    if (strFromU8(name) === SERIES_IMPORT_MANIFEST_NAME) {
+      header.setUint16(10, 99, true);
+    }
+  }
+
+  return zip;
 };
 
 /** The fields of one episode a test overrides, right or wrong. */
@@ -235,6 +303,67 @@ describe("checkSeriesImport", () => {
   ])("refuses %s", (_name, zip, problems) => {
     expect(problemsOf(zip)).toEqual(problems);
   });
+
+  it("refuses a ZIP holding the manifest twice with neither inflated", () => {
+    expect(problemsOf(zipWithManifestTwice())).toEqual([
+      { code: "manifest_duplicated" },
+    ]);
+  });
+
+  it("refuses a stored manifest past its limit that states less", () => {
+    const json = `${JSON.stringify(manifest())}${" ".repeat(1024 * 1024)}`;
+
+    expect(
+      problemsOf(
+        stating(
+          zipSync({
+            ...PAGES,
+            [SERIES_IMPORT_MANIFEST_NAME]: [strToU8(json), { level: 0 }],
+          }),
+          SERIES_IMPORT_MANIFEST_NAME,
+          13
+        )
+      )
+    ).toEqual([{ code: "manifest_too_large" }]);
+  });
+
+  it("refuses a stored page past its limit that states less", () => {
+    const pages = ["a.png"];
+
+    expect(
+      problemsOf(
+        stating(
+          zipOf(withEpisode({ pages }), {
+            "a.png": [new Uint8Array(20 * 1024 * 1024 + 1), { level: 0 }],
+          }),
+          "a.png",
+          1
+        )
+      )
+    ).toEqual([{ code: "page_too_large", episode: "E", path: "a.png" }]);
+  });
+
+  it.each([
+    ["less", 1],
+    ["more", 1024],
+  ])(
+    "counts a stored page stating %s than it holds at what reading it yields",
+    (_name, stated) => {
+      const zip = stating(
+        zipOf(withEpisode({ pages: ["a.png"] }), {
+          "a.png": [strToU8("stored page"), { level: 0 }],
+        }),
+        "a.png",
+        stated
+      );
+
+      const result = check(zip);
+      const pages = result.ok ? (result.plan.episodes[0]?.pages ?? []) : [];
+
+      expect(pages).toEqual([{ bytes: 11, path: "a.png" }]);
+      expect(readSeriesImportPages(zip, pages)["a.png"]).toHaveLength(11);
+    }
+  );
 
   it("refuses a path listed by two episodes, naming the second", () => {
     expect(

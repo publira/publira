@@ -2822,6 +2822,7 @@
         "problem": {
           "zip_invalid": "파일을 ZIP으로 읽을 수 없습니다.",
           "manifest_missing": "ZIP 루트에 publira-import.json이 없습니다.",
+          "manifest_duplicated": "ZIP에 publira-import.json이 여러 개 있습니다.",
           "manifest_too_large": "publira-import.json이 1MB를 초과합니다.",
           "manifest_invalid": "publira-import.json이 올바른 매니페스트가 아닙니다.",
           "version_unsupported": "이 콘솔이 읽을 수 없는 버전의 매니페스트입니다. version은 1로 지정하세요.",

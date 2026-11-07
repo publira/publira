@@ -2822,6 +2822,7 @@
         "problem": {
           "zip_invalid": "The file could not be read as a ZIP.",
           "manifest_missing": "The ZIP has no publira-import.json at its root.",
+          "manifest_duplicated": "The ZIP holds publira-import.json more than once.",
           "manifest_too_large": "publira-import.json is larger than 1MB.",
           "manifest_invalid": "publira-import.json is not a valid manifest.",
           "version_unsupported": "The manifest states a version this console does not read. Use version 1.",

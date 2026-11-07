@@ -2822,6 +2822,7 @@
         "problem": {
           "zip_invalid": "ファイルをZIPとして読み取れませんでした。",
           "manifest_missing": "ZIPのルートにpublira-import.jsonがありません。",
+          "manifest_duplicated": "ZIPにpublira-import.jsonが複数含まれています。",
           "manifest_too_large": "publira-import.jsonが1MBを超えています。",
           "manifest_invalid": "publira-import.jsonがマニフェストとして正しくありません。",
           "version_unsupported": "このコンソールが読めないバージョンのマニフェストです。versionは1にしてください。",
