@@ -53,8 +53,9 @@ runs:
 
     # Exact key only, as the action's own cache had it: the module cache is
     # never trimmed, so an entry restored from an older go.sum would carry its
-    # superseded versions into every entry saved after it. `Check` saves it,
-    # because `go mod tidy` downloads what every package and test imports.
+    # superseded versions into every entry saved after it. `Check` saves it on
+    # `main`, because `go mod tidy` downloads what every package and test
+    # imports.
     - name: Cache / Go modules
       id: modules
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
