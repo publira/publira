@@ -1,6 +1,6 @@
 # Date and time: `Temporal`, not `Date`
 
-Frontend and shared-package code must not use `Date` directly. Use `Temporal` (polyfilled via `temporal-polyfill/global`) and the helpers in `@publira/utils`.
+Frontend and shared-package code must not use `Date` directly. Use `Temporal` and the helpers in `@publira/utils`. Node.js implements `Temporal` itself; the browser bundles of the Next.js apps get it from `temporal-polyfill/global`, which each app's `instrumentation-client.ts` imports.
 
 oxlint enforces this with `no-restricted-globals` (`Date`) in `oxlint.config.ts`; `pnpm check` fails on a violation.
 
@@ -97,4 +97,4 @@ Some external APIs only accept a `Date` — cookie `expires`, the Next.js cache 
 - Adding a path to that override is a deliberate decision, and the entry needs a comment naming the API that forces it. "Temporal was inconvenient" is not a reason.
 - Do not silence the rule with an inline `oxlint-disable`.
 
-Helper implementations and the polyfill wiring: `packages/utils/README.md`.
+Helper implementations: `packages/utils/README.md`.

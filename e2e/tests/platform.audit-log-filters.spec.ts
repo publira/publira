@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 

@@ -9,8 +9,6 @@
  * `server/internal/locale/gen/datetime.go`.
  */
 
-import { Temporal } from "temporal-polyfill";
-
 import { GENERATED_HEADER, goString } from "./go-source.ts";
 import type { GoLocale } from "./go-source.ts";
 

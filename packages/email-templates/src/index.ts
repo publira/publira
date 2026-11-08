@@ -1,5 +1,3 @@
-import "./temporal";
-
 export { EmailButton } from "./button";
 
 export type { EmailButtonProps } from "./button";

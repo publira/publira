@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";

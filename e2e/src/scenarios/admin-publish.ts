@@ -1,5 +1,3 @@
-import "temporal-polyfill/global";
-
 /**
  * Constants for the admin publish-flow E2E.
  *

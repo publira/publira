@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import { createHmac } from "node:crypto";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

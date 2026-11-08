@@ -12,7 +12,6 @@
  * trusts that certificate: `PUT /__e2e/secrets/<name>` sets the secret, and
  * `GET /__e2e/deliveries/<name>` answers what was recorded, oldest first.
  */
-import "temporal-polyfill/global";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";

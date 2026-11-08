@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT_TIME_ZONE } from "../src/scenarios/auth";

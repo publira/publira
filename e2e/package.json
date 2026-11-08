@@ -22,7 +22,6 @@
     "@types/node": "catalog:",
     "fflate": "catalog:",
     "jose": "catalog:",
-    "temporal-polyfill": "catalog:",
     "typescript": "catalog:"
   }
 }

@@ -51,7 +51,6 @@
  * secret key of its own: the old one still answers its idempotency keys with
  * the sessions the suite paid before.
  */
-import "temporal-polyfill/global";
 import { createHmac, randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { createServer, request as httpRequest } from "node:http";

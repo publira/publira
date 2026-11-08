@@ -11,7 +11,6 @@ The registration itself is [`@vercel/otel`](https://www.npmjs.com/package/@verce
 import { registerTracing } from "@publira/tracing";
 
 export const register = async () => {
-  await import("temporal-polyfill/global");
   registerTracing("publira-web-storefront");
 };
 ```

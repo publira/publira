@@ -15,7 +15,6 @@
  * from a process of its own because it is the same kind of thing: a document a
  * third party publishes that publira server fetches.
  */
-import "temporal-polyfill/global";
 import {
   createHash,
   createPrivateKey,

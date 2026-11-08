@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import { randomInt } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 

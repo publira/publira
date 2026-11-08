@@ -2,7 +2,6 @@
  * Vitest setup for web-storefront.
  * Add shared test-only side effects here (polyfills, matchers, etc.).
  */
-import "temporal-polyfill/global";
 
 const observeNothing = () => {
   // Nothing in jsdom has a size to report.

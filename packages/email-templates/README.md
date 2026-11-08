@@ -55,8 +55,6 @@ Template IDs and variable names are snake_case. The copy lives under `email.*` i
 
 `resolveEmail` and `renderEmail` answer `{ ok: false, reason }` rather than throwing; `src/registry.test.ts` is the specification of what each `reason` means.
 
-The caller needs `Temporal`. The tests load `temporal-polyfill/global`, and `email-renderer` should load the same polyfill at process start.
-
 ## Usage
 
 ```ts
