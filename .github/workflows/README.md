@@ -206,7 +206,7 @@ Implementation:
 - Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Ubuntu packages, from the archives cached by package set where the cache has them, with a mirror that stalls or throttles the download dropped for the rest of the job: [`.github/actions/apt-install`](../actions/apt-install/action.yml)
 - Saving the Go module cache, that build cache, the Gradle cache, the apt archive cache, the Playwright browser cache, and the Swift package cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/main-cache-save`](../actions/main-cache-save/action.yml)
-- migrate, wait4x, sqlc, and osv-scanner from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets, and `scan.yml` for osv-scanner: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
+- migrate, wait4x, sqlc, Trivy, and osv-scanner from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets, `release-images.yml` for Trivy, and `scan.yml` for osv-scanner: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 

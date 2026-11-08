@@ -45,6 +45,10 @@ runs:
               amd64) asset="trivy_${version}_Linux-64bit.tar.gz" ;;
               arm64) asset="trivy_${version}_Linux-ARM64.tar.gz" ;;
             esac
+            # The aquasecurity organization has an IP allow list, which GitHub
+            # applies to the job's token and which refuses a GitHub-hosted
+            # runner, so its releases are not read through the API.
+            checksums="trivy_${version}_checksums.txt"
             ;;
           osv-scanner)
             version="${OSV_SCANNER_VERSION:?OSV_SCANNER_VERSION is not set}"
@@ -57,6 +61,7 @@ runs:
           echo "version=${version}"
           echo "repo=${repo}"
           echo "asset=${asset}"
+          echo "checksums=${checksums:-}"
         } >> "${GITHUB_OUTPUT}"
 
     # Exact key only: an entry holds one released binary and never changes.
@@ -69,7 +74,8 @@ runs:
 
     # The checksum is the digest GitHub records for the release asset, which
     # every one of these releases has, where an upstream checksum file is not:
-    # sqlc publishes none.
+    # sqlc publishes none. A tool whose release cannot be read through the API
+    # names the checksum file its release carries instead.
     #
     # Without `--retry-delay`, curl backs off exponentially from one second,
     # so eight retries span about four minutes and `--retry-max-time` ends the
@@ -85,25 +91,35 @@ runs:
         VERSION: ${{ steps.tool.outputs.version }}
         REPO: ${{ steps.tool.outputs.repo }}
         ASSET: ${{ steps.tool.outputs.asset }}
+        CHECKSUMS: ${{ steps.tool.outputs.checksums }}
         DEST: ${{ runner.temp }}/publira-tools/${{ inputs.tool }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         retry=(--retry 8 --retry-max-time 300 --connect-timeout 20 --retry-all-errors)
-        digest="$(
-          curl -fsSL "${retry[@]}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            "${GITHUB_API_URL}/repos/${REPO}/releases/tags/v${VERSION}" |
-            jq -r --arg asset "${ASSET}" '.assets[] | select(.name == $asset) | .digest // empty'
-        )"
-        if [[ "${digest}" != sha256:* ]]; then
-          echo "::error::No SHA-256 digest for ${ASSET} in ${REPO} v${VERSION}"
+        download="${GITHUB_SERVER_URL}/${REPO}/releases/download/v${VERSION}"
+        if [[ -n "${CHECKSUMS}" ]]; then
+          sha256="$(
+            curl -fsSL "${retry[@]}" "${download}/${CHECKSUMS}" |
+              awk -v asset="${ASSET}" '$2 == asset { print $1 }'
+          )"
+        else
+          digest="$(
+            curl -fsSL "${retry[@]}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              "${GITHUB_API_URL}/repos/${REPO}/releases/tags/v${VERSION}" |
+              jq -r --arg asset "${ASSET}" '.assets[] | select(.name == $asset) | .digest // empty'
+          )"
+          sha256="${digest#sha256:}"
+        fi
+        if [[ ! "${sha256}" =~ ^[0-9a-f]{64}$ ]]; then
+          echo "::error::No SHA-256 checksum for ${ASSET} in ${REPO} v${VERSION}"
           exit 1
         fi
         archive="${RUNNER_TEMP}/${ASSET}"
-        curl -fsSL "${retry[@]}" "${GITHUB_SERVER_URL}/${REPO}/releases/download/v${VERSION}/${ASSET}" -o "${archive}"
-        echo "${digest#sha256:}  ${archive}" | sha256sum -c -
+        curl -fsSL "${retry[@]}" "${download}/${ASSET}" -o "${archive}"
+        echo "${sha256}  ${archive}" | sha256sum -c -
         mkdir -p "${DEST}"
         # osv-scanner publishes the binary itself rather than an archive.
         if [[ "${ASSET}" == *.tar.gz ]]; then
