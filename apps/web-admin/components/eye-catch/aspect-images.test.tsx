@@ -400,9 +400,15 @@ it("previews the framed region rather than the whole picked file", () => {
   );
 
   // The file is 2400 wide and the frame keeps all of that width, so the slot
-  // shows it at its own width, shifted up by the part above the frame.
+  // shows it at its own width, shifted up by the part above the frame. The
+  // style serializes the shift rounded, as a browser does, so it is compared
+  // as a number.
   expect(preview?.style.width).toBe("100%");
-  expect(preview?.style.top).toBe(`${(-925 / 1350) * 100}%`);
+
+  const top = preview?.style.top ?? "";
+
+  expect(top.endsWith("%")).toBe(true);
+  expect(Number(top.slice(0, -1))).toBeCloseTo((-925 / 1350) * 100, 3);
 });
 
 // The Action carries the file picked when the slot was submitted, so a file
