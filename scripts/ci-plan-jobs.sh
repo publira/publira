@@ -4,7 +4,7 @@
 #
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
-#   FILTER_FORMAT, FILTER_CHECK, FILTER_CHECK_DOCS, FILTER_LINT_GO, FILTER_SCAN_GO, FILTER_TEST_GO, FILTER_TEST_GO_DOCS, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_MOBILE_IOS, FILTER_TEST_E2E,
+#   FILTER_FORMAT, FILTER_CHECK, FILTER_CHECK_DOCS, FILTER_LINT_GO, FILTER_SCAN_GO, FILTER_SCAN_DEPENDENCIES, FILTER_TEST_GO, FILTER_TEST_GO_DOCS, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_MOBILE_IOS, FILTER_TEST_E2E,
 #   FILTER_TEST_E2E_SEARCH, FILTER_TEST_RESTORE, FILTER_TEST_RESTORE_DOCS, FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_TEST_DEPLOY, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_SERVER, FILTER_DOCKER_PUBLIRACTL, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
@@ -59,6 +59,7 @@ format=false
 check=false
 lint_go=false
 scan_go=false
+scan_dependencies=false
 test_go=false
 test_ts=false
 test_bash=false
@@ -97,6 +98,7 @@ case "${event}" in
     check=true
     lint_go=true
     scan_go=true
+    scan_dependencies=true
     test_go=true
     test_ts=true
     test_bash=true
@@ -130,6 +132,7 @@ case "${event}" in
     if flag FILTER_CHECK || flag FILTER_CHECK_DOCS; then check=true; fi
     if flag FILTER_LINT_GO; then lint_go=true; fi
     if flag FILTER_SCAN_GO; then scan_go=true; fi
+    if flag FILTER_SCAN_DEPENDENCIES; then scan_dependencies=true; fi
     if flag FILTER_TEST_GO || flag FILTER_TEST_GO_DOCS; then test_go=true; fi
     if flag FILTER_TEST_TS; then test_ts=true; fi
     if flag FILTER_TEST_BASH; then test_bash=true; fi
@@ -176,6 +179,7 @@ fi
   echo "check=${check}"
   echo "lint_go=${lint_go}"
   echo "scan_go=${scan_go}"
+  echo "scan_dependencies=${scan_dependencies}"
   echo "test_go=${test_go}"
   echo "test_ts=${test_ts}"
   echo "test_bash=${test_bash}"
@@ -195,7 +199,7 @@ fi
 } >> "${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "format=${format} check=${check} lint_go=${lint_go} scan_go=${scan_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_e2e_search=${test_e2e_search} test_restore=${test_restore} test_bootstrap=${test_bootstrap} test_routing=${test_routing} test_deploy=${test_deploy} build=${build} docker_any=${docker_any}"
+echo "format=${format} check=${check} lint_go=${lint_go} scan_go=${scan_go} scan_dependencies=${scan_dependencies} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_e2e_search=${test_e2e_search} test_restore=${test_restore} test_bootstrap=${test_bootstrap} test_routing=${test_routing} test_deploy=${test_deploy} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

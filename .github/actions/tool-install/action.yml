@@ -1,10 +1,10 @@
 name: Install a release tool
-description: Install migrate, wait4x, sqlc, or trivy from its GitHub release, from the cache when that version has been installed on this architecture before.
+description: Install migrate, wait4x, sqlc, trivy, or osv-scanner from its GitHub release, from the cache when that version has been installed on this architecture before.
 
 inputs:
   tool:
     description: >-
-      `migrate`, `wait4x`, `sqlc`, or `trivy`. The version installed is the workflow's `MIGRATE_VERSION`, `WAIT4X_VERSION`, `SQLC_VERSION`, or `TRIVY_VERSION`.
+      `migrate`, `wait4x`, `sqlc`, `trivy`, or `osv-scanner`. The version installed is the workflow's `MIGRATE_VERSION`, `WAIT4X_VERSION`, `SQLC_VERSION`, `TRIVY_VERSION`, or `OSV_SCANNER_VERSION`.
     required: true
 
 runs:
@@ -45,6 +45,11 @@ runs:
               amd64) asset="trivy_${version}_Linux-64bit.tar.gz" ;;
               arm64) asset="trivy_${version}_Linux-ARM64.tar.gz" ;;
             esac
+            ;;
+          osv-scanner)
+            version="${OSV_SCANNER_VERSION:?OSV_SCANNER_VERSION is not set}"
+            repo="google/osv-scanner"
+            asset="osv-scanner_linux_${arch}"
             ;;
           *) echo "::error::Unknown tool: ${TOOL}"; exit 1 ;;
         esac
@@ -100,7 +105,12 @@ runs:
         curl -fsSL "${retry[@]}" "${GITHUB_SERVER_URL}/${REPO}/releases/download/v${VERSION}/${ASSET}" -o "${archive}"
         echo "${digest#sha256:}  ${archive}" | sha256sum -c -
         mkdir -p "${DEST}"
-        tar -xzf "${archive}" -C "${DEST}" "${TOOL}"
+        # osv-scanner publishes the binary itself rather than an archive.
+        if [[ "${ASSET}" == *.tar.gz ]]; then
+          tar -xzf "${archive}" -C "${DEST}" "${TOOL}"
+        else
+          install -m 0755 "${archive}" "${DEST}/${TOOL}"
+        fi
         rm -f "${archive}"
 
     # Saved on any ref, as soon as the binary is verified. A pull request or a

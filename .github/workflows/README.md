@@ -180,7 +180,7 @@ Implementation:
 - Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Ubuntu packages, from the archives cached by package set where the cache has them, with a mirror that stalls or throttles the download dropped for the rest of the job: [`.github/actions/apt-install`](../actions/apt-install/action.yml)
 - Saving the Go module cache, that build cache, the Gradle cache, the apt archive cache, the Playwright browser cache, and the Swift package cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/main-cache-save`](../actions/main-cache-save/action.yml)
-- migrate, wait4x, and sqlc from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
+- migrate, wait4x, sqlc, and osv-scanner from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
@@ -195,6 +195,7 @@ Implementation:
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; `buf breaking` against the newest release tag through `scripts/check-proto-compat.sh`; the `docs/` contract and the step its translations keep with `docs/en/`, and `pnpm typecheck`. On `main`, saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`proto/README.md`](../../proto/README.md#compatibility-with-the-previous-release), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Scan / Go` | `govulncheck ./...` in `server/` through `scripts/check-go-vulns.sh`, on the change and on the commit it goes onto, failing on a reachable vulnerability the change brings that `server/govulncheck-ignore.json` does not accept. | [Vulnerability scan](#vulnerability-scan) |
+| `Scan / Dependencies` | osv-scanner over `pnpm-lock.yaml` and `mobile/pubspec.lock` through `scripts/check-dependency-vulns.sh`, on the change and on the commit it goes onto, failing on a high or critical advisory the change brings that `osv-scanner.toml` does not accept. | [Dependency scan](#dependency-scan) |
 | `Test / Go (<share>)` | `go test -count=1` in `server/` on one share of the packages `go test ./...` finds, as [`scripts/go-test-share.sh`](../../scripts/go-test-share.sh) assigns them: `search`, which first builds the OpenSearch and Elasticsearch images its tests run on, `api`, or `other`. On `main`, saves the share's `test-<share>` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
@@ -252,6 +253,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, every shell script, which may hold commands a page quotes, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
 | `Scan / Go` | `server/**`, `scripts/check-go-vulns.sh`, `scripts/go-vulns.ts` and the `scripts/json-value.ts` it imports |
+| `Scan / Dependencies` | `pnpm-lock.yaml`, `mobile/pubspec.lock`, `osv-scanner.toml`, `scripts/check-dependency-vulns.sh`, `scripts/dependency-vulns.ts` and the `scripts/json-value.ts` it imports, and the root `package.json`, which pins the TOML parser the script uses |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, `scripts/go-test-share.sh`, and `apps/web-admin/lib/episode-pages-upload.ts`, whose limit a server test holds to `episodeimages.MaxUploadBytes`; and, through the separate `test_go_docs` filter, the routing contract `infra/proxy/README.md`, whose allowances the server's read limits are tested against |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
@@ -353,6 +355,35 @@ An entry that nothing reaches any more is a warning, not a failure: delete it. S
 
 4. When an entry expires, fix the finding, or judge it again and set a new date with a reason that says what changed.
 
+## Dependency scan
+
+`Scan / Dependencies` runs [`scripts/check-dependency-vulns.sh`](../../scripts/check-dependency-vulns.sh), which runs osv-scanner, at the `OSV_SCANNER_VERSION` of `ci.yml`, over `pnpm-lock.yaml` and `mobile/pubspec.lock`, and hands its JSON output to [`scripts/dependency-vulns.ts`](../../scripts/dependency-vulns.ts); its behaviour is covered by `scripts/dependency-vulns.test.ts`. Every package version a lock file resolves is scanned, development dependencies included. Given a base commit, the script scans that commit's lock files as well, and the job passes it the commit the change goes onto: the pull request's base, the merge group's base, or the commit before a push. Reproduce it by running the same script with `origin/main`, after `pnpm install` and with `osv-scanner` on the `PATH`.
+
+A finding is one advisory against one version of one package, and its severity is the highest CVSS base score the advisory gives, or, for an advisory with no score, GitHub's rating. The job fails on:
+
+- a finding of high or critical severity — a score of 7.0 or more, or a `HIGH` or `CRITICAL` rating — that the base does not carry and [`osv-scanner.toml`](../../osv-scanner.toml) does not list. An advisory with neither a score nor a rating cannot be shown to be below high, and fails the same way. The log names the advisory, the package and its version, the lock file, the severity, the versions that fix it, and the advisory's page on osv.dev;
+- an entry whose `ignoreUntil` date has passed, whether or not the finding is still there;
+- an entry without an `id`, a `reason`, or an `ignoreUntil` date, an `id` listed twice, or a key that osv-scanner would act on but the scan does not apply.
+
+A finding below high is printed in the log as `below high:` and passes. An entry that no finding needs any more is a warning, not a failure: delete it. So is a high finding the base carries too — the same advisory against the same package, at whatever version — which is how an advisory published after its package merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file.
+
+### Handling a dependency finding
+
+1. Read the advisory at the link the log gives, and find what pulls the package in: `pnpm why <package> --recursive` for an npm package, `dart pub deps` in `mobile/` for a pub package.
+2. When a fixed version exists, move to it. Raise the dependency that pulls the vulnerable version in; when no release of it allows the fixed version yet, pin the fixed version for the npm package with an `overrides` entry in [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml), or with `dependency_overrides` in [`mobile/pubspec.yaml`](../../mobile/pubspec.yaml) for a pub package.
+3. When the fix cannot land yet — no release fixes it, or the upgrade needs work of its own — accept it with an entry, and file the Issue that lifts it:
+
+   ```toml
+   [[IgnoredVulns]]
+   id = "GHSA-xxxx-xxxx-xxxx"
+   ignoreUntil = YYYY-MM-DD
+   reason = "Which package carries it, why it is accepted, and the Issue that removes the entry."
+   ```
+
+   The `id` is the advisory as the log names it, or any of its aliases, and the entry accepts it for every package it is reported against. `ignoreUntil` is a bare TOML date, not a quoted string. The entry suppresses the finding through that day, in UTC, and fails the job from the next. Choose a date weeks away rather than months, so the finding is judged again while the reason is still true.
+
+4. When an entry expires, fix the finding, or judge it again and set a new date with a reason that says what changed.
+
 ## Flutter SDK setup
 
 `Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E (<group>)`, and `Test / Mobile iOS (<part>)` set Flutter up through the [`flutter-setup`](../actions/flutter-setup/action.yml) action, which restores the SDK from its cache or installs it with [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh). The version is `FLUTTER_VERSION` in the `env` block of [`ci.yml`](./ci.yml), the single source of truth for it. The script reads `FLUTTER_VERSION`, `FLUTTER_ROOT`, `PUBLIRA_FLUTTER_PRECACHE`, `GITHUB_TOKEN`, and `GITHUB_PATH` from the environment, so it installs the same pinned SDK on a workstation as it does on a runner.
@@ -367,6 +398,7 @@ An entry that nothing reaches any more is a warning, not a failure: delete it. S
    | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `scripts/check-proto-compat.sh`, `pnpm docs:check` (the pages under `docs/<locale>/`, the translations against `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
    | `Scan / Go` | `scripts/check-go-vulns.sh origin/main`, or `scripts/check-go-vulns.sh` for every finding regardless of the base |
+   | `Scan / Dependencies` | `scripts/check-dependency-vulns.sh origin/main`, or `scripts/check-dependency-vulns.sh` for every finding regardless of the base |
    | `Test / Go (<share>)` | `task server:test-short` then `task server:test`, or one share alone with `go test -count=1 $(../scripts/go-test-share.sh <share>)` in `server/` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
