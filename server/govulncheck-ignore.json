@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    {
+      "id": "GO-2026-6865",
+      "reason": "Reached from internal/smtp through the zstd encoder of github.com/klauspost/compress v1.19.1, an indirect requirement. The upgrade to v1.20.2 is https://github.com/publira/publira/issues/5476.",
+      "expires": "2026-12-08"
+    }
+  ]
+}

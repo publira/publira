@@ -64,6 +64,7 @@ jobs:
       format: ${{ steps.plan.outputs.format }}
       check: ${{ steps.plan.outputs.check }}
       lint_go: ${{ steps.plan.outputs.lint_go }}
+      scan_go: ${{ steps.plan.outputs.scan_go }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
       test_bash: ${{ steps.plan.outputs.test_bash }}
@@ -162,6 +163,20 @@ jobs:
               - *docs_excluded
               - 'server/**'
               - 'scripts/check-go-mod-tidy.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
+              - '.github/actions/main-cache-save/**'
+            # govulncheck reads the Go sources and server/go.mod, and the
+            # ignore file sits beside them, so like lint_go it needs nothing
+            # outside server/ but its own scripts.
+            scan_go:
+              - *docs_excluded
+              - 'server/**'
+              - 'scripts/check-go-vulns.sh'
+              - 'scripts/go-vulns.ts'
+              - 'scripts/json-value.ts'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
@@ -528,6 +543,7 @@ jobs:
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
           FILTER_CHECK_DOCS: ${{ steps.filter.outputs.check_docs }}
           FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
+          FILTER_SCAN_GO: ${{ steps.filter.outputs.scan_go }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_GO_DOCS: ${{ steps.filter.outputs.test_go_docs }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
@@ -690,6 +706,36 @@ jobs:
         with:
           version: v${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: server
+
+  scan-go:
+    name: Scan / Go
+    needs: changes
+    if: needs.changes.outputs.scan_go == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: ./.github/actions/go-setup
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+
+      - name: Setup / libvips
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
+
+      # scripts/check-go-vulns.sh pins govulncheck and reads its findings
+      # against server/govulncheck-ignore.json, so this runs exactly what a
+      # local run of the script does.
+      - name: Validate / govulncheck
+        run: scripts/check-go-vulns.sh
 
   test-go:
     name: Test / Go (${{ matrix.share }})
@@ -2053,6 +2099,7 @@ jobs:
       - format
       - check
       - lint-go
+      - scan-go
       - test-go
       - test-ts
       - test-bash
@@ -2083,6 +2130,7 @@ jobs:
           FORMAT: ${{ needs.format.result }}
           CHECK: ${{ needs.check.result }}
           LINT_GO: ${{ needs.lint-go.result }}
+          SCAN_GO: ${{ needs.scan-go.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_BASH: ${{ needs.test-bash.result }}
@@ -2113,6 +2161,7 @@ jobs:
             "Lint and Format=${FORMAT}" \
             "Check=${CHECK}" \
             "Lint / Go=${LINT_GO}" \
+            "Scan / Go=${SCAN_GO}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
             "Test / Bash=${TEST_BASH}" \
