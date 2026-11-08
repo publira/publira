@@ -1,0 +1,23 @@
+{
+  "name": "@publira/oxlint-plugin",
+  "version": "0.6.3",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@oxlint/plugins": "1.91.0"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

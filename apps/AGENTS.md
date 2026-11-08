@@ -609,13 +609,13 @@ Three of the design's decisions are a class away from being undone on any screen
 
 Two more go with them and have no replacement: an all-caps eyebrow (`uppercase`) and per-screen letter-spacing (`tracking-[`). A label appears only when the content underneath needs the distinction, and it is set in sentence case.
 
-`pnpm check` fails on `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>`, in any string or template literal under `apps/` or `packages/` (`publira/design-tokens`, the repository's own oxlint rule in `scripts/oxlint-plugin.ts`). Test files are outside it: a test names a class in order to assert about it. The stylesheets are outside it too, because oxlint reads only JavaScript and TypeScript; they hold the theme and the base layer, not a screen.
+`pnpm check` fails on `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>`, in any string or template literal under `apps/` or `packages/` (`publira/design-tokens`, the repository's own oxlint rule from `@publira/oxlint-plugin`). Test files are outside it: a test names a class in order to assert about it. The stylesheets are outside it too, because oxlint reads only JavaScript and TypeScript; they hold the theme and the base layer, not a screen.
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 
 Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to.
 
-`pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). It also fails on an `<svg>` element in JSX (`publira/no-jsx-svg`, the repository's own oxlint rule in `scripts/oxlint-plugin.ts`) outside `packages/icons` and the exceptions the rule's override in `oxlint.config.ts` lists with their reasons.
+`pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). It also fails on an `<svg>` element in JSX (`publira/no-jsx-svg`, the repository's own oxlint rule from `@publira/oxlint-plugin`) outside `packages/icons` and the exceptions the rule's override in `oxlint.config.ts` lists with their reasons.
 
 Third-party brand marks — a service's logo, a store badge, a sign-in provider's mark — are never committed, in code or in fixtures, and `@publira/icons` does not carry them. Each owner hands its mark out under its own guidelines to the party that displays it, which is the tenant, so a mark is a tenant-uploaded asset that the screen draws when present and replaces with its text label when absent.
 

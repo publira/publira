@@ -7,7 +7,7 @@
  * is not an element, and a comment that mentions a class does not use it.
  */
 
-import type { Context, ESTree, Node } from "@oxlint/plugins";
+import type { Context, ESTree } from "@oxlint/plugins";
 import { definePlugin, defineRule } from "@oxlint/plugins";
 
 /**
@@ -80,8 +80,12 @@ const CODE_ELEMENTS = new Set(["code", "pre"]);
  * the class is written on; a whole element or a fragment means the text sits in
  * some element's children instead, where it styles nothing.
  */
-const isOnCodeElement = (node: Node): boolean => {
-  for (let current = node.parent; current; current = current.parent) {
+const isOnCodeElement = (node: ESTree.Node): boolean => {
+  for (
+    let current: ESTree.Node | null = node.parent;
+    current;
+    current = current.parent
+  ) {
     if (current.type === "JSXOpeningElement") {
       return (
         current.name.type === "JSXIdentifier" &&
@@ -97,15 +101,19 @@ const isOnCodeElement = (node: Node): boolean => {
   return false;
 };
 
-const isStringLiteral = (node: ESTree.Literal): node is ESTree.StringLiteral =>
-  typeof node.value === "string";
+const isStringLiteral = (node: ESTree.Node): node is ESTree.StringLiteral =>
+  node.type === "Literal" && typeof node.value === "string";
 
 /**
  * Reports every match of {@link banned} in the source text of {@link node}, at
  * the class itself rather than the whole string, so a long `className` points
  * at the word to change.
  */
-const reportMatches = (context: Context, node: Node, banned: Banned): void => {
+const reportMatches = (
+  context: Context,
+  node: ESTree.Node,
+  banned: Banned
+): void => {
   const { sourceCode } = context;
 
   for (const match of sourceCode.getText(node).matchAll(banned.pattern)) {
@@ -122,7 +130,7 @@ const reportMatches = (context: Context, node: Node, banned: Banned): void => {
   }
 };
 
-const inspect = (context: Context, node: Node): void => {
+const inspect = (context: Context, node: ESTree.Node): void => {
   for (const banned of BANNED) {
     reportMatches(context, node, banned);
   }

@@ -13,7 +13,9 @@ export default defineConfig({
     "**/gen/**",
     ".agents/skills/**",
   ],
-  jsPlugins: [{ name: "publira", specifier: "./scripts/oxlint-plugin.ts" }],
+  jsPlugins: [
+    { name: "publira", specifier: "./packages/oxlint-plugin/src/index.ts" },
+  ],
   overrides: [
     {
       // The screens the design brief governs. See apps/AGENTS.md "Radius,
@@ -31,6 +33,13 @@ export default defineConfig({
        * as usages would make the rule fire on the tests that defend it.
        */
       files: ["**/*.{test,spec}.{js,jsx,ts,tsx}"],
+      rules: {
+        "publira/design-tokens": "off",
+      },
+    },
+    {
+      // The rule's own advice names the classes it refuses.
+      files: ["packages/oxlint-plugin/src/index.ts"],
       rules: {
         "publira/design-tokens": "off",
       },
@@ -57,10 +66,9 @@ export default defineConfig({
       },
     },
     {
-      // RuleTester declares its cases through the `node:test` functions this
-      // file hands it, so no `it()` call appears in the file for the rule to
-      // count.
-      files: ["scripts/oxlint-plugin.test.ts"],
+      // RuleTester declares its cases through the Vitest functions this file
+      // hands it, so no `it()` call appears in the file for the rule to count.
+      files: ["packages/oxlint-plugin/src/index.test.ts"],
       rules: {
         "sonarjs/no-empty-test-file": "off",
       },

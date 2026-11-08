@@ -1,8 +1,7 @@
-import { describe, it } from "node:test";
-
 import { RuleTester } from "oxlint/plugins-dev";
+import { describe, it } from "vitest";
 
-import { designTokens, noJsxSvg } from "./oxlint-plugin.ts";
+import { designTokens, noJsxSvg } from "./index.ts";
 
 RuleTester.describe = describe;
 
