@@ -56,9 +56,10 @@ func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
 
 	client := env.notificationClient()
 	if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.RegisterPushDeviceRequest{
-		Tenant:   tenantContext(tenant),
-		Token:    "member-device",
-		Platform: publirav1.PushPlatform_PUSH_PLATFORM_IOS,
+		Tenant:    tenantContext(tenant),
+		Token:     "member-device",
+		Platform:  publirav1.PushPlatform_PUSH_PLATFORM_IOS,
+		TokenType: publirav1.PushTokenType_PUSH_TOKEN_TYPE_INSTALLATION_ID,
 	}); err != nil {
 		t.Fatalf("RegisterPushDevice: %v", err)
 	}
@@ -86,6 +87,42 @@ func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
 	}
 	if rows[0].Token != "member-device" || rows[0].NotificationID != notificationID {
 		t.Fatalf("device = %+v, want member-device mirroring %s", rows[0], notificationID)
+	}
+	if rows[0].TokenType != "installation_id" {
+		t.Fatalf("token_type = %q, want the installation id it was registered as", rows[0].TokenType)
+	}
+}
+
+// The previous release's server names no token_type when it registers a
+// device, and it serves while this release's migrations are applied.
+func TestDBPushDeviceTheReleaseBeforeRegistersIsARegistrationToken(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO user_push_devices (tenant_id, user_id, token, platform)
+		VALUES ($1, $2, 'device-token', 'android')`, tenant.ID, member.ID); err != nil {
+		t.Fatalf("insert as the previous release: %v", err)
+	}
+	var tokenType string
+	if err := env.PG.DB.QueryRowContext(ctx, `SELECT token_type FROM user_push_devices WHERE token = 'device-token'`).Scan(&tokenType); err != nil {
+		t.Fatalf("read token_type: %v", err)
+	}
+	if tokenType != "registration_token" {
+		t.Fatalf("token_type = %q, want registration_token", tokenType)
+	}
+
+	// A Web Push subscription is not an FCM registration, so it cannot hold an
+	// installation id.
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO user_push_devices (tenant_id, user_id, token, platform, token_type, endpoint, p256dh, auth)
+		VALUES ($1, $2, 'https://push.example.test/s', 'web', 'installation_id', 'https://push.example.test/s', 'p256dh', 'auth')`, tenant.ID, member.ID); err == nil {
+		t.Fatal("insert of an installation id for a web subscription succeeded, want the check to refuse it")
 	}
 }
 

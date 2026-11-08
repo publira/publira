@@ -90,10 +90,11 @@ func (f notificationPreferencesFixture) savePreferences(t *testing.T, ctx contex
 func (f notificationPreferencesFixture) registerDevice(t *testing.T, ctx context.Context, userID uuid.UUID, name, platform string) string {
 	t.Helper()
 	params := dbmodels.UpsertUserPushDeviceParams{
-		TenantID: f.tenant.ID,
-		UserID:   userID,
-		Token:    name,
-		Platform: platform,
+		TenantID:  f.tenant.ID,
+		UserID:    userID,
+		Token:     name,
+		Platform:  platform,
+		TokenType: "registration_token",
 	}
 	if platform == "web" {
 		params.Token = "https://push.example.com/" + name

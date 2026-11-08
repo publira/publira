@@ -41,10 +41,10 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
-		WithArgs(tenantID, userID, "device-token", "android", sql.NullString{}, sql.NullString{}, sql.NullString{}).
+		WithArgs(tenantID, userID, "device-token", "android", "registration_token", sql.NullString{}, sql.NullString{}, sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
-		}).AddRow(tenantID, userID, "device-token", "android", now, now, nil, nil, nil))
+			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
+		}).AddRow(tenantID, userID, "device-token", "android", now, now, nil, nil, nil, "registration_token"))
 
 	resp, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -59,6 +59,45 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	}
 
 	assertPublicExpectations(t, mock)
+}
+
+func TestRegisterPushDeviceStoresWhatTheTokenIs(t *testing.T) {
+	tests := []struct {
+		name      string
+		tokenType publirav1.PushTokenType
+		want      string
+	}{
+		{name: "registration token", tokenType: publirav1.PushTokenType_PUSH_TOKEN_TYPE_REGISTRATION_TOKEN, want: "registration_token"},
+		{name: "installation id", tokenType: publirav1.PushTokenType_PUSH_TOKEN_TYPE_INSTALLATION_ID, want: "installation_id"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock := newNotificationClient(t, tenantID, userID, now)
+			expectLegalPagesAgreed(mock, tenantID, userID)
+
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
+				WithArgs(tenantID, userID, "device-registration", "ios", tt.want, sql.NullString{}, sql.NullString{}, sql.NullString{}).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
+				}).AddRow(tenantID, userID, "device-registration", "ios", now, now, nil, nil, nil, tt.want))
+
+			_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
+				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Token:     "device-registration",
+				Platform:  publirav1.PushPlatform_PUSH_PLATFORM_IOS,
+				TokenType: tt.tokenType,
+			})
+			if err != nil {
+				t.Fatalf("RegisterPushDevice: %v", err)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
 }
 
 func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
@@ -94,10 +133,10 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
-		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).
+		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", "registration_token", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
-		}).AddRow(tenantID, userID, "https://push.example.test/subscription", "web", now, now, "https://push.example.test/subscription", "p256dh", "auth"))
+			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
+		}).AddRow(tenantID, userID, "https://push.example.test/subscription", "web", now, now, "https://push.example.test/subscription", "p256dh", "auth", "registration_token"))
 
 	_, err = client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -114,9 +153,11 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 
 func TestRegisterPushDeviceRejectsAnUnusableRequest(t *testing.T) {
 	tests := []struct {
-		name     string
-		token    string
-		platform publirav1.PushPlatform
+		name      string
+		token     string
+		platform  publirav1.PushPlatform
+		tokenType publirav1.PushTokenType
+		endpoint  string
 	}{
 		{
 			name:     "empty token",
@@ -133,6 +174,18 @@ func TestRegisterPushDeviceRejectsAnUnusableRequest(t *testing.T) {
 			token:    "device-token",
 			platform: publirav1.PushPlatform_PUSH_PLATFORM_UNSPECIFIED,
 		},
+		{
+			name:      "token type no release defines",
+			token:     "device-token",
+			platform:  publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
+			tokenType: publirav1.PushTokenType(99),
+		},
+		{
+			name:      "installation id for a web push subscription",
+			platform:  publirav1.PushPlatform_PUSH_PLATFORM_WEB,
+			tokenType: publirav1.PushTokenType_PUSH_TOKEN_TYPE_INSTALLATION_ID,
+			endpoint:  "https://push.example.test/subscription",
+		},
 	}
 
 	for _, tt := range tests {
@@ -144,9 +197,11 @@ func TestRegisterPushDeviceRejectsAnUnusableRequest(t *testing.T) {
 			expectLegalPagesAgreed(mock, tenantID, userID)
 
 			_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
-				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				Token:    tt.token,
-				Platform: tt.platform,
+				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Token:     tt.token,
+				Platform:  tt.platform,
+				TokenType: tt.tokenType,
+				Endpoint:  tt.endpoint,
 			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("RegisterPushDevice code = %v, want invalid_argument", connect.CodeOf(err))

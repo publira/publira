@@ -1,5 +1,7 @@
--- Records the FCM registration token the reader app holds. The token is the
--- primary key, so a device that changes hands moves to the new reader instead
+-- Records the push registration the reader's device holds: the FCM
+-- registration token or Firebase Installation ID of the app, which token_type
+-- tells apart, or a browser's Web Push subscription. The token is the primary
+-- key, so a device that changes hands moves to the new reader instead
 -- of leaving a second row behind that would push one reader's episodes to the
 -- next.
 --
@@ -18,6 +20,7 @@ INSERT INTO user_push_devices (
     user_id,
     token,
     platform,
+    token_type,
     endpoint,
     p256dh,
     auth
@@ -27,6 +30,7 @@ VALUES (
     sqlc.arg('user_id'),
     sqlc.arg('token'),
     sqlc.arg('platform'),
+    sqlc.arg('token_type'),
     sqlc.narg('endpoint'),
     sqlc.narg('p256dh'),
     sqlc.narg('auth')
@@ -35,6 +39,7 @@ ON CONFLICT (token) DO UPDATE
 SET
     user_id = EXCLUDED.user_id,
     platform = EXCLUDED.platform,
+    token_type = EXCLUDED.token_type,
     endpoint = EXCLUDED.endpoint,
     p256dh = EXCLUDED.p256dh,
     auth = EXCLUDED.auth,
@@ -63,8 +68,8 @@ WHERE token = sqlc.arg('token');
 -- what the index can start from, since the pair spans both tables.
 --
 -- A device is left out where the notification may not be shown on its
--- surface: a Web Push subscription is the site, and an FCM token on Android
--- or iOS is the app.
+-- surface: a Web Push subscription is the site, and an FCM registration on
+-- Android or iOS is the app.
 --
 -- It is also left out where its recipient turned the push off for the row's
 -- category: the Web Push cell decides for a browser, and the mobile push cell
@@ -79,6 +84,7 @@ SELECT
     n.payload,
     d.user_id,
     d.token,
+    d.token_type,
     d.platform,
     d.endpoint,
     d.p256dh,

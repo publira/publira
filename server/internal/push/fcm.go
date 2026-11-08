@@ -29,10 +29,26 @@ const defaultEndpoint = "https://fcm.googleapis.com"
 
 const defaultTimeout = 15 * time.Second
 
-// ErrTokenGone reports a registration token FCM will never accept again: the
-// app was uninstalled, or the token was replaced. The caller deletes it rather
-// than retrying, because no later attempt can succeed.
-var ErrTokenGone = errors.New("push: registration token is no longer valid")
+// ErrTokenGone reports a registration FCM will never accept again, whether a
+// registration token or a Firebase Installation ID: the app was uninstalled,
+// or the registration was replaced. The caller deletes it rather than
+// retrying, because no later attempt can succeed.
+var ErrTokenGone = errors.New("push: registration is no longer valid")
+
+// TokenType is what a [Message]'s Token is, which decides the target field FCM
+// is sent it in.
+type TokenType int
+
+const (
+	// TokenTypeRegistrationToken is a registration token FCM handed the app,
+	// sent as message.token. It is the zero value, so a Message that names no
+	// type is sent the way every message was before FIDs.
+	TokenTypeRegistrationToken TokenType = iota
+	// TokenTypeInstallationID is the install's Firebase Installation ID (FID),
+	// sent as message.fid. FCM deprecated message.token in favour of it and
+	// accepts an FID there only for a transition period.
+	TokenTypeInstallationID
+)
 
 // Config builds a [Client].
 type Config struct {
@@ -53,10 +69,11 @@ type Config struct {
 // Title and Body are what the OS renders while the app is backgrounded or
 // terminated; Data is what the app routes from once it is opened.
 type Message struct {
-	Token string
-	Title string
-	Body  string
-	Data  map[string]string
+	Token     string
+	TokenType TokenType
+	Title     string
+	Body      string
+	Data      map[string]string
 }
 
 // Client sends to FCM on behalf of one Firebase project.
@@ -109,8 +126,8 @@ func (c *Client) ProjectID() string {
 
 // Send delivers msg to one device.
 //
-// It returns [ErrTokenGone] for a token FCM has answered for as revoked, and a
-// plain error for everything else, which the caller retries.
+// It returns [ErrTokenGone] for a registration FCM has answered for as revoked,
+// and a plain error for everything else, which the caller retries.
 func (c *Client) Send(ctx context.Context, msg Message) error {
 	body, err := json.Marshal(sendRequest{Message: newFCMMessage(msg)})
 	if err != nil {
@@ -142,20 +159,27 @@ func (c *Client) Send(ctx context.Context, msg Message) error {
 	return sendError(res.StatusCode, payload)
 }
 
-// tokenFieldPath is how FCM names the registration token in a field violation,
-// which is the only thing that tells an unusable token apart from an unusable
-// message.
-const tokenFieldPath = "message.token"
+// targetFieldPaths are how FCM names the registration token and the Firebase
+// Installation ID in a field violation, which is the only thing that tells an
+// unusable registration apart from an unusable message. A message carries one
+// of the two, so whichever is named is the one it was sent to.
+var targetFieldPaths = map[string]bool{
+	"message.token": true,
+	"message.fid":   true,
+}
 
 // sendError turns an FCM error body into either [ErrTokenGone] or a retriable
 // error.
 //
-// UNREGISTERED is a token the app no longer holds. INVALID_ARGUMENT is not, on
-// its own: FCM answers with it for a malformed message as readily as for a
-// malformed token, and this message carries a title, a body, and a data block,
-// so taking the bare status for the token would let one unsendable episode
-// delete every device of a tenant. It counts only when the error names the
-// token field, which FCM reports in a google.rpc.BadRequest detail.
+// UNREGISTERED is a registration the app no longer holds, whichever target
+// field named it: FCM's guide to managing registrations gives it for an
+// invalid FID and an invalid registration token alike. INVALID_ARGUMENT is
+// not, on its own: FCM answers with it for a malformed message as readily as
+// for a malformed registration, and this message carries a title, a body, and
+// a data block, so taking the bare status for the registration would let one
+// unsendable episode delete every device of a tenant. It counts only when the
+// error names the target field, which FCM reports in a google.rpc.BadRequest
+// detail.
 func sendError(statusCode int, payload []byte) error {
 	var decoded errorResponse
 	if err := json.Unmarshal(payload, &decoded); err != nil {
@@ -163,18 +187,18 @@ func sendError(statusCode int, payload []byte) error {
 	}
 
 	code := decoded.Error.Status
-	namesToken := false
+	namesTarget := false
 	for _, detail := range decoded.Error.Details {
 		if strings.TrimSpace(detail.ErrorCode) != "" {
 			code = detail.ErrorCode
 		}
 		for _, violation := range detail.FieldViolations {
-			if strings.TrimSpace(violation.Field) == tokenFieldPath {
-				namesToken = true
+			if targetFieldPaths[strings.TrimSpace(violation.Field)] {
+				namesTarget = true
 			}
 		}
 	}
-	if code == "UNREGISTERED" || (code == "INVALID_ARGUMENT" && namesToken) {
+	if code == "UNREGISTERED" || (code == "INVALID_ARGUMENT" && namesTarget) {
 		return fmt.Errorf("%w: %s", ErrTokenGone, code)
 	}
 
@@ -197,8 +221,10 @@ type sendRequest struct {
 	Message fcmMessage `json:"message"`
 }
 
+// fcmMessage sets exactly one of Token and FID, the target FCM delivers to.
 type fcmMessage struct {
-	Token        string            `json:"token"`
+	Token        string            `json:"token,omitempty"`
+	FID          string            `json:"fid,omitempty"`
 	Notification fcmNotification   `json:"notification"`
 	Data         map[string]string `json:"data,omitempty"`
 	Android      fcmAndroidConfig  `json:"android"`
@@ -240,8 +266,7 @@ type fcmAPS struct {
 const clickAction = "FLUTTER_NOTIFICATION_CLICK"
 
 func newFCMMessage(msg Message) fcmMessage {
-	return fcmMessage{
-		Token:        msg.Token,
+	message := fcmMessage{
 		Notification: fcmNotification{Title: msg.Title, Body: msg.Body},
 		Data:         msg.Data,
 		Android: fcmAndroidConfig{
@@ -256,6 +281,12 @@ func newFCMMessage(msg Message) fcmMessage {
 			Payload: fcmAPNSPayload{APS: fcmAPS{Sound: "default"}},
 		},
 	}
+	if msg.TokenType == TokenTypeInstallationID {
+		message.FID = msg.Token
+	} else {
+		message.Token = msg.Token
+	}
+	return message
 }
 
 // errorResponse is the google.rpc.Status body FCM answers an error with. The

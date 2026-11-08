@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Which store issued the registration token, so a message can carry the
+// Which platform the registration is for, so a message can carry the
 // platform-specific block its delivery needs.
 type PushPlatform int32
 
@@ -74,6 +74,60 @@ func (x PushPlatform) Number() protoreflect.EnumNumber {
 // Deprecated: Use PushPlatform.Descriptor instead.
 func (PushPlatform) EnumDescriptor() ([]byte, []int) {
 	return file_publira_v1_notification_proto_rawDescGZIP(), []int{0}
+}
+
+// What an FCM registration's token is. FCM addresses one install of the app
+// either by the registration token it was handed or by its Firebase
+// Installation ID (FID), and a message names which of the two it carries.
+type PushTokenType int32
+
+const (
+	// A registration token, which is what every release of the app that
+	// predates this field registers.
+	PushTokenType_PUSH_TOKEN_TYPE_UNSPECIFIED        PushTokenType = 0
+	PushTokenType_PUSH_TOKEN_TYPE_REGISTRATION_TOKEN PushTokenType = 1
+	PushTokenType_PUSH_TOKEN_TYPE_INSTALLATION_ID    PushTokenType = 2
+)
+
+// Enum value maps for PushTokenType.
+var (
+	PushTokenType_name = map[int32]string{
+		0: "PUSH_TOKEN_TYPE_UNSPECIFIED",
+		1: "PUSH_TOKEN_TYPE_REGISTRATION_TOKEN",
+		2: "PUSH_TOKEN_TYPE_INSTALLATION_ID",
+	}
+	PushTokenType_value = map[string]int32{
+		"PUSH_TOKEN_TYPE_UNSPECIFIED":        0,
+		"PUSH_TOKEN_TYPE_REGISTRATION_TOKEN": 1,
+		"PUSH_TOKEN_TYPE_INSTALLATION_ID":    2,
+	}
+)
+
+func (x PushTokenType) Enum() *PushTokenType {
+	p := new(PushTokenType)
+	*p = x
+	return p
+}
+
+func (x PushTokenType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PushTokenType) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_notification_proto_enumTypes[1].Descriptor()
+}
+
+func (PushTokenType) Type() protoreflect.EnumType {
+	return &file_publira_v1_notification_proto_enumTypes[1]
+}
+
+func (x PushTokenType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PushTokenType.Descriptor instead.
+func (PushTokenType) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_notification_proto_rawDescGZIP(), []int{1}
 }
 
 type NotificationItem struct {
@@ -297,19 +351,26 @@ func (x *ListNotificationsResponse) GetNextToken() string {
 	return ""
 }
 
-// A device registers the FCM token it holds right now. The token is the
-// identity, so registering one that another reader left behind moves it to the
-// caller rather than adding a second row.
+// A device registers the FCM registration it holds right now: a registration
+// token or a Firebase Installation ID on Android and iOS, a Web Push
+// subscription in a browser. The token is the identity, so registering one
+// that another reader left behind moves it to the caller rather than adding a
+// second row.
 type RegisterPushDeviceRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Token    string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	Platform PushPlatform           `protobuf:"varint,3,opt,name=platform,proto3,enum=publira.v1.PushPlatform" json:"platform,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The registration token or the Firebase Installation ID, which
+	// `token_type` tells apart.
+	Token    string       `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Platform PushPlatform `protobuf:"varint,3,opt,name=platform,proto3,enum=publira.v1.PushPlatform" json:"platform,omitempty"`
 	// Web Push subscription fields. `endpoint` is also the token identity for
 	// web registrations, so unregistering by token unregisters by endpoint.
-	Endpoint      string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	P256Dh        string `protobuf:"bytes,5,opt,name=p256dh,proto3" json:"p256dh,omitempty"`
-	Auth          string `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	P256Dh   string `protobuf:"bytes,5,opt,name=p256dh,proto3" json:"p256dh,omitempty"`
+	Auth     string `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
+	// What `token` is on Android and iOS. A Web Push registration leaves it
+	// unspecified.
+	TokenType     PushTokenType `protobuf:"varint,7,opt,name=token_type,json=tokenType,proto3,enum=publira.v1.PushTokenType" json:"token_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -384,6 +445,13 @@ func (x *RegisterPushDeviceRequest) GetAuth() string {
 		return x.Auth
 	}
 	return ""
+}
+
+func (x *RegisterPushDeviceRequest) GetTokenType() PushTokenType {
+	if x != nil {
+		return x.TokenType
+	}
+	return PushTokenType_PUSH_TOKEN_TYPE_UNSPECIFIED
 }
 
 type RegisterPushDeviceResponse struct {
@@ -852,14 +920,16 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xe8\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa2\x02\n" +
 	"\x19RegisterPushDeviceRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x124\n" +
 	"\bplatform\x18\x03 \x01(\x0e2\x18.publira.v1.PushPlatformR\bplatform\x12\x1a\n" +
 	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12\x16\n" +
 	"\x06p256dh\x18\x05 \x01(\tR\x06p256dh\x12\x12\n" +
-	"\x04auth\x18\x06 \x01(\tR\x04auth\"<\n" +
+	"\x04auth\x18\x06 \x01(\tR\x04auth\x128\n" +
+	"\n" +
+	"token_type\x18\a \x01(\x0e2\x19.publira.v1.PushTokenTypeR\ttokenType\"<\n" +
 	"\x1aRegisterPushDeviceResponse\x12\x1e\n" +
 	"\n" +
 	"registered\x18\x01 \x01(\bR\n" +
@@ -889,7 +959,11 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\x19PUSH_PLATFORM_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15PUSH_PLATFORM_ANDROID\x10\x01\x12\x15\n" +
 	"\x11PUSH_PLATFORM_IOS\x10\x02\x12\x15\n" +
-	"\x11PUSH_PLATFORM_WEB\x10\x032\xb8\x05\n" +
+	"\x11PUSH_PLATFORM_WEB\x10\x03*}\n" +
+	"\rPushTokenType\x12\x1f\n" +
+	"\x1bPUSH_TOKEN_TYPE_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"PUSH_TOKEN_TYPE_REGISTRATION_TOKEN\x10\x01\x12#\n" +
+	"\x1fPUSH_TOKEN_TYPE_INSTALLATION_ID\x10\x022\xb8\x05\n" +
 	"\x13NotificationService\x12b\n" +
 	"\x11ListNotifications\x12$.publira.v1.ListNotificationsRequest\x1a%.publira.v1.ListNotificationsResponse\"\x00\x12w\n" +
 	"\x18CountUnreadNotifications\x12+.publira.v1.CountUnreadNotificationsRequest\x1a,.publira.v1.CountUnreadNotificationsResponse\"\x00\x12q\n" +
@@ -910,55 +984,57 @@ func file_publira_v1_notification_proto_rawDescGZIP() []byte {
 	return file_publira_v1_notification_proto_rawDescData
 }
 
-var file_publira_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_publira_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_v1_notification_proto_goTypes = []any{
 	(PushPlatform)(0),                          // 0: publira.v1.PushPlatform
-	(*NotificationItem)(nil),                   // 1: publira.v1.NotificationItem
-	(*ListNotificationsRequest)(nil),           // 2: publira.v1.ListNotificationsRequest
-	(*ListNotificationsResponse)(nil),          // 3: publira.v1.ListNotificationsResponse
-	(*RegisterPushDeviceRequest)(nil),          // 4: publira.v1.RegisterPushDeviceRequest
-	(*RegisterPushDeviceResponse)(nil),         // 5: publira.v1.RegisterPushDeviceResponse
-	(*UnregisterPushDeviceRequest)(nil),        // 6: publira.v1.UnregisterPushDeviceRequest
-	(*UnregisterPushDeviceResponse)(nil),       // 7: publira.v1.UnregisterPushDeviceResponse
-	(*CountUnreadNotificationsRequest)(nil),    // 8: publira.v1.CountUnreadNotificationsRequest
-	(*CountUnreadNotificationsResponse)(nil),   // 9: publira.v1.CountUnreadNotificationsResponse
-	(*MarkNotificationAsReadRequest)(nil),      // 10: publira.v1.MarkNotificationAsReadRequest
-	(*MarkNotificationAsReadResponse)(nil),     // 11: publira.v1.MarkNotificationAsReadResponse
-	(*MarkAllNotificationsAsReadRequest)(nil),  // 12: publira.v1.MarkAllNotificationsAsReadRequest
-	(*MarkAllNotificationsAsReadResponse)(nil), // 13: publira.v1.MarkAllNotificationsAsReadResponse
-	(*v1.TenantContext)(nil),                   // 14: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                      // 15: publira.types.v1.ClientSurface
+	(PushTokenType)(0),                         // 1: publira.v1.PushTokenType
+	(*NotificationItem)(nil),                   // 2: publira.v1.NotificationItem
+	(*ListNotificationsRequest)(nil),           // 3: publira.v1.ListNotificationsRequest
+	(*ListNotificationsResponse)(nil),          // 4: publira.v1.ListNotificationsResponse
+	(*RegisterPushDeviceRequest)(nil),          // 5: publira.v1.RegisterPushDeviceRequest
+	(*RegisterPushDeviceResponse)(nil),         // 6: publira.v1.RegisterPushDeviceResponse
+	(*UnregisterPushDeviceRequest)(nil),        // 7: publira.v1.UnregisterPushDeviceRequest
+	(*UnregisterPushDeviceResponse)(nil),       // 8: publira.v1.UnregisterPushDeviceResponse
+	(*CountUnreadNotificationsRequest)(nil),    // 9: publira.v1.CountUnreadNotificationsRequest
+	(*CountUnreadNotificationsResponse)(nil),   // 10: publira.v1.CountUnreadNotificationsResponse
+	(*MarkNotificationAsReadRequest)(nil),      // 11: publira.v1.MarkNotificationAsReadRequest
+	(*MarkNotificationAsReadResponse)(nil),     // 12: publira.v1.MarkNotificationAsReadResponse
+	(*MarkAllNotificationsAsReadRequest)(nil),  // 13: publira.v1.MarkAllNotificationsAsReadRequest
+	(*MarkAllNotificationsAsReadResponse)(nil), // 14: publira.v1.MarkAllNotificationsAsReadResponse
+	(*v1.TenantContext)(nil),                   // 15: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                      // 16: publira.types.v1.ClientSurface
 }
 var file_publira_v1_notification_proto_depIdxs = []int32{
-	14, // 0: publira.v1.ListNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 1: publira.v1.ListNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	1,  // 2: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
-	14, // 3: publira.v1.RegisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 0: publira.v1.ListNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 1: publira.v1.ListNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 2: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
+	15, // 3: publira.v1.RegisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 4: publira.v1.RegisterPushDeviceRequest.platform:type_name -> publira.v1.PushPlatform
-	14, // 5: publira.v1.UnregisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 6: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 7: publira.v1.CountUnreadNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	14, // 8: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 9: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 10: publira.v1.MarkAllNotificationsAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
-	2,  // 11: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
-	8,  // 12: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
-	10, // 13: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
-	12, // 14: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
-	4,  // 15: publira.v1.NotificationService.RegisterPushDevice:input_type -> publira.v1.RegisterPushDeviceRequest
-	6,  // 16: publira.v1.NotificationService.UnregisterPushDevice:input_type -> publira.v1.UnregisterPushDeviceRequest
-	3,  // 17: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
-	9,  // 18: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
-	11, // 19: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
-	13, // 20: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
-	5,  // 21: publira.v1.NotificationService.RegisterPushDevice:output_type -> publira.v1.RegisterPushDeviceResponse
-	7,  // 22: publira.v1.NotificationService.UnregisterPushDevice:output_type -> publira.v1.UnregisterPushDeviceResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	1,  // 5: publira.v1.RegisterPushDeviceRequest.token_type:type_name -> publira.v1.PushTokenType
+	15, // 6: publira.v1.UnregisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 7: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 8: publira.v1.CountUnreadNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	15, // 9: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 10: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 11: publira.v1.MarkAllNotificationsAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 12: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
+	9,  // 13: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
+	11, // 14: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
+	13, // 15: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
+	5,  // 16: publira.v1.NotificationService.RegisterPushDevice:input_type -> publira.v1.RegisterPushDeviceRequest
+	7,  // 17: publira.v1.NotificationService.UnregisterPushDevice:input_type -> publira.v1.UnregisterPushDeviceRequest
+	4,  // 18: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
+	10, // 19: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
+	12, // 20: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
+	14, // 21: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
+	6,  // 22: publira.v1.NotificationService.RegisterPushDevice:output_type -> publira.v1.RegisterPushDeviceResponse
+	8,  // 23: publira.v1.NotificationService.UnregisterPushDevice:output_type -> publira.v1.UnregisterPushDeviceResponse
+	18, // [18:24] is the sub-list for method output_type
+	12, // [12:18] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_notification_proto_init() }
@@ -971,7 +1047,7 @@ func file_publira_v1_notification_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_notification_proto_rawDesc), len(file_publira_v1_notification_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,

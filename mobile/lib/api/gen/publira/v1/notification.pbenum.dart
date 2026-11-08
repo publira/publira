@@ -14,7 +14,7 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
-/// Which store issued the registration token, so a message can carry the
+/// Which platform the registration is for, so a message can carry the
 /// platform-specific block its delivery needs.
 class PushPlatform extends $pb.ProtobufEnum {
   static const PushPlatform PUSH_PLATFORM_UNSPECIFIED =
@@ -39,6 +39,34 @@ class PushPlatform extends $pb.ProtobufEnum {
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 
   const PushPlatform._(super.value, super.name);
+}
+
+/// What an FCM registration's token is. FCM addresses one install of the app
+/// either by the registration token it was handed or by its Firebase
+/// Installation ID (FID), and a message names which of the two it carries.
+class PushTokenType extends $pb.ProtobufEnum {
+  /// A registration token, which is what every release of the app that
+  /// predates this field registers.
+  static const PushTokenType PUSH_TOKEN_TYPE_UNSPECIFIED =
+      PushTokenType._(0, _omitEnumNames ? '' : 'PUSH_TOKEN_TYPE_UNSPECIFIED');
+  static const PushTokenType PUSH_TOKEN_TYPE_REGISTRATION_TOKEN =
+      PushTokenType._(
+          1, _omitEnumNames ? '' : 'PUSH_TOKEN_TYPE_REGISTRATION_TOKEN');
+  static const PushTokenType PUSH_TOKEN_TYPE_INSTALLATION_ID = PushTokenType._(
+      2, _omitEnumNames ? '' : 'PUSH_TOKEN_TYPE_INSTALLATION_ID');
+
+  static const $core.List<PushTokenType> values = <PushTokenType>[
+    PUSH_TOKEN_TYPE_UNSPECIFIED,
+    PUSH_TOKEN_TYPE_REGISTRATION_TOKEN,
+    PUSH_TOKEN_TYPE_INSTALLATION_ID,
+  ];
+
+  static final $core.List<PushTokenType?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 2);
+  static PushTokenType? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const PushTokenType._(super.value, super.name);
 }
 
 const $core.bool _omitEnumNames =

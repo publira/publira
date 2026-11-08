@@ -2940,8 +2940,8 @@ type Querier interface {
 	// what the index can start from, since the pair spans both tables.
 	//
 	// A device is left out where the notification may not be shown on its
-	// surface: a Web Push subscription is the site, and an FCM token on Android
-	// or iOS is the app.
+	// surface: a Web Push subscription is the site, and an FCM registration on
+	// Android or iOS is the app.
 	//
 	// It is also left out where its recipient turned the push off for the row's
 	// category: the Web Push cell decides for a browser, and the mobile push cell
@@ -4827,8 +4827,10 @@ type Querier interface {
 	// email_notifications_enabled is not written: nothing reads it, and what the
 	// API still answers under that name is derived from the email cells.
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
-	// Records the FCM registration token the reader app holds. The token is the
-	// primary key, so a device that changes hands moves to the new reader instead
+	// Records the push registration the reader's device holds: the FCM
+	// registration token or Firebase Installation ID of the app, which token_type
+	// tells apart, or a browser's Web Push subscription. The token is the primary
+	// key, so a device that changes hands moves to the new reader instead
 	// of leaving a second row behind that would push one reader's episodes to the
 	// next.
 	//

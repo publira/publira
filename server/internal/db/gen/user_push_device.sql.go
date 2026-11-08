@@ -57,6 +57,7 @@ SELECT
     n.payload,
     d.user_id,
     d.token,
+    d.token_type,
     d.platform,
     d.endpoint,
     d.p256dh,
@@ -114,6 +115,7 @@ type ListPushDevicesForNotificationRow struct {
 	Payload        json.RawMessage `json:"payload"`
 	UserID         uuid.UUID       `json:"user_id"`
 	Token          string          `json:"token"`
+	TokenType      string          `json:"token_type"`
 	Platform       string          `json:"platform"`
 	Endpoint       sql.NullString  `json:"endpoint"`
 	P256dh         sql.NullString  `json:"p256dh"`
@@ -128,8 +130,8 @@ type ListPushDevicesForNotificationRow struct {
 // what the index can start from, since the pair spans both tables.
 //
 // A device is left out where the notification may not be shown on its
-// surface: a Web Push subscription is the site, and an FCM token on Android
-// or iOS is the app.
+// surface: a Web Push subscription is the site, and an FCM registration on
+// Android or iOS is the app.
 //
 // It is also left out where its recipient turned the push off for the row's
 // category: the Web Push cell decides for a browser, and the mobile push cell
@@ -159,6 +161,7 @@ func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPu
 			&i.Payload,
 			&i.UserID,
 			&i.Token,
+			&i.TokenType,
 			&i.Platform,
 			&i.Endpoint,
 			&i.P256dh,
@@ -183,6 +186,7 @@ INSERT INTO user_push_devices (
     user_id,
     token,
     platform,
+    token_type,
     endpoint,
     p256dh,
     auth
@@ -194,31 +198,36 @@ VALUES (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
 ON CONFLICT (token) DO UPDATE
 SET
     user_id = EXCLUDED.user_id,
     platform = EXCLUDED.platform,
+    token_type = EXCLUDED.token_type,
     endpoint = EXCLUDED.endpoint,
     p256dh = EXCLUDED.p256dh,
     auth = EXCLUDED.auth,
     updated_at = NOW()
-RETURNING tenant_id, user_id, token, platform, created_at, updated_at, endpoint, p256dh, auth
+RETURNING tenant_id, user_id, token, platform, created_at, updated_at, endpoint, p256dh, auth, token_type
 `
 
 type UpsertUserPushDeviceParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	UserID   uuid.UUID      `json:"user_id"`
-	Token    string         `json:"token"`
-	Platform string         `json:"platform"`
-	Endpoint sql.NullString `json:"endpoint"`
-	P256dh   sql.NullString `json:"p256dh"`
-	Auth     sql.NullString `json:"auth"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	UserID    uuid.UUID      `json:"user_id"`
+	Token     string         `json:"token"`
+	Platform  string         `json:"platform"`
+	TokenType string         `json:"token_type"`
+	Endpoint  sql.NullString `json:"endpoint"`
+	P256dh    sql.NullString `json:"p256dh"`
+	Auth      sql.NullString `json:"auth"`
 }
 
-// Records the FCM registration token the reader app holds. The token is the
-// primary key, so a device that changes hands moves to the new reader instead
+// Records the push registration the reader's device holds: the FCM
+// registration token or Firebase Installation ID of the app, which token_type
+// tells apart, or a browser's Web Push subscription. The token is the primary
+// key, so a device that changes hands moves to the new reader instead
 // of leaving a second row behind that would push one reader's episodes to the
 // next.
 //
@@ -237,6 +246,7 @@ func (q *Queries) UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDe
 		arg.UserID,
 		arg.Token,
 		arg.Platform,
+		arg.TokenType,
 		arg.Endpoint,
 		arg.P256dh,
 		arg.Auth,
@@ -252,6 +262,7 @@ func (q *Queries) UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDe
 		&i.Endpoint,
 		&i.P256dh,
 		&i.Auth,
+		&i.TokenType,
 	)
 	return i, err
 }

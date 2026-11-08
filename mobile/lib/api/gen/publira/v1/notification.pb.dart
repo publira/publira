@@ -328,9 +328,11 @@ class ListNotificationsResponse extends $pb.GeneratedMessage {
   void clearNextToken() => $_clearField(3);
 }
 
-/// A device registers the FCM token it holds right now. The token is the
-/// identity, so registering one that another reader left behind moves it to the
-/// caller rather than adding a second row.
+/// A device registers the FCM registration it holds right now: a registration
+/// token or a Firebase Installation ID on Android and iOS, a Web Push
+/// subscription in a browser. The token is the identity, so registering one
+/// that another reader left behind moves it to the caller rather than adding a
+/// second row.
 class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
   factory RegisterPushDeviceRequest({
     $0.TenantContext? tenant,
@@ -339,6 +341,7 @@ class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
     $core.String? endpoint,
     $core.String? p256dh,
     $core.String? auth,
+    PushTokenType? tokenType,
   }) {
     final result = RegisterPushDeviceRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -347,6 +350,7 @@ class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
     if (endpoint != null) result.endpoint = endpoint;
     if (p256dh != null) result.p256dh = p256dh;
     if (auth != null) result.auth = auth;
+    if (tokenType != null) result.tokenType = tokenType;
     return result;
   }
 
@@ -371,6 +375,8 @@ class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'endpoint')
     ..aOS(5, _omitFieldNames ? '' : 'p256dh')
     ..aOS(6, _omitFieldNames ? '' : 'auth')
+    ..aE<PushTokenType>(7, _omitFieldNames ? '' : 'tokenType',
+        enumValues: PushTokenType.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -410,6 +416,8 @@ class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   $0.TenantContext ensureTenant() => $_ensure(0);
 
+  /// The registration token or the Firebase Installation ID, which
+  /// `token_type` tells apart.
   @$pb.TagNumber(2)
   $core.String get token => $_getSZ(1);
   @$pb.TagNumber(2)
@@ -456,6 +464,17 @@ class RegisterPushDeviceRequest extends $pb.GeneratedMessage {
   $core.bool hasAuth() => $_has(5);
   @$pb.TagNumber(6)
   void clearAuth() => $_clearField(6);
+
+  /// What `token` is on Android and iOS. A Web Push registration leaves it
+  /// unspecified.
+  @$pb.TagNumber(7)
+  PushTokenType get tokenType => $_getN(6);
+  @$pb.TagNumber(7)
+  set tokenType(PushTokenType value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTokenType() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTokenType() => $_clearField(7);
 }
 
 class RegisterPushDeviceResponse extends $pb.GeneratedMessage {

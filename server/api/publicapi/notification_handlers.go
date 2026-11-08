@@ -300,13 +300,14 @@ func (s *apiServer) RegisterPushDevice(
 	// on the same phone to whoever is signed in now rather than adding a
 	// second row that would push their episodes to this reader.
 	_, err = s.queriesFor(ctx).UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
-		TenantID: tenant.ID,
-		UserID:   user.ID,
-		Token:    registration.token,
-		Platform: platform,
-		Endpoint: registration.endpoint,
-		P256dh:   registration.p256dh,
-		Auth:     registration.auth,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		Token:     registration.token,
+		Platform:  platform,
+		TokenType: registration.tokenType,
+		Endpoint:  registration.endpoint,
+		P256dh:    registration.p256dh,
+		Auth:      registration.auth,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to register push device", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -344,11 +345,12 @@ func (s *apiServer) UnregisterPushDevice(
 }
 
 // maxPushDeviceTokenBytes bounds what one device can store. An FCM
-// registration token is a few hundred bytes, so this leaves room for a longer
-// one, and it stays under the roughly 2704 bytes a btree index entry can hold:
-// the token is the table's primary key, and a value the index refuses would
-// reach the reader as an internal error rather than as the invalid argument it
-// is. `user_push_devices_token_byte_limit_check` holds the same bound in the
+// registration token is a few hundred bytes and a Firebase Installation ID far
+// fewer, so this leaves room for a longer one, and it stays under the roughly
+// 2704 bytes a btree index entry can hold: the token is the table's primary
+// key, and a value the index refuses would reach the reader as an internal
+// error rather than as the invalid argument it is.
+// `user_push_devices_token_byte_limit_check` holds the same bound in the
 // schema.
 const maxPushDeviceTokenBytes = 1024
 
@@ -379,10 +381,11 @@ func pushDevicePlatform(platform publirav1.PushPlatform) (string, error) {
 }
 
 type pushDeviceRegistration struct {
-	token    string
-	endpoint sql.NullString
-	p256dh   sql.NullString
-	auth     sql.NullString
+	token     string
+	tokenType string
+	endpoint  sql.NullString
+	p256dh    sql.NullString
+	auth      sql.NullString
 }
 
 func (s *apiServer) pushDeviceRegistration(ctx context.Context, request *publirav1.RegisterPushDeviceRequest, platform string) (pushDeviceRegistration, error) {
@@ -391,7 +394,17 @@ func (s *apiServer) pushDeviceRegistration(ctx context.Context, request *publira
 			return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, "web push subscription fields require platform web")
 		}
 		token, err := pushDeviceToken(request.Token)
-		return pushDeviceRegistration{token: token}, err
+		if err != nil {
+			return pushDeviceRegistration{}, err
+		}
+		tokenType, err := pushDeviceTokenType(request.TokenType)
+		if err != nil {
+			return pushDeviceRegistration{}, err
+		}
+		return pushDeviceRegistration{token: token, tokenType: tokenType}, nil
+	}
+	if request.TokenType != publirav1.PushTokenType_PUSH_TOKEN_TYPE_UNSPECIFIED {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, "token_type requires platform android or ios")
 	}
 	publicKey, err := s.webPushKeys.PublicKey(ctx)
 	if err != nil {
@@ -417,11 +430,26 @@ func (s *apiServer) pushDeviceRegistration(ctx context.Context, request *publira
 		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, "auth is required")
 	}
 	return pushDeviceRegistration{
-		token:    endpoint,
-		endpoint: sql.NullString{String: endpoint, Valid: true},
-		p256dh:   sql.NullString{String: p256dh, Valid: true},
-		auth:     sql.NullString{String: auth, Valid: true},
+		token:     endpoint,
+		tokenType: "registration_token",
+		endpoint:  sql.NullString{String: endpoint, Valid: true},
+		p256dh:    sql.NullString{String: p256dh, Valid: true},
+		auth:      sql.NullString{String: auth, Valid: true},
 	}, nil
+}
+
+// pushDeviceTokenType is the user_push_devices.token_type an FCM registration
+// is stored with. Unspecified is a registration token, which is what every app
+// release that predates the field registers.
+func pushDeviceTokenType(tokenType publirav1.PushTokenType) (string, error) {
+	switch tokenType {
+	case publirav1.PushTokenType_PUSH_TOKEN_TYPE_UNSPECIFIED, publirav1.PushTokenType_PUSH_TOKEN_TYPE_REGISTRATION_TOKEN:
+		return "registration_token", nil
+	case publirav1.PushTokenType_PUSH_TOKEN_TYPE_INSTALLATION_ID:
+		return "installation_id", nil
+	default:
+		return "", connect.NewError(connect.CodeInvalidArgument, "token_type is invalid")
+	}
 }
 
 func firstNonEmpty(values ...string) string {

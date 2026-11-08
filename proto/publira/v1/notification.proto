@@ -37,7 +37,7 @@ message ListNotificationsResponse {
   string next_token = 3;
 }
 
-// Which store issued the registration token, so a message can carry the
+// Which platform the registration is for, so a message can carry the
 // platform-specific block its delivery needs.
 enum PushPlatform {
   PUSH_PLATFORM_UNSPECIFIED = 0;
@@ -46,11 +46,26 @@ enum PushPlatform {
   PUSH_PLATFORM_WEB = 3;
 }
 
-// A device registers the FCM token it holds right now. The token is the
-// identity, so registering one that another reader left behind moves it to the
-// caller rather than adding a second row.
+// What an FCM registration's token is. FCM addresses one install of the app
+// either by the registration token it was handed or by its Firebase
+// Installation ID (FID), and a message names which of the two it carries.
+enum PushTokenType {
+  // A registration token, which is what every release of the app that
+  // predates this field registers.
+  PUSH_TOKEN_TYPE_UNSPECIFIED = 0;
+  PUSH_TOKEN_TYPE_REGISTRATION_TOKEN = 1;
+  PUSH_TOKEN_TYPE_INSTALLATION_ID = 2;
+}
+
+// A device registers the FCM registration it holds right now: a registration
+// token or a Firebase Installation ID on Android and iOS, a Web Push
+// subscription in a browser. The token is the identity, so registering one
+// that another reader left behind moves it to the caller rather than adding a
+// second row.
 message RegisterPushDeviceRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The registration token or the Firebase Installation ID, which
+  // `token_type` tells apart.
   string token = 2;
   PushPlatform platform = 3;
   // Web Push subscription fields. `endpoint` is also the token identity for
@@ -58,6 +73,9 @@ message RegisterPushDeviceRequest {
   string endpoint = 4;
   string p256dh = 5;
   string auth = 6;
+  // What `token` is on Android and iOS. A Web Push registration leaves it
+  // unspecified.
+  PushTokenType token_type = 7;
 }
 
 message RegisterPushDeviceResponse {

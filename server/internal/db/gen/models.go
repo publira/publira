@@ -2224,6 +2224,7 @@ type UserPushDevice struct {
 	Endpoint  sql.NullString `json:"endpoint"`
 	P256dh    sql.NullString `json:"p256dh"`
 	Auth      sql.NullString `json:"auth"`
+	TokenType string         `json:"token_type"`
 }
 
 type UserRecommendFeature struct {

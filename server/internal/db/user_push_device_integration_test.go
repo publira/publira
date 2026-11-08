@@ -65,10 +65,11 @@ func TestListPushDevicesForNotificationPagesInRecipientOrder(t *testing.T) {
 		{elsewhere, "device-00"},
 	} {
 		if _, err := queries.UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
-			TenantID: device.user.TenantID,
-			UserID:   device.user.ID,
-			Token:    device.token,
-			Platform: "android",
+			TenantID:  device.user.TenantID,
+			UserID:    device.user.ID,
+			Token:     device.token,
+			Platform:  "android",
+			TokenType: "registration_token",
 		}); err != nil {
 			t.Fatalf("UpsertUserPushDevice %s: %v", device.token, err)
 		}
@@ -174,14 +175,15 @@ func TestListPushDevicesForNotificationReachesTheSurfacesItIsShownOn(t *testing.
 
 	const endpoint = "https://push.example.com/subscription"
 	for _, device := range []dbmodels.UpsertUserPushDeviceParams{
-		{Token: "android-token", Platform: "android"},
-		{Token: "ios-token", Platform: "ios"},
+		{Token: "android-token", Platform: "android", TokenType: "registration_token"},
+		{Token: "ios-token", Platform: "ios", TokenType: "registration_token"},
 		{
-			Token:    endpoint,
-			Platform: "web",
-			Endpoint: sql.NullString{String: endpoint, Valid: true},
-			P256dh:   sql.NullString{String: "p256dh", Valid: true},
-			Auth:     sql.NullString{String: "auth", Valid: true},
+			Token:     endpoint,
+			Platform:  "web",
+			TokenType: "registration_token",
+			Endpoint:  sql.NullString{String: endpoint, Valid: true},
+			P256dh:    sql.NullString{String: "p256dh", Valid: true},
+			Auth:      sql.NullString{String: "auth", Valid: true},
 		},
 	} {
 		device.TenantID = tenant.ID

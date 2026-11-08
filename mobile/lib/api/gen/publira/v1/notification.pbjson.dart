@@ -34,6 +34,22 @@ final $typed_data.Uint8List pushPlatformDescriptor = $convert.base64Decode(
     'xBVEZPUk1fQU5EUk9JRBABEhUKEVBVU0hfUExBVEZPUk1fSU9TEAISFQoRUFVTSF9QTEFURk9S'
     'TV9XRUIQAw==');
 
+@$core.Deprecated('Use pushTokenTypeDescriptor instead')
+const PushTokenType$json = {
+  '1': 'PushTokenType',
+  '2': [
+    {'1': 'PUSH_TOKEN_TYPE_UNSPECIFIED', '2': 0},
+    {'1': 'PUSH_TOKEN_TYPE_REGISTRATION_TOKEN', '2': 1},
+    {'1': 'PUSH_TOKEN_TYPE_INSTALLATION_ID', '2': 2},
+  ],
+};
+
+/// Descriptor for `PushTokenType`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List pushTokenTypeDescriptor = $convert.base64Decode(
+    'Cg1QdXNoVG9rZW5UeXBlEh8KG1BVU0hfVE9LRU5fVFlQRV9VTlNQRUNJRklFRBAAEiYKIlBVU0'
+    'hfVE9LRU5fVFlQRV9SRUdJU1RSQVRJT05fVE9LRU4QARIjCh9QVVNIX1RPS0VOX1RZUEVfSU5T'
+    'VEFMTEFUSU9OX0lEEAI=');
+
 @$core.Deprecated('Use notificationItemDescriptor instead')
 const NotificationItem$json = {
   '1': 'NotificationItem',
@@ -139,6 +155,14 @@ const RegisterPushDeviceRequest$json = {
     {'1': 'endpoint', '3': 4, '4': 1, '5': 9, '10': 'endpoint'},
     {'1': 'p256dh', '3': 5, '4': 1, '5': 9, '10': 'p256dh'},
     {'1': 'auth', '3': 6, '4': 1, '5': 9, '10': 'auth'},
+    {
+      '1': 'token_type',
+      '3': 7,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.PushTokenType',
+      '10': 'tokenType'
+    },
   ],
 };
 
@@ -148,7 +172,8 @@ final $typed_data.Uint8List registerPushDeviceRequestDescriptor = $convert.base6
     'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhQKBXRva2VuGAIgASgJUgV0b2tlbhI0Cghw'
     'bGF0Zm9ybRgDIAEoDjIYLnB1YmxpcmEudjEuUHVzaFBsYXRmb3JtUghwbGF0Zm9ybRIaCghlbm'
     'Rwb2ludBgEIAEoCVIIZW5kcG9pbnQSFgoGcDI1NmRoGAUgASgJUgZwMjU2ZGgSEgoEYXV0aBgG'
-    'IAEoCVIEYXV0aA==');
+    'IAEoCVIEYXV0aBI4Cgp0b2tlbl90eXBlGAcgASgOMhkucHVibGlyYS52MS5QdXNoVG9rZW5UeX'
+    'BlUgl0b2tlblR5cGU=');
 
 @$core.Deprecated('Use registerPushDeviceResponseDescriptor instead')
 const RegisterPushDeviceResponse$json = {

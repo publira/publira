@@ -43,10 +43,11 @@ func TestMemberPushNotificationDeliversAcrossJobs(t *testing.T) {
 		}
 		token := fmt.Sprintf("device-%d", i)
 		if _, err := queries.UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
-			TenantID: tenant.ID,
-			UserID:   user.ID,
-			Token:    token,
-			Platform: "android",
+			TenantID:  tenant.ID,
+			UserID:    user.ID,
+			Token:     token,
+			Platform:  "android",
+			TokenType: "registration_token",
 		}); err != nil {
 			t.Fatalf("UpsertUserPushDevice: %v", err)
 		}
