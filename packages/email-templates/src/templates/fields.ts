@@ -23,7 +23,7 @@ const withinCharacters = (name: string, max: number) =>
  */
 
 /** A moment the mail displays, formatted in the time zone `RenderEmail` is given. */
-export const instantField = (name: string) =>
+export const instantField = (name: string): z.ZodString =>
   z
     .string()
     .trim()
@@ -32,7 +32,7 @@ export const instantField = (name: string) =>
     });
 
 /** A link the recipient is asked to open. */
-export const httpUrlField = (name: string) =>
+export const httpUrlField = (name: string): z.ZodString =>
   z
     .string()
     .trim()
@@ -43,7 +43,7 @@ export const httpUrlField = (name: string) =>
  * envelope address, so the address itself is the sender's to validate; what the
  * template refuses is the CR or LF that would let it break out of a header.
  */
-export const emailAddressField = (name: string) =>
+export const emailAddressField = (name: string): z.ZodString =>
   z
     .string()
     .trim()
@@ -59,14 +59,14 @@ export const emailAddressField = (name: string) =>
  * nothing here refuses one the server already stored: a mail that cannot render
  * is never sent.
  */
-export const catalogTitleField = (name: string) =>
+export const catalogTitleField = (name: string): z.ZodString =>
   z
     .string()
     .trim()
     .min(1, { error: `${name} is required` });
 
 /** A display name the mail is branded with, such as the tenant's. */
-export const displayNameField = (name: string) =>
+export const displayNameField = (name: string): z.ZodString =>
   z
     .string()
     .trim()
@@ -81,7 +81,10 @@ export const displayNameField = (name: string) =>
  * sides confirm, and the copy differs, so the sender says which one it is
  * rather than the handler picking a template per side.
  */
-export const recipientKindField = () => z.enum(["current_email", "new_email"]);
+export const recipientKindField = (): z.ZodEnum<{
+  current_email: "current_email";
+  new_email: "new_email";
+}> => z.enum(["current_email", "new_email"]);
 
 /**
  * Whether the account a mail talks about has had its email address confirmed.
@@ -89,7 +92,10 @@ export const recipientKindField = () => z.enum(["current_email", "new_email"]);
  * through the reset form, an unconfirmed one only through a new confirmation
  * mail — so the sender says which one it found and the copy follows it.
  */
-export const accountStateField = () => z.enum(["confirmed", "unconfirmed"]);
+export const accountStateField = (): z.ZodEnum<{
+  confirmed: "confirmed";
+  unconfirmed: "unconfirmed";
+}> => z.enum(["confirmed", "unconfirmed"]);
 
 /**
  * A short value the mail shows when there is one. It is the empty string rather
@@ -97,7 +103,10 @@ export const accountStateField = () => z.enum(["confirmed", "unconfirmed"]);
  * has the same shape whatever the sender found, and the component decides
  * whether the line appears.
  */
-export const optionalSingleLineField = (name: string, max: number) =>
+export const optionalSingleLineField = (
+  name: string,
+  max: number
+): z.ZodString =>
   z
     .string()
     .trim()
@@ -112,7 +121,7 @@ export const optionalSingleLineField = (name: string, max: number) =>
  * it reaches the mail as content rather than as a header, so there is nothing
  * for a CR or LF to break out of.
  */
-export const quotedTextField = (name: string, max: number) =>
+export const quotedTextField = (name: string, max: number): z.ZodString =>
   z
     .string()
     .trim()
@@ -123,5 +132,8 @@ export const quotedTextField = (name: string, max: number) =>
  * The console role an invitation grants, which the copy names: an invitee is
  * told what they are being asked to become before they accept.
  */
-export const tenantRoleField = () =>
-  z.enum(["tenant_admin", "tenant_editor", "tenant_auditor"]);
+export const tenantRoleField = (): z.ZodEnum<{
+  tenant_admin: "tenant_admin";
+  tenant_auditor: "tenant_auditor";
+  tenant_editor: "tenant_editor";
+}> => z.enum(["tenant_admin", "tenant_editor", "tenant_auditor"]);

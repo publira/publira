@@ -2,6 +2,7 @@
 
 import { Switch as BaseSwitch } from "@base-ui/react";
 import { cn } from "@publira/utils";
+import type { JSX } from "react";
 
 import { useFieldsetDisabled } from "../fieldset/fieldset";
 
@@ -14,7 +15,7 @@ export const Switch = ({
   disabled,
   thumbClassName,
   ...props
-}: SwitchProps) => {
+}: SwitchProps): JSX.Element => {
   const fieldsetDisabled = useFieldsetDisabled();
 
   return (

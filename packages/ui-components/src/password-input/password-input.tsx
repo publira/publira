@@ -6,6 +6,7 @@ import { EyeOffIcon } from "@publira/icons/eye-off-icon";
 import { cn } from "@publira/utils";
 import type {
   ComponentPropsWithoutRef,
+  JSX,
   MouseEvent,
   ReactNode,
   RefObject,
@@ -60,7 +61,7 @@ const usePasswordInputContext = (caller: string) => {
 export const PasswordInput = ({
   className,
   ...props
-}: ComponentPropsWithoutRef<"div">) => {
+}: ComponentPropsWithoutRef<"div">): JSX.Element => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [revealed, setRevealed] = useState(false);
 
@@ -86,7 +87,7 @@ export type PasswordInputControlProps = Omit<BaseInput.Props, "type">;
 export const PasswordInputControl = ({
   className,
   ...props
-}: PasswordInputControlProps) => {
+}: PasswordInputControlProps): JSX.Element => {
   const { inputRef, revealed, setRevealed } = usePasswordInputContext(
     "PasswordInputControl"
   );
@@ -140,7 +141,9 @@ export interface PasswordInputToggleProps {
  * pointer press it was not allowed to take focus from, and does so after the
  * click has been handled, so a restore inside the handler is undone.
  */
-export const PasswordInputToggle = ({ children }: PasswordInputToggleProps) => {
+export const PasswordInputToggle = ({
+  children,
+}: PasswordInputToggleProps): JSX.Element => {
   const { inputRef, revealed, setRevealed } = usePasswordInputContext(
     "PasswordInputToggle"
   );

@@ -108,7 +108,7 @@ export const decryptSessionPayload = async (
 
 export const isSessionExpired = (
   expiresAt: string,
-  now = Date.now()
+  now: number = Date.now()
 ): boolean => {
   const exp = Date.parse(expiresAt);
 
@@ -145,10 +145,21 @@ export const buildBearerHeaders = (accessToken: string) => ({
   headers: { Authorization: `Bearer ${accessToken}` },
 });
 
-export const sessionCookieOptions = (expiresAt: Date) => ({
+/** The attributes {@link sessionCookieOptions} writes a session cookie with. */
+interface SessionCookieOptions {
+  expires: Date;
+  httpOnly: true;
+  path: "/";
+  sameSite: "lax";
+  secure: boolean;
+}
+
+export const sessionCookieOptions = (
+  expiresAt: Date
+): SessionCookieOptions => ({
   expires: expiresAt,
-  httpOnly: true as const,
-  path: "/" as const,
-  sameSite: "lax" as const,
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
 });

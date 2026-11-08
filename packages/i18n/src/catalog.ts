@@ -11,10 +11,15 @@ import { CATALOGS } from "./__generated__/locale-catalogs";
 import type { LocaleMessages } from "./__generated__/locale-catalogs";
 import { getMessage } from "./i18n";
 import type { Locale, MessageKey } from "./i18n";
+import type { SharedRpcDisposition } from "./rpc-disposition";
+
+export type { SharedRpcDisposition } from "./rpc-disposition";
 
 export type SharedMessages = LocaleMessages;
 
-const RPC_MESSAGE_KEYS = {
+const RPC_MESSAGE_KEYS: Readonly<
+  Record<SharedRpcDisposition, MessageKey<SharedMessages>>
+> = {
   conflict: "errors.rpc.conflict",
   forbidden: "errors.rpc.forbidden",
   "invalid-argument": "errors.rpc.invalid-argument",
@@ -22,9 +27,7 @@ const RPC_MESSAGE_KEYS = {
   "rate-limited": "errors.rpc.rate-limited",
   unauthenticated: "errors.rpc.unauthenticated",
   unavailable: "errors.rpc.unavailable",
-} as const satisfies Record<string, MessageKey<SharedMessages>>;
-
-export type SharedRpcDisposition = keyof typeof RPC_MESSAGE_KEYS;
+};
 
 const isSharedRpcDisposition = (
   disposition: string

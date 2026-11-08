@@ -196,7 +196,9 @@ export const isTenantThemeFontFamily = (value: string): boolean => {
 };
 
 /** A Zod boundary schema shared by theme settings forms. */
-export const tenantThemeFontFamilySchema = (errorMessage: string) =>
+export const tenantThemeFontFamilySchema = (
+  errorMessage: string
+): z.ZodString =>
   z.string().trim().refine(isTenantThemeFontFamily, { error: errorMessage });
 
 /**

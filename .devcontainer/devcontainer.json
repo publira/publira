@@ -25,7 +25,8 @@
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
         "openai.chatgpt",
-        "oxc.oxc-vscode"
+        "oxc.oxc-vscode",
+        "TypeScriptTeam.native-preview"
       ]
     }
   },

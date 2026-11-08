@@ -3,7 +3,7 @@
 import { catchError } from "next/error";
 import type { ErrorInfo } from "next/error";
 import { createContext, useContext, useMemo } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ComponentType, ReactNode } from "react";
 
 import { Button } from "../button/button";
 import {
@@ -85,7 +85,7 @@ const SectionErrorFallbackState = ({
 export const sectionErrorFallback = (
   { fallback }: SectionErrorFallbackProps,
   { error, retry }: SectionErrorInfo
-) => (
+): JSX.Element => (
   <SectionErrorFallbackState digest={errorDigest(error)} retry={retry}>
     {fallback}
   </SectionErrorFallbackState>
@@ -95,7 +95,9 @@ export const sectionErrorFallback = (
  * The section-level error boundary: renders `children`, and the `fallback`
  * tree in their place once they throw.
  */
-export const SectionErrorCatch = catchError(sectionErrorFallback);
+export const SectionErrorCatch: ComponentType<
+  SectionErrorFallbackProps & { children?: ReactNode }
+> = catchError(sectionErrorFallback);
 
 const useSectionErrorState = (): SectionErrorState => {
   const state = useContext(SectionErrorStateContext);
@@ -114,7 +116,11 @@ const useSectionErrorState = (): SectionErrorState => {
  * wording is written where it is rendered; only the callback comes from the
  * boundary.
  */
-export const SectionErrorRetry = ({ children }: { children: ReactNode }) => {
+export const SectionErrorRetry = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const { retry } = useSectionErrorState();
 
   return (
@@ -130,7 +136,11 @@ export const SectionErrorRetry = ({ children }: { children: ReactNode }) => {
  * caught. Nothing is rendered when that error carries no digest, so a reader
  * never meets a dangling prefix.
  */
-export const SectionErrorDigest = ({ children }: { children: ReactNode }) => {
+export const SectionErrorDigest = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element | null => {
   const { digest } = useSectionErrorState();
 
   if (digest === undefined) {

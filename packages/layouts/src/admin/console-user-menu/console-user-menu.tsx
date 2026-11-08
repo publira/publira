@@ -2,14 +2,16 @@ import { Menu } from "@base-ui/react/menu";
 import { LogoutIcon, SettingsIcon, UserIcon } from "@publira/icons";
 import { StatusChip } from "@publira/ui-components/badge";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 const itemClassName =
   "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground pointer-coarse:py-3";
 
-export const ConsoleUserMenu = ({ children }: { children: ReactNode }) => (
-  <Menu.Root>{children}</Menu.Root>
-);
+export const ConsoleUserMenu = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <Menu.Root>{children}</Menu.Root>;
 
 export const ConsoleUserMenuTrigger = ({
   "aria-label": ariaLabel,
@@ -18,7 +20,7 @@ export const ConsoleUserMenuTrigger = ({
   /** Names the account menu trigger, which shows only an initial or an icon. */
   "aria-label": string;
   children?: ReactNode;
-}) => (
+}): JSX.Element => (
   <Menu.Trigger
     aria-label={ariaLabel}
     className="inline-flex size-9 items-center justify-center rounded-control border border-input text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11"
@@ -29,7 +31,11 @@ export const ConsoleUserMenuTrigger = ({
   </Menu.Trigger>
 );
 
-export const ConsoleUserMenuInitial = ({ children }: { children: string }) => {
+export const ConsoleUserMenuInitial = ({
+  children,
+}: {
+  children: string;
+}): string | null => {
   const [initial] = [...children.trim()];
 
   return initial ? initial.toUpperCase() : null;
@@ -43,7 +49,7 @@ export const ConsoleUserMenuContent = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <Menu.Portal>
     <Menu.Positioner
       align="end"
@@ -62,11 +68,15 @@ export const ConsoleUserMenuIdentity = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="grid justify-items-start gap-1 px-3 py-2">{children}</div>
 );
 
-export const ConsoleUserMenuName = ({ children }: { children: ReactNode }) => (
+export const ConsoleUserMenuName = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <p className="max-w-full truncate text-sm font-medium text-foreground">
     {children}
   </p>
@@ -76,17 +86,19 @@ export const ConsoleUserMenuPublicId = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <p className="max-w-full truncate text-xs text-muted-foreground">
     {children}
   </p>
 );
 
-export const ConsoleUserMenuRole = ({ children }: { children: ReactNode }) => (
-  <StatusChip status="info">{children}</StatusChip>
-);
+export const ConsoleUserMenuRole = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <StatusChip status="info">{children}</StatusChip>;
 
-export const ConsoleUserMenuSeparator = () => (
+export const ConsoleUserMenuSeparator = (): JSX.Element => (
   <Menu.Separator className="my-1.5 h-px bg-border" />
 );
 
@@ -96,7 +108,7 @@ export const ConsoleUserMenuAccountLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Menu.LinkItem
     className={itemClassName}
     closeOnClick
@@ -113,7 +125,7 @@ export const ConsoleUserMenuLogout = ({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   children: ReactNode;
-}) => <form action={action}>{children}</form>;
+}): JSX.Element => <form action={action}>{children}</form>;
 
 /**
  * The sign-out control itself, so the caller writes its accessible name and its
@@ -125,7 +137,7 @@ export const ConsoleUserMenuLogoutButton = ({
 }: {
   "aria-label"?: string;
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   // The item stays mounted through the submit: closing the menu on click would
   // unmount the form the Action is submitting.
   <Menu.Item

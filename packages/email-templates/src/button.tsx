@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, JSX, ReactNode } from "react";
 import { Button } from "react-email";
 
 import { emailColors, emailFonts } from "./colors";
@@ -21,7 +21,10 @@ export interface EmailButtonProps {
   href: string;
 }
 
-export const EmailButton = ({ children, href }: EmailButtonProps) => (
+export const EmailButton = ({
+  children,
+  href,
+}: EmailButtonProps): JSX.Element => (
   <Button href={href} style={buttonStyle}>
     {children}
   </Button>

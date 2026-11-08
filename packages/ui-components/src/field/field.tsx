@@ -5,6 +5,7 @@ import { cn } from "@publira/utils";
 import type {
   ComponentPropsWithoutRef,
   ComponentPropsWithRef,
+  JSX,
   RefCallback,
 } from "react";
 import {
@@ -27,7 +28,7 @@ const FieldPopupTriggerContext = createContext<FieldPopupTriggerContextValue>({
 
 export type FieldProps = BaseField.Root.Props;
 
-export const Field = ({ className, ...props }: FieldProps) => {
+export const Field = ({ className, ...props }: FieldProps): JSX.Element => {
   const [hasPopupTrigger, setHasPopupTrigger] = useState(false);
 
   const registerPopupTrigger = useCallback(() => {
@@ -67,7 +68,7 @@ export const FieldLabel = ({
   className,
   required,
   ...props
-}: FieldLabelProps) => {
+}: FieldLabelProps): JSX.Element => {
   const { hasPopupTrigger } = use(FieldPopupTriggerContext);
 
   return (
@@ -110,7 +111,7 @@ export const FieldPopupTrigger = ({
   "aria-labelledby": ariaLabelledBy,
   ref,
   ...props
-}: FieldPopupTriggerProps) => {
+}: FieldPopupTriggerProps): JSX.Element => {
   const { registerPopupTrigger } = use(FieldPopupTriggerContext);
 
   const hydrated = useSyncExternalStore(
@@ -165,7 +166,10 @@ export const FieldPopupTrigger = ({
 
 export type FieldContentProps = ComponentPropsWithoutRef<"div">;
 
-export const FieldContent = ({ className, ...props }: FieldContentProps) => (
+export const FieldContent = ({
+  className,
+  ...props
+}: FieldContentProps): JSX.Element => (
   <div {...props} className={cn("grid gap-2", className)} />
 );
 
@@ -174,7 +178,7 @@ export type FieldDescriptionProps = BaseField.Description.Props;
 export const FieldDescription = ({
   className,
   ...props
-}: FieldDescriptionProps) => (
+}: FieldDescriptionProps): JSX.Element => (
   <BaseField.Description
     {...props}
     className={cn("text-xs text-muted-foreground", className)}
@@ -183,7 +187,10 @@ export const FieldDescription = ({
 
 export type FieldErrorProps = BaseField.Error.Props;
 
-export const FieldError = ({ className, ...props }: FieldErrorProps) => (
+export const FieldError = ({
+  className,
+  ...props
+}: FieldErrorProps): JSX.Element => (
   <BaseField.Error
     {...props}
     className={cn("text-xs text-destructive", className)}

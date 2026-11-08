@@ -5,12 +5,12 @@ import type {
   MessageKey,
   MessageValues,
 } from "@publira/i18n";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { loadLocaleMessages } from "@publira/i18n/messages";
 
-// Type-only JSON imports cannot take import attributes (TS2857).
-import type jaCatalog from "../../../locales/ja.json";
-
-type EmailCatalog = typeof jaCatalog;
+// The published catalog type, not a JSON import of the catalog: the built
+// declarations are emitted by Oxc, which cannot declare a JSON module.
+type EmailCatalog = SharedMessages;
 
 export type EmailMessageKey = MessageKey<EmailCatalog>;
 
@@ -25,8 +25,8 @@ export type Messages = MessageAccessor<EmailCatalog>;
  * static import specifiers in one place (see `locales/README.md`).
  */
 export const loadEmailMessages = async (locale: Locale): Promise<Messages> =>
-  // SAFETY: every `locales/*.json` catalog carries the keys of `ja.json`, which
-  // the i18n package's catalog tests check, so any locale's tree reads as one.
+  // SAFETY: `loadLocaleMessages` resolves one of the `locales/*.json` catalogs
+  // that `SharedMessages` is the union of.
   bindMessages((await loadLocaleMessages(locale)) as EmailCatalog, locale);
 
 export const emailMessage = (

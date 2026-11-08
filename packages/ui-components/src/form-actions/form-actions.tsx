@@ -1,9 +1,12 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 export type FormActionsProps = ComponentPropsWithoutRef<"div">;
 
-export const FormActions = ({ className, ...props }: FormActionsProps) => (
+export const FormActions = ({
+  className,
+  ...props
+}: FormActionsProps): JSX.Element => (
   <div
     {...props}
     className={cn(

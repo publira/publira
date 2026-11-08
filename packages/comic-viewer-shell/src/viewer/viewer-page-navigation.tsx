@@ -9,7 +9,7 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
 import { buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * The page-turn pair, drawn and hidden with the controls a tap reveals.
@@ -22,7 +22,7 @@ export const ViewerPageNavigation = ({
 }: {
   "aria-label": string;
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <PageNavigation
     aria-label={ariaLabel}
     className="pointer-events-none absolute inset-0 z-10 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0"
@@ -32,7 +32,7 @@ export const ViewerPageNavigation = ({
 );
 
 /** The chevron that points back through the episode, whichever way it reads. */
-export const ViewerBackwardIcon = () => {
+export const ViewerBackwardIcon = (): JSX.Element => {
   const { readingDirection } = useViewerContext();
 
   return readingDirection === "rtl" ? (
@@ -43,7 +43,7 @@ export const ViewerBackwardIcon = () => {
 };
 
 /** The chevron that points on through the episode, whichever way it reads. */
-export const ViewerForwardIcon = () => {
+export const ViewerForwardIcon = (): JSX.Element => {
   const { readingDirection } = useViewerContext();
 
   return readingDirection === "rtl" ? (
@@ -63,7 +63,7 @@ export const ViewerPreviousPageButton = ({
   "aria-label": ariaLabel,
 }: {
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <PreviousPageButton
     aria-label={ariaLabel}
     className={cn(pageTurnButtonClassName, "start-3")}
@@ -77,7 +77,7 @@ export const ViewerNextPageButton = ({
   "aria-label": ariaLabel,
 }: {
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <NextPageButton
     aria-label={ariaLabel}
     className={cn(pageTurnButtonClassName, "end-3")}

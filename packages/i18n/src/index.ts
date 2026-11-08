@@ -28,3 +28,5 @@ export type {
   MessageTree,
   MessageValues,
 } from "./i18n";
+
+export type { SharedRpcDisposition } from "./rpc-disposition";

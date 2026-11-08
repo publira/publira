@@ -2,6 +2,7 @@
 
 import { Fieldset as BaseFieldset } from "@base-ui/react/fieldset";
 import { cn } from "@publira/utils";
+import type { JSX } from "react";
 import { createContext, use } from "react";
 
 const FieldsetDisabledContext = createContext(false);
@@ -11,7 +12,7 @@ const FieldsetDisabledContext = createContext(false);
  * `<span>` reads it here when it sits outside a `Field`, since neither Base
  * UI's field context nor the native `<fieldset>` reaches it there.
  */
-export const useFieldsetDisabled = () => use(FieldsetDisabledContext);
+export const useFieldsetDisabled = (): boolean => use(FieldsetDisabledContext);
 
 export type FieldsetProps = BaseFieldset.Root.Props;
 
@@ -25,7 +26,7 @@ export const Fieldset = ({
   className,
   disabled = false,
   ...props
-}: FieldsetProps) => {
+}: FieldsetProps): JSX.Element => {
   const closed = useFieldsetDisabled() || disabled;
 
   return (

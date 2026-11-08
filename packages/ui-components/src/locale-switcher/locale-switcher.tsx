@@ -3,7 +3,7 @@
 import { LanguageIcon } from "@publira/icons/language-icon";
 import { cn } from "@publira/utils";
 import { createContext, useCallback, useContext, useMemo } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { buttonVariants } from "../button/button";
 import {
@@ -75,7 +75,7 @@ export const LocaleSwitcher = ({
   children,
   currentLocale,
   fieldName,
-}: LocaleSwitcherProps) => {
+}: LocaleSwitcherProps): JSX.Element => {
   const submit = useCallback(
     async (formData: FormData) => {
       await action(formData);
@@ -108,7 +108,7 @@ export const LocaleSwitcherTrigger = ({
 }: {
   /** Names the language control. */
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <PopoverTrigger
     aria-label={ariaLabel}
     className={cn(
@@ -128,7 +128,7 @@ export const LocaleSwitcherContent = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <PopoverContent
     align="end"
     className="w-48"
@@ -139,7 +139,11 @@ export const LocaleSwitcherContent = ({
   </PopoverContent>
 );
 
-export const LocaleSwitcherTitle = ({ children }: { children: ReactNode }) => (
+export const LocaleSwitcherTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">
     {children}
   </PopoverTitle>
@@ -152,7 +156,7 @@ export const LocaleSwitcherOptions = ({
   /** Names the list of languages for a screen reader. */
   "aria-label": string;
   children: ReactNode;
-}) => {
+}): JSX.Element => {
   const { submit } = useLocaleSwitcher();
 
   return (
@@ -168,7 +172,7 @@ export const LocaleSwitcherOption = ({
 }: {
   children: ReactNode;
   locale: string;
-}) => {
+}): JSX.Element => {
   const { currentLocale, fieldName } = useLocaleSwitcher();
   const isCurrent = locale === currentLocale;
 

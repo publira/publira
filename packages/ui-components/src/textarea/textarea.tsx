@@ -1,6 +1,6 @@
 import { Field as BaseField } from "@base-ui/react/field";
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 export type TextareaProps = Omit<
   ComponentPropsWithoutRef<"textarea">,
@@ -9,7 +9,10 @@ export type TextareaProps = Omit<
   className?: string;
 };
 
-export const Textarea = ({ className, ...props }: TextareaProps) => (
+export const Textarea = ({
+  className,
+  ...props
+}: TextareaProps): JSX.Element => (
   <BaseField.Control
     // SAFETY: `Control` types its props for an `<input>`, but forwards them to
     // the `<textarea>` it renders through `render`, which is what they are for.

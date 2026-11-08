@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * Compound scaffold for the screens that stand outside a signed-in session:
@@ -33,9 +33,11 @@ import type { ReactNode } from "react";
  * </AuthScreen.Root>
  * ```
  */
-export const AuthScreen = ({ children }: { children: ReactNode }) => (
-  <div className="flex min-h-full">{children}</div>
-);
+export const AuthScreen = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="flex min-h-full">{children}</div>;
 
 /**
  * The half the form is read in, capped at the reading measure and left-aligned
@@ -48,7 +50,11 @@ export const AuthScreen = ({ children }: { children: ReactNode }) => (
  * tall as its own content, where centring a form in the height it just gave
  * itself is no move at all.
  */
-export const AuthScreenMain = ({ children }: { children: ReactNode }) => (
+export const AuthScreenMain = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="flex flex-1 items-center justify-center">
     <main className="grid w-full max-w-measure-prose gap-8 px-6 py-10">
       {children}
@@ -64,7 +70,11 @@ export const AuthScreenMain = ({ children }: { children: ReactNode }) => (
  * room to type in, and the form keeps the width. Where it does appear it is as
  * tall as the window and stays there while a long form scrolls past it.
  */
-export const AuthScreenPanel = ({ children }: { children: ReactNode }) => (
+export const AuthScreenPanel = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="hidden h-dvh flex-1 bg-surface lg:sticky lg:top-0 lg:block">
     {children}
   </div>
@@ -81,19 +91,25 @@ export const AuthScreenPanel = ({ children }: { children: ReactNode }) => (
  *
  * Decoration with nothing to read, so it is hidden from assistive technology.
  */
-export const AuthScreenPattern = () => (
+export const AuthScreenPattern = (): JSX.Element => (
   <div aria-hidden="true" className="size-full auth-screen-pattern" />
 );
 
-export const AuthScreenHeader = ({ children }: { children: ReactNode }) => (
-  <header className="grid gap-2">{children}</header>
-);
+export const AuthScreenHeader = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <header className="grid gap-2">{children}</header>;
 
 /**
  * The one heading the screen leads with, in the serif face both shells already
  * set a site or product name in.
  */
-export const AuthScreenTitle = ({ children }: { children: ReactNode }) => (
+export const AuthScreenTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <h1 className="font-serif text-2xl font-semibold text-foreground">
     {children}
   </h1>
@@ -103,24 +119,36 @@ export const AuthScreenTitle = ({ children }: { children: ReactNode }) => (
  * A sentence under the heading: the tenant's tagline, or what the screen is
  * for.
  */
-export const AuthScreenTagline = ({ children }: { children: ReactNode }) => (
-  <p className="text-sm text-muted-foreground">{children}</p>
-);
+export const AuthScreenTagline = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <p className="text-sm text-muted-foreground">{children}</p>;
 
-export const AuthScreenBody = ({ children }: { children: ReactNode }) => (
-  <div className="grid gap-4">{children}</div>
-);
+export const AuthScreenBody = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="grid gap-4">{children}</div>;
 
 /**
  * A sentence the screen states rather than asks for: what a confirmation link
  * did, or what happens next.
  */
-export const AuthScreenText = ({ children }: { children: ReactNode }) => (
+export const AuthScreenText = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <p className="text-sm leading-normal text-foreground">{children}</p>
 );
 
 /** The same sentence, when it is context rather than the answer itself. */
-export const AuthScreenNote = ({ children }: { children: ReactNode }) => (
+export const AuthScreenNote = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <p className="text-sm leading-normal text-muted-foreground">{children}</p>
 );
 
@@ -128,6 +156,8 @@ export const AuthScreenNote = ({ children }: { children: ReactNode }) => (
  * What follows the form: the links to the neighbouring screens, each on its own
  * line and underlined in Ai like every other link.
  */
-export const AuthScreenFooter = ({ children }: { children: ReactNode }) => (
-  <footer className="grid gap-2 text-sm">{children}</footer>
-);
+export const AuthScreenFooter = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <footer className="grid gap-2 text-sm">{children}</footer>;

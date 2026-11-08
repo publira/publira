@@ -1,9 +1,14 @@
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
-const formMessageVariants = cva(
+/** The variants {@link formMessageVariants} chooses between. */
+interface FormMessageVariants {
+  variant?: "destructive" | "info" | "success" | "warning" | null;
+}
+
+const formMessageVariants: (props?: FormMessageVariants) => string = cva(
   "flex items-start gap-2 rounded-control border px-3 py-2 text-xs",
   {
     defaultVariants: {
@@ -35,7 +40,7 @@ export const FormMessage = ({
   variant,
   children,
   ...props
-}: FormMessageProps) => {
+}: FormMessageProps): JSX.Element => {
   const tone = variant ?? "info";
 
   return (

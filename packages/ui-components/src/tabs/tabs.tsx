@@ -1,15 +1,19 @@
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { cn } from "@publira/utils";
+import type { JSX } from "react";
 
 export type TabsProps = BaseTabs.Root.Props;
 
-export const Tabs = ({ className, ...props }: TabsProps) => (
+export const Tabs = ({ className, ...props }: TabsProps): JSX.Element => (
   <BaseTabs.Root {...props} className={cn("grid gap-4", className)} />
 );
 
 export type TabsListProps = BaseTabs.List.Props;
 
-export const TabsList = ({ className, ...props }: TabsListProps) => (
+export const TabsList = ({
+  className,
+  ...props
+}: TabsListProps): JSX.Element => (
   <BaseTabs.List
     {...props}
     className={cn("flex items-center gap-1 border-b border-border", className)}
@@ -18,7 +22,7 @@ export const TabsList = ({ className, ...props }: TabsListProps) => (
 
 export type TabsTabProps = BaseTabs.Tab.Props;
 
-export const TabsTab = ({ className, ...props }: TabsTabProps) => (
+export const TabsTab = ({ className, ...props }: TabsTabProps): JSX.Element => (
   <BaseTabs.Tab
     {...props}
     className={cn(
@@ -30,7 +34,10 @@ export const TabsTab = ({ className, ...props }: TabsTabProps) => (
 
 export type TabsPanelProps = BaseTabs.Panel.Props;
 
-export const TabsPanel = ({ className, ...props }: TabsPanelProps) => (
+export const TabsPanel = ({
+  className,
+  ...props
+}: TabsPanelProps): JSX.Element => (
   <BaseTabs.Panel
     {...props}
     className={cn("focus-visible:outline-none", className)}

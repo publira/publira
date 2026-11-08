@@ -3,15 +3,17 @@ import { LogoutIcon, MegaphoneIcon, UserIcon } from "@publira/icons";
 import { buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 const itemClassName =
   "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground pointer-coarse:py-3";
 
 /** A compact account menu for a public site's header. */
-export const SiteLayoutUserMenu = ({ children }: { children: ReactNode }) => (
-  <Menu.Root>{children}</Menu.Root>
-);
+export const SiteLayoutUserMenu = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <Menu.Root>{children}</Menu.Root>;
 
 /**
  * The account menu's button. `children` is what it shows — the account's own
@@ -24,7 +26,7 @@ export const SiteLayoutUserMenuTrigger = ({
   /** Names the account menu trigger, which shows only an icon. */
   "aria-label": string;
   children?: ReactNode;
-}) => (
+}): JSX.Element => (
   <Menu.Trigger
     aria-label={ariaLabel}
     className={cn(
@@ -40,7 +42,7 @@ export const SiteLayoutUserMenuContent = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <Menu.Portal>
     <Menu.Positioner align="end" className="z-40 outline-hidden" sideOffset={8}>
       <Menu.Popup className="w-52 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating outline-hidden">
@@ -59,7 +61,7 @@ export const SiteLayoutUserMenuAccount = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="truncate px-3 py-2 text-sm font-medium text-foreground">
     {children}
   </div>
@@ -71,7 +73,7 @@ export const SiteLayoutUserMenuMyPageLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Menu.LinkItem
     className={itemClassName}
     closeOnClick
@@ -88,7 +90,7 @@ export const SiteLayoutUserMenuAnnouncementsLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Menu.LinkItem
     className={itemClassName}
     closeOnClick
@@ -102,7 +104,7 @@ export const SiteLayoutUserMenuAnnouncementsLink = ({
   </Menu.LinkItem>
 );
 
-export const SiteLayoutUserMenuSeparator = () => (
+export const SiteLayoutUserMenuSeparator = (): JSX.Element => (
   <Menu.Separator className="my-1.5 h-px bg-border" />
 );
 
@@ -112,7 +114,7 @@ export const SiteLayoutUserMenuLogout = ({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   children: ReactNode;
-}) => <form action={action}>{children}</form>;
+}): JSX.Element => <form action={action}>{children}</form>;
 
 /**
  * The sign-out control itself, so the caller writes its accessible name and its
@@ -124,7 +126,7 @@ export const SiteLayoutUserMenuLogoutButton = ({
 }: {
   "aria-label"?: string;
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   // The item stays mounted through submit so its Server Action can run.
   <Menu.Item
     className={itemClassName}

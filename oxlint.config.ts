@@ -180,6 +180,15 @@ export default defineConfig({
       },
     },
     {
+      // The inline scripts are exported template literals that interpolate,
+      // which `isolatedDeclarations` cannot infer a type for and this rule
+      // calls inferable.
+      files: ["packages/i18n/src/i18n.ts"],
+      rules: {
+        "typescript/no-inferrable-types": "off",
+      },
+    },
+    {
       /**
        * `LOCALE_LANG_SCRIPT`, the Google tag's consent defaults, and the
        * storefront's theme preference ship as JavaScript source, so the only test that proves anything runs it:

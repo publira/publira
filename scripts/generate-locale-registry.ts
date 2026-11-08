@@ -310,11 +310,11 @@ const files = new Map([
   ],
   [
     "packages/i18n/src/__generated__/locale-catalogs.ts",
-    `${generatedHeader}${newline}${newline}${imports}${newline}${newline}import type { ExactCatalog } from "../i18n";${newline}import type { Locale } from "./locale-registry";${newline}${newline}${catalogUnion("export type LocaleMessages")}${newline}${newline}${exactCatalogs}${newline}${newline}export const CATALOGS = {${newline}${catalogEntries}${newline}} as const satisfies Record<Locale, LocaleMessages>;${newline}`,
+    `${generatedHeader}${newline}${newline}${imports}${newline}${newline}import type { ExactCatalog } from "../i18n";${newline}import type { Locale } from "./locale-registry";${newline}${newline}${catalogUnion("export type LocaleMessages")}${newline}${newline}${exactCatalogs}${newline}${newline}export const CATALOGS: Readonly<Record<Locale, LocaleMessages>> = {${newline}${catalogEntries}${newline}};${newline}`,
   ],
   [
     "packages/i18n/src/__generated__/locale-message-types.d.ts",
-    `${generatedHeader}${newline}${newline}import type { Locale, MessageKey } from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}${catalogUnion("export type SharedMessages")}${newline}${newline}export declare const sharedCatalog: (locale: Locale) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale: Locale${newline}) => string;${newline}${newline}export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";${newline}export type { SharedRpcDisposition } from "../../dist/catalog.mjs";${newline}`,
+    `${generatedHeader}${newline}${newline}import type {${newline}  Locale,${newline}  MessageKey,${newline}  SharedRpcDisposition,${newline}} from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}${catalogUnion("export type SharedMessages")}${newline}${newline}export declare const sharedCatalog: (locale: Locale) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale: Locale${newline}) => string;${newline}${newline}export declare const sharedRpcErrorMessage: (${newline}  disposition: SharedRpcDisposition | string,${newline}  locale: Locale${newline}) => string | undefined;${newline}${newline}export type { SharedRpcDisposition };${newline}`,
   ],
   [
     "packages/i18n/src/__generated__/locale-messages.ts",

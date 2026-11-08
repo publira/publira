@@ -13,7 +13,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 interface SiteMobileNavigationContextValue {
   close: () => void;
@@ -43,7 +43,11 @@ const useSiteMobileNavigation = (): SiteMobileNavigationContextValue => {
  * stays mounted across a navigation within the same locale, so each closes the
  * drawer on its way out — which is what the context here carries.
  */
-export const SiteLayoutClient = ({ children }: { children: ReactNode }) => {
+export const SiteLayoutClient = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const [open, setOpen] = useState(false);
 
   const close = useCallback(() => {
@@ -81,7 +85,7 @@ export const SiteLayoutMobileNavigationOpenButton = ({
 }: {
   /** Names the button that opens the navigation drawer. */
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Trigger
     aria-label={ariaLabel}
     className={cn(
@@ -97,7 +101,7 @@ export const SiteLayoutMobileNavigation = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Portal>
     <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 md:hidden" />
     {/* Viewport is what Base UI binds swipe and touch scroll locking to. */}
@@ -113,13 +117,15 @@ export const SiteLayoutMobileNavigationHeader = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="flex items-center justify-between gap-4">{children}</div>;
+}): JSX.Element => (
+  <div className="flex items-center justify-between gap-4">{children}</div>
+);
 
 export const SiteLayoutMobileNavigationTitle = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Title className="font-serif text-base font-medium text-foreground">
     {children}
   </BaseDrawer.Title>
@@ -130,7 +136,7 @@ export const SiteLayoutMobileNavigationCloseButton = ({
 }: {
   /** Names the button that closes the navigation drawer. */
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Close
     aria-label={ariaLabel}
     className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:size-11"
@@ -149,7 +155,7 @@ export const SiteLayoutMobileNavigationSearch = ({
   children,
 }: {
   children: ReactNode;
-}) => {
+}): JSX.Element => {
   const { close } = useSiteMobileNavigation();
 
   return <div onSubmit={close}>{children}</div>;
@@ -164,7 +170,7 @@ export const SiteLayoutMobileNavigationLinks = ({
   children,
 }: {
   children: ReactNode;
-}) => <nav className="grid gap-1">{children}</nav>;
+}): JSX.Element => <nav className="grid gap-1">{children}</nav>;
 
 /**
  * A row of the drawer that holds rows of its own behind it.
@@ -178,7 +184,9 @@ export const SiteLayoutMobileNavigationDisclosure = ({
   children,
 }: {
   children: ReactNode;
-}) => <Collapsible.Root className="grid gap-1">{children}</Collapsible.Root>;
+}): JSX.Element => (
+  <Collapsible.Root className="grid gap-1">{children}</Collapsible.Root>
+);
 
 /**
  * The one row the disclosure occupies while closed. It reads as the rows
@@ -188,7 +196,7 @@ export const SiteLayoutMobileNavigationDisclosureTrigger = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <Collapsible.Trigger className="group flex w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-panel-open:bg-muted pointer-coarse:py-3">
     {children}
     <ChevronDownIcon
@@ -209,7 +217,7 @@ export const SiteLayoutMobileNavigationDisclosurePanel = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-state ease-state data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none">
     <div className="grid gap-1 pl-3">{children}</div>
   </Collapsible.Panel>
@@ -230,7 +238,7 @@ export const SiteLayoutMobileNavigationLink = ({
   hrefLang?: string;
   /** The language the label itself is written in, where it is not the page's. */
   lang?: string;
-}) => {
+}): JSX.Element => {
   const { close } = useSiteMobileNavigation();
 
   return (
@@ -252,7 +260,7 @@ export const SiteLayoutMobileNavigationActions = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="mt-auto grid gap-2">{children}</div>;
+}): JSX.Element => <div className="mt-auto grid gap-2">{children}</div>;
 
 export const SiteLayoutMobileNavigationPrimaryAction = ({
   children,
@@ -260,7 +268,7 @@ export const SiteLayoutMobileNavigationPrimaryAction = ({
 }: {
   children: ReactNode;
   href: string;
-}) => {
+}): JSX.Element => {
   const { close } = useSiteMobileNavigation();
 
   return (
@@ -281,7 +289,7 @@ export const SiteLayoutMobileNavigationSecondaryAction = ({
 }: {
   children: ReactNode;
   href: string;
-}) => {
+}): JSX.Element => {
   const { close } = useSiteMobileNavigation();
 
   return (

@@ -3,12 +3,17 @@
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { CheckIcon } from "@publira/icons/check-icon";
 import { cn } from "@publira/utils";
+import type { JSX } from "react";
 
 import { useFieldsetDisabled } from "../fieldset/fieldset";
 
 export type CheckboxProps = BaseCheckbox.Root.Props;
 
-export const Checkbox = ({ className, disabled, ...props }: CheckboxProps) => {
+export const Checkbox = ({
+  className,
+  disabled,
+  ...props
+}: CheckboxProps): JSX.Element => {
   const fieldsetDisabled = useFieldsetDisabled();
 
   return (

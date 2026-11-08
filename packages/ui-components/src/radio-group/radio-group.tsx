@@ -5,7 +5,7 @@ import {
   RadioGroup as BaseRadioGroup,
 } from "@base-ui/react";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useId } from "react";
 
 import { useFieldsetDisabled } from "../fieldset/fieldset";
@@ -29,7 +29,7 @@ export const RadioGroup = ({
   itemClassName,
   items,
   ...props
-}: RadioGroupProps) => {
+}: RadioGroupProps): JSX.Element => {
   const fieldsetDisabled = useFieldsetDisabled();
   // Each option is named by its own label rather than by the surrounding
   // `Field`. A `Radio.Root` renders a `role="radio"` span, which a wrapping

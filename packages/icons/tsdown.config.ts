@@ -1,6 +1,9 @@
 import { defineConfig } from "tsdown";
+import type { UserConfig } from "tsdown";
 
-export default defineConfig({
+// `src/package-entries.test.ts` imports this file, which puts it under
+// `isolatedDeclarations`.
+const config: UserConfig = defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
@@ -79,3 +82,5 @@ export default defineConfig({
   ],
   format: "esm",
 });
+
+export default config;

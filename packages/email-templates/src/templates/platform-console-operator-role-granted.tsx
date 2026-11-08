@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -8,7 +9,12 @@ import type { Messages } from "../messages";
 import { EmailBody, EmailFallbackLink, EmailHeading, EmailMeta } from "../text";
 import { httpUrlField } from "./fields";
 
-export const platformConsoleOperatorRoleGrantedDataSchema = z.object({
+export const platformConsoleOperatorRoleGrantedDataSchema: z.ZodObject<
+  {
+    sign_in_url: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   sign_in_url: httpUrlField("sign_in_url"),
 });
 
@@ -35,7 +41,7 @@ export const PlatformConsoleOperatorRoleGrantedEmail = ({
   data,
   locale,
   messages,
-}: PlatformConsoleOperatorRoleGrantedEmailProps) => (
+}: PlatformConsoleOperatorRoleGrantedEmailProps): JSX.Element => (
   <EmailLayout
     brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}

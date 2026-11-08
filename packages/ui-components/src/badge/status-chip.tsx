@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Badge } from "./badge";
 import type { BadgeProps, BadgeTone } from "./badge";
 
@@ -13,7 +15,7 @@ export const StatusChip = ({
   variant = "soft",
   withIndicator,
   ...props
-}: StatusChipProps) => {
+}: StatusChipProps): JSX.Element => {
   // The outline badge is a dot and its text already, so it carries its own.
   const showIndicator = withIndicator ?? variant !== "outline";
 

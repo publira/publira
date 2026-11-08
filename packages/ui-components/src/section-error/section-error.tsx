@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 type DivProps = ComponentPropsWithoutRef<"div">;
 
@@ -36,7 +36,10 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * server rejected, and the per-app `ErrorScreen` for a failure that takes the
  * whole route down.
  */
-export const SectionError = ({ className, ...props }: DivProps) => (
+export const SectionError = ({
+  className,
+  ...props
+}: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn(
@@ -48,12 +51,18 @@ export const SectionError = ({ className, ...props }: DivProps) => (
 );
 
 /** Title and description stack. */
-export const SectionErrorHeading = ({ children }: { children: ReactNode }) => (
-  <div className="grid gap-1">{children}</div>
-);
+export const SectionErrorHeading = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="grid gap-1">{children}</div>;
 
 /** Names the section that is missing: "Could not display the recommendations". */
-export const SectionErrorTitle = ({ children }: { children: ReactNode }) => (
+export const SectionErrorTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <p className="text-base font-medium text-destructive">{children}</p>
 );
 
@@ -66,12 +75,14 @@ export const SectionErrorDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="text-sm text-muted-foreground">{children}</p>;
+}): JSX.Element => <p className="text-sm text-muted-foreground">{children}</p>;
 
 /** Recovery affordance — a retry button from an error boundary, a link out. */
-export const SectionErrorActions = ({ children }: { children: ReactNode }) => (
-  <div className="flex flex-wrap gap-3">{children}</div>
-);
+export const SectionErrorActions = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="flex flex-wrap gap-3">{children}</div>;
 
 /**
  * The paragraph that carries the digest. `SectionErrorDigest` composes it with
@@ -81,7 +92,7 @@ export const SectionErrorDigestLine = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="text-xs text-muted-foreground">{children}</p>;
+}): JSX.Element => <p className="text-xs text-muted-foreground">{children}</p>;
 
 /**
  * `error.digest` from the boundary that caught the failure. Server Component
@@ -92,4 +103,4 @@ export const SectionErrorDigestValue = ({
   children,
 }: {
   children: ReactNode;
-}) => <code className="font-mono">{children}</code>;
+}): JSX.Element => <code className="font-mono">{children}</code>;

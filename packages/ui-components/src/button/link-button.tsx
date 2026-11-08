@@ -3,6 +3,7 @@
 import { useRender } from "@base-ui/react/use-render";
 import { cn } from "@publira/utils";
 import type { VariantProps } from "class-variance-authority";
+import type { ReactElement } from "react";
 
 import { buttonVariants } from "./button";
 
@@ -16,7 +17,7 @@ export const LinkButton = ({
   render,
   ref,
   ...props
-}: LinkButtonProps) =>
+}: LinkButtonProps): ReactElement =>
   useRender({
     defaultTagName: "a",
     props: {

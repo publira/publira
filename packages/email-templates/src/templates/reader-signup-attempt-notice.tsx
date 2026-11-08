@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -20,7 +21,18 @@ import {
   httpUrlField,
 } from "./fields";
 
-export const readerSignupAttemptNoticeDataSchema = z.object({
+export const readerSignupAttemptNoticeDataSchema: z.ZodObject<
+  {
+    account_state: z.ZodEnum<{
+      confirmed: "confirmed";
+      unconfirmed: "unconfirmed";
+    }>;
+    action_url: z.ZodString;
+    email: z.ZodString;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   account_state: accountStateField(),
   action_url: httpUrlField("action_url"),
   email: emailAddressField("email"),
@@ -47,7 +59,7 @@ export const ReaderSignupAttemptNoticeEmail = ({
   data,
   locale,
   messages,
-}: ReaderSignupAttemptNoticeEmailProps) => {
+}: ReaderSignupAttemptNoticeEmailProps): JSX.Element => {
   const confirmed = data.account_state === "confirmed";
 
   return (

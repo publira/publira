@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -14,7 +15,16 @@ import {
 } from "../text";
 import { catalogTitleField, displayNameField, httpUrlField } from "./fields";
 
-export const readerAnnouncementPostedDataSchema = z
+export const readerAnnouncementPostedDataSchema: z.ZodObject<
+  {
+    announcement_title: z.ZodString;
+    announcements_url: z.ZodString;
+    sent_to_everyone: z.ZodBoolean;
+    settings_url: z.ZodOptional<z.ZodString>;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z
   .object({
     announcement_title: catalogTitleField("announcement_title"),
     announcements_url: httpUrlField("announcements_url"),
@@ -62,7 +72,7 @@ export const ReaderAnnouncementPostedEmail = ({
   data,
   locale,
   messages,
-}: ReaderAnnouncementPostedEmailProps) => (
+}: ReaderAnnouncementPostedEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

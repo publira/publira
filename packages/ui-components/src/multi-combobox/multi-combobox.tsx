@@ -4,7 +4,7 @@ import { Combobox as BaseCombobox } from "@base-ui/react/combobox";
 import { CloseIcon } from "@publira/icons/close-icon";
 import { cn } from "@publira/utils";
 import { useCallback, useContext, useMemo } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { ComboboxIdContext } from "../combobox/combobox";
 
@@ -66,7 +66,7 @@ export const MultiCombobox = ({
   items,
   onValueChange,
   value,
-}: MultiComboboxProps) => {
+}: MultiComboboxProps): JSX.Element => {
   const itemToStringLabel = useCallback(
     (item: MultiComboboxItem) => item.label,
     []
@@ -124,7 +124,7 @@ export const MultiComboboxInputGroup = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => (
+}): JSX.Element => (
   <BaseCombobox.InputGroup
     className={cn(
       "relative flex min-h-10 w-full flex-wrap items-center gap-1 rounded-control border border-input bg-card px-1.5 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:outline-none",
@@ -144,7 +144,7 @@ export const MultiComboboxChips = ({
   children,
 }: {
   children: (selected: MultiComboboxItem[]) => ReactNode;
-}) => (
+}): JSX.Element => (
   <BaseCombobox.Chips className="flex w-full flex-wrap items-center gap-1">
     <BaseCombobox.Value>{children}</BaseCombobox.Value>
   </BaseCombobox.Chips>
@@ -156,7 +156,7 @@ export const MultiComboboxChip = ({
 }: {
   children: ReactNode;
   item: MultiComboboxItem;
-}) => (
+}): JSX.Element => (
   <BaseCombobox.Chip
     aria-label={item.label}
     className="inline-flex items-center gap-1 rounded-control bg-muted px-2 py-1 text-xs"
@@ -170,7 +170,7 @@ export const MultiComboboxChipRemove = ({
 }: {
   /** Names the button that drops one selected chip. */
   "aria-label": string;
-}) => (
+}): JSX.Element => (
   <BaseCombobox.ChipRemove
     aria-label={ariaLabel}
     className="rounded-control p-0.5 transition-colors duration-state ease-state hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -186,7 +186,7 @@ export const MultiComboboxInput = ({
   /** Names the control where no `FieldLabel` points at it. */
   "aria-label"?: string;
   placeholder?: string;
-}) => {
+}): JSX.Element => {
   const id = useContext(ComboboxIdContext);
 
   return (

@@ -28,13 +28,13 @@ export type { Locale } from "./__generated__/locale-registry";
 export type { MessageValues } from "./mf2";
 
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
-export const LOCALE_COOKIE_NAME = profileCookieName("publira_locale");
+export const LOCALE_COOKIE_NAME: string = profileCookieName("publira_locale");
 
 /**
  * A year, in seconds. The locale is a preference rather than session state, so
  * the cookie is meant to outlive the sign-in that set it.
  */
-export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+export const LOCALE_COOKIE_MAX_AGE: number = 60 * 60 * 24 * 365;
 
 /**
  * Cookie that carries the display locale the **server** resolved, so the
@@ -52,7 +52,7 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * The server never resolves a locale *from* this cookie. It reads the setting
  * itself, and this is the copy it leaves behind for the browser.
  */
-export const RESOLVED_LOCALE_COOKIE_NAME = profileCookieName(
+export const RESOLVED_LOCALE_COOKIE_NAME: string = profileCookieName(
   "publira_resolved_locale"
 );
 
@@ -90,7 +90,7 @@ export const RESOLVED_LOCALE_COOKIE_NAME = profileCookieName(
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.
  */
-export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLocales())};var p=function(n){var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));if(!m){return""}var l=decodeURIComponent(m[1]).trim();return s.indexOf(l)<0?"":l};var l=p(${JSON.stringify(LOCALE_COOKIE_NAME)})||p(${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)});if(l){document.documentElement.lang=l}}catch(e){}})()`;
+export const LOCALE_LANG_SCRIPT: string = `(function(){try{var s=${JSON.stringify(getLocales())};var p=function(n){var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));if(!m){return""}var l=decodeURIComponent(m[1]).trim();return s.indexOf(l)<0?"":l};var l=p(${JSON.stringify(LOCALE_COOKIE_NAME)})||p(${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)});if(l){document.documentElement.lang=l}}catch(e){}})()`;
 
 /**
  * Source of the inline `<head>` script that applies the locale the **URL**
@@ -122,7 +122,7 @@ export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLoc
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.
  */
-export const PATH_LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLocales())};var f=function(v){var l=(v||"").trim();return s.indexOf(l)<0?"":l};var l=f(location.pathname.split("/")[1]);if(!l){var m=document.cookie.match(new RegExp("(?:^|; )"+${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)}+"=([^;]*)"));l=m?f(decodeURIComponent(m[1])):""}if(l){document.documentElement.lang=l}}catch(e){}})()`;
+export const PATH_LOCALE_LANG_SCRIPT: string = `(function(){try{var s=${JSON.stringify(getLocales())};var f=function(v){var l=(v||"").trim();return s.indexOf(l)<0?"":l};var l=f(location.pathname.split("/")[1]);if(!l){var m=document.cookie.match(new RegExp("(?:^|; )"+${JSON.stringify(RESOLVED_LOCALE_COOKIE_NAME)}+"=([^;]*)"));l=m?f(decodeURIComponent(m[1])):""}if(l){document.documentElement.lang=l}}catch(e){}})()`;
 
 const LOCALE_SET: ReadonlySet<string> = new Set(getLocales());
 

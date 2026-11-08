@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, SubmitEvent } from "react";
+import type { JSX, ReactNode, SubmitEvent } from "react";
 import {
   createContext,
   startTransition,
@@ -127,7 +127,7 @@ export const useActionFormSettled = <
   State extends ActionFormResult = ActionFormResult,
 >(
   onSettled: ActionFormSettledListener<State>
-) => {
+): void => {
   const { subscribe } = useActionFormStateContext("useActionFormSettled");
   const handleSettled = useEffectEvent(onSettled);
 
@@ -156,7 +156,7 @@ export interface ActionFormFieldErrorProps {
 export const ActionFormFieldError = ({
   className,
   name,
-}: ActionFormFieldErrorProps) => {
+}: ActionFormFieldErrorProps): JSX.Element | null => {
   const state = useActionFormState();
   const error = state && !state.ok ? state.fieldErrors?.[name] : undefined;
 
@@ -247,7 +247,7 @@ export const ActionFormSubmit = ({
   size,
   value,
   variant,
-}: ActionFormSubmitProps) => {
+}: ActionFormSubmitProps): JSX.Element => {
   const { pending } = useFormStatus();
   const form = useContext(ActionFormContext);
   const control = formAction ?? null;
@@ -291,7 +291,10 @@ export const ActionFormSubmit = ({
  * Action carries what they held when the form was submitted, so an edit made
  * meanwhile would sit under the result unsaved.
  */
-export const ActionFormFieldset = ({ disabled, ...props }: FieldsetProps) => {
+export const ActionFormFieldset = ({
+  disabled,
+  ...props
+}: FieldsetProps): JSX.Element => {
   const { pending } = useFormStatus();
 
   return <Fieldset {...props} disabled={disabled || pending} />;
@@ -302,12 +305,18 @@ export const ActionFormFieldset = ({ disabled, ...props }: FieldsetProps) => {
  * flight. Outside an `ActionFormSubmit` given a `formAction`, that is the
  * submission to the form's own Action.
  */
-export const ActionFormIdle = ({ children }: { children: ReactNode }) =>
-  useOwnSubmissionPending() ? null : children;
+export const ActionFormIdle = ({
+  children,
+}: {
+  children: ReactNode;
+}): ReactNode => (useOwnSubmissionPending() ? null : children);
 
 /** Renders its children only while the surrounding control's submission is in flight. */
-export const ActionFormPending = ({ children }: { children: ReactNode }) =>
-  useOwnSubmissionPending() ? children : null;
+export const ActionFormPending = ({
+  children,
+}: {
+  children: ReactNode;
+}): ReactNode => (useOwnSubmissionPending() ? children : null);
 
 /**
  * A form component that encapsulates `useActionState`.
@@ -383,7 +392,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   className,
   id,
   showSuccess = true,
-}: ActionFormProps<State>) => {
+}: ActionFormProps<State>): JSX.Element => {
   const formRef = useRef<HTMLFormElement>(null);
   const controlSubmissionRef = useRef<ActionFormControlSubmission | null>(null);
   const listenersRef = useRef(new Set<ActionFormSettledListener>());

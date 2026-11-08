@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -13,7 +14,16 @@ import {
 } from "../text";
 import { catalogTitleField, displayNameField, httpUrlField } from "./fields";
 
-export const readerCommentApprovedDataSchema = z.object({
+export const readerCommentApprovedDataSchema: z.ZodObject<
+  {
+    episode_title: z.ZodString;
+    episode_url: z.ZodString;
+    series_title: z.ZodString;
+    settings_url: z.ZodString;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   episode_title: catalogTitleField("episode_title"),
   episode_url: httpUrlField("episode_url"),
   series_title: catalogTitleField("series_title"),
@@ -48,7 +58,7 @@ export const ReaderCommentApprovedEmail = ({
   data,
   locale,
   messages,
-}: ReaderCommentApprovedEmailProps) => (
+}: ReaderCommentApprovedEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}
