@@ -59,19 +59,5 @@
       depNameTemplate: "buf.build/bufbuild/es",
       datasourceTemplate: "custom.buf-plugin",
     },
-    {
-      customType: "regex",
-      // The org preset's `# renovate:` annotation carries a version alone, and
-      // the tarball is pinned by its checksum too. The datasource reads the new
-      // checksum from the attachments of the release it moves to.
-      description: "libvips source release the publira image builds, with its checksum.",
-      managerFilePatterns: ["infra/docker/server/Dockerfile"],
-      matchStrings: [
-        "ARG LIBVIPS_VERSION=(?<currentValue>v\\S+)\\s+ARG LIBVIPS_SHA256=(?<currentDigest>[0-9a-f]{64})",
-      ],
-      depNameTemplate: "libvips/libvips",
-      datasourceTemplate: "github-release-attachments",
-      versioningTemplate: "semver-coerced",
-    },
   ],
 }

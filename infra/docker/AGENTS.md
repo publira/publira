@@ -94,8 +94,6 @@ A new **maintenance job** is not a new target: it is a `publiractl job` subcomma
    ARG TURBO_VERSION=2.10.8
    ```
 
-   A source release downloaded and checked against a pinned checksum, as `server/Dockerfile` does with libvips, keeps the checksum `ARG` right after the version one and gets a `customManagers` entry in [`.github/renovate.json5`](../../.github/renovate.json5) that raises both, since the annotation carries no checksum.
-
 4. **No Docker `HEALTHCHECK`** in any runner: which port to ask is the container's choice — `server`, `worker`, and `server --with-worker` answer on different ones, and `PORT` can be overridden — not the image's. Orchestrator probes for server / Web:
    - liveness `GET /livez`
    - readiness `GET /readyz`

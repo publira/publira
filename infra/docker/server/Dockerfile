@@ -32,12 +32,10 @@ FROM golang:1.27.3-trixie@sha256:af1bfc2614ebb1dbd31af514b78740fd678850e76498762
 # it writes WebP and AVIF, so libvips is built with those formats alone; an
 # object in any other format fails to load and Manael answers with it as
 # stored. libexif applies the orientation a photo records, lcms2 converts its
-# colour profile, and highway is libvips' SIMD backend.
-#
-# Renovate raises LIBVIPS_VERSION and LIBVIPS_SHA256 together, from the
-# release's own attachments.
-ARG LIBVIPS_VERSION=v8.18.7
-ARG LIBVIPS_SHA256=5baaead3b0bb20ffdb9e9ff09aa9fda08620923df77b63b436654cb5e0b3bf94
+# colour profile, and highway is libvips' SIMD backend. The tarball is checked
+# against the checksum the release publishes beside it.
+# renovate: datasource=github-releases depName=libvips/libvips versioning=semver-coerced
+ARG LIBVIPS_VERSION=8.18.7
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -46,11 +44,13 @@ RUN apt-get update \
       libjpeg62-turbo-dev liblcms2-dev libspng-dev libwebp-dev \
  && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL --retry 5 -o /tmp/vips.tar.xz \
-      "https://github.com/libvips/libvips/releases/download/${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION#v}.tar.xz" \
- && echo "${LIBVIPS_SHA256}  /tmp/vips.tar.xz" | sha256sum -c - \
+RUN cd /tmp \
+ && url="https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz" \
+ && curl -fsSL --retry 5 -O "${url}" \
+ && curl -fsSL --retry 5 -O "${url}.sha256sum" \
+ && sha256sum -c "vips-${LIBVIPS_VERSION}.tar.xz.sha256sum" \
  && mkdir /tmp/vips \
- && tar -xJf /tmp/vips.tar.xz -C /tmp/vips --strip-components=1 \
+ && tar -xJf "vips-${LIBVIPS_VERSION}.tar.xz" -C /tmp/vips --strip-components=1 \
  && meson setup /tmp/vips/build /tmp/vips \
       --prefix=/usr/local --libdir=lib --buildtype=release \
       --auto-features=disabled \
@@ -61,7 +61,7 @@ RUN curl -fsSL --retry 5 -o /tmp/vips.tar.xz \
  && meson install -C /tmp/vips/build \
  && mkdir -p /out/lib \
  && cp -a /usr/local/lib/libvips.so.42* /out/lib/ \
- && rm -rf /tmp/vips /tmp/vips.tar.xz
+ && rm -rf /tmp/vips /tmp/vips-*
 
 WORKDIR /src
 
