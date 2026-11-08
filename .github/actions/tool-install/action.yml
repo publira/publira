@@ -1,10 +1,10 @@
 name: Install a release tool
-description: Install migrate, wait4x, or sqlc from its GitHub release, from the cache when that version has been installed on this architecture before.
+description: Install migrate, wait4x, sqlc, or trivy from its GitHub release, from the cache when that version has been installed on this architecture before.
 
 inputs:
   tool:
     description: >-
-      `migrate`, `wait4x`, or `sqlc`. The version installed is the workflow's `MIGRATE_VERSION`, `WAIT4X_VERSION`, or `SQLC_VERSION`.
+      `migrate`, `wait4x`, `sqlc`, or `trivy`. The version installed is the workflow's `MIGRATE_VERSION`, `WAIT4X_VERSION`, `SQLC_VERSION`, or `TRIVY_VERSION`.
     required: true
 
 runs:
@@ -37,6 +37,14 @@ runs:
             version="${SQLC_VERSION:?SQLC_VERSION is not set}"
             repo="sqlc-dev/sqlc"
             asset="sqlc_${version}_linux_${arch}.tar.gz"
+            ;;
+          trivy)
+            version="${TRIVY_VERSION:?TRIVY_VERSION is not set}"
+            repo="aquasecurity/trivy"
+            case "${arch}" in
+              amd64) asset="trivy_${version}_Linux-64bit.tar.gz" ;;
+              arm64) asset="trivy_${version}_Linux-ARM64.tar.gz" ;;
+            esac
             ;;
           *) echo "::error::Unknown tool: ${TOOL}"; exit 1 ;;
         esac

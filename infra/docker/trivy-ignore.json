@@ -1,0 +1,19 @@
+{
+  "ignore": [
+    {
+      "id": "CVE-2026-42216",
+      "reason": "libopenexr-3-1-30 3.1.13-2 in the publira image, a dependency of libvips42t64. No Debian trixie package fixes it yet. Removing it is https://github.com/publira/publira/issues/5480.",
+      "expires": "2026-12-08"
+    },
+    {
+      "id": "CVE-2026-42217",
+      "reason": "libopenexr-3-1-30 3.1.13-2 in the publira image, a dependency of libvips42t64. No Debian trixie package fixes it yet. Removing it is https://github.com/publira/publira/issues/5480.",
+      "expires": "2026-12-08"
+    },
+    {
+      "id": "CVE-2026-6653",
+      "reason": "libxml2 2.12.7+dfsg+really2.9.14-2.1+deb13u3 in the publira image, a dependency of libvips42t64. Debian marks it no-dsa for trixie, so no security update fixes it there. Removing it is https://github.com/publira/publira/issues/5480.",
+      "expires": "2026-12-08"
+    }
+  ]
+}

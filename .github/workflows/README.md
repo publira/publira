@@ -116,16 +116,56 @@ The notes cover the commits since the nearest earlier release tag the new one de
 
 ### Release images
 
-[`release-images.yml`](./release-images.yml), named `Release images`, runs only as the `Images` job of `Release notes`, so the Release is published after its images and never names a tag an operator cannot pull yet. A failed image build holds the Release back; re-running the failed jobs resumes from there.
+[`release-images.yml`](./release-images.yml), named `Release images`, runs only as the `Images` job of `Release notes`, so the Release is published after its images and never names a tag an operator cannot pull yet. A failed image build or scan holds the Release back; re-running the failed jobs resumes from there.
 
 | Displayed job | Purpose |
 | --- | --- |
 | `Images / Build / <name> (<arch>)` | Build one image for one architecture from the tagged commit, and push it by digest, untagged. |
-| `Images / Publish` | Tag each image's two digests as one multi-architecture image, sign it, then read every tag back signed out and verify it. |
+| `Images / Scan` | Scan every image the builds pushed with Trivy, and fail on a critical finding in the layers `infra/docker/` adds. See [Image scan](#image-scan). |
+| `Images / Publish` | Once the scan passes, tag each image's two digests as one multi-architecture image, sign it, then read every tag back signed out and verify it. |
 
-It pushes `ghcr.io/publira/<name>:<version>`, the version being the Git tag without its `v` (`1.2.3` for `v1.2.3`), for `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, and `email-renderer`, the names [`infra/deploy/compose.yaml`](../../infra/deploy/compose.yaml) composes, so `PUBLIRA_IMAGE_REGISTRY=ghcr.io/publira` and `PUBLIRA_IMAGE_TAG=<version>` run a release unedited. `Release notes` passes the version in as the `version` input. Each image is built with the arguments `task docker:verify:full` gives it, the Go images with `VERSION` set to the version, for `linux/amd64` and `linux/arm64` on a runner of each architecture, and is labelled with `org.opencontainers.image.source`, `.version`, and `.revision`. It is pushed under the exact version and no other: no `latest`, no `1.2`. BuildKit attaches an SPDX SBOM and SLSA provenance (`mode=max`) to each architecture's image, stored as an attestation manifest the index lists beside it under the platform `unknown/unknown`. `Images / Publish` signs each index by its digest with keyless cosign, through the job's OIDC token, so the signature names `release-images.yml` at the release's tag and covers the attestations the index names. It then checks, signed out, that each index lists `linux/amd64` and `linux/arm64`, an attestation manifest for each, and a signature that verifies against that identity. How an operator verifies an image and reads its attestations is in [Verify a release](../../docs/en/2-deployments/10-releases.md#verify-a-release).
+It pushes `ghcr.io/publira/<name>:<version>`, the version being the Git tag without its `v` (`1.2.3` for `v1.2.3`), for `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, and `email-renderer`, the names [`infra/deploy/compose.yaml`](../../infra/deploy/compose.yaml) composes, so `PUBLIRA_IMAGE_REGISTRY=ghcr.io/publira` and `PUBLIRA_IMAGE_TAG=<version>` run a release unedited. `Release notes` passes the version in as the `version` input. Each image is built with the arguments `task docker:verify:full` gives it, the Go images with `VERSION` set to the version, for `linux/amd64` and `linux/arm64` on a runner of each architecture, and is labelled with `org.opencontainers.image.source`, `.version`, and `.revision`. Its manifest carries the `org.opencontainers.image.base.name` and `.base.digest` annotations, naming the image the last `FROM` of its Dockerfile starts from as that line pins it, and the build fails on a last `FROM` that pins no digest. It is pushed under the exact version and no other: no `latest`, no `1.2`. BuildKit attaches an SPDX SBOM and SLSA provenance (`mode=max`) to each architecture's image, stored as an attestation manifest the index lists beside it under the platform `unknown/unknown`. `Images / Publish` signs each index by its digest with keyless cosign, through the job's OIDC token, so the signature names `release-images.yml` at the release's tag and covers the attestations the index names. It then checks, signed out, that each index lists `linux/amd64` and `linux/arm64`, an attestation manifest for each, and a signature that verifies against that identity. How an operator verifies an image and reads its attestations is in [Verify a release](../../docs/en/2-deployments/10-releases.md#verify-a-release).
 
-The jobs hold `packages: write` through `GITHUB_TOKEN`, and `Images / Publish` `id-token: write` for the signature, and no other secret. A package a workflow creates can start out private, and `GITHUB_TOKEN` cannot change its visibility, so `Images / Publish` fails naming each package it cannot read signed out until an organization owner makes it public.
+The build and publish jobs hold `packages: write` through `GITHUB_TOKEN`, `Images / Scan` only `packages: read`, and `Images / Publish` `id-token: write` for the signature, and no other secret. A package a workflow creates can start out private, and `GITHUB_TOKEN` cannot change its visibility, so `Images / Publish` fails naming each package it cannot read signed out until an organization owner makes it public.
+
+#### Image scan
+
+`Images / Scan` runs [`scripts/scan-image.sh`](../../scripts/scan-image.sh) for every image and architecture the builds pushed, and hands the results to [`scripts/image-vulns.ts`](../../scripts/image-vulns.ts), whose behaviour is covered by `scripts/image-vulns.test.ts`. The script reads the image from the registry by digest with Trivy, at the `TRIVY_VERSION` the workflow pins, for critical findings only, and resolves the layers of the base image its annotations name for that architecture. An image starts with every layer of its base, so each finding is either in one of those layers or in one the Dockerfile adds.
+
+The job fails on:
+
+- a critical finding in a layer the Dockerfile adds — a package `apt-get install` brings, or a module or a binary a `COPY` puts in — that [`infra/docker/trivy-ignore.json`](../../infra/docker/trivy-ignore.json) does not list. The log names the image and the platform, the advisory, the package and the version that fixes it, and the layer, by its position, its digest, and the instruction that made it;
+- an entry whose `expires` date has passed, whether or not any image still carries the finding;
+- an entry without an `id`, a `reason`, or an `expires` date, or an `id` listed twice;
+- an image that does not start with the layers of the base its annotations name.
+
+A critical finding in the base image's layers is a warning in the log and a row of the job summary, and passes: what removes it is a release of the base image, which no change here brings forward. The summary also lists every finding an entry accepts, with its reason and its expiry. An entry no image needs any more is a warning: delete it.
+
+Reproduce the scan of a pushed image with `scripts/scan-image.sh <image>@<digest> <amd64|arm64> <dir>/<name>/<arch>`, then `node scripts/image-vulns.ts infra/docker/trivy-ignore.json <dir>`; it needs `trivy` on the `PATH`, and an image built without the base annotations cannot be scanned this way.
+
+##### Handling a finding
+
+1. Read the advisory at the link the log gives, and the instruction behind the layer, to see which package brings it and what reaching it would take.
+2. When a fixed version exists, move to it. A Debian package is fixed by the next build once the fix is in the Debian release the image runs on, so re-running every job of the release run, not only the failed ones, builds the images again with it. A module or a package of this repository's own is raised in a pull request, as is a base image a fix needs.
+3. When the fix cannot land yet — no release fixes it, or it needs work of its own — accept it with an entry, and file the Issue that lifts it:
+
+   ```json
+   {
+     "ignore": [
+       {
+         "id": "CVE-YYYY-NNNN",
+         "reason": "Which package of which image carries it, why it is accepted, and the Issue that removes the entry.",
+         "expires": "YYYY-MM-DD"
+       }
+     ]
+   }
+   ```
+
+   The `id` is the advisory as Trivy reports it, a CVE or a GHSA ID, and the entry accepts it in every image. It suppresses the finding through the `expires` day, in UTC, and fails the job from the next. Choose a date weeks away rather than months, so the finding is judged again while the reason is still true.
+
+4. When an entry expires, fix the finding, or judge it again and set a new date with a reason that says what changed.
+
+A release the scan holds has tagged no image under its version, so a fix or an entry that lands in a pull request reaches it the way the release commit does: through a new release pull request and the tag moved onto the commit that merges it, as the [`release` skill](../../skills/release/SKILL.md) describes.
 
 # CI workflow
 

@@ -126,7 +126,7 @@ gh run list --workflow release-notes.yml --branch vX.Y.Z --limit 1 --json databa
 gh run watch <run id> --exit-status
 ```
 
-The jobs run in order — `Check version`, then `Images` (one `Images / Build / <name> (<arch>)` per image and architecture, then `Images / Publish`), then `Publish release` — and each one starts only once the one before it succeeds.
+The jobs run in order — `Check version`, then `Images` (one `Images / Build / <name> (<arch>)` per image and architecture, then `Images / Scan`, then `Images / Publish`), then `Publish release` — and each one starts only once the one before it succeeds.
 
 ### When `Check version` refuses the tag
 
@@ -139,13 +139,20 @@ git push origin :refs/tags/vX.Y.Z
 
 ### When `Images` or `Publish release` fails
 
-Do not move a tag that passed `Check version`: images may already be under its version. Read the failed job's log, and re-run only the failed jobs, which resumes from where it stopped and publishes the Release once the images are in:
+Do not move a tag that passed `Check version`: images may already be under its version. The one exception is a release `Images / Scan` holds, below. Read the failed job's log, and re-run only the failed jobs, which resumes from where it stopped and publishes the Release once the images are in:
 
 ```bash
 gh run rerun <run id> --failed
 ```
 
 `Images / Publish` names each package it cannot read signed out. A package a workflow creates for the first time can start out private, and `GITHUB_TOKEN` cannot change that: ask an organization owner to make each named package public under its **Package settings**, and re-run the failed jobs once they have. It also names an image that lacks an attestation manifest for a platform, or whose signature does not verify against `release-images.yml` at the tag; read the log of the build or of `Sign the multi-architecture images` for why.
+
+### When `Images / Scan` holds the release
+
+Its log names each image, platform, advisory, and layer with a critical finding in the layers `infra/docker/` adds. Re-running only the failed jobs scans the same images again, which passes only if the advisory database changed. **Handling a finding** under [Image scan](../../.github/workflows/README.md#image-scan) says what to do about one:
+
+- A Debian package whose fix the Debian release now carries: re-run every job, `gh run rerun <run id>` without `--failed`, which builds the images again from the same commit.
+- A fix or an ignore entry that has to land in a pull request: nothing is tagged under the version yet, since `Images / Publish` never ran, and no Release exists. Once the pull request merges, open a release pull request for the same version as in step 4 — its commit is empty, since every `package.json` already carries the number — then move the tag onto the commit that merges it, as under **When `Check version` refuses the tag**, and watch the new run.
 
 A Release found wrong after it is published is fixed by the next release, not by moving its tag.
 

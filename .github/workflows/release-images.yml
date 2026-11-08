@@ -20,6 +20,8 @@ on:
 permissions: {}
 
 env:
+  # renovate: datasource=github-releases depName=aquasecurity/trivy versioning=semver-coerced
+  TRIVY_VERSION: 0.76.1
   REGISTRY: ghcr.io/publira
   SOURCE: ${{ github.server_url }}/${{ github.repository }}
   TAG: ${{ inputs.version }}
@@ -121,6 +123,19 @@ jobs:
           if [[ "${VERSION_ARG}" == "true" ]]; then
             flags+=(--build-arg "VERSION=${TAG}")
           fi
+          # The image the final stage starts FROM, as the OCI base annotations
+          # on the image's manifest, which is how the scan job tells the base
+          # image's layers from the ones the Dockerfile adds. The last FROM of
+          # every Dockerfile here names an image pinned by digest.
+          base="$(awk 'toupper($1) == "FROM" { ref = ""; for (i = 2; i <= NF; i++) if ($i !~ /^--/) { ref = $i; break } } END { print ref }' "${DOCKERFILE}")"
+          if [[ "${base}" != *@sha256:* ]]; then
+            echo "::error file=${DOCKERFILE}::The last FROM names ${base:-nothing}, not an image pinned by digest."
+            exit 1
+          fi
+          flags+=(
+            --annotation "manifest:org.opencontainers.image.base.name=${base%@*}"
+            --annotation "manifest:org.opencontainers.image.base.digest=${base#*@}"
+          )
           # BuildKit writes the SBOM and the SLSA provenance of the image into
           # an attestation manifest beside it, which the index lists as an
           # `unknown/unknown` platform. The signature the publish job makes
@@ -148,9 +163,71 @@ jobs:
           path: ${{ runner.temp }}/digests/
           if-no-files-found: error
 
+  # Every image, for every architecture, before any of them is tagged: a
+  # critical finding in the layers infra/docker/ adds holds the release, and
+  # one in the base image's layers is reported in the job summary and passes.
+  # scripts/image-vulns.ts judges the findings against
+  # infra/docker/trivy-ignore.json.
+  scan:
+    name: Scan
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # The images are pushed but untagged, and a package the build just
+      # created can still be private.
+      packages: read
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+
+      - name: Setup / Trivy
+        uses: ./.github/actions/tool-install
+        with:
+          tool: trivy
+
+      - name: Download the digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+
+      - name: Sign in to the registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin <<< "${GH_TOKEN}"
+
+      - name: Scan the images
+        env:
+          DIGESTS_PATH: ${{ runner.temp }}/digests
+          SCAN_PATH: ${{ runner.temp }}/scan
+        run: |
+          set -euo pipefail
+          for dir in "${DIGESTS_PATH}"/*; do
+            image="${dir##*/}"
+            for digest in "${dir}"/*; do
+              arch="${digest##*/}"
+              scripts/scan-image.sh "${REGISTRY}/${image}@$(cat "${digest}")" "${arch}" "${SCAN_PATH}/${image}/${arch}"
+            done
+          done
+
+      - name: Judge the findings
+        env:
+          SCAN_PATH: ${{ runner.temp }}/scan
+        run: node scripts/image-vulns.ts infra/docker/trivy-ignore.json "${SCAN_PATH}"
+
   publish:
     name: Publish
-    needs: build
+    needs: [build, scan]
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
