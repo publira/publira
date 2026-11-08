@@ -26,7 +26,7 @@ import (
 // It admits a tenant's API key as well. Which procedures a key may call is
 // decided before the handler runs, by apiKeyProcedures and the key's scopes,
 // and the ones at this level are the purchase reads purchases:read admits;
-// TestAPIKeyProceduresAreReads keeps every one of them a read.
+// TestAPIKeyProceduresKeepToTheirScopes keeps every one of them a read.
 func (s *adminServer) requireTenantAdmin(ctx context.Context) (rpcmiddleware.SessionContext, error) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if ok && sessionCtx.APIKeyID != uuid.Nil {
@@ -37,7 +37,14 @@ func (s *adminServer) requireTenantAdmin(ctx context.Context) (rpcmiddleware.Ses
 
 // requireTenantEditor admits a tenant_editor and a tenant_admin: the writes to
 // the catalogue, the pages, the announcements, and the moderation of comments.
+//
+// It admits a tenant's API key as well, for the catalogue writes catalog:write
+// admits; apiKeyProcedures decides which before the handler runs.
 func (s *adminServer) requireTenantEditor(ctx context.Context) (rpcmiddleware.SessionContext, error) {
+	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if ok && sessionCtx.APIKeyID != uuid.Nil {
+		return sessionCtx, nil
+	}
 	return requireTenantLevel(ctx, auth.RoleTenantEditor, "tenant editor role required")
 }
 

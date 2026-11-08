@@ -22,6 +22,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// An entry's actor is a member, named by actor_user_public_id and actor_name
+// under the role they held; one of the tenant's API keys, under the role
+// "api_key", named by actor_api_key_id, actor_api_key_prefix, and actor_name,
+// the key's name; or the platform itself, under "system", named by none.
 type AdminAuditLog struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ActorUserPublicId string                 `protobuf:"bytes,1,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
@@ -34,6 +38,12 @@ type AdminAuditLog struct {
 	Reason            string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
 	ClientIp          string                 `protobuf:"bytes,9,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
 	CreatedAt         string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The ApiKey.id of the key the entry is filed under; empty for any other
+	// actor.
+	ActorApiKeyId string `protobuf:"bytes,11,opt,name=actor_api_key_id,json=actorApiKeyId,proto3" json:"actor_api_key_id,omitempty"`
+	// That key's ApiKey.prefix, "pbk_" and twelve characters; empty for any
+	// other actor.
+	ActorApiKeyPrefix string `protobuf:"bytes,12,opt,name=actor_api_key_prefix,json=actorApiKeyPrefix,proto3" json:"actor_api_key_prefix,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -134,6 +144,20 @@ func (x *AdminAuditLog) GetClientIp() string {
 func (x *AdminAuditLog) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AdminAuditLog) GetActorApiKeyId() string {
+	if x != nil {
+		return x.ActorApiKeyId
+	}
+	return ""
+}
+
+func (x *AdminAuditLog) GetActorApiKeyPrefix() string {
+	if x != nil {
+		return x.ActorApiKeyPrefix
 	}
 	return ""
 }
@@ -433,7 +457,7 @@ var File_publira_admin_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x1cpublira/admin/v1/audit.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xc2\x02\n" +
+	"\x1cpublira/admin/v1/audit.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x9c\x03\n" +
 	"\rAdminAuditLog\x12/\n" +
 	"\x14actor_user_public_id\x18\x01 \x01(\tR\x11actorUserPublicId\x12\x1d\n" +
 	"\n" +
@@ -449,7 +473,9 @@ const file_publira_admin_v1_audit_proto_rawDesc = "" +
 	"\tclient_ip\x18\t \x01(\tR\bclientIp\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\tR\tcreatedAt\"\x94\x02\n" +
+	" \x01(\tR\tcreatedAt\x12'\n" +
+	"\x10actor_api_key_id\x18\v \x01(\tR\ractorApiKeyId\x12/\n" +
+	"\x14actor_api_key_prefix\x18\f \x01(\tR\x11actorApiKeyPrefix\"\x94\x02\n" +
 	"\x14ListAuditLogsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12/\n" +

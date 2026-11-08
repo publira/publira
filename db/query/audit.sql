@@ -25,6 +25,7 @@ INSERT INTO audit_logs (
     actor_role,
     actor_public_id,
     actor_name,
+    actor_api_key_id,
     action,
     target_type,
     target_id,
@@ -42,6 +43,7 @@ SELECT sqlc.arg('id'),
     CASE
         WHEN sqlc.narg('actor_user_id')::uuid IS NOT NULL AND actor.id IS NULL THEN sqlc.narg('actor_name')::text
     END,
+    sqlc.narg('actor_api_key_id')::uuid,
     sqlc.arg('action'),
     sqlc.narg('target_type'),
     sqlc.narg('target_id'),
@@ -182,7 +184,8 @@ LIMIT sqlc.arg('limit');
 -- index order, so each scan direction gets its own query.
 -- The actor is read through the account while it exists and from what the
 -- entry kept of it once it is deleted, for the filter as for the columns, so a
--- deleted member's entries are still listed under their public ID.
+-- deleted member's entries are still listed under their public ID. An entry
+-- filed under an API key is named by the key, which is never deleted.
 -- cursor rules: proto/README.md.
 -- name: ListAuditLogsByTenantDesc :many
 SELECT a.id,
@@ -197,9 +200,13 @@ SELECT a.id,
     a.client_ip,
     a.created_at,
     COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
+    COALESCE(actor_u.name, a.actor_name, actor_k.name, ''::text) AS actor_name,
+    a.actor_api_key_id,
+    COALESCE(actor_k.prefix, ''::text) AS actor_api_key_prefix
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+    LEFT JOIN tenant_api_keys actor_k ON actor_k.tenant_id = a.tenant_id
+    AND actor_k.id = a.actor_api_key_id
 WHERE a.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
@@ -232,9 +239,13 @@ SELECT a.id,
     a.client_ip,
     a.created_at,
     COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
+    COALESCE(actor_u.name, a.actor_name, actor_k.name, ''::text) AS actor_name,
+    a.actor_api_key_id,
+    COALESCE(actor_k.prefix, ''::text) AS actor_api_key_prefix
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+    LEFT JOIN tenant_api_keys actor_k ON actor_k.tenant_id = a.tenant_id
+    AND actor_k.id = a.actor_api_key_id
 WHERE a.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)

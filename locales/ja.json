@@ -1089,6 +1089,7 @@
         "tenant_member": "メンバー",
         "tenant_owner": "オーナー",
         "system": "自動処理",
+        "api_key": "APIキー",
         "unset": "権限未設定"
       },
       "cancel": "キャンセル",
@@ -3896,7 +3897,7 @@
       },
       "api_keys": {
         "title": "APIキー",
-        "description": "キーは、誰もサインインしていなくても、このテナントとして管理APIを読み取ります。読み取れるのはスコープで指定したものだけで、何も変更できません。",
+        "description": "キーは、誰もサインインしていなくても、このテナントとして管理APIを呼び出します。読み取りも変更も、スコープで指定したものに限られます。",
         "tenant_id": "テナントID",
         "tenant_id_description": "キーを使ったリクエストでは、このIDでテナントを指定します。",
         "copy_tenant_id": "テナントIDをコピー",
@@ -3919,7 +3920,9 @@
           "catalog_label": "作品",
           "catalog_description": "シリーズ、エピソード、巻、レーベル、ジャンル、著者、著者の役割。",
           "purchases_label": "購入",
-          "purchases_description": "購入と、購入者ごとのメールアドレス。"
+          "purchases_description": "購入と、購入者ごとのメールアドレス。",
+          "catalog_write_label": "作品の編集",
+          "catalog_write_description": "シリーズとエピソードを作成、更新し、そのページやアイキャッチ画像、著者を登録して、エピソードの公開を予約します。公開前の審査が必須のときは、予約したエピソードはテナント管理者の承認を待ちます。"
         },
         "create_title": "APIキーを作成",
         "name": "名前",

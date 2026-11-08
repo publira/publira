@@ -395,12 +395,15 @@ On the platform API it runs as a service principal with no operator and no platf
 
 ## Tenant API keys
 
-A tenant admin creates API keys for the tenant's own systems through `AdminApiKeyService`. A key is sent as `Authorization: Bearer pbk_<prefix>_<secret>` on the admin API with the tenant in the request's `TenantContext`, as an operator's session is, and the call runs as that key: no user and no role, and only on the reads its scopes admit; any other answers `permission_denied`. Only the key's SHA-256 is stored, and a revoked key, or one of another tenant, answers `unauthenticated`.
+A tenant admin creates API keys for the tenant's own systems through `AdminApiKeyService`. A key is sent as `Authorization: Bearer pbk_<prefix>_<secret>` on the admin API with the tenant in the request's `TenantContext`, as an operator's session is, and the call runs as that key: no user and no role, and only on the procedures its scopes admit; any other answers `permission_denied`. Only the key's SHA-256 is stored, and a revoked key, or one of another tenant, answers `unauthenticated`.
 
 - `catalog:read`: `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `ListEpisodesByPublicationDate`, `GetEpisode`, `ListEpisodeCredits`, `ListEpisodeFreeWindows`, `ListEpisodeCampaignPrices`, `GetSeriesWaitFreeSettings`, `GetSeriesFreeAfterSettings`, `ListVolumes`; `AdminLabelService/ListLabels`, `GetLabel`; `AdminGenreService/ListGenres`; `AdminCreatorService/ListCreators`, `GetCreator`; `AdminCreatorRoleService/ListCreatorRoles`
 - `purchases:read`: `AdminPurchaseService/ListPurchases`, `GetPurchase`, `ListReaderPurchases`
+- `catalog:write`: `AdminSeriesService/CreateSeries`, `UpdateSeries`, `CreateEpisode`, `UpdateEpisodeTitle`, `UpdateEpisodePricing`, `UpdateEpisodeLayout`, `UpdateEpisodePublishSchedule`, `UploadEpisodeImages`, `ReplaceEpisodeImage`, `ReorderEpisodeImages`, `DeleteEpisodeImage`, `ReplaceEpisodeCredits`, `UploadSeriesEyeCatchAspectImage`, `UploadEpisodeEyeCatchImage`, `UploadEpisodeEyeCatchAspectImage`
 
-Each request a key makes is charged to it against the platform policy's `api_key_request` limit, on the same counters as the reader limits, and one past it answers `resource_exhausted` with `Retry-After`.
+A write made with a key is recorded in the audit log under the key, with the role `api_key` and `audit_logs.actor_api_key_id`, and `ListAuditLogs` answers the key's name, id, and prefix. A schedule a key sets while the tenant requires review submits the episode for review in nobody's name, and a Tenant admin's approval publishes it, as for a member. The pages a key's writes answer carry no media token, since a token names the operator it is issued to.
+
+Each request a key makes, a write included, is charged to it against the platform policy's `api_key_request` limit, on the same counters as the reader limits, and one past it answers `resource_exhausted` with `Retry-After`.
 
 The edge does not forward the admin API, so a key reaches `publira server` only over the network the web apps call it on.
 

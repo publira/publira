@@ -2,7 +2,7 @@
 title: Audit log
 description: Find out who on the staff changed what in the tenant, and when, from the record the console keeps of its staff's actions.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-11-09
 ---
 
 **Audit logs**, under **Administration**, is the tenant's record of what its staff did in the console: who changed what, when, and whether it worked. It answers questions such as who suspended a reader, who changed the payment settings, or when a member was given a role. Only a Tenant admin sees it.
@@ -12,7 +12,7 @@ updated: 2026-10-27
 Each entry shows:
 
 - **Date and time**, in the tenant's time zone.
-- **Actor**: the member of staff, with their public ID and the role they held at the time. **Automatic** marks an action the platform took on its own, such as a comment hidden because enough readers reported it.
+- **Actor**: the member of staff, with their public ID and the role they held at the time. **API key** marks a change one of the tenant's [API keys](../10-api-keys-and-webhooks.md#changing-the-catalog-with-a-key) made, under the key's name and prefix. **Automatic** marks an action the platform took on its own, such as a comment hidden because enough readers reported it.
 - **Action**, with the kind and ID of what it acted on underneath, and a reason when the action records one.
 - **Outcome**: **Success** or **Failure**. A failed attempt is recorded too, such as a wrong code at a two-step verification sign-in or a mail server test that did not get through.
 

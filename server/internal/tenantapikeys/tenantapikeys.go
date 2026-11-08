@@ -18,11 +18,12 @@ import (
 // Scopes, as tenant_api_keys.scopes stores them.
 const (
 	ScopeCatalogRead   = "catalog:read"
+	ScopeCatalogWrite  = "catalog:write"
 	ScopePurchasesRead = "purchases:read"
 )
 
 // Scopes are every scope a key can hold.
-var Scopes = []string{ScopeCatalogRead, ScopePurchasesRead}
+var Scopes = []string{ScopeCatalogRead, ScopeCatalogWrite, ScopePurchasesRead}
 
 // ValidScope reports whether scope is one a key can hold.
 func ValidScope(scope string) bool {

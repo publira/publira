@@ -6,6 +6,10 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// An entry's actor is a member, named by actor_user_public_id and actor_name
+// under the role they held; one of the tenant's API keys, under the role
+// "api_key", named by actor_api_key_id, actor_api_key_prefix, and actor_name,
+// the key's name; or the platform itself, under "system", named by none.
 message AdminAuditLog {
   string actor_user_public_id = 1;
   string actor_name = 2;
@@ -17,6 +21,12 @@ message AdminAuditLog {
   string reason = 8;
   string client_ip = 9;
   string created_at = 10;
+  // The ApiKey.id of the key the entry is filed under; empty for any other
+  // actor.
+  string actor_api_key_id = 11;
+  // That key's ApiKey.prefix, "pbk_" and twelve characters; empty for any
+  // other actor.
+  string actor_api_key_prefix = 12;
 }
 
 message ListAuditLogsRequest {

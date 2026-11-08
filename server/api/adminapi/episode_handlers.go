@@ -1232,8 +1232,13 @@ func (s *adminServer) attachAdminMediaToken(
 ) error {
 	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	// A media token names the operator it is issued to, and neither the service
-	// principal nor an API key is one, so it is refused even when there is
-	// nothing to sign.
+	// principal nor an API key is one. A key's page writes answer the pages as
+	// they stand without one, since what a key's system needs from the answer
+	// is the pages' ids and order; the service principal has no page write and
+	// is refused, even when there is nothing to sign.
+	if ok && session.APIKeyID != uuid.Nil {
+		return nil
+	}
 	if ok && session.Unattended() {
 		return serviceProcedureDeniedError()
 	}

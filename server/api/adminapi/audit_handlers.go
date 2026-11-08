@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantapikeys"
 )
 
 const (
@@ -29,34 +30,38 @@ type auditLogQueryFilters struct {
 }
 
 type auditLogPageRow struct {
-	id            uuid.UUID
-	actorPublicID string
-	actorName     string
-	actorRole     string
-	action        string
-	targetType    sql.NullString
-	targetID      sql.NullString
-	outcome       string
-	reason        sql.NullString
-	clientIP      sql.NullString
-	createdAt     time.Time
+	id                uuid.UUID
+	actorPublicID     string
+	actorName         string
+	actorAPIKeyID     uuid.NullUUID
+	actorAPIKeyPrefix string
+	actorRole         string
+	action            string
+	targetType        sql.NullString
+	targetID          sql.NullString
+	outcome           string
+	reason            sql.NullString
+	clientIP          sql.NullString
+	createdAt         time.Time
 }
 
 func mapAuditLogDescRows(rows []dbmodels.ListAuditLogsByTenantDescRow) []auditLogPageRow {
 	mapped := make([]auditLogPageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, auditLogPageRow{
-			id:            row.ID,
-			actorPublicID: row.ActorPublicID,
-			actorName:     row.ActorName,
-			actorRole:     row.ActorRole,
-			action:        row.Action,
-			targetType:    row.TargetType,
-			targetID:      row.TargetID,
-			outcome:       row.Outcome,
-			reason:        row.Reason,
-			clientIP:      row.ClientIp,
-			createdAt:     row.CreatedAt,
+			id:                row.ID,
+			actorPublicID:     row.ActorPublicID,
+			actorName:         row.ActorName,
+			actorAPIKeyID:     row.ActorApiKeyID,
+			actorAPIKeyPrefix: row.ActorApiKeyPrefix,
+			actorRole:         row.ActorRole,
+			action:            row.Action,
+			targetType:        row.TargetType,
+			targetID:          row.TargetID,
+			outcome:           row.Outcome,
+			reason:            row.Reason,
+			clientIP:          row.ClientIp,
+			createdAt:         row.CreatedAt,
 		})
 	}
 	return mapped
@@ -66,17 +71,19 @@ func mapAuditLogAscRows(rows []dbmodels.ListAuditLogsByTenantAscRow) []auditLogP
 	mapped := make([]auditLogPageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, auditLogPageRow{
-			id:            row.ID,
-			actorPublicID: row.ActorPublicID,
-			actorName:     row.ActorName,
-			actorRole:     row.ActorRole,
-			action:        row.Action,
-			targetType:    row.TargetType,
-			targetID:      row.TargetID,
-			outcome:       row.Outcome,
-			reason:        row.Reason,
-			clientIP:      row.ClientIp,
-			createdAt:     row.CreatedAt,
+			id:                row.ID,
+			actorPublicID:     row.ActorPublicID,
+			actorName:         row.ActorName,
+			actorAPIKeyID:     row.ActorApiKeyID,
+			actorAPIKeyPrefix: row.ActorApiKeyPrefix,
+			actorRole:         row.ActorRole,
+			action:            row.Action,
+			targetType:        row.TargetType,
+			targetID:          row.TargetID,
+			outcome:           row.Outcome,
+			reason:            row.Reason,
+			clientIP:          row.ClientIp,
+			createdAt:         row.CreatedAt,
 		})
 	}
 	return mapped
@@ -226,6 +233,10 @@ func (s *adminServer) ListAuditLogs(
 		}
 		if row.clientIP.Valid {
 			item.ClientIp = row.clientIP.String
+		}
+		if row.actorAPIKeyID.Valid {
+			item.ActorApiKeyId = row.actorAPIKeyID.UUID.String()
+			item.ActorApiKeyPrefix = tenantapikeys.DisplayPrefix(row.actorAPIKeyPrefix)
 		}
 		auditLogs = append(auditLogs, item)
 	}

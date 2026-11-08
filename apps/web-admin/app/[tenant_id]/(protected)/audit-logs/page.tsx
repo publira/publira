@@ -298,6 +298,7 @@ const AuditLogsContent = async ({
                         timeZone={timeZone}
                       />
                       <AuditLogActorCell
+                        actorApiKeyPrefix={item.actorApiKeyPrefix}
                         actorName={item.actorName}
                         actorRole={item.actorRole}
                         actorUserPublicId={item.actorUserPublicId}

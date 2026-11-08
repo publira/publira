@@ -24,6 +24,7 @@ const auditTargetAPIKey = "api_key"
 var apiKeyScopes = map[publiraadminv1.ApiKeyScope]string{
 	publiraadminv1.ApiKeyScope_API_KEY_SCOPE_CATALOG_READ:   tenantapikeys.ScopeCatalogRead,
 	publiraadminv1.ApiKeyScope_API_KEY_SCOPE_PURCHASES_READ: tenantapikeys.ScopePurchasesRead,
+	publiraadminv1.ApiKeyScope_API_KEY_SCOPE_CATALOG_WRITE:  tenantapikeys.ScopeCatalogWrite,
 }
 
 func apiKeyToProto(row dbmodels.TenantApiKey) *publiraadminv1.ApiKey {

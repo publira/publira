@@ -1089,6 +1089,7 @@
         "tenant_member": "멤버",
         "tenant_owner": "소유자",
         "system": "자동 처리",
+        "api_key": "API 키",
         "unset": "역할 없음"
       },
       "cancel": "취소",
@@ -3896,7 +3897,7 @@
       },
       "api_keys": {
         "title": "API 키",
-        "description": "키는 아무도 로그인하지 않아도 이 테넌트로서 관리 API를 읽습니다. 범위로 지정한 것만 읽을 수 있고, 아무것도 변경하지 않습니다.",
+        "description": "키는 아무도 로그인하지 않아도 이 테넌트로서 관리 API를 호출합니다. 범위로 지정한 것만 읽고 변경할 수 있습니다.",
         "tenant_id": "테넌트 ID",
         "tenant_id_description": "키로 보내는 요청은 이 ID로 테넌트를 지정합니다.",
         "copy_tenant_id": "테넌트 ID 복사",
@@ -3919,7 +3920,9 @@
           "catalog_label": "작품",
           "catalog_description": "시리즈, 에피소드, 권, 레이블, 장르, 작가, 작가 역할.",
           "purchases_label": "구매",
-          "purchases_description": "구매와 구매자별 이메일 주소."
+          "purchases_description": "구매와 구매자별 이메일 주소.",
+          "catalog_write_label": "작품 편집",
+          "catalog_write_description": "시리즈와 에피소드를 만들고 수정하며, 그 페이지, 커버 이미지, 작가를 등록하고, 에피소드 공개를 예약합니다. 공개 전 검토가 필수일 때는 예약한 에피소드가 테넌트 관리자의 승인을 기다립니다."
         },
         "create_title": "API 키 만들기",
         "name": "이름",

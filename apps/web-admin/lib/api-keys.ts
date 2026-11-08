@@ -20,18 +20,27 @@ import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
-/** What a key may read: the catalog, or the purchases and their buyers. */
-export const API_KEY_SCOPES = ["catalog", "purchases"] as const;
+/**
+ * What a key may call: the catalog's reads, the purchases and their buyers, or
+ * the catalog's writes.
+ */
+export const API_KEY_SCOPES = [
+  "catalog",
+  "purchases",
+  "catalog_write",
+] as const;
 
 export type ApiKeyScopeValue = (typeof API_KEY_SCOPES)[number];
 
 const scopeValues: Partial<Record<ApiKeyScope, ApiKeyScopeValue>> = {
   [ApiKeyScope.CATALOG_READ]: "catalog",
   [ApiKeyScope.PURCHASES_READ]: "purchases",
+  [ApiKeyScope.CATALOG_WRITE]: "catalog_write",
 };
 
 const rpcScopes: Record<ApiKeyScopeValue, ApiKeyScope> = {
   catalog: ApiKeyScope.CATALOG_READ,
+  catalog_write: ApiKeyScope.CATALOG_WRITE,
   purchases: ApiKeyScope.PURCHASES_READ,
 };
 

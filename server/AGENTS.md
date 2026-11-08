@@ -73,6 +73,8 @@ The handler calls its level's helper itself, exactly once, rather than through a
 
 `requireTenantAuditor` is also the one helper the web apps' service credential passes. Which procedures that credential may call is decided before any handler, by `serviceProcedures`, and `TestServiceProceduresAreAuditorReads` keeps every one of them a `tenant_auditor` read.
 
+A tenant's API key passes all three helpers, since what it may call is decided before any handler too, by `apiKeyProcedures` and the key's scopes. `TestAPIKeyProceduresKeepToTheirScopes` keeps the read scopes to reads and `catalog:write` to `AdminSeriesService`'s `tenant_editor` writes, so placing an RPC at a level never opens it to a key; listing it in `apiKeyProcedures` does.
+
 A level gates the RPC, not what is in the answer: an RPC may still leave a field out for a weaker role, the way `GetCreator` answers the reader accounts linked to a creator to a tenant_admin alone.
 
 ## A role variable resolves on its own, and no one else's

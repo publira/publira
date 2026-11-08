@@ -21,6 +21,7 @@ INSERT INTO audit_logs (
     actor_role,
     actor_public_id,
     actor_name,
+    actor_api_key_id,
     action,
     target_type,
     target_id,
@@ -38,12 +39,13 @@ SELECT $1,
     CASE
         WHEN $4::uuid IS NOT NULL AND actor.id IS NULL THEN $6::text
     END,
-    $7,
+    $7::uuid,
     $8,
     $9,
     $10,
     $11,
-    $12
+    $12,
+    $13
 FROM (SELECT 1) AS entry
     LEFT JOIN users actor ON actor.tenant_id = $2
     AND actor.id = $4::uuid
@@ -56,6 +58,7 @@ type InsertAuditLogParams struct {
 	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
 	ActorPublicID sql.NullString `json:"actor_public_id"`
 	ActorName     sql.NullString `json:"actor_name"`
+	ActorApiKeyID uuid.NullUUID  `json:"actor_api_key_id"`
 	Action        string         `json:"action"`
 	TargetType    sql.NullString `json:"target_type"`
 	TargetID      sql.NullString `json:"target_id"`
@@ -77,6 +80,7 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 		arg.ActorUserID,
 		arg.ActorPublicID,
 		arg.ActorName,
+		arg.ActorApiKeyID,
 		arg.Action,
 		arg.TargetType,
 		arg.TargetID,
@@ -144,9 +148,13 @@ SELECT a.id,
     a.client_ip,
     a.created_at,
     COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
+    COALESCE(actor_u.name, a.actor_name, actor_k.name, ''::text) AS actor_name,
+    a.actor_api_key_id,
+    COALESCE(actor_k.prefix, ''::text) AS actor_api_key_prefix
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+    LEFT JOIN tenant_api_keys actor_k ON actor_k.tenant_id = a.tenant_id
+    AND actor_k.id = a.actor_api_key_id
 WHERE a.tenant_id = $1
     AND ($2::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = $2::text)
     AND ($3::text IS NULL OR a.action = $3::text)
@@ -180,19 +188,21 @@ type ListAuditLogsByTenantAscParams struct {
 }
 
 type ListAuditLogsByTenantAscRow struct {
-	ID            uuid.UUID      `json:"id"`
-	TenantID      uuid.UUID      `json:"tenant_id"`
-	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
-	ActorRole     string         `json:"actor_role"`
-	Action        string         `json:"action"`
-	TargetType    sql.NullString `json:"target_type"`
-	TargetID      sql.NullString `json:"target_id"`
-	Outcome       string         `json:"outcome"`
-	Reason        sql.NullString `json:"reason"`
-	ClientIp      sql.NullString `json:"client_ip"`
-	CreatedAt     time.Time      `json:"created_at"`
-	ActorPublicID string         `json:"actor_public_id"`
-	ActorName     string         `json:"actor_name"`
+	ID                uuid.UUID      `json:"id"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	ActorUserID       uuid.NullUUID  `json:"actor_user_id"`
+	ActorRole         string         `json:"actor_role"`
+	Action            string         `json:"action"`
+	TargetType        sql.NullString `json:"target_type"`
+	TargetID          sql.NullString `json:"target_id"`
+	Outcome           string         `json:"outcome"`
+	Reason            sql.NullString `json:"reason"`
+	ClientIp          sql.NullString `json:"client_ip"`
+	CreatedAt         time.Time      `json:"created_at"`
+	ActorPublicID     string         `json:"actor_public_id"`
+	ActorName         string         `json:"actor_name"`
+	ActorApiKeyID     uuid.NullUUID  `json:"actor_api_key_id"`
+	ActorApiKeyPrefix string         `json:"actor_api_key_prefix"`
 }
 
 func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error) {
@@ -228,6 +238,8 @@ func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLog
 			&i.CreatedAt,
 			&i.ActorPublicID,
 			&i.ActorName,
+			&i.ActorApiKeyID,
+			&i.ActorApiKeyPrefix,
 		); err != nil {
 			return nil, err
 		}
@@ -255,9 +267,13 @@ SELECT a.id,
     a.client_ip,
     a.created_at,
     COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
+    COALESCE(actor_u.name, a.actor_name, actor_k.name, ''::text) AS actor_name,
+    a.actor_api_key_id,
+    COALESCE(actor_k.prefix, ''::text) AS actor_api_key_prefix
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+    LEFT JOIN tenant_api_keys actor_k ON actor_k.tenant_id = a.tenant_id
+    AND actor_k.id = a.actor_api_key_id
 WHERE a.tenant_id = $1
     AND ($2::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = $2::text)
     AND ($3::text IS NULL OR a.action = $3::text)
@@ -291,19 +307,21 @@ type ListAuditLogsByTenantDescParams struct {
 }
 
 type ListAuditLogsByTenantDescRow struct {
-	ID            uuid.UUID      `json:"id"`
-	TenantID      uuid.UUID      `json:"tenant_id"`
-	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
-	ActorRole     string         `json:"actor_role"`
-	Action        string         `json:"action"`
-	TargetType    sql.NullString `json:"target_type"`
-	TargetID      sql.NullString `json:"target_id"`
-	Outcome       string         `json:"outcome"`
-	Reason        sql.NullString `json:"reason"`
-	ClientIp      sql.NullString `json:"client_ip"`
-	CreatedAt     time.Time      `json:"created_at"`
-	ActorPublicID string         `json:"actor_public_id"`
-	ActorName     string         `json:"actor_name"`
+	ID                uuid.UUID      `json:"id"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	ActorUserID       uuid.NullUUID  `json:"actor_user_id"`
+	ActorRole         string         `json:"actor_role"`
+	Action            string         `json:"action"`
+	TargetType        sql.NullString `json:"target_type"`
+	TargetID          sql.NullString `json:"target_id"`
+	Outcome           string         `json:"outcome"`
+	Reason            sql.NullString `json:"reason"`
+	ClientIp          sql.NullString `json:"client_ip"`
+	CreatedAt         time.Time      `json:"created_at"`
+	ActorPublicID     string         `json:"actor_public_id"`
+	ActorName         string         `json:"actor_name"`
+	ActorApiKeyID     uuid.NullUUID  `json:"actor_api_key_id"`
+	ActorApiKeyPrefix string         `json:"actor_api_key_prefix"`
 }
 
 // Admin ListAuditLogs is (created_at, id) DESC. Forward uses the DESC query;
@@ -312,7 +330,8 @@ type ListAuditLogsByTenantDescRow struct {
 // index order, so each scan direction gets its own query.
 // The actor is read through the account while it exists and from what the
 // entry kept of it once it is deleted, for the filter as for the columns, so a
-// deleted member's entries are still listed under their public ID.
+// deleted member's entries are still listed under their public ID. An entry
+// filed under an API key is named by the key, which is never deleted.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAuditLogsByTenantDesc,
@@ -347,6 +366,8 @@ func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLo
 			&i.CreatedAt,
 			&i.ActorPublicID,
 			&i.ActorName,
+			&i.ActorApiKeyID,
+			&i.ActorApiKeyPrefix,
 		); err != nil {
 			return nil, err
 		}

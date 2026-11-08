@@ -1985,7 +1985,8 @@ type Querier interface {
 	// index order, so each scan direction gets its own query.
 	// The actor is read through the account while it exists and from what the
 	// entry kept of it once it is deleted, for the filter as for the columns, so a
-	// deleted member's entries are still listed under their public ID.
+	// deleted member's entries are still listed under their public ID. An entry
+	// filed under an API key is named by the key, which is never deleted.
 	// cursor rules: proto/README.md.
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
 	// Every tenant that chose automatic closing, for the maintenance pass that

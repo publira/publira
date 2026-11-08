@@ -97,6 +97,21 @@ export const ApiKeyCreateForm = async ({
               </Suspense>
             </Field.Description>
           </Field.Root>
+          <Field.Root>
+            <div className="flex items-center gap-2">
+              <Checkbox name="scopes" value="catalog_write" />
+              <Field.Label>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.settings.api_keys.scopes.catalog_write_label" />
+                </Suspense>
+              </Field.Label>
+            </div>
+            <Field.Description>
+              <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+                <Message message="admin.settings.api_keys.scopes.catalog_write_description" />
+              </Suspense>
+            </Field.Description>
+          </Field.Root>
         </fieldset>
       </ActionForm.Fieldset>
 

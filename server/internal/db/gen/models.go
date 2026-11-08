@@ -73,6 +73,7 @@ type AuditLog struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	ActorPublicID sql.NullString `json:"actor_public_id"`
 	ActorName     sql.NullString `json:"actor_name"`
+	ActorApiKeyID uuid.NullUUID  `json:"actor_api_key_id"`
 }
 
 type BilledSubscription struct {
