@@ -1,11 +1,11 @@
 ---
 title: Releases
-description: What a version number tells you, what each kind of release may change, how 0.x differs, which releases run side by side, and which releases receive fixes.
+description: What a version number tells you, what each kind of release may change, how 0.x differs, which releases run side by side, which releases receive fixes, and how to verify what a release publishes.
 published: 2026-10-11
-updated: 2026-10-31
+updated: 2026-11-08
 ---
 
-Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. The release also carries the [Docker Compose](./3-docker-compose.md) install as `publira-deploy-<version>.tar.gz`: the Compose file, its `.env.example` naming the release's images, and the proxy's `Caddyfile`, as they are in the repository at the tag. It carries no signature, and neither do the images. This page says what the number of a release tells you before you upgrade to it, which releases run side by side, and which releases receive fixes.
+Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. The release also carries the [Docker Compose](./3-docker-compose.md) install as `publira-deploy-<version>.tar.gz`: the Compose file, its `.env.example` naming the release's images, and the proxy's `Caddyfile`, as they are in the repository at the tag. The images and the archive are signed by the workflow that publishes them, as [Verify a release](#verify-a-release) describes. This page says what the number of a release tells you before you upgrade to it, which releases run side by side, which releases receive fixes, and how to verify what you pull.
 
 ## What the number tells you
 
@@ -65,6 +65,53 @@ Report a vulnerability privately, from [Report a vulnerability](https://github.c
 You can upgrade from any release to any later one in a single step. `db migrate` applies the migrations of every release in between in one run, so the schema needs nothing from you.
 
 What it does not apply is what the release notes ask of you, so read the notes of every release after the one you run, up to and including the one you upgrade to. Only the major releases among them name anything, and before `1.0.0` the minor releases. Their Upgrade notes add up: set every variable they add, pass `db roles` a password for every role added in between, and carry every change to what the edge has to do into your edge. A release in between may also have retired something the release you run still reads, so [stop the processes](./8-upgrading.md#decide-whether-to-stop-the-processes-first) before you skip one.
+
+## Verify a release
+
+Every image of a release, and its Compose install, carries a keyless [Sigstore](https://www.sigstore.dev/) signature made by the repository's workflow when it publishes them. The signature names that workflow and the release's tag, so there is no key to fetch or trust, and an image or an archive built anywhere else fails to verify. Verifying needs [cosign](https://docs.sigstore.dev/cosign/system_config/installation/). Nothing requires it: `docker pull` and the Compose install work as before without it.
+
+### The images
+
+Verify each image you run against the workflow that pushes the images, with `<version>` the release's version, such as `0.1.0` for `v0.1.0`:
+
+```bash
+cosign verify ghcr.io/publira/publira:<version> \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-images.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+It lists the checks it made, then prints the signature's claims as JSON, where `docker-manifest-digest` is the digest of the image the signature covers. It fails on an image that has no signature from that workflow at that tag. Repeat it for `publiractl`, `web-storefront`, and `web-admin`, and for `web-platform` and `email-renderer` if you run them. A tag can be pushed again, so to run exactly what you verified, refer to the image by that digest, `ghcr.io/publira/publira@sha256:<digest>`, instead of by its tag.
+
+### What the attestations hold
+
+Each image carries two attestations for each of its platforms, which BuildKit writes while it builds the image:
+
+- **An SBOM**, in SPDX: the operating system packages, the Node.js packages, and the Go modules the image holds.
+- **SLSA provenance**: the commit and the workflow run that built the image, the Dockerfile and the arguments it was built with, and the digests of the base images it started from.
+
+They are stored in the image's list of platforms beside the platform they describe, which is why that list shows an `unknown/unknown` entry next to `linux/amd64` and next to `linux/arm64`. `docker pull` and container runtimes skip those entries. The signature covers the list, and the list names each attestation by its digest, so read them through the digest `cosign verify` printed:
+
+```bash
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .SBOM}}'
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .Provenance}}'
+```
+
+Each prints a JSON object with one entry for `linux/amd64` and one for `linux/arm64`.
+
+### The Compose install
+
+The Release carries the archive's signature beside it, as `publira-deploy-<version>.tar.gz.sigstore.json`, made by the workflow that publishes the Release. Download both, and verify the archive before you extract it:
+
+```bash
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz.sigstore.json
+cosign verify-blob publira-deploy-<version>.tar.gz \
+  --bundle publira-deploy-<version>.tar.gz.sigstore.json \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-notes.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+It prints `Verified OK`, and fails on an archive that differs from the one the workflow signed by a single byte. The archive names the images by their tag, so verify them as well, as [The images](#the-images) describes.
 
 ## Next steps
 

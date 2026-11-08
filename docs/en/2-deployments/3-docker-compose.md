@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file every release publishes, from downloading it to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-28
+updated: 2026-11-08
 ---
 
 Every release publishes a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -53,6 +53,8 @@ curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publ
 tar -xzf publira-deploy-<version>.tar.gz
 cd publira-deploy-<version>
 ```
+
+The Release carries the archive's signature beside it. To check that the archive is the one the release published, verify it before you run `tar`, as [The Compose install](./10-releases.md#the-compose-install) describes.
 
 It holds `compose.yaml`, `.env.example`, the proxy's `Caddyfile`, and a `README.md` with the full list of variables. Every command on this page runs from this directory.
 

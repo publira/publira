@@ -1,11 +1,12 @@
 ---
 title: 릴리스
-description: 버전 번호가 알려 주는 것, 각 종류의 릴리스가 바꿀 수 있는 것, 0.x가 다른 점, 나란히 실행할 수 있는 릴리스, 그리고 수정을 받는 릴리스를 설명합니다.
+description: 버전 번호가 알려 주는 것, 각 종류의 릴리스가 바꿀 수 있는 것, 0.x가 다른 점, 나란히 실행할 수 있는 릴리스, 수정을 받는 릴리스, 그리고 릴리스가 게시하는 것을 검증하는 방법을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
-Publira는 `vMAJOR.MINOR.PATCH`라는 이름의 리포지토리 태그로 릴리스되며, `v0.1.0`부터 시작합니다. 각 릴리스는 릴리스 노트와 함께 리포지토리의 [Releases](https://github.com/publira/publira/releases) 페이지에 게시되고, 이미지는 릴리스의 버전, 즉 태그에서 `v`를 뺀 것으로만 push되며 다른 태그는 붙지 않습니다. `v0.1.0`은 `ghcr.io/publira/<name>:0.1.0`으로 pull합니다. `latest`도 `0.1`도 없으므로, 설치 환경은 실행하는 버전을 직접 바꿀 때만 새 릴리스로 옮겨 갑니다. 릴리스에는 [Docker Compose](./3-docker-compose.md) 설치 환경도 `publira-deploy-<version>.tar.gz`로 함께 들어 있습니다. 태그 시점의 리포지토리에 있는 그대로의 Compose 파일, 릴리스의 이미지를 지정하는 `.env.example`, 프록시의 `Caddyfile`입니다. 여기에는 서명이 없으며, 이미지에도 없습니다. 이 페이지에서는 업그레이드하기 전에 릴리스의 번호가 무엇을 알려 주는지, 어떤 릴리스를 나란히 실행할 수 있는지, 어떤 릴리스가 수정을 받는지 설명합니다.
+Publira는 `vMAJOR.MINOR.PATCH`라는 이름의 리포지토리 태그로 릴리스되며, `v0.1.0`부터 시작합니다. 각 릴리스는 릴리스 노트와 함께 리포지토리의 [Releases](https://github.com/publira/publira/releases) 페이지에 게시되고, 이미지는 릴리스의 버전, 즉 태그에서 `v`를 뺀 것으로만 push되며 다른 태그는 붙지 않습니다. `v0.1.0`은 `ghcr.io/publira/<name>:0.1.0`으로 pull합니다. `latest`도 `0.1`도 없으므로, 설치 환경은 실행하는 버전을 직접 바꿀 때만 새 릴리스로 옮겨 갑니다. 릴리스에는 [Docker Compose](./3-docker-compose.md) 설치 환경도 `publira-deploy-<version>.tar.gz`로 함께 들어 있습니다. 태그 시점의 리포지토리에 있는 그대로의 Compose 파일, 릴리스의 이미지를 지정하는 `.env.example`, 프록시의 `Caddyfile`입니다. 이미지와 이 아카이브에는 이를 게시하는 워크플로가 서명하며, 확인하는 방법은 [릴리스 검증](#릴리스-검증)에서 설명합니다. 이 페이지에서는 업그레이드하기 전에 릴리스의 번호가 무엇을 알려 주는지, 어떤 릴리스를 나란히 실행할 수 있는지, 어떤 릴리스가 수정을 받는지, pull하는 것을 어떻게 검증하는지 설명합니다.
 
 ## 번호가 알려 주는 것
 
@@ -65,6 +66,53 @@ Publira는 `vMAJOR.MINOR.PATCH`라는 이름의 리포지토리 태그로 릴리
 어느 릴리스에서든 그보다 이후의 어느 릴리스로든 한 번에 업그레이드할 수 있습니다. `db migrate`가 그 사이 모든 릴리스의 마이그레이션을 한 번의 실행으로 적용하므로, 스키마에 대해서는 운영자가 할 일이 없습니다.
 
 `db migrate`가 적용하지 않는 것은 릴리스 노트가 요구하는 작업이므로, 지금 실행 중인 릴리스 다음부터 업그레이드할 릴리스까지 모든 릴리스의 노트를 읽으세요. 그중 무언가가 적혀 있는 것은 메이저 릴리스뿐이며, `1.0.0` 이전에는 마이너 릴리스입니다. 그 Upgrade notes는 모두 합쳐서 적용합니다. 추가된 모든 변수를 설정하고, 그 사이에 추가된 모든 역할의 비밀번호를 `db roles`에 전달하고, 엣지가 해야 하는 일의 모든 변경을 자신의 엣지에 반영하세요. 또 그 사이의 릴리스가 지금 실행 중인 릴리스가 아직 읽는 것을 폐지했을 수도 있으므로, 릴리스를 건너뛰기 전에 [프로세스를 멈추세요](./8-upgrading.md#먼저-프로세스를-멈출지-결정하기).
+
+## 릴리스 검증
+
+릴리스의 모든 이미지와 Docker Compose 설치 환경에는 리포지토리의 워크플로가 게시할 때 만든, 키를 쓰지 않는 [Sigstore](https://www.sigstore.dev/) 서명이 있습니다. 서명에는 그 워크플로와 릴리스의 태그가 기록되므로 가져오거나 신뢰할 키가 없으며, 다른 곳에서 빌드한 이미지나 아카이브는 검증에 실패합니다. 검증에는 [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)이 필요합니다. 검증은 필수가 아니며, `docker pull`과 Compose 설치 환경은 검증하지 않아도 지금처럼 동작합니다.
+
+### 이미지
+
+실행하는 각 이미지를 이미지를 push하는 워크플로에 대해 검증하세요. `<version>`은 릴리스의 버전으로, `v0.1.0`이라면 `0.1.0`입니다.
+
+```bash
+cosign verify ghcr.io/publira/publira:<version> \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-images.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+이 명령은 수행한 검사를 나열한 다음 서명의 내용을 JSON으로 출력하며, 그중 `docker-manifest-digest`가 서명이 다루는 이미지의 다이제스트입니다. 해당 태그에서 해당 워크플로가 만든 서명이 없는 이미지라면 실패합니다. `publiractl`, `web-storefront`, `web-admin`에도 반복하고, `web-platform`과 `email-renderer`를 실행한다면 그것들에도 반복하세요. 태그는 다시 push될 수 있으므로, 검증한 것을 그대로 실행하려면 태그 대신 그 다이제스트로 `ghcr.io/publira/publira@sha256:<digest>`처럼 이미지를 지정하세요.
+
+### 증명에 담긴 내용
+
+각 이미지에는 플랫폼마다 두 가지 증명(attestation)이 있으며, 둘 다 BuildKit이 이미지를 빌드하면서 기록합니다.
+
+- **SBOM**은 SPDX 형식으로, 이미지에 들어 있는 운영 체제 패키지, Node.js 패키지, Go 모듈을 담습니다.
+- **SLSA provenance**는 이미지를 빌드한 커밋과 워크플로 실행, 빌드에 쓴 Dockerfile과 그 인수, 출발점이 된 베이스 이미지의 다이제스트를 담습니다.
+
+증명은 이미지의 플랫폼 목록 안에, 설명하는 플랫폼 옆에 저장됩니다. 그래서 목록에는 `linux/amd64`와 `linux/arm64` 옆에 각각 `unknown/unknown` 항목이 보입니다. `docker pull`과 컨테이너 런타임은 이 항목을 건너뜁니다. 서명은 목록을 다루고 목록은 각 증명을 다이제스트로 가리키므로, `cosign verify`가 출력한 다이제스트를 통해 읽으세요.
+
+```bash
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .SBOM}}'
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .Provenance}}'
+```
+
+둘 다 `linux/amd64`와 `linux/arm64`에 대한 항목이 하나씩 있는 JSON 객체를 출력합니다.
+
+### Compose 설치 환경
+
+릴리스에는 아카이브 옆에 그 서명이 `publira-deploy-<version>.tar.gz.sigstore.json`으로 들어 있으며, 릴리스를 게시하는 워크플로가 만든 것입니다. 둘 다 내려받고, 압축을 풀기 전에 아카이브를 검증하세요.
+
+```bash
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz.sigstore.json
+cosign verify-blob publira-deploy-<version>.tar.gz \
+  --bundle publira-deploy-<version>.tar.gz.sigstore.json \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-notes.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+성공하면 `Verified OK`를 출력하며, 워크플로가 서명한 아카이브와 한 바이트라도 다르면 실패합니다. 아카이브는 이미지를 태그로 지정하므로, [이미지](#이미지)에서 설명한 대로 이미지도 검증하세요.
 
 ## 다음 단계
 

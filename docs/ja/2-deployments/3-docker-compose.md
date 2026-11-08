@@ -2,8 +2,8 @@
 title: Docker Compose
 description: リリースごとに公開されるComposeファイルで、Publira全体を1台のホストで動かします。ファイルのダウンロードから、テナント管理画面への最初のログインまでを説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-28
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
 Publiraは、1台のホストでPublira全体を動かすComposeファイルをリリースごとに公開しています。Publiraが依存するサービス、Publiraのプロセス、その前に置くリバースプロキシが、すでに互いにつながった状態で定義されています。動くPubliraをいちばん早く用意できる方法で、このページでは空のホストからテナント管理画面への最初のログインまでを説明します。
@@ -54,6 +54,8 @@ curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publ
 tar -xzf publira-deploy-<version>.tar.gz
 cd publira-deploy-<version>
 ```
+
+リリースにはアーカイブの署名も添付しています。アーカイブがリリースで公開されたものと同じか確かめるには、`tar`を実行する前に[Docker Composeの構成一式](./10-releases.md#docker-composeの構成一式)の手順で検証してください。
 
 アーカイブには`compose.yaml`、`.env.example`、プロキシの`Caddyfile`と、環境変数の一覧を載せた`README.md`が入っています。このページのコマンドは、すべてこのディレクトリで実行します。
 

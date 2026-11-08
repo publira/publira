@@ -2,7 +2,8 @@
 title: Docker Compose
 description: 모든 릴리스가 게시하는 Compose 파일로 설치 환경 전체를 한 대의 호스트에서 실행하는 방법을, 파일 다운로드부터 테넌트 콘솔에 처음 로그인하기까지 설명합니다.
 published: 2026-11-03
-source_updated: 2026-10-28
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
 모든 릴리스는 설치 환경 전체를 한 대의 호스트에서 실행하는 Compose 파일을 게시합니다. 이 파일에는 Publira가 의존하는 서비스, 설치 환경의 프로세스, 그 앞에 놓이는 리버스 프록시가 이미 서로 연결된 상태로 들어 있습니다. 동작하는 설치 환경을 얻는 가장 빠른 방법이며, 이 페이지에서는 빈 호스트에서 시작해 테넌트 콘솔에 처음 로그인하기까지 안내합니다.
@@ -53,6 +54,8 @@ curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publ
 tar -xzf publira-deploy-<version>.tar.gz
 cd publira-deploy-<version>
 ```
+
+릴리스에는 아카이브의 서명도 함께 들어 있습니다. 아카이브가 릴리스가 게시한 것과 같은지 확인하려면 `tar`를 실행하기 전에 [Compose 설치 환경](./10-releases.md#compose-설치-환경)에서 설명한 대로 검증하세요.
 
 이 디렉터리에는 `compose.yaml`, `.env.example`, 프록시의 `Caddyfile`, 그리고 환경 변수의 전체 목록이 담긴 `README.md`가 있습니다. 이 페이지의 모든 명령은 이 디렉터리에서 실행합니다.
 

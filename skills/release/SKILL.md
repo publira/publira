@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a Publira release, from choosing its version to checking the published Release. Use when asked to cut, tag, ship, or publish a release, to choose or bump the next version, to open the `chore(release): vX.Y.Z` pull request, to push a `v` tag, or to recover a release whose `Release notes` run was refused or failed. Decides between a minor and a patch release from the pull requests merged since the previous release tag and the rules in docs/en/2-deployments/10-releases.md, checks the preconditions, makes the release commit with scripts/release-version.ts, tags the commit that merges it, watches Check version, Images, and Publish release, and verifies the tag, the prerelease flag, the Upgrade notes, every image pulled signed out, and the Compose install archive attached to the Release.
+description: Cut a Publira release, from choosing its version to checking the published Release. Use when asked to cut, tag, ship, or publish a release, to choose or bump the next version, to open the `chore(release): vX.Y.Z` pull request, to push a `v` tag, or to recover a release whose `Release notes` run was refused or failed. Decides between a minor and a patch release from the pull requests merged since the previous release tag and the rules in docs/en/2-deployments/10-releases.md, checks the preconditions, makes the release commit with scripts/release-version.ts, tags the commit that merges it, watches Check version, Images, and Publish release, and verifies the tag, the prerelease flag, the Upgrade notes, every image pulled signed out with its attestations and a signature that verifies, and the Compose install archive and its signature attached to the Release.
 ---
 
 # Cut a Release
@@ -145,7 +145,7 @@ Do not move a tag that passed `Check version`: images may already be under its v
 gh run rerun <run id> --failed
 ```
 
-`Images / Publish` names each package it cannot read signed out. A package a workflow creates for the first time can start out private, and `GITHUB_TOKEN` cannot change that: ask an organization owner to make each named package public under its **Package settings**, and re-run the failed jobs once they have.
+`Images / Publish` names each package it cannot read signed out. A package a workflow creates for the first time can start out private, and `GITHUB_TOKEN` cannot change that: ask an organization owner to make each named package public under its **Package settings**, and re-run the failed jobs once they have. It also names an image that lacks an attestation manifest for a platform, or whose signature does not verify against `release-images.yml` at the tag; read the log of the build or of `Sign the multi-architecture images` for why.
 
 A Release found wrong after it is published is fixed by the next release, not by moving its tag.
 
@@ -157,7 +157,7 @@ gh release view vX.Y.Z --json tagName,isPrerelease,isDraft,url,body
 
 - `tagName` is `vX.Y.Z`, and `isPrerelease` is `true` exactly when the tag carries a hyphen.
 - The body opens with **Upgrade notes** matching the preview from step 2, followed by the list of pull requests since `$previous` (or a comparison link when the list does not fit). The first release has no list.
-- Every image is pullable signed out under the bare version, for both architectures:
+- Every image is pullable signed out under the bare version, for both architectures, with an attestation manifest for each, and verifies against the workflow that pushed it, the way [Verify a release](../../docs/en/2-deployments/10-releases.md#verify-a-release) has an operator check it. Install [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) if it is missing; the empty `DOCKER_CONFIG` keeps it from reading the registry with stored credentials:
 
   ```bash
   version=X.Y.Z
@@ -165,21 +165,32 @@ gh release view vX.Y.Z --json tagName,isPrerelease,isDraft,url,body
     token=$(curl -fsS "https://ghcr.io/token?scope=repository:publira/$name:pull" | jq -r .token)
     curl -fsS -H "Authorization: Bearer $token" -H 'Accept: application/vnd.oci.image.index.v1+json' \
       "https://ghcr.io/v2/publira/$name/manifests/$version" |
-      jq -r --arg name "$name" '"\($name): " + ([.manifests[].platform | "\(.os)/\(.architecture)"] | join(", "))'
+      jq -r --arg name "$name" '[.manifests[] | select(.annotations."vnd.docker.reference.type" == "attestation-manifest")] as $attestations
+        | "\($name): " + ([.manifests[] | select(.annotations."vnd.docker.reference.type" != "attestation-manifest") | .platform | "\(.os)/\(.architecture)"] | join(", "))
+          + ", \($attestations | length) attestation manifests"'
+    DOCKER_CONFIG="$(mktemp -d)" cosign verify "ghcr.io/publira/$name:$version" \
+      --certificate-identity "https://github.com/publira/publira/.github/workflows/release-images.yml@refs/tags/v$version" \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null 2>&1 &&
+      echo "$name: signed" || echo "$name: NOT VERIFIED"
   done
   ```
 
-  Each line lists `linux/amd64, linux/arm64`; a failed request is an image an operator cannot pull.
+  Each image prints `linux/amd64, linux/arm64, 2 attestation manifests` and then `signed`. A failed request is an image an operator cannot pull, and `NOT VERIFIED` is one whose signature fails; rerun that `cosign verify` without the redirection to read why.
 
 - The Compose install is attached and downloads signed out, the way [Docker Compose](../../docs/en/2-deployments/3-docker-compose.md#download-the-compose-file) has an operator fetch it:
 
   ```bash
   version=X.Y.Z
   curl -fsSL "https://github.com/publira/publira/releases/download/v$version/publira-deploy-$version.tar.gz" -o "/tmp/publira-deploy-$version.tar.gz"
+  curl -fsSL "https://github.com/publira/publira/releases/download/v$version/publira-deploy-$version.tar.gz.sigstore.json" -o "/tmp/publira-deploy-$version.tar.gz.sigstore.json"
+  cosign verify-blob "/tmp/publira-deploy-$version.tar.gz" \
+    --bundle "/tmp/publira-deploy-$version.tar.gz.sigstore.json" \
+    --certificate-identity "https://github.com/publira/publira/.github/workflows/release-notes.yml@refs/tags/v$version" \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
   tar -tvzf "/tmp/publira-deploy-$version.tar.gz"
   tar -xzOf "/tmp/publira-deploy-$version.tar.gz" "publira-deploy-$version/.env.example" | grep '^PUBLIRA_IMAGE_TAG='
   ```
 
-  The listing is one directory, `publira-deploy-X.Y.Z/`, holding `compose.yaml`, `.env.example`, `Caddyfile` as a regular file (`-rw`, not `lrwx`), and `README.md`, and the last line is `PUBLIRA_IMAGE_TAG=X.Y.Z`. A failed download is an archive missing from the Release: re-run `Publish release`, which attaches it.
+  The listing is one directory, `publira-deploy-X.Y.Z/`, holding `compose.yaml`, `.env.example`, `Caddyfile` as a regular file (`-rw`, not `lrwx`), and `README.md`, and the last line is `PUBLIRA_IMAGE_TAG=X.Y.Z`; `cosign verify-blob` prints `Verified OK` before the listing. A failed download is an archive or a signature missing from the Release: re-run `Publish release`, which attaches both.
 
 Report the Release URL, the version and why it was chosen, the release pull request, and any job that had to be re-run and why.
