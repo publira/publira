@@ -713,9 +713,12 @@ jobs:
     if: needs.changes.outputs.scan_go == 'true'
     runs-on: ubuntu-26.04
     steps:
+      # The base commit is scanned too, from a worktree of the same clone, so
+      # it has to be in the local history.
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup / Go
@@ -733,9 +736,13 @@ jobs:
 
       # scripts/check-go-vulns.sh pins govulncheck and reads its findings
       # against server/govulncheck-ignore.json, so this runs exactly what a
-      # local run of the script does.
+      # local run of the script does. Given the commit the change goes onto,
+      # it fails only on what the change brings; a manual run has none, and
+      # holds every finding to the ignore file.
       - name: Validate / govulncheck
-        run: scripts/check-go-vulns.sh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: scripts/check-go-vulns.sh ${BASE_SHA:+"${BASE_SHA}"}
 
   test-go:
     name: Test / Go (${{ matrix.share }})

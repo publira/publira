@@ -4,6 +4,7 @@
  * `server/` and pipes its output here; the `Scan / Go` job runs that script.
  *
  *     node scripts/go-vulns.ts server/govulncheck-ignore.json < govulncheck.json
+ *     node scripts/go-vulns.ts server/govulncheck-ignore.json --base base.json < govulncheck.json
  *
  * govulncheck reports a vulnerability at three levels: the module is required,
  * a package of it is imported, a vulnerable symbol is reached. Only the last
@@ -14,10 +15,17 @@
  * expiry has passed, and on an ignore file that does not hold to its shape.
  * An entry no finding needs any more is a warning: the vulnerability is gone,
  * and the entry is left to delete.
+ *
+ * With `--base`, the govulncheck output of the branch a pull request merges
+ * into, an unlisted finding fails only when the base does not reach it too:
+ * the pull request is held to what it brings, and an advisory published
+ * against code that already merged is a warning there rather than a failure
+ * of every unrelated pull request until someone deals with it.
  */
 
 import { readFileSync } from "node:fs";
 import { text } from "node:stream/consumers";
+import { parseArgs } from "node:util";
 
 import { isJsonObject, isJsonString } from "./json-value.ts";
 import type { JsonObject, JsonValue } from "./json-value.ts";
@@ -347,6 +355,17 @@ const describe = (finding: Finding): string => {
   return `${finding.id}${summary} (${finding.module}@${finding.version}, ${fix}; https://pkg.go.dev/vuln/${finding.id})`;
 };
 
+export interface EvaluateOptions {
+  /**
+   * The IDs the base branch reaches, when the run checks a pull request;
+   * `undefined` holds every finding to the ignore file.
+   */
+  readonly base?: ReadonlySet<string>;
+  /** The ignore file, named in its problems. */
+  readonly file: string;
+  readonly today: Temporal.PlainDate;
+}
+
 /**
  * The findings held to the ignore file's entries on `today`. An entry
  * suppresses its finding through the day it expires; from the day after, it
@@ -355,8 +374,7 @@ const describe = (finding: Finding): string => {
 export const evaluate = (
   findings: readonly Finding[],
   entries: readonly IgnoreEntry[],
-  today: Temporal.PlainDate,
-  file: string
+  { base, file, today }: EvaluateOptions
 ): Report => {
   const errors: Problem[] = [];
   const warnings: Problem[] = [];
@@ -382,9 +400,15 @@ export const evaluate = (
     const entry = byId.get(finding.id);
 
     if (entry === undefined) {
-      errors.push({
-        message: `${describe(finding)}, reached through ${finding.callStack.join(" → ")}`,
-      });
+      const message = `${describe(finding)}, reached through ${finding.callStack.join(" → ")}`;
+
+      if (base?.has(finding.id)) {
+        warnings.push({
+          message: `${message}. The base branch reaches it too, so this change did not bring it: fix or accept it in a change of its own`,
+        });
+      } else {
+        errors.push({ message });
+      }
     } else if (Temporal.PlainDate.compare(entry.expires, today) >= 0) {
       ignored.push(finding);
     }
@@ -405,29 +429,43 @@ const print = (level: "error" | "warning", problem: Problem): void => {
   }
 };
 
-if (import.meta.main) {
-  const [file] = process.argv.slice(2);
+const readOutput = (source: string): Finding[] =>
+  readFindings(splitJsonStream(source));
 
-  if (file === undefined) {
+if (import.meta.main) {
+  const { positionals, values } = parseArgs({
+    allowPositionals: true,
+    options: { base: { type: "string" } },
+  });
+
+  const [file] = positionals;
+
+  if (file === undefined || positionals.length > 1) {
     console.error(
-      "usage: node scripts/go-vulns.ts <ignore-file> < govulncheck.json"
+      "usage: node scripts/go-vulns.ts <ignore-file> [--base <base-output>] < govulncheck.json"
     );
     process.exit(2);
   }
 
-  const findings = readFindings(splitJsonStream(await text(process.stdin)));
+  const findings = readOutput(await text(process.stdin));
+
+  const base =
+    values.base === undefined
+      ? undefined
+      : new Set(
+          readOutput(readFileSync(values.base, "utf-8")).map(({ id }) => id)
+        );
 
   const { entries, problems } = readIgnoreFile(
     readFileSync(file, "utf-8"),
     file
   );
 
-  const report = evaluate(
-    findings,
-    entries,
-    Temporal.Now.plainDateISO("UTC"),
-    file
-  );
+  const report = evaluate(findings, entries, {
+    base,
+    file,
+    today: Temporal.Now.plainDateISO("UTC"),
+  });
 
   for (const finding of report.ignored) {
     console.log(`ignored: ${describe(finding)}`);
@@ -444,8 +482,11 @@ if (import.meta.main) {
   if (problems.length > 0 || report.errors.length > 0) {
     process.exitCode = 1;
   } else {
+    const scope =
+      base === undefined ? "" : " that the base branch does not reach";
+
     console.log(
-      `govulncheck: no reachable vulnerability outside ${file} (${findings.length} reachable, ${report.ignored.length} ignored)`
+      `govulncheck: no reachable vulnerability${scope} outside ${file} (${findings.length} reachable, ${report.ignored.length} ignored)`
     );
   }
 }

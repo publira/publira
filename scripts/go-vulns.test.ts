@@ -259,7 +259,7 @@ describe("readIgnoreFile", () => {
 
 describe("evaluate", () => {
   it("fails on a finding no entry lists, naming the fix and the calls", () => {
-    const report = evaluate([reachable], [], today, FILE);
+    const report = evaluate([reachable], [], { file: FILE, today });
 
     assert.equal(report.errors.length, 1);
     assert.match(
@@ -272,8 +272,7 @@ describe("evaluate", () => {
     const report = evaluate(
       [reachable],
       [entry("GO-2026-6865", "2026-11-08")],
-      today,
-      FILE
+      { file: FILE, today }
     );
 
     assert.deepEqual(report.errors, []);
@@ -282,12 +281,10 @@ describe("evaluate", () => {
 
   it("fails from the day after the expiry, even with the finding gone", () => {
     for (const findings of [[reachable], []]) {
-      const report = evaluate(
-        findings,
-        [entry("GO-2026-6865", "2026-11-07")],
+      const report = evaluate(findings, [entry("GO-2026-6865", "2026-11-07")], {
+        file: FILE,
         today,
-        FILE
-      );
+      });
 
       assert.equal(report.errors.length, 1);
       assert.equal(report.errors[0]?.file, FILE);
@@ -297,12 +294,10 @@ describe("evaluate", () => {
   });
 
   it("warns about an entry no finding needs any more", () => {
-    const report = evaluate(
-      [],
-      [entry("GO-2026-6865", "2026-12-08")],
+    const report = evaluate([], [entry("GO-2026-6865", "2026-12-08")], {
+      file: FILE,
       today,
-      FILE
-    );
+    });
 
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.warnings, [
@@ -313,8 +308,49 @@ describe("evaluate", () => {
     ]);
   });
 
+  it("fails on a finding the base branch does not reach", () => {
+    const report = evaluate([reachable], [], {
+      base: new Set(["GO-2026-0001"]),
+      file: FILE,
+      today,
+    });
+
+    assert.equal(report.errors.length, 1);
+    assert.deepEqual(report.warnings, []);
+  });
+
+  it("warns about a finding the base branch reaches too, without failing", () => {
+    const report = evaluate([reachable], [], {
+      base: new Set(["GO-2026-6865"]),
+      file: FILE,
+      today,
+    });
+
+    assert.deepEqual(report.errors, []);
+    assert.equal(report.warnings.length, 1);
+    assert.match(
+      report.warnings[0]?.message ?? "",
+      /^GO-2026-6865: .*The base branch reaches it too/u
+    );
+  });
+
+  it("fails on an expired entry even when the base branch reaches its finding", () => {
+    const report = evaluate(
+      [reachable],
+      [entry("GO-2026-6865", "2026-11-07")],
+      {
+        base: new Set(["GO-2026-6865"]),
+        file: FILE,
+        today,
+      }
+    );
+
+    assert.equal(report.errors.length, 1);
+    assert.match(report.errors[0]?.message ?? "", /expired on 2026-11-07/u);
+  });
+
   it("passes when nothing is reached and nothing is listed", () => {
-    assert.deepEqual(evaluate([], [], today, FILE), {
+    assert.deepEqual(evaluate([], [], { file: FILE, today }), {
       errors: [],
       ignored: [],
       warnings: [],

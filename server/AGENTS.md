@@ -232,9 +232,9 @@ Then re-run `task server:test-short` (or full `task server:test`).
 ### When Go module deps change
 
 ```bash
-task server:tidy                # go mod tidy
-scripts/check-go-mod-tidy.sh    # CI parity (`Lint / Go`)
-scripts/check-go-vulns.sh       # CI parity (`Scan / Go`)
+task server:tidy                        # go mod tidy
+scripts/check-go-mod-tidy.sh            # CI parity (`Lint / Go`)
+scripts/check-go-vulns.sh origin/main   # CI parity (`Scan / Go`)
 ```
 
 Commit `go.mod` / `go.sum` exactly as `go mod tidy` leaves them; CI fails when tidy would change either file. CI also fails when the change makes the server reach a Go vulnerability that `govulncheck-ignore.json` does not accept; what to do about one is under **Vulnerability scan** in [`.github/workflows/README.md`](../.github/workflows/README.md#vulnerability-scan).

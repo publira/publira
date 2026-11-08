@@ -154,7 +154,7 @@ Implementation:
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, which includes the repository's own oxlint rules from `@publira/oxlint-plugin` (the `<svg>`-in-JSX and design-token guards), then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; `buf breaking` against the newest release tag through `scripts/check-proto-compat.sh`; the `docs/` contract and the step its translations keep with `docs/en/`, and `pnpm typecheck`. On `main`, saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`proto/README.md`](../../proto/README.md#compatibility-with-the-previous-release), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Scan / Go` | `govulncheck ./...` in `server/` through `scripts/check-go-vulns.sh`, failing on a reachable vulnerability `server/govulncheck-ignore.json` does not accept. | [Vulnerability scan](#vulnerability-scan) |
+| `Scan / Go` | `govulncheck ./...` in `server/` through `scripts/check-go-vulns.sh`, on the change and on the commit it goes onto, failing on a reachable vulnerability the change brings that `server/govulncheck-ignore.json` does not accept. | [Vulnerability scan](#vulnerability-scan) |
 | `Test / Go (<share>)` | `go test -count=1` in `server/` on one share of the packages `go test ./...` finds, as [`scripts/go-test-share.sh`](../../scripts/go-test-share.sh) assigns them: `search`, which first builds the OpenSearch and Elasticsearch images its tests run on, `api`, or `other`. On `main`, saves the share's `test-<share>` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
@@ -281,17 +281,15 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 ## Vulnerability scan
 
-`Scan / Go` runs [`scripts/check-go-vulns.sh`](../../scripts/check-go-vulns.sh), which runs `govulncheck -format json ./...` in `server/` at the version the script pins and hands the output to [`scripts/go-vulns.ts`](../../scripts/go-vulns.ts); its behaviour is covered by `scripts/go-vulns.test.ts`. Reproduce it by running the same script; like `Lint / Go`, it needs the libvips headers, because loading the packages runs cgo. govulncheck reports an advisory at three levels — the module is required, one of its packages is imported, one of its vulnerable functions is called — and only the last is a finding here: it is the one the server's binaries can actually execute, so it needs no severity threshold of its own. The standard library is checked against the Go that [`go-setup`](../actions/go-setup/action.yml) installs.
+`Scan / Go` runs [`scripts/check-go-vulns.sh`](../../scripts/check-go-vulns.sh), which runs `govulncheck -format json ./...` in `server/` at the version the script pins and hands the output to [`scripts/go-vulns.ts`](../../scripts/go-vulns.ts); its behaviour is covered by `scripts/go-vulns.test.ts`. Given a base commit, the script scans that commit as well, from a worktree of its own, and the job passes it the commit the change goes onto: the pull request's base, the merge group's base, or the commit before a push. Reproduce it by running the same script with `origin/main`; like `Lint / Go`, it needs the libvips headers, because loading the packages runs cgo. govulncheck reports an advisory at three levels — the module is required, one of its packages is imported, one of its vulnerable functions is called — and only the last is a finding here: it is the one the server's binaries can actually execute, so it needs no severity threshold of its own. The standard library is checked against the Go that [`go-setup`](../actions/go-setup/action.yml) installs.
 
 The job fails on:
 
-- a reachable finding that [`server/govulncheck-ignore.json`](../../server/govulncheck-ignore.json) does not list. The log names the advisory, the module and the version the build selects, the version that fixes it, and the calls from the server's code down to the vulnerable function;
+- a reachable finding that the base does not reach and [`server/govulncheck-ignore.json`](../../server/govulncheck-ignore.json) does not list: a module added or moved to a vulnerable version, or a vulnerable function newly called. The log names the advisory, the module and the version the build selects, the version that fixes it, and the calls from the server's code down to the vulnerable function;
 - an entry whose `expires` date has passed, whether or not the finding is still reached;
 - an entry without a `GO-YYYY-NNNN` `id`, a `reason`, or an `expires` date, or an `id` listed twice.
 
-An entry that nothing reaches any more is a warning, not a failure: delete it.
-
-The scan runs only when its paths change, so an advisory published after its module merged fails the next pull request that touches `server/`, whatever that pull request changes. Fix or accept it in a pull request of its own, and rebase onto that.
+An entry that nothing reaches any more is a warning, not a failure: delete it. So is an unlisted finding the base reaches too, which is how an advisory published after its module merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file.
 
 ### Handling a finding
 
@@ -328,7 +326,7 @@ The scan runs only when its paths change, so an advisory published after its mod
    | --- | --- |
    | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `scripts/check-proto-compat.sh`, `pnpm docs:check` (the pages under `docs/<locale>/`, the translations against `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
-   | `Scan / Go` | `scripts/check-go-vulns.sh` |
+   | `Scan / Go` | `scripts/check-go-vulns.sh origin/main`, or `scripts/check-go-vulns.sh` for every finding regardless of the base |
    | `Test / Go (<share>)` | `task server:test-short` then `task server:test`, or one share alone with `go test -count=1 $(../scripts/go-test-share.sh <share>)` in `server/` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
