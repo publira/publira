@@ -1,0 +1,139 @@
+name: Scan
+
+# The vulnerability scans of the server's Go modules and of the dependencies
+# the lock files resolve, called by CI for a change and by Weekly scan for
+# `main`, so both run the same steps against the same ignore files. Each job
+# keeps the output and the exit status of its script, and uploads them when
+# the caller asks for a report.
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        description: >-
+          The commit the change goes onto. Empty holds every finding to the ignore file, as a manual or scheduled run does.
+        default: ""
+        type: string
+      go:
+        description: Run `Go`.
+        default: true
+        type: boolean
+      dependencies:
+        description: Run `Dependencies`.
+        default: true
+        type: boolean
+      report:
+        description: >-
+          Upload each job's output and exit status as the artifact `scan-report-<job>`, for scripts/scan-report.ts.
+        default: false
+        type: boolean
+
+permissions: {}
+
+env:
+  # renovate: datasource=github-releases depName=google/osv-scanner versioning=semver-coerced
+  OSV_SCANNER_VERSION: 2.7.0
+
+jobs:
+  go:
+    name: Go
+    if: inputs.go
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      # The base commit is scanned too, from a worktree of the same clone, so
+      # it has to be in the local history.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: ./.github/actions/go-setup
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+
+      - name: Setup / libvips
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
+
+      # scripts/check-go-vulns.sh pins govulncheck and reads its findings
+      # against server/govulncheck-ignore.json, so this runs exactly what a
+      # local run of the script does. Given the commit the change goes onto,
+      # it fails only on what the change brings; without one, it holds every
+      # finding to the ignore file.
+      - name: Validate / govulncheck
+        env:
+          BASE_SHA: ${{ inputs.base }}
+          REPORT_DIR: ${{ runner.temp }}/scan-report/go
+        run: |
+          set -euo pipefail
+          mkdir -p "${REPORT_DIR}"
+          status=0
+          scripts/check-go-vulns.sh ${BASE_SHA:+"${BASE_SHA}"} 2>&1 | tee "${REPORT_DIR}/output" || status=$?
+          echo "${status}" > "${REPORT_DIR}/status"
+          exit "${status}"
+
+      - name: Report / Upload
+        if: always() && inputs.report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scan-report-go
+          path: ${{ runner.temp }}/scan-report/go
+          if-no-files-found: ignore
+          retention-days: 7
+
+  dependencies:
+    name: Dependencies
+    if: inputs.dependencies
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      # The lock files of the base commit are scanned too, read from the same
+      # clone, so that commit has to be in the local history.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup / pnpm
+        uses: ./.github/actions/pnpm-setup
+
+      - name: Setup / osv-scanner
+        uses: ./.github/actions/tool-install
+        with:
+          tool: osv-scanner
+
+      # scripts/check-dependency-vulns.sh reads osv-scanner's findings against
+      # osv-scanner.toml, so this runs exactly what a local run of the script
+      # does. Given the commit the change goes onto, it fails only on what
+      # the change brings; without one, it holds every finding to the ignore
+      # file.
+      - name: Validate / osv-scanner
+        env:
+          BASE_SHA: ${{ inputs.base }}
+          REPORT_DIR: ${{ runner.temp }}/scan-report/dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p "${REPORT_DIR}"
+          status=0
+          scripts/check-dependency-vulns.sh ${BASE_SHA:+"${BASE_SHA}"} 2>&1 | tee "${REPORT_DIR}/output" || status=$?
+          echo "${status}" > "${REPORT_DIR}/status"
+          exit "${status}"
+
+      - name: Report / Upload
+        if: always() && inputs.report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scan-report-dependencies
+          path: ${{ runner.temp }}/scan-report/dependencies
+          if-no-files-found: ignore
+          retention-days: 7
