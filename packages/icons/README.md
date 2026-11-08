@@ -61,6 +61,6 @@ Wrap an icon that lucide already has. It takes five changes, and copying an exis
 ## How hand-written SVG is kept out
 
 - Importing `lucide-react` directly: forbidden by `no-restricted-imports` in `oxlint.config.ts`, with an `overrides` exemption for `packages/icons/src/**` alone.
-- Writing `<svg>` into JSX: caught by `pnpm jsx-svg:check`, which `pnpm preflight` and CI's `Check` job run.
+- Writing `<svg>` into JSX: forbidden by `publira/no-jsx-svg`, the repository's own oxlint rule, with an `overrides` exemption for `packages/icons/src/**` and the other paths listed there.
 
-If you ever need a legitimate SVG that is not an icon, add it to the exceptions in `scripts/check-jsx-svg.ts` with a reason.
+If you ever need a legitimate SVG that is not an icon, add its file to that override in `oxlint.config.ts` with a reason.
