@@ -76,7 +76,7 @@ class FakePushMessaging implements PushMessaging {
 
 /// The API half, recording what the controller asked it to do.
 class FakePushRepository implements PushRepository {
-  final registered = <String>[];
+  final registered = <PushToken>[];
   final unregistered = <String>[];
   PushPlatform? lastPlatform;
 
@@ -91,7 +91,7 @@ class FakePushRepository implements PushRepository {
 
   @override
   Future<void> register({
-    required String token,
+    required PushToken token,
     required PushPlatform platform,
   }) async {
     await registerGate?.future;
@@ -113,12 +113,12 @@ class FakePushRepository implements PushRepository {
   }
 }
 
-/// A [PushDeviceStore] that keeps the token in memory, so a test does not
-/// reach the platform keychain.
+/// A [PushDeviceStore] that keeps the token and its type in memory, so a test
+/// does not reach the platform keychain.
 class InMemoryPushDeviceStore implements PushDeviceStore {
   InMemoryPushDeviceStore({this.token, this.readError, this.writeError});
 
-  String? token;
+  PushToken? token;
 
   /// Thrown by [read] and [write], standing in for a credential store the
   /// platform refuses.
@@ -126,7 +126,7 @@ class InMemoryPushDeviceStore implements PushDeviceStore {
   Object? writeError;
 
   @override
-  Future<String?> read() async {
+  Future<PushToken?> read() async {
     final error = readError;
     if (error != null) {
       throw error;
@@ -135,7 +135,7 @@ class InMemoryPushDeviceStore implements PushDeviceStore {
   }
 
   @override
-  Future<void> write(String token) async {
+  Future<void> write(PushToken token) async {
     final error = writeError;
     if (error != null) {
       throw error;

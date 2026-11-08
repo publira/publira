@@ -13,13 +13,13 @@ enum PushFailure {
   /// pointing at system settings, and the app does not ask again on its own.
   denied,
 
-  /// The device could not mint a token, or the API could not be reached. The
+  /// The device could not register with FCM, or the API could not be reached. The
   /// switch goes back to off and the reader can try again.
   unavailable,
 }
 
 /// Owns the new-episode notifications the reader can turn on, and everything
-/// that follows from one: the registration token on the server, the messages
+/// that follows from one: the registration on the server, the messages
 /// that arrive while the app is in front, and the tap that opens an episode.
 ///
 /// A member is told on the device when the tenant publishes a new episode, and
@@ -43,7 +43,7 @@ class PushController extends ChangeNotifier {
 
   final _subscriptions = <StreamSubscription<Object?>>[];
 
-  String? _token;
+  PushToken? _token;
   String? _adopting;
   Future<void>? _adoption;
 
@@ -106,7 +106,7 @@ class PushController extends ChangeNotifier {
     );
     _subscriptions.add(messaging.openedMessages.listen(_onMessageOpened));
 
-    String? stored;
+    PushToken? stored;
     try {
       stored = await _store.read();
     } on Object {
@@ -160,11 +160,14 @@ class PushController extends ChangeNotifier {
   /// that was left on keeps notifying — for them, and no longer for whoever
   /// held the session before.
   ///
-  /// The device is asked which identifier it is registered under now, and
-  /// that one is registered rather than the one this install stored. A release
-  /// before this one stored an FCM registration token, which the device no
-  /// longer reports once it registers by installation ID, and an installation
-  /// ID can itself be replaced while the app is not running. This runs once
+  /// The device is asked which installation ID it is registered under now,
+  /// and that one is registered rather than the one this install stored. A
+  /// release before the move to installation IDs stored an FCM registration
+  /// token, which the device no longer reports, and an installation ID can
+  /// itself be replaced while the app is not running. A device that cannot
+  /// answer registers the stored one again as the kind of value it was stored
+  /// as, so a registration token keeps going out through the target FCM
+  /// delivers it on. This runs once
   /// the session is back, which registering needs; a failure is retried the
   /// next time the app is signed in, and the reader is not told: they did not
   /// ask for anything just now.
@@ -183,7 +186,11 @@ class PushController extends ChangeNotifier {
     if (generation != _generation || held == null) {
       return;
     }
-    await _adoptToken(current == null || current.isEmpty ? held : current);
+    await _adoptToken(
+      current == null || current.isEmpty
+          ? held
+          : PushToken.installationId(current),
+    );
   }
 
   /// Takes the device off the delivery list before the session goes away.
@@ -198,7 +205,7 @@ class PushController extends ChangeNotifier {
     }
     _generation++;
     try {
-      await _repository.unregister(token);
+      await _repository.unregister(token.value);
     } on Object {
       // An unreachable API, or a session already rejected. The token below is
       // what settles it regardless.
@@ -234,11 +241,12 @@ class PushController extends ChangeNotifier {
       _failure = PushFailure.denied;
       return;
     }
-    final token = await messaging.token();
-    if (token == null || token.isEmpty) {
+    final installationId = await messaging.token();
+    if (installationId == null || installationId.isEmpty) {
       _failure = PushFailure.unavailable;
       return;
     }
+    final token = PushToken.installationId(installationId);
     try {
       await _repository.register(token: token, platform: platform);
     } on Object {
@@ -253,7 +261,7 @@ class PushController extends ChangeNotifier {
       // kept sending. Take the registration back and report the failure, which
       // leaves both sides saying the same thing.
       try {
-        await _repository.unregister(token);
+        await _repository.unregister(token.value);
       } on Object {
         // Nothing further to try. The token is stopped below, so the row the
         // server still holds is dropped at its next send.
@@ -270,7 +278,7 @@ class PushController extends ChangeNotifier {
     final token = _token;
     if (token != null) {
       try {
-        await _repository.unregister(token);
+        await _repository.unregister(token.value);
       } on Object {
         // The device stops holding the token below, so the server's row is
         // dropped at the next send even when this call could not be made.
@@ -305,27 +313,29 @@ class PushController extends ChangeNotifier {
     }
   }
 
-  void _onTokenRefreshed(String token) {
+  void _onTokenRefreshed(String installationId) {
     if (_token == null ||
-        token.isEmpty ||
-        token == _token ||
-        token == _adopting) {
+        installationId.isEmpty ||
+        installationId == _token?.value ||
+        installationId == _adopting) {
       return;
     }
-    final adoption = _adoption = _adoptToken(token);
+    final adoption = _adoption = _adoptToken(
+      PushToken.installationId(installationId),
+    );
     unawaited(adoption);
   }
 
   /// Registers [token] on the server in place of the one this install holds,
   /// or again when it is the same one, and takes the replaced one off.
-  Future<void> _adoptToken(String token) async {
+  Future<void> _adoptToken(PushToken token) async {
     final platform = _platform;
     final previous = _token;
     if (platform == null || previous == null) {
       return;
     }
     final generation = _generation;
-    _adopting = token;
+    _adopting = token.value;
     try {
       try {
         await _repository.register(token: token, platform: platform);
@@ -335,7 +345,7 @@ class PushController extends ChangeNotifier {
         return;
       }
       if (generation != _generation) {
-        await _withdraw(token);
+        await _withdraw(token.value);
         return;
       }
       if (token != previous) {
@@ -348,15 +358,15 @@ class PushController extends ChangeNotifier {
           // follows moves the row back to this one.
         }
         if (generation != _generation) {
-          await _withdraw(token);
+          await _withdraw(token.value);
           return;
         }
       }
       _token = token;
       notifyListeners();
-      if (token != previous) {
+      if (token.value != previous.value) {
         try {
-          await _repository.unregister(previous);
+          await _repository.unregister(previous.value);
         } on Object {
           // A token FCM replaced is dropped at its next send. A registration
           // token left from before the move to installation IDs may still be
@@ -365,7 +375,7 @@ class PushController extends ChangeNotifier {
         }
       }
     } finally {
-      if (_adopting == token) {
+      if (_adopting == token.value) {
         _adopting = null;
       }
     }

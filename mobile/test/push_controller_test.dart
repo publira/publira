@@ -8,12 +8,18 @@ import 'package:publira/push/push_repository.dart';
 
 import 'support/fake_push.dart';
 
+const _deviceToken = PushToken.installationId('device-token');
+const _registrationToken = PushToken(
+  value: 'registration-token',
+  type: PushTokenType.registrationToken,
+);
+
 void main() {
   late FakePushMessaging messaging;
   late FakePushRepository repository;
   late InMemoryPushDeviceStore store;
 
-  PushController controllerFor({String? stored}) {
+  PushController controllerFor({PushToken? stored}) {
     store = InMemoryPushDeviceStore(token: stored);
     final controller = PushController(
       messaging: messaging,
@@ -42,9 +48,9 @@ void main() {
       expect(messaging.authorizationRequests, 1);
       expect(controller.enabled, isTrue);
       expect(controller.failure, isNull);
-      expect(repository.registered, ['device-token']);
+      expect(repository.registered, [_deviceToken]);
       expect(repository.lastPlatform, PushPlatform.android);
-      expect(store.token, 'device-token');
+      expect(store.token, _deviceToken);
     },
   );
 
@@ -93,7 +99,7 @@ void main() {
 
       expect(controller.enabled, isFalse);
       expect(controller.failure, PushFailure.unavailable);
-      expect(repository.registered, ['device-token']);
+      expect(repository.registered, [_deviceToken]);
       expect(repository.unregistered, ['device-token']);
       expect(messaging.deletedTokens, 1);
     },
@@ -106,7 +112,7 @@ void main() {
         messaging: messaging,
         repository: repository,
         store: InMemoryPushDeviceStore(
-          token: 'device-token',
+          token: _deviceToken,
           readError: Exception('keystore refused'),
         ),
         platform: PushPlatform.android,
@@ -120,7 +126,7 @@ void main() {
   );
 
   test('turning notifications off unregisters and stops the token', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     await controller.setEnabled(false);
@@ -132,7 +138,7 @@ void main() {
   });
 
   test('an unregister the API never took still stops the token', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
     repository.failure = Exception('unavailable');
 
@@ -144,7 +150,7 @@ void main() {
   });
 
   test('signing out takes the device off the delivery list', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     await controller.handleSignOut();
@@ -165,24 +171,26 @@ void main() {
   });
 
   test('signing in registers the device the reader left on', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     await controller.handleSignedIn();
 
-    expect(repository.registered, ['device-token']);
+    expect(repository.registered, [_deviceToken]);
   });
 
   test('a refreshed token replaces the registered one', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     messaging.tokenRefreshController.add('next-token');
     await pumpEventQueue();
 
-    expect(repository.registered, ['next-token']);
+    expect(repository.registered, [
+      const PushToken.installationId('next-token'),
+    ]);
     expect(repository.unregistered, ['device-token']);
-    expect(store.token, 'next-token');
+    expect(store.token, const PushToken.installationId('next-token'));
     expect(controller.enabled, isTrue);
   });
 
@@ -190,29 +198,63 @@ void main() {
     'signing in moves a stored token to the one the device answers now',
     () async {
       messaging.currentToken = 'installation-id';
-      final controller = controllerFor(stored: 'registration-token');
+      final controller = controllerFor(stored: _registrationToken);
       await controller.start();
 
       await controller.handleSignedIn();
 
-      expect(repository.registered.last, 'installation-id');
+      expect(
+        repository.registered.last,
+        const PushToken.installationId('installation-id'),
+      );
       expect(repository.unregistered, ['registration-token']);
-      expect(store.token, 'installation-id');
+      expect(store.token, const PushToken.installationId('installation-id'));
       expect(controller.enabled, isTrue);
     },
   );
+
+  test('a sign-in the device cannot answer registers a stored registration '
+      'token as one', () async {
+    // Marking it as an installation ID would send it through a target FCM
+    // does not deliver a registration token on.
+    messaging.currentToken = null;
+    final controller = controllerFor(stored: _registrationToken);
+    await controller.start();
+
+    await controller.handleSignedIn();
+
+    expect(repository.registered, [_registrationToken]);
+    expect(repository.unregistered, isEmpty);
+    expect(store.token, _registrationToken);
+    expect(controller.enabled, isTrue);
+  });
+
+  test('a refreshed token replaces a stored registration token with an '
+      'installation ID', () async {
+    final controller = controllerFor(stored: _registrationToken);
+    await controller.start();
+
+    messaging.tokenRefreshController.add('installation-id');
+    await pumpEventQueue();
+
+    expect(repository.registered, [
+      const PushToken.installationId('installation-id'),
+    ]);
+    expect(repository.unregistered, ['registration-token']);
+    expect(store.token, const PushToken.installationId('installation-id'));
+  });
 
   test(
     'a launch asks the API for nothing before the session is back',
     () async {
       messaging.currentToken = 'installation-id';
-      final controller = controllerFor(stored: 'registration-token');
+      final controller = controllerFor(stored: _registrationToken);
       await controller.start();
       await pumpEventQueue();
 
       expect(repository.registered, isEmpty);
       expect(repository.unregistered, isEmpty);
-      expect(store.token, 'registration-token');
+      expect(store.token, _registrationToken);
     },
   );
 
@@ -220,7 +262,7 @@ void main() {
     'turning notifications off while a sign-in registers keeps them off',
     () async {
       messaging.currentToken = 'installation-id';
-      final controller = controllerFor(stored: 'registration-token');
+      final controller = controllerFor(stored: _registrationToken);
       await controller.start();
       final gate = repository.registerGate = Completer<void>();
 
@@ -252,7 +294,7 @@ void main() {
   });
 
   test('a tapped notification reports the episode it names', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     messaging.openedController.add(
@@ -272,7 +314,7 @@ void main() {
   });
 
   test('a tapped notification naming no route still reports the tap', () async {
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
     await controller.start();
 
     messaging.openedController.add(const PushMessage(title: 'Seed Series'));
@@ -286,7 +328,7 @@ void main() {
       title: 'Seed Series',
       data: {'route': '/series/SERIES01/episodes/EPISODE01'},
     );
-    final controller = controllerFor(stored: 'device-token');
+    final controller = controllerFor(stored: _deviceToken);
 
     await controller.start();
 
@@ -299,7 +341,7 @@ void main() {
   test(
     'a message that arrives in the foreground is handed to the app',
     () async {
-      final controller = controllerFor(stored: 'device-token');
+      final controller = controllerFor(stored: _deviceToken);
       await controller.start();
 
       messaging.foregroundController.add(
