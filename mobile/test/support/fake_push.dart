@@ -85,11 +85,16 @@ class FakePushRepository implements PushRepository {
   /// act out one that recovers.
   Object? failure;
 
+  /// Holds every [register] call until a test completes it, which is how a
+  /// registration still in flight is acted out.
+  Completer<void>? registerGate;
+
   @override
   Future<void> register({
     required String token,
     required PushPlatform platform,
   }) async {
+    await registerGate?.future;
     final error = failure;
     if (error != null) {
       throw error;

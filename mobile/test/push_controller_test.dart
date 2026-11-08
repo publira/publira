@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_message.dart';
@@ -185,14 +187,15 @@ void main() {
   });
 
   test(
-    'a launch moves a stored token to the one the device answers now',
+    'signing in moves a stored token to the one the device answers now',
     () async {
       messaging.currentToken = 'installation-id';
       final controller = controllerFor(stored: 'registration-token');
       await controller.start();
-      await pumpEventQueue();
 
-      expect(repository.registered, ['installation-id']);
+      await controller.handleSignedIn();
+
+      expect(repository.registered.last, 'installation-id');
       expect(repository.unregistered, ['registration-token']);
       expect(store.token, 'installation-id');
       expect(controller.enabled, isTrue);
@@ -200,15 +203,40 @@ void main() {
   );
 
   test(
-    'a launch whose device answers the stored token asks the API for nothing',
+    'a launch asks the API for nothing before the session is back',
     () async {
-      final controller = controllerFor(stored: 'device-token');
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
       await controller.start();
       await pumpEventQueue();
 
       expect(repository.registered, isEmpty);
       expect(repository.unregistered, isEmpty);
-      expect(controller.enabled, isTrue);
+      expect(store.token, 'registration-token');
+    },
+  );
+
+  test(
+    'turning notifications off while a sign-in registers keeps them off',
+    () async {
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
+      await controller.start();
+      final gate = repository.registerGate = Completer<void>();
+
+      final signingIn = controller.handleSignedIn();
+      await pumpEventQueue();
+      final disabling = controller.setEnabled(false);
+      await pumpEventQueue();
+      gate.complete();
+      await Future.wait([signingIn, disabling]);
+
+      expect(controller.enabled, isFalse);
+      expect(store.token, isNull);
+      expect(
+        repository.unregistered,
+        containsAll(['registration-token', 'installation-id']),
+      );
     },
   );
 

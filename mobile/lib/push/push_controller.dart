@@ -45,6 +45,12 @@ class PushController extends ChangeNotifier {
 
   String? _token;
   String? _adopting;
+  Future<void>? _adoption;
+
+  /// Advanced whenever this install stops claiming a registration, so an
+  /// adoption still in flight can tell that the reader turned notifications
+  /// off or signed out under it and leave their choice standing.
+  var _generation = 0;
   var _updating = false;
   PushFailure? _failure;
   PushMessage? _foregroundMessage;
@@ -112,7 +118,6 @@ class PushController extends ChangeNotifier {
     if (stored != null) {
       _token = stored;
       notifyListeners();
-      unawaited(_confirmToken(messaging));
     }
 
     // The tap that launched a terminated app is reported once, and only to
@@ -154,18 +159,31 @@ class PushController extends ChangeNotifier {
   /// Re-registers the device under the reader who just signed in, so a device
   /// that was left on keeps notifying — for them, and no longer for whoever
   /// held the session before.
+  ///
+  /// The device is asked which identifier it is registered under now, and
+  /// that one is registered rather than the one this install stored. A release
+  /// before this one stored an FCM registration token, which the device no
+  /// longer reports once it registers by installation ID, and an installation
+  /// ID can itself be replaced while the app is not running. This runs once
+  /// the session is back, which registering needs; a failure is retried the
+  /// next time the app is signed in, and the reader is not told: they did not
+  /// ask for anything just now.
   Future<void> handleSignedIn() async {
-    final token = _token;
-    final platform = _platform;
-    if (token == null || platform == null) {
+    final messaging = _messaging;
+    final stored = _token;
+    if (messaging == null || stored == null || _platform == null) {
       return;
     }
-    try {
-      await _repository.register(token: token, platform: platform);
-    } on Object {
-      // The registration is retried the next time the app is signed in, and
-      // the reader is not told: they did not ask for anything just now.
+    final generation = _generation;
+    final current = await messaging.token();
+    // An adoption the device's report started may have gone out before the
+    // session was back, so it is waited for and registered again either way.
+    await _adoption;
+    final held = _token;
+    if (generation != _generation || held == null) {
+      return;
     }
+    await _adoptToken(current == null || current.isEmpty ? held : current);
   }
 
   /// Takes the device off the delivery list before the session goes away.
@@ -178,6 +196,7 @@ class PushController extends ChangeNotifier {
     if (token == null) {
       return;
     }
+    _generation++;
     try {
       await _repository.unregister(token);
     } on Object {
@@ -247,6 +266,7 @@ class PushController extends ChangeNotifier {
   }
 
   Future<void> _disable(PushMessaging messaging) async {
+    _generation++;
     final token = _token;
     if (token != null) {
       try {
@@ -267,6 +287,7 @@ class PushController extends ChangeNotifier {
   /// registration, and that the token itself is stopped so a row the server
   /// still holds is dropped at its next send.
   Future<void> _stopToken({PushMessaging? messaging}) async {
+    _generation++;
     try {
       await _store.clear();
     } on Object {
@@ -284,19 +305,6 @@ class PushController extends ChangeNotifier {
     }
   }
 
-  /// Asks the device which identifier it is registered under now, and moves
-  /// the server's row to it when that is not the one this install stored.
-  ///
-  /// A release before this one registered an FCM registration token, which
-  /// the device no longer reports once it registers by installation ID, and an
-  /// installation ID can itself be replaced while the app is not running.
-  Future<void> _confirmToken(PushMessaging messaging) async {
-    final token = await messaging.token();
-    if (token != null) {
-      _onTokenRefreshed(token);
-    }
-  }
-
   void _onTokenRefreshed(String token) {
     if (_token == null ||
         token.isEmpty ||
@@ -304,44 +312,74 @@ class PushController extends ChangeNotifier {
         token == _adopting) {
       return;
     }
-    unawaited(_adoptToken(token));
+    final adoption = _adoption = _adoptToken(token);
+    unawaited(adoption);
   }
 
+  /// Registers [token] on the server in place of the one this install holds,
+  /// or again when it is the same one, and takes the replaced one off.
   Future<void> _adoptToken(String token) async {
     final platform = _platform;
     final previous = _token;
     if (platform == null || previous == null) {
       return;
     }
+    final generation = _generation;
     _adopting = token;
     try {
       try {
         await _repository.register(token: token, platform: platform);
       } on Object {
-        // The old token is kept, so the next refresh or the next launch
+        // The old token is kept, so the next refresh or the next sign-in
         // registers again rather than leaving the device on nothing.
         return;
       }
-      try {
-        await _store.write(token);
-      } on Object {
-        // The new token is registered and this device cannot write it down.
-        // It is still the one FCM will deliver to, so it is adopted in memory;
-        // a relaunch reads the old value, and asking the device then moves the
-        // row back to this one.
+      if (generation != _generation) {
+        await _withdraw(token);
+        return;
+      }
+      if (token != previous) {
+        try {
+          await _store.write(token);
+        } on Object {
+          // The new token is registered and this device cannot write it down.
+          // It is still the one FCM will deliver to, so it is adopted in
+          // memory; a relaunch reads the old value, and the sign-in that
+          // follows moves the row back to this one.
+        }
+        if (generation != _generation) {
+          await _withdraw(token);
+          return;
+        }
       }
       _token = token;
       notifyListeners();
-      try {
-        await _repository.unregister(previous);
-      } on Object {
-        // A token FCM replaced is dropped at its next send. A registration
-        // token left from before the move to installation IDs may still be
-        // deliverable, so a row this call could not remove can notify the
-        // device a second time.
+      if (token != previous) {
+        try {
+          await _repository.unregister(previous);
+        } on Object {
+          // A token FCM replaced is dropped at its next send. A registration
+          // token left from before the move to installation IDs may still be
+          // deliverable, so a row this call could not remove can notify the
+          // device a second time.
+        }
       }
     } finally {
-      _adopting = null;
+      if (_adopting == token) {
+        _adopting = null;
+      }
+    }
+  }
+
+  /// Takes back a registration that landed after the reader turned
+  /// notifications off or signed out, whose own unregister may have reached
+  /// the server first.
+  Future<void> _withdraw(String token) async {
+    try {
+      await _repository.unregister(token);
+    } on Object {
+      // The install was unregistered from FCM on the way out, so the row is
+      // dropped at its next send.
     }
   }
 
