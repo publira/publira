@@ -105,7 +105,6 @@
     "next": "catalog:",
     "postcss": "8.5.32",
     "tailwindcss": "catalog:",
-    "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

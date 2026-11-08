@@ -42,7 +42,7 @@ const className = cn(
 
 ### Date and time (the tenant's time zone)
 
-`Temporal` has to exist at runtime; each app loads `temporal-polyfill/global` from its instrumentation or equivalent.
+`Temporal` has to exist at runtime. Node.js provides it; in the browser, each Next.js app loads `temporal-polyfill/global` from its `instrumentation-client.ts`.
 
 ```ts
 import {
@@ -168,7 +168,7 @@ const filtersSchema = z.object({
 const filters = filtersSchema.parse(await searchParams);
 ```
 
-`searchParamStringArray()` is the multi-value form, and `searchParamBoolean()` reads a checkbox. `searchParamDate` checks calendar validity through `Temporal`, so the polyfill has to be present at runtime.
+`searchParamStringArray()` is the multi-value form, and `searchParamBoolean()` reads a checkbox. `searchParamDate` checks calendar validity through `Temporal`.
 
 A real example: [web-admin's audit log filters](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
 

@@ -137,9 +137,8 @@ export default defineConfig({
        * reason recorded here; "Temporal was inconvenient" is not one.
        *
        * `packages/web-session/src/index.ts` also parses an RFC3339 expiry with
-       * `Date.parse`, which is not a boundary and should move to Temporal —
-       * it needs the polyfill wired into that package first. See AGENTS.md
-       * "Date and time".
+       * `Date.parse`, which is not a boundary and should move to Temporal.
+       * See AGENTS.md "Date and time".
        */
       files: [
         // Sets cookie `expires`, typed `Date` by the Next.js cookie API.

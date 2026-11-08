@@ -1,8 +1,8 @@
 /**
  * Tenant-timezone-aware date/time helpers.
  *
- * Requires `Temporal` at runtime (`temporal-polyfill/global`, installed by apps
- * and by this package's vitest setup).
+ * Requires `Temporal` at runtime: Node.js provides it, and the Next.js apps
+ * load `temporal-polyfill/global` in the browser.
  *
  * Absolute timestamps are RFC3339 / ISO-8601 instants with an explicit offset or
  * `Z` (parsed only via `Temporal.Instant.from` — no host-local `Date` parsing).

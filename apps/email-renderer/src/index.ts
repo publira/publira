@@ -1,4 +1,3 @@
-import "temporal-polyfill/global";
 import { once } from "node:events";
 
 import { createEmailRendererServer, parsePort } from "./server.ts";

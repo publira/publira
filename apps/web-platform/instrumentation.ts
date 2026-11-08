@@ -1,7 +1,6 @@
 /**
- * Server startup hooks. Installs Temporal polyfill, registers OpenTelemetry,
- * and appends the address each request arrives from to its forwarded headers
- * before handling requests.
+ * Server startup hooks. Registers OpenTelemetry and appends the address each
+ * request arrives from to its forwarded headers before handling requests.
  * Client-side counterpart: instrumentation-client.ts
  */
 import { registerTracing } from "@publira/tracing";
@@ -9,7 +8,6 @@ import { registerTracing } from "@publira/tracing";
 import { resolveWebServiceToken } from "./lib/web-service-token";
 
 export const register = async () => {
-  await import("temporal-polyfill/global");
   registerTracing("publira-web-platform");
 
   if (process.env.NEXT_RUNTIME === "nodejs") {

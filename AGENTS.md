@@ -190,7 +190,7 @@ oxlint (ultracite preset) covers part of this through `react/react-compiler` and
 
 ## Date and time: `Temporal`, not `Date`
 
-Frontend and shared-package code must not use `Date` directly: use `Temporal` (polyfilled via `temporal-polyfill/global`) and the helpers in `@publira/utils`, and make the time zone an explicit decision at every conversion. Never re-add a fixed `+09:00`.
+Frontend and shared-package code must not use `Date` directly: use `Temporal` and the helpers in `@publira/utils`, and make the time zone an explicit decision at every conversion. Never re-add a fixed `+09:00`.
 
 Enforced by oxlint `no-restricted-globals` (`Date`) in `oxlint.config.ts`; `pnpm check` fails on a violation.
 

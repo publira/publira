@@ -1,5 +1,3 @@
-import "temporal-polyfill/global";
-
 /**
  * Reads back the traces the stack's processes exported to the Jaeger of a run
  * on `PUBLIRA_E2E_TRACING=on` (`task e2e:tracing`), through its query API.

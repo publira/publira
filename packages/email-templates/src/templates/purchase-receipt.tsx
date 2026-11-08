@@ -10,7 +10,6 @@ import { z } from "zod";
 import { EmailButton } from "../button";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import "../temporal";
 import type { Messages } from "../messages";
 import {
   EmailDetail,

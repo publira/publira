@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import "../temporal";
 import type { Messages } from "../messages";
 import { EmailDetail, EmailLetter, EmailMeta, EmailQuote } from "../text";
 import {

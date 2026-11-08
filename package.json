@@ -34,7 +34,6 @@
     "oxlint-plugin-react-doctor": "0.9.22",
     "sharp": "0.35.5",
     "smol-toml": "1.9.1",
-    "temporal-polyfill": "catalog:",
     "turbo": "2.11.10",
     "typescript": "catalog:",
     "ultracite": "8.1.1",

@@ -298,9 +298,6 @@ importers:
       smol-toml:
         specifier: 1.9.1
         version: 1.9.1
-      temporal-polyfill:
-        specifier: 'catalog:'
-        version: 1.0.8
       turbo:
         specifier: 2.11.10
         version: 2.11.10
@@ -334,9 +331,6 @@ importers:
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      temporal-polyfill:
-        specifier: 'catalog:'
-        version: 1.0.8
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -734,9 +728,6 @@ importers:
       jose:
         specifier: 'catalog:'
         version: 6.2.15
-      temporal-polyfill:
-        specifier: 'catalog:'
-        version: 1.0.8
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -858,9 +849,6 @@ importers:
       react-email:
         specifier: 6.11.6
         version: 6.11.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)
-      temporal-polyfill:
-        specifier: 'catalog:'
-        version: 1.0.8
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -1186,9 +1174,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.4
-      temporal-polyfill:
-        specifier: 'catalog:'
-        version: 1.0.8
       tsdown:
         specifier: 'catalog:'
         version: 0.23.5(typescript@7.0.2)

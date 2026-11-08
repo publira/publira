@@ -55,7 +55,6 @@ import type {
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
-import { Temporal } from "temporal-polyfill";
 import { parse as parseYaml } from "yaml";
 
 import { gluedParentheses } from "./half-width-parentheses.ts";

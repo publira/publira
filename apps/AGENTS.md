@@ -152,7 +152,7 @@ No lint covers this.
 
 ## Tracing: register through `@publira/tracing`
 
-Every app's `instrumentation.ts` `register()` calls `registerTracing("publira-<app>")` after the Temporal polyfill import. Do not call `registerOTel` (or construct an OpenTelemetry SDK) in an app: the opt-in switch, the deployment tier attribute, and the parent-based sampler are one policy shared with the Go processes, and a second copy of it drifts.
+Every app's `instrumentation.ts` `register()` calls `registerTracing("publira-<app>")`. Do not call `registerOTel` (or construct an OpenTelemetry SDK) in an app: the opt-in switch, the deployment tier attribute, and the parent-based sampler are one policy shared with the Go processes, and a second copy of it drifts.
 
 Outbound RPC spans and `traceparent` come from `@publira/api-client`, so a call site needs no tracing code. Add a custom span only where a plain `@opentelemetry/api` tracer is genuinely warranted.
 
