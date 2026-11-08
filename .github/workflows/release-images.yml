@@ -21,7 +21,7 @@ permissions: {}
 
 env:
   # renovate: datasource=github-releases depName=aquasecurity/trivy versioning=semver-coerced
-  TRIVY_VERSION: 0.76.1
+  TRIVY_VERSION: 0.76.2
   REGISTRY: ghcr.io/publira
   SOURCE: ${{ github.server_url }}/${{ github.repository }}
   TAG: ${{ inputs.version }}
