@@ -88,7 +88,7 @@ Outside the Dev Container you install the toolchain yourself. Install the versio
 | --- | --- | --- |
 | [Task](https://taskfile.dev/) | `TASK_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Every `task` command |
 | Docker Engine with Compose v2 | Not pinned | The dependency services, the Testcontainers tests in `task server:test`, E2E |
-| [pnpm](https://pnpm.io/) | `packageManager` in [`package.json`](package.json) | The web apps and shared packages |
+| [pnpm](https://pnpm.io/) | `devEngines.packageManager` in [`package.json`](package.json) | The web apps and shared packages. Any pnpm 11 or later on `PATH` switches to the pinned version on its own; pnpm 10 and earlier ignore the pin and run the workspace as themselves |
 | Node.js | `devEngines.runtime` in [`package.json`](package.json) | Downloaded by pnpm on demand (`onFail: download`); nothing to install by hand |
 | Go | `go-version` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`server/go.mod`](server/go.mod) states the minimum the module accepts | The Go backend |
 | libvips (`libvips-dev` and `pkg-config`) | Not pinned; installed by the Go jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Building and testing the Go backend, whose image delivery in `publira server` links libvips through Manael |
