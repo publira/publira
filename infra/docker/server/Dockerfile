@@ -46,7 +46,7 @@ RUN apt-get update \
       libjpeg62-turbo-dev liblcms2-dev libspng-dev libwebp-dev \
  && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL -o /tmp/vips.tar.xz \
+RUN curl -fsSL --retry 5 -o /tmp/vips.tar.xz \
       "https://github.com/libvips/libvips/releases/download/${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION#v}.tar.xz" \
  && echo "${LIBVIPS_SHA256}  /tmp/vips.tar.xz" | sha256sum -c - \
  && mkdir /tmp/vips \
