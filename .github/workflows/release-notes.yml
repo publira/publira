@@ -115,8 +115,11 @@ jobs:
     name: Images
     needs: version
     if: github.event_name == 'push'
+    # A called workflow gets no permission its caller does not hold, and
+    # release-images.yml signs the images with this job's OIDC token.
     permissions:
       contents: read
+      id-token: write
       packages: write
     uses: ./.github/workflows/release-images.yml
     with:
@@ -130,6 +133,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # The OIDC token the archive's keyless signature is issued for.
+      id-token: write
       pull-requests: read
     steps:
       # Every tag and the history between them, to find the previous release
@@ -290,9 +295,24 @@ jobs:
           mkdir -p "${ASSETS_PATH}"
           echo "path=$(bash scripts/package-deploy.sh "${TAG#v}" "${ASSETS_PATH}")" >> "${GITHUB_OUTPUT}"
 
+      - name: Setup / cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      # A keyless signature names this workflow at the release's tag, and the
+      # bundle beside the archive carries it with the certificate and the
+      # transparency log entry, so `cosign verify-blob` needs nothing else.
+      - name: Sign the Compose install
+        id: bundle
+        env:
+          ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
+        run: |
+          cosign sign-blob --yes --bundle "${ARCHIVE_PATH}.sigstore.json" "${ARCHIVE_PATH}"
+          echo "path=${ARCHIVE_PATH}.sigstore.json" >> "${GITHUB_OUTPUT}"
+
       - name: Publish the release
         env:
           ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
+          BUNDLE_PATH: ${{ steps.bundle.outputs.path }}
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
           NOTES_PATH: ${{ runner.temp }}/notes.md
@@ -302,12 +322,12 @@ jobs:
           if [[ "${TAG}" == *-* ]]; then
             flags+=(--prerelease)
           fi
-          # A re-run replaces the notes and the archive of the release the
-          # first run published. `gh release edit` takes no asset, so the
-          # archive goes up on its own.
+          # A re-run replaces the notes, the archive, and its signature of the
+          # release the first run published. `gh release edit` takes no asset,
+          # so the two go up on their own.
           if gh release view "${TAG}" > /dev/null 2>&1; then
             gh release edit "${TAG}" "${flags[@]}"
-            gh release upload "${TAG}" "${ARCHIVE_PATH}" --clobber
+            gh release upload "${TAG}" "${ARCHIVE_PATH}" "${BUNDLE_PATH}" --clobber
           else
-            gh release create "${TAG}" --verify-tag "${flags[@]}" "${ARCHIVE_PATH}"
+            gh release create "${TAG}" --verify-tag "${flags[@]}" "${ARCHIVE_PATH}" "${BUNDLE_PATH}"
           fi

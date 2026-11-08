@@ -1,16 +1,16 @@
 ---
 title: リリース
-description: バージョン番号からわかること、リリースの種類ごとに変わりうるもの、0.xでの違い、並べて動かせるリリース、修正を受けられるリリースを説明します。
+description: バージョン番号からわかること、リリースの種類ごとに変わりうるもの、0.xでの違い、並べて動かせるリリース、修正を受けられるリリース、リリースが公開するものの検証方法を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
 Publiraのリリースは、`vMAJOR.MINOR.PATCH`という名前のリポジトリのタグです。最初のリリースは`v0.1.0`です。各リリースはリリースノートとともにリポジトリの[Releases](https://github.com/publira/publira/releases)ページで公開します。イメージに付けるタグは、リリースのバージョン、つまりタグから`v`を除いたものだけです。たとえば`v0.1.0`のイメージは`ghcr.io/publira/<name>:0.1.0`としてpullします。`latest`や`0.1`といったタグはないので、動かすバージョンを自分で変えない限り、Publiraが新しいリリースに切り替わることはありません。
 
-リリースには[Docker Compose](./3-docker-compose.md)の構成一式も`publira-deploy-<version>.tar.gz`として添付します。中身はComposeファイル、そのリリースのイメージを指定した`.env.example`、プロキシの`Caddyfile`で、どれもタグの時点のリポジトリにあるものと同じです。このアーカイブには署名がなく、イメージにも署名はありません。
+リリースには[Docker Compose](./3-docker-compose.md)の構成一式も`publira-deploy-<version>.tar.gz`として添付します。中身はComposeファイル、そのリリースのイメージを指定した`.env.example`、プロキシの`Caddyfile`で、どれもタグの時点のリポジトリにあるものと同じです。イメージとアーカイブには、それらを公開するワークフローが署名しています。確かめ方は[リリースの検証](#リリースの検証)で説明します。
 
-このページでは、アップグレードする前にリリースの番号から何がわかるか、どのリリースを並べて動かせるか、どのリリースが修正を受けられるかを説明します。
+このページでは、アップグレードする前にリリースの番号から何がわかるか、どのリリースを並べて動かせるか、どのリリースが修正を受けられるか、pullするものをどう検証するかを説明します。
 
 ## リリース番号からわかること
 
@@ -81,6 +81,53 @@ Publiraのリリースは、`vMAJOR.MINOR.PATCH`という名前のリポジト�
 どのリリースからでも、それより新しいどのリリースへでも1回でアップグレードできます。`db migrate`は途中のすべてのリリースのマイグレーションを1回で適用するので、スキーマのために何かする必要はありません。
 
 ただし、リリースノートが求める作業までは`db migrate`は行いません。いま動かしているリリースより新しいリリースのリリースノートを、アップグレード先のリリースまですべて読んでください。作業が書かれているのはそのうちのメジャーリリースだけで、`1.0.0`より前ならマイナーリリースだけです。それらのUpgrade notesの作業はすべて行う必要があります。追加された環境変数をすべて設定し、途中で追加されたロールすべてのパスワードを`db roles`に渡し、リバースプロキシで必要な設定の変更をすべて自分のリバースプロキシに反映してください。また、いま動かしているリリースがまだ読んでいるものを、途中のリリースが廃止していることもあります。リリースを飛ばすときは、先に[プロセスを止めてください](./8-upgrading.md#先にプロセスを停止するかどうかを決める)。
+
+## リリースの検証
+
+リリースのイメージとDocker Composeの構成一式には、どれもリポジトリのワークフローが公開時に付けた、鍵を使わない[Sigstore](https://www.sigstore.dev/)の署名があります。署名にはそのワークフローとリリースのタグが記録されます。そのため取得して信頼すべき鍵はなく、ほかの場所でビルドしたイメージやアーカイブは検証に失敗します。検証には[cosign](https://docs.sigstore.dev/cosign/system_config/installation/)を使います。検証は必須ではなく、`docker pull`もDocker Composeでの運用も、検証しなくてもこれまでどおり動きます。
+
+### イメージ
+
+動かすイメージのそれぞれを、イメージをpushするワークフローに対して検証します。`<version>`はリリースのバージョンで、`v0.1.0`なら`0.1.0`です。
+
+```bash
+cosign verify ghcr.io/publira/publira:<version> \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-images.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+コマンドは行ったチェックを表示し、続いて署名の内容をJSONで出力します。その中の`docker-manifest-digest`が、署名の対象になっているイメージのダイジェストです。そのタグのそのワークフローによる署名がないイメージでは失敗します。`publiractl`と`web-storefront`と`web-admin`も同じように検証し、`web-platform`や`email-renderer`を動かしているならそれらも検証してください。タグはpushし直せるので、検証したものをそのまま動かすには、タグではなくそのダイジェストを使って`ghcr.io/publira/publira@sha256:<digest>`のようにイメージを指定してください。
+
+### アテステーションの内容
+
+各イメージには、プラットフォームごとに2つのアテステーションがあります。どちらもBuildKitがイメージのビルド中に書き込むものです。
+
+- **SBOM**はSPDX形式で、イメージに含まれるOSのパッケージ、Node.jsのパッケージ、Goのモジュールを記録します。
+- **SLSA provenance**は、イメージをビルドしたコミットとワークフローの実行、ビルドに使ったDockerfileとその引数、元にしたベースイメージのダイジェストを記録します。
+
+アテステーションは、イメージのプラットフォームの一覧の中で、対象のプラットフォームと並べて格納されます。そのため一覧には、`linux/amd64`と`linux/arm64`のそれぞれの隣に`unknown/unknown`の項目が表示されます。`docker pull`やコンテナランタイムはこの項目を読み飛ばします。署名は一覧を対象とし、一覧は各アテステーションをダイジェストで指しています。そのため、`cosign verify`が出力したダイジェストを使って読み出してください。
+
+```bash
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .SBOM}}'
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .Provenance}}'
+```
+
+どちらも、`linux/amd64`と`linux/arm64`の項目を1つずつ持つJSONオブジェクトを出力します。
+
+### Docker Composeの構成一式
+
+リリースには、アーカイブの署名も`publira-deploy-<version>.tar.gz.sigstore.json`として添付します。この署名は、リリースを公開するワークフローが付けたものです。両方をダウンロードし、展開する前にアーカイブを検証してください。
+
+```bash
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz.sigstore.json
+cosign verify-blob publira-deploy-<version>.tar.gz \
+  --bundle publira-deploy-<version>.tar.gz.sigstore.json \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-notes.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+成功すると`Verified OK`と表示されます。ワークフローが署名したアーカイブと1バイトでも違えば失敗します。アーカイブはイメージをタグで指定しているので、[イメージ](#イメージ)の手順でイメージも検証してください。
 
 ## 次のステップ
 

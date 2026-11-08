@@ -121,9 +121,10 @@ jobs:
           if [[ "${VERSION_ARG}" == "true" ]]; then
             flags+=(--build-arg "VERSION=${TAG}")
           fi
-          # Signing, an SBOM, and provenance are not published yet, and an
-          # attestation manifest would show up as an `unknown/unknown`
-          # platform beside the two real ones.
+          # BuildKit writes the SBOM and the SLSA provenance of the image into
+          # an attestation manifest beside it, which the index lists as an
+          # `unknown/unknown` platform. The signature the publish job makes
+          # over the index covers them, since the index names them by digest.
           docker buildx build \
             --file "${DOCKERFILE}" \
             --platform "${PLATFORM}" \
@@ -131,8 +132,8 @@ jobs:
             --label "org.opencontainers.image.source=${SOURCE}" \
             --label "org.opencontainers.image.version=${TAG}" \
             --label "org.opencontainers.image.revision=${REVISION}" \
-            --provenance=false \
-            --sbom=false \
+            --provenance=mode=max,version=v1 \
+            --sbom=true \
             --output "type=image,name=${REGISTRY}/${IMAGE},push-by-digest=true,name-canonical=true,push=true" \
             --metadata-file "${METADATA_PATH}" \
             .
@@ -153,6 +154,9 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
+      # The OIDC token the keyless signature is issued for, which names this
+      # workflow at the release's tag.
+      id-token: write
       packages: write
     steps:
       # One directory per image, holding one file per architecture whose
@@ -168,6 +172,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin <<< "${GH_TOKEN}"
+
+      - name: Setup / cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       # The index carries the source as an annotation as well as the label on
       # each image, because the index is what the registry reads to link a
@@ -192,12 +199,31 @@ jobs:
               "${refs[@]}"
           done
 
-      # Signed out, so each reference is read the way an operator's install
-      # reads it. A package the organization creates private fails here, and
-      # the Release is not published until it is made public.
-      - name: Check the images pull without signing in
+      # The index's digest, not its tag, so the signature covers exactly what
+      # was just pushed. A keyless signature names the workflow that made it,
+      # so `cosign verify` against this workflow at the release's tag passes
+      # for these images and for nothing signed anywhere else.
+      - name: Sign the multi-architecture images
         env:
           DIGESTS_PATH: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          cd "${DIGESTS_PATH}"
+          for image in *; do
+            digest="$(docker buildx imagetools inspect "${REGISTRY}/${image}:${TAG}" --format '{{json .Manifest}}' | jq -r .digest)"
+            cosign sign --yes "${REGISTRY}/${image}@${digest}"
+          done
+
+      # Signed out, so each reference is read the way an operator's install
+      # reads it. A package the organization creates private fails here, and
+      # the Release is not published until it is made public. Each platform
+      # has to carry its attestation manifest, and the index has to verify
+      # against the identity docs/en/2-deployments/10-releases.md has an
+      # operator check.
+      - name: Check the images pull and verify without signing in
+        env:
+          DIGESTS_PATH: ${{ runner.temp }}/digests
+          IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/release-images.yml@${{ github.ref }}
         run: |
           set -euo pipefail
           docker logout ghcr.io
@@ -205,16 +231,27 @@ jobs:
           failed=0
           for image in *; do
             ref="${REGISTRY}/${image}:${TAG}"
-            if ! platforms="$(docker buildx imagetools inspect "${ref}" \
-              --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}}{{"\n"}}{{end}}' \
-              | sort | paste -sd ' ')"; then
+            if ! index="$(docker buildx imagetools inspect --raw "${ref}")"; then
               echo "::error::${ref} cannot be read without signing in. Make the ${image} package public in its package settings, then re-run this job."
               failed=1
-            elif [[ "${platforms}" != "linux/amd64 linux/arm64" ]]; then
+              continue
+            fi
+            platforms="$(jq -r '[.manifests[] | select(.annotations."vnd.docker.reference.type" != "attestation-manifest") | "\(.platform.os)/\(.platform.architecture)"] | sort | join(" ")' <<< "${index}")"
+            unattested="$(jq -r '[.manifests[] | select(.annotations."vnd.docker.reference.type" == "attestation-manifest") | .annotations."vnd.docker.reference.digest"] as $attested
+              | [.manifests[] | select(.annotations."vnd.docker.reference.type" != "attestation-manifest") | select(.digest | IN($attested[]) | not) | "\(.platform.os)/\(.platform.architecture)"] | join(" ")' <<< "${index}")"
+            if [[ "${platforms}" != "linux/amd64 linux/arm64" ]]; then
               echo "::error::${ref} lists ${platforms:-no platform}, want linux/amd64 linux/arm64."
               failed=1
+            elif [[ -n "${unattested}" ]]; then
+              echo "::error::${ref} carries no SBOM or provenance for ${unattested}."
+              failed=1
+            elif ! cosign verify "${ref}" \
+              --certificate-identity "${IDENTITY}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null; then
+              echo "::error::${ref} does not verify against ${IDENTITY}."
+              failed=1
             else
-              echo "${ref}: ${platforms}"
+              echo "${ref}: ${platforms}, attested, signed by ${IDENTITY}"
             fi
           done
           exit "${failed}"

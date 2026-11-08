@@ -2,7 +2,8 @@
 title: Docker Compose
 description: 使用每个版本发布的Compose文件在一台主机上运行完整的安装实例，从下载文件一直到首次登录租户控制台。
 published: 2026-11-03
-source_updated: 2026-10-28
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
 每个版本都会发布一个Compose文件，用于在一台主机上运行完整的安装实例：Publira依赖的服务、安装实例的各个进程，以及位于它们前面的反向代理，全部已经连接好。这是获得一个可用安装实例的最短路径，本页将带您从一台空主机走到首次登录租户控制台。
@@ -53,6 +54,8 @@ curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publ
 tar -xzf publira-deploy-<version>.tar.gz
 cd publira-deploy-<version>
 ```
+
+版本还附带了归档文件的签名。要确认归档文件就是该版本发布的那个，请在运行`tar`之前，按照[Compose安装文件](./10-releases.md#compose安装文件)中的说明进行验证。
 
 其中包含`compose.yaml`、`.env.example`、代理的`Caddyfile`，以及一个列出全部变量的`README.md`。本页的所有命令都在这个目录中运行。
 

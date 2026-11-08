@@ -1,11 +1,12 @@
 ---
 title: 版本
-description: 版本號代表什麼、各類版本可以變更什麼、0.x有何不同、哪些版本可以並存執行，以及哪些版本會收到修正。
+description: 版本號代表什麼、各類版本可以變更什麼、0.x有何不同、哪些版本可以並存執行、哪些版本會收到修正，以及如何驗證版本發布的內容。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-08
+source_updated: 2026-11-08
 ---
 
-Publira以儲存庫中名為`vMAJOR.MINOR.PATCH`的標籤發布，從`v0.1.0`開始。每個版本都會連同版本說明發布在儲存庫的[Releases](https://github.com/publira/publira/releases)頁面上，其映像檔則以該版本的版本號（去掉`v`的標籤）推送，不使用其他任何標籤：`v0.1.0`以`ghcr.io/publira/<name>:0.1.0`拉取。沒有`latest`，也沒有`0.1`，因此只有在您變更安裝實例執行的版本時，它才會移到新版本。版本也會以`publira-deploy-<version>.tar.gz`提供[Docker Compose](./3-docker-compose.md)安裝實例：Compose檔案、指定該版本映像檔的`.env.example`，以及代理的`Caddyfile`，內容與該標籤時儲存庫中的相同。它沒有附帶簽章，映像檔也沒有。本頁說明在升級之前，版本號能告訴您什麼、哪些版本可以並存執行，以及哪些版本會收到修正。
+Publira以儲存庫中名為`vMAJOR.MINOR.PATCH`的標籤發布，從`v0.1.0`開始。每個版本都會連同版本說明發布在儲存庫的[Releases](https://github.com/publira/publira/releases)頁面上，其映像檔則以該版本的版本號（去掉`v`的標籤）推送，不使用其他任何標籤：`v0.1.0`以`ghcr.io/publira/<name>:0.1.0`拉取。沒有`latest`，也沒有`0.1`，因此只有在您變更安裝實例執行的版本時，它才會移到新版本。版本也會以`publira-deploy-<version>.tar.gz`提供[Docker Compose](./3-docker-compose.md)安裝實例：Compose檔案、指定該版本映像檔的`.env.example`，以及代理的`Caddyfile`，內容與該標籤時儲存庫中的相同。映像檔和這個封存檔都由發布它們的工作流程簽章，驗證方式請見[驗證版本](#驗證版本)。本頁說明在升級之前，版本號能告訴您什麼、哪些版本可以並存執行、哪些版本會收到修正，以及如何驗證您拉取的內容。
 
 ## 版本號代表什麼
 
@@ -65,6 +66,53 @@ Publira以儲存庫中名為`vMAJOR.MINOR.PATCH`的標籤發布，從`v0.1.0`開
 您可以一步從任何版本升級到任何較新的版本。`db migrate`會在一次執行中套用其間每個版本的遷移，因此結構描述不需要您做任何事。
 
 它不會代您完成的，是版本說明要求您做的事，因此請閱讀您目前執行的版本之後、直到要升級的目標版本（含）為止的每個版本的說明。其中只有主要版本會列出事項，在`1.0.0`之前則是次要版本。它們的Upgrade notes是累加的：設定它們新增的每個變數，為其間新增的每個角色把密碼傳給`db roles`，並把邊緣必須做的事的每項變更套用到您的邊緣。其間的某個版本也可能已淘汰您目前執行的版本仍在讀取的內容，因此跳過版本之前，請先[停止處理程序](./8-upgrading.md#決定是否先停止處理程序)。
+
+## 驗證版本
+
+版本的每個映像檔及其Docker Compose安裝實例，都帶有儲存庫的工作流程在發布時產生的無金鑰[Sigstore](https://www.sigstore.dev/)簽章。簽章記錄了該工作流程與版本的標籤，因此不需要取得或信任任何金鑰，在其他任何地方建置的映像檔或封存檔都無法通過驗證。驗證需要[cosign](https://docs.sigstore.dev/cosign/system_config/installation/)。驗證並非必要：不驗證的話，`docker pull`與Compose安裝實例也會照常運作。
+
+### 映像檔
+
+針對推送映像檔的工作流程驗證您執行的每個映像檔，其中`<version>`是版本的版本號，例如`v0.1.0`對應`0.1.0`：
+
+```bash
+cosign verify ghcr.io/publira/publira:<version> \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-images.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+它會列出所做的檢查，接著以JSON輸出簽章的宣告，其中`docker-manifest-digest`是簽章所涵蓋映像檔的摘要。若映像檔沒有該工作流程在該標籤下所做的簽章，驗證就會失敗。對`publiractl`、`web-storefront`與`web-admin`重複此步驟；若您執行`web-platform`與`email-renderer`，也對它們重複。標籤可以重新推送，因此若要執行的正是您驗證過的內容，請以該摘要而非標籤指定映像檔，例如`ghcr.io/publira/publira@sha256:<digest>`。
+
+### 證明包含的內容
+
+每個映像檔的每個平台都帶有兩份證明（attestation），由BuildKit在建置映像檔時寫入：
+
+- **SBOM**，SPDX格式：映像檔中的作業系統套件、Node.js套件與Go模組。
+- **SLSA provenance**：建置映像檔的提交與工作流程執行、建置所用的Dockerfile及其引數，以及作為起點的基礎映像檔摘要。
+
+它們儲存在映像檔的平台清單中，緊鄰所描述的平台，因此清單會在`linux/amd64`與`linux/arm64`旁各顯示一個`unknown/unknown`項目。`docker pull`與容器執行環境會略過這些項目。簽章涵蓋該清單，而清單以摘要指向每份證明，因此請透過`cosign verify`輸出的摘要讀取它們：
+
+```bash
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .SBOM}}'
+docker buildx imagetools inspect ghcr.io/publira/publira@sha256:<digest> --format '{{json .Provenance}}'
+```
+
+每個命令都會輸出一個JSON物件，其中`linux/amd64`與`linux/arm64`各有一個項目。
+
+### Compose安裝實例
+
+版本在封存檔旁附上了它的簽章`publira-deploy-<version>.tar.gz.sigstore.json`，由發布該版本的工作流程產生。請下載這兩個檔案，並在解開之前驗證封存檔：
+
+```bash
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz.sigstore.json
+cosign verify-blob publira-deploy-<version>.tar.gz \
+  --bundle publira-deploy-<version>.tar.gz.sigstore.json \
+  --certificate-identity https://github.com/publira/publira/.github/workflows/release-notes.yml@refs/tags/v<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+驗證成功時會輸出`Verified OK`；封存檔與工作流程簽章的那一份即使只差一個位元組，驗證也會失敗。封存檔以標籤指定映像檔，因此也請依照[映像檔](#映像檔)的說明驗證映像檔。
 
 ## 後續步驟
 
