@@ -54,11 +54,11 @@ const storedSettings: PlatformSearchSettings = {
   hasPassword: true,
   index: "publira-catalog",
   localeAnalyses: {},
-  revision: "3",
+  revision: 3n,
   serving: {
     engine: "opensearch",
     index: "publira-catalog",
-    revision: "3",
+    revision: 3n,
     since: "2026-10-01T00:00:00Z",
     url: "https://search.example.com",
   },
@@ -331,7 +331,7 @@ describe("SearchSettingsForm", () => {
         <SearchSettingsForm
           settings={{
             ...storedSettings,
-            revision: "4",
+            revision: 4n,
             url: "https://search-2.example.com",
           }}
         />

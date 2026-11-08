@@ -203,7 +203,7 @@ describe("getCreator", () => {
     expect(result).toEqual({
       accounts: [],
       creator: {
-        iconImageFileSizeBytes: 0,
+        iconImageFileSizeBytes: 0n,
         iconImageUpdatedAt: "",
         iconImageUrl: "",
         name: "Target",

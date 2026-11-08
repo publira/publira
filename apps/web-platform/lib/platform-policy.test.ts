@@ -94,7 +94,7 @@ describe("getPlatformPolicy", () => {
 
     await expect(getPlatformPolicy()).resolves.toMatchObject({
       ok: true,
-      revision: "7",
+      revision: 7n,
       values: { security: { mfaRequiredForTenantAdmin: true } },
     });
     expect(mockGetPlatformPolicy).toHaveBeenCalledWith({}, serviceHeaders);
@@ -478,7 +478,7 @@ describe("getPlatformRetentionDefaults", () => {
 
     await expect(getPlatformRetentionDefaults()).resolves.toMatchObject({
       ok: true,
-      revision: "2",
+      revision: 2n,
       values: { contentEventDays: 90 },
     });
     expect(mockGetPlatformRetentionDefaults).toHaveBeenCalledWith(

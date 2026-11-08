@@ -30,7 +30,7 @@ vi.mock("./tenant-brand-logo", () => ({
 
 const variant = {
   contentType: "image/png",
-  fileSizeBytes: 1024,
+  fileSizeBytes: 1024n,
   height: 64,
   label: "original",
   url: "/images/tenants/logo-1",

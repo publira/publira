@@ -26,11 +26,15 @@ export const cohortCells = (cohort: RetentionCohortItem): CohortCell[] =>
       return { state: "open", week };
     }
 
-    if (cohort.cohortSize === 0) {
+    if (cohort.cohortSize === 0n) {
       return { state: "no_readers", week };
     }
 
-    return { share: active / cohort.cohortSize, state: "counted", week };
+    return {
+      share: Number(active) / Number(cohort.cohortSize),
+      state: "counted",
+      week,
+    };
   });
 
 /**

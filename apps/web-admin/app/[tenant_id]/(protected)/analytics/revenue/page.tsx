@@ -49,7 +49,7 @@ import {
   sortRows,
   sortSearchParams,
 } from "../_lib/sort";
-import type { SortColumns, SortState } from "../_lib/sort";
+import type { SortColumns, SortState, SortValue } from "../_lib/sort";
 
 type RevenuePageProps = PageProps<"/[tenant_id]/analytics/revenue">;
 
@@ -146,7 +146,7 @@ const revenueSortColumns = (
  * subscription payments net of theirs, which a series or an episode row has
  * none of.
  */
-const netOf = (row: RevenueStatsTotalsItem): number =>
+const netOf = (row: RevenueStatsTotalsItem): bigint =>
   row.netAmount + row.subscriptionAmount - row.subscriptionRefundedAmount;
 
 const revenueGroups = ["day", "series", "episode"] as const;
@@ -156,7 +156,7 @@ const groupSchema = searchParamEnum(revenueGroups, { fallback: "day" });
 const revenueValue = (
   row: RevenueStatsItem,
   column: RevenueColumn
-): number | string => {
+): SortValue => {
   switch (column) {
     case "date": {
       return row.date;
@@ -249,7 +249,7 @@ const RevenueTable = ({
   const sorted = (column: RevenueColumn) =>
     sort.column === column ? sort.order : null;
 
-  const amount = (value: number) => formatPrice(value, { currency, locale });
+  const amount = (value: bigint) => formatPrice(value, { currency, locale });
   const subscriptionCells = group === "day" && withSubscriptions;
 
   const columnCount =
@@ -449,7 +449,7 @@ const RevenueContent = async ({
   const table = revenueSortColumns(group, withSubscriptions);
   const sort = parseSortSearchParams(sp, table.columns, table.fallback);
 
-  const amount = (value: number) =>
+  const amount = (value: bigint) =>
     formatPrice(value, { currency: daily.currency, locale });
 
   const query = { from, group: group === "day" ? "" : group, to };
@@ -546,7 +546,7 @@ const RevenueContent = async ({
             </FigureLine.Label>
             <FigureLine.Value>{amount(netOf(daily.totals))}</FigureLine.Value>
           </FigureLine.Figure>
-          {tax === 0 ? null : (
+          {tax === 0n ? null : (
             <FigureLine.Figure>
               <FigureLine.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -615,7 +615,7 @@ const RevenueContent = async ({
             </Suspense>
           </p>
         ) : null}
-        {tax === 0 ? null : (
+        {tax === 0n ? null : (
           <p className="max-w-3xl text-xs text-muted-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
               <Message message="admin.analytics.revenue.tax_definition" />

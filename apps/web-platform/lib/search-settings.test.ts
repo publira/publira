@@ -108,7 +108,7 @@ beforeEach(() => {
 });
 
 describe("getPlatformSearchSettings", () => {
-  it("returns the saved values, what the search answers from, and the revision as a decimal string", async () => {
+  it("returns the saved values, what the search answers from, and the revision", async () => {
     mockGetPlatformSearchSettings.mockResolvedValueOnce({
       settings: servingSettings,
     });
@@ -132,11 +132,11 @@ describe("getPlatformSearchSettings", () => {
         hasPassword: true,
         index: "publira-catalog",
         localeAnalyses: {},
-        revision: "3",
+        revision: 3n,
         serving: {
           engine: "opensearch",
           index: "publira-catalog",
-          revision: "3",
+          revision: 3n,
           since: "2026-10-01T00:00:00Z",
           url: "https://search.example.com",
         },
@@ -213,8 +213,8 @@ describe("getPlatformSearchSettings", () => {
       settings: {
         buildState: "serving",
         engine: "sql",
-        revision: "0",
-        serving: { engine: "sql", revision: "0", since: "" },
+        revision: 0n,
+        serving: { engine: "sql", revision: 0n, since: "" },
       },
     });
   });
@@ -236,7 +236,7 @@ describe("getPlatformSearchSettings", () => {
       settings: {
         buildFailure: null,
         buildState: "building",
-        serving: { engine: "sql", revision: "2" },
+        serving: { engine: "sql", revision: 2n },
       },
     });
     expect(mockCacheLife).toHaveBeenCalledWith("seconds");
@@ -310,7 +310,7 @@ describe("updatePlatformSearchSettings", () => {
     );
     expect(result).toMatchObject({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
   });
 

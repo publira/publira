@@ -147,7 +147,7 @@ describe("RefundPurchaseButton", () => {
   });
 
   it("starts at all that is left, and says the purchase then closes", async () => {
-    renderButton({ currency: "JPY", left: 300, requested: 0 });
+    renderButton({ currency: "JPY", left: 300n, requested: 0n });
 
     const dialog = await openDialog();
 
@@ -171,7 +171,7 @@ describe("RefundPurchaseButton", () => {
       message: "A refund of ¥120 was requested.",
       ok: true,
     });
-    renderButton({ currency: "JPY", left: 300, requested: 0 });
+    renderButton({ currency: "JPY", left: 300n, requested: 0n });
 
     const dialog = await openDialog();
     fireEvent.change(
@@ -203,7 +203,7 @@ describe("RefundPurchaseButton", () => {
     ["more than is left", "301"],
     ["a fraction of a yen", "1.5"],
   ])("cannot be confirmed for %s", async (_label, value) => {
-    renderButton({ currency: "JPY", left: 300, requested: 0 });
+    renderButton({ currency: "JPY", left: 300n, requested: 0n });
 
     const dialog = await openDialog();
     fireEvent.change(dialog.getByRole("textbox", { name: "Reason*" }), {
@@ -226,7 +226,7 @@ describe("RefundPurchaseButton", () => {
   });
 
   it("asks again only for the refund in part waiting for the provider", async () => {
-    renderButton({ currency: "JPY", left: 300, requested: 120 });
+    renderButton({ currency: "JPY", left: 300n, requested: 120n });
 
     const dialog = await openDialog();
 

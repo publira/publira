@@ -48,7 +48,7 @@ export const SearchSettingsForm = ({
       action={updatePlatformSearchSettingsAction}
       className="grid gap-5 sm:max-w-3xl"
     >
-      <input name="revision" type="hidden" value={settings.revision} />
+      <input name="revision" type="hidden" value={String(settings.revision)} />
 
       {/* A save refreshes the settings; the new revision remounts the fields
           instead of changing a mounted field's default. */}

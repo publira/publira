@@ -58,7 +58,7 @@ const renderControl = async () =>
     <div>
       {await EpisodeReactionControl({
         episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-        ratingCount: 4,
+        ratingCount: 4n,
         returnTo: "/series/SERIES_001/episodes/EP_010",
         seriesPublicId: "SERIES_001",
         tenantId: "TENANT_001",
@@ -69,7 +69,7 @@ const renderControl = async () =>
 const signedInRating = {
   mode: "single",
   ok: true,
-  ratingCount: 4,
+  ratingCount: 4n,
   readerCredited: false,
   readerIsStaff: false,
   score: 0,

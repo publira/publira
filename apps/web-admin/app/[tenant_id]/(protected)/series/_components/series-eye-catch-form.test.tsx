@@ -45,7 +45,7 @@ const series: SeriesListItem = {
   eyeCatchImageVariants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 3200,
       label: "portrait_2400w",
       url: "https://cdn.example.com/series/SERIES001/3x4.webp",

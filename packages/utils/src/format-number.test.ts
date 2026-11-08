@@ -6,6 +6,7 @@ import {
   formatPercent,
   formatPrice,
   listSupportedCurrencies,
+  toMajorUnitDecimal,
 } from "./format-number";
 
 describe("formatPercent", () => {
@@ -25,6 +26,23 @@ describe("formatPercent", () => {
     expect(formatPercent(0.12345, { fractionDigits: 2, locale: "en" })).toBe(
       "12.35%"
     );
+  });
+
+  it("renders a bigint amount from its minor unit", () => {
+    expect(formatPrice(1500n, { currency: "JPY", locale: "en" })).toBe(
+      "¥1,500"
+    );
+    expect(formatPrice(499n, { currency: "USD", locale: "en" })).toBe("$4.99");
+    expect(formatPrice(5n, { currency: "USD", locale: "en" })).toBe("$0.05");
+    expect(formatPrice(-1250n, { currency: "USD", locale: "en" })).toBe(
+      "-$12.50"
+    );
+  });
+
+  it("keeps every digit of a bigint amount past what a float holds exactly", () => {
+    expect(
+      formatPrice(9_007_199_254_740_993n, { currency: "USD", locale: "en" })
+    ).toBe("$90,071,992,547,409.93");
   });
 
   it("follows the locale rather than the host environment", () => {
@@ -49,6 +67,23 @@ describe("formatPrice", () => {
     expect(formatPrice(0, { currency: "USD", locale: "en" })).toBe("$0.00");
   });
 
+  it("renders a bigint amount from its minor unit", () => {
+    expect(formatPrice(1500n, { currency: "JPY", locale: "en" })).toBe(
+      "¥1,500"
+    );
+    expect(formatPrice(499n, { currency: "USD", locale: "en" })).toBe("$4.99");
+    expect(formatPrice(5n, { currency: "USD", locale: "en" })).toBe("$0.05");
+    expect(formatPrice(-1250n, { currency: "USD", locale: "en" })).toBe(
+      "-$12.50"
+    );
+  });
+
+  it("keeps every digit of a bigint amount past what a float holds exactly", () => {
+    expect(
+      formatPrice(9_007_199_254_740_993n, { currency: "USD", locale: "en" })
+    ).toBe("$90,071,992,547,409.93");
+  });
+
   it("follows the locale rather than the host environment", () => {
     expect(formatPrice(1_234_567, { currency: "JPY", locale: "ja" })).toBe(
       "￥1,234,567"
@@ -56,6 +91,15 @@ describe("formatPrice", () => {
     expect(formatPrice(123_456, { currency: "USD", locale: "ja" })).toBe(
       "$1,234.56"
     );
+  });
+});
+
+describe("toMajorUnitDecimal", () => {
+  it("writes an amount in the currency's own unit", () => {
+    expect(toMajorUnitDecimal(499n, "USD")).toBe("4.99");
+    expect(toMajorUnitDecimal(5n, "USD")).toBe("0.05");
+    expect(toMajorUnitDecimal(-1250n, "USD")).toBe("-12.50");
+    expect(toMajorUnitDecimal(1500n, "JPY")).toBe("1500");
   });
 });
 

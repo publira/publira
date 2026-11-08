@@ -54,7 +54,7 @@ const genre: GenreListItem = {
   eyeCatchImageVariants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 1200,
       label: "square_1200w",
       url: "https://cdn.example.com/genres/GENRE001/square.webp",

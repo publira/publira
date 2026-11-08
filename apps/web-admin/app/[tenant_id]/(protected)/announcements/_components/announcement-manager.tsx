@@ -62,7 +62,7 @@ const formatAnnouncementDateTime = (
  */
 const readerCountOf = (
   announcement: AnnouncementItem,
-  value: number,
+  value: bigint,
   locale: Locale
 ): string =>
   announcement.deliveredAt

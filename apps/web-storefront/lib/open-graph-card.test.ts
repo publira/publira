@@ -109,7 +109,7 @@ describe("openGraphCardResponse", () => {
       logoImageVariants: [
         {
           contentType: "image/png",
-          fileSizeBytes: 100,
+          fileSizeBytes: 100n,
           height: 100,
           label: "logo",
           url: "/images/tenants/22222222-2222-4222-8222-222222222222/logo",
@@ -137,7 +137,7 @@ describe("openGraphCardResponse", () => {
       logoImageVariants: [
         {
           contentType: "image/png",
-          fileSizeBytes: 100,
+          fileSizeBytes: 100n,
           height: 100,
           label: "logo",
           url: "/images/tenants/22222222-2222-4222-8222-222222222222/logo",

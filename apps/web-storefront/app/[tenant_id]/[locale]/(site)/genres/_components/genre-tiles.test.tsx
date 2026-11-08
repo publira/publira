@@ -50,7 +50,7 @@ const cover = (publicId: string): GenreFeaturedSeriesItem => ({
   eyeCatchImageVariants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 800,
       label: "600",
       url: `/images/series/${publicId}/portrait/600`,
@@ -64,7 +64,7 @@ const cover = (publicId: string): GenreFeaturedSeriesItem => ({
 const eyeCatch = [
   {
     contentType: "image/webp",
-    fileSizeBytes: 2048,
+    fileSizeBytes: 2048n,
     height: 1600,
     label: "1200",
     url: "/images/genres/GENRE01/landscape/1200",
@@ -73,7 +73,7 @@ const eyeCatch = [
   },
   {
     contentType: "image/webp",
-    fileSizeBytes: 1024,
+    fileSizeBytes: 1024n,
     height: 800,
     label: "600",
     url: "/images/genres/GENRE01/portrait/600",

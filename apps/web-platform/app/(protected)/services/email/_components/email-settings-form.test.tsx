@@ -47,7 +47,7 @@ const storedSettings: PlatformSmtpSettings = {
   host: "smtp.platform.example",
   port: 587,
   replyTo: "",
-  revision: "1",
+  revision: 1n,
   username: "platform-user",
 };
 
@@ -328,7 +328,7 @@ describe("EmailSettingsForm", () => {
         Promise.resolve<PlatformEmailSettingsFormState>({
           message: "Email settings saved.",
           ok: true,
-          settings: { ...storedSettings, revision: "2" },
+          settings: { ...storedSettings, revision: 2n },
         })
     );
 
@@ -380,7 +380,7 @@ describe("EmailSettingsForm", () => {
         initialSettings={{
           ...storedSettings,
           host: "smtp.saved.example",
-          revision: "2",
+          revision: 2n,
         }}
         saveAction={idleSaveAction}
         testAction={idleTestAction}

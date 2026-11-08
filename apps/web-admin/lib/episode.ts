@@ -105,7 +105,7 @@ export interface EpisodeItem {
     contentType: string;
     width: number;
     height: number;
-    fileSizeBytes: number;
+    fileSizeBytes: bigint;
   }[];
   eyeCatchImageUpdatedAt: string;
 }
@@ -114,7 +114,7 @@ export interface EpisodeImageItem {
   id: string;
   imageUrl: string;
   contentType: string;
-  fileSizeBytes: string;
+  fileSizeBytes: bigint;
   displayOrder: number;
   width: number;
   height: number;
@@ -394,7 +394,7 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
     (variant) => {
       const mappedVariant = {
         contentType: variant.contentType ?? "",
-        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+        fileSizeBytes: variant.fileSizeBytes ?? 0n,
         height: variant.height ?? 0,
         label: variant.label ?? "",
         url: variant.url ?? "",
@@ -460,7 +460,7 @@ type RawEpisodeImage = Pick<
 const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
   contentType: image.contentType,
   displayOrder: image.displayOrder,
-  fileSizeBytes: image.fileSizeBytes.toString(),
+  fileSizeBytes: image.fileSizeBytes,
   height: image.height,
   id: image.id,
   imageUrl: image.imageUrl,

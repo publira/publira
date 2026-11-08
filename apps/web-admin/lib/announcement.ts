@@ -291,11 +291,11 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => {
     createdAt: item.createdAt,
     deliverAt: item.deliverAt ?? "",
     deliveredAt: item.deliveredAt ?? "",
-    deliveredCount: Number(item.deliveredCount ?? 0),
+    deliveredCount: item.deliveredCount ?? 0n,
     delivery: deliveryValues[item.delivery] ?? "preferred",
     id: item.id,
     linkUrl: item.linkUrl,
-    openedCount: Number(item.openedCount ?? 0),
+    openedCount: item.openedCount ?? 0n,
     pinned: item.pinned,
     pinnedUntil: item.pinnedUntil,
     title: item.title,
@@ -636,7 +636,7 @@ export const deleteAnnouncement = async (
 };
 
 export type CountAnnouncementAudienceResult =
-  | { ok: true; readerCount: number }
+  | { ok: true; readerCount: bigint }
   | { ok: false };
 
 /**
@@ -663,7 +663,7 @@ export const countAnnouncementAudience = async (input: {
       withSessionHeaders(sessionId)
     );
 
-    return { ok: true, readerCount: Number(response.readerCount ?? 0) };
+    return { ok: true, readerCount: response.readerCount ?? 0n };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);

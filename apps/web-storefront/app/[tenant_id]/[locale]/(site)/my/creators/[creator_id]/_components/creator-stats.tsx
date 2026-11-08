@@ -86,10 +86,10 @@ const EpisodeRow = ({
     {salesCurrency === null ? null : (
       <>
         <Table.Cell className="text-right">
-          {formatCount(episode.purchaseCount ?? 0, locale)}
+          {formatCount(episode.purchaseCount ?? 0n, locale)}
         </Table.Cell>
         <Table.Cell className="text-right">
-          {formatPrice(episode.netAmount ?? 0, {
+          {formatPrice(episode.netAmount ?? 0n, {
             currency: salesCurrency,
             locale,
           })}

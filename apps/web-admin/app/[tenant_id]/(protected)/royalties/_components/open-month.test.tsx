@@ -54,10 +54,10 @@ const line = (
   creatorName,
   creatorPublicId,
   episodeTitle: "Episode 1",
-  grossAmount: 5000,
+  grossAmount: 5000n,
   lineNumber,
-  payoutAmount: 1500,
-  refundedAmount: 0,
+  payoutAmount: 1500n,
+  refundedAmount: 0n,
   roleName: "Artist",
   saleCount: 10,
   seriesTitle: "Series A",
@@ -71,23 +71,23 @@ const line = (
 const lines = [
   line(1, "ARTIST", "Aki"),
   line(2, "WRITER", "Ben", {
-    payoutAmount: 1000,
+    payoutAmount: 1000n,
     roleName: "",
     shareBps: 2000,
   }),
   line(3, "ARTIST", "Aki", {
     episodeTitle: "Episode 2",
-    grossAmount: 2000,
-    payoutAmount: 450,
-    refundedAmount: 500,
+    grossAmount: 2000n,
+    payoutAmount: 450n,
+    refundedAmount: 500n,
   }),
 ];
 
 const totals = {
-  adjustment: 0,
-  gross: 7000,
-  payout: 2950,
-  refunded: 500,
+  adjustment: 0n,
+  gross: 7000n,
+  payout: 2950n,
+  refunded: 500n,
   tax: null,
   withholding: null,
 };
@@ -246,8 +246,8 @@ describe("OpenMonth", () => {
           line(1, "ARTIST", "Aki"),
           line(2, "ARTIST", "Aki", {
             adjustedPeriod: "2026-07",
-            grossAmount: -500,
-            payoutAmount: -150,
+            grossAmount: -500n,
+            payoutAmount: -150n,
             saleCount: -1,
           }),
         ]}
@@ -258,10 +258,10 @@ describe("OpenMonth", () => {
         tenantId="TENANT001"
         timeZone="UTC"
         totals={{
-          adjustment: -500,
-          gross: 5000,
-          payout: 1350,
-          refunded: 0,
+          adjustment: -500n,
+          gross: 5000n,
+          payout: 1350n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         }}
@@ -288,10 +288,10 @@ describe("OpenMonth", () => {
         endsAt="2026-08-31T15:00:00Z"
         lines={[
           line(1, "ARTIST", "Aki"),
-          line(2, "WRITER", "Ben", { payoutAmount: 1000 }),
+          line(2, "WRITER", "Ben", { payoutAmount: 1000n }),
           line(3, "ARTIST", "Aki", {
-            grossAmount: 980,
-            payoutAmount: 294,
+            grossAmount: 980n,
+            payoutAmount: 294n,
             saleCount: 1,
             source: "subscription",
           }),
@@ -303,10 +303,10 @@ describe("OpenMonth", () => {
         tenantId="TENANT001"
         timeZone="UTC"
         totals={{
-          adjustment: 0,
-          gross: 5980,
-          payout: 2794,
-          refunded: 0,
+          adjustment: 0n,
+          gross: 5980n,
+          payout: 2794n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         }}
@@ -341,15 +341,15 @@ describe("OpenMonth", () => {
         lines={[
           line(1, "ARTIST", "Aki"),
           line(2, "ARTIST", "Aki", {
-            grossAmount: 300,
-            payoutAmount: 90,
+            grossAmount: 300n,
+            payoutAmount: 90n,
             saleCount: 1,
             source: "tip",
           }),
           line(3, "ARTIST", "Aki", {
             adjustedPeriod: "2026-07",
-            grossAmount: -100,
-            payoutAmount: -30,
+            grossAmount: -100n,
+            payoutAmount: -30n,
             saleCount: -1,
             source: "tip",
           }),
@@ -361,10 +361,10 @@ describe("OpenMonth", () => {
         tenantId="TENANT001"
         timeZone="UTC"
         totals={{
-          adjustment: -100,
-          gross: 5300,
-          payout: 1560,
-          refunded: 0,
+          adjustment: -100n,
+          gross: 5300n,
+          payout: 1560n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         }}
@@ -459,10 +459,10 @@ describe("OpenMonth", () => {
         tenantId="TENANT001"
         timeZone="UTC"
         totals={{
-          adjustment: 0,
-          gross: 0,
-          payout: 0,
-          refunded: 0,
+          adjustment: 0n,
+          gross: 0n,
+          payout: 0n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         }}
@@ -486,7 +486,7 @@ describe("OpenMonth", () => {
           {
             creatorName: "Aki",
             creatorPublicId: "ARTIST",
-            payoutAmount: 1950,
+            payoutAmount: 1950n,
             taxAmount: null,
             withholdingAmount: null,
           },
@@ -517,31 +517,31 @@ describe("OpenMonth", () => {
           {
             creatorName: "Aki",
             creatorPublicId: "ARTIST",
-            payoutAmount: 1950,
-            taxAmount: 136,
-            withholdingAmount: 185,
+            payoutAmount: 1950n,
+            taxAmount: 136n,
+            withholdingAmount: 185n,
           },
           {
             creatorName: "Ben",
             creatorPublicId: "WRITER",
-            payoutAmount: 1000,
+            payoutAmount: 1000n,
             taxAmount: null,
-            withholdingAmount: 102,
+            withholdingAmount: 102n,
           },
         ]}
         currency="JPY"
         endsAt="2026-08-31T15:00:00Z"
         lines={[
-          line(1, "ARTIST", "Aki", { taxAmount: 136, taxRateBps: 1000 }),
-          line(2, "ARTIST", "Aki", { payoutAmount: 450 }),
-          line(3, "WRITER", "Ben", { payoutAmount: 1000 }),
+          line(1, "ARTIST", "Aki", { taxAmount: 136n, taxRateBps: 1000 }),
+          line(2, "ARTIST", "Aki", { payoutAmount: 450n }),
+          line(3, "WRITER", "Ben", { payoutAmount: 1000n }),
         ]}
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="Asia/Tokyo"
-        totals={{ ...totals, tax: 136, withholding: 287 }}
+        totals={{ ...totals, tax: 136n, withholding: 287n }}
         withholdingRateBps={1021}
       />
     );

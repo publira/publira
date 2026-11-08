@@ -45,7 +45,7 @@ import {
   sortRows,
   sortSearchParams,
 } from "../../../_lib/sort";
-import type { SortColumns } from "../../../_lib/sort";
+import type { SortColumns, SortValue } from "../../../_lib/sort";
 import { toDropOffRows } from "./_lib/drop-off-rows";
 import type { DropOffRow } from "./_lib/drop-off-rows";
 
@@ -86,7 +86,7 @@ const dropOffColumns: SortColumns<DropOffColumn> = {
   readers: "desc",
 };
 
-const dropOffValue = (row: DropOffRow, column: DropOffColumn): number => {
+const dropOffValue = (row: DropOffRow, column: DropOffColumn): SortValue => {
   switch (column) {
     case "left": {
       return row.leftCount;
@@ -131,12 +131,12 @@ const ReaderShare = ({
   locale,
   readers,
 }: {
-  first: number;
+  first: bigint;
   locale: Locale;
-  readers: number;
+  readers: bigint;
 }) =>
-  first > 0 ? (
-    formatPercent(readers / first, { locale })
+  first > 0n ? (
+    formatPercent(Number(readers) / Number(first), { locale })
   ) : (
     <Message message="admin.analytics.drop_off.share_unavailable" />
   );
@@ -251,7 +251,7 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
   }
 
   const rows = toDropOffRows(result.pages);
-  const firstReaders = result.pages[0]?.readerCount ?? 0;
+  const firstReaders = result.pages[0]?.readerCount ?? 0n;
 
   const lastPage =
     result.pageCount > 0

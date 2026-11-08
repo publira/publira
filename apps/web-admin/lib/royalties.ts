@@ -32,19 +32,19 @@ import type { RoyaltyCloseMode, RoyaltyClosePolicy } from "./royalty-period";
 import { getAccessToken } from "./session";
 
 export interface RoyaltyTotals {
-  gross: number;
-  refunded: number;
+  gross: bigint;
+  refunded: bigint;
   /**
    * The net sales of earlier closed months that refunds recorded since their
    * close take back: zero, or a negative amount. `payout` already includes the
    * adjustment lines that carry it to the authors.
    */
-  adjustment: number;
-  payout: number;
+  adjustment: bigint;
+  payout: bigint;
   /** The tax the payouts include, `null` where no line has a tax rate. */
-  tax: number | null;
+  tax: bigint | null;
   /** What is withheld from the Authors, `null` where nothing is. */
-  withholding: number | null;
+  withholding: bigint | null;
 }
 
 /** A closed month. */
@@ -152,14 +152,14 @@ type RawTotals = Pick<
 >;
 
 /** An optional amount the API leaves unset where it states nothing. */
-const optionalAmount = (value: bigint | undefined): number | null =>
-  value === undefined ? null : Number(value);
+const optionalAmount = (value: bigint | undefined): bigint | null =>
+  value ?? null;
 
 const mapTotals = (totals: RawTotals | undefined): RoyaltyTotals => ({
-  adjustment: Number(totals?.adjustment ?? 0),
-  gross: Number(totals?.gross ?? 0),
-  payout: Number(totals?.payout ?? 0),
-  refunded: Number(totals?.refunded ?? 0),
+  adjustment: totals?.adjustment ?? 0n,
+  gross: totals?.gross ?? 0n,
+  payout: totals?.payout ?? 0n,
+  refunded: totals?.refunded ?? 0n,
   tax: optionalAmount(totals?.tax),
   withholding: optionalAmount(totals?.withholding),
 });
@@ -207,10 +207,10 @@ const mapLine = (line: RawLine): RoyaltyLine => ({
   creatorName: line.creatorName ?? "",
   creatorPublicId: line.creatorPublicId ?? "",
   episodeTitle: line.episodeTitle ?? "",
-  grossAmount: Number(line.grossAmount ?? 0),
+  grossAmount: line.grossAmount ?? 0n,
   lineNumber: line.lineNumber ?? 0,
-  payoutAmount: Number(line.payoutAmount ?? 0),
-  refundedAmount: Number(line.refundedAmount ?? 0),
+  payoutAmount: line.payoutAmount ?? 0n,
+  refundedAmount: line.refundedAmount ?? 0n,
   roleName: line.roleName ?? "",
   saleCount: line.saleCount ?? 0,
   seriesTitle: line.seriesTitle ?? "",
@@ -233,7 +233,7 @@ type RawSubtotal = Pick<
 const mapCreatorSubtotal = (subtotal: RawSubtotal): RoyaltyCreatorSubtotal => ({
   creatorName: subtotal.creatorName ?? "",
   creatorPublicId: subtotal.creatorPublicId ?? "",
-  payoutAmount: Number(subtotal.payoutAmount ?? 0),
+  payoutAmount: subtotal.payoutAmount ?? 0n,
   taxAmount: optionalAmount(subtotal.taxAmount),
   withholdingAmount: optionalAmount(subtotal.withholdingAmount),
 });

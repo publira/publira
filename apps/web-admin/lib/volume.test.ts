@@ -71,7 +71,7 @@ const SERIES_ID = "018f0e6a-6000-7000-8000-0000000000a1";
 
 const portraitVariant = {
   contentType: "image/webp",
-  fileSizeBytes: 2048,
+  fileSizeBytes: 2048n,
   height: 1600,
   label: "portrait_1200w",
   url: "https://cdn.example.com/volume-covers/COVER001/portrait.webp",

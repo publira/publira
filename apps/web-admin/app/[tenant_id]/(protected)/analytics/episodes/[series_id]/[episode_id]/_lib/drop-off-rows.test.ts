@@ -6,14 +6,14 @@ describe("toDropOffRows", () => {
   it("counts as leaving at a page the readers who did not reach the next", () => {
     expect(
       toDropOffRows([
-        { pageIndex: 0, readerCount: 10 },
-        { pageIndex: 1, readerCount: 6 },
-        { pageIndex: 2, readerCount: 6 },
+        { pageIndex: 0, readerCount: 10n },
+        { pageIndex: 1, readerCount: 6n },
+        { pageIndex: 2, readerCount: 6n },
       ])
     ).toEqual([
-      { leftCount: 4, pageIndex: 0, readerCount: 10 },
-      { leftCount: 0, pageIndex: 1, readerCount: 6 },
-      { leftCount: 6, pageIndex: 2, readerCount: 6 },
+      { leftCount: 4n, pageIndex: 0, readerCount: 10n },
+      { leftCount: 0n, pageIndex: 1, readerCount: 6n },
+      { leftCount: 6n, pageIndex: 2, readerCount: 6n },
     ]);
   });
 

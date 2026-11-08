@@ -111,7 +111,7 @@ afterEach(cleanup);
 const page = (id: string, displayOrder: number): EpisodeImageItem => ({
   contentType: "image/jpeg",
   displayOrder,
-  fileSizeBytes: 1024,
+  fileSizeBytes: 1024n,
   height: 1500,
   id,
   imageUrl: `/images/episodes/${id}`,
@@ -130,7 +130,7 @@ const episode: EpisodeDetail = {
   publicId: "EPISODE_010",
   publishedAt: "2026-08-01T00:00:00Z",
   purchaseSurface: "all",
-  ratingCount: 0,
+  ratingCount: 0n,
   readingDirection: "rtl",
   readingPeriodHours: 72,
   rentalPeriodHours: 0,

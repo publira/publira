@@ -43,6 +43,7 @@ export {
   currencyFractionDigits,
   formatPrice,
   listSupportedCurrencies,
+  toMajorUnitDecimal,
   type FormatPercentOptions,
   type FormatPriceOptions,
 } from "./format-number";

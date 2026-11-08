@@ -170,7 +170,7 @@ describe("listMyCreators", () => {
 });
 
 describe("getMyCreatorStats", () => {
-  it("reads one page of the Author's episodes and turns the counts into numbers", async () => {
+  it("reads one page of the Author's episodes with their counts", async () => {
     mockGetMyCreatorStats.mockResolvedValue({
       currency: "JPY",
       episodes: [
@@ -217,16 +217,16 @@ describe("getMyCreatorStats", () => {
       value: {
         episodes: [
           {
-            completeCount: 3,
-            memberViewCount: 4,
+            completeCount: 3n,
+            memberViewCount: 4n,
             netAmount: undefined,
             purchaseCount: undefined,
           },
         ],
-        followerCount: 12,
+        followerCount: 12n,
         nextToken: "NEXT",
-        totalCompleteCount: 3,
-        totalMemberViewCount: 4,
+        totalCompleteCount: 3n,
+        totalMemberViewCount: 4n,
       },
     });
   });
@@ -403,11 +403,11 @@ describe("getMyCreatorStatement", () => {
     expect(result.ok && result.value.statement).toEqual({
       closedAt: "2026-01-05T10:00:00Z",
       currency: "JPY",
-      grossAmount: 4000,
-      payoutAmount: 1200,
+      grossAmount: 4000n,
+      payoutAmount: 1200n,
       period: "2025-12",
-      refundedAmount: 0,
-      saleCount: 8,
+      refundedAmount: 0n,
+      saleCount: 8n,
       timeZone: "UTC",
     });
     expect(
@@ -418,10 +418,10 @@ describe("getMyCreatorStatement", () => {
           source,
         }))
     ).toEqual([
-      { adjustedPeriod: "", payoutAmount: 1200, source: "sale" },
-      { adjustedPeriod: "", payoutAmount: 1200, source: "tip" },
-      { adjustedPeriod: "", payoutAmount: 1200, source: "subscription" },
-      { adjustedPeriod: "2025-11", payoutAmount: -150, source: "sale" },
+      { adjustedPeriod: "", payoutAmount: 1200n, source: "sale" },
+      { adjustedPeriod: "", payoutAmount: 1200n, source: "tip" },
+      { adjustedPeriod: "", payoutAmount: 1200n, source: "subscription" },
+      { adjustedPeriod: "2025-11", payoutAmount: -150n, source: "sale" },
     ]);
   });
 

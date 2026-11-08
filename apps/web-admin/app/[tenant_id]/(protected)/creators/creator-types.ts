@@ -6,7 +6,7 @@ export interface CreatorListItem {
   name: string;
   profileText: string;
   iconImageUrl: string;
-  iconImageFileSizeBytes: number;
+  iconImageFileSizeBytes: bigint;
   iconImageUpdatedAt: string;
 }
 

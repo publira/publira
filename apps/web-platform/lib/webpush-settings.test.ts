@@ -60,7 +60,7 @@ describe("getPlatformWebPushSettings", () => {
       ok: true,
       settings: {
         configured: true,
-        revision: "3",
+        revision: 3n,
         subject: "mailto:push@example.com",
       },
     });
@@ -138,7 +138,7 @@ describe("updatePlatformWebPushSubject", () => {
     );
     expect(result).toMatchObject({
       ok: true,
-      settings: { configured: true, revision: "4" },
+      settings: { configured: true, revision: 4n },
     });
   });
 

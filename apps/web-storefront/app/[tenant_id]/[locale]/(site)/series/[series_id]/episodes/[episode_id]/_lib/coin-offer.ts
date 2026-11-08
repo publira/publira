@@ -16,7 +16,7 @@ export type CoinOffer =
   | {
       kind: "offer";
       /** What the reader can spend now. */
-      balance: number;
+      balance: bigint;
       coinName: string;
       /** The tenant's terms, stated beside a pack the gate sells. */
       disclosures: CoinDisclosuresItem;
@@ -29,7 +29,7 @@ export type CoinOffer =
        * less the balance, plus what the next pack pays back of a refunded
        * one. 0 when the balance covers it.
        */
-      needed: number;
+      needed: bigint;
       /**
        * The smallest pack on sale that covers `needed`. Absent when the
        * balance covers the permanent copy, and when no pack on sale is large
@@ -94,8 +94,8 @@ export const toCoinOffer = ({
 
   const { coins, owedCoins } = balance.value;
 
-  const needed =
-    coins >= episode.coinPrice ? 0 : episode.coinPrice - coins + owedCoins;
+  const price = BigInt(episode.coinPrice);
+  const needed = coins >= price ? 0n : price - coins + owedCoins;
 
   const packs = acceptsPayments && settings?.selling ? settings.packs : [];
 
@@ -112,7 +112,7 @@ export const toCoinOffer = ({
     idempotencyKey,
     kind: "offer",
     needed,
-    pack: needed > 0 ? coinPackCovering(packs, needed) : undefined,
+    pack: needed > 0n ? coinPackCovering(packs, needed) : undefined,
     packsOnSale: packs.length > 0,
     price: episode.coinPrice,
     rentalPrice: episode.coinRentalPrice,
@@ -125,7 +125,7 @@ export const toCoinOffer = ({
  */
 export const coinsCarryShu = (offer: CoinOffer | undefined): boolean =>
   offer?.kind === "offer" &&
-  (offer.needed === 0 ||
+  (offer.needed === 0n ||
     (offer.rentalPrice > 0 && offer.balance >= offer.rentalPrice));
 
 /**

@@ -206,16 +206,16 @@ const FunnelStep = ({
   signedUp,
 }: {
   children: ReactNode;
-  count: number;
+  count: bigint;
   locale: Locale;
-  signedUp: number;
+  signedUp: bigint;
 }) => (
   <Table.Row>
     <Table.Cell className="font-medium">{children}</Table.Cell>
     <Table.Cell>{formatCount(count, locale)}</Table.Cell>
     <Table.Cell>
-      {signedUp > 0 ? (
-        formatPercent(count / signedUp, { locale })
+      {signedUp > 0n ? (
+        formatPercent(Number(count) / Number(signedUp), { locale })
       ) : (
         <Suspense fallback={<SkeletonLine className="h-4 w-4" />}>
           <Message message="admin.analytics.funnel.share_unavailable" />

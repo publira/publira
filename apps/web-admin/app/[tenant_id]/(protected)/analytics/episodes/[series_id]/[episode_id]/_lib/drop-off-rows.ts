@@ -2,7 +2,7 @@ import type { EpisodePageReachItem } from "#lib/engagement";
 
 /** One page of the report, with the readers who left the episode at it. */
 export interface DropOffRow extends EpisodePageReachItem {
-  leftCount: number;
+  leftCount: bigint;
 }
 
 /**
@@ -14,5 +14,5 @@ export const toDropOffRows = (
 ): DropOffRow[] =>
   pages.map((page, index) => ({
     ...page,
-    leftCount: page.readerCount - (pages[index + 1]?.readerCount ?? 0),
+    leftCount: page.readerCount - (pages[index + 1]?.readerCount ?? 0n),
   }));

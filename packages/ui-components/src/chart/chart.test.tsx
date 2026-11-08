@@ -43,6 +43,20 @@ describe("Chart", () => {
     expect(bars[1]?.getAttribute("class")).toBe("fill-destructive");
   });
 
+  it("draws a bigint figure as it does the number of the same value", () => {
+    const { container: fromNumbers } = render(
+      <Chart.Line values={[3, 1, 0]} />
+    );
+
+    const { container: fromBigints } = render(
+      <Chart.Line values={[3n, 1n, 0n]} />
+    );
+
+    expect(fromBigints.querySelector("polyline")?.getAttribute("points")).toBe(
+      fromNumbers.querySelector("polyline")?.getAttribute("points")
+    );
+  });
+
   it("stacks two series in tones of their own, which the legend names", () => {
     const { container } = render(
       <Chart.Root>

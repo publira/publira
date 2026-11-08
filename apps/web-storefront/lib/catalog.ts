@@ -71,7 +71,7 @@ export interface EyeCatchImageVariant {
   contentType: string;
   width: number;
   height: number;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
 }
 
 /**
@@ -98,7 +98,7 @@ export const toEyeCatchImageVariants = (
   const mapped = (variants ?? []).flatMap((variant) => {
     const mappedVariant = {
       contentType: variant.contentType ?? "",
-      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      fileSizeBytes: variant.fileSizeBytes ?? 0n,
       height: variant.height ?? 0,
       label: variant.label ?? "",
       url: variant.url ?? "",
@@ -287,7 +287,7 @@ export interface EpisodeItem {
 export interface EpisodeImageItem {
   contentType: string;
   displayOrder: number;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
   height: number;
   id: string;
   imageUrl: string;
@@ -345,7 +345,7 @@ export interface EpisodeDetail {
    * How many readers have reacted to this episode. Headcount, not presses,
    * so a five-press rating still counts as one.
    */
-  ratingCount: number;
+  ratingCount: bigint;
   /**
    * Which way the pages are turned. Already resolved: the episode's own
    * value where it states one, and its series' where it does not.
@@ -508,7 +508,7 @@ const mapEpisodeDetail = (
   publicId: episode.publicId ?? "",
   publishedAt: episode.publishedAt ?? "",
   purchaseSurface: toEpisodePurchaseSurface(episode.purchaseAvailability),
-  ratingCount: Number(episode.ratingCount ?? 0),
+  ratingCount: episode.ratingCount ?? 0n,
   readingDirection: toEpisodeReadingDirection(episode.readingDirection),
   readingPeriodHours: episode.readingPeriodHours ?? 0,
   rentalPeriodHours: episode.rentalPeriodHours ?? 0,
@@ -614,7 +614,7 @@ const mapEpisodeImages = (
     .map((image) => ({
       contentType: image.contentType ?? "",
       displayOrder: image.displayOrder ?? 0,
-      fileSizeBytes: Number(image.fileSizeBytes ?? 0),
+      fileSizeBytes: image.fileSizeBytes ?? 0n,
       height: image.height ?? 0,
       id: image.id ?? "",
       imageUrl: image.imageUrl ?? "",
@@ -795,7 +795,7 @@ const toSeriesTagItem = (tag: RawSeriesTag): SeriesTagItem[] => {
 
 export interface SeriesDetail {
   ratingAverage: number;
-  ratingCount: number;
+  ratingCount: bigint;
   /** How this series publishes reader comments after its override is resolved. */
   commentMode: SeriesCommentMode;
   id: string;
@@ -2055,7 +2055,7 @@ const toSeriesDetail = (
       publicId: series.publicId ?? "",
       publishedLocales: publishedLocalesFrom(response.publishedLocales, locale),
       ratingAverage: series.ratingAverage,
-      ratingCount: Number(series.ratingCount),
+      ratingCount: series.ratingCount,
       readingPeriodHours: series.readingPeriodHours ?? 0,
       scheduleWeekdays: toScheduleWeekdays(series.scheduleWeekdays),
       status: toSeriesSerializationStatus(series.status),

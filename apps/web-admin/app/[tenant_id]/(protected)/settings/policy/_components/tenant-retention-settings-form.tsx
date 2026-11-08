@@ -27,7 +27,7 @@ interface TenantRetentionSettingsFormProps {
   platformDefaults: TenantRetentionPeriods;
   overrides: TenantRetentionOverrides;
   /** The stored row's version, sent back so a stale save is refused. */
-  revision: string;
+  revision: bigint;
   tenantId: string;
 }
 
@@ -65,7 +65,7 @@ export const TenantRetentionSettingsForm = ({
         className="grid gap-4 sm:max-w-3xl"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="revision" type="hidden" value={revision} />
+        <input name="revision" type="hidden" value={String(revision)} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
           <PolicyOverride.Root

@@ -26,7 +26,7 @@ const signInVariant = (
   overrides: Partial<TenantImageVariant> = {}
 ): TenantImageVariant => ({
   contentType: "image/jpeg",
-  fileSizeBytes: 204_800,
+  fileSizeBytes: 204_800n,
   height: 1600,
   label: "original",
   url: "/images/tenants/sign-in-1/sign_in",

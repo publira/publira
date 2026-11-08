@@ -83,7 +83,7 @@ const storedMark = (
     variants: [
       {
         contentType: "image/png",
-        fileSizeBytes: 2048,
+        fileSizeBytes: 2048n,
         height: 40,
         label: "original",
         url: `/images/tenants/media-1/${variantType}`,

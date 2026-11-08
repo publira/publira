@@ -136,7 +136,7 @@ describe("getPublishedCreatorDetail", () => {
           eyeCatchImageVariants: [
             {
               contentType: "image/webp",
-              fileSizeBytes: 1024,
+              fileSizeBytes: 1024n,
               height: 1600,
               label: "portrait_1200w",
               url: "/images/series/series-1/portrait/1200",
@@ -189,7 +189,7 @@ describe("getPublishedCreatorDetail", () => {
             eyeCatchImageVariants: [
               {
                 contentType: "image/webp",
-                fileSizeBytes: 1024,
+                fileSizeBytes: 1024n,
                 height: 1600,
                 label: "portrait_1200w",
                 url: "/images/series/series-1/portrait/1200",

@@ -104,7 +104,7 @@ const PolicyForms = async () => {
             ? communityResult.platformDefaults
             : unreadableCommunityLimits
         }
-        revision={communityResult.ok ? communityResult.revision : "0"}
+        revision={communityResult.ok ? communityResult.revision : 0n}
         tenantId={tenantId}
       />
 
@@ -119,7 +119,7 @@ const PolicyForms = async () => {
             ? retentionResult.platformDefaults
             : unreadableRetentionPeriods
         }
-        revision={retentionResult.ok ? retentionResult.revision : "0"}
+        revision={retentionResult.ok ? retentionResult.revision : 0n}
         tenantId={tenantId}
       />
     </ConsoleSection.Stack>

@@ -28,11 +28,11 @@ export const emailConfigurationState = (
     ? "configured"
     : "needs_setup";
 
-/** Revision `"0"` is the row a fresh installation has not saved yet. */
+/** Revision `0n` is the row a fresh installation has not saved yet. */
 export const storageConfigurationState = (
   settings: Pick<PlatformStorageSettings, "revision">
 ): ConfigurationState =>
-  settings.revision === "0" ? "needs_setup" : "configured";
+  settings.revision === 0n ? "needs_setup" : "configured";
 
 /**
  * The SQL engine is what an installation searches with until it saves another,
@@ -55,11 +55,11 @@ export const webPushConfigurationState = (
 ): ConfigurationState =>
   settings.configured ? "configured" : "not_configured";
 
-/** Each policy row reports revision `"0"` while its built-in values apply. */
+/** Each policy row reports revision `0n` while its built-in values apply. */
 export const policyConfigurationState = (
-  revisions: readonly string[]
+  revisions: readonly bigint[]
 ): ConfigurationState =>
-  revisions.every((revision) => revision === "0") ? "defaults" : "configured";
+  revisions.every((revision) => revision === 0n) ? "defaults" : "configured";
 
 /** `unknown` when a read failed, which the screen reports on its own. */
 export type RequiredConfigurationState = "needs_setup" | "ready" | "unknown";

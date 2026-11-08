@@ -27,7 +27,7 @@ const variant = (
   height: number
 ): EyeCatchVariantItem => ({
   contentType: "image/jpeg",
-  fileSizeBytes: 4096,
+  fileSizeBytes: 4096n,
   height,
   label: `${variantType}_${width}w`,
   url: `/images/series/img/${variantType}/${width}`,

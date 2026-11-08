@@ -31,7 +31,7 @@ export const EpisodeReactionControl = async ({
   tenantId,
 }: {
   episodeId: string;
-  ratingCount: number;
+  ratingCount: bigint;
   returnTo: string;
   seriesPublicId: string;
   size?: EpisodeReaction.Size;

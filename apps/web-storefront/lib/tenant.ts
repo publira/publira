@@ -138,7 +138,7 @@ export interface TenantImageVariant {
   contentType: string;
   width: number;
   height: number;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
 }
 
 /**
@@ -348,7 +348,7 @@ const toTenantImageVariants = (
   const mapped = (variants ?? []).flatMap((variant) => {
     const mappedVariant = {
       contentType: variant.contentType ?? "",
-      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      fileSizeBytes: variant.fileSizeBytes ?? 0n,
       height: variant.height ?? 0,
       label: variant.label ?? "",
       url: variant.url ?? "",

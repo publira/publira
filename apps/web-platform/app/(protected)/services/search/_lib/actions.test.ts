@@ -85,7 +85,7 @@ describe("updatePlatformSearchSettingsAction", () => {
   it("saves at the rendered revision and clears the settings and the audit log", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "serving", revision: "4" },
+      settings: { buildState: "serving", revision: 4n },
     });
 
     const { updatePlatformSearchSettingsAction } = await import("./actions");
@@ -115,7 +115,7 @@ describe("updatePlatformSearchSettingsAction", () => {
   it("says the index is being built when the save named a new target", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
 
     const { updatePlatformSearchSettingsAction } = await import("./actions");
@@ -165,7 +165,7 @@ const savedOpenSearch = {
   engine: "opensearch",
   hasPassword: true,
   index: "publira-catalog",
-  revision: "3",
+  revision: 3n,
   url: "https://search.example.com",
   username: "publira",
 };
@@ -189,7 +189,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("restates the saved engine and credential with the new definition, and clears the settings and the audit log", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
 
     const { updatePlatformSearchAnalysisAction } = await import("./actions");
@@ -224,7 +224,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("goes back to the default whatever the editor holds", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
 
     const { updatePlatformSearchAnalysisAction } = await import("./actions");
@@ -269,7 +269,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("saves a definition as one language's own and leaves the shared one as it is", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
 
     const { updatePlatformSearchAnalysisAction } = await import("./actions");
@@ -306,7 +306,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("builds a language from the shared definition again whatever its editor holds", async () => {
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { buildState: "building", revision: "4" },
+      settings: { buildState: "building", revision: 4n },
     });
 
     const { updatePlatformSearchAnalysisAction } = await import("./actions");
@@ -378,7 +378,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("reports a conflict when the saved settings moved past the rendered revision", async () => {
     mockGetPlatformSearchSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { ...savedOpenSearch, revision: "5" },
+      settings: { ...savedOpenSearch, revision: 5n },
     });
 
     const { updatePlatformSearchAnalysisAction } = await import("./actions");

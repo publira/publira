@@ -9,7 +9,7 @@ import { z } from "zod";
 import { MAX_CREDIT_SHARE_BPS } from "./credit-share";
 import type { CropRect } from "./crop-rect";
 import { isCropRectField, parseCropRect } from "./crop-rect";
-import { MAX_INT32 } from "./int32";
+import { MAX_INT32, MAX_INT64 } from "./int32";
 
 /**
  * Decimal integers and fractions only. `Number()` alone would also accept
@@ -123,6 +123,22 @@ export const boundedIntFormSchema = (
       .int(message)
       .min(options.min, message)
       .max(options.max, options.maxMessage ?? message)
+  );
+
+/**
+ * A required `int64` above zero, such as an amount sent back in a hidden
+ * field. Read as a `bigint`, which holds the whole range the API does.
+ */
+export const positiveInt64FormSchema = (
+  message: string
+): z.ZodType<bigint, unknown> =>
+  z.preprocess(
+    (value) => {
+      const raw = isFormText(value) ? value.trim() : "";
+
+      return /^\d{1,19}$/u.test(raw) ? BigInt(raw) : undefined;
+    },
+    z.bigint({ error: message }).min(1n, message).max(MAX_INT64, message)
   );
 
 /**

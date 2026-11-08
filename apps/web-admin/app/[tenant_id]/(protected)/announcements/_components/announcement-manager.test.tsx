@@ -50,11 +50,11 @@ const announcement = (id: string): AnnouncementItem => ({
   createdAt: "2026-06-01T00:00:00Z",
   deliverAt: "2026-06-01T00:00:00Z",
   deliveredAt: "2026-06-01T00:00:00Z",
-  deliveredCount: 3,
+  deliveredCount: 3n,
   delivery: "preferred",
   id,
   linkUrl: "/series/S001",
-  openedCount: 1,
+  openedCount: 1n,
   pinned: false,
   pinnedUntil: "",
   title: "Scheduled maintenance",
@@ -341,13 +341,13 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [
-          { ...announcement("n1"), deliveredCount: 1200, openedCount: 37 },
+          { ...announcement("n1"), deliveredCount: 1200n, openedCount: 37n },
           {
             ...announcement("n2"),
             deliverAt: "2026-07-01T09:00:00Z",
             deliveredAt: "",
-            deliveredCount: 0,
-            openedCount: 0,
+            deliveredCount: 0n,
+            openedCount: 0n,
           },
         ],
         canEdit: true,

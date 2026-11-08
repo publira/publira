@@ -28,7 +28,7 @@ const savedEmail = {
   settings: { hasPassword: true, host: "smtp.example.com", username: "mailer" },
 };
 
-const savedStorage = { ok: true, settings: { revision: "3" } };
+const savedStorage = { ok: true, settings: { revision: 3n } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -83,11 +83,11 @@ describe("emailConfigurationState", () => {
 
 describe("storageConfigurationState", () => {
   it("needs setup until a configuration is saved", () => {
-    expect(storageConfigurationState({ revision: "0" })).toBe("needs_setup");
+    expect(storageConfigurationState({ revision: 0n })).toBe("needs_setup");
   });
 
   it("is configured at any saved revision", () => {
-    expect(storageConfigurationState({ revision: "4" })).toBe("configured");
+    expect(storageConfigurationState({ revision: 4n })).toBe("configured");
   });
 });
 
@@ -105,12 +105,12 @@ describe("webPushConfigurationState", () => {
 
 describe("policyConfigurationState", () => {
   it("runs on the built-in defaults while no policy row is saved", () => {
-    expect(policyConfigurationState(["0", "0"])).toBe("defaults");
+    expect(policyConfigurationState([0n, 0n])).toBe("defaults");
   });
 
   it("is configured once any of the rows is saved", () => {
-    expect(policyConfigurationState(["0", "2"])).toBe("configured");
-    expect(policyConfigurationState(["5", "0"])).toBe("configured");
+    expect(policyConfigurationState([0n, 2n])).toBe("configured");
+    expect(policyConfigurationState([5n, 0n])).toBe("configured");
   });
 });
 
@@ -124,7 +124,7 @@ describe("getRequiredConfigurationState", () => {
   it("needs setup while storage has never been saved", async () => {
     mockGetPlatformStorageSettings.mockResolvedValueOnce({
       ok: true,
-      settings: { revision: "0" },
+      settings: { revision: 0n },
     });
 
     await expect(getRequiredConfigurationState()).resolves.toBe("needs_setup");

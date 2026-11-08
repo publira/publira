@@ -34,8 +34,8 @@ export interface EpisodeReadThroughItem {
   seriesTitle: string;
   episodePublicId: string;
   episodeTitle: string;
-  completeCount: number;
-  memberViewCount: number;
+  completeCount: bigint;
+  memberViewCount: bigint;
 }
 
 export type ListEpisodeReadThroughResult =
@@ -43,8 +43,8 @@ export type ListEpisodeReadThroughResult =
       ok: true;
       episodes: EpisodeReadThroughItem[];
       period: StatsPeriod;
-      totalCompleteCount: number;
-      totalMemberViewCount: number;
+      totalCompleteCount: bigint;
+      totalMemberViewCount: bigint;
       nextToken: string;
       previousToken: string;
     }
@@ -75,10 +75,10 @@ type RawEpisodeReadThrough = Pick<
 const mapEpisodeReadThrough = (
   item: RawEpisodeReadThrough
 ): EpisodeReadThroughItem => ({
-  completeCount: Number(item.completeCount ?? 0),
+  completeCount: item.completeCount ?? 0n,
   episodePublicId: item.episodePublicId,
   episodeTitle: item.episodeTitle,
-  memberViewCount: Number(item.memberViewCount ?? 0),
+  memberViewCount: item.memberViewCount ?? 0n,
   seriesPublicId: item.seriesPublicId,
   seriesTitle: item.seriesTitle,
 });
@@ -100,10 +100,10 @@ const mapErrorToMessage = async (
  * not zero, and only the screen can say what it shows in its place.
  */
 export const readThroughRate = (
-  completeCount: number,
-  memberViewCount: number
+  completeCount: bigint,
+  memberViewCount: bigint
 ): number | null =>
-  memberViewCount > 0 ? completeCount / memberViewCount : null;
+  memberViewCount > 0n ? Number(completeCount) / Number(memberViewCount) : null;
 
 export const listEpisodeReadThrough = async (
   tenantId: string,
@@ -146,8 +146,8 @@ export const listEpisodeReadThrough = async (
         timeZone: response.timeZone ?? "",
       },
       previousToken: response.previousToken ?? "",
-      totalCompleteCount: Number(response.totalCompleteCount ?? 0),
-      totalMemberViewCount: Number(response.totalMemberViewCount ?? 0),
+      totalCompleteCount: response.totalCompleteCount ?? 0n,
+      totalMemberViewCount: response.totalMemberViewCount ?? 0n,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -251,25 +251,25 @@ export interface RevenueStatsItem {
   seriesTitle: string;
   episodePublicId: string;
   episodeTitle: string;
-  purchaseCount: number;
-  grossAmount: number;
-  refundedAmount: number;
+  purchaseCount: bigint;
+  grossAmount: bigint;
+  refundedAmount: bigint;
   /** `grossAmount` less `refundedAmount`: the purchases alone. */
-  netAmount: number;
+  netAmount: bigint;
   /**
    * What subscribers paid for the tenant's plans on a day row, zero on a
    * series or an episode row, which no payment belongs to.
    */
-  subscriptionAmount: number;
+  subscriptionAmount: bigint;
   /** What went back on those payments, taken off the day they were paid. */
-  subscriptionRefundedAmount: number;
+  subscriptionRefundedAmount: bigint;
   /**
    * The tax `netAmount` includes, at the rate each purchase recorded when it
    * was made; zero for the purchases made while the tenant had no rate.
    */
-  taxAmount: number;
+  taxAmount: bigint;
   /** The same of what the tenant kept of the subscription payments. */
-  subscriptionTaxAmount: number;
+  subscriptionTaxAmount: bigint;
 }
 
 export type RevenueStatsTotalsItem = Pick<
@@ -331,14 +331,14 @@ type RawRevenueStatsTotals = Pick<
 const mapRevenueStatsTotals = (
   totals: RawRevenueStatsTotals | undefined
 ): RevenueStatsTotalsItem => ({
-  grossAmount: Number(totals?.grossAmount ?? 0),
-  netAmount: Number(totals?.netAmount ?? 0),
-  purchaseCount: Number(totals?.purchaseCount ?? 0),
-  refundedAmount: Number(totals?.refundedAmount ?? 0),
-  subscriptionAmount: Number(totals?.subscriptionAmount ?? 0),
-  subscriptionRefundedAmount: Number(totals?.subscriptionRefundedAmount ?? 0),
-  subscriptionTaxAmount: Number(totals?.subscriptionTaxAmount ?? 0),
-  taxAmount: Number(totals?.taxAmount ?? 0),
+  grossAmount: totals?.grossAmount ?? 0n,
+  netAmount: totals?.netAmount ?? 0n,
+  purchaseCount: totals?.purchaseCount ?? 0n,
+  refundedAmount: totals?.refundedAmount ?? 0n,
+  subscriptionAmount: totals?.subscriptionAmount ?? 0n,
+  subscriptionRefundedAmount: totals?.subscriptionRefundedAmount ?? 0n,
+  subscriptionTaxAmount: totals?.subscriptionTaxAmount ?? 0n,
+  taxAmount: totals?.taxAmount ?? 0n,
 });
 
 const mapRevenueStatsRow = (row: RawRevenueStatsRow): RevenueStatsItem => ({
@@ -427,18 +427,18 @@ export interface AudienceStatsItem {
   date: string;
   seriesPublicId: string;
   seriesTitle: string;
-  followerCount: number;
-  followedCount: number;
-  unfollowedCount: number;
-  viewCount: number;
-  completeCount: number;
-  reactionCount: number;
+  followerCount: bigint;
+  followedCount: bigint;
+  unfollowedCount: bigint;
+  viewCount: bigint;
+  completeCount: bigint;
+  reactionCount: bigint;
   /**
    * The rating a series row's series stands at, on the 1-5 scale, or `null`
    * for a series no reader has rated yet and for a day.
    */
   ratingAverage: number | null;
-  ratingCount: number;
+  ratingCount: bigint;
 }
 
 export type AudienceStatsTotalsItem = Pick<
@@ -492,23 +492,23 @@ type RawAudienceStatsTotals = Pick<
 const mapAudienceStatsTotals = (
   totals: RawAudienceStatsTotals | undefined
 ): AudienceStatsTotalsItem => ({
-  completeCount: Number(totals?.completeCount ?? 0),
-  followedCount: Number(totals?.followedCount ?? 0),
-  followerCount: Number(totals?.followerCount ?? 0),
-  reactionCount: Number(totals?.reactionCount ?? 0),
-  unfollowedCount: Number(totals?.unfollowedCount ?? 0),
-  viewCount: Number(totals?.viewCount ?? 0),
+  completeCount: totals?.completeCount ?? 0n,
+  followedCount: totals?.followedCount ?? 0n,
+  followerCount: totals?.followerCount ?? 0n,
+  reactionCount: totals?.reactionCount ?? 0n,
+  unfollowedCount: totals?.unfollowedCount ?? 0n,
+  viewCount: totals?.viewCount ?? 0n,
 });
 
 const mapAudienceStatsRow = (row: RawAudienceStatsRow): AudienceStatsItem => {
-  const ratingCount = Number(row.ratingCount ?? 0);
+  const ratingCount = row.ratingCount ?? 0n;
 
   return {
     ...mapAudienceStatsTotals(row),
     date: row.date ?? "",
     // The API sends 0 for a series nobody has rated, which is no rating
     // rather than the bottom of the scale.
-    ratingAverage: ratingCount > 0 ? (row.ratingAverage ?? 0) : null,
+    ratingAverage: ratingCount > 0n ? (row.ratingAverage ?? 0) : null,
     ratingCount,
     seriesPublicId: row.seriesPublicId ?? "",
     seriesTitle: row.seriesTitle ?? "",
@@ -583,7 +583,7 @@ export const getAudienceStats = async (
 export interface EpisodePageReachItem {
   /** Zero-based. */
   pageIndex: number;
-  readerCount: number;
+  readerCount: bigint;
 }
 
 export type GetEpisodeDropOffResult =
@@ -608,7 +608,7 @@ const mapEpisodePageReach = (
   page: RawEpisodePageReach
 ): EpisodePageReachItem => ({
   pageIndex: page.pageIndex ?? 0,
-  readerCount: Number(page.readerCount ?? 0),
+  readerCount: page.readerCount ?? 0n,
 });
 
 /** How far into one episode its readers got over `period`, page by page. */
@@ -664,12 +664,12 @@ export const getEpisodeDropOff = async (
 export interface RetentionCohortItem {
   /** The Monday the cohort's week begins on, a tenant day. */
   weekStart: string;
-  cohortSize: number;
+  cohortSize: bigint;
   /**
    * The readers active in each week from the sign-up week on, as far as the
    * last week that has ended: a week still in progress has no entry.
    */
-  activeCounts: number[];
+  activeCounts: bigint[];
 }
 
 export type GetRetentionCohortsResult =
@@ -688,8 +688,8 @@ type RawRetentionCohort = Pick<
 const mapRetentionCohort = (
   cohort: RawRetentionCohort
 ): RetentionCohortItem => ({
-  activeCounts: (cohort.activeCounts ?? []).map(Number),
-  cohortSize: Number(cohort.cohortSize ?? 0),
+  activeCounts: cohort.activeCounts ?? [],
+  cohortSize: cohort.cohortSize ?? 0n,
   weekStart: cohort.weekStart ?? "",
 });
 
@@ -745,11 +745,11 @@ export const getRetentionCohorts = async (
 
 /** How far the readers who signed up in a period got, each count of them all. */
 export interface SignUpFunnelItem {
-  signedUpCount: number;
-  activeCount: number;
-  purchasedWithinSevenDaysCount: number;
-  purchasedWithinThirtyDaysCount: number;
-  purchasedCount: number;
+  signedUpCount: bigint;
+  activeCount: bigint;
+  purchasedWithinSevenDaysCount: bigint;
+  purchasedWithinThirtyDaysCount: bigint;
+  purchasedCount: bigint;
   /** Fractional days, or `null` when nobody has bought. */
   medianDaysToFirstPurchase: number | null;
 }
@@ -780,23 +780,23 @@ export const getSignUpFunnel = async (
       withSessionHeaders(sessionId)
     );
 
-    const purchasedCount = Number(response.purchasedCount ?? 0);
+    const purchasedCount = response.purchasedCount ?? 0n;
 
     return {
       funnel: {
-        activeCount: Number(response.activeCount ?? 0),
+        activeCount: response.activeCount ?? 0n,
         // The API sends 0 when nobody has bought, which is no median rather
         // than a purchase at the moment of sign-up.
         medianDaysToFirstPurchase:
-          purchasedCount > 0 ? (response.medianDaysToFirstPurchase ?? 0) : null,
+          purchasedCount > 0n
+            ? (response.medianDaysToFirstPurchase ?? 0)
+            : null,
         purchasedCount,
-        purchasedWithinSevenDaysCount: Number(
-          response.purchasedWithinSevenDaysCount ?? 0
-        ),
-        purchasedWithinThirtyDaysCount: Number(
-          response.purchasedWithinThirtyDaysCount ?? 0
-        ),
-        signedUpCount: Number(response.signedUpCount ?? 0),
+        purchasedWithinSevenDaysCount:
+          response.purchasedWithinSevenDaysCount ?? 0n,
+        purchasedWithinThirtyDaysCount:
+          response.purchasedWithinThirtyDaysCount ?? 0n,
+        signedUpCount: response.signedUpCount ?? 0n,
       },
       ok: true,
       period: {

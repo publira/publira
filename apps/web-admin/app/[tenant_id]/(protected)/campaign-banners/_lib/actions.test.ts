@@ -62,7 +62,7 @@ const BANNER_ID = "018f0e6a-6000-7000-8000-000000000001";
 
 const variant = {
   contentType: "image/webp",
-  fileSizeBytes: 2048,
+  fileSizeBytes: 2048n,
   height: 900,
   label: "landscape_1600w",
   url: "https://cdn.example.com/campaign-banners/BANNER001/landscape.webp",

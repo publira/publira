@@ -37,7 +37,7 @@ export const CoinBalanceSummary = ({
           />
         </Suspense>
       </p>
-      {expiresOn && balance.nearestExpiryCoins > 0 ? (
+      {expiresOn && balance.nearestExpiryCoins > 0n ? (
         <p className="text-sm text-muted-foreground tabular-nums">
           <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
             <Message
@@ -51,7 +51,7 @@ export const CoinBalanceSummary = ({
           </Suspense>
         </p>
       ) : null}
-      {balance.owedCoins > 0 ? (
+      {balance.owedCoins > 0n ? (
         <p className="text-sm text-muted-foreground tabular-nums">
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message

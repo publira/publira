@@ -12,7 +12,7 @@ afterEach(cleanup);
 const previewImage = (id: string, displayOrder: number): EpisodeImageItem => ({
   contentType: "image/webp",
   displayOrder,
-  fileSizeBytes: 0,
+  fileSizeBytes: 0n,
   height: 320,
   id,
   imageUrl: `/images/episodes/${id}/preview`,

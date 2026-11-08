@@ -19,8 +19,8 @@ export interface PlatformStorageSettings {
   forcePathStyle: boolean;
   hasSecretAccessKey: boolean;
   publicBaseUrl: string;
-  /** Decimal int64; `"0"` means no configuration has been saved yet. */
-  revision: string;
+  /** `0n` means no configuration has been saved yet. */
+  revision: bigint;
   region: string;
 }
 

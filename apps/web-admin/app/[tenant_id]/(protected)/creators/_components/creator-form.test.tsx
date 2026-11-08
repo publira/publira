@@ -58,7 +58,7 @@ const renderForm = async (
 ) => render(await CreatorForm({ ...props, tenantId: "TENANT001" }));
 
 const creator: CreatorListItem = {
-  iconImageFileSizeBytes: 0,
+  iconImageFileSizeBytes: 0n,
   iconImageUpdatedAt: "",
   iconImageUrl: "",
   id: "creator-1",

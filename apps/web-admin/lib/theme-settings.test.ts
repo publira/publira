@@ -72,7 +72,7 @@ const brandingImageUpdatedAt = "2026-08-19T00:00:00.000Z";
  * never ran that conversion. (`BigInt(...)` rather than `1024n`: the app's
  * TypeScript target is ES2017, which has no bigint literal.)
  */
-const brandingImageFileSizeBytes = 1024;
+const brandingImageFileSizeBytes = 1024n;
 
 const brandingVariant = (variantType: string) => ({
   contentType: "image/png",
@@ -88,23 +88,17 @@ const storedImageResponse = (url: string, variantType: string) => ({
   variants: [
     {
       ...brandingVariant(variantType),
-      fileSizeBytes: BigInt(brandingImageFileSizeBytes),
-      url,
-    },
-  ],
-});
-
-/** What the mapper has to produce from it. */
-const storedImage = (url: string, variantType: string) => ({
-  updatedAt: brandingImageUpdatedAt,
-  variants: [
-    {
-      ...brandingVariant(variantType),
       fileSizeBytes: brandingImageFileSizeBytes,
       url,
     },
   ],
 });
+
+/**
+ * What the mapper has to produce from it: the same fields, the file size
+ * included, since the mapper carries the `int64` through as it came.
+ */
+const storedImage = storedImageResponse;
 
 const fullTheme = {
   accentColor: "#e3e9f5",

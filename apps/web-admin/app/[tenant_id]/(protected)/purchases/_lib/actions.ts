@@ -11,13 +11,12 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
-  boundedIntFormSchema,
+  positiveInt64FormSchema,
   requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import { MAX_INT32 } from "#lib/int32";
 import { getMessagesFor } from "#lib/messages";
-import { parsePriceInput, readCurrency } from "#lib/price";
+import { parseAmountInput, readCurrency } from "#lib/price";
 import {
   purchasesCacheTag,
   refundPurchase,
@@ -43,9 +42,9 @@ const refundPurchaseSchema = async (locale: Locale) => {
 };
 
 interface RefundAmount {
-  amount: number;
+  amount: bigint;
   currency: string;
-  left: number;
+  left: bigint;
 }
 
 /**
@@ -66,12 +65,12 @@ const refundAmountSchema = async (locale: Locale) => {
       currency: z
         .string({ error: target })
         .refine((value) => readCurrency(value) !== null, target),
-      left: boundedIntFormSchema(target, { max: MAX_INT32, min: 1 }),
+      left: positiveInt64FormSchema(target),
     })
     .transform((value, context): RefundAmount => {
-      const amount = parsePriceInput(value.amount, value.currency);
+      const amount = parseAmountInput(value.amount, value.currency);
 
-      if (amount === null || amount <= 0 || amount > value.left) {
+      if (amount === null || amount <= 0n || amount > value.left) {
         context.addIssue({ code: "custom", message: invalid });
 
         return z.NEVER;

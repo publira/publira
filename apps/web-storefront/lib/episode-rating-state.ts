@@ -5,7 +5,7 @@ export const MAX_EPISODE_REACTION_SCORE = 5;
 export type EpisodeReactionMode = "single" | "multiple";
 
 export interface EpisodeReactionState {
-  ratingCount: number;
+  ratingCount: bigint;
   score: number;
 }
 
@@ -23,7 +23,7 @@ export const applyReactionPress = (
 
   return {
     ratingCount:
-      current.score === 0 ? current.ratingCount + 1 : current.ratingCount,
+      current.score === 0 ? current.ratingCount + 1n : current.ratingCount,
     score: mode === "single" ? MAX_EPISODE_REACTION_SCORE : current.score + 1,
   };
 };

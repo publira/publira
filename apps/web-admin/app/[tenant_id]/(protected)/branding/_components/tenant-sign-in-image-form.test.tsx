@@ -58,7 +58,7 @@ const brandingImage = (url: string) => ({
   variants: [
     {
       contentType: "image/jpeg",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 1280,
       label: "original",
       url,

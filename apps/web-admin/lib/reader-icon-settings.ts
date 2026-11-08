@@ -51,7 +51,7 @@ export type UpdateTenantReaderIconPolicyResult =
 /** One stored rendition of a preset, as the gallery describes it. */
 export interface ReaderIconPresetVariant {
   contentType: string;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
   height: number;
   label: string;
   url: string;
@@ -157,7 +157,7 @@ const toReaderIconPresetItem = (
       ? [
           {
             contentType: variant.contentType ?? "",
-            fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+            fileSizeBytes: variant.fileSizeBytes ?? 0n,
             height: variant.height ?? 0,
             label: variant.label ?? "",
             url: variant.url,

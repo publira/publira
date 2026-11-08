@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe("SeriesRating", () => {
   it("Shows a one-decimal average and reader count without a rating control", () => {
-    render(<SeriesRating average={3} count={12} locale="en" />);
+    render(<SeriesRating average={3} count={12n} locale="en" />);
     expect(screen.getByText("Rating: 3.0 · 12 readers")).not.toBeNull();
     expect(
       screen.getByText("React to episodes to rate this series.")
@@ -37,7 +37,7 @@ describe("SeriesRating", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
   it("Omits the public figure when no readers have reacted", () => {
-    render(<SeriesRating average={0} count={0} locale="en" />);
+    render(<SeriesRating average={0} count={0n} locale="en" />);
     expect(screen.queryByText(/Rating:/u)).toBeNull();
     expect(
       screen.getByText("React to episodes to rate this series.")
@@ -46,7 +46,7 @@ describe("SeriesRating", () => {
   it("Shows the reader's own figure beside the public one", async () => {
     vi.mocked(getMySeriesRating).mockResolvedValue(4.25);
     render(
-      <SeriesRating average={3.2} count={12} locale="en">
+      <SeriesRating average={3.2} count={12n} locale="en">
         {await MySeriesRating({
           locale: "en",
           seriesId: "series-1",

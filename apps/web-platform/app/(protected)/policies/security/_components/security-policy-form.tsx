@@ -20,7 +20,7 @@ export const SecurityPolicyForm = ({
   loadErrorMessage,
 }: {
   values: PlatformSecurityPolicy;
-  revision: string;
+  revision: bigint;
   loadErrorMessage?: string;
 }) => (
   <ConsoleSection.Root>
@@ -42,7 +42,7 @@ export const SecurityPolicyForm = ({
       action={updatePlatformSecurityPolicyAction}
       className="grid gap-4 sm:max-w-3xl"
     >
-      <input name="revision" type="hidden" value={revision} />
+      <input name="revision" type="hidden" value={String(revision)} />
       {/* A save refreshes the policy; the new revision remounts the fields
           instead of changing a mounted field's default. */}
       <Fragment key={revision}>

@@ -44,7 +44,7 @@ const images: EpisodeImageItem[] = [
   {
     contentType: "image/webp",
     displayOrder: 1,
-    fileSizeBytes: "1024",
+    fileSizeBytes: 1024n,
     height: 1600,
     id: "IMAGE001",
     imageUrl: "https://cdn.example.com/episodes/EPISODE001/1.webp",

@@ -56,8 +56,8 @@ const valueClassName = "min-w-0 text-sm tabular-nums";
  * or a dash where that side has nothing to say.
  */
 const sideAmount = (
-  amount: number,
-  refunded: number,
+  amount: bigint,
+  refunded: bigint,
   currency: string,
   locale: Locale,
   t: AdminMessageAccessor
@@ -70,7 +70,7 @@ const sideAmount = (
 
   const paid = formatTenantAmount(amount, { currency: code, locale });
 
-  return refunded > 0
+  return refunded > 0n
     ? t("admin.reconciliation.findings.amount_refunded", {
         amount: paid,
         refunded: formatTenantAmount(refunded, { currency: code, locale }),

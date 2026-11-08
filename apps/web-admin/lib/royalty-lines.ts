@@ -24,11 +24,11 @@ export interface RoyaltyLine {
   /** Empty for a credit that states no role. */
   roleName: string;
   saleCount: number;
-  grossAmount: number;
-  refundedAmount: number;
+  grossAmount: bigint;
+  refundedAmount: bigint;
   /** Basis points, 10000 being all of it. */
   shareBps: number;
-  payoutAmount: number;
+  payoutAmount: bigint;
   source: RoyaltyLineSource;
   /**
    * The tax rate of the sales or payments the line counts, in basis points,
@@ -37,7 +37,7 @@ export interface RoyaltyLine {
    * a rate, and on every line closed before statements carried tax.
    */
   taxRateBps: number | null;
-  taxAmount: number | null;
+  taxAmount: bigint | null;
 }
 
 /**
@@ -48,29 +48,29 @@ export interface RoyaltyCreatorSubtotal {
   /** Empty once the Author has been deleted. */
   creatorPublicId: string;
   creatorName: string;
-  payoutAmount: number;
+  payoutAmount: bigint;
   /** `null` where none of the Author's lines has a tax rate. */
-  taxAmount: number | null;
+  taxAmount: bigint | null;
   /** `null` where the month withholds nothing. */
-  withholdingAmount: number | null;
+  withholdingAmount: bigint | null;
 }
 
 /** What the lines of one source pay a creator, adjustments to them included. */
 export interface RoyaltySourceSubtotal {
   source: RoyaltyLineSource;
-  payoutAmount: number;
+  payoutAmount: bigint;
 }
 
 export interface RoyaltyCreatorGroup {
   key: string;
   creatorName: string;
   lines: RoyaltyLine[];
-  payoutSubtotal: number;
+  payoutSubtotal: bigint;
   /**
    * The tax the given lines' payouts include, `null` while none of them has a
    * tax rate.
    */
-  taxSubtotal: number | null;
+  taxSubtotal: bigint | null;
   /**
    * What the sales pay the creator, then the tips and the subscription shares
    * where the creator has a line of them. `null` for a creator with only lines
@@ -97,7 +97,7 @@ const subtotalBySource = (
           {
             payoutAmount: sourceLines.reduce(
               (sum, line) => sum + line.payoutAmount,
-              0
+              0n
             ),
             source,
           },
@@ -135,7 +135,7 @@ export const groupRoyaltyLinesByCreator = (
         creatorName: line.creatorName,
         key,
         lines: [],
-        payoutSubtotal: 0,
+        payoutSubtotal: 0n,
         sourceSubtotals: null,
         taxSubtotal: null,
       };
@@ -146,7 +146,7 @@ export const groupRoyaltyLinesByCreator = (
     group.payoutSubtotal += line.payoutAmount;
 
     if (line.taxAmount !== null) {
-      group.taxSubtotal = (group.taxSubtotal ?? 0) + line.taxAmount;
+      group.taxSubtotal = (group.taxSubtotal ?? 0n) + line.taxAmount;
     }
   }
 

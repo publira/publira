@@ -573,7 +573,7 @@ const CoinSection = ({
     <div className="grid justify-items-center gap-3">
       <p className="text-sm tabular-nums">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          {offer.needed > 0 ? (
+          {offer.needed > 0n ? (
             <Message
               message="storefront.episode.gate.coin_short"
               values={{
@@ -592,7 +592,7 @@ const CoinSection = ({
         </Suspense>
       </p>
       <div className="flex flex-wrap justify-center gap-3">
-        {offer.needed === 0 ? (
+        {offer.needed === 0n ? (
           <CoinPaymentForm
             {...formProps}
             coins={offer.price}
@@ -612,7 +612,7 @@ const CoinSection = ({
             {...formProps}
             coins={offer.rentalPrice}
             kind="rental"
-            variant={offer.needed === 0 ? "outline" : payVariant}
+            variant={offer.needed === 0n ? "outline" : payVariant}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
               <Message
@@ -657,7 +657,7 @@ const CoinSection = ({
             </Suspense>
           </CoinPackCheckoutForm>
         ) : null}
-        {offer.needed > 0 && !pack && offer.packsOnSale ? (
+        {offer.needed > 0n && !pack && offer.packsOnSale ? (
           <LinkButton
             render={<LocaleLink href="/my/coins" />}
             size="lg"

@@ -162,9 +162,9 @@ describe("listPurchases", () => {
       purchases: [
         {
           id: PURCHASE_ID,
-          price: 500,
+          price: 500n,
           refundable: true,
-          refundedAmount: 0,
+          refundedAmount: 0n,
           revocationReason: "",
         },
       ],
@@ -183,7 +183,7 @@ describe("listPurchases", () => {
     const result = await listPurchases("TENANT001", "en");
 
     expect(result.purchases).toMatchObject([
-      { taxAmount: 45, taxRateBps: 1000 },
+      { taxAmount: 45n, taxRateBps: 1000 },
       { taxAmount: null, taxRateBps: null },
     ]);
   });
@@ -278,8 +278,8 @@ describe("listPurchases", () => {
     const result = await listPurchases("TENANT001", "en");
 
     expect(result.purchases).toMatchObject([
-      { listPrice: 500, price: 450, promotionCode: "Welcome10" },
-      { listPrice: 500, price: 500, promotionCode: "" },
+      { listPrice: 500n, price: 450n, promotionCode: "Welcome10" },
+      { listPrice: 500n, price: 500n, promotionCode: "" },
     ]);
   });
 
@@ -338,7 +338,7 @@ describe("listReaderPurchases", () => {
       nextToken: "",
       ok: true,
       previousToken: "previous-page",
-      purchases: [{ id: PURCHASE_ID, price: 500 }],
+      purchases: [{ id: PURCHASE_ID, price: 500n }],
     });
   });
 
@@ -486,7 +486,7 @@ describe("refundPurchase", () => {
 
 describe("refundPurchaseInPart", () => {
   const input = {
-    amount: 200,
+    amount: 200n,
     purchaseId: PURCHASE_ID,
     reason: "Half of the pages would not load.",
     tenantId: "TENANT001",
@@ -512,7 +512,7 @@ describe("refundPurchaseInPart", () => {
     expect(mockRefundPurchase).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       ok: true,
-      purchase: { refundRequestedAmount: 200, revocationReason: "" },
+      purchase: { refundRequestedAmount: 200n, revocationReason: "" },
     });
   });
 

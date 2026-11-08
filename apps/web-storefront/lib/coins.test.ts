@@ -215,10 +215,10 @@ describe("getMyCoinBalance", () => {
       ok: true,
       value: {
         coinName: "Points",
-        coins: 120,
+        coins: 120n,
         nearestExpiryAt: "2026-12-01T00:00:00Z",
-        nearestExpiryCoins: 20,
-        owedCoins: 0,
+        nearestExpiryCoins: 20n,
+        owedCoins: 0n,
       },
     });
     expect(mockGetCoinBalance).toHaveBeenCalledWith(
@@ -391,14 +391,14 @@ describe("coinPackCovering", () => {
   ];
 
   it("offers the smallest pack that covers what the reader needs", () => {
-    expect(coinPackCovering(packs, 120)?.id).toBe("p300");
+    expect(coinPackCovering(packs, 120n)?.id).toBe("p300");
   });
 
   it("counts a pack's bonus coins, and prefers the cheaper of two that grant as many", () => {
-    expect(coinPackCovering(packs, 300)?.id).toBe("p300");
+    expect(coinPackCovering(packs, 300n)?.id).toBe("p300");
   });
 
   it("offers none when no pack is large enough", () => {
-    expect(coinPackCovering(packs, 501)).toBeUndefined();
+    expect(coinPackCovering(packs, 501n)).toBeUndefined();
   });
 });

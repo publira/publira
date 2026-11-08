@@ -17,7 +17,7 @@ const variant = (
   height: number
 ): EyeCatchImageVariant => ({
   contentType: "image/jpeg",
-  fileSizeBytes: width * height,
+  fileSizeBytes: BigInt(width * height),
   height,
   label: `${variantType} ${width}`,
   url: `/images/series/00000000-0000-4000-8000-000000000000/${variantType}/${width}`,
@@ -103,7 +103,7 @@ describe("resolveSeriesOpenGraphImage", () => {
 describe("resolveEpisodeOpenGraphImage", () => {
   const seriesOg = {
     contentType: "image/jpeg",
-    fileSizeBytes: 1200 * 630,
+    fileSizeBytes: 1200n * 630n,
     height: 630,
     label: "og 1200",
     url: "/images/series/00000000-0000-4000-8000-000000000000/og/1200",

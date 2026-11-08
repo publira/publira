@@ -1,5 +1,9 @@
 import type { Locale } from "@publira/i18n";
-import { currencyFractionDigits, formatPrice } from "@publira/utils";
+import {
+  currencyFractionDigits,
+  formatPrice,
+  toMajorUnitDecimal,
+} from "@publira/utils";
 import { z } from "zod";
 
 import { isFormText } from "./form-schemas";
@@ -26,7 +30,7 @@ export const readCurrency = (value: string | undefined): string | null =>
  * that currency could not be read: a number in no currency is no amount.
  */
 export const formatTenantAmount = (
-  amount: number,
+  amount: bigint | number,
   options: { currency: string | null; locale: Locale }
 ): string =>
   options.currency
@@ -38,13 +42,13 @@ export const formatTenantAmount = (
 
 /**
  * The value a price input shows for an amount the API sends, an integer in the
- * minor unit of `currency`: `500` is `"500"` in JPY and `"5.00"` in USD.
+ * minor unit of `currency`: `500` is `"500"` in JPY and `"5.00"` in USD. An
+ * `int64` amount arrives as `bigint` and an `int32` one as `number`.
  */
-export const toPriceInputValue = (amount: number, currency: string): string => {
-  const digits = currencyFractionDigits(currency);
-
-  return (amount / 10 ** digits).toFixed(digits);
-};
+export const toPriceInputValue = (
+  amount: bigint | number,
+  currency: string
+): string => toMajorUnitDecimal(BigInt(amount), currency);
 
 /**
  * The `step` of a price input in `currency`: one of its minor unit, so the
@@ -65,15 +69,15 @@ export const maxPriceInputValue = (currency: string): string =>
 
 /**
  * An amount typed in `currency`, read into the integer of its minor unit the
- * API sends: `"4.99"` in USD is `499`. `null` for anything that is not an
- * amount, including a value with more decimal places than the currency has,
- * which is refused rather than rounded since a rounded amount is one nobody
- * typed. The caller decides what a blank means.
+ * API sends as an `int64`: `"4.99"` in USD is `499n`. `null` for anything that
+ * is not an amount, including a value with more decimal places than the
+ * currency has, which is refused rather than rounded since a rounded amount is
+ * one nobody typed. The caller decides what a blank means.
  */
-export const parsePriceInput = (
+export const parseAmountInput = (
   value: string,
   currency: string
-): number | null => {
+): bigint | null => {
   const digits = currencyFractionDigits(currency);
   const match = PRICE_RE.exec(value.trim());
   const units = match?.groups?.units;
@@ -83,7 +87,22 @@ export const parsePriceInput = (
     return null;
   }
 
-  return Number(units) * 10 ** digits + Number(fraction.padEnd(digits, "0"));
+  return (
+    BigInt(units) * 10n ** BigInt(digits) + BigInt(fraction.padEnd(digits, "0"))
+  );
+};
+
+/**
+ * {@link parseAmountInput} for a price the API carries as an `int32`, which
+ * the caller still holds to {@link MAX_INT32}.
+ */
+export const parsePriceInput = (
+  value: string,
+  currency: string
+): number | null => {
+  const amount = parseAmountInput(value, currency);
+
+  return amount === null ? null : Number(amount);
 };
 
 /**

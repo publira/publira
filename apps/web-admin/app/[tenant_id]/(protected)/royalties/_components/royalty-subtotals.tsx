@@ -45,7 +45,7 @@ export const RoyaltySubtotals = ({
     return null;
   }
 
-  const amount = (value: number | null) =>
+  const amount = (value: bigint | null) =>
     value === null ? (
       <Message message="admin.royalties.lines.no_tax_rate" />
     ) : (

@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("getPlatformStorageSettings", () => {
-  it("returns the stored values and the revision as a decimal string", async () => {
+  it("returns the stored values and the revision", async () => {
     mockGetPlatformStorageSettings.mockResolvedValueOnce({
       settings: storedSettings,
     });
@@ -114,7 +114,7 @@ describe("getPlatformStorageSettings", () => {
         hasSecretAccessKey: true,
         publicBaseUrl: "",
         region: "us-east-1",
-        revision: "3",
+        revision: 3n,
       },
     });
     expect(mockGetPlatformStorageSettings).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe("getPlatformStorageSettings", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      settings: { bucket: "", hasSecretAccessKey: false, revision: "0" },
+      settings: { bucket: "", hasSecretAccessKey: false, revision: 0n },
     });
   });
 
@@ -173,7 +173,7 @@ describe("updatePlatformStorageSettings", () => {
       { ...input, expectedRevision: 3n },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
-    expect(result).toMatchObject({ ok: true, settings: { revision: "4" } });
+    expect(result).toMatchObject({ ok: true, settings: { revision: 4n } });
   });
 
   it("tells the operator to reload when another session saved first", async () => {

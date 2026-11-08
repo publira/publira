@@ -54,14 +54,14 @@ export interface MyCreators {
 }
 
 export interface MyCreatorEpisodeStatsItem {
-  completeCount: number;
+  completeCount: bigint;
   episodePublicId: string;
   episodeTitle: string;
-  memberViewCount: number;
+  memberViewCount: bigint;
   /** Absent while the tenant does not show its Authors their sales. */
-  netAmount?: number;
+  netAmount?: bigint;
   /** Absent while the tenant does not show its Authors their sales. */
-  purchaseCount?: number;
+  purchaseCount?: bigint;
   seriesPublicId: string;
   seriesTitle: string;
 }
@@ -71,7 +71,7 @@ export interface MyCreatorStats {
   /** ISO 4217 code every `netAmount` is in. */
   currency: string;
   episodes: MyCreatorEpisodeStatsItem[];
-  followerCount: number;
+  followerCount: bigint;
   nextToken: string;
   /** `YYYY-MM-DD`, in `timeZone`. */
   periodEnd: string;
@@ -79,8 +79,8 @@ export interface MyCreatorStats {
   periodStart: string;
   previousToken: string;
   timeZone: string;
-  totalCompleteCount: number;
-  totalMemberViewCount: number;
+  totalCompleteCount: bigint;
+  totalMemberViewCount: bigint;
 }
 
 /** The Author's part of one closed month. */
@@ -89,12 +89,12 @@ export interface MyCreatorStatementItem {
   closedAt: string;
   /** ISO 4217 code every amount is in: the tenant's at close. */
   currency: string;
-  grossAmount: number;
-  payoutAmount: number;
+  grossAmount: bigint;
+  payoutAmount: bigint;
   /** `YYYY-MM`. */
   period: string;
-  refundedAmount: number;
-  saleCount: number;
+  refundedAmount: bigint;
+  saleCount: bigint;
   timeZone: string;
 }
 
@@ -109,10 +109,10 @@ export interface MyCreatorStatementLineItem {
   adjustedPeriod: string;
   episodePublicId: string;
   episodeTitle: string;
-  grossAmount: number;
+  grossAmount: bigint;
   lineNumber: number;
-  payoutAmount: number;
-  refundedAmount: number;
+  payoutAmount: bigint;
+  refundedAmount: bigint;
   /** Empty for a credit that states no role. */
   roleName: string;
   saleCount: number;
@@ -254,16 +254,12 @@ type RawEpisodeStats = Pick<
 const toEpisodeStatsItem = (
   episode: RawEpisodeStats
 ): MyCreatorEpisodeStatsItem => ({
-  completeCount: Number(episode.completeCount),
+  completeCount: episode.completeCount,
   episodePublicId: episode.episodePublicId,
   episodeTitle: episode.episodeTitle,
-  memberViewCount: Number(episode.memberViewCount),
-  netAmount:
-    episode.netAmount === undefined ? undefined : Number(episode.netAmount),
-  purchaseCount:
-    episode.purchaseCount === undefined
-      ? undefined
-      : Number(episode.purchaseCount),
+  memberViewCount: episode.memberViewCount,
+  netAmount: episode.netAmount,
+  purchaseCount: episode.purchaseCount,
   seriesPublicId: episode.seriesPublicId,
   seriesTitle: episode.seriesTitle,
 });
@@ -283,11 +279,11 @@ type RawStatement = Pick<
 const toStatementItem = (statement: RawStatement): MyCreatorStatementItem => ({
   closedAt: statement.closedAt,
   currency: statement.currency,
-  grossAmount: Number(statement.grossAmount),
-  payoutAmount: Number(statement.payoutAmount),
+  grossAmount: statement.grossAmount,
+  payoutAmount: statement.payoutAmount,
   period: statement.period,
-  refundedAmount: Number(statement.refundedAmount),
-  saleCount: Number(statement.saleCount),
+  refundedAmount: statement.refundedAmount,
+  saleCount: statement.saleCount,
   timeZone: statement.timeZone,
 });
 
@@ -333,10 +329,10 @@ const toStatementLineItem = (
   adjustedPeriod: line.adjustedPeriod,
   episodePublicId: line.episodePublicId,
   episodeTitle: line.episodeTitle,
-  grossAmount: Number(line.grossAmount),
+  grossAmount: line.grossAmount,
   lineNumber: line.lineNumber,
-  payoutAmount: Number(line.payoutAmount),
-  refundedAmount: Number(line.refundedAmount),
+  payoutAmount: line.payoutAmount,
+  refundedAmount: line.refundedAmount,
   roleName: line.roleName,
   saleCount: line.saleCount,
   seriesPublicId: line.seriesPublicId,
@@ -447,14 +443,14 @@ const readMyCreatorStats = async (
       value: {
         currency: response.currency,
         episodes: response.episodes.map(toEpisodeStatsItem),
-        followerCount: Number(response.followerCount),
+        followerCount: response.followerCount,
         nextToken: response.nextToken,
         periodEnd: response.periodEnd,
         periodStart: response.periodStart,
         previousToken: response.previousToken,
         timeZone: response.timeZone,
-        totalCompleteCount: Number(response.totalCompleteCount),
-        totalMemberViewCount: Number(response.totalMemberViewCount),
+        totalCompleteCount: response.totalCompleteCount,
+        totalMemberViewCount: response.totalMemberViewCount,
       },
     };
   } catch (error) {

@@ -1823,7 +1823,7 @@ describe("episode eye-catch actions", () => {
 
   const storedVariant = {
     contentType: "image/webp",
-    fileSizeBytes: 1024,
+    fileSizeBytes: 1024n,
     height: 3200,
     label: "portrait_2400w",
     url: "https://cdn.example.com/episodes/EP001/3x4.webp",

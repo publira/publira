@@ -95,12 +95,12 @@ export interface PlatformRetentionDefaults {
 }
 
 /**
- * A read of a settings row. `revision` is the decimal int64 the screen sends
- * back with its save; `"0"` means nothing has been saved and the values are the
+ * A read of a settings row. `revision` is what the screen sends back with
+ * its save; `0n` means nothing has been saved and the values are the
  * built-in defaults.
  */
 export type GetPlatformSettingsRowResult<T> =
-  | { ok: true; revision: string; values: T }
+  | { ok: true; revision: bigint; values: T }
   | { message: string; ok: false };
 
 export type SavePlatformSettingsRowResult =
@@ -281,7 +281,7 @@ const getPlatformPolicyForLocale = async (
 
     return {
       ok: true,
-      revision: String(response.revision),
+      revision: response.revision,
       values: toPlatformPolicy(response.policy),
     };
   } catch (error) {
@@ -318,7 +318,7 @@ const getPlatformRetentionDefaultsForLocale = async (
 
     return {
       ok: true,
-      revision: String(response.revision),
+      revision: response.revision,
       values: toPlatformRetentionDefaults(response.defaults),
     };
   } catch (error) {

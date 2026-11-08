@@ -39,11 +39,11 @@ const settings: PlatformSearchSettings = {
   hasPassword: false,
   index: "publira-catalog",
   localeAnalyses: {},
-  revision: "4",
+  revision: 4n,
   serving: {
     engine: "sql",
     index: "",
-    revision: "2",
+    revision: 2n,
     since: "2026-10-01T00:00:00Z",
     url: "",
   },

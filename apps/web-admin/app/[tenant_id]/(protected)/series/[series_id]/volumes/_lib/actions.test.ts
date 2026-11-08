@@ -92,7 +92,7 @@ const savedVolume = (overrides: Partial<VolumeItem> = {}) => ({
 
 const portraitVariant = {
   contentType: "image/webp",
-  fileSizeBytes: 2048,
+  fileSizeBytes: 2048n,
   height: 1600,
   label: "portrait_1200w",
   url: "https://cdn.example.com/volume-covers/COVER001/portrait.webp",

@@ -13,7 +13,7 @@ export interface TenantBrandingImageVariant {
   contentType: string;
   width: number;
   height: number;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
 }
 
 export interface TenantBrandingImage {
@@ -45,7 +45,7 @@ const toVariants = (
   (variants ?? []).flatMap((variant) => {
     const mapped = {
       contentType: variant.contentType ?? "",
-      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      fileSizeBytes: variant.fileSizeBytes ?? 0n,
       height: variant.height ?? 0,
       label: variant.label ?? "",
       url: variant.url ?? "",

@@ -48,7 +48,7 @@ export interface CampaignBannerItem {
     contentType: string;
     width: number;
     height: number;
-    fileSizeBytes: number;
+    fileSizeBytes: bigint;
   }[];
 }
 
@@ -178,7 +178,7 @@ const mapCampaignBanner = (banner: RawCampaignBanner): CampaignBannerItem => ({
   imageVariants: (banner.imageVariants ?? []).flatMap((variant) => {
     const mappedVariant = {
       contentType: variant.contentType ?? "",
-      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      fileSizeBytes: variant.fileSizeBytes ?? 0n,
       height: variant.height ?? 0,
       label: variant.label ?? "",
       url: variant.url ?? "",

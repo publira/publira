@@ -117,7 +117,7 @@ describe("getPlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 587,
         replyTo: "support@example.com",
-        revision: "4",
+        revision: 4n,
         username: "mailer",
       },
     });
@@ -132,7 +132,7 @@ describe("getPlatformEmailSettings", () => {
 
     const result = await getPlatformEmailSettings();
 
-    expect(result.ok && result.settings.revision).toBe("0");
+    expect(result.ok && result.settings.revision).toBe(0n);
   });
 
   it("leaves the API uncalled when the session is rejected", async () => {
@@ -194,7 +194,7 @@ describe("updatePlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 465,
         replyTo: "",
-        revision: "4",
+        revision: 4n,
         username: "mailer",
       },
     });

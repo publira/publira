@@ -69,7 +69,7 @@ const uploadedMark = (termsAcceptedByName: string): TenantBrandMark => ({
     variants: [
       {
         contentType: "image/png",
-        fileSizeBytes: 2048,
+        fileSizeBytes: 2048n,
         height: 40,
         label: "original",
         url: "/images/tenants/test-media/x_share",

@@ -39,7 +39,7 @@ import {
   sortRows,
   sortSearchParams,
 } from "../_lib/sort";
-import type { SortColumns, SortState } from "../_lib/sort";
+import type { SortColumns, SortState, SortValue } from "../_lib/sort";
 
 type AudiencePageProps = PageProps<"/[tenant_id]/analytics/audience">;
 
@@ -101,7 +101,7 @@ const groupSchema = searchParamEnum(audienceGroups, { fallback: "day" });
 const audienceValue = (
   row: AudienceStatsItem,
   column: AudienceColumn
-): number | string => {
+): SortValue => {
   switch (column) {
     case "completions": {
       return row.completeCount;

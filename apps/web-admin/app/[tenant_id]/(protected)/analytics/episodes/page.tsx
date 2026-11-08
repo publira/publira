@@ -68,9 +68,9 @@ const ReadThroughRateCell = async ({
   locale,
   memberViewCount,
 }: {
-  completeCount: number;
+  completeCount: bigint;
   locale: Locale;
-  memberViewCount: number;
+  memberViewCount: bigint;
 }) =>
   await formatReadThroughRate(
     readThroughRate(completeCount, memberViewCount),
