@@ -3,6 +3,13 @@ packages:
   - packages/*
   - e2e
 
+# npm reads devEngines.packageManager too, and refuses every command run at the
+# repository root, `npx skills update` included, while the entry names pnpm and
+# its onFail is not "ignore" or "warn". The entry therefore says "ignore", and
+# this setting, which overrides it for pnpm alone, has pnpm switch to the pinned
+# release anyway.
+pmOnFail: download
+
 allowBuilds:
   # react-email ships an esbuild binary for its preview CLI.
   esbuild: true
