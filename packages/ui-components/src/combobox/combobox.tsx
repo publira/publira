@@ -4,7 +4,7 @@ import { Combobox as BaseCombobox } from "@base-ui/react/combobox";
 import { CheckIcon } from "@publira/icons/check-icon";
 import { cn } from "@publira/utils";
 import { createContext, useCallback, useContext, useMemo } from "react";
-import type { ReactNode } from "react";
+import type { JSX, Context, ReactNode } from "react";
 
 import { FLOATING_TRANSITION } from "../motion";
 
@@ -17,7 +17,9 @@ export interface ComboboxItem {
  * The id the caller gave the control, so the input slot carries it without the
  * call site having to repeat it on both the root and the input.
  */
-export const ComboboxIdContext = createContext<string | undefined>(undefined);
+export const ComboboxIdContext: Context<string | undefined> = createContext<
+  string | undefined
+>(undefined);
 
 export interface ComboboxProps {
   children: ReactNode;
@@ -59,7 +61,7 @@ export const Combobox = ({
   onSearch,
   onValueChange,
   value,
-}: ComboboxProps) => {
+}: ComboboxProps): JSX.Element => {
   const itemToStringLabel = useCallback((item: ComboboxItem) => item.label, []);
 
   const selectedItem = useMemo(
@@ -119,7 +121,7 @@ export const ComboboxInput = ({
   "aria-label"?: string;
   className?: string;
   placeholder?: string;
-}) => {
+}): JSX.Element => {
   const id = useContext(ComboboxIdContext);
 
   return (
@@ -139,7 +141,11 @@ export const ComboboxInput = ({
  * The popup both comboboxes drop open. Holds `ComboboxEmpty` and
  * `ComboboxItems`.
  */
-export const ComboboxPopup = ({ children }: { children: ReactNode }) => (
+export const ComboboxPopup = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <BaseCombobox.Portal>
     <BaseCombobox.Positioner className="z-50 outline-none" sideOffset={4}>
       <BaseCombobox.Popup
@@ -155,14 +161,18 @@ export const ComboboxPopup = ({ children }: { children: ReactNode }) => (
 );
 
 /** Shown in the popup when nothing matches what was typed. */
-export const ComboboxEmpty = ({ children }: { children: ReactNode }) => (
+export const ComboboxEmpty = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <BaseCombobox.Empty className="px-3 py-2 text-sm text-muted-foreground">
     {children}
   </BaseCombobox.Empty>
 );
 
 /** The filtered options. Each one is labelled by the item it renders. */
-export const ComboboxItems = () => (
+export const ComboboxItems = (): JSX.Element => (
   <BaseCombobox.List>
     {(item: ComboboxItem) => (
       <BaseCombobox.Item

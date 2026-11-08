@@ -1,9 +1,15 @@
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
-export const badgeVariants = cva(
+/** The variants {@link badgeVariants} chooses between. */
+interface BadgeVariants {
+  tone?: "destructive" | "info" | "muted" | "success" | "warning" | null;
+  variant?: "outline" | "soft" | "solid" | null;
+}
+
+export const badgeVariants: (props?: BadgeVariants) => string = cva(
   "inline-flex max-w-full items-center gap-1.5 text-xs leading-5 font-medium whitespace-normal",
   {
     compoundVariants: [
@@ -119,7 +125,12 @@ export type BadgeVariant = NonNullable<BadgeVariantOptions["variant"]>;
 
 export type BadgeProps = ComponentPropsWithoutRef<"span"> & BadgeVariantOptions;
 
-export const Badge = ({ className, tone, variant, ...props }: BadgeProps) => (
+export const Badge = ({
+  className,
+  tone,
+  variant,
+  ...props
+}: BadgeProps): JSX.Element => (
   <span
     {...props}
     className={cn(badgeVariants({ tone, variant }), className)}

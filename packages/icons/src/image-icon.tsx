@@ -1,5 +1,8 @@
 import { Image } from "lucide-react";
+import type { JSX } from "react";
 
 import type { IconProps } from "./types";
 
-export const ImageIcon = (props: IconProps) => <Image {...props} />;
+export const ImageIcon = (props: IconProps): JSX.Element => (
+  <Image {...props} />
+);

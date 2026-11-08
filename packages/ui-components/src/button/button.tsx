@@ -2,7 +2,7 @@ import { Button as BaseButton } from "@base-ui/react/button";
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 /**
  * A filled control moves its fill one step on hover instead of fading out.
@@ -27,13 +27,28 @@ const HOVER_FILL_INK = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-foreground)_85%,var(--color-muted-foreground))]"
 );
 
+/** The variants {@link buttonVariants} chooses between. */
+interface ButtonVariants {
+  size?: "icon" | "lg" | "md" | "sm" | null;
+  variant?:
+    | "default"
+    | "destructive"
+    | "destructiveFilled"
+    | "ghost"
+    | "ink"
+    | "link"
+    | "outline"
+    | "secondary"
+    | null;
+}
+
 /**
  * Every size grows to 44px where the pointer is coarse, the smallest target a
  * fingertip lands on reliably. Only the height moves: a label already makes a
  * button wider than that, and the width a mouse sees stays the width the
  * layout was drawn at.
  */
-export const buttonVariants = cva(
+export const buttonVariants: (props?: ButtonVariants) => string = cva(
   "inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50",
   {
     defaultVariants: {
@@ -87,7 +102,12 @@ export type ButtonProps = Omit<BaseButtonProps, "className"> &
     className?: string;
   };
 
-export const Button = ({ className, size, variant, ...props }: ButtonProps) => (
+export const Button = ({
+  className,
+  size,
+  variant,
+  ...props
+}: ButtonProps): JSX.Element => (
   <BaseButton
     {...props}
     className={cn(buttonVariants({ size, variant }), className)}

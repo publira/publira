@@ -1,12 +1,13 @@
 import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import type { Messages } from "../messages";
 import "../temporal";
+import type { Messages } from "../messages";
 import {
   EmailBody,
   EmailFallbackLink,
@@ -16,7 +17,14 @@ import {
 } from "../text";
 import { displayNameField, httpUrlField, instantField } from "./fields";
 
-export const readerEmailVerificationDataSchema = z.object({
+export const readerEmailVerificationDataSchema: z.ZodObject<
+  {
+    expires_at: z.ZodString;
+    tenant_name: z.ZodString;
+    verify_url: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   expires_at: instantField("expires_at"),
   tenant_name: displayNameField("tenant_name"),
   verify_url: httpUrlField("verify_url"),
@@ -43,7 +51,7 @@ export const ReaderEmailVerificationEmail = ({
   locale,
   messages,
   timeZone,
-}: ReaderEmailVerificationEmailProps) => (
+}: ReaderEmailVerificationEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

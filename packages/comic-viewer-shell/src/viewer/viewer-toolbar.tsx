@@ -12,7 +12,7 @@ import {
   Toolbar,
 } from "@publira/comic-viewer";
 import type { PageStatusValue } from "@publira/comic-viewer";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * A band of the same colour as the mat, told apart from it by a hairline,
@@ -24,7 +24,11 @@ import type { ReactNode } from "react";
  * width where a coarse pointer grows the buttons to 44px. The room kept is two
  * icon buttons'.
  */
-export const ViewerToolbar = ({ children }: { children: ReactNode }) => (
+export const ViewerToolbar = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-viewer-rule bg-viewer-mat p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0 max-sm:has-data-viewer-toolbar-actions:pr-26 max-sm:pointer-coarse:has-data-viewer-toolbar-actions:pr-30">
     {children}
   </Toolbar>
@@ -37,7 +41,7 @@ export const ViewerProgress = ({
 }: {
   "aria-label": string;
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <PageProgress
     aria-label={ariaLabel}
     className="mx-auto min-w-0 shrink basis-3/5 max-sm:basis-full"
@@ -56,7 +60,7 @@ export const ViewerProgressSlider = ({
   format,
 }: {
   format: (value: PageStatusValue) => string;
-}) => (
+}): JSX.Element => (
   // The toolbar runs rtl so the thumb moves, and the fill grows, the way pages
   // turn; the status text still reads left to right. The input is taller than
   // its thumb so a finger can catch it, and both grow where the pointer is a
@@ -72,7 +76,7 @@ export const ViewerPageStatus = ({
   format,
 }: {
   format: (value: PageStatusValue) => string;
-}) => (
+}): JSX.Element => (
   <PageStatus
     className="block text-center text-sm text-viewer-ink tabular-nums [direction:ltr]"
     format={format}
@@ -84,7 +88,11 @@ export const ViewerPageStatus = ({
  * laid out in the toolbar's flow, which runs right to left with the reading
  * direction.
  */
-export const ViewerToolbarActions = ({ children }: { children: ReactNode }) => (
+export const ViewerToolbarActions = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div
     className="absolute right-3 bottom-3 flex gap-2"
     data-viewer-toolbar-actions

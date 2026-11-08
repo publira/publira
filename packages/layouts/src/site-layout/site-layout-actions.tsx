@@ -1,10 +1,12 @@
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
-export const SiteLayoutActions = ({ children }: { children: ReactNode }) => (
-  <div className="flex items-center gap-2">{children}</div>
-);
+export const SiteLayoutActions = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="flex items-center gap-2">{children}</div>;
 
 /** The one filled button in the header, in ink. */
 export const SiteLayoutPrimaryAction = ({
@@ -13,7 +15,7 @@ export const SiteLayoutPrimaryAction = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <LinkButton render={<Link href={href} />} variant="ink">
     {children}
   </LinkButton>
@@ -26,7 +28,7 @@ export const SiteLayoutSecondaryAction = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <LinkButton render={<Link href={href} />} variant="ghost">
     {children}
   </LinkButton>

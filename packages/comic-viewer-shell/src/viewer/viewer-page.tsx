@@ -6,7 +6,7 @@ import {
   ViewportPage,
 } from "@publira/comic-viewer";
 import { Button } from "@publira/ui-components/button";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * The page template the rail renders for every managed page. It holds the
@@ -14,7 +14,11 @@ import type { ReactNode } from "react";
  * cannot show on its own: {@link ViewerPageLoading} and
  * {@link ViewerPageError}.
  */
-export const ViewerPage = ({ children }: { children?: ReactNode }) => (
+export const ViewerPage = ({
+  children,
+}: {
+  children?: ReactNode;
+}): JSX.Element => (
   <ViewportPage className="relative flex size-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
     {/* A preview standing in for the full page is faded back toward the mat. */}
     <PageCanvas className="block h-full max-h-full w-auto max-w-full bg-viewer-mat object-contain group-data-[page-fit-mode=actual]:size-auto group-data-[page-fit-mode=actual]:max-h-none group-data-[page-fit-mode=actual]:max-w-none group-data-[page-fit-mode=width]:h-auto group-data-[page-fit-mode=width]:max-h-none group-data-[page-fit-mode=width]:w-full group-data-[page-fit-mode=width]:max-w-none data-[placeholder]:opacity-70" />
@@ -23,7 +27,11 @@ export const ViewerPage = ({ children }: { children?: ReactNode }) => (
 );
 
 /** Shown over a page that has nothing on screen yet. */
-export const ViewerPageLoading = ({ children }: { children: ReactNode }) => {
+export const ViewerPageLoading = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element | null => {
   const { status } = usePageLoadState();
 
   return status === "loading" ? (
@@ -38,7 +46,11 @@ export const ViewerPageLoading = ({ children }: { children: ReactNode }) => {
  * ({@link ViewerPageErrorMessage}) and the control that asks for another
  * attempt ({@link ViewerPageRetryButton}).
  */
-export const ViewerPageError = ({ children }: { children: ReactNode }) => {
+export const ViewerPageError = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element | null => {
   const { status } = usePageLoadState();
 
   return status === "error" ? (
@@ -55,13 +67,13 @@ export const ViewerPageErrorMessage = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="text-sm text-viewer-ink">{children}</p>;
+}): JSX.Element => <p className="text-sm text-viewer-ink">{children}</p>;
 
 export const ViewerPageRetryButton = ({
   children,
 }: {
   children: ReactNode;
-}) => {
+}): JSX.Element => {
   const { retry } = usePageLoadState();
 
   return (

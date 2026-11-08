@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, JSX, ReactNode } from "react";
 import { Link, Text } from "react-email";
 
 import { emailColors, emailFonts } from "./colors";
@@ -79,27 +79,27 @@ export interface EmailTextProps {
 }
 
 /** The card's title, one per template. */
-export const EmailHeading = ({ children }: EmailTextProps) => (
+export const EmailHeading = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={headingStyle}>{children}</Text>
 );
 
 /** The line under the heading that says why the mail arrived. */
-export const EmailIntro = ({ children }: EmailTextProps) => (
+export const EmailIntro = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={introStyle}>{children}</Text>
 );
 
 /** What the recipient is asked to do, above the button. */
-export const EmailBody = ({ children }: EmailTextProps) => (
+export const EmailBody = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={bodyStyle}>{children}</Text>
 );
 
 /** One labelled value, such as an email address the mail talks about. */
-export const EmailDetail = ({ children }: EmailTextProps) => (
+export const EmailDetail = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={detailStyle}>{children}</Text>
 );
 
 /** A closing remark: an expiry, or what to do about an unexpected mail. */
-export const EmailMeta = ({ children }: EmailTextProps) => (
+export const EmailMeta = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={metaStyle}>{children}</Text>
 );
 
@@ -108,7 +108,7 @@ export const EmailMeta = ({ children }: EmailTextProps) => (
  * an answer from a member of staff. It keeps the line breaks they typed, like
  * `EmailQuote`, but reads as the mail's own text rather than as a quotation.
  */
-export const EmailLetter = ({ children }: EmailTextProps) => (
+export const EmailLetter = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={letterStyle}>{children}</Text>
 );
 
@@ -117,7 +117,7 @@ export const EmailLetter = ({ children }: EmailTextProps) => (
  * breaks are theirs, so the block preserves them rather than reflowing the
  * paragraphs into one.
  */
-export const EmailQuote = ({ children }: EmailTextProps) => (
+export const EmailQuote = ({ children }: EmailTextProps): JSX.Element => (
   <Text style={quoteStyle}>{children}</Text>
 );
 
@@ -134,7 +134,7 @@ export interface EmailFallbackLinkProps {
 export const EmailFallbackLink = ({
   children,
   href,
-}: EmailFallbackLinkProps) => (
+}: EmailFallbackLinkProps): JSX.Element => (
   <Text style={fallbackStyle}>
     {children}{" "}
     <Link href={href} style={fallbackLinkStyle}>

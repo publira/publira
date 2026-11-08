@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -14,7 +15,14 @@ import {
 } from "../text";
 import { displayNameField, emailAddressField, httpUrlField } from "./fields";
 
-export const readerPasswordChangedNoticeDataSchema = z.object({
+export const readerPasswordChangedNoticeDataSchema: z.ZodObject<
+  {
+    email: z.ZodString;
+    reset_url: z.ZodString;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   email: emailAddressField("email"),
   reset_url: httpUrlField("reset_url"),
   tenant_name: displayNameField("tenant_name"),
@@ -40,7 +48,7 @@ export const ReaderPasswordChangedNoticeEmail = ({
   data,
   locale,
   messages,
-}: ReaderPasswordChangedNoticeEmailProps) => (
+}: ReaderPasswordChangedNoticeEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

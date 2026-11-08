@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./base.json": "./base/tsconfig.json",
+    "./library.json": "./library/tsconfig.json",
     "./next.json": "./next/tsconfig.json"
   }
 }

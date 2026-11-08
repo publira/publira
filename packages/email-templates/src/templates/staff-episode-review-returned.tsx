@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
@@ -19,7 +20,16 @@ import {
   quotedTextField,
 } from "./fields";
 
-export const staffEpisodeReviewReturnedDataSchema = z.object({
+export const staffEpisodeReviewReturnedDataSchema: z.ZodObject<
+  {
+    comment: z.ZodString;
+    episode_title: z.ZodString;
+    episode_url: z.ZodString;
+    series_title: z.ZodString;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   comment: quotedTextField("comment", 2000),
   episode_title: catalogTitleField("episode_title"),
   episode_url: httpUrlField("episode_url"),
@@ -54,7 +64,7 @@ export const StaffEpisodeReviewReturnedEmail = ({
   data,
   locale,
   messages,
-}: StaffEpisodeReviewReturnedEmailProps) => (
+}: StaffEpisodeReviewReturnedEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

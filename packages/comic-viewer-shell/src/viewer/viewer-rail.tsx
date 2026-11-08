@@ -8,7 +8,7 @@ import {
 } from "@publira/comic-viewer";
 import type { ViewportGestures } from "@publira/comic-viewer";
 import { useCallback, useSyncExternalStore } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /** The server lays nothing out, so no box has a size there. */
 const isZeroOnServer = () => 0;
@@ -81,7 +81,7 @@ export const ViewerRail = ({
   boxHeight: number;
   children: ReactNode;
   gestures?: ViewportGestures;
-}) => (
+}): JSX.Element => (
   <Viewport
     aria-label={ariaLabel}
     className="group relative flex size-full min-h-0 min-w-0 flex-1 touch-pan-y items-stretch overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"

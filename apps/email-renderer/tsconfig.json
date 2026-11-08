@@ -1,5 +1,5 @@
 {
-  "extends": "@publira/tsconfig/base.json",
+  "extends": "@publira/tsconfig/library.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,

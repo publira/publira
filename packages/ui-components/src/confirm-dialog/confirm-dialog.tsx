@@ -2,7 +2,7 @@
 
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { buttonVariants } from "../button/button";
 import type { ButtonProps } from "../button/button";
@@ -49,13 +49,20 @@ export {
  * </ConfirmDialog.Root>
  * ```
  */
-export const ConfirmDialog = ({ children }: { children: ReactNode }) => (
-  <AlertDialog.Root>{children}</AlertDialog.Root>
-);
+export const ConfirmDialog = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <AlertDialog.Root>{children}</AlertDialog.Root>;
 
-export const ConfirmDialogTrigger = AlertDialog.Trigger;
+export const ConfirmDialogTrigger: typeof AlertDialog.Trigger =
+  AlertDialog.Trigger;
 
-export const ConfirmDialogContent = ({ children }: { children: ReactNode }) => (
+export const ConfirmDialogContent = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <DialogPortal>
     <DialogBackdrop />
     <DialogViewport>
@@ -64,7 +71,11 @@ export const ConfirmDialogContent = ({ children }: { children: ReactNode }) => (
   </DialogPortal>
 );
 
-export const ConfirmDialogTitle = ({ children }: { children: ReactNode }) => (
+export const ConfirmDialogTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <DialogTitle className="text-lg font-semibold">{children}</DialogTitle>
 );
 
@@ -72,14 +83,18 @@ export const ConfirmDialogDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <DialogDescription className="text-sm text-muted-foreground">
     {children}
   </DialogDescription>
 );
 
 /** Dismisses the dialog and does nothing else. */
-export const ConfirmDialogCancel = ({ children }: { children: ReactNode }) => (
+export const ConfirmDialogCancel = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <AlertDialog.Close className={cn(buttonVariants({ variant: "outline" }))}>
     {children}
   </AlertDialog.Close>
@@ -106,7 +121,7 @@ export const ConfirmDialogAction = ({
   onClick?: () => void;
   value?: string;
   variant?: NonNullable<ButtonProps["variant"]>;
-}) => {
+}): JSX.Element => {
   const disabled = useFieldsetDisabled();
 
   return (

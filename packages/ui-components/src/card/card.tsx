@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 type DivProps = ComponentPropsWithoutRef<"div">;
 
@@ -9,7 +9,7 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * a shadow — a shadow is for a layer that floats above the page, and this one
  * sits in it.
  */
-export const Card = ({ className, ...props }: DivProps) => (
+export const Card = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn(
@@ -19,26 +19,29 @@ export const Card = ({ className, ...props }: DivProps) => (
   />
 );
 
-export const CardHeader = ({ className, ...props }: DivProps) => (
+export const CardHeader = ({ className, ...props }: DivProps): JSX.Element => (
   <div {...props} className={cn("grid gap-1.5 p-5", className)} />
 );
 
-export const CardTitle = ({ className, ...props }: DivProps) => (
+export const CardTitle = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn("font-sans text-xl leading-tight font-medium", className)}
   />
 );
 
-export const CardDescription = ({ className, ...props }: DivProps) => (
+export const CardDescription = ({
+  className,
+  ...props
+}: DivProps): JSX.Element => (
   <div {...props} className={cn("text-sm text-muted-foreground", className)} />
 );
 
-export const CardContent = ({ className, ...props }: DivProps) => (
+export const CardContent = ({ className, ...props }: DivProps): JSX.Element => (
   <div {...props} className={cn("p-5 pt-0", className)} />
 );
 
-export const CardFooter = ({ className, ...props }: DivProps) => (
+export const CardFooter = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn("flex items-center gap-2 p-5 pt-0", className)}

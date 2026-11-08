@@ -1,6 +1,6 @@
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 type DivProps = ComponentPropsWithoutRef<"div">;
 
@@ -12,14 +12,16 @@ type DivProps = ComponentPropsWithoutRef<"div">;
 export const Drawer = ({
   swipeDirection = "right",
   ...props
-}: BaseDrawer.Root.Props) => (
+}: BaseDrawer.Root.Props): JSX.Element => (
   <BaseDrawer.Root {...props} swipeDirection={swipeDirection} />
 );
 
-export const DrawerTrigger = BaseDrawer.Trigger;
-export const DrawerClose = BaseDrawer.Close;
-export const DrawerTitle = BaseDrawer.Title;
-export const DrawerDescription = BaseDrawer.Description;
+export const DrawerTrigger: typeof BaseDrawer.Trigger = BaseDrawer.Trigger;
+export const DrawerClose: typeof BaseDrawer.Close = BaseDrawer.Close;
+export const DrawerTitle: typeof BaseDrawer.Title = BaseDrawer.Title;
+
+export const DrawerDescription: typeof BaseDrawer.Description =
+  BaseDrawer.Description;
 
 /**
  * A sheet along the right edge of the viewport, over a backdrop, for the
@@ -35,7 +37,7 @@ export const DrawerContent = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Portal>
     {/* Every console screen sits inside the drawer the console's own
         navigation opens in on a phone, so Base UI takes this one for a nested
@@ -57,7 +59,10 @@ export const DrawerContent = ({
   </BaseDrawer.Portal>
 );
 
-export const DrawerHeader = ({ className, ...props }: DivProps) => (
+export const DrawerHeader = ({
+  className,
+  ...props
+}: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn("flex items-start justify-between gap-3", className)}

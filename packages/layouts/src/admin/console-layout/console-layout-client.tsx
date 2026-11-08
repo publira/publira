@@ -12,7 +12,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { isCurrentPath, toConsolePathname } from "../../navigation";
@@ -61,7 +61,7 @@ export const ConsoleMobileNavigation = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <BaseDrawer.Portal>
     <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 md:hidden" />
     {/* Viewport is what Base UI binds swipe and touch scroll locking to. */}
@@ -79,7 +79,7 @@ export const ConsoleMobileNavigationCloseButton = ({
 }: {
   /** Names the button that closes the mobile navigation drawer. */
   "aria-label": string;
-}) => {
+}): JSX.Element => {
   const { close } = useConsoleMobileNavigation();
 
   return (
@@ -99,7 +99,7 @@ export const ConsoleMobileNavigationOpenButton = ({
 }: {
   /** Names the button that opens the mobile navigation drawer. */
   "aria-label": string;
-}) => {
+}): JSX.Element => {
   const { open } = useConsoleMobileNavigation();
 
   return (
@@ -135,7 +135,7 @@ export const ConsoleSidebarNavigation = ({
   children: ReactNode;
   /** Every href the sections below render, so the set is known up front. */
   hrefs: readonly string[];
-}) => {
+}): JSX.Element => {
   const { target } = useContext(ConsoleDrawerNavigationContext);
 
   const navigation = (
@@ -224,7 +224,7 @@ export const ConsoleSidebarNavigationItem = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Suspense
     fallback={
       <ConsoleSidebarNavigationLink current={false} href={href}>
@@ -238,7 +238,11 @@ export const ConsoleSidebarNavigationItem = ({
   </Suspense>
 );
 
-export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
+export const ConsoleLayoutClient = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [drawerNavigationTarget, setDrawerNavigationTarget] =

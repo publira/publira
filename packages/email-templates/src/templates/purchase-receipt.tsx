@@ -4,13 +4,14 @@ import {
   formatPrice,
   listSupportedCurrencies,
 } from "@publira/utils";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import type { Messages } from "../messages";
 import "../temporal";
+import type { Messages } from "../messages";
 import {
   EmailDetail,
   EmailFallbackLink,
@@ -20,7 +21,33 @@ import {
 } from "../text";
 import { displayNameField, httpUrlField, instantField } from "./fields";
 
-export const purchaseReceiptDataSchema = z
+export const purchaseReceiptDataSchema: z.ZodObject<
+  {
+    amount: z.ZodNumber;
+    coin_name: z.ZodDefault<z.ZodString>;
+    coin_pack_bonus_coins: z.ZodDefault<z.ZodNumber>;
+    coin_pack_coins: z.ZodDefault<z.ZodNumber>;
+    coins_expire_at: z.ZodDefault<
+      z.ZodUnion<readonly [z.ZodLiteral<"">, z.ZodString]>
+    >;
+    currency: z.ZodString;
+    episode_title: z.ZodDefault<z.ZodString>;
+    expires_at: z.ZodUnion<readonly [z.ZodLiteral<"">, z.ZodString]>;
+    invoice_legal_name: z.ZodDefault<z.ZodString>;
+    invoice_registration_number: z.ZodDefault<z.ZodString>;
+    is_test: z.ZodBoolean;
+    is_tip: z.ZodDefault<z.ZodBoolean>;
+    library_url: z.ZodString;
+    purchased_at: z.ZodString;
+    series_bundle_episode_count: z.ZodDefault<z.ZodNumber>;
+    series_title: z.ZodDefault<z.ZodString>;
+    tax_amount: z.ZodDefault<z.ZodNumber>;
+    tax_rate_bps: z.ZodDefault<z.ZodNumber>;
+    tenant_name: z.ZodString;
+    volume_title: z.ZodDefault<z.ZodString>;
+  },
+  z.core.$strip
+> = z
   .object({
     /** The price paid, an integer in the minor unit of `currency`. */
     amount: z
@@ -241,7 +268,7 @@ export const PurchaseReceiptEmail = ({
   locale,
   messages,
   timeZone,
-}: PurchaseReceiptEmailProps) => (
+}: PurchaseReceiptEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

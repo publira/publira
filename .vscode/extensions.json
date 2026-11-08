@@ -8,6 +8,7 @@
     "golang.go",
     "mtxr.sqltools",
     "mtxr.sqltools-driver-pg",
-    "oxc.oxc-vscode"
+    "oxc.oxc-vscode",
+    "TypeScriptTeam.native-preview"
   ]
 }

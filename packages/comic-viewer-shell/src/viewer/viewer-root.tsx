@@ -3,7 +3,7 @@
 import { Root } from "@publira/comic-viewer";
 import type { ReadingDirection, ViewerPage } from "@publira/comic-viewer";
 import { useMemo } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import {
   acceptNegotiatedImages,
@@ -41,7 +41,7 @@ export const ViewerRoot = ({
   readingDirection: ReadingDirection;
   renewPageUrl?: RenewPageUrl;
   spreadStartIndex: number;
-}) => {
+}): JSX.Element => {
   const plugins = useMemo(
     () =>
       renewPageUrl === undefined

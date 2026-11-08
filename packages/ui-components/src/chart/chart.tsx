@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 import {
   barGeometry,
@@ -94,7 +94,7 @@ const seriesTones: Record<
  * </Chart.Root>
  * ```
  */
-export const Chart = ({ className, ...props }: FigureProps) => (
+export const Chart = ({ className, ...props }: FigureProps): JSX.Element => (
   <figure {...props} className={cn("grid gap-2", className)} />
 );
 
@@ -143,7 +143,10 @@ const ChartPlot = ({
  * figure hangs below the baseline in the destructive colour, so a day on which
  * more went back than sold reads as a loss rather than as a small sale.
  */
-export const ChartBars = ({ values, ...props }: ChartPlotProps) => (
+export const ChartBars = ({
+  values,
+  ...props
+}: ChartPlotProps): JSX.Element => (
   <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
     {barGeometry(toPlotted(values)).map((bar) => (
       <rect
@@ -169,7 +172,7 @@ export const ChartBars = ({ values, ...props }: ChartPlotProps) => (
 export const ChartStackedBars = ({
   series,
   ...props
-}: ChartStackedBarsProps) => (
+}: ChartStackedBarsProps): JSX.Element => (
   <ChartPlot {...props} plotScale={stackedScale(series.map(toPlotted))}>
     {stackedBarGeometry(series.map(toPlotted)).map((bar) => {
       const tone = seriesTones[bar.series === 1 ? 1 : 0];
@@ -190,7 +193,10 @@ export const ChartStackedBars = ({
 );
 
 /** A line through the figures, such as the followers at the end of each day. */
-export const ChartLine = ({ values, ...props }: ChartPlotProps) => (
+export const ChartLine = ({
+  values,
+  ...props
+}: ChartPlotProps): JSX.Element => (
   <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
     <polyline
       className="fill-none stroke-primary"
@@ -207,7 +213,10 @@ export const ChartLine = ({ values, ...props }: ChartPlotProps) => (
  * episode: the line falls at the edge between two steps, where the count
  * changes, instead of sloping across a stretch that has no figure of its own.
  */
-export const ChartSteps = ({ values, ...props }: ChartPlotProps) => (
+export const ChartSteps = ({
+  values,
+  ...props
+}: ChartPlotProps): JSX.Element => (
   <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
     <path
       className="fill-none stroke-primary"
@@ -222,7 +231,7 @@ export const ChartSteps = ({ values, ...props }: ChartPlotProps) => (
  * The labels under the plot, spread from its left edge to its right: the first
  * and last day of a period, or the first and last page of an episode.
  */
-export const ChartAxis = ({ className, ...props }: DivProps) => (
+export const ChartAxis = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn(
@@ -232,9 +241,14 @@ export const ChartAxis = ({ className, ...props }: DivProps) => (
   />
 );
 
-export const ChartAxisLabel = (props: SpanProps) => <span {...props} />;
+export const ChartAxisLabel = (props: SpanProps): JSX.Element => (
+  <span {...props} />
+);
 
-export const ChartCaption = ({ className, ...props }: FigcaptionProps) => (
+export const ChartCaption = ({
+  className,
+  ...props
+}: FigcaptionProps): JSX.Element => (
   <figcaption
     {...props}
     className={cn("text-sm text-muted-foreground", className)}
@@ -248,7 +262,7 @@ export const ChartCaption = ({ className, ...props }: FigcaptionProps) => (
 export const ChartLegend = ({
   className,
   ...props
-}: ComponentPropsWithoutRef<"ul">) => (
+}: ComponentPropsWithoutRef<"ul">): JSX.Element => (
   <ul
     {...props}
     className={cn(
@@ -263,7 +277,7 @@ export const ChartLegendItem = ({
   className,
   series,
   ...props
-}: ComponentPropsWithoutRef<"li"> & { series: ChartSeries }) => (
+}: ComponentPropsWithoutRef<"li"> & { series: ChartSeries }): JSX.Element => (
   <li {...props} className={cn("flex items-center gap-1.5", className)}>
     <span
       aria-hidden="true"

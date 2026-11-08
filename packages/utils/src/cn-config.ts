@@ -17,7 +17,7 @@ import { fromTheme } from "cn/config";
  *
  * `cn-config.test.ts` reads the stylesheet and fails on a token this misses.
  */
-export const cnConfigExtension = {
+export const cnConfigExtension: ConfigExtension = {
   extend: {
     classGroups: {
       duration: [{ duration: [fromTheme("transition-duration")] }],
@@ -32,4 +32,4 @@ export const cnConfigExtension = {
       "transition-duration": ["state"],
     },
   },
-} satisfies ConfigExtension;
+};

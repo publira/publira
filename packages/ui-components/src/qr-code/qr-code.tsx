@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 import type { QrCodePath } from "./qr-code-path";
 
@@ -24,7 +24,7 @@ export const QrCode = ({
   path,
   size,
   ...props
-}: QrCodeProps) => (
+}: QrCodeProps): JSX.Element => (
   <svg
     {...props}
     aria-hidden={label ? undefined : true}

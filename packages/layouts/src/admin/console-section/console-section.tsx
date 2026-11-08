@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * One part of a console page: a heading, what that part is for, and the table
@@ -32,9 +32,15 @@ export const ConsoleSection = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => <section className={cn("grid gap-4", className)}>{children}</section>;
+}): JSX.Element => (
+  <section className={cn("grid gap-4", className)}>{children}</section>
+);
 
-export const ConsoleSectionHeader = ({ children }: { children: ReactNode }) => (
+export const ConsoleSectionHeader = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
     {children}
   </div>
@@ -44,7 +50,7 @@ export const ConsoleSectionHeading = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="grid gap-1">{children}</div>;
+}): JSX.Element => <div className="grid gap-1">{children}</div>;
 
 export const ConsoleSectionTitle = ({
   children,
@@ -53,7 +59,7 @@ export const ConsoleSectionTitle = ({
   children: ReactNode;
   /** For an `aria-labelledby` elsewhere on the screen that names this section. */
   id?: string;
-}) => (
+}): JSX.Element => (
   <h2 className="text-xl leading-tight font-medium text-foreground" id={id}>
     {children}
   </h2>
@@ -63,13 +69,15 @@ export const ConsoleSectionDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>;
+}): JSX.Element => (
+  <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>
+);
 
 export const ConsoleSectionActions = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
     {children}
   </div>
@@ -87,4 +95,6 @@ export const ConsoleSectionStack = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => <div className={cn("grid gap-10", className)}>{children}</div>;
+}): JSX.Element => (
+  <div className={cn("grid gap-10", className)}>{children}</div>
+);

@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, JSX, ReactNode } from "react";
 import {
   Body,
   Container,
@@ -85,7 +85,7 @@ export const EmailLayout = ({
   locale,
   messages,
   preview,
-}: EmailLayoutProps) => (
+}: EmailLayoutProps): JSX.Element => (
   <Html dir="ltr" lang={locale}>
     <Head />
     <Preview>{preview}</Preview>

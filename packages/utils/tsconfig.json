@@ -1,5 +1,5 @@
 {
-  "extends": "@publira/tsconfig/base.json",
+  "extends": "@publira/tsconfig/library.json",
   "compilerOptions": {
     // ES2023 for `Array#toSorted`, which the repo's lint preset requires over
     // the mutating `Array#sort` (`unicorn/no-array-sort`).

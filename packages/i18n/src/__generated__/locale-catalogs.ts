@@ -28,10 +28,10 @@ const zhHantMatchesCatalogs: ExactCatalog<
   LocaleMessages
 > = zhHant;
 
-export const CATALOGS = {
+export const CATALOGS: Readonly<Record<Locale, LocaleMessages>> = {
   ja: jaMatchesCatalogs,
   en: enMatchesCatalogs,
   ko: koMatchesCatalogs,
   "zh-Hans": zhHansMatchesCatalogs,
   "zh-Hant": zhHantMatchesCatalogs,
-} as const satisfies Record<Locale, LocaleMessages>;
+};

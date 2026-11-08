@@ -1,11 +1,12 @@
 import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import type { Messages } from "../messages";
 import "../temporal";
+import type { Messages } from "../messages";
 import { EmailDetail, EmailLetter, EmailMeta, EmailQuote } from "../text";
 import {
   displayNameField,
@@ -14,7 +15,16 @@ import {
   quotedTextField,
 } from "./fields";
 
-export const staffContactReplyDataSchema = z.object({
+export const staffContactReplyDataSchema: z.ZodObject<
+  {
+    body: z.ZodString;
+    original_body: z.ZodString;
+    original_received_at: z.ZodString;
+    original_subject: z.ZodString;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   /** The answer a member of staff wrote. */
   body: quotedTextField("body", 4000),
   /** The reader's own message, quoted under the answer. */
@@ -56,7 +66,7 @@ export const StaffContactReplyEmail = ({
   locale,
   messages,
   timeZone,
-}: StaffContactReplyEmailProps) => (
+}: StaffContactReplyEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

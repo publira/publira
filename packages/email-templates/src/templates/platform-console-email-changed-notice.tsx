@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailLayout } from "../layout";
@@ -7,7 +8,13 @@ import type { Messages } from "../messages";
 import { EmailBody, EmailDetail, EmailHeading, EmailMeta } from "../text";
 import { emailAddressField } from "./fields";
 
-export const platformConsoleEmailChangedNoticeDataSchema = z.object({
+export const platformConsoleEmailChangedNoticeDataSchema: z.ZodObject<
+  {
+    new_email: z.ZodString;
+    previous_email: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   new_email: emailAddressField("new_email"),
   previous_email: emailAddressField("previous_email"),
 });
@@ -32,7 +39,7 @@ export const PlatformConsoleEmailChangedNoticeEmail = ({
   data,
   locale,
   messages,
-}: PlatformConsoleEmailChangedNoticeEmailProps) => (
+}: PlatformConsoleEmailChangedNoticeEmailProps): JSX.Element => (
   <EmailLayout
     brand={emailMessage(messages, "email.layout.brand")}
     locale={locale}

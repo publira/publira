@@ -1,9 +1,9 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 type DivProps = ComponentPropsWithoutRef<"div">;
 
-export const Skeleton = ({ className, ...props }: DivProps) => (
+export const Skeleton = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     aria-hidden
@@ -23,7 +23,10 @@ export type SkeletonLineProps = ComponentPropsWithoutRef<"span">;
  * {@link Skeleton} is a `<div>`, so dropping it into such a place breaks the
  * line it lands in. This one is a `<span>` and does not.
  */
-export const SkeletonLine = ({ className, ...props }: SkeletonLineProps) => (
+export const SkeletonLine = ({
+  className,
+  ...props
+}: SkeletonLineProps): JSX.Element => (
   <span
     {...props}
     aria-hidden
@@ -42,7 +45,7 @@ export const SkeletonText = ({
   className,
   lines = 3,
   ...props
-}: SkeletonTextProps) => (
+}: SkeletonTextProps): JSX.Element => (
   <div {...props} className={cn("grid gap-2", className)}>
     {Array.from({ length: lines }, (_, index) => (
       <Skeleton
@@ -55,7 +58,10 @@ export const SkeletonText = ({
 
 export type SkeletonCardProps = ComponentPropsWithoutRef<"div">;
 
-export const SkeletonCard = ({ className, ...props }: SkeletonCardProps) => (
+export const SkeletonCard = ({
+  className,
+  ...props
+}: SkeletonCardProps): JSX.Element => (
   <div {...props} className={cn("border border-border bg-card p-5", className)}>
     <div className="grid gap-4">
       <div className="grid gap-2">

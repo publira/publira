@@ -1,12 +1,13 @@
 import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import type { Messages } from "../messages";
 import "../temporal";
+import type { Messages } from "../messages";
 import {
   EmailBody,
   EmailDetail,
@@ -23,7 +24,20 @@ import {
   recipientKindField,
 } from "./fields";
 
-export const readerEmailChangeConfirmationDataSchema = z.object({
+export const readerEmailChangeConfirmationDataSchema: z.ZodObject<
+  {
+    confirm_url: z.ZodString;
+    current_email: z.ZodString;
+    expires_at: z.ZodString;
+    new_email: z.ZodString;
+    recipient_kind: z.ZodEnum<{
+      current_email: "current_email";
+      new_email: "new_email";
+    }>;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   confirm_url: httpUrlField("confirm_url"),
   current_email: emailAddressField("current_email"),
   expires_at: instantField("expires_at"),
@@ -54,7 +68,7 @@ export const ReaderEmailChangeConfirmationEmail = ({
   locale,
   messages,
   timeZone,
-}: ReaderEmailChangeConfirmationEmailProps) => (
+}: ReaderEmailChangeConfirmationEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

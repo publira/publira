@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 import { Skeleton } from "../skeleton/skeleton";
 
@@ -25,7 +25,7 @@ type TdProps = ComponentPropsWithoutRef<"td">;
  * and which columns those are is decided by the data a screen puts in them,
  * not by the primitive.
  */
-export const Table = ({ className, ...props }: TableProps) => (
+export const Table = ({ className, ...props }: TableProps): JSX.Element => (
   <div className="w-full overflow-auto">
     <table
       {...props}
@@ -35,18 +35,21 @@ export const Table = ({ className, ...props }: TableProps) => (
 );
 
 /** The rule under the header is heavier than the ones between rows. */
-export const TableHeader = ({ className, ...props }: TheadProps) => (
+export const TableHeader = ({
+  className,
+  ...props
+}: TheadProps): JSX.Element => (
   <thead
     {...props}
     className={cn("[&_tr]:border-b-2 [&_tr]:border-border", className)}
   />
 );
 
-export const TableBody = ({ className, ...props }: TbodyProps) => (
+export const TableBody = ({ className, ...props }: TbodyProps): JSX.Element => (
   <tbody {...props} className={cn("[&_tr:last-child]:border-0", className)} />
 );
 
-export const TableRow = ({ className, ...props }: TrProps) => (
+export const TableRow = ({ className, ...props }: TrProps): JSX.Element => (
   <tr
     {...props}
     className={cn(
@@ -56,7 +59,7 @@ export const TableRow = ({ className, ...props }: TrProps) => (
   />
 );
 
-export const TableHead = ({ className, ...props }: ThProps) => (
+export const TableHead = ({ className, ...props }: ThProps): JSX.Element => (
   <th
     {...props}
     className={cn(
@@ -66,7 +69,7 @@ export const TableHead = ({ className, ...props }: ThProps) => (
   />
 );
 
-export const TableCell = ({ className, ...props }: TdProps) => (
+export const TableCell = ({ className, ...props }: TdProps): JSX.Element => (
   <td {...props} className={cn("px-3 py-3 align-middle", className)} />
 );
 
@@ -76,7 +79,10 @@ export interface TableEmptyRowProps {
   children: ReactNode;
 }
 
-export const TableEmptyRow = ({ children, colSpan }: TableEmptyRowProps) => (
+export const TableEmptyRow = ({
+  children,
+  colSpan,
+}: TableEmptyRowProps): JSX.Element => (
   <TableRow className="hover:bg-transparent">
     <TableCell
       className="py-10 text-center text-sm text-muted-foreground"
@@ -95,7 +101,7 @@ export interface TableLoadingRowProps {
 export const TableLoadingRow = ({
   colSpan,
   rows = 3,
-}: TableLoadingRowProps) => (
+}: TableLoadingRowProps): JSX.Element => (
   <>
     {Array.from({ length: rows }, (_, i) => (
       // biome-ignore lint/suspicious/noArrayIndexKey: static loading placeholder
@@ -123,7 +129,9 @@ export interface TableSkeletonProps {
  * themselves waiting on the catalog — stands this in its place, so nothing
  * moves sideways when the data arrives.
  */
-export const TableSkeleton = ({ rows = 3 }: TableSkeletonProps) => (
+export const TableSkeleton = ({
+  rows = 3,
+}: TableSkeletonProps): JSX.Element => (
   <div className="divide-y divide-border border-t-2 border-border">
     {Array.from({ length: rows }, (_, index) => (
       // biome-ignore lint/suspicious/noArrayIndexKey: static loading placeholder

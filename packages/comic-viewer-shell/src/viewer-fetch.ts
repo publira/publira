@@ -1,5 +1,5 @@
 import { definePlugin } from "@publira/comic-viewer";
-import type { ViewerPage } from "@publira/comic-viewer";
+import type { PageLoadContext, ViewerPage } from "@publira/comic-viewer";
 import { decodeBase64Url } from "@publira/utils";
 
 import { atRenditionWidth, renditionWidthOf } from "./page-renditions";
@@ -289,6 +289,12 @@ const renewOrNothing = async (
   }
 };
 
+/** The viewer plugin {@link createImageFetchPlugin} builds. */
+interface ImageFetchPlugin {
+  customFetch: (context: PageLoadContext) => Promise<ArrayBuffer>;
+  name: string;
+}
+
 /**
  * The plugin every page is fetched through: it sends the `Accept` header
  * image-server resizes by, and decrypts a page delivered encrypted.
@@ -303,7 +309,9 @@ const renewOrNothing = async (
  * page's own `src` is left alone: the viewer keys a page's load by it, and a
  * load whose key changed under it would be dropped.
  */
-export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
+export const createImageFetchPlugin = (
+  renewPageUrl?: RenewPageUrl
+): ImageFetchPlugin => {
   const renewedUrls = new Map<string, string>();
 
   return definePlugin({
@@ -345,4 +353,5 @@ export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
 };
 
 /** {@link createImageFetchPlugin} for pages whose URLs nothing renews. */
-export const acceptNegotiatedImages = createImageFetchPlugin();
+export const acceptNegotiatedImages: ImageFetchPlugin =
+  createImageFetchPlugin();

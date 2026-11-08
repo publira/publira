@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import type { Server } from "node:http";
 
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 
@@ -14,7 +15,7 @@ const readyzHeaders = {
   "content-type": "application/json; charset=utf-8",
 } as const;
 
-export const createEmailRendererServer = () =>
+export const createEmailRendererServer = (): Server =>
   createServer(
     connectNodeAdapter({
       fallback: (request, response) => {

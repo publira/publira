@@ -2,7 +2,7 @@ import { Select as BaseSelect } from "@base-ui/react/select";
 import { CheckIcon } from "@publira/icons/check-icon";
 import { ChevronDownIcon } from "@publira/icons/chevron-down-icon";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { FieldPopupTrigger } from "../field/field";
 import { FLOATING_TRANSITION } from "../motion";
@@ -32,7 +32,7 @@ export const Select = ({
   onValueChange,
   placeholder,
   ...props
-}: SelectProps) => {
+}: SelectProps): JSX.Element => {
   const safeItems = items ?? [];
 
   // Base UI reports `null` only for an item whose value is `null`, which

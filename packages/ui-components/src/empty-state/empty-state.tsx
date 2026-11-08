@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 type DivProps = ComponentPropsWithoutRef<"div">;
 
@@ -30,7 +30,7 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * </EmptyState.Root>
  * ```
  */
-export const EmptyState = ({ className, ...props }: DivProps) => (
+export const EmptyState = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn(
@@ -40,16 +40,26 @@ export const EmptyState = ({ className, ...props }: DivProps) => (
   />
 );
 
-export const EmptyStateIcon = ({ children }: { children: ReactNode }) => (
+export const EmptyStateIcon = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="mx-auto text-muted-foreground">{children}</div>
 );
 
 /** Title and description stack. */
-export const EmptyStateHeading = ({ children }: { children: ReactNode }) => (
-  <div className="grid gap-1">{children}</div>
-);
+export const EmptyStateHeading = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="grid gap-1">{children}</div>;
 
-export const EmptyStateTitle = ({ children }: { children: ReactNode }) => (
+export const EmptyStateTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <p className="text-base font-medium text-foreground">{children}</p>
 );
 
@@ -57,8 +67,10 @@ export const EmptyStateDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="text-sm text-muted-foreground">{children}</p>;
+}): JSX.Element => <p className="text-sm text-muted-foreground">{children}</p>;
 
-export const EmptyStateActions = ({ children }: { children: ReactNode }) => (
-  <div className="mx-auto">{children}</div>
-);
+export const EmptyStateActions = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="mx-auto">{children}</div>;

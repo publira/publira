@@ -1,12 +1,12 @@
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { FLOATING_TRANSITION } from "../motion";
 
-export const Popover = BasePopover.Root;
-export const PopoverTrigger = BasePopover.Trigger;
-export const PopoverTitle = BasePopover.Title;
+export const Popover: typeof BasePopover.Root = BasePopover.Root;
+export const PopoverTrigger: typeof BasePopover.Trigger = BasePopover.Trigger;
+export const PopoverTitle: typeof BasePopover.Title = BasePopover.Title;
 
 export type PopoverContentProps = Omit<
   BasePopover.Positioner.Props,
@@ -28,7 +28,7 @@ export const PopoverContent = ({
   className,
   popupProps,
   ...positionerProps
-}: PopoverContentProps) => (
+}: PopoverContentProps): JSX.Element => (
   <BasePopover.Portal>
     <BasePopover.Positioner
       {...positionerProps}

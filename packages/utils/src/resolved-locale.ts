@@ -47,6 +47,15 @@ import type { NextRequest, NextResponse } from "next/server";
  */
 export type ResolvedLocaleState = Locale | "none" | "unknown";
 
+/** The attributes {@link resolvedLocaleCookieOptions} holds. */
+interface ResolvedLocaleCookieOptions {
+  httpOnly: false;
+  maxAge: number;
+  path: "/";
+  sameSite: "lax";
+  secure: boolean;
+}
+
 /**
  * Options the resolved-locale cookie is written with.
  *
@@ -56,11 +65,11 @@ export type ResolvedLocaleState = Locale | "none" | "unknown";
  * console itself published, so it discloses nothing, and no server path reads
  * it back — the server resolves the setting directly.
  */
-export const resolvedLocaleCookieOptions = {
-  httpOnly: false as const,
+export const resolvedLocaleCookieOptions: ResolvedLocaleCookieOptions = {
+  httpOnly: false,
   maxAge: LOCALE_COOKIE_MAX_AGE,
-  path: "/" as const,
-  sameSite: "lax" as const,
+  path: "/",
+  sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
 };
 

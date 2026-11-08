@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * Compound page scaffold for the admin / platform consoles.
@@ -26,21 +26,31 @@ import type { ReactNode } from "react";
  * </ConsolePage.Root>
  * ```
  */
-export const ConsolePage = ({ children }: { children: ReactNode }) => (
+export const ConsolePage = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
     {children}
   </section>
 );
 
-export const ConsolePageHeader = ({ children }: { children: ReactNode }) => (
+export const ConsolePageHeader = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
     {children}
   </header>
 );
 
-export const ConsolePageHeading = ({ children }: { children: ReactNode }) => (
-  <div className="grid gap-1">{children}</div>
-);
+export const ConsolePageHeading = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <div className="grid gap-1">{children}</div>;
 
 /**
  * What the screen below is part of, when the reader needs it to place the page
@@ -48,11 +58,17 @@ export const ConsolePageHeading = ({ children }: { children: ReactNode }) => (
  * not a label above the heading: a page whose title says enough on its own
  * leaves this out.
  */
-export const ConsolePageContext = ({ children }: { children: ReactNode }) => (
-  <p className="text-sm text-muted-foreground">{children}</p>
-);
+export const ConsolePageContext = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <p className="text-sm text-muted-foreground">{children}</p>;
 
-export const ConsolePageTitle = ({ children }: { children: ReactNode }) => (
+export const ConsolePageTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <h1 className="text-2xl font-semibold text-foreground">{children}</h1>
 );
 
@@ -60,9 +76,15 @@ export const ConsolePageDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>;
+}): JSX.Element => (
+  <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>
+);
 
-export const ConsolePageActions = ({ children }: { children: ReactNode }) => (
+export const ConsolePageActions = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
     {children}
   </div>
@@ -74,4 +96,6 @@ export const ConsolePageContent = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => <div className={cn("grid gap-6", className)}>{children}</div>;
+}): JSX.Element => (
+  <div className={cn("grid gap-6", className)}>{children}</div>
+);

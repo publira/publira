@@ -14,13 +14,13 @@ import { cn } from "@publira/utils";
  * takes the duration Base UI waits on to zero: a reader who asked for less
  * motion gets the layer immediately, not a faster fade.
  */
-export const FLOATING_TRANSITION = cn(
+export const FLOATING_TRANSITION: string = cn(
   // `scale` rather than `transform`: Tailwind writes the scale utilities to
   // the independent `scale` property, which `transition-transform` misses.
   "transition-[opacity,scale] duration-state ease-state data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none"
 );
 
 /** The same, for a layer whose transform is already spoken for. */
-export const FLOATING_FADE = cn(
+export const FLOATING_FADE: string = cn(
   "transition-opacity duration-state ease-state data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none"
 );

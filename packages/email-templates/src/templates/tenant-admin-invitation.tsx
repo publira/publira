@@ -1,12 +1,13 @@
 import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
+import type { JSX } from "react";
 import { z } from "zod";
 
 import { EmailButton } from "../button";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
-import type { Messages } from "../messages";
 import "../temporal";
+import type { Messages } from "../messages";
 import {
   EmailBody,
   EmailFallbackLink,
@@ -21,7 +22,19 @@ import {
   tenantRoleField,
 } from "./fields";
 
-export const tenantAdminInvitationDataSchema = z.object({
+export const tenantAdminInvitationDataSchema: z.ZodObject<
+  {
+    expires_at: z.ZodString;
+    invite_url: z.ZodString;
+    role: z.ZodEnum<{
+      tenant_admin: "tenant_admin";
+      tenant_auditor: "tenant_auditor";
+      tenant_editor: "tenant_editor";
+    }>;
+    tenant_name: z.ZodString;
+  },
+  z.core.$strip
+> = z.object({
   expires_at: instantField("expires_at"),
   invite_url: httpUrlField("invite_url"),
   role: tenantRoleField(),
@@ -52,7 +65,7 @@ export const TenantAdminInvitationEmail = ({
   locale,
   messages,
   timeZone,
-}: TenantAdminInvitationEmailProps) => (
+}: TenantAdminInvitationEmailProps): JSX.Element => (
   <EmailLayout
     brand={data.tenant_name}
     locale={locale}

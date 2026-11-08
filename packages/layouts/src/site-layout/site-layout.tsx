@@ -1,13 +1,15 @@
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { SiteLayoutClient } from "./site-layout-client";
 
-export const SiteLayout = ({ children }: { children: ReactNode }) => (
-  <SiteLayoutClient>{children}</SiteLayoutClient>
-);
+export const SiteLayout = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <SiteLayoutClient>{children}</SiteLayoutClient>;
 
 /**
  * The band above the header, carrying the one announcement a reader has to see
@@ -15,7 +17,11 @@ export const SiteLayout = ({ children }: { children: ReactNode }) => (
  * that it is the first thing on every screen, and it is the only part of the
  * chrome with a fill of its own, because it is there to interrupt.
  */
-export const SiteLayoutBanner = ({ children }: { children: ReactNode }) => (
+export const SiteLayoutBanner = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <aside className="border-b border-border bg-info text-info-foreground">
     <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-x-4 gap-y-2 px-6 py-3">
       {children}
@@ -28,19 +34,19 @@ export const SiteLayoutBannerContent = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="min-w-0 flex-1 text-sm">{children}</div>;
+}): JSX.Element => <div className="min-w-0 flex-1 text-sm">{children}</div>;
 
 export const SiteLayoutBannerTitle = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="font-medium">{children}</p>;
+}): JSX.Element => <p className="font-medium">{children}</p>;
 
 export const SiteLayoutBannerDescription = ({
   children,
 }: {
   children: ReactNode;
-}) => <p className="mt-0.5 line-clamp-2">{children}</p>;
+}): JSX.Element => <p className="mt-0.5 line-clamp-2">{children}</p>;
 
 /**
  * Where the banner sends a reader — the announcement itself, or whatever the
@@ -53,7 +59,7 @@ export const SiteLayoutBannerLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Link
     className="mt-1 inline-flex text-sm font-medium underline underline-offset-4"
     href={href}
@@ -67,7 +73,9 @@ export const SiteLayoutBannerActions = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="flex shrink-0 items-center gap-2">{children}</div>;
+}): JSX.Element => (
+  <div className="flex shrink-0 items-center gap-2">{children}</div>
+);
 
 /**
  * A 56px band a half step above the page, closed by one hairline. The band is
@@ -83,7 +91,7 @@ export const SiteLayoutHeader = ({
 }: {
   children: ReactNode;
   className?: string;
-}) => (
+}): JSX.Element => (
   <header className={cn("border-b border-border bg-surface", className)}>
     <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-6">
       {children}
@@ -97,7 +105,7 @@ export const SiteLayoutBrand = ({
 }: {
   children: ReactNode;
   href?: string;
-}) => (
+}): JSX.Element => (
   <Link
     className="inline-flex min-w-0 items-center truncate font-serif text-lg font-medium text-foreground transition-colors duration-state ease-state hover:text-muted-foreground pointer-coarse:min-h-11"
     href={href}
@@ -106,11 +114,15 @@ export const SiteLayoutBrand = ({
   </Link>
 );
 
-export const SiteLayoutBrandSkeleton = () => (
+export const SiteLayoutBrandSkeleton = (): JSX.Element => (
   <Skeleton className="inline-block h-5 w-24 rounded-control" />
 );
 
-export const SiteLayoutNav = ({ children }: { children: ReactNode }) => (
+export const SiteLayoutNav = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <nav className="hidden items-center gap-5 text-sm text-foreground md:flex">
     {children}
   </nav>
@@ -126,7 +138,7 @@ export const SiteLayoutNavLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Link
     className="inline-flex items-center underline-offset-4 hover:underline pointer-coarse:min-h-11"
     href={href}
@@ -140,7 +152,7 @@ export const SiteLayoutNavLink = ({
  * hrefs are not resolved yet — on the public site the prefix each one needs
  * depends on a tenant read.
  */
-export const SiteLayoutNavSkeleton = () => (
+export const SiteLayoutNavSkeleton = (): JSX.Element => (
   <div
     aria-busy="true"
     className="hidden items-center gap-5 text-sm md:flex"
@@ -165,7 +177,7 @@ export const SiteLayoutHeaderSearch = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="hidden max-w-48 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
     {children}
   </div>
@@ -180,11 +192,15 @@ export const SiteLayoutHeaderWideControls = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="hidden items-center gap-2 md:flex">{children}</div>;
-
-export const SiteLayoutMain = ({ children }: { children: ReactNode }) => (
-  <main className="flex-1">{children}</main>
+}): JSX.Element => (
+  <div className="hidden items-center gap-2 md:flex">{children}</div>
 );
+
+export const SiteLayoutMain = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <main className="flex-1">{children}</main>;
 
 /**
  * The row of controls at the band's trailing edge: the wide-only ones, then the
@@ -201,7 +217,7 @@ export const SiteLayoutHeaderActions = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="max-md:contents md:flex md:items-center md:gap-2">
     {children}
   </div>
@@ -213,7 +229,7 @@ export const SiteLayoutHeaderActions = ({
  * band reserves nothing there, because what it draws once the answer arrives
  * is either nothing or the notification bell and the account menu.
  */
-export const SiteLayoutHeaderActionsSkeleton = () => (
+export const SiteLayoutHeaderActionsSkeleton = (): JSX.Element => (
   <div
     aria-busy="true"
     aria-live="polite"
@@ -224,7 +240,11 @@ export const SiteLayoutHeaderActionsSkeleton = () => (
   </div>
 );
 
-export const SiteLayoutFooter = ({ children }: { children: ReactNode }) => (
+export const SiteLayoutFooter = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <footer className="border-t border-border bg-surface">
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-6 text-sm text-muted-foreground">
       {children}
@@ -239,7 +259,7 @@ export const SiteLayoutFooterLinks = ({
   /** Names the footer link list for a screen reader. */
   "aria-label": string;
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <nav
     aria-label={ariaLabel}
     className="flex flex-wrap items-center gap-x-4 gap-y-2"
@@ -254,7 +274,7 @@ export const SiteLayoutFooterLink = ({
 }: {
   children: ReactNode;
   href: string;
-}) => (
+}): JSX.Element => (
   <Link
     className="transition-colors duration-state ease-state hover:text-foreground"
     href={href}
@@ -267,23 +287,25 @@ export const SiteLayoutFooterContent = ({
   children,
 }: {
   children: ReactNode;
-}) => (
+}): JSX.Element => (
   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     {children}
   </div>
 );
 
-export const SiteLayoutFooterNote = ({ children }: { children: ReactNode }) => (
-  <p>{children}</p>
-);
+export const SiteLayoutFooterNote = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <p>{children}</p>;
 
 export const SiteLayoutFooterCopyright = ({
   children,
 }: {
   children: ReactNode;
-}) => <p>{children}</p>;
+}): JSX.Element => <p>{children}</p>;
 
-export const SiteLayoutFooterSkeleton = () => (
+export const SiteLayoutFooterSkeleton = (): JSX.Element => (
   <footer
     aria-busy="true"
     aria-live="polite"

@@ -1,5 +1,5 @@
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 type DlProps = ComponentPropsWithoutRef<"dl">;
 
@@ -31,7 +31,7 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * </FigureLine.Root>
  * ```
  */
-export const FigureLine = ({ className, ...props }: DlProps) => (
+export const FigureLine = ({ className, ...props }: DlProps): JSX.Element => (
   <dl
     {...props}
     className={cn(
@@ -42,7 +42,7 @@ export const FigureLine = ({ className, ...props }: DlProps) => (
 );
 
 /** One label-and-figure pair. A `<dt>` and a `<dd>` are its only children. */
-export const Figure = ({ className, ...props }: DivProps) => (
+export const Figure = ({ className, ...props }: DivProps): JSX.Element => (
   <div
     {...props}
     className={cn(
@@ -52,7 +52,11 @@ export const Figure = ({ className, ...props }: DivProps) => (
   />
 );
 
-export const FigureLabel = ({ children }: { children: ReactNode }) => (
+export const FigureLabel = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <dt className="min-w-0 text-sm text-muted-foreground">{children}</dt>
 );
 
@@ -60,7 +64,11 @@ export const FigureLabel = ({ children }: { children: ReactNode }) => (
  * The number itself. Tabular figures, so a line of them keeps one rhythm
  * whichever digits a tenant's data happens to produce.
  */
-export const FigureValue = ({ children }: { children: ReactNode }) => (
+export const FigureValue = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <dd className="text-2xl leading-tight font-medium text-foreground tabular-nums">
     {children}
   </dd>

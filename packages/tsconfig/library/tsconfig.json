@@ -1,0 +1,11 @@
+{
+  "extends": "../base/tsconfig.json",
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // tsdown emits the declarations with Oxc, which reads each file on its own
+    // and cannot infer a type from another module, so every export states the
+    // types its declaration needs.
+    "declaration": true,
+    "isolatedDeclarations": true
+  }
+}

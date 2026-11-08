@@ -1,15 +1,23 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { ConsoleLayoutClient } from "./console-layout-client";
 
-export const ConsoleLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayoutClient>{children}</ConsoleLayoutClient>
-);
+export const ConsoleLayout = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <ConsoleLayoutClient>{children}</ConsoleLayoutClient>;
 
-export const ConsoleLayoutMain = ({ children }: { children: ReactNode }) => (
-  <main className="flex-1 overflow-x-hidden">{children}</main>
-);
+export const ConsoleLayoutMain = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => <main className="flex-1 overflow-x-hidden">{children}</main>;
 
-export const ConsoleLayoutContent = ({ children }: { children: ReactNode }) => (
+export const ConsoleLayoutContent = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <div className="flex min-w-0 flex-1 flex-col">{children}</div>
 );

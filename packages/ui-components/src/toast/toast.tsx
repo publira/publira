@@ -2,16 +2,17 @@
 
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { FLOATING_FADE } from "../motion";
 
-export const { useToastManager } = BaseToast;
+export const useToastManager: typeof BaseToast.useToastManager =
+  BaseToast.useToastManager;
 
 export const ToastViewport = ({
   className,
   ...props
-}: BaseToast.Viewport.Props) => (
+}: BaseToast.Viewport.Props): JSX.Element => (
   <BaseToast.Viewport
     {...props}
     className={cn(
@@ -21,7 +22,10 @@ export const ToastViewport = ({
   />
 );
 
-export const ToastRoot = ({ className, ...props }: BaseToast.Root.Props) => (
+export const ToastRoot = ({
+  className,
+  ...props
+}: BaseToast.Root.Props): JSX.Element => (
   <BaseToast.Root
     {...props}
     className={cn(
@@ -39,11 +43,14 @@ export const ToastRoot = ({ className, ...props }: BaseToast.Root.Props) => (
 export const ToastContent = ({
   className,
   ...props
-}: BaseToast.Content.Props) => (
+}: BaseToast.Content.Props): JSX.Element => (
   <BaseToast.Content {...props} className={cn("grid gap-1", className)} />
 );
 
-export const ToastTitle = ({ className, ...props }: BaseToast.Title.Props) => (
+export const ToastTitle = ({
+  className,
+  ...props
+}: BaseToast.Title.Props): JSX.Element => (
   <BaseToast.Title
     {...props}
     className={cn("text-sm font-semibold", className)}
@@ -53,7 +60,7 @@ export const ToastTitle = ({ className, ...props }: BaseToast.Title.Props) => (
 export const ToastDescription = ({
   className,
   ...props
-}: BaseToast.Description.Props) => (
+}: BaseToast.Description.Props): JSX.Element => (
   <BaseToast.Description {...props} className={cn("text-xs", className)} />
 );
 
@@ -61,7 +68,7 @@ export const ToastClose = ({
   className,
   children = "\u00D7",
   ...props
-}: BaseToast.Close.Props) => (
+}: BaseToast.Close.Props): JSX.Element => (
   <BaseToast.Close
     {...props}
     className={cn(
@@ -103,7 +110,7 @@ export const ToastProvider = ({
   children,
   limit = 3,
   timeout = 4000,
-}: ToastProviderProps) => (
+}: ToastProviderProps): JSX.Element => (
   <BaseToast.Provider limit={limit} timeout={timeout}>
     {children}
     <ToastStack />

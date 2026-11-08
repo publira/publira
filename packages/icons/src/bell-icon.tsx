@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
+import type { JSX } from "react";
 
 import type { IconProps } from "./types";
 
-export const BellIcon = (props: IconProps) => <Bell {...props} />;
+export const BellIcon = (props: IconProps): JSX.Element => <Bell {...props} />;

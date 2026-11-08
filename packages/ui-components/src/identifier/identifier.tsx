@@ -3,7 +3,7 @@
 import { CheckIcon } from "@publira/icons/check-icon";
 import { CopyIcon } from "@publira/icons/copy-icon";
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 import { buttonVariants } from "../button/button";
@@ -32,11 +32,15 @@ const COPIED_FEEDBACK_MS = 1500;
 export const Identifier = ({
   className,
   ...props
-}: ComponentPropsWithoutRef<"div">) => (
+}: ComponentPropsWithoutRef<"div">): JSX.Element => (
   <div {...props} className={cn("flex items-center gap-1.5", className)} />
 );
 
-export const IdentifierValue = ({ children }: { children: ReactNode }) => (
+export const IdentifierValue = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => (
   <span className="min-w-0 text-sm wrap-break-word text-foreground tabular-nums">
     {children}
   </span>
@@ -63,7 +67,7 @@ export interface IdentifierCopyProps {
 export const IdentifierCopy = ({
   "aria-label": ariaLabel,
   value,
-}: IdentifierCopyProps) => {
+}: IdentifierCopyProps): JSX.Element => {
   const [copied, setCopied] = useState(false);
 
   const handleClick = useCallback(async () => {

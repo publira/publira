@@ -1,4 +1,4 @@
-const observeNothing = () => {
+const observeNothing = (): void => {
   // Nothing in jsdom has a size to report.
 };
 
@@ -9,9 +9,9 @@ const observeNothing = () => {
  * where every element measures zero, so the stub only has to exist.
  */
 class ResizeObserverStub implements ResizeObserver {
-  disconnect = observeNothing;
-  observe = observeNothing;
-  unobserve = observeNothing;
+  disconnect: () => void = observeNothing;
+  observe: () => void = observeNothing;
+  unobserve: () => void = observeNothing;
 }
 
 globalThis.ResizeObserver ??= ResizeObserverStub;

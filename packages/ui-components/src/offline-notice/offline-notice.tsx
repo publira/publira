@@ -3,7 +3,7 @@
 import { WifiOffIcon } from "@publira/icons";
 import { useOffline } from "next/offline";
 import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 /**
  * Floats a notice at the top of the viewport while Next.js reports the
@@ -20,7 +20,11 @@ import type { ReactNode } from "react";
  * classes describe is the one the popover user agent styles would otherwise
  * replace, hence the resets among them.
  */
-export const OfflineNotice = ({ children }: { children: ReactNode }) => {
+export const OfflineNotice = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const isOffline = useOffline();
   const noticeRef = useRef<HTMLDivElement>(null);
 
