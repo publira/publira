@@ -13,7 +13,66 @@ export default defineConfig({
     "**/gen/**",
     ".agents/skills/**",
   ],
+  jsPlugins: [
+    { name: "publira", specifier: "./packages/oxlint-plugin/src/index.ts" },
+  ],
   overrides: [
+    {
+      // The screens the design brief governs. See apps/AGENTS.md "Radius,
+      // shadow, and the face data is set in".
+      files: ["apps/**", "packages/**"],
+      rules: {
+        "publira/design-tokens": "error",
+      },
+    },
+    {
+      /**
+       * A test names a class in order to assert something about it, which is
+       * the opposite of using one: `theme-preview.test.tsx` renders the
+       * preview and checks that no gradient utility came back. Reading those
+       * as usages would make the rule fire on the tests that defend it.
+       */
+      files: ["**/*.{test,spec}.{js,jsx,ts,tsx}"],
+      rules: {
+        "publira/design-tokens": "off",
+      },
+    },
+    {
+      // The rule's own advice names the classes it refuses.
+      files: ["packages/oxlint-plugin/src/index.ts"],
+      rules: {
+        "publira/design-tokens": "off",
+      },
+    },
+    {
+      /**
+       * The places a raw `<svg>` belongs, each because nothing in
+       * `@publira/icons` could stand in for it. See apps/AGENTS.md "Icons".
+       */
+      files: [
+        // The icon set itself, which every other screen draws from.
+        "packages/icons/src/**",
+        // A generated image rather than an icon: the geometry is computed from
+        // the text it encodes, and the fixed black-on-white palette is what
+        // makes the code scannable.
+        "packages/ui-components/src/qr-code/qr-code.tsx",
+        // A chart rather than an icon: its bars and lines are drawn from the
+        // figures a screen hands it, in a box the screen sizes, which no fixed
+        // glyph can be.
+        "packages/ui-components/src/chart/chart.tsx",
+      ],
+      rules: {
+        "publira/no-jsx-svg": "off",
+      },
+    },
+    {
+      // RuleTester declares its cases through the Vitest functions this file
+      // hands it, so no `it()` call appears in the file for the rule to count.
+      files: ["packages/oxlint-plugin/src/index.test.ts"],
+      rules: {
+        "sonarjs/no-empty-test-file": "off",
+      },
+    },
     {
       /**
        * Next.js calls the code these tests exercise — a page, a layout, a
@@ -318,6 +377,9 @@ export default defineConfig({
         ],
       },
     ],
+    // Icons come from `@publira/icons`, so JSX draws no `<svg>` of its own.
+    // See apps/AGENTS.md "Icons".
+    "publira/no-jsx-svg": "error",
     // Fires on non-route modules whose path/name contains "page".
     "react-doctor/nextjs-missing-metadata": "off",
     // Large form/workspace components are known debt; not for this enablement.

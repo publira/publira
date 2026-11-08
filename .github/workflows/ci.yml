@@ -136,8 +136,6 @@ jobs:
               - 'oxfmt.config.ts'
               - '.github/workflows/ci.yml'
               - '.gitattributes'
-              - 'scripts/check-design-tokens.ts'
-              - 'scripts/check-jsx-svg.ts'
               - 'scripts/check-proto-compat.sh'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/go-setup/**'
@@ -653,12 +651,6 @@ jobs:
       # pushing a change to proto/.
       - name: Validate / buf Breaking Against the Previous Release
         run: scripts/check-proto-compat.sh
-
-      - name: Validate / No hand-written SVG in JSX
-        run: pnpm jsx-svg:check
-
-      - name: Validate / Design tokens
-        run: pnpm design-tokens:check
 
       - name: Validate / Docs and Markdown links
         run: pnpm docs:check

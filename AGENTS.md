@@ -225,9 +225,9 @@ Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.
 Shared frontend monorepo conventions: see [`apps/AGENTS.md`](apps/AGENTS.md).  
 Per-app `apps/*/AGENTS.md` files hold only the Next.js-generated rules block.
 
-Icons are covered there too: they come from `@publira/icons`, and neither a hand-written `<svg>` in JSX nor a direct `lucide-react` import is allowed outside `packages/icons` — see the **Icons** section of [`apps/AGENTS.md`](apps/AGENTS.md), enforced by `no-restricted-imports` and `pnpm jsx-svg:check`.
+Icons are covered there too: they come from `@publira/icons`, and neither a hand-written `<svg>` in JSX nor a direct `lucide-react` import is allowed outside `packages/icons` — see the **Icons** section of [`apps/AGENTS.md`](apps/AGENTS.md), enforced by `no-restricted-imports` and the repository's own oxlint rule `publira/no-jsx-svg`.
 
-So are the design's two radii, its one shadow, and the face data is set in: `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>` are refused anywhere under `apps/` or `packages/` by `pnpm design-tokens:check`.
+So are the design's two radii, its one shadow, and the face data is set in: `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>` are refused in the TypeScript and TSX anywhere under `apps/` or `packages/` by the repository's own oxlint rule `publira/design-tokens`.
 
 ## Edge routing
 
