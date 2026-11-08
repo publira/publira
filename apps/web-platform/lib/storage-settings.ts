@@ -84,7 +84,7 @@ export const toPlatformStorageSettings = (
   hasSecretAccessKey: settings?.hasSecretAccessKey ?? false,
   publicBaseUrl: settings?.publicBaseUrl ?? "",
   region: settings?.region ?? "",
-  revision: String(settings?.revision ?? 0),
+  revision: settings?.revision ?? 0n,
 });
 
 /**

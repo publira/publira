@@ -8,12 +8,12 @@ import { formatPercent } from "@publira/utils";
  * no views is not zero, and the page shows a dash in its place.
  */
 export const formatReadThroughRate = (
-  completeCount: number,
-  memberViewCount: number,
+  completeCount: bigint,
+  memberViewCount: bigint,
   locale: Locale
 ): string | null =>
-  memberViewCount > 0
-    ? formatPercent(completeCount / memberViewCount, { locale })
+  memberViewCount > 0n
+    ? formatPercent(Number(completeCount) / Number(memberViewCount), { locale })
     : null;
 
 /** A credit's share for display, as the console's statement shows it: `30%`. */
@@ -24,5 +24,5 @@ export const formatShareBps = (bps: number, locale: Locale): string =>
   }).format(bps / 10_000);
 
 /** A count for display, grouped as the reader's locale groups digits. */
-export const formatCount = (count: number, locale: Locale): string =>
+export const formatCount = (count: bigint | number, locale: Locale): string =>
   new Intl.NumberFormat(toIntlLocale(locale)).format(count);

@@ -25,9 +25,15 @@ type SvgProps = Omit<
   "children" | "preserveAspectRatio" | "values" | "viewBox"
 >;
 
+/**
+ * A figure to plot: an `int64` count or amount arrives as `bigint`, and the
+ * rest as `number`.
+ */
+export type ChartFigure = bigint | number;
+
 export type ChartPlotProps = SvgProps & {
   /** The figures, in the order they are drawn from left to right. */
-  values: readonly number[];
+  values: readonly ChartFigure[];
 };
 
 /** The position of a series in a stack, the first drawn from the baseline. */
@@ -38,8 +44,15 @@ export type ChartStackedBarsProps = SvgProps & {
    * Two series of figures of the same slots, such as two kinds of sales of
    * each day of a period, in the order they are stacked.
    */
-  series: readonly [readonly number[], readonly number[]];
+  series: readonly [readonly ChartFigure[], readonly ChartFigure[]];
 };
+
+/**
+ * The figures as the coordinates they are drawn at. A plot is only as precise
+ * as its pixels, so a `bigint` becomes a float here and nowhere earlier.
+ */
+const toPlotted = (values: readonly ChartFigure[]): number[] =>
+  values.map(Number);
 
 /**
  * The tone of each series of a stack: the first in the full colour, the second
@@ -131,8 +144,8 @@ const ChartPlot = ({
  * more went back than sold reads as a loss rather than as a small sale.
  */
 export const ChartBars = ({ values, ...props }: ChartPlotProps) => (
-  <ChartPlot {...props} plotScale={chartScale(values)}>
-    {barGeometry(values).map((bar) => (
+  <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
+    {barGeometry(toPlotted(values)).map((bar) => (
       <rect
         className={bar.negative ? "fill-destructive" : "fill-primary"}
         // Each bar has a slot of its own, so its x names it.
@@ -157,8 +170,8 @@ export const ChartStackedBars = ({
   series,
   ...props
 }: ChartStackedBarsProps) => (
-  <ChartPlot {...props} plotScale={stackedScale(series)}>
-    {stackedBarGeometry(series).map((bar) => {
+  <ChartPlot {...props} plotScale={stackedScale(series.map(toPlotted))}>
+    {stackedBarGeometry(series.map(toPlotted)).map((bar) => {
       const tone = seriesTones[bar.series === 1 ? 1 : 0];
 
       return (
@@ -178,10 +191,10 @@ export const ChartStackedBars = ({
 
 /** A line through the figures, such as the followers at the end of each day. */
 export const ChartLine = ({ values, ...props }: ChartPlotProps) => (
-  <ChartPlot {...props} plotScale={chartScale(values)}>
+  <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
     <polyline
       className="fill-none stroke-primary"
-      points={linePoints(values)}
+      points={linePoints(toPlotted(values))}
       strokeLinejoin="round"
       strokeWidth={2}
       vectorEffect="non-scaling-stroke"
@@ -195,10 +208,10 @@ export const ChartLine = ({ values, ...props }: ChartPlotProps) => (
  * changes, instead of sloping across a stretch that has no figure of its own.
  */
 export const ChartSteps = ({ values, ...props }: ChartPlotProps) => (
-  <ChartPlot {...props} plotScale={chartScale(values)}>
+  <ChartPlot {...props} plotScale={chartScale(toPlotted(values))}>
     <path
       className="fill-none stroke-primary"
-      d={stepPath(values)}
+      d={stepPath(toPlotted(values))}
       strokeWidth={2}
       vectorEffect="non-scaling-stroke"
     />

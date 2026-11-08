@@ -57,7 +57,7 @@ export const RefundPurchaseButton = ({
       {bounds ? (
         <>
           <input name="currency" type="hidden" value={bounds.currency} />
-          <input name="left" type="hidden" value={bounds.left} />
+          <input name="left" type="hidden" value={String(bounds.left)} />
         </>
       ) : null}
       <SettledToast />
@@ -123,7 +123,7 @@ export const RefundPurchaseButton = ({
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-56" />}
                         >
-                          {bounds.requested > 0 ? (
+                          {bounds.requested > 0n ? (
                             <Message
                               message="admin.purchases.refund_amount_waiting_description"
                               values={{

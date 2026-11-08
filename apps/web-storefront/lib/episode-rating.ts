@@ -55,11 +55,8 @@ const toScore = (score: number | undefined): number => {
   return Math.min(score, MAX_EPISODE_REACTION_SCORE);
 };
 
-const toRatingCount = (ratingCount: bigint | number | undefined): number => {
-  const count = Number(ratingCount ?? 0);
-
-  return Number.isFinite(count) && count > 0 ? count : 0;
-};
+const toRatingCount = (ratingCount: bigint | undefined): bigint =>
+  ratingCount !== undefined && ratingCount > 0n ? ratingCount : 0n;
 
 export const toEpisodeReactionMode = (
   mode?: EpisodeRatingMode | number
@@ -70,7 +67,7 @@ export type EpisodeRatingStatusResult =
   | {
       mode: EpisodeReactionMode;
       ok: true;
-      ratingCount: number;
+      ratingCount: bigint;
       /**
        * The reader is credited on the episode, which the API refuses a rating
        * from, so the control is not offered.
@@ -103,7 +100,7 @@ const readMyEpisodeRating = async (
     return {
       mode: "single",
       ok: true,
-      ratingCount: 0,
+      ratingCount: 0n,
       readerCredited: false,
       readerIsStaff: false,
       score: 0,
@@ -141,7 +138,7 @@ const readMyEpisodeRating = async (
       return {
         mode: "single",
         ok: true,
-        ratingCount: 0,
+        ratingCount: 0n,
         readerCredited: false,
         readerIsStaff: false,
         score: 0,
@@ -223,7 +220,7 @@ export const rateEpisode = async (input: {
   presses: number;
   tenantId: string;
 }): Promise<
-  | { mode: EpisodeReactionMode; ok: true; ratingCount: number; score: number }
+  | { mode: EpisodeReactionMode; ok: true; ratingCount: bigint; score: number }
   | { message: string; ok: false }
 > => {
   const [t, sessionId] = await Promise.all([

@@ -30,7 +30,7 @@ const emptySettings: PlatformSmtpSettings = {
   host: "",
   port: 587,
   replyTo: "",
-  revision: "0",
+  revision: 0n,
   username: "",
 };
 

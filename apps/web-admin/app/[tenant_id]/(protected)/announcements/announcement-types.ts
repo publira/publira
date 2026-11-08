@@ -60,9 +60,9 @@ export interface AnnouncementItem {
   /** The instant it went out. Empty while it is scheduled, the one time it can be edited. */
   deliveredAt: string;
   /** The readers its notification was written for; 0 until the worker has delivered it. */
-  deliveredCount: number;
+  deliveredCount: bigint;
   /** The readers who have opened it. */
-  openedCount: number;
+  openedCount: bigint;
 }
 
 /** One language's title and body of an announcement as it was stored. */

@@ -51,10 +51,10 @@ const mappedLine = {
   creatorName: "Aki",
   creatorPublicId: "CR001",
   episodeTitle: "Episode 1",
-  grossAmount: 5000,
+  grossAmount: 5000n,
   lineNumber: 1,
-  payoutAmount: 1500,
-  refundedAmount: 0,
+  payoutAmount: 1500n,
+  refundedAmount: 0n,
   roleName: "Artist",
   saleCount: 10,
   seriesTitle: "Series A",
@@ -77,9 +77,9 @@ const wireAdjustment = {
 const mappedAdjustment = {
   ...mappedLine,
   adjustedPeriod: "2026-07",
-  grossAmount: -500,
+  grossAmount: -500n,
   lineNumber: 2,
-  payoutAmount: -150,
+  payoutAmount: -150n,
   saleCount: -1,
 };
 
@@ -94,9 +94,9 @@ const wireSubscriptionLine = {
 
 const mappedSubscriptionLine = {
   ...mappedLine,
-  grossAmount: 490,
+  grossAmount: 490n,
   lineNumber: 3,
-  payoutAmount: 147,
+  payoutAmount: 147n,
   saleCount: 1,
   source: "subscription",
 };
@@ -112,9 +112,9 @@ const wireTipLine = {
 
 const mappedTipLine = {
   ...mappedLine,
-  grossAmount: 300,
+  grossAmount: 300n,
   lineNumber: 4,
-  payoutAmount: 90,
+  payoutAmount: 90n,
   saleCount: 1,
   source: "tip",
 };
@@ -254,10 +254,10 @@ describe("royalties", () => {
         startsAt: "2026-07-31T15:00:00Z",
         timeZone: "Asia/Tokyo",
         totals: {
-          adjustment: -500,
-          gross: 5000,
-          payout: 1350,
-          refunded: 0,
+          adjustment: -500n,
+          gross: 5000n,
+          payout: 1350n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         },
@@ -305,21 +305,21 @@ describe("royalties", () => {
         {
           creatorName: "Aki",
           creatorPublicId: "CR001",
-          payoutAmount: 1500,
-          taxAmount: 136,
-          withholdingAmount: 139,
+          payoutAmount: 1500n,
+          taxAmount: 136n,
+          withholdingAmount: 139n,
         },
         {
           creatorName: "Ben",
           creatorPublicId: "",
-          payoutAmount: 0,
+          payoutAmount: 0n,
           taxAmount: null,
           withholdingAmount: null,
         },
       ],
-      lines: [{ ...mappedLine, taxAmount: 136, taxRateBps: 1000 }],
+      lines: [{ ...mappedLine, taxAmount: 136n, taxRateBps: 1000 }],
       statement: {
-        totals: { tax: 136, withholding: 139 },
+        totals: { tax: 136n, withholding: 139n },
         withholdingRateBps: 1021,
       },
     });
@@ -387,10 +387,10 @@ describe("royalties", () => {
         period: "2026-08",
         timeZone: "Asia/Tokyo",
         totals: {
-          adjustment: -500,
-          gross: 5000,
-          payout: 1350,
-          refunded: 0,
+          adjustment: -500n,
+          gross: 5000n,
+          payout: 1350n,
+          refunded: 0n,
           tax: null,
           withholding: null,
         },

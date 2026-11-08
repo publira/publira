@@ -55,7 +55,7 @@ export interface VolumeItem {
     contentType: string;
     width: number;
     height: number;
-    fileSizeBytes: number;
+    fileSizeBytes: bigint;
   }[];
 }
 
@@ -134,7 +134,7 @@ const mapVolume = (volume: RawVolume): VolumeItem => ({
   coverImageVariants: (volume.coverImageVariants ?? []).flatMap((variant) => {
     const mappedVariant = {
       contentType: variant.contentType ?? "",
-      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      fileSizeBytes: variant.fileSizeBytes ?? 0n,
       height: variant.height ?? 0,
       label: variant.label ?? "",
       url: variant.url ?? "",

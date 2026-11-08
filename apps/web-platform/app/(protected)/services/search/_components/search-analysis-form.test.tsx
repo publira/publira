@@ -98,7 +98,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -134,7 +134,7 @@ describe("SearchAnalysisForm", () => {
             buildState,
             defaultAnalysis,
             localeAnalyses: {},
-            revision: "4",
+            revision: 4n,
           }}
         />
       );
@@ -153,7 +153,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -179,7 +179,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -213,7 +213,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: false,
           localeAnalyses: {},
-          revision: "5",
+          revision: 5n,
         }}
       />
     );
@@ -254,7 +254,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -269,7 +269,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "building",
           defaultAnalysis: false,
           localeAnalyses: {},
-          revision: "4",
+          revision: 4n,
         }}
       />
     );
@@ -286,7 +286,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: { en: NORI_DEFINITION },
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -311,7 +311,7 @@ describe("SearchAnalysisForm", () => {
             "zh-Hans": NORI_DEFINITION,
             "zh-Hant": NORI_DEFINITION,
           },
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -332,7 +332,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );
@@ -371,7 +371,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: { en: NORI_DEFINITION },
-          revision: "6",
+          revision: 6n,
         }}
       />
     );
@@ -411,7 +411,7 @@ describe("SearchAnalysisForm", () => {
           buildState: "serving",
           defaultAnalysis: true,
           localeAnalyses: {},
-          revision: "3",
+          revision: 3n,
         }}
       />
     );

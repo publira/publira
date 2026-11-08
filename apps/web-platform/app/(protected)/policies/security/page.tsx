@@ -60,7 +60,7 @@ const Content = async () => {
   return (
     <SecurityPolicyForm
       loadErrorMessage={result.ok ? undefined : result.message}
-      revision={result.ok ? result.revision : "0"}
+      revision={result.ok ? result.revision : 0n}
       values={result.ok ? result.values.security : emptyValues}
     />
   );

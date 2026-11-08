@@ -47,7 +47,7 @@ const variant = (
   url: string
 ): EyeCatchImageVariant => ({
   contentType: "image/webp",
-  fileSizeBytes: 1,
+  fileSizeBytes: 1n,
   height: width,
   label: `${variantType}-${width}`,
   url,
@@ -67,7 +67,7 @@ const SERIES = {
   locale: "en",
   publicId: "SERIES01",
   ratingAverage: 4.2,
-  ratingCount: 31,
+  ratingCount: 31n,
   synopsis: "A long road home.",
   tags: [{ name: "Dragons", slug: "dragons" }],
   title: "The Long Road",
@@ -159,7 +159,7 @@ describe("organizationJsonLd", () => {
         logoImageVariants: [
           {
             contentType: "image/png",
-            fileSizeBytes: 1,
+            fileSizeBytes: 1n,
             height: 60,
             label: "logo",
             url: "/images/tenant/logo.png",
@@ -245,7 +245,7 @@ describe("seriesJsonLd", () => {
     const document = seriesJsonLd(SITE, {
       ...SERIES,
       ratingAverage: 0,
-      ratingCount: 0,
+      ratingCount: 0n,
     });
 
     expect(document).not.toHaveProperty("aggregateRating");

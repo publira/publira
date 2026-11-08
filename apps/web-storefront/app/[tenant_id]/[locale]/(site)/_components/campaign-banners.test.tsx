@@ -68,7 +68,7 @@ const banner = (
   imageVariants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 450,
       label: "800w",
       url: `https://cdn.example.com/${publicId}/landscape-800.webp`,

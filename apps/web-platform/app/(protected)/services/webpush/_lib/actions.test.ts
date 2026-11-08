@@ -67,7 +67,7 @@ describe("updatePlatformWebPushSubjectAction", () => {
       ok: true,
       settings: {
         configured: true,
-        revision: "4",
+        revision: 4n,
         subject: "mailto:push@example.com",
       },
     });

@@ -38,7 +38,7 @@ type ReconciliationListProps = CursorPageHrefs & {
 /** A count a run reports once it has succeeded, and a dash before then. */
 const countOf = (
   run: PaymentReconciliationItem,
-  value: number,
+  value: bigint,
   locale: Locale
 ): string =>
   run.status === "succeeded"

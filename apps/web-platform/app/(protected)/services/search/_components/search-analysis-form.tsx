@@ -74,7 +74,7 @@ const DefinitionEditor = ({
   revision,
 }: {
   definition: string;
-  revision: string;
+  revision: bigint;
 }) => (
   <>
     <Field.Label>
@@ -195,7 +195,7 @@ const SharedAnalysisForm = ({
       className="grid gap-5"
       id={SHARED_FORM_ID}
     >
-      <input name="revision" type="hidden" value={settings.revision} />
+      <input name="revision" type="hidden" value={String(settings.revision)} />
       <input name="analysis_locale" type="hidden" value="" />
 
       <ActionForm.Fieldset>
@@ -309,7 +309,11 @@ const LocaleAnalysisForm = ({
         className="grid gap-5"
         id={formId}
       >
-        <input name="revision" type="hidden" value={settings.revision} />
+        <input
+          name="revision"
+          type="hidden"
+          value={String(settings.revision)}
+        />
         <input name="analysis_locale" type="hidden" value={analysisLocale} />
 
         <ActionForm.Fieldset>

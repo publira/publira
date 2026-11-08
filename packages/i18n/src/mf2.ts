@@ -34,8 +34,12 @@ import {
 } from "messageformat";
 import type { Model } from "messageformat";
 
-/** Values a `{$name}` placeholder can resolve to. */
-export type MessageValues = Record<string, number | string>;
+/**
+ * Values a `{$name}` placeholder can resolve to. A `bigint` is an `int64` the
+ * API sent, which `:number` and `:integer` format and select on as they do a
+ * `number`.
+ */
+export type MessageValues = Record<string, bigint | number | string>;
 
 const FORMAT_OPTIONS = { bidiIsolation: "none" } as const;
 

@@ -40,7 +40,7 @@ export interface CreatorItem {
   name: string;
   profileText: string;
   iconImageUrl: string;
-  iconImageFileSizeBytes: number;
+  iconImageFileSizeBytes: bigint;
   iconImageUpdatedAt: string;
 }
 
@@ -123,7 +123,7 @@ type RawCreator = Pick<
 >;
 
 const mapCreator = (creator: RawCreator): CreatorItem => ({
-  iconImageFileSizeBytes: Number(creator.iconImageFileSizeBytes ?? 0),
+  iconImageFileSizeBytes: creator.iconImageFileSizeBytes ?? 0n,
   iconImageUpdatedAt: creator.iconImageUpdatedAt ?? "",
   iconImageUrl: creator.iconImageUrl ?? "",
   id: creator.id,

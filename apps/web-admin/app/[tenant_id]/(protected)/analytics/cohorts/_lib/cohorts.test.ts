@@ -5,8 +5,8 @@ import { RETENTION_WEEKS, cohortCells, cohortShade } from "./cohorts";
 describe("cohortCells", () => {
   it("shares each ended week over the cohort and leaves the rest open", () => {
     const cells = cohortCells({
-      activeCounts: [4, 1],
-      cohortSize: 4,
+      activeCounts: [4n, 1n],
+      cohortSize: 4n,
       weekStart: "2025-03-03",
     });
 
@@ -22,8 +22,8 @@ describe("cohortCells", () => {
   it("has no share for a week nobody signed up in", () => {
     expect(
       cohortCells({
-        activeCounts: [0],
-        cohortSize: 0,
+        activeCounts: [0n],
+        cohortSize: 0n,
         weekStart: "2025-03-10",
       })[0]
     ).toEqual({ state: "no_readers", week: 0 });

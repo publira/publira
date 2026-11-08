@@ -64,7 +64,7 @@ const preset = (id: string): ReaderIconPresetItem => ({
   variants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 2048,
+      fileSizeBytes: 2048n,
       height: 256,
       label: "original",
       url: `/images/reader-icon-presets/${id}`,

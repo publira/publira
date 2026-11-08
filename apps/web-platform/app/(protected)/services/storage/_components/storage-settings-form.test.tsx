@@ -48,7 +48,7 @@ const storedSettings: PlatformStorageSettings = {
   hasSecretAccessKey: false,
   publicBaseUrl: "https://media.platform.example",
   region: "us-east-1",
-  revision: "1",
+  revision: 1n,
 };
 
 const messages = loadPlatformClientMessages("en");
@@ -122,7 +122,7 @@ describe("StorageSettingsForm", () => {
             ...storedSettings,
             forcePathStyle: true,
             publicBaseUrl: "https://cdn.platform.example",
-            revision: "2",
+            revision: 2n,
           }}
         />
       )

@@ -9,7 +9,8 @@ import { EpisodeAccessGate } from "./episode-access-gate";
 // `<Message>` resolves the locale through `next/root-params`, which only the
 // Next.js compiler can provide. The key it was handed is what this file is
 // about, so rendering the key itself keeps the assertions readable; the values
-// ride beside it, out of the accessible name, for the tests that read them.
+// ride beside it as text, out of the accessible name, for the tests that read
+// them.
 vi.mock("#components/locale-context", () => ({
   useLocale: () => "ja",
   useTenantDefaultLocale: () => "ja",
@@ -22,7 +23,20 @@ vi.mock("#components/message", () => ({
   }: {
     message: string;
     values?: MessageValues;
-  }) => <span data-values={JSON.stringify(values ?? {})}>{message}</span>,
+  }) => (
+    <span
+      data-values={JSON.stringify(
+        Object.fromEntries(
+          Object.entries(values ?? {}).map(([name, value]) => [
+            name,
+            String(value),
+          ])
+        )
+      )}
+    >
+      {message}
+    </span>
+  ),
 }));
 
 vi.mock("#components/client-message", () => ({
@@ -275,7 +289,7 @@ describe("EpisodeAccessGate", () => {
           {...appOnly}
           appStoreBadge={{
             contentType: "image/png",
-            fileSizeBytes: 1024,
+            fileSizeBytes: 1024n,
             height: 40,
             label: "original",
             url: "/images/tenants/media-1/app_store_badge",
@@ -898,7 +912,7 @@ describe("EpisodeAccessGate", () => {
 
   describe("the tenant's coins", () => {
     const coinOffer = {
-      balance: 300,
+      balance: 300n,
       coinName: "Points",
       disclosures: {
         contact: "support@example.com",
@@ -909,7 +923,7 @@ describe("EpisodeAccessGate", () => {
       expiryDays: 180,
       idempotencyKey: "payment-key",
       kind: "offer" as const,
-      needed: 0,
+      needed: 0n,
       packsOnSale: true,
       price: 300,
       rentalPrice: 0,
@@ -924,7 +938,7 @@ describe("EpisodeAccessGate", () => {
       expect(button?.classList.contains("bg-secondary")).toBe(true);
       expect(valuesOf(button)).toEqual({
         coin_name: "Points",
-        count: 300,
+        count: "300",
       });
       const form = button?.closest("form");
       expect(
@@ -948,8 +962,8 @@ describe("EpisodeAccessGate", () => {
           acceptsPayments
           coinOffer={{
             ...coinOffer,
-            balance: 100,
-            needed: 200,
+            balance: 100n,
+            needed: 200n,
             pack: {
               bonusCoins: 100,
               coins: 500,
@@ -965,9 +979,9 @@ describe("EpisodeAccessGate", () => {
       expect(coinPayButton()).toBeNull();
       const button = coinPackButton();
       expect(valuesOf(button)).toMatchObject({
-        bonus: 100,
+        bonus: "100",
         coin_name: "Points",
-        count: 600,
+        count: "600",
       });
       const form = button?.closest("form");
       expect(
@@ -988,7 +1002,7 @@ describe("EpisodeAccessGate", () => {
         <EpisodeAccessGate
           {...props}
           acceptsPayments
-          coinOffer={{ ...coinOffer, balance: 0, needed: 3000 }}
+          coinOffer={{ ...coinOffer, balance: 0n, needed: 3000n }}
         />
       );
 

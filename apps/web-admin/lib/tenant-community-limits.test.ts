@@ -137,7 +137,7 @@ describe("tenant-community-limits", () => {
         duplicateCommentWindowMinutes: undefined,
       },
       platformDefaults,
-      revision: "7",
+      revision: 7n,
     });
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:community-limits"

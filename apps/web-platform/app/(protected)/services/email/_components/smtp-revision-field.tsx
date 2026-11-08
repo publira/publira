@@ -10,14 +10,14 @@ type SavedSettingsState = NonNullable<PlatformEmailSettingsFormState>;
  * The revision the next save is compared against: the one the page was read
  * at, then the one each successful save wrote.
  */
-export const SmtpRevisionField = ({ revision }: { revision: string }) => {
+export const SmtpRevisionField = ({ revision }: { revision: bigint }) => {
   const state = ActionForm.useState<SavedSettingsState>();
 
   return (
     <input
       name="revision"
       type="hidden"
-      value={state?.ok ? state.settings.revision : revision}
+      value={String(state?.ok ? state.settings.revision : revision)}
     />
   );
 };

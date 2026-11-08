@@ -80,15 +80,15 @@ export interface PaymentReconciliationItem {
   /** Inclusive, `YYYY-MM-DD`, in the tenant's time zone at the start. */
   endDate: string;
   failure: PaymentReconciliationFailureValue;
-  findingCount: number;
+  findingCount: bigint;
   /** Empty until the run has finished. */
   finishedAt: string;
   id: string;
-  matchedCount: number;
+  matchedCount: bigint;
   /** The payment provider's id (`stripe`, `payjp`), or `""` for a store. */
   provider: string;
-  purchaseCount: number;
-  recordCount: number;
+  purchaseCount: bigint;
+  recordCount: bigint;
   startDate: string;
   startedAt: string;
   status: PaymentReconciliationStatusValue;
@@ -107,14 +107,14 @@ export interface PaymentReconciliationFindingItem {
   occurredAt: string;
   /** The source's own ID of the payment, which finds it in its dashboard. */
   providerPaymentId: string;
-  purchaseAmount: number;
+  purchaseAmount: bigint;
   purchaseCurrency: string;
   /** The purchase the line is about (`AdminPurchase.id`), or `""`. */
   purchaseId: string;
-  purchaseRefundedAmount: number;
-  recordAmount: number;
+  purchaseRefundedAmount: bigint;
+  recordAmount: bigint;
   recordCurrency: string;
-  recordRefundedAmount: number;
+  recordRefundedAmount: bigint;
   test: boolean;
 }
 
@@ -232,13 +232,13 @@ export const mapReconciliation = (
 ): PaymentReconciliationItem => ({
   endDate: run.endDate,
   failure: failureValues[run.failure] ?? "",
-  findingCount: Number(run.findingCount),
+  findingCount: run.findingCount,
   finishedAt: run.finishedAt,
   id: run.id,
-  matchedCount: Number(run.matchedCount),
+  matchedCount: run.matchedCount,
   provider: run.provider,
-  purchaseCount: Number(run.purchaseCount),
-  recordCount: Number(run.recordCount),
+  purchaseCount: run.purchaseCount,
+  recordCount: run.recordCount,
   startDate: run.startDate,
   startedAt: run.startedAt,
   // A state a newer API names is read by whether the run has finished, so
@@ -273,13 +273,13 @@ export const mapFinding = (
   kind: kindValues[finding.kind] ?? "other",
   occurredAt: finding.occurredAt,
   providerPaymentId: finding.providerPaymentId,
-  purchaseAmount: Number(finding.purchaseAmount),
+  purchaseAmount: finding.purchaseAmount,
   purchaseCurrency: finding.purchaseCurrency,
   purchaseId: finding.purchaseId,
-  purchaseRefundedAmount: Number(finding.purchaseRefundedAmount),
-  recordAmount: Number(finding.recordAmount),
+  purchaseRefundedAmount: finding.purchaseRefundedAmount,
+  recordAmount: finding.recordAmount,
   recordCurrency: finding.recordCurrency,
-  recordRefundedAmount: Number(finding.recordRefundedAmount),
+  recordRefundedAmount: finding.recordRefundedAmount,
   test: finding.test,
 });
 

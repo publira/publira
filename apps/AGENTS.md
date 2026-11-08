@@ -273,11 +273,26 @@ Good in-repo examples: [`web-storefront` `catalog.ts`](web-storefront/lib/catalo
 
 The generated message is the mapper's **input** type only. The app-facing result type stays hand-written in the app, so screens are not coupled to the proto, and the conversion between the two stays in the mapper body:
 
-- **`bigint` → `number`.** `SeriesEyeCatchVariant.fileSizeBytes` is `bigint`; the app-facing field is `number`. Keep `Number(variant.fileSizeBytes ?? 0)` in the body rather than widening the app type.
-- **The `?? ""` / `?? 0` defaults.** They cover values that did not come through the deserializer — the partial mock responses the mappers' unit tests pass in. Deriving the input type does not make them redundant.
+- **An `int64` stays `bigint`.** protobuf-es generates every `int64` — a file size, a count, an amount, a revision — as `bigint`, and the app-facing field is `bigint` too: `fileSizeBytes: variant.fileSizeBytes ?? 0n`, never `Number(...)` or `String(...)`. See **`int64` values: `bigint` up to the boundary** below.
+- **The `?? ""` / `?? 0` / `?? 0n` defaults.** They cover values that did not come through the deserializer — the partial mock responses the mappers' unit tests pass in. Deriving the input type does not make them redundant.
 - **Adoption conditions** (dropping a variant with an empty `label` / `url`, zero-dimension checks) are the mapper's own rules and are unaffected.
 
 A value that is not a generated message in the first place — an already-mapped app type, or JSON parsed out of a string field such as the platform notification `payload` — is outside this rule. Type it against whatever schema actually validates it.
+
+### `int64` values: `bigint` up to the boundary
+
+One shape for one value: an `int64` is a `bigint` from the mapper through the screen, and the arithmetic on it stays in `bigint` (`count + 1n`, `amount > 0n`). `Number(bigint)` silently rounds past 2^53-1, and a decimal string beside it gives the same value two shapes.
+
+The formatting helpers take a `bigint` as it is, so a screen needs no conversion to show one: `formatPrice` (`@publira/utils`, exact for any amount), `Intl.NumberFormat#format`, `toLocaleString`, the apps' `formatCount`, the message values of `@publira/i18n`, and the `values` / `series` of `@publira/ui-components`' `Chart`. React Flight carries a `bigint` across Server Component → Client Component props, Server Action arguments and results, and `"use cache"`.
+
+Convert only where the value leaves for something that cannot hold a `bigint`, and only there:
+
+| Boundary | Conversion |
+| --- | --- |
+| JSON — `JSON.stringify`, `Response.json`, a JSON-LD document, `localStorage` | `JSON.stringify` throws a `TypeError` on a `bigint`, at runtime rather than in type checking: write the number or the decimal string the document expects at that line |
+| A form field — a hidden `revision`, an amount sent back | `String(value)` in the `value` attribute; the action reads it back with a schema that validates the digits before `BigInt()`, so a malformed value is refused rather than throwing a `SyntaxError` |
+| A ratio or a rate | `Number(a) / Number(b)` at the division: the result is a float anyway |
+| CSV or other text | a template literal or `String(value)`, which is exact |
 
 ## `"use client"` in `@publira/ui-components` and `@publira/layouts`
 

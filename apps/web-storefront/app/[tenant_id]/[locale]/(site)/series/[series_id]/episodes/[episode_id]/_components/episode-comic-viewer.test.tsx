@@ -205,7 +205,7 @@ const episode: EpisodeDetail = {
   publicId: "EPISODE_001",
   publishedAt: "2026-08-01T00:00:00Z",
   purchaseSurface: "all",
-  ratingCount: 0,
+  ratingCount: 0n,
   readingDirection: "rtl",
   readingPeriodHours: 0,
   rentalPeriodHours: 0,

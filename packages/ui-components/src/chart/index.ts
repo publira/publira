@@ -9,6 +9,7 @@ export {
   ChartLine as Line,
   ChartStackedBars as StackedBars,
   ChartSteps as Steps,
+  type ChartFigure as Figure,
   type ChartPlotProps as PlotProps,
   type ChartSeries as Series,
   type ChartStackedBarsProps as StackedBarsProps,

@@ -57,36 +57,40 @@ describe("toEpisodeReactionMode", () => {
 
 describe("applyReactionPress", () => {
   it("fills the control and counts the reader once in single mode", () => {
-    expect(applyReactionPress({ ratingCount: 3, score: 0 }, "single")).toEqual({
-      ratingCount: 4,
-      score: 5,
-    });
+    expect(applyReactionPress({ ratingCount: 3n, score: 0 }, "single")).toEqual(
+      {
+        ratingCount: 4n,
+        score: 5,
+      }
+    );
   });
 
   it("leaves a second press in single mode unchanged", () => {
-    expect(applyReactionPress({ ratingCount: 4, score: 5 }, "single")).toEqual({
-      ratingCount: 4,
-      score: 5,
-    });
+    expect(applyReactionPress({ ratingCount: 4n, score: 5 }, "single")).toEqual(
+      {
+        ratingCount: 4n,
+        score: 5,
+      }
+    );
   });
 
   it("raises the score one step at a time in multiple mode", () => {
     expect(
-      applyReactionPress({ ratingCount: 3, score: 0 }, "multiple")
-    ).toEqual({ ratingCount: 4, score: 1 });
+      applyReactionPress({ ratingCount: 3n, score: 0 }, "multiple")
+    ).toEqual({ ratingCount: 4n, score: 1 });
     expect(
-      applyReactionPress({ ratingCount: 4, score: 1 }, "multiple")
-    ).toEqual({ ratingCount: 4, score: 2 });
+      applyReactionPress({ ratingCount: 4n, score: 1 }, "multiple")
+    ).toEqual({ ratingCount: 4n, score: 2 });
   });
 
   it("counts the reader once across five presses in multiple mode", () => {
-    let state = { ratingCount: 10, score: 0 };
+    let state = { ratingCount: 10n, score: 0 };
 
     for (let i = 0; i < 5; i += 1) {
       state = applyReactionPress(state, "multiple");
     }
 
-    expect(state).toEqual({ ratingCount: 11, score: 5 });
+    expect(state).toEqual({ ratingCount: 11n, score: 5 });
     expect(applyReactionPress(state, "multiple")).toEqual(state);
   });
 });
@@ -118,7 +122,7 @@ describe("getMyEpisodeRating", () => {
     expect(result).toEqual({
       mode: "single",
       ok: true,
-      ratingCount: 0,
+      ratingCount: 0n,
       readerCredited: false,
       readerIsStaff: false,
       score: 0,
@@ -130,7 +134,7 @@ describe("getMyEpisodeRating", () => {
   it("returns the member's score, the headcount, and the press mode", async () => {
     mockGetMyEpisodeRating.mockResolvedValueOnce({
       mode: EpisodeRatingMode.MULTIPLE,
-      ratingCount: 12,
+      ratingCount: 12n,
       readerCredited: false,
       readerIsStaff: false,
       score: 3,
@@ -149,7 +153,7 @@ describe("getMyEpisodeRating", () => {
     expect(result).toEqual({
       mode: "multiple",
       ok: true,
-      ratingCount: 12,
+      ratingCount: 12n,
       readerCredited: false,
       readerIsStaff: false,
       score: 3,
@@ -160,7 +164,7 @@ describe("getMyEpisodeRating", () => {
   it("reports a reader credited on the episode so the control is withheld", async () => {
     mockGetMyEpisodeRating.mockResolvedValueOnce({
       mode: EpisodeRatingMode.SINGLE,
-      ratingCount: 3,
+      ratingCount: 3n,
       readerCredited: true,
       score: 0,
     });
@@ -170,7 +174,7 @@ describe("getMyEpisodeRating", () => {
     expect(result).toEqual({
       mode: "single",
       ok: true,
-      ratingCount: 3,
+      ratingCount: 3n,
       readerCredited: true,
       readerIsStaff: false,
       score: 0,
@@ -181,7 +185,7 @@ describe("getMyEpisodeRating", () => {
   it("reports a reader who holds a staff role so the control gives way to a notice", async () => {
     mockGetMyEpisodeRating.mockResolvedValueOnce({
       mode: EpisodeRatingMode.SINGLE,
-      ratingCount: 3,
+      ratingCount: 3n,
       readerIsStaff: true,
       score: 0,
     });
@@ -191,7 +195,7 @@ describe("getMyEpisodeRating", () => {
     expect(result).toEqual({
       mode: "single",
       ok: true,
-      ratingCount: 3,
+      ratingCount: 3n,
       readerCredited: false,
       readerIsStaff: true,
       score: 0,
@@ -209,7 +213,7 @@ describe("getMyEpisodeRating", () => {
     expect(result).toEqual({
       mode: "single",
       ok: true,
-      ratingCount: 0,
+      ratingCount: 0n,
       readerCredited: false,
       readerIsStaff: false,
       score: 0,
@@ -241,7 +245,7 @@ describe("rateEpisode", () => {
   it("returns the score and headcount after a press", async () => {
     mockRateEpisode.mockResolvedValueOnce({
       mode: EpisodeRatingMode.SINGLE,
-      ratingCount: 4,
+      ratingCount: 4n,
       score: 5,
     });
 
@@ -255,7 +259,7 @@ describe("rateEpisode", () => {
     ).resolves.toEqual({
       mode: "single",
       ok: true,
-      ratingCount: 4,
+      ratingCount: 4n,
       score: 5,
     });
     expect(mockRateEpisode).toHaveBeenCalledWith(

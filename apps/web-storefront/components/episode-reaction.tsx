@@ -49,7 +49,7 @@ import { useLocale } from "./locale-context";
  *
  * ```tsx
  * <EpisodeReaction.Root size="sm">
- *   <EpisodeReaction.Login href={loginHref} ratingCount={12}>
+ *   <EpisodeReaction.Login href={loginHref} ratingCount={12n}>
  *     <EpisodeReaction.Name>
  *       <EpisodeReaction.NameIdle>
  *         <Message message="storefront.episode.reaction.login_aria" />
@@ -68,7 +68,7 @@ interface EpisodeReactionFace {
   error: string | null;
   fillRatio: number;
   mode: EpisodeReactionMode;
-  ratingCount: number;
+  ratingCount: bigint;
   score: number;
 }
 
@@ -178,7 +178,7 @@ const EpisodeReactionLogin = ({
 }: {
   children: ReactNode;
   href: string;
-  ratingCount: number;
+  ratingCount: bigint;
 }) => {
   const size = use(EpisodeReactionSizeContext);
   const nameId = useId();
@@ -226,7 +226,7 @@ const EpisodeReactionForm = ({
 }: {
   children: ReactNode;
   mode: EpisodeReactionMode;
-  ratingCount: number;
+  ratingCount: bigint;
   score: number;
 }) => {
   const [state, formAction] = useActionState<RateEpisodeActionState, FormData>(

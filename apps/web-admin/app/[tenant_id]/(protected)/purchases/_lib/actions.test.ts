@@ -149,7 +149,7 @@ describe("refundPurchaseAction", () => {
 
     expect(mockRefundPurchaseInPart).toHaveBeenCalledWith(
       {
-        amount: 200,
+        amount: 200n,
         purchaseId: PURCHASE_ID,
         reason: "Half of the pages would not load.",
         tenantId: "TENANT001",
@@ -192,7 +192,7 @@ describe("refundPurchaseAction", () => {
     await refundPurchaseAction(null, amountFormData("1.99", "USD"));
 
     expect(mockRefundPurchaseInPart).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 199 }),
+      expect.objectContaining({ amount: 199n }),
       "en"
     );
   });

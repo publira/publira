@@ -26,7 +26,7 @@ const formatterFor = (
  * since a report's views and followers run to thousands. A count inside a
  * sentence is formatted by the message instead (`:integer`).
  */
-export const formatCount = (value: number, locale: Locale): string =>
+export const formatCount = (value: bigint | number, locale: Locale): string =>
   formatterFor(countFormatters, locale, { maximumFractionDigits: 0 }).format(
     value
   );

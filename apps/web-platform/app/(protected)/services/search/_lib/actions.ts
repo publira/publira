@@ -137,7 +137,7 @@ export const updatePlatformSearchAnalysisAction = async (
   // The saved values are the ones the request restates, so they have to be
   // the ones the editor was rendered beside: a newer save would otherwise be
   // restated under the old revision, which the API refuses anyway.
-  if (current.settings.revision !== String(parsed.data.revision)) {
+  if (current.settings.revision !== parsed.data.revision) {
     return { message: t("platform.search.save_conflict"), ok: false };
   }
 

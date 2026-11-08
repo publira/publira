@@ -142,13 +142,41 @@ export const listSupportedCurrencies = (): readonly string[] => {
 };
 
 /**
+ * An amount the API sends in the minor unit of `currency`, written in the
+ * currency itself as a decimal: `499n` is `"4.99"` in USD and `500n` is
+ * `"500"` in JPY. Exact at any size, where dividing through a float would
+ * round an amount past 2^53; `Intl.NumberFormat` reads the string as exactly.
+ */
+export const toMajorUnitDecimal = (
+  amount: bigint,
+  currency: string
+): Intl.StringNumericLiteral => {
+  const digits = currencyFractionDigits(currency);
+  const scale = 10n ** BigInt(digits);
+  const magnitude = amount < 0n ? -amount : amount;
+  const sign = amount < 0n ? "-" : "";
+  const fraction = (magnitude % scale).toString().padStart(digits, "0");
+
+  // SAFETY: both branches are an optional minus sign and decimal digits, with
+  // at most one point between digits, which is what `${number}` admits.
+  return (
+    digits === 0
+      ? `${sign}${magnitude}`
+      : `${sign}${magnitude / scale}.${fraction}`
+  ) as Intl.StringNumericLiteral;
+};
+
+/**
  * Format an amount the API sends — an integer in the minor unit of
  * `currency` — as that currency: `500` is `¥500` in JPY and `$5.00` in USD.
+ * An `int64` amount arrives as `bigint` and an `int32` one as `number`, which
+ * has to be an integer as well: `BigInt` refuses a fraction with a
+ * `RangeError` rather than formatting part of a minor unit.
  */
 export const formatPrice = (
-  amount: number,
+  amount: bigint | number,
   options: FormatPriceOptions
 ): string =>
   getPriceFormatter(toIntlLocale(options.locale), options.currency).format(
-    amount / 10 ** currencyFractionDigits(options.currency)
+    toMajorUnitDecimal(BigInt(amount), options.currency)
   );

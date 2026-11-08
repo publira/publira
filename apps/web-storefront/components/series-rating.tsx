@@ -40,13 +40,13 @@ export const SeriesRating = ({
   children,
 }: {
   average: number;
-  count: number;
+  count: bigint;
   locale: Locale;
   children?: ReactNode;
 }) => (
   <div className="grid gap-1 text-sm text-muted-foreground">
     <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-      {count > 0 && (
+      {count > 0n && (
         <span className="tabular-nums">
           <Suspense fallback={null}>
             <Message

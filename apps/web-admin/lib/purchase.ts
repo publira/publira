@@ -67,9 +67,9 @@ export interface PurchaseItem {
    * purchase would have been sold at. Equal to `price` on a purchase no code
    * discounted.
    */
-  listPrice: number;
+  listPrice: bigint;
   /** What the reader paid, after any promotion code. */
-  price: number;
+  price: bigint;
   /**
    * The tenant's promotion code that discounted the purchase, as it was
    * created, or `""`. A code entered on Stripe's checkout page is not one of
@@ -85,13 +85,13 @@ export interface PurchaseItem {
   readerName: string;
   readerPublicId: string;
   refundable: boolean;
-  refundedAmount: number;
+  refundedAmount: bigint;
   refundedAt: string;
   /**
    * What of a refund in part staff asked for the provider has yet to report,
    * or `0` while none is waiting.
    */
-  refundRequestedAmount: number;
+  refundRequestedAmount: bigint;
   revocationReason: PurchaseRevocationReasonValue;
   revokedAt: string;
   seriesPublicId: string;
@@ -104,7 +104,7 @@ export interface PurchaseItem {
    * tenant had no rate, and on a pack of coins, whose tax is recorded on the
    * purchases its coins pay for.
    */
-  taxAmount: number | null;
+  taxAmount: bigint | null;
   taxRateBps: number | null;
   test: boolean;
 }
@@ -232,24 +232,24 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   kind: purchaseKinds[item.kind] ?? "purchase",
   // A server of the release before promotion codes answers no list price,
   // which is the price the reader paid.
-  listPrice: Number(item.listPrice) || Number(item.price),
-  price: Number(item.price),
+  listPrice: item.listPrice || item.price,
+  price: item.price,
   promotionCode: item.promotionCode,
   provider: item.provider,
   purchasedAt: item.purchasedAt,
   readerEmail: item.readerEmail,
   readerName: item.readerName,
   readerPublicId: item.readerPublicId,
-  refundRequestedAmount: Number(item.refundRequestedAmount),
+  refundRequestedAmount: item.refundRequestedAmount,
   refundable: item.refundable,
-  refundedAmount: Number(item.refundedAmount),
+  refundedAmount: item.refundedAmount,
   refundedAt: item.refundedAt,
   revocationReason: revocationReasons[item.revocationReason] ?? "",
   revokedAt: item.revokedAt,
   seriesPublicId: item.seriesPublicId,
   seriesTitle: item.seriesTitle,
   store: item.store,
-  taxAmount: item.taxAmount === undefined ? null : Number(item.taxAmount),
+  taxAmount: item.taxAmount ?? null,
   taxRateBps: item.taxRateBps ?? null,
   test: item.test,
 });
@@ -550,7 +550,7 @@ export const refundPurchase = async (
  */
 export const refundPurchaseInPart = async (
   input: {
-    amount: number;
+    amount: bigint;
     purchaseId: string;
     reason: string;
     tenantId: string;
@@ -572,7 +572,7 @@ export const refundPurchaseInPart = async (
   try {
     const response = await apiClient.purchases.refundPurchaseInPart(
       {
-        amount: BigInt(input.amount),
+        amount: input.amount,
         purchaseId: input.purchaseId,
         reason: input.reason,
         tenant: { tenantId: input.tenantId },

@@ -22,7 +22,7 @@ import {
 import { recordIdSchema } from "./record-id";
 
 export type RateEpisodeActionState =
-  | { ok: true; ratingCount: number; score: number }
+  | { ok: true; ratingCount: bigint; score: number }
   | { message: string; ok: false }
   | null;
 

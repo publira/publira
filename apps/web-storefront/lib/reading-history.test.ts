@@ -38,7 +38,7 @@ const read = {
 const eyeCatch = (url: string) => [
   {
     contentType: "image/webp",
-    fileSizeBytes: 4096,
+    fileSizeBytes: 4096n,
     height: 160,
     label: "square 160",
     url,

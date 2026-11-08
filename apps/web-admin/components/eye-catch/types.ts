@@ -5,7 +5,7 @@ export interface EyeCatchVariantItem {
   contentType: string;
   width: number;
   height: number;
-  fileSizeBytes: number;
+  fileSizeBytes: bigint;
 }
 
 /** What an upload for one ratio returns; each ratio is a form of its own. */

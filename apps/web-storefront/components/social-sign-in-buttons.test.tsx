@@ -50,7 +50,7 @@ afterEach(cleanup);
 
 const markVariant = (kind: TenantBrandMarkKind): TenantImageVariant => ({
   contentType: "image/png",
-  fileSizeBytes: 1024,
+  fileSizeBytes: 1024n,
   height: 40,
   label: "original",
   url: `/images/tenants/media-1/${kind}`,

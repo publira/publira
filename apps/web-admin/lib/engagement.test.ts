@@ -91,10 +91,10 @@ describe("engagement", () => {
     expect(result).toEqual({
       episodes: [
         {
-          completeCount: 7,
+          completeCount: 7n,
           episodePublicId: "EP001",
           episodeTitle: "Episode 1",
-          memberViewCount: 20,
+          memberViewCount: 20n,
           seriesPublicId: "SR001",
           seriesTitle: "Test Series",
         },
@@ -107,8 +107,8 @@ describe("engagement", () => {
         timeZone: "UTC",
       },
       previousToken: "",
-      totalCompleteCount: 9,
-      totalMemberViewCount: 30,
+      totalCompleteCount: 9n,
+      totalMemberViewCount: 30n,
     });
     expect(mockListEpisodeReadThroughApi).toHaveBeenCalledWith(
       { limit: 20, tenant: { tenantId: "TENANT001" }, token: "" },
@@ -191,13 +191,13 @@ describe("readThroughRate", () => {
   it("divides completions by the member views of the same period", async () => {
     const { readThroughRate } = await import("./engagement");
 
-    expect(readThroughRate(7, 20)).toBeCloseTo(0.35);
+    expect(readThroughRate(7n, 20n)).toBeCloseTo(0.35);
   });
 
   it("answers null rather than zero when nobody viewed", async () => {
     const { readThroughRate } = await import("./engagement");
 
-    expect(readThroughRate(0, 0)).toBeNull();
+    expect(readThroughRate(0n, 0n)).toBeNull();
   });
 });
 
@@ -277,27 +277,27 @@ describe("getRevenueStats", () => {
           date: "2026-09-27",
           episodePublicId: "",
           episodeTitle: "",
-          grossAmount: 1200,
-          netAmount: 900,
-          purchaseCount: 3,
-          refundedAmount: 300,
+          grossAmount: 1200n,
+          netAmount: 900n,
+          purchaseCount: 3n,
+          refundedAmount: 300n,
           seriesPublicId: "",
           seriesTitle: "",
-          subscriptionAmount: 980,
-          subscriptionRefundedAmount: 100,
-          subscriptionTaxAmount: 80,
-          taxAmount: 81,
+          subscriptionAmount: 980n,
+          subscriptionRefundedAmount: 100n,
+          subscriptionTaxAmount: 80n,
+          taxAmount: 81n,
         },
       ],
       totals: {
-        grossAmount: 1200,
-        netAmount: 900,
-        purchaseCount: 3,
-        refundedAmount: 300,
-        subscriptionAmount: 980,
-        subscriptionRefundedAmount: 100,
-        subscriptionTaxAmount: 80,
-        taxAmount: 81,
+        grossAmount: 1200n,
+        netAmount: 900n,
+        purchaseCount: 3n,
+        refundedAmount: 300n,
+        subscriptionAmount: 980n,
+        subscriptionRefundedAmount: 100n,
+        subscriptionTaxAmount: 80n,
+        taxAmount: 81n,
       },
     });
     expect(mockGetRevenueStatsApi).toHaveBeenCalledWith(
@@ -446,15 +446,15 @@ describe("getAudienceStats", () => {
 
     expect(result.ok && result.rows).toEqual([
       expect.objectContaining({
-        followerCount: 10,
+        followerCount: 10n,
         ratingAverage: 4.2,
-        ratingCount: 5,
+        ratingCount: 5n,
         seriesPublicId: "SR001",
-        viewCount: 40,
+        viewCount: 40n,
       }),
       expect.objectContaining({ ratingAverage: null, seriesPublicId: "SR002" }),
     ]);
-    expect(result.ok && result.totals.followerCount).toBe(10);
+    expect(result.ok && result.totals.followerCount).toBe(10n);
     expect(mockGetAudienceStatsApi).toHaveBeenCalledWith(
       expect.objectContaining({ groupBy: AudienceGroupBy.SERIES, limit: 100 }),
       sessionHeaders
@@ -492,8 +492,8 @@ describe("getEpisodeDropOff", () => {
       ok: true,
       pageCount: 2,
       pages: [
-        { pageIndex: 0, readerCount: 10 },
-        { pageIndex: 1, readerCount: 6 },
+        { pageIndex: 0, readerCount: 10n },
+        { pageIndex: 1, readerCount: 6n },
       ],
       period: { end: "2026-10-24", start: "2026-09-27", timeZone: "UTC" },
     });
@@ -552,8 +552,8 @@ describe("getRetentionCohorts", () => {
 
     expect(result).toEqual({
       cohorts: [
-        { activeCounts: [3, 1], cohortSize: 4, weekStart: "2026-09-21" },
-        { activeCounts: [], cohortSize: 0, weekStart: "2026-09-28" },
+        { activeCounts: [3n, 1n], cohortSize: 4n, weekStart: "2026-09-21" },
+        { activeCounts: [], cohortSize: 0n, weekStart: "2026-09-28" },
       ],
       ok: true,
       period: {
@@ -617,12 +617,12 @@ describe("getSignUpFunnel", () => {
 
     expect(result).toEqual({
       funnel: {
-        activeCount: 6,
+        activeCount: 6n,
         medianDaysToFirstPurchase: 2.5,
-        purchasedCount: 3,
-        purchasedWithinSevenDaysCount: 2,
-        purchasedWithinThirtyDaysCount: 3,
-        signedUpCount: 10,
+        purchasedCount: 3n,
+        purchasedWithinSevenDaysCount: 2n,
+        purchasedWithinThirtyDaysCount: 3n,
+        signedUpCount: 10n,
       },
       ok: true,
       period: { end: "2026-10-24", start: "2026-09-27", timeZone: "UTC" },
@@ -646,7 +646,7 @@ describe("getSignUpFunnel", () => {
     });
 
     expect(result).toMatchObject({
-      funnel: { medianDaysToFirstPurchase: null, purchasedCount: 0 },
+      funnel: { medianDaysToFirstPurchase: null, purchasedCount: 0n },
       ok: true,
     });
   });

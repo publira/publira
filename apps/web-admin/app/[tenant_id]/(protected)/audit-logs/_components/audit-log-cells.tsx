@@ -1335,7 +1335,7 @@ const purchaseRefundLabel = (
   }
 
   return t("admin.audit.reasons.purchase_refund_in_part", {
-    amount: formatTenantAmount(Number(groups.amount), {
+    amount: formatTenantAmount(BigInt(groups.amount), {
       currency: groups.currency,
       locale,
     }),

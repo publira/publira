@@ -203,7 +203,7 @@ describe("catalog.getSeriesDetail", () => {
         coverImageVariants: [
           {
             contentType: "image/webp",
-            fileSizeBytes: 1200,
+            fileSizeBytes: 1200n,
             height: 400,
             label: "portrait-300",
             url: "/images/volume.webp",
@@ -452,7 +452,7 @@ describe("catalog.getSeriesDetail", () => {
       [
         {
           contentType: "image/webp",
-          fileSizeBytes: 4096,
+          fileSizeBytes: 4096n,
           height: 360,
           label: "landscape 640",
           url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/landscape/640",
@@ -478,7 +478,7 @@ describe("catalog.getEpisodeDetail", () => {
         price: 300,
         publicId: "EP_001",
         publishedAt: "2026-03-26T00:00:00Z",
-        ratingCount: 12,
+        ratingCount: 12n,
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
@@ -488,7 +488,7 @@ describe("catalog.getEpisodeDetail", () => {
         {
           contentType: "image/png",
           displayOrder: 2,
-          fileSizeBytes: 2048,
+          fileSizeBytes: 2048n,
           height: 1800,
           id: "img_2",
           imageUrl: "https://cdn.example/img2.png",
@@ -497,7 +497,7 @@ describe("catalog.getEpisodeDetail", () => {
         {
           contentType: "image/png",
           displayOrder: 1,
-          fileSizeBytes: 1024,
+          fileSizeBytes: 1024n,
           height: 1800,
           id: "img_1",
           imageUrl: "https://cdn.example/img1.png",
@@ -531,13 +531,13 @@ describe("catalog.getEpisodeDetail", () => {
     });
     expect(detail?.series?.ageRating).toBeUndefined();
     expect(detail?.episode.title).toBe("Episode 2");
-    expect(detail?.episode.ratingCount).toBe(12);
+    expect(detail?.episode.ratingCount).toBe(12n);
     expect(detail?.episode.readingDirection).toBe("rtl");
     expect(detail?.episode.spreadStartIndex).toBe(1);
     expect(detail?.episode.purchaseSurface).toBe("all");
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
-    expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+    expect(detail?.images[0]?.fileSizeBytes).toBe(1024n);
   });
 
   it("names the locale the episode and its series were each served in", async () => {
@@ -592,7 +592,7 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.episode.eyeCatchImageVariants).toEqual([
       {
         contentType: "image/webp",
-        fileSizeBytes: 8192,
+        fileSizeBytes: 8192n,
         height: 630,
         label: "og 1200",
         url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/og/1200",
@@ -1037,7 +1037,7 @@ describe("catalog.getEpisodeDetail", () => {
       {
         contentType: "image/jpeg",
         displayOrder: 1,
-        fileSizeBytes: 1024,
+        fileSizeBytes: 1024n,
         height: 1500,
         id: "img_1",
         imageUrl: "/images/episodes/img_1?token=free",
@@ -1046,7 +1046,7 @@ describe("catalog.getEpisodeDetail", () => {
       {
         contentType: "image/jpeg",
         displayOrder: 2,
-        fileSizeBytes: 2048,
+        fileSizeBytes: 2048n,
         height: 1500,
         id: "img_2",
         imageUrl: "/images/episodes/img_2?token=free",
@@ -1243,7 +1243,7 @@ describe("catalog.getEpisodeViewer", () => {
         {
           contentType: "image/png",
           displayOrder: 1,
-          fileSizeBytes: 1024,
+          fileSizeBytes: 1024n,
           height: 1800,
           id: "img_1",
           imageUrl: "https://cdn.example/img1.png",
@@ -1279,7 +1279,7 @@ describe("catalog.getEpisodeViewer", () => {
           {
             contentType: "image/png",
             displayOrder: 1,
-            fileSizeBytes: 1024,
+            fileSizeBytes: 1024n,
             height: 1800,
             id: "img_1",
             imageUrl: "https://cdn.example/img1.png",
@@ -1717,7 +1717,7 @@ describe("catalog.getSeriesDetail", () => {
       const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
       expect(result.ok && result.value?.series).toMatchObject({
         ratingAverage,
-        ratingCount: Number(ratingCount),
+        ratingCount: BigInt(ratingCount),
       });
     }
   );
@@ -2095,7 +2095,7 @@ describe("catalog.listPublishedGenres", () => {
         eyeCatchImageVariants: [
           {
             contentType: "image/webp",
-            fileSizeBytes: 1024,
+            fileSizeBytes: 1024n,
             height: 800,
             label: "600",
             url: "/images/series/SERIES01/portrait/600",
@@ -2148,7 +2148,7 @@ describe("catalog.listPublishedGenres", () => {
       [
         {
           contentType: "image/webp",
-          fileSizeBytes: 2048,
+          fileSizeBytes: 2048n,
           height: 1600,
           label: "1200",
           url: "/images/genres/GENRE01/portrait/1200",

@@ -41,14 +41,14 @@ const settings: CoinSettingsItem = {
 
 const episode = { coinName: "Points", coinPrice: 300, coinRentalPrice: 0 };
 
-const balance = (coins: number, owedCoins = 0) =>
+const balance = (coins: bigint, owedCoins = 0n) =>
   ({
     ok: true,
     value: {
       coinName: "Points",
       coins,
       nearestExpiryAt: "",
-      nearestExpiryCoins: 0,
+      nearestExpiryCoins: 0n,
       owedCoins,
     },
   }) as const;
@@ -89,13 +89,13 @@ describe("toCoinOffer", () => {
   it("offers the payment, and no pack, to a reader whose coins cover it", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
-      balance: balance(300),
+      balance: balance(300n),
       episode,
       idempotencyKey: "key",
       settings,
     });
 
-    expect(offer).toMatchObject({ kind: "offer", needed: 0, price: 300 });
+    expect(offer).toMatchObject({ kind: "offer", needed: 0n, price: 300 });
     expect(offer?.kind === "offer" && offer.pack).toBeUndefined();
     expect(coinsCarryShu(offer)).toBe(true);
   });
@@ -103,7 +103,7 @@ describe("toCoinOffer", () => {
   it("offers the smallest pack that covers what the reader is short of", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
-      balance: balance(150),
+      balance: balance(150n),
       episode,
       idempotencyKey: "key",
       settings,
@@ -111,7 +111,7 @@ describe("toCoinOffer", () => {
 
     expect(offer).toMatchObject({
       kind: "offer",
-      needed: 150,
+      needed: 150n,
       pack: { id: "pack-600" },
       packsOnSale: true,
     });
@@ -121,19 +121,19 @@ describe("toCoinOffer", () => {
   it("counts what the next pack pays back of a refunded one", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
-      balance: balance(250, 80),
+      balance: balance(250n, 80n),
       episode,
       idempotencyKey: "key",
       settings,
     });
 
-    expect(offer).toMatchObject({ needed: 130, pack: { id: "pack-600" } });
+    expect(offer).toMatchObject({ needed: 130n, pack: { id: "pack-600" } });
   });
 
   it("sells no pack on a site that takes no payments, and offers no way in to a reader short of coins there", () => {
     const offer = toCoinOffer({
       acceptsPayments: false,
-      balance: balance(0),
+      balance: balance(0n),
       episode,
       idempotencyKey: "key",
       settings,
@@ -146,7 +146,7 @@ describe("toCoinOffer", () => {
   it("offers a rental the coins cover even when the permanent copy is short", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
-      balance: balance(120),
+      balance: balance(120n),
       episode: { ...episode, coinRentalPrice: 100 },
       idempotencyKey: "key",
       settings,

@@ -48,7 +48,7 @@ afterEach(cleanup);
 const reader: EpisodeRatingStatusResult = {
   mode: "single",
   ok: true,
-  ratingCount: 0,
+  ratingCount: 0n,
   readerCredited: false,
   readerIsStaff: false,
   score: 0,

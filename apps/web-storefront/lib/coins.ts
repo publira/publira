@@ -73,15 +73,15 @@ export interface CoinSettingsItem {
 export interface CoinBalanceItem {
   coinName: string;
   /** What the reader can spend now. */
-  coins: number;
+  coins: bigint;
   /** RFC3339; empty, with `nearestExpiryCoins` 0, while `coins` is 0. */
   nearestExpiryAt: string;
-  nearestExpiryCoins: number;
+  nearestExpiryCoins: bigint;
   /**
    * Coins of a refunded pack that had already been spent, which the next pack
    * the reader buys pays back before any of its coins can be spent.
    */
-  owedCoins: number;
+  owedCoins: bigint;
 }
 
 export type CoinTransactionItemKind =
@@ -224,10 +224,10 @@ const toCoinSettingsItem = (settings: RawCoinSettings): CoinSettingsItem => {
 
 const toCoinBalanceItem = (balance: RawCoinBalance): CoinBalanceItem => ({
   coinName: balance.coinName ?? "",
-  coins: Number(balance.coins ?? 0),
+  coins: balance.coins ?? 0n,
   nearestExpiryAt: balance.nearestExpiryAt ?? "",
-  nearestExpiryCoins: Number(balance.nearestExpiryCoins ?? 0),
-  owedCoins: Number(balance.shortfallCoins ?? 0),
+  nearestExpiryCoins: balance.nearestExpiryCoins ?? 0n,
+  owedCoins: balance.shortfallCoins ?? 0n,
 });
 
 /**
@@ -435,7 +435,7 @@ export const coinPackTotal = (
  */
 export const coinPackCovering = (
   packs: readonly CoinPackItem[],
-  needed: number
+  needed: bigint
 ): CoinPackItem | undefined =>
   packs
     .filter((pack) => coinPackTotal(pack) >= needed)

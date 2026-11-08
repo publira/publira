@@ -26,8 +26,8 @@ export interface PlatformWebPushSettings {
   /** Whether a subject is saved, which is what turns Web Push on. */
   configured: boolean;
   subject: string;
-  /** Decimal int64 the row was read at. */
-  revision: string;
+  /** The revision the row was read at. */
+  revision: bigint;
 }
 
 export type GetPlatformWebPushSettingsResult =
@@ -48,7 +48,7 @@ export const toPlatformWebPushSettings = (
   >
 ): PlatformWebPushSettings => ({
   configured: settings?.hasSubject ?? false,
-  revision: String(settings?.revision ?? 0),
+  revision: settings?.revision ?? 0n,
   subject: settings?.subject ?? "",
 });
 

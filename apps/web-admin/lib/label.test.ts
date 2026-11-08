@@ -170,7 +170,7 @@ describe("getLabel", () => {
         eyeCatchImageVariants: [
           {
             contentType: "image/webp",
-            fileSizeBytes: 2048,
+            fileSizeBytes: 2048n,
             height: 512,
             label: "md",
             url: "/images/labels/img/square/512",
@@ -200,7 +200,7 @@ describe("getLabel", () => {
         eyeCatchImageVariants: [
           {
             contentType: "image/webp",
-            fileSizeBytes: 2048,
+            fileSizeBytes: 2048n,
             height: 512,
             label: "md",
             url: "/images/labels/img/square/512",
@@ -409,7 +409,7 @@ describe("label eye-catch aspect images", () => {
         eyeCatchImageVariants: [
           {
             contentType: "image/jpeg",
-            fileSizeBytes: 4096,
+            fileSizeBytes: 4096n,
             height: 900,
             label: "landscape_1600w",
             url: "/images/labels/img/landscape/1600",

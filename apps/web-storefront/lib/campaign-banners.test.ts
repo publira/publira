@@ -65,13 +65,13 @@ describe("listCampaignBanners", () => {
     await expect(listCampaignBanners(tenantId)).resolves.toEqual([
       {
         altText: "Autumn sale",
-        imageVariants: [{ ...variant, fileSizeBytes: 1024 }],
+        imageVariants: [{ ...variant, fileSizeBytes: 1024n }],
         linkUrl: "/series/SERIES01",
         publicId: "BANNER01",
       },
       {
         altText: "",
-        imageVariants: [{ ...variant, fileSizeBytes: 1024 }],
+        imageVariants: [{ ...variant, fileSizeBytes: 1024n }],
         linkUrl: "https://example.com/campaign",
         publicId: "BANNER02",
       },

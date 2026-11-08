@@ -8,7 +8,11 @@ import type { ReactNode } from "react";
 import { createContext, use, useMemo, useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
-import { parsePriceInput, priceInputStep, toPriceInputValue } from "#lib/price";
+import {
+  parseAmountInput,
+  priceInputStep,
+  toPriceInputValue,
+} from "#lib/price";
 
 /** The longest reason the refund Action accepts. */
 const MAX_REASON_LENGTH = 1000;
@@ -21,8 +25,8 @@ const MAX_REASON_LENGTH = 1000;
  */
 export interface RefundAmountBounds {
   currency: string;
-  left: number;
-  requested: number;
+  left: bigint;
+  requested: bigint;
 }
 
 interface RefundDraftContextValue {
@@ -52,14 +56,14 @@ const useRefundDraft = (caller: string): RefundDraftContextValue => {
 const readAmount = (
   amount: string,
   bounds: RefundAmountBounds
-): number | null => {
-  const value = parsePriceInput(amount, bounds.currency);
+): bigint | null => {
+  const value = parseAmountInput(amount, bounds.currency);
 
-  if (value === null || value <= 0 || value > bounds.left) {
+  if (value === null || value <= 0n || value > bounds.left) {
     return null;
   }
 
-  if (bounds.requested > 0 && value !== bounds.requested) {
+  if (bounds.requested > 0n && value !== bounds.requested) {
     return null;
   }
 
@@ -139,7 +143,7 @@ const RefundAmountInput = ({ formId }: { formId: string }) => {
       min={step}
       name="amount"
       onChange={(event) => setAmount(event.currentTarget.value)}
-      readOnly={bounds.requested > 0}
+      readOnly={bounds.requested > 0n}
       required
       step={step}
       type="number"

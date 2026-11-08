@@ -51,7 +51,7 @@ const TaxSubtotalCells = ({
 }: {
   currency: string | null;
   locale: Locale;
-  tax: number | null;
+  tax: bigint | null;
 }) => (
   <>
     <Table.Cell />

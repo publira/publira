@@ -277,6 +277,13 @@ export const jsonLdSiteIn = (site: JsonLdSite, locale: Locale): JsonLdSite => ({
 });
 
 /**
+ * An int64 count as the document states it. The document leaves through
+ * `JSON.stringify`, which throws on a `bigint`, and the counts a page carries
+ * stay far below 2^53, where the conversion is exact.
+ */
+const jsonLdInteger: (count: bigint) => number = Number;
+
+/**
  * A work, at the URL of the language its title is written in.
  * `aggregateRating` is written only once readers have rated it: a figure of 0
  * is the API's "no figure yet", not the bottom of the 1–5 scale.
@@ -334,11 +341,11 @@ export const seriesJsonLd = (
     work.keywords = series.tags.map((tag) => tag.name);
   }
 
-  if (series.ratingCount > 0 && series.ratingAverage > 0) {
+  if (series.ratingCount > 0n && series.ratingAverage > 0) {
     work.aggregateRating = {
       "@type": "AggregateRating",
       bestRating: 5,
-      ratingCount: series.ratingCount,
+      ratingCount: jsonLdInteger(series.ratingCount),
       ratingValue: series.ratingAverage,
       worstRating: 1,
     };

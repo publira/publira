@@ -149,7 +149,7 @@ const toPlatformSmtpSettings = (
   host: settings?.host ?? "",
   port: settings?.port ?? 587,
   replyTo: settings?.replyTo ?? "",
-  revision: String(settings?.revision ?? 0),
+  revision: settings?.revision ?? 0n,
   username: settings?.username ?? "",
 });
 

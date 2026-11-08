@@ -142,7 +142,7 @@ export interface SeriesItem {
     contentType: string;
     width: number;
     height: number;
-    fileSizeBytes: number;
+    fileSizeBytes: bigint;
   }[];
   eyeCatchImageUpdatedAt: string;
   /** Which surfaces the series may be shown on, and every episode with it. */
@@ -434,7 +434,7 @@ const mapSeries = (
       (variant) => {
         const mappedVariant = {
           contentType: variant.contentType ?? "",
-          fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+          fileSizeBytes: variant.fileSizeBytes ?? 0n,
           height: variant.height ?? 0,
           label: variant.label ?? "",
           url: variant.url ?? "",

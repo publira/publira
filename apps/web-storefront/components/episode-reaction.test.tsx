@@ -42,7 +42,7 @@ const GuestReaction = ({
   ratingCount,
 }: {
   href: string;
-  ratingCount: number;
+  ratingCount: bigint;
 }) => (
   <EpisodeReaction.Root>
     <EpisodeReaction.Login href={href} ratingCount={ratingCount}>
@@ -64,7 +64,7 @@ const SignedInReaction = ({
   score,
 }: {
   mode: "multiple" | "single";
-  ratingCount: number;
+  ratingCount: bigint;
   score: number;
 }) => (
   <EpisodeReaction.Root>
@@ -97,7 +97,7 @@ describe("EpisodeReaction.Login", () => {
     render(
       <GuestReaction
         href="/login?returnTo=%2Fseries%2FSERIES01%2Fepisodes%2FEPISODE01"
-        ratingCount={12}
+        ratingCount={12n}
       />
     );
 
@@ -136,7 +136,7 @@ describe("EpisodeReaction.Skeleton", () => {
 
 describe("EpisodeReaction.Form", () => {
   it("names a first press in single mode, then fills the control and counts the reader once", async () => {
-    render(<SignedInReaction mode="single" ratingCount={3} score={0} />);
+    render(<SignedInReaction mode="single" ratingCount={3n} score={0} />);
 
     const button = screen.getByRole("button", {
       name: "React to this episode. Readers who reacted: 3",
@@ -162,7 +162,7 @@ describe("EpisodeReaction.Form", () => {
   });
 
   it("takes five presses to the ceiling in multiple mode and counts the reader once", async () => {
-    render(<SignedInReaction mode="multiple" ratingCount={10} score={0} />);
+    render(<SignedInReaction mode="multiple" ratingCount={10n} score={0} />);
 
     fireEvent.click(screen.getByRole("button"));
     expect(

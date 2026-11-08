@@ -35,8 +35,8 @@ export type TenantRetentionOverrides = Partial<TenantRetentionPeriods>;
 export interface TenantRetentionSettings {
   overrides: TenantRetentionOverrides;
   platformDefaults: TenantRetentionPeriods;
-  /** Decimal int64 the screen sends back with its save; `"0"` means nothing saved yet. */
-  revision: string;
+  /** The revision the screen sends back with its save; `0n` means nothing saved yet. */
+  revision: bigint;
 }
 
 export type GetTenantRetentionSettingsResult =
@@ -125,7 +125,7 @@ const getTenantRetentionSettingsForSession = async (
       ok: true,
       overrides: toRetentionOverrides(response.overrides),
       platformDefaults: toRetentionPeriods(response.platformDefaults),
-      revision: String(response.revision),
+      revision: response.revision,
     };
   } catch (error) {
     dropFailedCacheEntry();

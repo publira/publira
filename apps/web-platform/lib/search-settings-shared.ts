@@ -51,8 +51,8 @@ export type SearchCredentialMode = "basic" | "none";
 export interface PlatformSearchServing {
   engine: PlatformSearchEngine;
   index: string;
-  /** Decimal int64; `"0"` is the SQL engine of an install that never moved. */
-  revision: string;
+  /** `0n` is the SQL engine of an install that never moved. */
+  revision: bigint;
   /** RFC 3339; empty at revision zero. */
   since: string;
   url: string;
@@ -80,8 +80,8 @@ export interface PlatformSearchSettings {
    * `analysis`. Empty on the SQL engine.
    */
   localeAnalyses: Partial<Record<Locale, string>>;
-  /** Decimal int64; `"0"` means no configuration has been saved yet. */
-  revision: string;
+  /** `0n` means no configuration has been saved yet. */
+  revision: bigint;
   serving: PlatformSearchServing;
   /** Empty on the SQL engine. */
   url: string;

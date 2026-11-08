@@ -80,9 +80,24 @@ export const sortSearchParams = <C extends string>(
   sort: state.column,
 });
 
+/**
+ * A cell's value: a title, or a figure — an `int64` count or amount as
+ * `bigint`, a rating or a rate as `number`.
+ */
+export type SortValue = bigint | number | string;
+
 /** Whether a cell holds a figure rather than a title. */
-const isFigure = (value: number | string): value is number =>
-  typeof value === "number";
+const isFigure = (value: SortValue): value is bigint | number =>
+  typeof value !== "string";
+
+/** The order of two figures, exact for a `bigint` past 2^53. */
+const compareFigures = (a: bigint | number, b: bigint | number): number => {
+  if (a < b) {
+    return -1;
+  }
+
+  return a > b ? 1 : 0;
+};
 
 /**
  * `rows` ordered by `state`. Titles are compared the way `locale` orders words
@@ -92,7 +107,7 @@ const isFigure = (value: number | string): value is number =>
 export const sortRows = <T, C extends string>(
   rows: readonly T[],
   state: SortState<C>,
-  value: (row: T, column: C) => number | string,
+  value: (row: T, column: C) => SortValue,
   locale: Locale
 ): T[] => {
   const collator = new Intl.Collator(toIntlLocale(locale), {
@@ -107,7 +122,7 @@ export const sortRows = <T, C extends string>(
 
     const compared =
       isFigure(a) && isFigure(b)
-        ? a - b
+        ? compareFigures(a, b)
         : collator.compare(String(a), String(b));
 
     return compared * direction;

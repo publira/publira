@@ -115,6 +115,19 @@ describe("formatMessageSource", () => {
     expect(formatMessageSource(source, "en-US", { count: 7 })).toBe("many");
   });
 
+  it("formats and selects on a bigint as it does a number", () => {
+    const source =
+      ".input {$count :integer}\n.match $count\none {{{$count} coin}}\n* {{{$count} coins}}";
+
+    expect(formatMessageSource(source, "en-US", { count: 1n })).toBe("1 coin");
+    expect(formatMessageSource(source, "en-US", { count: 12_345n })).toBe(
+      "12,345 coins"
+    );
+    expect(formatMessageSource("{$count}", "en-US", { count: 12_345n })).toBe(
+      "12,345"
+    );
+  });
+
   it("does not isolate a placeholder, so no bidi controls reach the copy", () => {
     expect(
       formatMessageSource("Hello {$name}!", "en-US", { name: "محمد" })

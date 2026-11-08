@@ -557,7 +557,7 @@ describe("listEpisodeImages", () => {
         {
           contentType: "image/webp",
           displayOrder: 1,
-          fileSizeBytes: "2048",
+          fileSizeBytes: 2048n,
           height: 1600,
           id: "IMAGE001",
           imageUrl: "https://cdn.example.com/image-001.webp",
@@ -1368,7 +1368,7 @@ describe("deleteEpisodeImage", () => {
         {
           contentType: "image/webp",
           displayOrder: 1,
-          fileSizeBytes: "2048",
+          fileSizeBytes: 2048n,
           height: 1600,
           id: "IMAGE002",
           imageUrl: "https://cdn.example.com/2.webp",
@@ -1492,7 +1492,7 @@ describe("the episode's eye-catch", () => {
 
     expect(result.ok && result.episode).toMatchObject({
       eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
-      eyeCatchImageVariants: [{ ...storedVariant, fileSizeBytes: 1024 }],
+      eyeCatchImageVariants: [{ ...storedVariant, fileSizeBytes: 1024n }],
     });
   });
 

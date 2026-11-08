@@ -76,7 +76,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{}}
         platformDefaults={platformDefaults}
-        revision="0"
+        revision={0n}
         tenantId="TENANT001"
       />
     );
@@ -100,7 +100,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{}}
         platformDefaults={platformDefaults}
-        revision="0"
+        revision={0n}
         tenantId="TENANT001"
       />
     );
@@ -120,7 +120,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{ withdrawnCommentDays: 30 }}
         platformDefaults={platformDefaults}
-        revision="4"
+        revision={4n}
         tenantId="TENANT001"
       />
     );
@@ -146,7 +146,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{ contentEventDays: 7 }}
         platformDefaults={platformDefaults}
-        revision="4"
+        revision={4n}
         tenantId="TENANT001"
       />
     );
@@ -167,7 +167,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{ withdrawnCommentDays: 30 }}
         platformDefaults={platformDefaults}
-        revision="4"
+        revision={4n}
         tenantId="TENANT001"
       />
     );
@@ -194,7 +194,7 @@ describe("TenantRetentionSettingsForm", () => {
         loadErrorMessage="Could not load the retention periods. Please try again later."
         overrides={{}}
         platformDefaults={platformDefaults}
-        revision="0"
+        revision={0n}
         tenantId="TENANT001"
       />
     );
@@ -221,7 +221,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit={false}
         overrides={{}}
         platformDefaults={platformDefaults}
-        revision="0"
+        revision={0n}
         tenantId="TENANT001"
       />
     );
@@ -248,7 +248,7 @@ describe("TenantRetentionSettingsForm", () => {
         canEdit
         overrides={{ withdrawnCommentDays: 30 }}
         platformDefaults={platformDefaults}
-        revision="4"
+        revision={4n}
         tenantId="TENANT001"
       />
     );

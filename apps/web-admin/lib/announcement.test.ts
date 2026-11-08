@@ -149,11 +149,11 @@ describe("announcement lib", () => {
         createdAt: "2026-04-04T00:00:00Z",
         deliverAt: "",
         deliveredAt: "",
-        deliveredCount: 1200,
+        deliveredCount: 1200n,
         delivery: "everyone",
         id: "n1",
         linkUrl: "/series/S001",
-        openedCount: 37,
+        openedCount: 37n,
         title: "Announcement title",
         translatedLocales: ["ja", "en"],
         translations: [
@@ -524,7 +524,7 @@ describe("announcement lib", () => {
 
     await expect(countAnnouncementAudience(input)).resolves.toEqual({
       ok: true,
-      readerCount: 12,
+      readerCount: 12n,
     });
     expect(mockCountAnnouncementAudienceApi).toHaveBeenCalledWith(
       {

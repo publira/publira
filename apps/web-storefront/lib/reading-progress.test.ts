@@ -45,7 +45,7 @@ const series = {
   eyeCatchImageVariants: [
     {
       contentType: "image/webp",
-      fileSizeBytes: 1024,
+      fileSizeBytes: 1024n,
       height: 630,
       label: "Landscape",
       url: "https://example.test/landscape.webp",

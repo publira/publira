@@ -50,8 +50,8 @@ import * as Chart from "@publira/ui-components/chart";
 | Part | Element | Props |
 | --- | --- | --- |
 | `Chart.Root` | `<figure>` | those of a `<figure>` |
-| `Chart.Bars`, `Chart.Line`, `Chart.Steps` | `<svg>` | `values`, the figures from left to right, and the props of an `<svg>` apart from `viewBox`, `preserveAspectRatio`, `children`, and the SVG `values` attribute it replaces |
-| `Chart.StackedBars` | `<svg>` | `series`, two lists of figures for the same slots in the order they are stacked, and the same `<svg>` props |
+| `Chart.Bars`, `Chart.Line`, `Chart.Steps` | `<svg>` | `values`, the figures from left to right as `number` or `bigint`, and the props of an `<svg>` apart from `viewBox`, `preserveAspectRatio`, `children`, and the SVG `values` attribute it replaces |
+| `Chart.StackedBars` | `<svg>` | `series`, two lists of figures (`number` or `bigint`) for the same slots in the order they are stacked, and the same `<svg>` props |
 | `Chart.Legend` | `<ul>` | those of a `<ul>` |
 | `Chart.LegendItem` | `<li>` | `series`, `0` or `1`, whose tone its swatch shows, and those of an `<li>` |
 | `Chart.Axis` | `<div>` | those of a `<div>`; its labels are spread from the left edge of the plot to the right |

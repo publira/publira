@@ -301,7 +301,7 @@ const toServing = (
 ): PlatformSearchServing => ({
   engine: toEngine(serving?.engine),
   index: serving?.index ?? "",
-  revision: String(serving?.revision ?? 0),
+  revision: serving?.revision ?? 0n,
   since: serving?.since ?? "",
   url: serving?.url ?? "",
 });
@@ -348,7 +348,7 @@ export const toPlatformSearchSettings = (
     hasPassword: settings?.hasPassword ?? false,
     index: settings?.index ?? "",
     localeAnalyses: toLocaleAnalyses(settings),
-    revision: String(settings?.revision ?? 0),
+    revision: settings?.revision ?? 0n,
     serving: toServing(settings?.serving),
     url: settings?.url ?? "",
     username: settings?.username ?? "",

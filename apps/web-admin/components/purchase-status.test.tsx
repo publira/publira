@@ -23,8 +23,8 @@ const NOW = Temporal.Instant.from("2026-06-01T00:00:00Z");
 
 const standing = {
   expiresAt: "",
-  refundRequestedAmount: 0,
-  refundedAmount: 0,
+  refundRequestedAmount: 0n,
+  refundedAmount: 0n,
   refundedAt: "",
   revocationReason: "",
 } as const;
@@ -33,14 +33,14 @@ describe("purchaseStatus", () => {
   it("reports a refund in part waiting for the provider as requested", () => {
     expect(
       purchaseStatus(
-        { ...standing, refundRequestedAmount: 200, refundedAmount: 100 },
+        { ...standing, refundRequestedAmount: 200n, refundedAmount: 100n },
         NOW
       )
     ).toBe("refunding");
   });
 
   it("reports a refund in part the provider has recorded as a partial refund", () => {
-    expect(purchaseStatus({ ...standing, refundedAmount: 200 }, NOW)).toBe(
+    expect(purchaseStatus({ ...standing, refundedAmount: 200n }, NOW)).toBe(
       "partly_refunded"
     );
   });

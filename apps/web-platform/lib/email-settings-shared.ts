@@ -11,7 +11,7 @@ export interface PlatformSmtpSettings {
   host: string;
   port: number;
   replyTo: string;
-  /** Decimal int64; `"0"` means no settings have been saved yet. */
-  revision: string;
+  /** `0n` means no settings have been saved yet. */
+  revision: bigint;
   username: string;
 }

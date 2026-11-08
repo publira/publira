@@ -17,7 +17,7 @@ export const RetentionDefaultsForm = ({
   loadErrorMessage,
 }: {
   values: PlatformRetentionDefaults;
-  revision: string;
+  revision: bigint;
   loadErrorMessage?: string;
 }) => (
   <ConsoleSection.Root>
@@ -39,7 +39,7 @@ export const RetentionDefaultsForm = ({
       action={updatePlatformRetentionDefaultsAction}
       className="grid gap-4 sm:max-w-3xl"
     >
-      <input name="revision" type="hidden" value={revision} />
+      <input name="revision" type="hidden" value={String(revision)} />
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
           <Message message="platform.policy.retention.help" />

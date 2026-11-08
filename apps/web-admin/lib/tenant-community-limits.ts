@@ -49,8 +49,8 @@ export type CommunityLimitKey = keyof TenantCommunityLimits;
 export interface TenantCommunityLimitSettings {
   overrides: TenantCommunityLimitOverrides;
   platformDefaults: TenantCommunityLimits;
-  /** Decimal int64 the screen sends back with its save; `"0"` means nothing saved yet. */
-  revision: string;
+  /** The revision the screen sends back with its save; `0n` means nothing saved yet. */
+  revision: bigint;
 }
 
 export type GetTenantCommunityLimitSettingsResult =
@@ -318,7 +318,7 @@ const getTenantCommunityLimitSettingsForSession = async (
       ok: true,
       overrides: toCommunityLimitOverrides(response.overrides),
       platformDefaults: toCommunityLimits(response.platformDefaults),
-      revision: String(response.revision),
+      revision: response.revision,
     };
   } catch (error) {
     dropFailedCacheEntry();

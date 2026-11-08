@@ -71,7 +71,7 @@ describe("tenant-retention-settings", () => {
         withdrawnCommentDays: 30,
       },
       platformDefaults,
-      revision: "4",
+      revision: 4n,
     });
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:retention-settings"

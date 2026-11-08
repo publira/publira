@@ -16,7 +16,7 @@ export const CommunityLimitsForm = ({
   loadErrorMessage,
 }: {
   values: PlatformCommunityLimits;
-  revision: string;
+  revision: bigint;
   loadErrorMessage?: string;
 }) => (
   <ConsoleSection.Root>
@@ -38,7 +38,7 @@ export const CommunityLimitsForm = ({
       action={updatePlatformCommunityLimitsAction}
       className="grid gap-4 sm:max-w-3xl"
     >
-      <input name="revision" type="hidden" value={revision} />
+      <input name="revision" type="hidden" value={String(revision)} />
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
           <Message message="platform.policy.community.help" />
