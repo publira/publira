@@ -45,9 +45,10 @@ describe("AuditActionSelect", () => {
     ]);
   });
 
-  it("submits each action under the label that names it", () => {
-    for (const action of auditActions) {
-      const { container, unmount } = render(
+  it.each(auditActions)(
+    "submits %s under the label that names it",
+    (action) => {
+      const { container } = render(
         <AdminLocaleTestProvider locale="en">
           <form>
             <AuditActionSelect defaultValue={action} />
@@ -60,9 +61,8 @@ describe("AuditActionSelect", () => {
       expect(screen.getByRole("combobox", { name: "Action" }).textContent).toBe(
         actionLabel(action)
       );
-      unmount();
     }
-  });
+  );
 
   it.each(getLocales())("names every action in %s", async (locale) => {
     render(
