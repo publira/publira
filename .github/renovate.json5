@@ -3,14 +3,6 @@
   extends: ["github>publira/.github//renovate.json5"],
   packageRules: [
     {
-      // firebase-ios-sdk 13, which these majors require, needs AppCheckCore 12,
-      // and the GoogleSignIn-iOS that google_sign_in_ios depends on caps it at
-      // 11, so the iOS build cannot resolve its Swift packages. Lifted by #4497.
-      matchPackageNames: ["firebase_core", "firebase_messaging"],
-      matchUpdateTypes: ["major"],
-      enabled: false,
-    },
-    {
       // packages/tracing declares these only to satisfy @vercel/otel's peer
       // dependencies, which stay below opentelemetry-js 3.x. @vercel/otel
       // bundles its own 2.x copies, so a 3.x declaration runs nothing new while

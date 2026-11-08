@@ -21,12 +21,14 @@ abstract class PushMessaging {
   /// Called the first time the reader turns the switch on, never at launch.
   Future<PushAuthorization> requestAuthorization();
 
-  /// The registration token this install holds, or `null` when the device
-  /// could not mint one.
+  /// Registers this install for messages and answers the identifier the server
+  /// sends them to — the Firebase Installation ID FCM registered it under — or
+  /// `null` when the device could not register.
   Future<String?> token();
 
-  /// Fires whenever FCM replaces the token, which the app answers by
-  /// registering the new one.
+  /// Fires whenever the device is registered under an identifier, the one
+  /// [token] answers included, which the app answers by registering it on the
+  /// server when it is not the one already there.
   Stream<String> get tokenRefreshes;
 
   /// Messages that arrive while the app is in front, which the OS does not
@@ -40,7 +42,7 @@ abstract class PushMessaging {
   /// started some other way.
   Future<PushMessage?> initialMessage();
 
-  /// Invalidates this install's token, so a row the server still holds stops
+  /// Unregisters this install from FCM, so a row the server still holds stops
   /// being deliverable and is dropped at the next send.
   Future<void> deleteToken();
 }

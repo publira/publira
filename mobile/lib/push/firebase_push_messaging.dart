@@ -60,11 +60,29 @@ class FirebasePushMessaging implements PushMessaging {
     }
   }
 
+  /// Registers this install with FCM and answers the Firebase Installation ID
+  /// it is registered under, or `null` when the device could not register.
+  ///
+  /// [FirebaseMessaging.register] completes without the ID, which both
+  /// platforms deliver on [FirebaseMessaging.onRegistered] instead, also when
+  /// the install was registered already. The listener therefore goes on before
+  /// the call, and the wait after it is bounded so that a callback that never
+  /// comes leaves the switch off rather than holding it forever.
   @override
-  Future<String?> token() => _messaging.getToken();
+  Future<String?> token() async {
+    final registered = _messaging.onRegistered.first;
+    try {
+      await _messaging.register();
+      return await registered.timeout(_registrationTimeout);
+    } on Object catch (error) {
+      registered.ignore();
+      debugPrint('FCM registration failed: $error');
+      return null;
+    }
+  }
 
   @override
-  Stream<String> get tokenRefreshes => _messaging.onTokenRefresh;
+  Stream<String> get tokenRefreshes => _messaging.onRegistered;
 
   @override
   Stream<PushMessage> get foregroundMessages =>
@@ -81,8 +99,12 @@ class FirebasePushMessaging implements PushMessaging {
   }
 
   @override
-  Future<void> deleteToken() => _messaging.deleteToken();
+  Future<void> deleteToken() => _messaging.unregister();
 }
+
+/// How long [FirebasePushMessaging.token] waits for the ID once registration
+/// has completed, by which point the callback is already on its way.
+const _registrationTimeout = Duration(seconds: 10);
 
 PushMessage _toPushMessage(RemoteMessage message) {
   return PushMessage.fromPlatform(

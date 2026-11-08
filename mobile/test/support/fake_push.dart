@@ -40,8 +40,16 @@ class FakePushMessaging implements PushMessaging {
     return authorization;
   }
 
+  /// Answers [currentToken] and, as both platforms do for every registration,
+  /// reports it on [tokenRefreshes] as well.
   @override
-  Future<String?> token() async => currentToken;
+  Future<String?> token() async {
+    final token = currentToken;
+    if (token != null) {
+      tokenRefreshController.add(token);
+    }
+    return token;
+  }
 
   @override
   Stream<String> get tokenRefreshes => tokenRefreshController.stream;
@@ -77,11 +85,16 @@ class FakePushRepository implements PushRepository {
   /// act out one that recovers.
   Object? failure;
 
+  /// Holds every [register] call until a test completes it, which is how a
+  /// registration still in flight is acted out.
+  Completer<void>? registerGate;
+
   @override
   Future<void> register({
     required String token,
     required PushPlatform platform,
   }) async {
+    await registerGate?.future;
     final error = failure;
     if (error != null) {
       throw error;

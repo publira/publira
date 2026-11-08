@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_message.dart';
@@ -179,9 +181,64 @@ void main() {
     await pumpEventQueue();
 
     expect(repository.registered, ['next-token']);
+    expect(repository.unregistered, ['device-token']);
     expect(store.token, 'next-token');
     expect(controller.enabled, isTrue);
   });
+
+  test(
+    'signing in moves a stored token to the one the device answers now',
+    () async {
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
+      await controller.start();
+
+      await controller.handleSignedIn();
+
+      expect(repository.registered.last, 'installation-id');
+      expect(repository.unregistered, ['registration-token']);
+      expect(store.token, 'installation-id');
+      expect(controller.enabled, isTrue);
+    },
+  );
+
+  test(
+    'a launch asks the API for nothing before the session is back',
+    () async {
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
+      await controller.start();
+      await pumpEventQueue();
+
+      expect(repository.registered, isEmpty);
+      expect(repository.unregistered, isEmpty);
+      expect(store.token, 'registration-token');
+    },
+  );
+
+  test(
+    'turning notifications off while a sign-in registers keeps them off',
+    () async {
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
+      await controller.start();
+      final gate = repository.registerGate = Completer<void>();
+
+      final signingIn = controller.handleSignedIn();
+      await pumpEventQueue();
+      final disabling = controller.setEnabled(false);
+      await pumpEventQueue();
+      gate.complete();
+      await Future.wait([signingIn, disabling]);
+
+      expect(controller.enabled, isFalse);
+      expect(store.token, isNull);
+      expect(
+        repository.unregistered,
+        containsAll(['registration-token', 'installation-id']),
+      );
+    },
+  );
 
   test('a refreshed token is ignored while notifications are off', () async {
     final controller = controllerFor();

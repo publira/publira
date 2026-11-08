@@ -6,6 +6,8 @@
 	<true/>
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
+	<key>FirebaseMessagingInstallationIdEnabled</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
