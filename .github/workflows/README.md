@@ -8,6 +8,8 @@
 | `Review labels` | [`review-labels.yml`](./review-labels.yml) | Review-support automation that writes to the pull request, run when `Review` completes. |
 | `Release notes` | [`release-notes.yml`](./release-notes.yml) | The Upgrade notes of every pull request, checked, and collected into the release a tag publishes. |
 | `Release images` | [`release-images.yml`](./release-images.yml) | The images of the release a tag publishes, pushed to `ghcr.io/publira`; called by `Release notes`. |
+| `Scan` | [`scan.yml`](./scan.yml) | The vulnerability scans of the Go modules and the dependencies; called by `CI` and `Weekly scan`. |
+| `Weekly scan` | [`weekly-scan.yml`](./weekly-scan.yml) | The vulnerability scans run on `main` every week, and the Issue that holds what they find. |
 
 ## Organize issues
 
@@ -18,6 +20,30 @@
 | `Label area from issue form` | Give a new Issue the `area/*` labels its reporter picked in the issue form. |
 
 `Label area from issue form` is triggered by an opened Issue. The forms under [`.github/ISSUE_TEMPLATE/`](../ISSUE_TEMPLATE/) can pre-set the Issue type but not a label chosen from a dropdown, so each **Area** option carries the label it stands for in parentheses, and the job reads those `area/*` names back out of the rendered **Area** section and applies them. Only labels the repository already defines are applied, since adding an unknown label would create it; an Issue with no **Area** section, or one filed without a form, is left alone.
+
+## Weekly scan
+
+[`weekly-scan.yml`](./weekly-scan.yml), named `Weekly scan`, runs the vulnerability scans on `main` every Monday at 05:00 UTC, and whenever it is started by hand through `workflow_dispatch`. A pull request is held only to the advisories it brings, and most advisories are published after their dependency merged, so this run is the one that holds `main` to every finding. The scans are the jobs of [`scan.yml`](./scan.yml), named `Scan`, which `CI` calls for `Scan / Go` and `Scan / Dependencies` too: the same steps, the same scripts, and the same ignore files. Here they run with no base, so they hold every finding to the ignore file, as [Vulnerability scan](#vulnerability-scan) and [Dependency scan](#dependency-scan) describe.
+
+| Displayed job | Purpose |
+| --- | --- |
+| `Scan / Go` | `scripts/check-go-vulns.sh` with no base, its output and exit status uploaded as the artifact `scan-report-go`. |
+| `Scan / Dependencies` | `scripts/check-dependency-vulns.sh` with no base, its output and exit status uploaded as the artifact `scan-report-dependencies`. |
+| `Report` | Read both reports with [`scripts/scan-report.ts`](../../scripts/scan-report.ts), and open, update, or close the Issue. |
+
+The scans hold `contents: read` and `Report` `issues: write`, through `GITHUB_TOKEN`, and no other secret. A run started on a branch other than `main` scans that branch and skips `Report`.
+
+### The Issue it keeps
+
+`Report` keeps one Issue, titled `Known vulnerabilities on main` and labelled `security`, whose description starts with the marker `<!-- publira-weekly-scan fingerprint=… -->`. A run finds the Issue as the open one whose description starts with the marker, so the title can be edited and labels added without losing it. A scan's findings are the `::error` annotations its script prints, which are exactly what the job fails on; `scripts/scan-report.ts` reads them, and its behaviour is covered by `scripts/scan-report.test.ts`.
+
+- A run that finds something opens the Issue when none is open. Otherwise it rewrites the description with the findings and the commit it scanned, and comments only when the findings differ from the ones the description listed, so a week with nothing new sends no notification.
+- A run in which both scans finish and find nothing closes the Issue as completed, with a comment linking the run. A finding after that opens a new Issue.
+- A run in which a scan does not finish, and the other finds nothing, leaves the Issue as it is, and `Report` fails along with the scan.
+
+### Handling the Issue
+
+Handle each finding the Issue lists in a pull request of its own, as [Handling a finding](#handling-a-finding) and [Handling a dependency finding](#handling-a-dependency-finding) describe: move to a fixed version, or accept the finding with an ignore entry and file the Issue that lifts it. An expired entry is listed as well, and is renewed or removed the same way. The next run closes the Issue once nothing is left; start `Weekly scan` by hand to close it without waiting for Monday.
 
 ## Review
 
@@ -180,7 +206,7 @@ Implementation:
 - Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Ubuntu packages, from the archives cached by package set where the cache has them, with a mirror that stalls or throttles the download dropped for the rest of the job: [`.github/actions/apt-install`](../actions/apt-install/action.yml)
 - Saving the Go module cache, that build cache, the Gradle cache, the apt archive cache, the Playwright browser cache, and the Swift package cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/main-cache-save`](../actions/main-cache-save/action.yml)
-- migrate, wait4x, sqlc, and osv-scanner from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
+- migrate, wait4x, sqlc, and osv-scanner from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets, and `scan.yml` for osv-scanner: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
@@ -194,8 +220,8 @@ Implementation:
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, which includes the repository's own oxlint rules from `@publira/oxlint-plugin` (the `<svg>`-in-JSX and design-token guards), then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; `buf breaking` against the newest release tag through `scripts/check-proto-compat.sh`; the `docs/` contract and the step its translations keep with `docs/en/`, and `pnpm typecheck`. On `main`, saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`proto/README.md`](../../proto/README.md#compatibility-with-the-previous-release), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Scan / Go` | `govulncheck ./...` in `server/` through `scripts/check-go-vulns.sh`, on the change and on the commit it goes onto, failing on a reachable vulnerability the change brings that `server/govulncheck-ignore.json` does not accept. | [Vulnerability scan](#vulnerability-scan) |
-| `Scan / Dependencies` | osv-scanner over `pnpm-lock.yaml` and `mobile/pubspec.lock` through `scripts/check-dependency-vulns.sh`, on the change and on the commit it goes onto, failing on a high or critical advisory the change brings that `osv-scanner.toml` does not accept. | [Dependency scan](#dependency-scan) |
+| `Scan / Go` | `govulncheck ./...` in `server/` through `scripts/check-go-vulns.sh`, on the change and on the commit it goes onto, failing on a reachable vulnerability the change brings that `server/govulncheck-ignore.json` does not accept. The job is defined in `scan.yml`, which `Weekly scan` calls too. | [Vulnerability scan](#vulnerability-scan) |
+| `Scan / Dependencies` | osv-scanner over `pnpm-lock.yaml` and `mobile/pubspec.lock` through `scripts/check-dependency-vulns.sh`, on the change and on the commit it goes onto, failing on a high or critical advisory the change brings that `osv-scanner.toml` does not accept. The job is defined in `scan.yml`, which `Weekly scan` calls too. | [Dependency scan](#dependency-scan) |
 | `Test / Go (<share>)` | `go test -count=1` in `server/` on one share of the packages `go test ./...` finds, as [`scripts/go-test-share.sh`](../../scripts/go-test-share.sh) assigns them: `search`, which first builds the OpenSearch and Elasticsearch images its tests run on, `api`, or `other`. On `main`, saves the share's `test-<share>` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
@@ -252,8 +278,8 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, every shell script, which may hold commands a page quotes, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
-| `Scan / Go` | `server/**`, `scripts/check-go-vulns.sh`, `scripts/go-vulns.ts` and the `scripts/json-value.ts` it imports |
-| `Scan / Dependencies` | `pnpm-lock.yaml`, `mobile/pubspec.lock`, `osv-scanner.toml`, `scripts/check-dependency-vulns.sh`, `scripts/dependency-vulns.ts` and the `scripts/json-value.ts` it imports, and the root `package.json`, which pins the TOML parser the script uses |
+| `Scan / Go` | `server/**`, `scripts/check-go-vulns.sh`, `scripts/go-vulns.ts` and the `scripts/json-value.ts` it imports, and `scan.yml`, which defines the job |
+| `Scan / Dependencies` | `pnpm-lock.yaml`, `mobile/pubspec.lock`, `osv-scanner.toml`, `scripts/check-dependency-vulns.sh`, `scripts/dependency-vulns.ts` and the `scripts/json-value.ts` it imports, the root `package.json`, which pins the TOML parser the script uses, and `scan.yml`, which defines the job |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, `scripts/go-test-share.sh`, and `apps/web-admin/lib/episode-pages-upload.ts`, whose limit a server test holds to `episodeimages.MaxUploadBytes`; and, through the separate `test_go_docs` filter, the routing contract `infra/proxy/README.md`, whose allowances the server's read limits are tested against |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
@@ -331,7 +357,7 @@ The job fails on:
 - an entry whose `expires` date has passed, whether or not the finding is still reached;
 - an entry without a `GO-YYYY-NNNN` `id`, a `reason`, or an `expires` date, or an `id` listed twice.
 
-An entry that nothing reaches any more is a warning, not a failure: delete it. So is an unlisted finding the base reaches too, which is how an advisory published after its module merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file.
+An entry that nothing reaches any more is a warning, not a failure: delete it. So is an unlisted finding the base reaches too, which is how an advisory published after its module merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file, and so does [Weekly scan](#weekly-scan), which files what it finds on `main` as an Issue.
 
 ### Handling a finding
 
@@ -357,7 +383,7 @@ An entry that nothing reaches any more is a warning, not a failure: delete it. S
 
 ## Dependency scan
 
-`Scan / Dependencies` runs [`scripts/check-dependency-vulns.sh`](../../scripts/check-dependency-vulns.sh), which runs osv-scanner, at the `OSV_SCANNER_VERSION` of `ci.yml`, over `pnpm-lock.yaml` and `mobile/pubspec.lock`, and hands its JSON output to [`scripts/dependency-vulns.ts`](../../scripts/dependency-vulns.ts); its behaviour is covered by `scripts/dependency-vulns.test.ts`. Every package version a lock file resolves is scanned, development dependencies included. Given a base commit, the script scans that commit's lock files as well, and the job passes it the commit the change goes onto: the pull request's base, the merge group's base, or the commit before a push. Reproduce it by running the same script with `origin/main`, after `pnpm install` and with `osv-scanner` on the `PATH`.
+`Scan / Dependencies` runs [`scripts/check-dependency-vulns.sh`](../../scripts/check-dependency-vulns.sh), which runs osv-scanner, at the `OSV_SCANNER_VERSION` of `scan.yml`, over `pnpm-lock.yaml` and `mobile/pubspec.lock`, and hands its JSON output to [`scripts/dependency-vulns.ts`](../../scripts/dependency-vulns.ts); its behaviour is covered by `scripts/dependency-vulns.test.ts`. Every package version a lock file resolves is scanned, development dependencies included. Given a base commit, the script scans that commit's lock files as well, and the job passes it the commit the change goes onto: the pull request's base, the merge group's base, or the commit before a push. Reproduce it by running the same script with `origin/main`, after `pnpm install` and with `osv-scanner` on the `PATH`.
 
 A finding is one advisory against one version of one package, and its severity is the highest CVSS base score the advisory gives, or, for an advisory with no score, GitHub's rating. The job fails on:
 
@@ -365,7 +391,7 @@ A finding is one advisory against one version of one package, and its severity i
 - an entry whose `ignoreUntil` date has passed, whether or not the finding is still there;
 - an entry without an `id`, a `reason`, or an `ignoreUntil` date, an `id` listed twice, or a key that osv-scanner would act on but the scan does not apply.
 
-A finding below high is printed in the log as `below high:` and passes. An entry that no finding needs any more is a warning, not a failure: delete it. So is a high finding the base carries too — the same advisory against the same package, at whatever version — which is how an advisory published after its package merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file.
+A finding below high is printed in the log as `below high:` and passes. An entry that no finding needs any more is a warning, not a failure: delete it. So is a high finding the base carries too — the same advisory against the same package, at whatever version — which is how an advisory published after its package merged shows up: the pull request did not bring it, so it is not held to it. Fix or accept such a finding in a pull request of its own. A manual run of `CI` has no base, and holds every finding to the ignore file, and so does [Weekly scan](#weekly-scan), which files what it finds on `main` as an Issue.
 
 ### Handling a dependency finding
 

@@ -16,7 +16,7 @@
 # and scripts/dependency-vulns.ts reads the findings against osv-scanner.toml.
 # CI runs this script in `Scan / Dependencies`; run it locally before pushing
 # a dependency change. It needs `osv-scanner` on the PATH, at the
-# OSV_SCANNER_VERSION of .github/workflows/ci.yml, and `pnpm install` for the
+# OSV_SCANNER_VERSION of .github/workflows/scan.yml, and `pnpm install` for the
 # TOML parser the script imports.
 set -euo pipefail
 

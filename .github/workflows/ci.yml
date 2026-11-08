@@ -15,8 +15,6 @@ env:
   WAIT4X_VERSION: 3.7.3
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.47.9
-  # renovate: datasource=github-releases depName=google/osv-scanner versioning=semver-coerced
-  OSV_SCANNER_VERSION: 2.7.0
 
 on:
   pull_request:
@@ -181,6 +179,7 @@ jobs:
               - 'scripts/go-vulns.ts'
               - 'scripts/json-value.ts'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/scan.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
@@ -198,6 +197,7 @@ jobs:
               - 'scripts/json-value.ts'
               - 'package.json'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/scan.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
@@ -727,74 +727,22 @@ jobs:
           version: v${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: server
 
-  scan-go:
-    name: Scan / Go
+  # The scans live in scan.yml, which Weekly scan calls for `main` too, so a
+  # change to their steps reaches both. The jobs show as `Scan / Go` and
+  # `Scan / Dependencies`.
+  scan:
+    name: Scan
     needs: changes
-    if: needs.changes.outputs.scan_go == 'true'
-    runs-on: ubuntu-26.04
-    steps:
-      # The base commit is scanned too, from a worktree of the same clone, so
-      # it has to be in the local history.
-      - name: Setup / Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup / Go
-        uses: ./.github/actions/go-setup
-
-      - name: Setup / Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: package.json
-
-      - name: Setup / libvips
-        uses: ./.github/actions/apt-install
-        with:
-          packages: libvips-dev pkg-config
-
-      # scripts/check-go-vulns.sh pins govulncheck and reads its findings
-      # against server/govulncheck-ignore.json, so this runs exactly what a
-      # local run of the script does. Given the commit the change goes onto,
-      # it fails only on what the change brings; a manual run has none, and
-      # holds every finding to the ignore file.
-      - name: Validate / govulncheck
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-        run: scripts/check-go-vulns.sh ${BASE_SHA:+"${BASE_SHA}"}
-
-  scan-dependencies:
-    name: Scan / Dependencies
-    needs: changes
-    if: needs.changes.outputs.scan_dependencies == 'true'
-    runs-on: ubuntu-26.04
-    steps:
-      # The lock files of the base commit are scanned too, read from the same
-      # clone, so that commit has to be in the local history.
-      - name: Setup / Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup / pnpm
-        uses: ./.github/actions/pnpm-setup
-
-      - name: Setup / osv-scanner
-        uses: ./.github/actions/tool-install
-        with:
-          tool: osv-scanner
-
-      # scripts/check-dependency-vulns.sh reads osv-scanner's findings against
-      # osv-scanner.toml, so this runs exactly what a local run of the script
-      # does. Given the commit the change goes onto, it fails only on what
-      # the change brings; a manual run has none, and holds every finding to
-      # the ignore file.
-      - name: Validate / osv-scanner
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-        run: scripts/check-dependency-vulns.sh ${BASE_SHA:+"${BASE_SHA}"}
+    if: needs.changes.outputs.scan_go == 'true' || needs.changes.outputs.scan_dependencies == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/scan.yml
+    with:
+      # The commit the change goes onto: a manual run has none, and holds
+      # every finding to the ignore file.
+      base: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+      go: ${{ needs.changes.outputs.scan_go == 'true' }}
+      dependencies: ${{ needs.changes.outputs.scan_dependencies == 'true' }}
 
   test-go:
     name: Test / Go (${{ matrix.share }})
@@ -2158,8 +2106,7 @@ jobs:
       - format
       - check
       - lint-go
-      - scan-go
-      - scan-dependencies
+      - scan
       - test-go
       - test-ts
       - test-bash
@@ -2190,8 +2137,7 @@ jobs:
           FORMAT: ${{ needs.format.result }}
           CHECK: ${{ needs.check.result }}
           LINT_GO: ${{ needs.lint-go.result }}
-          SCAN_GO: ${{ needs.scan-go.result }}
-          SCAN_DEPENDENCIES: ${{ needs.scan-dependencies.result }}
+          SCAN: ${{ needs.scan.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_BASH: ${{ needs.test-bash.result }}
@@ -2222,8 +2168,7 @@ jobs:
             "Lint and Format=${FORMAT}" \
             "Check=${CHECK}" \
             "Lint / Go=${LINT_GO}" \
-            "Scan / Go=${SCAN_GO}" \
-            "Scan / Dependencies=${SCAN_DEPENDENCIES}" \
+            "Scan=${SCAN}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
             "Test / Bash=${TEST_BASH}" \
