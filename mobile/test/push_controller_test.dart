@@ -179,9 +179,38 @@ void main() {
     await pumpEventQueue();
 
     expect(repository.registered, ['next-token']);
+    expect(repository.unregistered, ['device-token']);
     expect(store.token, 'next-token');
     expect(controller.enabled, isTrue);
   });
+
+  test(
+    'a launch moves a stored token to the one the device answers now',
+    () async {
+      messaging.currentToken = 'installation-id';
+      final controller = controllerFor(stored: 'registration-token');
+      await controller.start();
+      await pumpEventQueue();
+
+      expect(repository.registered, ['installation-id']);
+      expect(repository.unregistered, ['registration-token']);
+      expect(store.token, 'installation-id');
+      expect(controller.enabled, isTrue);
+    },
+  );
+
+  test(
+    'a launch whose device answers the stored token asks the API for nothing',
+    () async {
+      final controller = controllerFor(stored: 'device-token');
+      await controller.start();
+      await pumpEventQueue();
+
+      expect(repository.registered, isEmpty);
+      expect(repository.unregistered, isEmpty);
+      expect(controller.enabled, isTrue);
+    },
+  );
 
   test('a refreshed token is ignored while notifications are off', () async {
     final controller = controllerFor();
