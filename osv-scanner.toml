@@ -1,0 +1,9 @@
+# The advisories `Scan / Dependencies` accepts in pnpm-lock.yaml and
+# mobile/pubspec.lock, each until a date. scripts/check-dependency-vulns.sh
+# reads this file; .github/workflows/README.md says when to add an entry and
+# what to do when one expires. Each entry takes these three keys and no other:
+#
+#   [[IgnoredVulns]]
+#   id = "GHSA-xxxx-xxxx-xxxx"
+#   ignoreUntil = YYYY-MM-DD
+#   reason = "Why the finding is accepted, and the Issue that removes the entry."

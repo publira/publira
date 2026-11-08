@@ -15,6 +15,8 @@ env:
   WAIT4X_VERSION: 3.7.3
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.47.9
+  # renovate: datasource=github-releases depName=google/osv-scanner versioning=semver-coerced
+  OSV_SCANNER_VERSION: 2.7.0
 
 on:
   pull_request:
@@ -65,6 +67,7 @@ jobs:
       check: ${{ steps.plan.outputs.check }}
       lint_go: ${{ steps.plan.outputs.lint_go }}
       scan_go: ${{ steps.plan.outputs.scan_go }}
+      scan_dependencies: ${{ steps.plan.outputs.scan_dependencies }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
       test_bash: ${{ steps.plan.outputs.test_bash }}
@@ -182,6 +185,22 @@ jobs:
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
               - '.github/actions/main-cache-save/**'
+            # osv-scanner reads only the two lock files, so a change to a
+            # manifest alone, which leaves the resolved versions as they are,
+            # does not start it. package.json is here for the TOML parser the
+            # job's script imports.
+            scan_dependencies:
+              - 'pnpm-lock.yaml'
+              - 'mobile/pubspec.lock'
+              - 'osv-scanner.toml'
+              - 'scripts/check-dependency-vulns.sh'
+              - 'scripts/dependency-vulns.ts'
+              - 'scripts/json-value.ts'
+              - 'package.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/pnpm-setup/**'
+              - '.github/actions/tool-install/**'
             test_go:
               - *docs_excluded
               - 'server/**'
@@ -544,6 +563,7 @@ jobs:
           FILTER_CHECK_DOCS: ${{ steps.filter.outputs.check_docs }}
           FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
           FILTER_SCAN_GO: ${{ steps.filter.outputs.scan_go }}
+          FILTER_SCAN_DEPENDENCIES: ${{ steps.filter.outputs.scan_dependencies }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_GO_DOCS: ${{ steps.filter.outputs.test_go_docs }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
@@ -743,6 +763,38 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: scripts/check-go-vulns.sh ${BASE_SHA:+"${BASE_SHA}"}
+
+  scan-dependencies:
+    name: Scan / Dependencies
+    needs: changes
+    if: needs.changes.outputs.scan_dependencies == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      # The lock files of the base commit are scanned too, read from the same
+      # clone, so that commit has to be in the local history.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup / pnpm
+        uses: ./.github/actions/pnpm-setup
+
+      - name: Setup / osv-scanner
+        uses: ./.github/actions/tool-install
+        with:
+          tool: osv-scanner
+
+      # scripts/check-dependency-vulns.sh reads osv-scanner's findings against
+      # osv-scanner.toml, so this runs exactly what a local run of the script
+      # does. Given the commit the change goes onto, it fails only on what
+      # the change brings; a manual run has none, and holds every finding to
+      # the ignore file.
+      - name: Validate / osv-scanner
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: scripts/check-dependency-vulns.sh ${BASE_SHA:+"${BASE_SHA}"}
 
   test-go:
     name: Test / Go (${{ matrix.share }})
@@ -2107,6 +2159,7 @@ jobs:
       - check
       - lint-go
       - scan-go
+      - scan-dependencies
       - test-go
       - test-ts
       - test-bash
@@ -2138,6 +2191,7 @@ jobs:
           CHECK: ${{ needs.check.result }}
           LINT_GO: ${{ needs.lint-go.result }}
           SCAN_GO: ${{ needs.scan-go.result }}
+          SCAN_DEPENDENCIES: ${{ needs.scan-dependencies.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_BASH: ${{ needs.test-bash.result }}
@@ -2169,6 +2223,7 @@ jobs:
             "Check=${CHECK}" \
             "Lint / Go=${LINT_GO}" \
             "Scan / Go=${SCAN_GO}" \
+            "Scan / Dependencies=${SCAN_DEPENDENCIES}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
             "Test / Bash=${TEST_BASH}" \
