@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/notification.proto.
  */
 export const file_publira_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL3YxL25vdGlmaWNhdGlvbi5wcm90bxIKcHVibGlyYS52MSKAAQoQTm90aWZpY2F0aW9uSXRlbRIKCgJpZBgBIAEoCRIZChFub3RpZmljYXRpb25fdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgJEg8KB2lzX3JlYWQYBCABKAgSDwoHcmVhZF9hdBgFIAEoCRISCgpjcmVhdGVkX2F0GAYgASgJIpsBChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJEjAKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2UifAoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRIzCg1ub3RpZmljYXRpb25zGAEgAygLMhwucHVibGlyYS52MS5Ob3RpZmljYXRpb25JdGVtEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkitwEKGVJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEioKCHBsYXRmb3JtGAMgASgOMhgucHVibGlyYS52MS5QdXNoUGxhdGZvcm0SEAoIZW5kcG9pbnQYBCABKAkSDgoGcDI1NmRoGAUgASgJEgwKBGF1dGgYBiABKAkiMAoaUmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2USEgoKcmVnaXN0ZXJlZBgBIAEoCCJvChtVbnJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEhAKCGVuZHBvaW50GAMgASgJIjQKHFVucmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2USFAoMdW5yZWdpc3RlcmVkGAEgASgIIoQBCh9Db3VudFVucmVhZE5vdGlmaWNhdGlvbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIwCgdzdXJmYWNlGAIgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlIjgKIENvdW50VW5yZWFkTm90aWZpY2F0aW9uc1Jlc3BvbnNlEhQKDHVucmVhZF9jb3VudBgBIAEoBSJpCh1NYXJrTm90aWZpY2F0aW9uQXNSZWFkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFwoPbm90aWZpY2F0aW9uX2lkGAIgASgJIjAKHk1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXNwb25zZRIOCgZtYXJrZWQYASABKAgihgEKIU1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSMAoHc3VyZmFjZRgCIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZSI6CiJNYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlc3BvbnNlEhQKDG1hcmtlZF9jb3VudBgBIAEoBSp2CgxQdXNoUGxhdGZvcm0SHQoZUFVTSF9QTEFURk9STV9VTlNQRUNJRklFRBAAEhkKFVBVU0hfUExBVEZPUk1fQU5EUk9JRBABEhUKEVBVU0hfUExBVEZPUk1fSU9TEAISFQoRUFVTSF9QTEFURk9STV9XRUIQAzK4BQoTTm90aWZpY2F0aW9uU2VydmljZRJiChFMaXN0Tm90aWZpY2F0aW9ucxIkLnB1YmxpcmEudjEuTGlzdE5vdGlmaWNhdGlvbnNSZXF1ZXN0GiUucHVibGlyYS52MS5MaXN0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgASdwoYQ291bnRVbnJlYWROb3RpZmljYXRpb25zEisucHVibGlyYS52MS5Db3VudFVucmVhZE5vdGlmaWNhdGlvbnNSZXF1ZXN0GiwucHVibGlyYS52MS5Db3VudFVucmVhZE5vdGlmaWNhdGlvbnNSZXNwb25zZSIAEnEKFk1hcmtOb3RpZmljYXRpb25Bc1JlYWQSKS5wdWJsaXJhLnYxLk1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXF1ZXN0GioucHVibGlyYS52MS5NYXJrTm90aWZpY2F0aW9uQXNSZWFkUmVzcG9uc2UiABJ9ChpNYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZBItLnB1YmxpcmEudjEuTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlc3BvbnNlIgASZQoSUmVnaXN0ZXJQdXNoRGV2aWNlEiUucHVibGlyYS52MS5SZWdpc3RlclB1c2hEZXZpY2VSZXF1ZXN0GiYucHVibGlyYS52MS5SZWdpc3RlclB1c2hEZXZpY2VSZXNwb25zZSIAEmsKFFVucmVnaXN0ZXJQdXNoRGV2aWNlEicucHVibGlyYS52MS5VbnJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QaKC5wdWJsaXJhLnYxLlVucmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL3YxL25vdGlmaWNhdGlvbi5wcm90bxIKcHVibGlyYS52MSKAAQoQTm90aWZpY2F0aW9uSXRlbRIKCgJpZBgBIAEoCRIZChFub3RpZmljYXRpb25fdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgJEg8KB2lzX3JlYWQYBCABKAgSDwoHcmVhZF9hdBgFIAEoCRISCgpjcmVhdGVkX2F0GAYgASgJIpsBChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJEjAKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2UifAoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRIzCg1ub3RpZmljYXRpb25zGAEgAygLMhwucHVibGlyYS52MS5Ob3RpZmljYXRpb25JdGVtEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAki5gEKGVJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEioKCHBsYXRmb3JtGAMgASgOMhgucHVibGlyYS52MS5QdXNoUGxhdGZvcm0SEAoIZW5kcG9pbnQYBCABKAkSDgoGcDI1NmRoGAUgASgJEgwKBGF1dGgYBiABKAkSLQoKdG9rZW5fdHlwZRgHIAEoDjIZLnB1YmxpcmEudjEuUHVzaFRva2VuVHlwZSIwChpSZWdpc3RlclB1c2hEZXZpY2VSZXNwb25zZRISCgpyZWdpc3RlcmVkGAEgASgIIm8KG1VucmVnaXN0ZXJQdXNoRGV2aWNlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdG9rZW4YAiABKAkSEAoIZW5kcG9pbnQYAyABKAkiNAocVW5yZWdpc3RlclB1c2hEZXZpY2VSZXNwb25zZRIUCgx1bnJlZ2lzdGVyZWQYASABKAgihAEKH0NvdW50VW5yZWFkTm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2UiOAogQ291bnRVbnJlYWROb3RpZmljYXRpb25zUmVzcG9uc2USFAoMdW5yZWFkX2NvdW50GAEgASgFImkKHU1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9ub3RpZmljYXRpb25faWQYAiABKAkiMAoeTWFya05vdGlmaWNhdGlvbkFzUmVhZFJlc3BvbnNlEg4KBm1hcmtlZBgBIAEoCCKGAQohTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIwCgdzdXJmYWNlGAIgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlIjoKIk1hcmtBbGxOb3RpZmljYXRpb25zQXNSZWFkUmVzcG9uc2USFAoMbWFya2VkX2NvdW50GAEgASgFKnYKDFB1c2hQbGF0Zm9ybRIdChlQVVNIX1BMQVRGT1JNX1VOU1BFQ0lGSUVEEAASGQoVUFVTSF9QTEFURk9STV9BTkRST0lEEAESFQoRUFVTSF9QTEFURk9STV9JT1MQAhIVChFQVVNIX1BMQVRGT1JNX1dFQhADKn0KDVB1c2hUb2tlblR5cGUSHwobUFVTSF9UT0tFTl9UWVBFX1VOU1BFQ0lGSUVEEAASJgoiUFVTSF9UT0tFTl9UWVBFX1JFR0lTVFJBVElPTl9UT0tFThABEiMKH1BVU0hfVE9LRU5fVFlQRV9JTlNUQUxMQVRJT05fSUQQAjK4BQoTTm90aWZpY2F0aW9uU2VydmljZRJiChFMaXN0Tm90aWZpY2F0aW9ucxIkLnB1YmxpcmEudjEuTGlzdE5vdGlmaWNhdGlvbnNSZXF1ZXN0GiUucHVibGlyYS52MS5MaXN0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgASdwoYQ291bnRVbnJlYWROb3RpZmljYXRpb25zEisucHVibGlyYS52MS5Db3VudFVucmVhZE5vdGlmaWNhdGlvbnNSZXF1ZXN0GiwucHVibGlyYS52MS5Db3VudFVucmVhZE5vdGlmaWNhdGlvbnNSZXNwb25zZSIAEnEKFk1hcmtOb3RpZmljYXRpb25Bc1JlYWQSKS5wdWJsaXJhLnYxLk1hcmtOb3RpZmljYXRpb25Bc1JlYWRSZXF1ZXN0GioucHVibGlyYS52MS5NYXJrTm90aWZpY2F0aW9uQXNSZWFkUmVzcG9uc2UiABJ9ChpNYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZBItLnB1YmxpcmEudjEuTWFya0FsbE5vdGlmaWNhdGlvbnNBc1JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJrQWxsTm90aWZpY2F0aW9uc0FzUmVhZFJlc3BvbnNlIgASZQoSUmVnaXN0ZXJQdXNoRGV2aWNlEiUucHVibGlyYS52MS5SZWdpc3RlclB1c2hEZXZpY2VSZXF1ZXN0GiYucHVibGlyYS52MS5SZWdpc3RlclB1c2hEZXZpY2VSZXNwb25zZSIAEmsKFFVucmVnaXN0ZXJQdXNoRGV2aWNlEicucHVibGlyYS52MS5VbnJlZ2lzdGVyUHVzaERldmljZVJlcXVlc3QaKC5wdWJsaXJhLnYxLlVucmVnaXN0ZXJQdXNoRGV2aWNlUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.NotificationItem
@@ -132,9 +132,11 @@ export const ListNotificationsResponseSchema: GenMessage<ListNotificationsRespon
   messageDesc(file_publira_v1_notification, 2);
 
 /**
- * A device registers the FCM token it holds right now. The token is the
- * identity, so registering one that another reader left behind moves it to the
- * caller rather than adding a second row.
+ * A device registers the FCM registration it holds right now: a registration
+ * token or a Firebase Installation ID on Android and iOS, a Web Push
+ * subscription in a browser. The token is the identity, so registering one
+ * that another reader left behind moves it to the caller rather than adding a
+ * second row.
  *
  * @generated from message publira.v1.RegisterPushDeviceRequest
  */
@@ -145,6 +147,9 @@ export type RegisterPushDeviceRequest = Message<"publira.v1.RegisterPushDeviceRe
   tenant?: TenantContext | undefined;
 
   /**
+   * The registration token or the Firebase Installation ID, which
+   * `token_type` tells apart.
+   *
    * @generated from field: string token = 2;
    */
   token: string;
@@ -171,6 +176,14 @@ export type RegisterPushDeviceRequest = Message<"publira.v1.RegisterPushDeviceRe
    * @generated from field: string auth = 6;
    */
   auth: string;
+
+  /**
+   * What `token` is on Android and iOS. A Web Push registration leaves it
+   * unspecified.
+   *
+   * @generated from field: publira.v1.PushTokenType token_type = 7;
+   */
+  tokenType: PushTokenType;
 };
 
 /**
@@ -370,7 +383,7 @@ export const MarkAllNotificationsAsReadResponseSchema: GenMessage<MarkAllNotific
   messageDesc(file_publira_v1_notification, 12);
 
 /**
- * Which store issued the registration token, so a message can carry the
+ * Which platform the registration is for, so a message can carry the
  * platform-specific block its delivery needs.
  *
  * @generated from enum publira.v1.PushPlatform
@@ -402,6 +415,39 @@ export enum PushPlatform {
  */
 export const PushPlatformSchema: GenEnum<PushPlatform> = /*@__PURE__*/
   enumDesc(file_publira_v1_notification, 0);
+
+/**
+ * What an FCM registration's token is. FCM addresses one install of the app
+ * either by the registration token it was handed or by its Firebase
+ * Installation ID (FID), and a message names which of the two it carries.
+ *
+ * @generated from enum publira.v1.PushTokenType
+ */
+export enum PushTokenType {
+  /**
+   * A registration token, which is what every release of the app that
+   * predates this field registers.
+   *
+   * @generated from enum value: PUSH_TOKEN_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PUSH_TOKEN_TYPE_REGISTRATION_TOKEN = 1;
+   */
+  REGISTRATION_TOKEN = 1,
+
+  /**
+   * @generated from enum value: PUSH_TOKEN_TYPE_INSTALLATION_ID = 2;
+   */
+  INSTALLATION_ID = 2,
+}
+
+/**
+ * Describes the enum publira.v1.PushTokenType.
+ */
+export const PushTokenTypeSchema: GenEnum<PushTokenType> = /*@__PURE__*/
+  enumDesc(file_publira_v1_notification, 1);
 
 /**
  * @generated from service publira.v1.NotificationService

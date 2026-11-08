@@ -64,11 +64,54 @@ func TestSendPostsTheProjectMessageEndpoint(t *testing.T) {
 	}
 }
 
+func TestSendNamesTheTargetFieldOfTheTokenType(t *testing.T) {
+	tests := []struct {
+		name      string
+		tokenType TokenType
+		want      string
+		absent    string
+	}{
+		{name: "registration token", tokenType: TokenTypeRegistrationToken, want: "token", absent: "fid"},
+		{name: "installation id", tokenType: TokenTypeInstallationID, want: "fid", absent: "token"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotBody map[string]any
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+					t.Errorf("decode request: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"name":"projects/publira/messages/1"}`))
+			}))
+			defer server.Close()
+
+			err := newTestClient(t, server).Send(context.Background(), Message{Token: "device-registration", TokenType: tt.tokenType})
+			if err != nil {
+				t.Fatalf("send: %v", err)
+			}
+			message, ok := gotBody["message"].(map[string]any)
+			if !ok {
+				t.Fatalf("body = %v, want a message object", gotBody)
+			}
+			if message[tt.want] != "device-registration" {
+				t.Fatalf("%s = %v, want the registration", tt.want, message[tt.want])
+			}
+			// FCM refuses a message that names more than one target.
+			if value, present := message[tt.absent]; present {
+				t.Fatalf("%s = %v, want it left out", tt.absent, value)
+			}
+		})
+	}
+}
+
 func TestSendReportsARevokedTokenAsGone(t *testing.T) {
 	tests := []struct {
 		name       string
 		statusCode int
 		body       string
+		tokenType  TokenType
 	}{
 		{
 			name:       "unregistered",
@@ -82,6 +125,20 @@ func TestSendReportsARevokedTokenAsGone(t *testing.T) {
 				`{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"message.token","description":"Invalid registration token"}]},` +
 				`{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"INVALID_ARGUMENT"}]}}`,
 		},
+		{
+			name:       "unregistered installation id",
+			statusCode: http.StatusNotFound,
+			body:       `{"error":{"code":404,"status":"NOT_FOUND","message":"Requested entity was not found.","details":[{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"UNREGISTERED"}]}}`,
+			tokenType:  TokenTypeInstallationID,
+		},
+		{
+			name:       "invalid argument naming the fid field",
+			statusCode: http.StatusBadRequest,
+			body: `{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"Request contains an invalid argument.","details":[` +
+				`{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"message.fid","description":"Invalid Firebase Installation ID"}]},` +
+				`{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"INVALID_ARGUMENT"}]}}`,
+			tokenType: TokenTypeInstallationID,
+		},
 	}
 
 	for _, tt := range tests {
@@ -93,7 +150,7 @@ func TestSendReportsARevokedTokenAsGone(t *testing.T) {
 			}))
 			defer server.Close()
 
-			err := newTestClient(t, server).Send(context.Background(), Message{Token: "gone"})
+			err := newTestClient(t, server).Send(context.Background(), Message{Token: "gone", TokenType: tt.tokenType})
 			if !errors.Is(err, ErrTokenGone) {
 				t.Fatalf("send error = %v, want ErrTokenGone", err)
 			}

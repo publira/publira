@@ -25,7 +25,7 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	second := uuid.New()
 	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
 		{NotificationID: first, UserID: uuid.New(), Token: "token-a", Platform: "android"},
-		{NotificationID: second, UserID: uuid.New(), Token: "token-b", Platform: "ios"},
+		{NotificationID: second, UserID: uuid.New(), Token: "token-b", TokenType: "installation_id", Platform: "ios"},
 	}}
 	sender := &stubPushSender{}
 
@@ -73,6 +73,12 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	}
 	if got := sender.sentTo(t, "token-b").Data["notification_id"]; got != second.String() {
 		t.Fatalf("second message mirrors %q, want %s", got, second)
+	}
+	if got := message.TokenType; got != push.TokenTypeRegistrationToken {
+		t.Fatalf("token-a sent as token type %v, want a registration token", got)
+	}
+	if got := sender.sentTo(t, "token-b").TokenType; got != push.TokenTypeInstallationID {
+		t.Fatalf("token-b sent as token type %v, want an installation id", got)
 	}
 }
 

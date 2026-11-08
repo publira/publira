@@ -343,7 +343,7 @@ func (s memberPushSender) device(ctx context.Context, device dbmodels.ListPushDe
 		if s.cfg.Sender == nil {
 			sendErr = errors.New("FCM sender is not configured")
 		} else {
-			sendErr = s.cfg.Sender.Send(sendCtx, s.tenantID, push.Message{Token: device.Token, Title: title, Body: body, Data: data})
+			sendErr = s.cfg.Sender.Send(sendCtx, s.tenantID, push.Message{Token: device.Token, TokenType: pushTokenType(device.TokenType), Title: title, Body: body, Data: data})
 		}
 	case "web":
 		if s.cfg.WebSender == nil {
@@ -369,6 +369,17 @@ func (s memberPushSender) device(ctx context.Context, device dbmodels.ListPushDe
 	default:
 		return memberPushOutcome{err: sendErr}
 	}
+}
+
+// pushTokenType reads user_push_devices.token_type. Anything but an FID is
+// sent as a registration token, the target every registration was sent to
+// before the column existed; FCM accepts an FID there too for as long as it
+// keeps the deprecated field.
+func pushTokenType(stored string) push.TokenType {
+	if stored == "installation_id" {
+		return push.TokenTypeInstallationID
+	}
+	return push.TokenTypeRegistrationToken
 }
 
 // memberPushData is the routing block the app reads once the reader taps the

@@ -324,10 +324,11 @@ func insertAnnouncement(t *testing.T, ctx context.Context, db *sql.DB, tenantID 
 func registerAnnouncementPushDevice(t *testing.T, ctx context.Context, db *sql.DB, tenantID, userID uuid.UUID, name, platform string) string {
 	t.Helper()
 	params := dbmodels.UpsertUserPushDeviceParams{
-		TenantID: tenantID,
-		UserID:   userID,
-		Token:    name,
-		Platform: platform,
+		TenantID:  tenantID,
+		UserID:    userID,
+		Token:     name,
+		Platform:  platform,
+		TokenType: "registration_token",
 	}
 	if platform == "web" {
 		params.Token = "https://push.example.com/" + name
