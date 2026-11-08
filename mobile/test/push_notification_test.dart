@@ -86,7 +86,7 @@ void main() {
     // device, and both restores start at launch. A session that came back
     // first would report it while the controller still held no token, and the
     // device would stay registered to whoever signed in last.
-    store.token = 'device-token';
+    store.token = const PushToken.installationId('device-token');
     await tester.pumpWidget(
       PubliraApp(
         router: createAppRouter(),
@@ -97,7 +97,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(repository.registered, ['device-token']);
+    expect(repository.registered, [
+      const PushToken.installationId('device-token'),
+    ]);
   });
 
   /// Scrolls the account screen until its notification switch, which sits
@@ -134,7 +136,7 @@ void main() {
 
   testWidgets('the switch stays when the notification settings cannot be '
       'read', (tester) async {
-    store.token = 'device-token';
+    store.token = const PushToken.installationId('device-token');
     await pumpApp(
       tester,
       initialLocation: AppRoutes.account,
@@ -162,7 +164,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('account-notifications')));
     await tester.pumpAndSettle();
 
-    expect(repository.registered, ['device-token']);
+    expect(repository.registered, [
+      const PushToken.installationId('device-token'),
+    ]);
     expect(
       tester
           .widget<SwitchListTile>(
@@ -198,7 +202,7 @@ void main() {
   testWidgets('signing out unregisters before the session goes away', (
     tester,
   ) async {
-    store.token = 'device-token';
+    store.token = const PushToken.installationId('device-token');
     await pumpApp(tester, initialLocation: AppRoutes.account);
 
     await tapVisible(

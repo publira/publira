@@ -17,7 +17,7 @@ class HttpPushRepository implements PushRepository {
 
   @override
   Future<void> register({
-    required String token,
+    required PushToken token,
     required PushPlatform platform,
   }) async {
     final tenantId = await _tenants.resolve();
@@ -25,10 +25,19 @@ class HttpPushRepository implements PushRepository {
       ConnectCallContext(tenantId: tenantId),
       pb.RegisterPushDeviceRequest(
         tenant: pb.TenantContext(tenantId: tenantId),
-        token: token,
+        token: token.value,
         platform: switch (platform) {
           PushPlatform.ios => pb.PushPlatform.PUSH_PLATFORM_IOS,
           PushPlatform.android => pb.PushPlatform.PUSH_PLATFORM_ANDROID,
+        },
+        // A server release that predates the field skips it as unknown and
+        // records the registration as a registration token, which FCM still
+        // delivers an installation ID to while `message.token` lasts.
+        tokenType: switch (token.type) {
+          PushTokenType.registrationToken =>
+            pb.PushTokenType.PUSH_TOKEN_TYPE_REGISTRATION_TOKEN,
+          PushTokenType.installationId =>
+            pb.PushTokenType.PUSH_TOKEN_TYPE_INSTALLATION_ID,
         },
       ),
     );
