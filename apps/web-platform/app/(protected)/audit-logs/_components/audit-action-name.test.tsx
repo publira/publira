@@ -41,6 +41,8 @@ describe("AuditActionName", () => {
     ["operator_mfa_reset", "Removed an operator's two-step verification"],
     ["operator_updated", "Updated an operator"],
     ["tenant_suspended", "Suspended a tenant"],
+    ["tenant_deletion_requested", "Started deleting a tenant"],
+    ["tenant_deleted", "Deleted a tenant"],
     ["platform_email_settings_updated", "Updated SMTP settings"],
     ["platform_smtp_test_email_sent", "Sent an SMTP test email"],
     ["platform_settings_updated", "Updated platform settings"],

@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tenanterasure"
 )
 
 // Deps is what a pass runs on.
@@ -71,6 +72,10 @@ type Deps struct {
 	// each source with. GooglePlay is the API both call.
 	Secrets    paymentsettings.SecretManager
 	GooglePlay GooglePlayReader
+	// TenantCache erases a deleted tenant's entries from the cache the API
+	// processes share, for TenantErasure. Nil is an install whose processes
+	// share none, where there is nothing to erase.
+	TenantCache tenanterasure.CacheEraser
 	// Payments, AppStore, and AppStoreVerifier are the rest of what
 	// PaymentReconciliation reads: the web payment providers, and the App
 	// Store's transaction histories.

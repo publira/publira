@@ -96,7 +96,7 @@ func (h *Handler) servePreview(w http.ResponseWriter, r *http.Request, adminHost
 	if !ok {
 		return
 	}
-	key := previewCacheKey(storeVersion, objectKey)
+	key := cacheEntryKey(objectKey, previewCacheKey(storeVersion, objectKey))
 	if entry, ok := h.cache.Get(ctx, key); ok {
 		writeImage(w, entry.ContentType, publicImageCacheControl, "hit", http.StatusOK, entry.Data)
 		return

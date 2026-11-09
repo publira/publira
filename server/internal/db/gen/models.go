@@ -808,6 +808,10 @@ type PlatformAuditLog struct {
 	CreatedAt           time.Time      `json:"created_at"`
 	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
 	TenantID            uuid.NullUUID  `json:"tenant_id"`
+	TenantPublicID      sql.NullString `json:"tenant_public_id"`
+	TenantName          sql.NullString `json:"tenant_name"`
+	TenantDomain        sql.NullString `json:"tenant_domain"`
+	TenantAdminDomain   sql.NullString `json:"tenant_admin_domain"`
 }
 
 type PlatformConfig struct {
@@ -1597,17 +1601,18 @@ type Tag struct {
 }
 
 type Tenant struct {
-	ID               uuid.UUID      `json:"id"`
-	PublicID         string         `json:"public_id"`
-	Domain           string         `json:"domain"`
-	Name             string         `json:"name"`
-	CreatedAt        time.Time      `json:"created_at"`
-	Status           string         `json:"status"`
-	AdminDomain      sql.NullString `json:"admin_domain"`
-	Timezone         string         `json:"timezone"`
-	DefaultLocale    string         `json:"default_locale"`
-	SupportedLocales []string       `json:"supported_locales"`
-	ImageDomain      sql.NullString `json:"image_domain"`
+	ID                  uuid.UUID      `json:"id"`
+	PublicID            string         `json:"public_id"`
+	Domain              string         `json:"domain"`
+	Name                string         `json:"name"`
+	CreatedAt           time.Time      `json:"created_at"`
+	Status              string         `json:"status"`
+	AdminDomain         sql.NullString `json:"admin_domain"`
+	Timezone            string         `json:"timezone"`
+	DefaultLocale       string         `json:"default_locale"`
+	SupportedLocales    []string       `json:"supported_locales"`
+	ImageDomain         sql.NullString `json:"image_domain"`
+	DeletionRequestedAt sql.NullTime   `json:"deletion_requested_at"`
 }
 
 type TenantAdminInvitation struct {

@@ -141,6 +141,12 @@ const (
 	// ReasonWebhookEndpointLimit refuses a webhook endpoint past the most one
 	// tenant keeps.
 	ReasonWebhookEndpointLimit = "WEBHOOK_ENDPOINT_LIMIT"
+	// ReasonTenantDeleting refuses resuming a tenant an operator asked to
+	// delete: the worker is erasing it.
+	ReasonTenantDeleting = "TENANT_DELETING"
+	// ReasonTenantNotSuspended refuses deleting a tenant that is not
+	// suspended: only a tenant already refused everywhere may be deleted.
+	ReasonTenantNotSuspended = "TENANT_NOT_SUSPENDED"
 	// ReasonTenantSuspended refuses every request for a tenant the platform
 	// operator has suspended.
 	ReasonTenantSuspended = "TENANT_SUSPENDED"

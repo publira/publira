@@ -13,6 +13,50 @@ import (
 	"github.com/google/uuid"
 )
 
+const EraseTenantAuditLogs = `-- name: EraseTenantAuditLogs :one
+SELECT erase_tenant_audit_logs($1::uuid, $2::integer)::bigint AS erased
+`
+
+type EraseTenantAuditLogsParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+// Deletes up to batch_size entries of the audit log of a tenant marked for
+// deletion, through the one function that may: the log is append-only for
+// every role the processes connect as.
+func (q *Queries) EraseTenantAuditLogs(ctx context.Context, arg EraseTenantAuditLogsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, EraseTenantAuditLogs, arg.TenantID, arg.BatchSize)
+	var erased int64
+	err := row.Scan(&erased)
+	return erased, err
+}
+
+const GetTenantDeletionRequester = `-- name: GetTenantDeletionRequester :one
+SELECT actor_platform_user_id, actor_role
+FROM platform_audit_logs
+WHERE target_type = 'tenant'
+    AND target_id = $1::uuid::text
+    AND action = 'tenant_deletion_requested'
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+type GetTenantDeletionRequesterRow struct {
+	ActorPlatformUserID uuid.NullUUID `json:"actor_platform_user_id"`
+	ActorRole           string        `json:"actor_role"`
+}
+
+// The operator who asked for a tenant's deletion, as the latest entry of the
+// request recorded them, for the worker to file the deletion under once it is
+// done. No row when nothing recorded a request.
+func (q *Queries) GetTenantDeletionRequester(ctx context.Context, tenantID uuid.UUID) (GetTenantDeletionRequesterRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantDeletionRequester, tenantID)
+	var i GetTenantDeletionRequesterRow
+	err := row.Scan(&i.ActorPlatformUserID, &i.ActorRole)
+	return i, err
+}
+
 const InsertAuditLog = `-- name: InsertAuditLog :exec
 INSERT INTO audit_logs (
     id,
@@ -98,8 +142,12 @@ INSERT INTO platform_audit_logs (
     outcome,
     reason,
     client_ip,
-    tenant_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    tenant_id,
+    tenant_public_id,
+    tenant_name,
+    tenant_domain,
+    tenant_admin_domain
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type InsertPlatformAuditLogParams struct {
@@ -113,6 +161,10 @@ type InsertPlatformAuditLogParams struct {
 	Reason              sql.NullString `json:"reason"`
 	ClientIp            sql.NullString `json:"client_ip"`
 	TenantID            uuid.NullUUID  `json:"tenant_id"`
+	TenantPublicID      sql.NullString `json:"tenant_public_id"`
+	TenantName          sql.NullString `json:"tenant_name"`
+	TenantDomain        sql.NullString `json:"tenant_domain"`
+	TenantAdminDomain   sql.NullString `json:"tenant_admin_domain"`
 }
 
 func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error {
@@ -127,6 +179,10 @@ func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatform
 		arg.Reason,
 		arg.ClientIp,
 		arg.TenantID,
+		arg.TenantPublicID,
+		arg.TenantName,
+		arg.TenantDomain,
+		arg.TenantAdminDomain,
 	)
 	return err
 }
@@ -374,16 +430,18 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(entry_t.name, ''::text) AS tenant_name,
-    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, a.tenant_name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, a.tenant_public_id, ''::text) AS tenant_public_id,
+    COALESCE(a.tenant_domain, ''::text) AS tenant_domain,
+    COALESCE(a.tenant_admin_domain, ''::text) AS tenant_admin_domain,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, a.tenant_public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
         ELSE ''::text
     END AS target_public_id,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, a.tenant_name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
         WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
@@ -447,6 +505,8 @@ type ListPlatformAuditLogsAscRow struct {
 	ActorPublicID       string         `json:"actor_public_id"`
 	TenantName          string         `json:"tenant_name"`
 	TenantPublicID      string         `json:"tenant_public_id"`
+	TenantDomain        sql.NullString `json:"tenant_domain"`
+	TenantAdminDomain   sql.NullString `json:"tenant_admin_domain"`
 	TargetPublicID      string         `json:"target_public_id"`
 	TargetName          string         `json:"target_name"`
 }
@@ -485,6 +545,8 @@ func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatform
 			&i.ActorPublicID,
 			&i.TenantName,
 			&i.TenantPublicID,
+			&i.TenantDomain,
+			&i.TenantAdminDomain,
 			&i.TargetPublicID,
 			&i.TargetName,
 		); err != nil {
@@ -514,16 +576,18 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(entry_t.name, ''::text) AS tenant_name,
-    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, a.tenant_name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, a.tenant_public_id, ''::text) AS tenant_public_id,
+    COALESCE(a.tenant_domain, ''::text) AS tenant_domain,
+    COALESCE(a.tenant_admin_domain, ''::text) AS tenant_admin_domain,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, a.tenant_public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
         ELSE ''::text
     END AS target_public_id,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, a.tenant_name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
         WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
@@ -587,6 +651,8 @@ type ListPlatformAuditLogsDescRow struct {
 	ActorPublicID       string         `json:"actor_public_id"`
 	TenantName          string         `json:"tenant_name"`
 	TenantPublicID      string         `json:"tenant_public_id"`
+	TenantDomain        sql.NullString `json:"tenant_domain"`
+	TenantAdminDomain   sql.NullString `json:"tenant_admin_domain"`
 	TargetPublicID      string         `json:"target_public_id"`
 	TargetName          string         `json:"target_name"`
 }
@@ -597,7 +663,9 @@ type ListPlatformAuditLogsDescRow struct {
 // read in index order, so each scan direction gets its own query.
 // The tenant is the one the entry was written for, which stays on the entry
 // after its target is deleted; an invitation entry still names the invited
-// address through the invitation's row.
+// address through the invitation's row. A tenant that is itself deleted is
+// named from what the entries of its deletion kept of it, and the domains are
+// read from those alone: every other entry reads the tenant through its row.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPlatformAuditLogsDesc,
@@ -633,6 +701,8 @@ func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatfor
 			&i.ActorPublicID,
 			&i.TenantName,
 			&i.TenantPublicID,
+			&i.TenantDomain,
+			&i.TenantAdminDomain,
 			&i.TargetPublicID,
 			&i.TargetName,
 		); err != nil {

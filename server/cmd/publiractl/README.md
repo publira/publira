@@ -430,7 +430,8 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `tenant create` | `CreateTenant` | Creates a tenant on `--timezone`, or on the platform's default time zone without it, offering every `--supported-locale`, or its default language alone without one, with the default creator roles, and invites every `--initial-admin-email` |
 | `tenant show` | `GetTenant` | Prints the tenant |
 | `tenant update` | `UpdateTenant` | Replaces the `--name`, `--domain`, `--admin-domain`, or `--image-domain` it is given and keeps the rest; `--admin-domain ""` goes back to the default console host, and `--image-domain ""` serves the storefront images on the domain again |
-| `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again |
+| `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again. A tenant being deleted is not resumed |
+| `tenant delete` | `DeleteTenant` | Marks a suspended tenant for deletion, once `--name` is the tenant's name exactly, and returns: the worker's [`erase-tenants`](#erase-tenants) erases it |
 | `tenant member list` | `ListTenantMembers` | Prints every user holding a console role |
 | `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `--user` (public ID) or `--email`, the `--role` |
 | `tenant member update-role` | `UpdateTenantMemberRole` | Replaces the `--user`'s console role with `--role` |
@@ -453,6 +454,8 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `--supported-locale` | A language the tenant's site offers, one of the supported locale codes. Repeat it for several, `--default-locale` among them. Left out, the site offers `--default-locale` alone; the tenant's administrators can change the set from the console afterwards |
 | `--timezone` | The IANA time zone the tenant starts on. Left out, the platform's default time zone; the tenant's administrators can change it from the console afterwards |
 | `--initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
+
+`tenant delete` is the one command here that cannot be undone. It refuses a tenant that is active, so the tenant has been refusing every request for as long as its operator chose before anything is erased, and it asks for the name rather than taking `--tenant` alone as confirmation of which tenant it is. From then on the tenant answers as suspended, `tenant show` prints it as `deleting`, and `tenant resume` refuses it; asking again changes nothing. Nothing outside the install is told: a subscription a reader holds with the tenant's payment provider or app store goes on renewing there, and a refund the publisher owes is theirs to make with that provider before the tenant is deleted.
 
 `tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a file with `--password-file`, from stdin with `--password-stdin`, from a masked prompt, from an environment variable with `--password-env` where the platform sets secrets only that way, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
 
@@ -513,6 +516,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `reconcile-payments` | Runs the payment reconciliations Tenant admins started and the worker has not finished |
 | `build-data-exports` | Builds the archives readers asked for of their data and the worker has not built |
 | `purge-data-exports` | Deletes the readers' archives past their expiry, and those of deleted accounts |
+| `erase-tenants` | Erases the tenants operators asked to delete, and deletes each once nothing of it is left |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -921,3 +925,30 @@ Environment variables:
 - `PUBLIRA_DATA_EXPORT_PURGE_DRY_RUN`: `true` deletes nothing and reports the requests and archives the first chunk would remove, and the unrecorded archives the walk would.
 
 The structured log records the requests, archives, and unrecorded archives deleted, whether it was a dry run, and the elapsed time.
+
+## erase-tenants
+
+Erases every tenant an operator asked to delete with [`tenant delete`](#tenant) or the Platform API's `DeleteTenant`, the longest waiting first: the job the worker runs every minute on a queue of its own. For each one it deletes
+
+1. its entries in the Redis `PUBLIRA_REDIS_URL` names: the image conversions `publira server` cached of its images, and the rate limit counters charged on its behalf;
+2. its rows, from every table with a `tenant_id` column but `platform_audit_logs`, a table before every table its foreign keys point at, in batches that each commit on their own. Its own audit log goes with them, and so do its closed royalty statements, its purchases, and its subscriptions;
+3. its objects in the bucket saved in the platform's settings, under `tenants/<public ID>/` and `data-exports/<public ID>/`;
+4. its documents in the search engine saved in the platform's settings, from the index the search answers from and from one a build is filling;
+
+and then deletes the tenant row, files `tenant_deleted` in the platform audit log, under the operator whose `tenant_deletion_requested` entry asked for it and with the tenant's public ID, name, domain, and console host, and files a `tenant_deleted` notification for every operator. From then on its hosts belong to no tenant.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl job erase-tenants
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store and the password of a search engine saved with one.
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
+- `PUBLIRA_REDIS_URL`: the Redis `publira server` is given. Unset, the cache entries are left to expire on their own — an image conversion when its cache lifetime ends, a counter when its window does — and what each `publira server` keeps in its own memory does so in every case.
+
+Every step deletes whatever of the tenant is still there, and the tenant row goes last, so a run can stop anywhere — on an error, a timeout, a killed process — and leave nothing half-recorded: the tenant stays marked, refused as suspended, and the next run, or the worker's next pass, takes it up again from what is left. A run that fails files a `tenant_deletion_failed` notification for every operator, once per tenant however many runs fail, and exits non-zero once it has tried every other tenant waiting. A run and the worker's pass take the same lock, so a run that finds the worker erasing does nothing. On a platform with no object store saved there is nothing in a bucket to delete, and the run deletes no object; on one whose search answers from the database there is no index document to delete.
+
+The structured log records, per tenant, the rows erased from each table, the objects and cache entries erased, and how many tenants were erased or failed.

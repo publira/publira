@@ -110,13 +110,15 @@ func (s *adminServer) authenticateAPIKey(ctx context.Context, tenant dbmodels.Te
 }
 
 // chargeAPIKey spends one request of the key's allowance under the platform
-// policy, on the counters the deployment shares.
+// policy, on the counters the deployment shares. The subject names the tenant
+// as well as the key, as every counter kept for a tenant does, so the erasure
+// of a deleted tenant finds the key's counters by the tenant alone.
 func (s *adminServer) chargeAPIKey(ctx context.Context, key dbmodels.TenantApiKey) error {
 	policy, err := s.policy.Policy(ctx)
 	if err != nil {
 		return s.internalError(ctx, "failed to resolve the platform policy", err)
 	}
-	decision, err := s.apiKeyLimiter.Allow(ctx, "api_key.request:"+key.ID.String(),
+	decision, err := s.apiKeyLimiter.Allow(ctx, "api_key.request:"+key.TenantID.String()+":"+key.ID.String(),
 		ratelimit.Rule{Limit: policy.APIKeyRequest.PerMinute, Window: time.Minute},
 		ratelimit.Rule{Limit: policy.APIKeyRequest.PerDay, Window: 24 * time.Hour},
 	)

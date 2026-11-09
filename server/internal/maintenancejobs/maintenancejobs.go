@@ -33,6 +33,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tenanterasure"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -61,6 +62,8 @@ const (
 
 	ServiceNameBuildDataExports = "publira-build-data-exports"
 	ServiceNamePurgeDataExports = "publira-purge-data-exports"
+
+	ServiceNameEraseTenants = "publira-erase-tenants"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -107,6 +110,13 @@ const PaymentReconciliationQueueName = "payment_reconciliation"
 // reads one reader's every table at a time.
 const DataExportQueueName = "data_export"
 
+// TenantErasureQueueName is the queue the erasure of deleted tenants runs on.
+// An operator who deleted a tenant is waiting on it, and one erasure of a
+// large tenant deletes for longer than the rebuilds run, so it is kept off the
+// maintenance queue for the reason the search index build is, both ways. One
+// worker, so one install erases one tenant at a time.
+const TenantErasureQueueName = "tenant_erasure"
+
 const (
 	kindProjectEpisodeReads    = "maintenance.project_episode_reads"
 	kindAggregateContentStats  = "maintenance.aggregate_content_stats"
@@ -129,6 +139,8 @@ const (
 
 	kindBuildDataExports = "maintenance.build_data_exports"
 	kindPurgeDataExports = "maintenance.purge_data_exports"
+
+	kindEraseTenants = "maintenance.erase_tenants"
 )
 
 const (
@@ -171,6 +183,11 @@ const (
 	// reader asked for, which is at most how long one waits before it is
 	// built.
 	dataExportBuildInterval = 10 * time.Second
+
+	// tenantErasureInterval is how often the worker looks for a tenant an
+	// operator asked to delete, which is at most how long one waits before
+	// its erasure starts, and how soon one that failed is tried again.
+	tenantErasureInterval = time.Minute
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
@@ -207,6 +224,7 @@ func ServiceNames() []string {
 		ServiceNameReconcilePayments,
 		ServiceNameBuildDataExports,
 		ServiceNamePurgeDataExports,
+		ServiceNameEraseTenants,
 	}
 }
 
@@ -226,6 +244,9 @@ type Config struct {
 	// in the same bucket, as maintenance.Deps describes.
 	DataExports      storage.Provider
 	DataExportBucket storage.ReclaimerSource
+	// TenantCache erases a deleted tenant's entries from the cache the API
+	// processes share, nil for an install whose processes share none.
+	TenantCache tenanterasure.CacheEraser
 	// Secrets and GooglePlay are what the voided purchase sync reads each
 	// tenant's Google Play refunds with. Secrets also decrypts the password
 	// the search index build connects to the engine with.
@@ -271,6 +292,8 @@ type Jobs struct {
 	dataExports     maintenance.DataExportBuild
 	dataExportPurge maintenance.DataExportPurge
 
+	tenantErasure maintenance.TenantErasure
+
 	// turnWait is passTurnWait, kept on the value so a test of two replicas
 	// does not wait it out.
 	turnWait time.Duration
@@ -297,6 +320,7 @@ func New(cfg Config) (*Jobs, error) {
 
 		DataExports:      cfg.DataExports,
 		DataExportBucket: cfg.DataExportBucket,
+		TenantCache:      cfg.TenantCache,
 
 		AppStoreVerifier: cfg.AppStoreVerifier,
 	}, turnWait: passTurnWait}
@@ -330,8 +354,8 @@ func New(cfg Config) (*Jobs, error) {
 }
 
 // Unhosted is the jobs as a worker replica that hosts none of QueueName,
-// SearchIndexQueueName, PaymentReconciliationQueueName, and
-// DataExportQueueName holds them: built without the pool New needs, so none
+// SearchIndexQueueName, PaymentReconciliationQueueName, DataExportQueueName,
+// and TenantErasureQueueName holds them: built without the pool New needs, so none
 // of them can run, and no tunable is read. Whichever replica River elects
 // leader still needs every one of them, hosted or not: it enqueues each
 // periodic job, and it retries a pass left running by a replica that died only
@@ -388,6 +412,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &purgeDataExportsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register purge-data-exports worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &eraseTenantsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register erase-tenants worker: %w", err)
+	}
 	return nil
 }
 
@@ -417,6 +444,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{paymentReconciliationInterval, ReconcilePaymentsArgs{}},
 		{dataExportBuildInterval, BuildDataExportsArgs{}},
 		{dataExportPurgeInterval, PurgeDataExportsArgs{}},
+		{tenantErasureInterval, EraseTenantsArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {
@@ -437,6 +465,7 @@ func (j *Jobs) Queues() map[string]river.QueueConfig {
 		SearchIndexQueueName:           {MaxWorkers: 1},
 		PaymentReconciliationQueueName: {MaxWorkers: 1},
 		DataExportQueueName:            {MaxWorkers: 1},
+		TenantErasureQueueName:         {MaxWorkers: 1},
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformtenants"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 var tenantGroup = commandGroup{
@@ -54,6 +55,11 @@ var tenantGroup = commandGroup{
 			setup: func(f *commandFlags) func(context.Context, *commandEnv) error {
 				return setupTenantStatus(f, platformtenants.Resume, "Resumed")
 			},
+		},
+		{
+			name:    "delete",
+			summary: "Have the worker erase a suspended tenant and everything the install keeps for it",
+			setup:   setupTenantDelete,
 		},
 	},
 	groups: []commandGroup{tenantMemberGroup, tenantInviteGroup, tenantAdminGroup},
@@ -192,7 +198,7 @@ func setupTenantShow(f *commandFlags) func(context.Context, *commandEnv) error {
 			var b strings.Builder
 			fmt.Fprintf(&b, "Public ID:\t%s\n", tenant.PublicID)
 			fmt.Fprintf(&b, "Name:\t%s\n", tenant.Name)
-			fmt.Fprintf(&b, "Status:\t%s\n", tenant.Status)
+			fmt.Fprintf(&b, "Status:\t%s\n", tenantstatus.Of(tenant))
 			fmt.Fprintf(&b, "Domain:\t%s\n", tenant.Domain)
 			fmt.Fprintf(&b, "Admin domain:\t%s\n", adminDomain)
 			fmt.Fprintf(&b, "Image domain:\t%s\n", imageDomain)
@@ -255,6 +261,24 @@ func setupTenantStatus(f *commandFlags, change tenantStatusChange, done string) 
 				return err
 			}
 			_, err = fmt.Fprintf(env.stdout, "%s tenant %s for %s\n", done, changed.PublicID, changed.Domain)
+			return err
+		})
+	}
+}
+
+// setupTenantDelete marks the tenant for deletion and returns: the worker's
+// erase-tenants job does the erasing, so the command neither waits for it nor
+// needs the bucket, the search engine, or the cache.
+func setupTenantDelete(f *commandFlags) func(context.Context, *commandEnv) error {
+	ref := tenantFlag(f)
+	name := f.String("name", "", "the tenant's name, exactly as it is saved, to confirm which tenant is deleted")
+	return func(ctx context.Context, env *commandEnv) error {
+		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
+			marked, err := platformtenants.Delete(ctx, tx, env.logger, auditlog.SystemPlatformActor, tenant.ID, *name)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(env.stdout, "Marked tenant %s for %s for deletion; the worker erases it next\n", marked.PublicID, marked.Domain)
 			return err
 		})
 	}

@@ -31,6 +31,13 @@ var (
 	ErrTenantRequired   = errors.New("tenant is required")
 	// ErrNoChange refuses an update that sets nothing.
 	ErrNoChange = errors.New("name, domain, admin_domain, or image_domain is required")
+	// ErrNotSuspended refuses deleting a tenant that is still served.
+	ErrNotSuspended = errors.New("only a suspended tenant can be deleted")
+	// ErrDeleting refuses resuming a tenant an operator asked to delete.
+	ErrDeleting = errors.New("the tenant is being deleted")
+	// ErrNameMismatch refuses a deletion confirmed with another name than the
+	// tenant's.
+	ErrNameMismatch = errors.New("name does not match the tenant's name")
 )
 
 // ParsePublicID trims the public ID a tenant is named by, refusing a blank
@@ -221,9 +228,71 @@ func Suspend(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlo
 }
 
 // Resume serves a suspended tenant again inside tx and files the entry under
-// actor.
+// actor. A tenant marked for deletion is refused with [ErrDeleting].
 func Resume(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
+	if id == uuid.Nil {
+		return dbmodels.Tenant{}, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDRequired}
+	}
+	tenant, err := found(dbmodels.New(tx).GetTenantByIDForUpdate(ctx, id))
+	if err != nil {
+		return dbmodels.Tenant{}, err
+	}
+	if tenantstatus.IsDeleting(tenant) {
+		return dbmodels.Tenant{}, ErrDeleting
+	}
 	return setStatus(ctx, tx, logger, actor, id, tenantstatus.Active, "tenant_resumed")
+}
+
+// Delete marks the suspended tenant id names for the worker to erase, inside
+// tx, and files the entry under actor. name must be the tenant's name exactly,
+// as the operator's confirmation of which tenant they are deleting: anything
+// else is refused with [ErrNameMismatch] on [FieldName]. A tenant that is
+// active is refused with [ErrNotSuspended]. A tenant already marked is left as
+// it is, and answered as such with no second entry.
+func Delete(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID, name string) (dbmodels.Tenant, error) {
+	if id == uuid.Nil {
+		return dbmodels.Tenant{}, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDRequired}
+	}
+	q := dbmodels.New(tx)
+	tenant, err := found(q.GetTenantByIDForUpdate(ctx, id))
+	if err != nil {
+		return dbmodels.Tenant{}, err
+	}
+	if name != tenant.Name {
+		return dbmodels.Tenant{}, &fielderr.Invalid{Field: FieldName, Err: ErrNameMismatch}
+	}
+	if tenantstatus.IsDeleting(tenant) {
+		return tenant, nil
+	}
+	if tenant.Status != tenantstatus.Suspended {
+		return dbmodels.Tenant{}, ErrNotSuspended
+	}
+	marked, err := found(q.MarkTenantForDeletion(ctx, id))
+	if err != nil {
+		return dbmodels.Tenant{}, err
+	}
+	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
+		TenantID:   marked.ID,
+		Action:     "tenant_deletion_requested",
+		TargetType: "tenant",
+		TargetID:   marked.ID.String(),
+		Outcome:    auditlog.OutcomeSuccess,
+		Tenant:     Snapshot(marked),
+	})); err != nil {
+		return dbmodels.Tenant{}, fmt.Errorf("audit tenant_deletion_requested: %w", err)
+	}
+	return marked, nil
+}
+
+// Snapshot is what an audit entry that outlives tenant keeps of it: its
+// public ID, name, domain, and the host its console is served on.
+func Snapshot(tenant dbmodels.Tenant) auditlog.TenantSnapshot {
+	return auditlog.TenantSnapshot{
+		PublicID:    tenant.PublicID,
+		Name:        tenant.Name,
+		Domain:      tenant.Domain,
+		AdminDomain: consoleHost(tenant.Domain, tenant.AdminDomain),
+	}
 }
 
 func setStatus(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID, status, action string) (dbmodels.Tenant, error) {

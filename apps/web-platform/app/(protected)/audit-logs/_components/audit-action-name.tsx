@@ -155,6 +155,16 @@ const tenantActionName = (action: string) => {
       return <Message message="platform.audit.actions.tenant_created" />;
     }
 
+    case "tenant_deleted": {
+      return <Message message="platform.audit.actions.tenant_deleted" />;
+    }
+
+    case "tenant_deletion_requested": {
+      return (
+        <Message message="platform.audit.actions.tenant_deletion_requested" />
+      );
+    }
+
     case "tenant_info_updated": {
       return <Message message="platform.audit.actions.tenant_info_updated" />;
     }

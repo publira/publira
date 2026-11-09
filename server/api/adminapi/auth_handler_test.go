@@ -23,7 +23,7 @@ import (
 func expectAdminTenantByDomains(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, defaultLocale string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAdminTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", "admin.tenant.example.com", "UTC", defaultLocale, testSupportedLocalesRow, nil))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", "admin.tenant.example.com", "UTC", defaultLocale, testSupportedLocalesRow, nil, nil))
 }
 
 // Host resolution is the only tenant read the console makes without a session,
@@ -261,7 +261,7 @@ func TestTenantConfigRefusesALocaleTheTenantDoesNotOffer(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 			WithArgs(tenantID).
 			WillReturnRows(sqlmock.NewRows(tenantColumns()).
-				AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "ja", "{ja}", nil))
+				AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "ja", "{ja}", nil, nil))
 		expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	}
 

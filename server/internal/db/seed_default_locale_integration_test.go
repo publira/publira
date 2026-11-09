@@ -3,10 +3,8 @@ package dbtest
 import (
 	"context"
 	"database/sql"
-	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -89,37 +87,12 @@ func seedSQLFiles(t *testing.T) []string {
 	return paths
 }
 
-// readSeedSQL reads one seed file the way psql would: `\ir` includes are expanded
-// relative to the including file, and `\set` variables are substituted where an
-// included block reads them as `:'name'`. The driver these statements are sent
-// through knows neither directive, so without this a shared block fails to parse.
+// readSeedSQL reads one seed file the way psql would, as testutil.SeedSQL
+// does. The driver these statements are sent through knows neither directive,
+// so without this a shared block fails to parse.
 func readSeedSQL(t *testing.T, path string, vars map[string]string) string {
 	t.Helper()
-
-	statements, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-
-	lines := strings.Split(string(statements), "\n")
-	for index, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if assignment, ok := strings.CutPrefix(trimmed, `\set `); ok {
-			name, value, _ := strings.Cut(strings.TrimSpace(assignment), " ")
-			vars[name] = strings.TrimSpace(value)
-			lines[index] = ""
-			continue
-		}
-		if included, ok := strings.CutPrefix(trimmed, `\ir `); ok {
-			lines[index] = readSeedSQL(t, filepath.Join(filepath.Dir(path), strings.TrimSpace(included)), vars)
-			continue
-		}
-		for name, value := range vars {
-			line = strings.ReplaceAll(line, ":'"+name+"'", "'"+strings.ReplaceAll(value, "'", "''")+"'")
-		}
-		lines[index] = line
-	}
-	return strings.Join(lines, "\n")
+	return testutil.SeedSQL(t, path, vars)
 }
 
 func assertStoredLocalesResolve(ctx context.Context, t *testing.T, db *sql.DB, table, query string) {

@@ -31,6 +31,7 @@ var jobGroup = commandGroup{
 		jobCommand("reconcile-payments", "Run the payment reconciliations Tenant admins started and the worker has not finished", runReconcilePayments),
 		jobCommand("build-data-exports", "Build the archives readers asked for of their data and the worker has not built", runBuildDataExports),
 		jobCommand("purge-data-exports", "Delete the readers' archives past their expiry, and those of deleted accounts", runPurgeDataExports),
+		jobCommand("erase-tenants", "Erase the tenants operators asked to delete, and delete each once nothing of it is left", runEraseTenants),
 	},
 }
 

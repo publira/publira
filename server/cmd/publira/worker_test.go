@@ -77,9 +77,9 @@ func TestWorkerQueuesNameRiversQueues(t *testing.T) {
 		river     []string
 		notHosted []string
 	}{
-		{allWorkerQueues, []string{river.QueueDefault, tickerjobs.QueueName, maintenancejobs.QueueName, maintenancejobs.SearchIndexQueueName, maintenancejobs.PaymentReconciliationQueueName, maintenancejobs.DataExportQueueName}, nil},
-		{workerQueues{outbox: true}, []string{river.QueueDefault}, []string{"ticker", "maintenance", "search_index", "payment_reconciliation", "data_export"}},
-		{workerQueues{ticker: true, searchIndex: true}, []string{tickerjobs.QueueName, maintenancejobs.SearchIndexQueueName}, []string{"outbox", "maintenance", "payment_reconciliation", "data_export"}},
+		{allWorkerQueues, []string{river.QueueDefault, tickerjobs.QueueName, maintenancejobs.QueueName, maintenancejobs.SearchIndexQueueName, maintenancejobs.PaymentReconciliationQueueName, maintenancejobs.DataExportQueueName, maintenancejobs.TenantErasureQueueName}, nil},
+		{workerQueues{outbox: true}, []string{river.QueueDefault}, []string{"ticker", "maintenance", "search_index", "payment_reconciliation", "data_export", "tenant_erasure"}},
+		{workerQueues{ticker: true, searchIndex: true}, []string{tickerjobs.QueueName, maintenancejobs.SearchIndexQueueName}, []string{"outbox", "maintenance", "payment_reconciliation", "data_export", "tenant_erasure"}},
 	} {
 		if got := tc.queues.riverQueues(); !slices.Equal(got, tc.river) {
 			t.Errorf("riverQueues(%+v) = %v, want %v", tc.queues, got, tc.river)

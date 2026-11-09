@@ -48,7 +48,7 @@ An install whose mail and push notifications have to keep going out while an hou
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
 | `publira worker --queue outbox` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue outbox` as the container argument | The Outbox drain — mail, push, cache revalidation — as `publira_outbox` alone | Nothing; it serves `/livez` and `/readyz` on `:8003` |
-| `publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export` as the container argument | Every scheduled job, as `publira_outbox`, `publira_ticker`, and `publira_content_stats` | Nothing; it serves `/livez` and `/readyz` on `:8003` |
+| `publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure` as the container argument | Every scheduled job, as `publira_outbox`, `publira_ticker`, and `publira_content_stats` | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Together they replace the one `publira worker` above, and each reads the `publira worker` rows below except where a row says otherwise. Every queue needs at least one running process that hosts it: the process River elects leader enqueues every scheduled job, whatever queues it hosts itself, and a job whose queue no process hosts waits until one does. [`--queue`](../../server/cmd/publira/README.md#hosting-some-queues---queue) has the details.
 
@@ -58,7 +58,7 @@ Together they replace the one `publira worker` above, and each reads the `publir
 | --- | --- | --- |
 | The edge: a load balancer, a reverse proxy, or a CDN in front of one | Browsers and the mobile app | The routing, TLS, and request headers [Edge](../../docs/en/2-deployments/4-edge/index.md#what-the-edge-has-to-do) states. The sample configurations in [`infra/proxy/`](../proxy/README.md) take the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, and `PUBLIRA_EDGE_IMAGE_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
-| Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
+| Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin`, and `publira worker`, which erases a deleted tenant's entries | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator, or by `publiractl setup --create-bucket`; `publiractl` saves where it is |
 | An SMTP server | `publira worker` | The mail the install sends: reader sign-up, password reset, administrator invitations |
 
@@ -86,7 +86,7 @@ Each row is one value, set under the name each process reads it by.
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
 | The cache revalidation token | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
 | The web service credential, also set on `web-platform` when it runs; not read by `publira server --role storefront` | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
-| The Redis URL | `PNCH_REDIS_URL` and `PUBLIRA_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
+| The Redis URL | `PNCH_REDIS_URL` and `PUBLIRA_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | `PUBLIRA_REDIS_URL`, which a deleted tenant's cache entries are erased from | `PUBLIRA_REDIS_URL`, for `job erase-tenants` |
 | The `publira_platform` connection, not read by `publira server --role storefront` | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
 | The AWS credential, when the object store is saved without an access key | — | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` for a temporary credential | the same | the same |
 

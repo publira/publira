@@ -414,3 +414,36 @@ func encodeDocument(encoder *json.Encoder, index, locale string, doc Document) e
 	}
 	return nil
 }
+
+// DeleteTenant removes every document of the tenant tenantID names from each
+// language's index, tombstones included, and returns once a search can no
+// longer find them. An index that does not exist holds none of them, so it is
+// passed over rather than refused.
+//
+// A write that lands after it — an index update the worker was sending when
+// the tenant's rows were deleted — puts its document back, so the caller
+// deletes the rows such writes are made from first.
+func (b *Backend) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
+	body, err := json.Marshal(map[string]any{
+		"query": map[string]any{"term": map[string]any{"tenant_id": tenantID.String()}},
+	})
+	if err != nil {
+		return fmt.Errorf("opensearchbackend: encode the tenant's delete: %w", err)
+	}
+	ignoreUnavailable := true
+	for _, t := range b.targets() {
+		if _, err := b.client.DeleteByQuery(ctx, &opensearchapi.DeleteByQueryReq{
+			Indices:    []string{t.alias},
+			BodyReader: bytes.NewReader(body),
+			Params: &opensearchapi.DeleteByQueryParams{
+				Conflicts:         opensearchapi.ConflictsProceed,
+				IgnoreUnavailable: &ignoreUnavailable,
+				Refresh:           "true",
+				Routing:           []string{tenantID.String()},
+			},
+		}); err != nil {
+			return fmt.Errorf("opensearchbackend: delete the tenant's documents from %q: %w", t.alias, err)
+		}
+	}
+	return nil
+}

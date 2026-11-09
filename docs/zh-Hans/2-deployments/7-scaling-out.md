@@ -2,8 +2,8 @@
 title: 横向扩展
 description: 当安装实例超出最初的规模时应增加哪些进程、所有副本必须共享什么，以及哪些部分无法横向扩展。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 安装实例变慢或即将增长时，要增加的是它已经在运行的进程：为繁忙的进程增加副本，按所响应的流量拆分`publira server`，按所做的工作拆分`publira worker`。本页说明哪些进程可以运行多个副本以及在此之前必须准备好什么、安装实例的负载落在哪里、`publira server`可以拆分到什么程度、`publira worker`如何拆分、随着副本增加数据库必须能接受什么、读者的目录读取和worker进程的每日重建如何转到数据库的只读副本上，以及哪些部分无论增加多少副本都无法缓解。本页适用于任何平台：[Kubernetes](./5-kubernetes/index.md)和[Fargate上的Amazon ECS](./6-ecs-fargate/index.md)给出了清单和命令。
@@ -30,7 +30,7 @@ source_updated: 2026-11-02
 | 转换后的图片 | `publira server` | 每个副本把自己转换的图片保存在自己的内存中，因此每个副本都会再次转换同一张图片 |
 | Web应用缓存的页面和数据 | `web-storefront`、`web-admin`、`web-platform` | Web应用渲染的任何内容都不会被缓存：每个请求都会重新渲染页面，并为页面上的所有内容调用`publira server` |
 
-每个Web应用都把自己的条目保存在独有的键前缀下，因此这些应用共享服务器而不共享条目。当一次写入使缓存的页面过期时，服务器的缓存重新验证会到达每个Web应用的一个副本，该副本在Valkey中记录这次失效，其他所有副本都会读取它：无论运行多少个副本，缓存都保持最新。`publira worker`和`email-renderer`不使用Valkey。
+每个Web应用都把自己的条目保存在独有的键前缀下，因此这些应用共享服务器而不共享条目。当一次写入使缓存的页面过期时，服务器的缓存重新验证会到达每个Web应用的一个副本，该副本在Valkey中记录这次失效，其他所有副本都会读取它：无论运行多少个副本，缓存都保持最新。`publira worker`不在其中保存任何内容；给它同一个`PUBLIRA_REDIS_URL`后，它会从中删除运营人员已删除的租户的转换后图片和计数器。`email-renderer`不使用Valkey。
 
 ## 负载落在哪里
 
@@ -85,11 +85,11 @@ Kubernetes和ECS都提供了第3步和第4步所需的资源：Kubernetes见[让
 
 ## 按队列拆分worker进程
 
-worker进程把工作放在六个队列中：`outbox`，即发件箱的邮件、推送通知和缓存重新验证；`ticker`，在预定时间执行的任务；`maintenance`，重建和清除；`search_index`，搜索索引的构建；`payment_reconciliation`，租户管理员发起的付款对账；以及`data_export`，读者索取的数据副本。指定了`--queue`的副本只承担它所列出的队列的工作，不做其他工作，因此发件箱可以拥有自己的副本，并独立于运行一小时重建的副本来确定规模。当安装实例的邮件和推送通知必须在重建运行期间及时发出时，请运行两个进程来代替一个`publira worker`：
+worker进程把工作放在七个队列中：`outbox`，即发件箱的邮件、推送通知和缓存重新验证；`ticker`，在预定时间执行的任务；`maintenance`，重建和清除；`search_index`，搜索索引的构建；`payment_reconciliation`，租户管理员发起的付款对账；`data_export`，读者索取的数据副本；以及`tenant_erasure`，删除运营人员已删除的租户的数据。指定了`--queue`的副本只承担它所列出的队列的工作，不做其他工作，因此发件箱可以拥有自己的副本，并独立于运行一小时重建的副本来确定规模。当安装实例的邮件和推送通知必须在重建运行期间及时发出时，请运行两个进程来代替一个`publira worker`：
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure
 ```
 
 第一个进程只负责发送和重新验证，不做其他任何事：请随发件箱的负载对它进行扩展，而且它只以一个而不是三个登录连接数据库。第二个进程运行所有定时任务，很少需要第二个副本，因为无论有多少副本，它的每个任务同时都只在一个副本上运行。在`publira server --with-worker`上，同一个标志会缩小它所承载的worker进程的范围。
@@ -111,7 +111,7 @@ publira worker --queue ticker,maintenance,search_index,payment_reconciliation,da
 | 使用只读副本提供`storefront`的`publira server` | 再加1个，位于只读副本而非主库上 |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1个，含`ticker`时再加1个，含`maintenance`、`search_index`、`payment_reconciliation`和`data_export`中任意一个时再加1个：`--queue outbox`为1个 |
+| `publira worker --queue <queues>` | 1个，含`ticker`时再加1个，含`maintenance`、`search_index`、`payment_reconciliation`、`data_export`和`tenant_erasure`中任意一个时再加1个：`--queue outbox`为1个 |
 | 使用只读副本承载`maintenance`的`publira worker` | 再加1个，位于只读副本而非主库上 |
 | 运行期间的`publiractl`命令 | 1个；指定了只读副本时，`job aggregate-content-stats`和`job build-recommend-features`在只读副本上再加1个 |
 

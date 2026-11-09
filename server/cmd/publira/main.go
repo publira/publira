@@ -23,10 +23,10 @@
 // edge forwards to from holding the consoles' logins.
 //
 // worker --queue outbox, ticker, maintenance, search_index,
-// payment_reconciliation, or data_export, in any combination, hosts those
-// River queues alone, each with the database login its jobs connect as, for
-// an install that keeps the Outbox drain apart from the hour-long maintenance
-// passes. server --with-worker takes the same flag.
+// payment_reconciliation, data_export, or tenant_erasure, in any combination,
+// hosts those River queues alone, each with the database login its jobs
+// connect as, for an install that keeps the Outbox drain apart from the
+// hour-long maintenance passes. server --with-worker takes the same flag.
 package main
 
 import (
@@ -186,6 +186,6 @@ func usage() string {
 		"  --with-worker           Host the worker in the same process as well\n" +
 		"  --queue <queue>[,...]   Host the named worker queues alone, as worker does; needs --with-worker\n" +
 		"\nFlags of worker:\n" +
-		"  --queue <queue>[,...]   Host outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export alone instead of all six\n" +
+		"  --queue <queue>[,...]   Host outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure alone instead of all seven\n" +
 		"\nEvery command reads its settings from the environment.\n"
 }

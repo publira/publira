@@ -2,7 +2,7 @@
 title: Scaling out
 description: What to run more of when an install outgrows what it started on, what every copy has to share, and the parts that do not scale out.
 published: 2026-10-22
-updated: 2026-11-02
+updated: 2026-11-09
 ---
 
 An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads and the worker's daily rebuilds move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
@@ -29,7 +29,7 @@ Before any process runs a second copy, every process that uses Valkey, or any Re
 | The converted images | `publira server` | Each copy keeps the images it converted in its own memory, so every copy converts the same image again |
 | The pages and data the web apps cache | `web-storefront`, `web-admin`, `web-platform` | Nothing a web app renders is cached: every request renders its page again and calls `publira server` for everything on it |
 
-Each web app keeps its entries under a key prefix of its own, so the apps share the server without sharing entries. When a write leaves a cached page stale, the server's cache revalidation reaches one copy of each web app, and that copy records the drop in Valkey, where every other copy reads it: the cache stays current however many copies run. `publira worker` and `email-renderer` do not use Valkey.
+Each web app keeps its entries under a key prefix of its own, so the apps share the server without sharing entries. When a write leaves a cached page stale, the server's cache revalidation reaches one copy of each web app, and that copy records the drop in Valkey, where every other copy reads it: the cache stays current however many copies run. `publira worker` keeps nothing there, and given the same `PUBLIRA_REDIS_URL` it deletes from it the converted images and the counters of a tenant an operator deleted. `email-renderer` does not use Valkey.
 
 ## Where the load goes
 
@@ -84,11 +84,11 @@ An install that keeps one edge can serve the image hosts on it instead, routing 
 
 ## Splitting the worker by queue
 
-The worker keeps its work on six queues: `outbox`, the mail, push notifications, and cache revalidation of the outbox; `ticker`, the jobs that act at a scheduled time; `maintenance`, the rebuilds and purges; `search_index`, the search index build; `payment_reconciliation`, the payment reconciliations Tenant admins start; and `data_export`, the copies of their data readers ask for. A copy given `--queue` takes the work of the queues it names and no other, so the outbox can have copies of its own, sized apart from the one that runs the hour-long rebuilds. When the mail and push notifications of an install have to go out promptly while the rebuilds run, run two processes in place of the one `publira worker`:
+The worker keeps its work on seven queues: `outbox`, the mail, push notifications, and cache revalidation of the outbox; `ticker`, the jobs that act at a scheduled time; `maintenance`, the rebuilds and purges; `search_index`, the search index build; `payment_reconciliation`, the payment reconciliations Tenant admins start; `data_export`, the copies of their data readers ask for; and `tenant_erasure`, the erasure of the tenants operators delete. A copy given `--queue` takes the work of the queues it names and no other, so the outbox can have copies of its own, sized apart from the one that runs the hour-long rebuilds. When the mail and push notifications of an install have to go out promptly while the rebuilds run, run two processes in place of the one `publira worker`:
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure
 ```
 
 The first sends and revalidates and does nothing else: scale it with the outbox's load, and it signs in to the database as one login rather than three. The second runs every scheduled job, and rarely needs a second copy, since each of its jobs runs on one copy at a time however many there are. On `publira server --with-worker`, the same flag narrows the worker it hosts.
@@ -110,7 +110,7 @@ Every copy of `publira server` and `publira worker` opens one pool of connection
 | `publira server` serving `storefront` with a replica | 1 more, on the replica rather than the primary |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1, and 1 more with `ticker`, and 1 more with any of `maintenance`, `search_index`, `payment_reconciliation`, and `data_export`: 1 for `--queue outbox` |
+| `publira worker --queue <queues>` | 1, and 1 more with `ticker`, and 1 more with any of `maintenance`, `search_index`, `payment_reconciliation`, `data_export`, and `tenant_erasure`: 1 for `--queue outbox` |
 | `publira worker` hosting `maintenance` with a replica | 1 more, on the replica rather than the primary |
 | A `publiractl` command while it runs | 1, and 1 more on the replica for `job aggregate-content-stats` and `job build-recommend-features` given one |
 

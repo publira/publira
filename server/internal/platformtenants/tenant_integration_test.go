@@ -588,3 +588,94 @@ func TestCreateAccountFilesAnEntryWithoutThePassword(t *testing.T) {
 		t.Fatal("the password is in platform_audit_logs")
 	}
 }
+
+// A tenant is deleted only once it is suspended and the operator has typed its
+// name: the request marks it for the worker, answers it as deleting, and files
+// the entry with what the entry keeps of the tenant. From then on it cannot be
+// resumed, by this release or by a write that skips the check, and asking again
+// changes nothing.
+func TestDeleteMarksASuspendedTenantConfirmedByItsName(t *testing.T) {
+	pg := testutil.StartIsolatedPostgres(t)
+	t.Parallel()
+	ctx := context.Background()
+	seeded := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	deleteTenant := func(name string) (dbmodels.Tenant, error) {
+		var tenant dbmodels.Tenant
+		err := inPlatformTx(t, pg, func(tx *sql.Tx) (err error) {
+			tenant, err = Delete(ctx, tx, nil, auditlog.SystemPlatformActor, seeded.ID, name)
+			return err
+		})
+		return tenant, err
+	}
+
+	if _, err := deleteTenant("Tenant A"); !errors.Is(err, ErrNotSuspended) {
+		t.Fatalf("deleting an active tenant: err = %v, want ErrNotSuspended", err)
+	}
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := Suspend(ctx, tx, nil, auditlog.SystemPlatformActor, seeded.ID)
+		return err
+	}); err != nil {
+		t.Fatalf("Suspend: %v", err)
+	}
+	for _, name := range []string{"", "tenant a", "Tenant A ", "TENANTAAAAAA"} {
+		_, err := deleteTenant(name)
+		var invalid *fielderr.Invalid
+		if !errors.As(err, &invalid) || invalid.Field != FieldName || !errors.Is(err, ErrNameMismatch) {
+			t.Fatalf("deleting with name %q: err = %v, want ErrNameMismatch on %s", name, err, FieldName)
+		}
+	}
+
+	marked, err := deleteTenant("Tenant A")
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if got := tenantstatus.Of(marked); got != tenantstatus.Deleting {
+		t.Fatalf("status = %q, want %q", got, tenantstatus.Deleting)
+	}
+	if !tenantstatus.IsSuspended(marked) {
+		t.Fatal("a deleting tenant is not refused as suspended")
+	}
+	again, err := deleteTenant("Tenant A")
+	if err != nil {
+		t.Fatalf("Delete again: %v", err)
+	}
+	if !again.DeletionRequestedAt.Time.Equal(marked.DeletionRequestedAt.Time) {
+		t.Fatalf("asking again moved the request from %s to %s", marked.DeletionRequestedAt.Time, again.DeletionRequestedAt.Time)
+	}
+
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := Resume(ctx, tx, nil, auditlog.SystemPlatformActor, seeded.ID)
+		return err
+	}); !errors.Is(err, ErrDeleting) {
+		t.Fatalf("resuming a deleting tenant: err = %v, want ErrDeleting", err)
+	}
+	// The previous release's resume writes the status without reading the
+	// mark, and the constraint is what refuses it.
+	if _, err := pg.OpenPlatformDB(t).ExecContext(ctx, `UPDATE tenants SET status = 'active' WHERE id = $1`, seeded.ID); err == nil {
+		t.Fatal("a deleting tenant was made active by a write that skipped the check")
+	}
+
+	var actions []string
+	var name, domain, adminDomain, publicID string
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT action, COALESCE(tenant_name, ''), COALESCE(tenant_domain, ''), COALESCE(tenant_admin_domain, ''), COALESCE(tenant_public_id, '')
+		FROM platform_audit_logs WHERE target_id = $1 ORDER BY created_at, id
+	`, seeded.ID.String())
+	if err != nil {
+		t.Fatalf("read the entries: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	for rows.Next() {
+		var action string
+		if err := rows.Scan(&action, &name, &domain, &adminDomain, &publicID); err != nil {
+			t.Fatalf("scan an entry: %v", err)
+		}
+		actions = append(actions, action)
+	}
+	if want := []string{"tenant_suspended", "tenant_deletion_requested"}; !slices.Equal(actions, want) {
+		t.Fatalf("entries = %v, want %v", actions, want)
+	}
+	if name != "Tenant A" || domain != "tenant-a.example.com" || adminDomain != "admin-tenant-a.example.com" || publicID != "TENANTAAAAAA" {
+		t.Fatalf("the request kept %q %q %q %q, want the tenant's name, domain, console host, and public ID", name, domain, adminDomain, publicID)
+	}
+}

@@ -8,6 +8,9 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 message Tenant {
   string public_id = 1;
   string name = 2;
+  // active | suspended | deleting. A deleting tenant is a suspended one an
+  // operator asked to delete: it is refused everywhere a suspended tenant is,
+  // and the worker is erasing it.
   string status = 3;
   string created_at = 4;
   string domain = 5;
@@ -97,6 +100,18 @@ message ResumeTenantRequest {
 }
 
 message ResumeTenantResponse {
+  Tenant tenant = 1;
+}
+
+message DeleteTenantRequest {
+  string tenant_id = 1;
+  // The tenant's name, exactly as it is saved, which the operator types to
+  // confirm which tenant they are deleting.
+  string name = 2;
+}
+
+message DeleteTenantResponse {
+  // The tenant as it stands once marked: status deleting.
   Tenant tenant = 1;
 }
 
@@ -293,8 +308,27 @@ service PlatformTenantService {
   //   would have put it.
   rpc SuspendTenant(SuspendTenantRequest) returns (SuspendTenantResponse) {}
   // Serves a suspended tenant again, at once and with nothing else to do:
-  // its sessions are honoured again, and its data is what it was.
+  // its sessions are honoured again, and its data is what it was. A deleting
+  // tenant is refused with failed_precondition and the ErrorInfo reason
+  // TENANT_DELETING.
   rpc ResumeTenant(ResumeTenantRequest) returns (ResumeTenantResponse) {}
+  // Marks a suspended tenant for deletion and returns; the worker then erases
+  // every row the tenant holds, its objects in the bucket, its documents in
+  // the search engine's index, and its entries in the shared cache, and
+  // deletes the tenant last, after which its hosts belong to no tenant. Until
+  // then it answers as suspended. Its own audit log is deleted with it; the
+  // platform audit log keeps an entry of the request and of the deletion,
+  // with the tenant's name, domain, and console host.
+  //
+  // Only a Super admin may call it. name must be the tenant's name, or the
+  // call is refused with invalid_argument on name. A tenant that is active is
+  // refused with failed_precondition and the ErrorInfo reason
+  // TENANT_NOT_SUSPENDED. Asking again for a deleting tenant changes nothing.
+  //
+  // Nothing outside the install is told: a subscription a reader holds with
+  // the tenant's payment provider or app store is not cancelled, and nothing
+  // is refunded.
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse) {}
   rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
   rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}

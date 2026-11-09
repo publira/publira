@@ -1144,3 +1144,53 @@ func TestALanguagesOwnAnalysisBuildsItsIndexAlone(t *testing.T) {
 		assertIDs(t, "별 in ko after the rebuild", searchIn(t, backend, searchSeriesIn, tenantID, "ko", "별"))
 	})
 }
+
+// A deleted tenant's documents leave every index, tombstones included, and no
+// other tenant's go with them.
+func TestDeleteTenantRemovesOnlyThatTenantsDocuments(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newTestBackend(t, engine)
+		deleted := uuid.Must(uuid.NewV7())
+		kept := uuid.Must(uuid.NewV7())
+		published := time.Now().Add(-time.Hour)
+		put(t, backend,
+			publishedSeries(deleted, "Seed Garden", ""),
+			Document{Kind: KindCreator, TenantID: deleted, ID: uuid.Must(uuid.NewV7()), Name: "Kenji", Surfaces: []string{testSurface}, PublishedAt: published},
+			Document{Kind: KindLabel, TenantID: deleted, ID: uuid.Must(uuid.NewV7())},
+			publishedSeries(kept, "Seed Garden", ""),
+		)
+		if got := countTenantDocuments(t, backend, deleted); got != 3 {
+			t.Fatalf("the tenant holds %d documents before the delete, want 3", got)
+		}
+
+		if err := backend.DeleteTenant(context.Background(), deleted); err != nil {
+			t.Fatalf("DeleteTenant: %v", err)
+		}
+		if got := countTenantDocuments(t, backend, deleted); got != 0 {
+			t.Errorf("the deleted tenant holds %d documents, want none", got)
+		}
+		if got := countTenantDocuments(t, backend, kept); got != 1 {
+			t.Errorf("the other tenant holds %d documents, want its one", got)
+		}
+		// A tenant with nothing left in the index is deleted again without
+		// complaint, as a pass that resumes an erasure does.
+		if err := backend.DeleteTenant(context.Background(), deleted); err != nil {
+			t.Fatalf("DeleteTenant again: %v", err)
+		}
+	})
+}
+
+// countTenantDocuments counts every document of tenantID, published or not.
+func countTenantDocuments(t *testing.T, backend *Backend, tenantID uuid.UUID) int {
+	t.Helper()
+	resp, err := backend.client.Search(context.Background(), &opensearchapi.SearchReq{
+		Indices:    []string{backend.index},
+		BodyReader: strings.NewReader(`{"size":100,"query":{"term":{"tenant_id":"` + tenantID.String() + `"}}}`),
+		Params:     &opensearchapi.SearchParams{Routing: []string{tenantID.String()}},
+	})
+	if err != nil {
+		t.Fatalf("count the tenant's documents: %v", err)
+	}
+	return len(resp.Hits.Hits)
+}

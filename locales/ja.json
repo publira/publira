@@ -7745,6 +7745,8 @@
         "tenant_admin_invite_resent": "テナントメンバーの招待を再送",
         "tenant_admin_invited": "テナントメンバーを招待",
         "tenant_created": "テナントを作成",
+        "tenant_deleted": "テナントを削除",
+        "tenant_deletion_requested": "テナントの削除を開始",
         "tenant_info_updated": "テナント情報を更新",
         "tenant_member_added": "テナントメンバーを追加",
         "tenant_member_created": "テナントメンバーのアカウントを作成",
@@ -8140,6 +8142,10 @@
         "subject_in_series": "「{$series}」の「{$episode}」",
         "subject_series": "「{$series}」のエピソード",
         "subject_unnamed": "予約していたエピソード",
+        "tenant_deleted_description": "テナント「{$tenant}」 ({$domain}) を、このインストールが保持していたデータとともに削除しました。",
+        "tenant_deleted_title": "テナントを削除しました",
+        "tenant_deletion_failed_description": "テナント「{$tenant}」の削除がエラーで止まりました。ワーカーが1分ごとにやり直します。エラーの内容はワーカーのログにあります。",
+        "tenant_deletion_failed_title": "テナントを削除できませんでした",
         "unknown_description": "内容の詳細はありません。",
         "unknown_title": "通知"
       }

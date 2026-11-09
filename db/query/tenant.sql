@@ -1,12 +1,18 @@
 -- ListTenants is (created_at, id) DESC. Forward uses the DESC query;
 -- backward uses ASC so the index can be scanned in reverse. The handler
--- flips ASC rows back into display order.
+-- flips ASC rows back into display order. The status filter names the status
+-- the platform API answers, where a tenant marked for deletion is 'deleting'
+-- rather than the 'suspended' its row keeps.
 -- cursor rules: proto/README.md.
 -- name: ListTenantsDesc :many
 SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
-  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
+  AND (
+    sqlc.narg('filter_status')::text = ''
+    OR (sqlc.narg('filter_status')::text = 'deleting' AND deletion_requested_at IS NOT NULL)
+    OR (status = sqlc.narg('filter_status')::text AND deletion_requested_at IS NULL)
+  )
   AND (
     sqlc.narg('cursor_id')::uuid IS NULL
     OR (
@@ -25,7 +31,11 @@ LIMIT sqlc.arg('limit');
 SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
-  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
+  AND (
+    sqlc.narg('filter_status')::text = ''
+    OR (sqlc.narg('filter_status')::text = 'deleting' AND deletion_requested_at IS NOT NULL)
+    OR (status = sqlc.narg('filter_status')::text AND deletion_requested_at IS NULL)
+  )
   AND (
     sqlc.narg('cursor_id')::uuid IS NULL
     OR (
@@ -55,6 +65,30 @@ UPDATE tenants
 SET status = $2
 WHERE id = $1
 RETURNING *;
+
+-- name: MarkTenantForDeletion :one
+-- Marks a suspended tenant for the worker to erase, keeping the time of the
+-- first request when it is asked again. No row for a tenant that is not
+-- suspended, or that no longer exists.
+UPDATE tenants
+SET deletion_requested_at = COALESCE(deletion_requested_at, now())
+WHERE id = sqlc.arg('id')
+    AND status = 'suspended'
+RETURNING *;
+
+-- name: ListTenantsMarkedForDeletion :many
+-- The tenants waiting to be erased, the longest waiting first.
+SELECT *
+FROM tenants
+WHERE deletion_requested_at IS NOT NULL
+ORDER BY deletion_requested_at, id;
+
+-- name: DeleteTenantMarkedForDeletion :execrows
+-- Deletes the tenant row once the worker has erased everything else it held.
+-- A tenant that is not marked is left alone.
+DELETE FROM tenants
+WHERE id = sqlc.arg('id')
+    AND deletion_requested_at IS NOT NULL;
 
 -- name: UpdateTenantInfo :one
 -- Update the tenant name and its domains.
@@ -197,6 +231,15 @@ SELECT *
 FROM tenants
 WHERE id = $1
 LIMIT 1;
+
+-- name: GetTenantByIDForUpdate :one
+-- The tenant, locked until the transaction ends, for a change of its status
+-- that depends on the status it reads: resuming a tenant, and marking one for
+-- deletion, each wait for the other rather than both committing.
+SELECT *
+FROM tenants
+WHERE id = $1
+FOR UPDATE;
 
 -- name: GetTenantByUserID :one
 SELECT t.id,

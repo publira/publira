@@ -153,6 +153,29 @@ func cacheKey(storeVersion, objectKey string, r *http.Request) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// tenantObjectPrefix is the part of the bucket every tenant's images are
+// stored under, each tenant's behind its public ID.
+const tenantObjectPrefix = "tenants/"
+
+// cacheEntryKey is what a rendition keyed key is stored under: key behind the
+// public ID of the tenant whose object it was rendered from, so the renditions
+// of a deleted tenant are found by [TenantCacheMatch] alone. key stays what
+// the response names the rendition by.
+func cacheEntryKey(objectKey, key string) string {
+	tenant, _, ok := strings.Cut(strings.TrimPrefix(objectKey, tenantObjectPrefix), "/")
+	if !ok || !strings.HasPrefix(objectKey, tenantObjectPrefix) || tenant == "" {
+		return key
+	}
+	return tenant + ":" + key
+}
+
+// TenantCacheMatch is the SCAN MATCH pattern of every rendition the shared
+// cache holds of the tenant with publicID's images. A public ID holds no
+// character the pattern treats as special.
+func TenantCacheMatch(publicID string) string {
+	return redisKeyPrefix + publicID + ":*"
+}
+
 func parseCacheTTL() time.Duration {
 	raw := strings.TrimSpace(os.Getenv("PUBLIRA_IMAGE_CACHE_TTL"))
 	if raw == "" {

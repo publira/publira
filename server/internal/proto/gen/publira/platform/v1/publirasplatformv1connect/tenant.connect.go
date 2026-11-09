@@ -42,6 +42,9 @@ const (
 	// PlatformTenantServiceResumeTenantProcedure is the procedure name of the PlatformTenantService's
 	// ResumeTenant RPC.
 	PlatformTenantServiceResumeTenantProcedure = "/publira.platform.v1.PlatformTenantService/ResumeTenant"
+	// PlatformTenantServiceDeleteTenantProcedure is the procedure name of the PlatformTenantService's
+	// DeleteTenant RPC.
+	PlatformTenantServiceDeleteTenantProcedure = "/publira.platform.v1.PlatformTenantService/DeleteTenant"
 	// PlatformTenantServiceListTenantMembersProcedure is the procedure name of the
 	// PlatformTenantService's ListTenantMembers RPC.
 	PlatformTenantServiceListTenantMembersProcedure = "/publira.platform.v1.PlatformTenantService/ListTenantMembers"
@@ -109,6 +112,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ResumeTenant"),
 			Procedure:  PlatformTenantServiceResumeTenantProcedure,
+		}
+	})
+	platformTenantServiceDeleteTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("DeleteTenant"),
+			Procedure:  PlatformTenantServiceDeleteTenantProcedure,
 		}
 	})
 	platformTenantServiceListTenantMembersSpec = sync.OnceValue(func() connect.Spec {
@@ -202,8 +212,27 @@ type PlatformTenantServiceClient interface {
 	//   would have put it.
 	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
 	// Serves a suspended tenant again, at once and with nothing else to do:
-	// its sessions are honoured again, and its data is what it was.
+	// its sessions are honoured again, and its data is what it was. A deleting
+	// tenant is refused with failed_precondition and the ErrorInfo reason
+	// TENANT_DELETING.
 	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
+	// Marks a suspended tenant for deletion and returns; the worker then erases
+	// every row the tenant holds, its objects in the bucket, its documents in
+	// the search engine's index, and its entries in the shared cache, and
+	// deletes the tenant last, after which its hosts belong to no tenant. Until
+	// then it answers as suspended. Its own audit log is deleted with it; the
+	// platform audit log keeps an entry of the request and of the deletion,
+	// with the tenant's name, domain, and console host.
+	//
+	// Only a Super admin may call it. name must be the tenant's name, or the
+	// call is refused with invalid_argument on name. A tenant that is active is
+	// refused with failed_precondition and the ErrorInfo reason
+	// TENANT_NOT_SUSPENDED. Asking again for a deleting tenant changes nothing.
+	//
+	// Nothing outside the install is told: a subscription a reader holds with
+	// the tenant's payment provider or app store is not cancelled, and nothing
+	// is refunded.
+	DeleteTenant(context.Context, *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
@@ -254,8 +283,27 @@ type PlatformTenantServiceHandler interface {
 	//   would have put it.
 	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
 	// Serves a suspended tenant again, at once and with nothing else to do:
-	// its sessions are honoured again, and its data is what it was.
+	// its sessions are honoured again, and its data is what it was. A deleting
+	// tenant is refused with failed_precondition and the ErrorInfo reason
+	// TENANT_DELETING.
 	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
+	// Marks a suspended tenant for deletion and returns; the worker then erases
+	// every row the tenant holds, its objects in the bucket, its documents in
+	// the search engine's index, and its entries in the shared cache, and
+	// deletes the tenant last, after which its hosts belong to no tenant. Until
+	// then it answers as suspended. Its own audit log is deleted with it; the
+	// platform audit log keeps an entry of the request and of the deletion,
+	// with the tenant's name, domain, and console host.
+	//
+	// Only a Super admin may call it. name must be the tenant's name, or the
+	// call is refused with invalid_argument on name. A tenant that is active is
+	// refused with failed_precondition and the ErrorInfo reason
+	// TENANT_NOT_SUSPENDED. Asking again for a deleting tenant changes nothing.
+	//
+	// Nothing outside the install is told: a subscription a reader holds with
+	// the tenant's payment provider or app store is not cancelled, and nothing
+	// is refunded.
+	DeleteTenant(context.Context, *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
@@ -277,6 +325,7 @@ func RegisterPlatformTenantServiceHandler(server *connect.Server, svc PlatformTe
 		connect.Method{Spec: platformTenantServiceUpdateTenantSpec(), Handler: adapter.updateTenant},
 		connect.Method{Spec: platformTenantServiceSuspendTenantSpec(), Handler: adapter.suspendTenant},
 		connect.Method{Spec: platformTenantServiceResumeTenantSpec(), Handler: adapter.resumeTenant},
+		connect.Method{Spec: platformTenantServiceDeleteTenantSpec(), Handler: adapter.deleteTenant},
 		connect.Method{Spec: platformTenantServiceListTenantMembersSpec(), Handler: adapter.listTenantMembers},
 		connect.Method{Spec: platformTenantServiceAddTenantMemberSpec(), Handler: adapter.addTenantMember},
 		connect.Method{Spec: platformTenantServiceUpdateTenantMemberRoleSpec(), Handler: adapter.updateTenantMemberRole},
@@ -313,6 +362,10 @@ func (UnimplementedPlatformTenantServiceHandler) SuspendTenant(context.Context, 
 
 func (UnimplementedPlatformTenantServiceHandler) ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ResumeTenant is not implemented")
+}
+
+func (UnimplementedPlatformTenantServiceHandler) DeleteTenant(context.Context, *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.DeleteTenant is not implemented")
 }
 
 func (UnimplementedPlatformTenantServiceHandler) ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error) {
@@ -394,6 +447,14 @@ func (c *platformTenantServiceClient) SuspendTenant(ctx context.Context, req *v1
 func (c *platformTenantServiceClient) ResumeTenant(ctx context.Context, req *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error) {
 	var res v1.ResumeTenantResponse
 	if err := c.client.CallUnary(ctx, platformTenantServiceResumeTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) DeleteTenant(ctx context.Context, req *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error) {
+	var res v1.DeleteTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceDeleteTenantSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -531,6 +592,18 @@ func (h platformTenantServiceHandler) resumeTenant(ctx context.Context, _ connec
 		return err
 	}
 	res, err := h.svc.ResumeTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) deleteTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteTenant(ctx, &req)
 	if err != nil {
 		return err
 	}
