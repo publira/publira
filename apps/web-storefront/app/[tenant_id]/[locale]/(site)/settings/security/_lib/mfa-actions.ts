@@ -376,6 +376,16 @@ export const disableMfaWithProviderAction = async (
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
 
+  // A form that names no tenant did not come from the section, and nothing
+  // can be built for it to go back to without one: it is turned away as it is.
+  const tenant = tenantIdSchema.safeParse(
+    toFormDataInput(formData, { tenantId: "value" }).tenantId
+  );
+
+  if (!tenant.success) {
+    return;
+  }
+
   const parsed = disableWithProviderSchema.safeParse(
     toFormDataInput(formData, {
       code: "value",
@@ -389,7 +399,7 @@ export const disableMfaWithProviderAction = async (
     redirect(
       await buildSecuritySettingsPath(
         submittedLocale,
-        String(formData.get("tenantId") ?? ""),
+        tenant.data,
         "error",
         t("storefront.settings.mfa_disable_failed")
       )

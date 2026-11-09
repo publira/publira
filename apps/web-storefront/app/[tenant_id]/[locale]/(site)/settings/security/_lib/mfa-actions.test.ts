@@ -246,6 +246,33 @@ describe("two-step verification under Security", () => {
     );
   });
 
+  it("turns away a provider confirmation that names no tenant, without looking one up", async () => {
+    const { disableMfaWithProviderAction } = await actions();
+
+    await expect(
+      disableMfaWithProviderAction(
+        form({ code: "123456", provider: "google", tenantId: "not-a-tenant" })
+      )
+    ).resolves.toBeUndefined();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockRequirePublicSession).not.toHaveBeenCalled();
+  });
+
+  it("returns a provider confirmation without a code to Security", async () => {
+    const { disableMfaWithProviderAction } = await actions();
+    const t = await getMessagesFor("en");
+
+    await expect(
+      disableMfaWithProviderAction(form({ code: "", provider: "google" }))
+    ).rejects.toThrow("NEXT_REDIRECT:");
+    expect(lastFlash()).toEqual({
+      message: t("storefront.settings.mfa_disable_failed"),
+      path: "/settings/security",
+      status: "error",
+    });
+    expect(mockRequirePublicSession).not.toHaveBeenCalled();
+  });
+
   it("asks for another passkey confirmation after a wrong code", async () => {
     const { disableMfaWithPasskeyAction } = await actions();
     const t = await getMessagesFor("en");

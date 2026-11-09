@@ -3,6 +3,7 @@ import {
   rpcErrorDisposition,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { MfaChallenge } from "@publira/api-client/public/auth";
 import { parseInstant } from "@publira/utils";
 
 /**
@@ -22,7 +23,7 @@ export interface PublicMfaChallenge {
  * say when to stop offering the code step for it.
  */
 export const toPublicMfaChallenge = (
-  challenge: { expiresAt: string; token: string } | undefined
+  challenge: Pick<MfaChallenge, "expiresAt" | "token"> | undefined
 ): PublicMfaChallenge | null => {
   const token = challenge?.token.trim() ?? "";
 
