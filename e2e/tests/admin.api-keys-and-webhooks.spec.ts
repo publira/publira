@@ -27,8 +27,9 @@ import {
  * their start afterwards, a revoked key is refused, a key that writes the
  * catalog is named in the audit log by its own name, an `http` URL is refused
  * on the form, a test event that is given up can be resent, one sent to a
- * receiver arrives signed, and an episode the key publishes, at once or once
- * its time passes, is announced to a receiver that subscribed to it.
+ * receiver arrives signed, an episode the key publishes, at once or once its
+ * time passes, is announced to a receiver that subscribed to it, and so is an
+ * episode the key takes off the site, by itself or by hiding its series.
  *
  * The worker the stack runs dials a public address and the receiver's alone,
  * `127.0.0.1`, so {@link ENDPOINT_URL} is on another loopback address: the
@@ -133,7 +134,7 @@ const adminApiJson = async <T>(
 
 /** The episode a `CreateEpisode` answer carries, as far as the suite reads it. */
 interface CreatedEpisode {
-  episode: { publicId: string; status: string };
+  episode: { id: string; publicId: string; status: string };
 }
 
 /** Whether the admin API answers `ListLabels` for the tenant with `key`. */
@@ -577,6 +578,117 @@ test.describe("API keys and webhooks", () => {
         await page.reload();
         await expect(announced).toHaveCount(2, { timeout: 3000 });
         await expect(announced.filter({ hasText: "Delivered" })).toHaveCount(
+          2,
+          { timeout: 3000 }
+        );
+      }).toPass({ timeout: 60_000 });
+    });
+
+    test("announces an episode taken off the site and each episode of a hidden series to a receiver", async ({
+      page,
+    }) => {
+      const receiverName = randomUUID();
+      const receiverUrl = webhookReceiverEndpoint(receiverName);
+
+      await openPage(page);
+      const keys = section(page, "API keys");
+
+      await keys.getByLabel("Name").fill("Withdrawing system");
+      await keys
+        .getByRole("checkbox", { exact: true, name: "Catalog changes" })
+        .check();
+      await keys.getByRole("button", { name: "Create API key" }).click();
+      await expect(keys.getByText("Your new API key")).toBeVisible();
+
+      const key = await textOf(keys.getByText(KEY_PATTERN));
+      const form = addEndpointForm(page);
+
+      await form.getByLabel("URL").fill(receiverUrl);
+      await form.getByRole("checkbox", { name: "Episode unpublished" }).check();
+      await form.getByRole("button", { name: "Add the endpoint" }).click();
+      await expect(form.getByText("The endpoint was added.")).toBeVisible();
+      await setWebhookReceiverSecret(
+        receiverName,
+        await textOf(form.getByText(SECRET_PATTERN))
+      );
+
+      const { series } = await adminApiJson<{ series: { id: string } }>(
+        key,
+        "AdminSeriesService/CreateSeries",
+        { publishedAt: "2000-01-01T00:00:00Z", title: "Withdrawn series" }
+      );
+
+      const publish = (title: string): Promise<CreatedEpisode> =>
+        adminApiJson<CreatedEpisode>(key, "AdminSeriesService/CreateEpisode", {
+          scheduledAt: "2000-01-01T00:00:00Z",
+          seriesId: series.id,
+          title,
+        });
+
+      const draftAgain = await publish("Taken back to a draft");
+      const hidden = await publish("Hidden with its series");
+
+      // Emptying the episode's time takes it back to a draft.
+      await adminApiJson(
+        key,
+        "AdminSeriesService/UpdateEpisodePublishSchedule",
+        {
+          episodeId: draftAgain.episode.id,
+          scheduledAt: "",
+        }
+      );
+      // Saving the series without a publication date hides it, and the
+      // episode still published in it with it.
+      await adminApiJson(key, "AdminSeriesService/UpdateSeries", {
+        seriesId: series.id,
+        title: "Withdrawn series",
+      });
+
+      await expect
+        .poll(
+          async () => {
+            const deliveries = await webhookReceiverDeliveries(receiverName);
+
+            return deliveries.length;
+          },
+          { timeout: 60_000 }
+        )
+        .toBe(2);
+      const received = await webhookReceiverDeliveries(receiverName);
+
+      expect(
+        received.map(({ body, event, verified }) => ({
+          episode: body.data.episode_public_id,
+          event,
+          verified,
+          withdrawn: body.data.withdrawn,
+        }))
+      ).toEqual(
+        expect.arrayContaining([
+          {
+            episode: draftAgain.episode.publicId,
+            event: "episode.unpublished",
+            verified: true,
+            withdrawn: "episode",
+          },
+          {
+            episode: hidden.episode.publicId,
+            event: "episode.unpublished",
+            verified: true,
+            withdrawn: "series",
+          },
+        ])
+      );
+
+      const withdrawn = section(page, "Deliveries")
+        .getByRole("row")
+        .filter({ hasText: "Episode unpublished" })
+        .filter({ hasText: receiverUrl });
+
+      await expect(async () => {
+        await page.reload();
+        await expect(withdrawn).toHaveCount(2, { timeout: 3000 });
+        await expect(withdrawn.filter({ hasText: "Delivered" })).toHaveCount(
           2,
           { timeout: 3000 }
         );

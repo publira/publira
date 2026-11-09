@@ -35,6 +35,7 @@ var webhookEventTypes = map[publiraadminv1.WebhookEventType]string{
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED: tenantwebhooks.EventSubscriptionStarted,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED:   tenantwebhooks.EventSubscriptionEnded,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED:    tenantwebhooks.EventEpisodePublished,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED:  tenantwebhooks.EventEpisodeUnpublished,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_TEST:                 tenantwebhooks.EventTest,
 }
 

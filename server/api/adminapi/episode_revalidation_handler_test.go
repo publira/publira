@@ -258,14 +258,13 @@ func TestUpdateEpisodePublishScheduleRevalidatesTheSeriesDetailAndLists(t *testi
 
 	mock.ExpectBegin()
 	expectEpisodeReviewNotRequired(mock, tenantID)
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
-		WithArgs(sql.NullTime{Time: scheduledAt, Valid: true}, tenantID, testEpisodeID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectEpisodeScheduleSaveWithdrawing(mock, tenantID, sql.NullTime{Time: scheduledAt, Valid: true}, now.Add(-time.Hour))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
 			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, int32(0), "scheduled", scheduledAt, nil, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
+	expectNoEpisodeUnpublishedWebhooks(mock, tenantID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)

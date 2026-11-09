@@ -46,23 +46,32 @@ func TestUpdateEpisodePublishScheduleSetsAndClearsTheSchedule(t *testing.T) {
 	queries := dbmodels.New(pg.DB)
 	scheduledAt := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second)
 
-	if err := queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
+	saved, err := queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
 		ScheduledAt: sql.NullTime{Time: scheduledAt, Valid: true},
 		TenantID:    tenant.ID,
 		ID:          draft.ID,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("schedule the draft: %v", err)
+	}
+	if saved.WithdrawsPublication {
+		t.Fatalf("scheduling the draft withdraws a publication: %+v", saved)
 	}
 	got := readEpisodeListingSchedule(t, ctx, pg.DB, draft.ID)
 	if got.status != testutil.EpisodeStatusScheduled || !got.scheduledAt.Valid || !got.scheduledAt.Time.Equal(scheduledAt) || got.publishedAt.Valid {
 		t.Fatalf("scheduled draft = %+v, want scheduled at %s and never published", got, scheduledAt)
 	}
 
-	if err := queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
+	publishedAt := readEpisodeListingSchedule(t, ctx, pg.DB, published.ID).publishedAt
+	saved, err = queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       published.ID,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("clear the published episode's schedule: %v", err)
+	}
+	if !saved.WithdrawsPublication || !publishedAt.Valid || !saved.WithdrawnPublishedAt.Valid || !saved.WithdrawnPublishedAt.Time.Equal(publishedAt.Time) {
+		t.Fatalf("clearing the published episode = %+v, want the publication at %+v withdrawn", saved, publishedAt)
 	}
 	got = readEpisodeListingSchedule(t, ctx, pg.DB, published.ID)
 	if got.status != testutil.EpisodeStatusDraft || got.scheduledAt.Valid || got.publishedAt.Valid {

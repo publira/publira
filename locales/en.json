@@ -3995,6 +3995,8 @@
           "subscription_ended_description": "A subscription stops being billed.",
           "episode_published": "Episode published",
           "episode_published_description": "An episode is published, at its scheduled time or at once.",
+          "episode_unpublished": "Episode unpublished",
+          "episode_unpublished_description": "A published episode goes back to a draft or to a later time, or its series is unpublished.",
           "test": "Test event"
         },
         "enabled": "Enabled",

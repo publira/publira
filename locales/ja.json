@@ -3995,6 +3995,8 @@
           "subscription_ended_description": "定期購読の課金が止まったとき。",
           "episode_published": "エピソードの公開",
           "episode_published_description": "エピソードが予約した日時に、またはすぐに公開されたとき。",
+          "episode_unpublished": "エピソードの公開取り下げ",
+          "episode_unpublished_description": "公開中のエピソードが下書きに戻されたか先の日時に変更されたとき、またはシリーズが非公開になったとき。",
           "test": "テストイベント"
         },
         "enabled": "有効",

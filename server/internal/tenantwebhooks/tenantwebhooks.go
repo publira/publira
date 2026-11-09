@@ -33,6 +33,7 @@ const (
 	EventSubscriptionStarted = "subscription.started"
 	EventSubscriptionEnded   = "subscription.ended"
 	EventEpisodePublished    = "episode.published"
+	EventEpisodeUnpublished  = "episode.unpublished"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -47,6 +48,7 @@ var EventTypes = []string{
 	EventSubscriptionStarted,
 	EventSubscriptionEnded,
 	EventEpisodePublished,
+	EventEpisodeUnpublished,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -65,6 +67,8 @@ type Queries interface {
 	GetWebhookReader(ctx context.Context, arg dbmodels.GetWebhookReaderParams) (dbmodels.GetWebhookReaderRow, error)
 	GetWebhookSubscription(ctx context.Context, arg dbmodels.GetWebhookSubscriptionParams) (dbmodels.GetWebhookSubscriptionRow, error)
 	GetWebhookEpisode(ctx context.Context, arg dbmodels.GetWebhookEpisodeParams) (dbmodels.GetWebhookEpisodeRow, error)
+	GetWebhookUnpublishedEpisode(ctx context.Context, arg dbmodels.GetWebhookUnpublishedEpisodeParams) (dbmodels.GetWebhookUnpublishedEpisodeRow, error)
+	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.ListWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.ListWebhookPublishedEpisodesOfSeriesRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -169,6 +173,27 @@ type Episode struct {
 	// Title is the episode's title in the tenant's default language.
 	Title       string `json:"title"`
 	PublishedAt string `json:"published_at"`
+}
+
+// What an [EventEpisodeUnpublished] says was taken off the site, as
+// [EpisodeWithdrawal.Withdrawn] names it.
+const (
+	// WithdrawnEpisode is the episode itself, taken back to a draft or given a
+	// time again.
+	WithdrawnEpisode = "episode"
+	// WithdrawnSeries is the episode's series, hidden with every episode
+	// published in it.
+	WithdrawnSeries = "series"
+)
+
+// EpisodeWithdrawal is the data of [EventEpisodeUnpublished]. It names the
+// episode and its series by the public ids the admin API answers them by, and
+// carries no reader's data.
+type EpisodeWithdrawal struct {
+	EpisodePublicID string `json:"episode_public_id"`
+	SeriesPublicID  string `json:"series_public_id"`
+	// Withdrawn is [WithdrawnEpisode] or [WithdrawnSeries].
+	Withdrawn string `json:"withdrawn"`
 }
 
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
@@ -277,6 +302,52 @@ func QueueEpisodePublished(ctx context.Context, q Queries, tenantID, episodeID u
 	})
 }
 
+// QueueEpisodeUnpublished owes the event of a published episode just taken off
+// the site, called in the transaction that takes it off. publishedAt is the
+// instant of the publication it takes back, which names it in the key beside
+// the episode: a publication is taken back once, so two saves that both saw
+// the episode published owe one event between them.
+func QueueEpisodeUnpublished(ctx context.Context, q Queries, tenantID, episodeID uuid.UUID, publishedAt time.Time) error {
+	return queueKeyed(ctx, q, tenantID, EventEpisodeUnpublished, func() (string, any, error) {
+		row, err := q.GetWebhookUnpublishedEpisode(ctx, dbmodels.GetWebhookUnpublishedEpisodeParams{TenantID: tenantID, ID: episodeID})
+		if err != nil {
+			return "", nil, fmt.Errorf("read the episode of a webhook event: %w", err)
+		}
+		key := EventEpisodeUnpublished + ":" + episodeID.String() + ":" + publishedAt.UTC().Format(time.RFC3339Nano)
+		return key, EpisodeWithdrawal{
+			EpisodePublicID: row.EpisodePublicID,
+			SeriesPublicID:  row.SeriesPublicID,
+			Withdrawn:       WithdrawnEpisode,
+		}, nil
+	})
+}
+
+// QueueSeriesUnpublished owes the event of every episode published in a series
+// just hidden, one each, called in the transaction that hides it. publication
+// is an instant naming the publication of the series it ends, which keys each
+// event beside its episode the way [QueueEpisodeUnpublished] keys the
+// episode's own.
+func QueueSeriesUnpublished(ctx context.Context, q Queries, tenantID, seriesID uuid.UUID, publication time.Time) error {
+	return queueAll(ctx, q, tenantID, EventEpisodeUnpublished, func() ([]keyedEvent, error) {
+		rows, err := q.ListWebhookPublishedEpisodesOfSeries(ctx, dbmodels.ListWebhookPublishedEpisodesOfSeriesParams{TenantID: tenantID, SeriesID: seriesID})
+		if err != nil {
+			return nil, fmt.Errorf("list the episodes of a webhook event: %w", err)
+		}
+		events := make([]keyedEvent, 0, len(rows))
+		for _, row := range rows {
+			events = append(events, keyedEvent{
+				key: EventEpisodeUnpublished + ":" + row.EpisodeID.String() + ":series:" + publication.UTC().Format(time.RFC3339Nano),
+				data: EpisodeWithdrawal{
+					EpisodePublicID: row.EpisodePublicID,
+					SeriesPublicID:  row.SeriesPublicID,
+					Withdrawn:       WithdrawnSeries,
+				},
+			})
+		}
+		return events, nil
+	})
+}
+
 // QueueTest owes one endpoint a [EventTest] event, whether it is enabled or
 // subscribed to anything, and answers the delivery's id.
 func QueueTest(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID) (uuid.UUID, error) {
@@ -317,6 +388,24 @@ func queue(ctx context.Context, q Queries, tenantID uuid.UUID, eventType, key st
 
 // queueKeyed is [queue] for an event whose key is read with its data.
 func queueKeyed(ctx context.Context, q Queries, tenantID uuid.UUID, eventType string, data func() (string, any, error)) error {
+	return queueAll(ctx, q, tenantID, eventType, func() ([]keyedEvent, error) {
+		key, body, err := data()
+		if err != nil {
+			return nil, err
+		}
+		return []keyedEvent{{key: key, data: body}}, nil
+	})
+}
+
+// keyedEvent is one event [queueAll] owes, with the key that names it.
+type keyedEvent struct {
+	key  string
+	data any
+}
+
+// queueAll is [queue] for a change that owes several events of one type, read
+// together once an endpoint has subscribed to them.
+func queueAll(ctx context.Context, q Queries, tenantID uuid.UUID, eventType string, data func() ([]keyedEvent, error)) error {
 	endpoints, err := q.ListTenantWebhookEndpointsForEvent(ctx, dbmodels.ListTenantWebhookEndpointsForEventParams{
 		TenantID:  tenantID,
 		EventType: eventType,
@@ -331,17 +420,19 @@ func queueKeyed(ctx context.Context, q Queries, tenantID uuid.UUID, eventType st
 	if err != nil {
 		return fmt.Errorf("read the tenant of a webhook event: %w", err)
 	}
-	key, body, err := data()
+	events, err := data()
 	if err != nil {
 		return err
 	}
-	envelope, payload, err := envelopeFor(tenant, eventType, key, body)
-	if err != nil {
-		return err
-	}
-	for _, endpointID := range endpoints {
-		if _, _, err := owe(ctx, q, tenantID, endpointID, envelope, payload); err != nil {
+	for _, event := range events {
+		envelope, payload, err := envelopeFor(tenant, eventType, event.key, event.data)
+		if err != nil {
 			return err
+		}
+		for _, endpointID := range endpoints {
+			if _, _, err := owe(ctx, q, tenantID, endpointID, envelope, payload); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

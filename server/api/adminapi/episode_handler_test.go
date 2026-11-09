@@ -199,6 +199,31 @@ func expectNoEpisodePublishedWebhooks(mock sqlmock.Sqlmock, tenantID uuid.UUID) 
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 }
 
+// expectNoEpisodeUnpublishedWebhooks expects the withdrawal of a published
+// episode to ask which of the tenant's endpoints are owed episode.unpublished,
+// and to find none.
+func expectNoEpisodeUnpublishedWebhooks(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantWebhookEndpointsForEvent)).
+		WithArgs(tenantID, tenantwebhooks.EventEpisodeUnpublished).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+}
+
+// expectEpisodeScheduleSave expects scheduledAt saved on an episode that was
+// not published, so the save takes nothing off the site.
+func expectEpisodeScheduleSave(mock sqlmock.Sqlmock, tenantID uuid.UUID, scheduledAt sql.NullTime) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
+		WithArgs(scheduledAt, tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"withdraws_publication", "withdrawn_published_at"}).AddRow(false, nil))
+}
+
+// expectEpisodeScheduleSaveWithdrawing expects scheduledAt saved on an episode
+// published at publishedAt, which the save takes off the site.
+func expectEpisodeScheduleSaveWithdrawing(mock sqlmock.Sqlmock, tenantID uuid.UUID, scheduledAt sql.NullTime, publishedAt time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
+		WithArgs(scheduledAt, tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"withdraws_publication", "withdrawn_published_at"}).AddRow(true, publishedAt))
+}
+
 // An unset order_index appends after the current last episode, so the client
 // does not have to read every page of ListEpisodes to find the end.
 func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
@@ -1091,9 +1116,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				normalized := scheduledAt.UTC()
 				mock.ExpectBegin()
 				expectEpisodeReviewNotRequired(mock, tenantID)
-				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
-					WithArgs(sql.NullTime{Time: normalized, Valid: true}, tenantID, testEpisodeID).
-					WillReturnResult(sqlmock.NewResult(0, 1))
+				expectEpisodeScheduleSave(mock, tenantID, sql.NullTime{Time: normalized, Valid: true})
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 					WithArgs(tenantID, testEpisodeID).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "rental_price", "rental_period_hours", "preview_page_count", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).

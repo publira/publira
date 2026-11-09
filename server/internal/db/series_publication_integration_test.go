@@ -56,7 +56,8 @@ func TestListSeriesPublicationsDue(t *testing.T) {
 // Saving a series is what publishes it, so the save decides whether the drop
 // is still owed: an instant already passed was dropped by the save itself, and
 // one still ahead is left for the batch. The save that makes the series public
-// says so, and a save that leaves it public does not.
+// says so, and a save that leaves it public does not; the save that takes a
+// public series off the site says that, with the publication it ends.
 func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -67,7 +68,7 @@ func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 	q := dbmodels.New(pg.DB)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESSAV001", Title: "Saved"})
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 
 	revalidatedAt := func() sql.NullTime {
 		t.Helper()
@@ -79,28 +80,49 @@ func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 		}
 		return value
 	}
-	publish := func(publishedAt sql.NullTime) bool {
+	save := func(publishedAt sql.NullTime) dbmodels.UpdateSeriesPublicationRow {
 		t.Helper()
-		applies, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{ID: series.ID, PublishedAt: publishedAt})
+		saved, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{ID: series.ID, PublishedAt: publishedAt})
 		if err != nil {
 			t.Fatalf("UpdateSeriesPublication: %v", err)
 		}
-		return applies
+		return saved
+	}
+	publish := func(publishedAt sql.NullTime) bool {
+		t.Helper()
+		saved := save(publishedAt)
+		if saved.WithdrawsPublication {
+			t.Errorf("the save of %+v withdraws a publication: %+v", publishedAt, saved)
+		}
+		return saved.AppliesPublication
+	}
+	// withdraw saves publishedAt over the public series and answers the
+	// publication the save says it ends.
+	withdraw := func(publishedAt sql.NullTime) (sql.NullTime, sql.NullTime) {
+		t.Helper()
+		saved := save(publishedAt)
+		if saved.AppliesPublication || !saved.WithdrawsPublication {
+			t.Errorf("the save of %+v over the public series = %+v, want it to withdraw the publication", publishedAt, saved)
+		}
+		return saved.WithdrawnPublishedAt, saved.WithdrawnPublicationRevalidatedAt
 	}
 
 	if !publish(sql.NullTime{Time: now.Add(-time.Minute), Valid: true}) {
 		t.Error("the save that published a draft series does not say it applied the publication")
 	}
-	if !revalidatedAt().Valid {
+	applied := revalidatedAt()
+	if !applied.Valid {
 		t.Fatal("a series published at an instant already passed still owes its drop")
 	}
 
 	if publish(sql.NullTime{Time: now.Add(-2 * time.Minute), Valid: true}) {
 		t.Error("a save of a series that was already public says it applied the publication")
 	}
+	applied = revalidatedAt()
 
-	if publish(sql.NullTime{Time: now.Add(time.Hour), Valid: true}) {
-		t.Error("a save rescheduling the series ahead says it applied the publication")
+	ended, endedApplied := withdraw(sql.NullTime{Time: now.Add(time.Hour), Valid: true})
+	if !ended.Valid || !ended.Time.Equal(now.Add(-2*time.Minute)) || !endedApplied.Valid || !endedApplied.Time.Equal(applied.Time) {
+		t.Errorf("the save rescheduling the public series ahead ends %+v applied %+v, want the publication applied at %+v", ended, endedApplied, applied)
 	}
 	if revalidatedAt().Valid {
 		t.Fatal("a series rescheduled to an instant ahead owes no drop, want one owed for that instant")
@@ -110,8 +132,8 @@ func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 		t.Error("the save that published a scheduled series at once does not say it applied the publication")
 	}
 
-	if publish(sql.NullTime{}) {
-		t.Error("the save that unpublished the series says it applied the publication")
+	if _, endedApplied := withdraw(sql.NullTime{}); !endedApplied.Valid || endedApplied.Time.Equal(applied.Time) {
+		t.Errorf("the save that unpublished the series ends the publication applied at %+v, want the one applied after %+v", endedApplied, applied)
 	}
 	if revalidatedAt().Valid {
 		t.Fatal("an unpublished series is marked as dropped")

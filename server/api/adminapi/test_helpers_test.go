@@ -501,11 +501,12 @@ func expectCatalogIndexSync(mock sqlmock.Sqlmock, tenantID uuid.UUID, kind strin
 }
 
 // expectSeriesPublicationUpdate expects the save of a series' publication,
-// answering whether that save is the one that makes the series public.
+// answering whether that save is the one that makes the series public, and
+// that it hides nothing.
 func expectSeriesPublicationUpdate(mock sqlmock.Sqlmock, seriesID uuid.UUID, appliesPublication bool) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"applies_publication"}).AddRow(appliesPublication))
+		WillReturnRows(sqlmock.NewRows([]string{"applies_publication", "withdraws_publication", "withdrawn_published_at", "withdrawn_publication_revalidated_at"}).AddRow(appliesPublication, false, nil, nil))
 }
 
 func expectPublicIDAttempt(mock sqlmock.Sqlmock) {

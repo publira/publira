@@ -542,7 +542,7 @@ func (q *Queries) RedateEpisodesForSeriesPublication(ctx context.Context, arg Re
 	return items, nil
 }
 
-const UpdateEpisodePublishScheduleByIDForTenant = `-- name: UpdateEpisodePublishScheduleByIDForTenant :exec
+const UpdateEpisodePublishScheduleByIDForTenant = `-- name: UpdateEpisodePublishScheduleByIDForTenant :one
 UPDATE episode_listings el
 SET status = CASE
         WHEN $1::timestamptz IS NULL THEN 'draft'
@@ -563,10 +563,14 @@ SET status = CASE
         ELSE el.review_approved_at
     END
 FROM episodes e
-    JOIN series s ON s.id = e.series_id
+    JOIN series s ON s.id = e.series_id,
+    episode_listings old
 WHERE el.episode_id = e.id
+    AND old.episode_id = el.episode_id
     AND s.tenant_id = $2
     AND e.id = $3
+RETURNING (old.status = 'published')::boolean AS withdraws_publication,
+    old.published_at AS withdrawn_published_at
 `
 
 type UpdateEpisodePublishScheduleByIDForTenantParams struct {
@@ -575,13 +579,26 @@ type UpdateEpisodePublishScheduleByIDForTenantParams struct {
 	ID          uuid.UUID    `json:"id"`
 }
 
+type UpdateEpisodePublishScheduleByIDForTenantRow struct {
+	WithdrawsPublication bool         `json:"withdraws_publication"`
+	WithdrawnPublishedAt sql.NullTime `json:"withdrawn_published_at"`
+}
+
 // Taking the episode off the site settles what it owed: no reader can open it,
 // and the publication that puts it back owes its own announcement if its
 // series is still not public then.
 //
 // A draft has no time to review, so taking an episode back to one clears its
 // review state as well; the rounds already decided stay in episode_reviews.
-func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
-	return err
+//
+// withdraws_publication answers whether the episode was published, so that
+// this save takes it off the site, and withdrawn_published_at is the instant
+// of the publication it takes back. The old row is read through the
+// self-join, which sees it as it was before this statement. An id naming no
+// episode answers no row.
+func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) (UpdateEpisodePublishScheduleByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
+	var i UpdateEpisodePublishScheduleByIDForTenantRow
+	err := row.Scan(&i.WithdrawsPublication, &i.WithdrawnPublishedAt)
+	return i, err
 }

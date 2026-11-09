@@ -75,7 +75,7 @@ func TestOweEpisodeAnnouncementWhileSeriesHidden(t *testing.T) {
 	}
 
 	// Taking the episode off the site settles what it owed.
-	if err := q.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: held.ID}); err != nil {
+	if _, err := q.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: held.ID}); err != nil {
 		t.Fatalf("UpdateEpisodePublishScheduleByIDForTenant: %v", err)
 	}
 	if _, owed := episodeListing(t, ctx, pg.DB, held.ID); owed {

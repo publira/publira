@@ -48,6 +48,12 @@ export const WebhookEventLabel = ({
       );
     }
 
+    case "episode.unpublished": {
+      return (
+        <Message message="admin.settings.webhooks.events.episode_unpublished" />
+      );
+    }
+
     case "webhook.test": {
       return <Message message="admin.settings.webhooks.events.test" />;
     }
@@ -98,6 +104,12 @@ export const WebhookEventDescription = ({
     case "episode.published": {
       return (
         <Message message="admin.settings.webhooks.events.episode_published_description" />
+      );
+    }
+
+    case "episode.unpublished": {
+      return (
+        <Message message="admin.settings.webhooks.events.episode_unpublished_description" />
       );
     }
 

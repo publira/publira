@@ -29,6 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 func parsePublishedAtOrZero(value string) (sql.NullTime, error) {
@@ -865,7 +866,7 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
-	appliesPublication, err := s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
+	publication, err := s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		PublishedAt: publishedAt,
 	})
@@ -877,9 +878,22 @@ func (s *adminServer) UpdateSeries(
 	// would have once a scheduled instant passed: the save marks the
 	// publication applied, so the job no longer lists the series. The new
 	// dates ride this transaction, ahead of the cache drop it records.
-	if appliesPublication {
+	if publication.AppliesPublication {
 		if _, err := outbox.QueueSeriesPublicationAnnouncements(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the announcements of the series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		}
+	}
+	// The save that hides a public series takes every episode published in it
+	// off the site with it. The publication it ends is named by when it was
+	// applied, which differs each time the series is made public even with the
+	// same instant, or by its instant while nothing has applied it yet.
+	if publication.WithdrawsPublication {
+		ended := publication.WithdrawnPublishedAt.Time
+		if publication.WithdrawnPublicationRevalidatedAt.Valid {
+			ended = publication.WithdrawnPublicationRevalidatedAt.Time
+		}
+		if err := tenantwebhooks.QueueSeriesUnpublished(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID, ended); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the episode.unpublished webhooks of the hidden series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
 	eyeCatchImageID := current.EyeCatchImageID
