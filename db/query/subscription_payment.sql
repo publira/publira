@@ -151,3 +151,31 @@ WHERE d.tenant_id = sp.tenant_id
     AND sp.tenant_id = sqlc.arg('tenant_id')
     AND sp.stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
 RETURNING sp.*;
+
+-- name: GetSubscriptionStartedMailForTenant :one
+-- What the mail of a subscription's start says about the payment that started
+-- it, read by the outbox worker, which connects past RLS and therefore names
+-- the tenant itself. The plan is the one the payment was recorded on, under
+-- the name it has when the mail is sent. The reader is joined within the
+-- tenant, so an account deleted since answers no address rather than no row.
+SELECT
+    sp.id,
+    sp.amount,
+    sp.currency,
+    sp.period_start,
+    sp.period_end,
+    sp.is_test,
+    pl.name AS plan_name,
+    u.email AS reader_email
+FROM subscription_payments sp
+JOIN subscriptions s
+    ON s.tenant_id = sp.tenant_id
+    AND s.id = sp.subscription_id
+JOIN subscription_plans pl
+    ON pl.tenant_id = sp.tenant_id
+    AND pl.id = sp.plan_id
+LEFT JOIN users u
+    ON u.tenant_id = s.tenant_id
+    AND u.id = s.user_id
+WHERE sp.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND sp.id = sqlc.arg('id')::uuid;

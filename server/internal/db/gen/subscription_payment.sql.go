@@ -148,6 +148,67 @@ func (q *Queries) GetSubscriptionPaymentIDByPaymentIntent(ctx context.Context, a
 	return id, err
 }
 
+const GetSubscriptionStartedMailForTenant = `-- name: GetSubscriptionStartedMailForTenant :one
+SELECT
+    sp.id,
+    sp.amount,
+    sp.currency,
+    sp.period_start,
+    sp.period_end,
+    sp.is_test,
+    pl.name AS plan_name,
+    u.email AS reader_email
+FROM subscription_payments sp
+JOIN subscriptions s
+    ON s.tenant_id = sp.tenant_id
+    AND s.id = sp.subscription_id
+JOIN subscription_plans pl
+    ON pl.tenant_id = sp.tenant_id
+    AND pl.id = sp.plan_id
+LEFT JOIN users u
+    ON u.tenant_id = s.tenant_id
+    AND u.id = s.user_id
+WHERE sp.tenant_id = $1::uuid
+    AND sp.id = $2::uuid
+`
+
+type GetSubscriptionStartedMailForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetSubscriptionStartedMailForTenantRow struct {
+	ID          uuid.UUID      `json:"id"`
+	Amount      int32          `json:"amount"`
+	Currency    string         `json:"currency"`
+	PeriodStart time.Time      `json:"period_start"`
+	PeriodEnd   time.Time      `json:"period_end"`
+	IsTest      bool           `json:"is_test"`
+	PlanName    string         `json:"plan_name"`
+	ReaderEmail sql.NullString `json:"reader_email"`
+}
+
+// What the mail of a subscription's start says about the payment that started
+// it, read by the outbox worker, which connects past RLS and therefore names
+// the tenant itself. The plan is the one the payment was recorded on, under
+// the name it has when the mail is sent. The reader is joined within the
+// tenant, so an account deleted since answers no address rather than no row.
+func (q *Queries) GetSubscriptionStartedMailForTenant(ctx context.Context, arg GetSubscriptionStartedMailForTenantParams) (GetSubscriptionStartedMailForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionStartedMailForTenant, arg.TenantID, arg.ID)
+	var i GetSubscriptionStartedMailForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.Amount,
+		&i.Currency,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.IsTest,
+		&i.PlanName,
+		&i.ReaderEmail,
+	)
+	return i, err
+}
+
 const LockProviderPayment = `-- name: LockProviderPayment :exec
 SELECT pg_advisory_xact_lock(hashtextextended(
     'provider-payment:' || $1::uuid::text || ':' || $2::text || ':' || $3::text,

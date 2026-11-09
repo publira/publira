@@ -122,6 +122,11 @@ import {
   staffEpisodeReviewReturnedPreview,
 } from "./templates/staff-episode-review-returned";
 import {
+  SubscriptionStartedEmail,
+  subscriptionStartedDataSchema,
+  subscriptionStartedPreview,
+} from "./templates/subscription-started";
+import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
   tenantAdminInvitationPreview,
@@ -148,6 +153,7 @@ export const TEMPLATE_IDS = [
   "staff_episode_review_returned",
   "purchase_receipt",
   "purchase_refund_notice",
+  "subscription_started",
   "reader_episode_published",
   "reader_announcement_posted",
   "reader_comment_approved",
@@ -458,6 +464,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: staffEpisodeReviewReturnedPreview,
     schema: staffEpisodeReviewReturnedDataSchema,
+  }),
+  subscription_started: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(SubscriptionStartedEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: subscriptionStartedPreview,
+    schema: subscriptionStartedDataSchema,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

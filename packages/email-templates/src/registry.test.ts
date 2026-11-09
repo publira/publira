@@ -34,6 +34,7 @@ describe("TEMPLATE_IDS", () => {
       "staff_episode_review_returned",
       "purchase_receipt",
       "purchase_refund_notice",
+      "subscription_started",
       "reader_episode_published",
       "reader_announcement_posted",
       "reader_comment_approved",

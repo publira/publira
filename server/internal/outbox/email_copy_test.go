@@ -536,6 +536,21 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "subscription_started",
+		subjects: map[string]string{"en": "Aoto Press subscription started", "ja": "Aoto Pressプランのお申し込み完了"},
+		request: emailrenderer.Request{
+			Template: "subscription_started",
+			Data:     subscriptionStartedData(nil),
+		},
+	},
+	{
+		name: "subscription_started in the provider's test mode",
+		request: emailrenderer.Request{
+			Template: "subscription_started",
+			Data:     subscriptionStartedData(map[string]any{"is_test": true}),
+		},
+	},
+	{
 		name:     "reader_episode_published",
 		subjects: map[string]string{"en": "New episode of The Lighthouse Keeper", "ja": "The Lighthouse Keeperの新しいエピソード"},
 		request: emailrenderer.Request{
@@ -1120,6 +1135,82 @@ func TestEmailCopyWritesAPurchaseRefundNotice(t *testing.T) {
 				Template: "purchase_refund_notice",
 				Locale:   testCase.locale,
 				Data:     refundNoticeData(testCase.overrides),
+				TimeZone: "Asia/Tokyo",
+			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+		})
+	}
+}
+
+func subscriptionStartedData(overrides map[string]any) map[string]any {
+	data := map[string]any{
+		"amount":       int64(980),
+		"currency":     "JPY",
+		"is_test":      false,
+		"my_page_url":  "https://reader.example.test/my",
+		"period_end":   "2026-04-02T00:00:00Z",
+		"period_start": "2026-03-02T00:00:00Z",
+		"plan_name":    "All you can read",
+		"tenant_name":  "Aoto Press",
+	}
+	for name, value := range overrides {
+		data[name] = value
+	}
+	return data
+}
+
+// The mail of a subscription's start names the plan, the price paid, and the
+// period it covers, whose end is when the plan's episodes stay open until and
+// the plan renews, and sends the reader to My Page to manage it. One started in
+// the provider's test mode says no money was charged.
+func TestEmailCopyWritesASubscriptionStarted(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		locale    string
+		overrides map[string]any
+		wantText  string
+	}{
+		{
+			name:   "in English",
+			locale: "en",
+			wantText: "Aoto Press\n\nYour subscription has started\n\n" +
+				"Thank you for subscribing on Aoto Press. Here is what your first payment covers.\n\n" +
+				"Plan: All you can read\n\n" +
+				"Price paid: ¥980 (JPY)\n\n" +
+				"Period paid for: Mar 2, 2026, 9:00 AM to Apr 2, 2026, 9:00 AM\n\n" +
+				"You can read the episodes the plan covers until Apr 2, 2026, 9:00 AM. The plan then renews automatically unless you cancel it.\n\n" +
+				"To update your card, read your invoices, or cancel, choose Manage billing on My Page.\n\n" +
+				"Open My Page https://reader.example.test/my\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:      "in Japanese in test mode",
+			locale:    "ja",
+			overrides: map[string]any{"is_test": true},
+			wantText: "Aoto Press\n\nプランのご利用が始まりました\n\n" +
+				"Aoto Pressのプランにお申し込みいただきありがとうございます。初回のお支払いの内容をお知らせします。\n\n" +
+				"これは決済サービスのテストモードでのお申し込みです。料金は請求されていません。\n\n" +
+				"プラン「All you can read」\n\n" +
+				"お支払い金額は￥980 (JPY) です。\n\n" +
+				"お支払いの対象期間は2026/03/02 9:00から2026/04/02 9:00までです。\n\n" +
+				"2026/04/02 9:00まで、このプランの対象のエピソードを読めます。解約しない限り、その時点でプランは自動で更新されます。\n\n" +
+				"カードの変更、請求書の確認、解約は、マイページの「支払いの管理」から行えます。\n\n" +
+				"マイページを開く https://reader.example.test/my\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(emailrenderer.Request{
+				Template: "subscription_started",
+				Locale:   testCase.locale,
+				Data:     subscriptionStartedData(testCase.overrides),
 				TimeZone: "Asia/Tokyo",
 			})
 			if err != nil {

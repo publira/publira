@@ -35,6 +35,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `staff_contact_reply` | to a reader, with the answer a member of staff wrote in the console | `tenant_name`, `body`, `original_subject`, `original_body`, `original_received_at` |
 | `purchase_receipt` | to a reader, for an episode they bought on the site | `tenant_name`, `series_title`, `episode_title`, `amount`, `currency`, `purchased_at`, `expires_at`, `is_test`, `library_url` |
 | `purchase_refund_notice` | to a reader, whatever their email cells say, when a refund the payment provider made on their purchase is recorded | `tenant_name`, `series_title`, `episode_title`, `volume_title`, `series_bundle_episode_count`, `coin_pack_coins`, `coin_pack_bonus_coins`, `coin_name`, `is_tip`, `amount`, `refunded_total`, `price`, `currency`, `closed`, `is_test`, `library_url` |
+| `subscription_started` | to a reader, whatever their email cells say, when the first invoice of a subscription they took out on the site is paid | `tenant_name`, `plan_name`, `amount`, `currency`, `period_start`, `period_end`, `is_test`, `my_page_url` |
 | `reader_episode_published` | to a reader whose email cell is on, for an episode of a series or by an author they follow | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
 | `reader_announcement_posted` | to a reader whose email cell is on, or to every reader, for an announcement the tenant posted | `tenant_name`, `announcement_title`, `announcements_url`, `sent_to_everyone`, `settings_url` |
 | `reader_comment_approved` | to a reader whose email cell is on, when staff approve their comment | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
@@ -51,6 +52,8 @@ Template IDs and variable names are snake_case. The copy lives under `email.*` i
 `amount` is the price paid, an integer in the minor unit of `currency` (an ISO 4217 code), and is written with `formatPrice` from `@publira/utils`. `expires_at` is the empty string for a purchase with no reading period, and the line naming it is then left out. `is_test` is `true` for a purchase paid in the payment provider's test mode, and the mail then says no money was charged.
 
 In `purchase_refund_notice`, `amount` is what this refund returned, `refunded_total` what every refund of the purchase adds up to with it, and `price` the price paid, all in the minor unit of `currency`; the total is stated only once it differs from `amount`. `closed` is `true` once the refunds reach the price, and the mail then says what the purchase opened is closed, or that a pack's remaining coins were taken back; a tip's mail says nothing of either.
+
+In `subscription_started`, `amount` is what the first invoice paid, in the minor unit of `currency`, and `period_start` and `period_end` (RFC3339) bound the period it paid for; the mail says the plan's episodes are open until `period_end` and the plan renews then. `my_page_url` is My Page on the site, where **Manage billing** opens the payment provider's billing page.
 
 `settings_url` is the reader's notification settings on the site, where they choose which of these mails they receive. `sent_to_everyone` is `true` for an announcement the tenant sent to every reader whatever their settings; the mail then says so and takes no `settings_url`.
 

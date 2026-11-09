@@ -505,6 +505,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeEpisodeReviewReturnedNotification, outbox.NewEpisodeReviewReturnedNotificationHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypePurchaseReceipt, outbox.NewPurchaseReceiptEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypePurchaseRefundNotice, outbox.NewPurchaseRefundNoticeEmailHandler(emailHandlers))
+	handlers.RegisterMessage(outbox.EventTypeSubscriptionStarted, outbox.NewSubscriptionStartedEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeNotificationEmail, outbox.NewNotificationEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeDataExportReadyEmail, outbox.NewNotificationEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))

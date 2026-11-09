@@ -286,6 +286,20 @@
       "series": "Series: {$series_title}",
       "subject": "Returned for changes: {$episode_title}"
     },
+    "subscription_started": {
+      "action": "Open My Page",
+      "amount": "Price paid: {$amount} ({$currency})",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your subscription has started",
+      "intro": "Thank you for subscribing on {$tenant_name}. Here is what your first payment covers.",
+      "manage": "To update your card, read your invoices, or cancel, choose Manage billing on My Page.",
+      "open_until": "You can read the episodes the plan covers until {$period_end}. The plan then renews automatically unless you cancel it.",
+      "period": "Period paid for: {$period_start} to {$period_end}",
+      "plan": "Plan: {$plan_name}",
+      "preview": "Your subscription to {$plan_name} has started.",
+      "subject": "{$tenant_name} subscription started",
+      "test_notice": "This subscription was started in the payment provider's test mode. No money was charged."
+    },
     "tenant_admin_invitation": {
       "action": "Accept invitation",
       "body": ".input {$role :string}\n.match $role\ntenant_editor {{You are invited as an editor of {$tenant_name}. Open the button below to accept the invitation.}}\ntenant_auditor {{You are invited as an auditor of {$tenant_name}. Open the button below to accept the invitation.}}\n* {{You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.}}",

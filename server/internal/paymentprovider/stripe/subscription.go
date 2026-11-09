@@ -251,7 +251,8 @@ func invoicePaymentFailedEvent(event *stripego.Event) (paymentprovider.Event, er
 // off the whole price, leaves nothing to record.
 //
 // The period paid for is read from the invoice's lines, since a subscription
-// invoice's own period is the one before it. The PaymentIntent it was paid
+// invoice's own period is the one before it. The invoice that started the
+// subscription is the one Stripe bills for the reason subscription_create. The PaymentIntent it was paid
 // through is read from Stripe, since a notification leaves the invoice's
 // payments out.
 func (p *Provider) invoicePaidEvent(ctx context.Context, credentials paymentprovider.Credentials, event *stripego.Event) (paymentprovider.Event, error) {
@@ -298,6 +299,7 @@ func (p *Provider) invoicePaidEvent(ctx context.Context, credentials paymentprov
 		PeriodEnd:      time.Unix(periodEnd, 0).UTC(),
 		PaidAt:         time.Unix(paidAt, 0).UTC(),
 		Test:           !invoice.Livemode,
+		Started:        invoice.BillingReason == stripego.InvoiceBillingReasonSubscriptionCreate,
 	}, nil
 }
 

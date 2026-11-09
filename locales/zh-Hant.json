@@ -286,6 +286,20 @@
       "series": "系列：{$series_title}",
       "subject": "已退回：{$episode_title}"
     },
+    "subscription_started": {
+      "action": "開啟我的頁面",
+      "amount": "支付金額：{$amount}（{$currency}）",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您的方案已開始",
+      "intro": "感謝您訂閱{$tenant_name}的方案。以下是首次付款的明細。",
+      "manage": "如需更換信用卡、查看帳單或取消訂閱，請在我的頁面選擇「管理付款」。",
+      "open_until": "在{$period_end}之前，您可以閱讀此方案包含的章節。除非您取消，方案屆時將自動續訂。",
+      "period": "付款涵蓋期間：{$period_start}至{$period_end}",
+      "plan": "方案：{$plan_name}",
+      "preview": "您的方案「{$plan_name}」已開始。",
+      "subject": "{$tenant_name}方案訂閱成功",
+      "test_notice": "這是在支付服務測試模式下開始的訂閱，未產生任何扣款。"
+    },
     "tenant_admin_invitation": {
       "action": "接受邀請",
       "body": ".input {$role :string}\n.match $role\ntenant_editor {{您受邀成為{$tenant_name}的編輯。請開啟下方按鈕接受邀請。}}\ntenant_auditor {{您受邀成為{$tenant_name}的稽核員。請開啟下方按鈕接受邀請。}}\n* {{您受邀成為{$tenant_name}的租戶管理員。請開啟下方按鈕接受邀請。}}",
