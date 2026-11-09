@@ -196,9 +196,10 @@ const RefundedItem = ({
 };
 
 /**
- * What the refund leaves open: a tip opened nothing; a pack keeps its coins
- * unless it is refunded in full; any other purchase keeps opening what it
- * bought unless it is refunded in full.
+ * What the refund takes away: a tip opened nothing; a pack refunded in full
+ * gives up the coins it has left, and any other purchase refunded in full what
+ * it opened. A refund in part takes nothing, and the mail promises no access
+ * for it: a rental whose period has passed opens nothing either way.
  */
 const RefundOutcome = ({
   data,

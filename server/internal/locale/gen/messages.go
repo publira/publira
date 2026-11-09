@@ -783,11 +783,11 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "已全額退款，此次購買獲得的{$coin_name}中剩餘部分已被收回。",
 	},
 	"email.purchase_refund_notice.coins_open": {
-		"ja":      "返金は代金の一部のため、この購入で付与された{$coin_name}は引き続きお使いいただけます。",
-		"en":      "Only part of the price was refunded, so you keep the {$coin_name} it gave you.",
-		"ko":      "결제 금액의 일부만 환불되어 이 구매로 지급된 {$coin_name}도 그대로 사용할 수 있습니다.",
-		"zh-Hans": "仅退还了部分款项，此次购买获得的{$coin_name}仍可继续使用。",
-		"zh-Hant": "僅退還了部分款項，此次購買獲得的{$coin_name}仍可繼續使用。",
+		"ja":      "返金は代金の一部のため、この購入で付与された{$coin_name}は取り消されません。",
+		"en":      "Only part of the price was refunded, so none of the {$coin_name} it gave you are taken back.",
+		"ko":      "결제 금액의 일부만 환불되었으므로, 이 구매로 지급된 {$coin_name} 중 회수되는 분량은 없습니다.",
+		"zh-Hans": "仅退还了部分款项，此次购买获得的{$coin_name}不会被收回。",
+		"zh-Hant": "僅退還了部分款項，此次購買獲得的{$coin_name}不會被收回。",
 	},
 	"email.purchase_refund_notice.episode": {
 		"ja":      "エピソード「{$episode_title}」",
@@ -818,11 +818,11 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您在{$tenant_name}支付的款項已退款。",
 	},
 	"email.purchase_refund_notice.open": {
-		"ja":      "返金は代金の一部のため、購入したエピソードは引き続きお読みいただけます。",
-		"en":      "Only part of the price was refunded, so the episodes you bought stay open to you.",
-		"ko":      "결제 금액의 일부만 환불되어 구매하신 에피소드는 계속 읽을 수 있습니다.",
-		"zh-Hans": "仅退还了部分款项，您购买的章节仍可继续阅读。",
-		"zh-Hant": "僅退還了部分款項，您購買的章節仍可繼續閱讀。",
+		"ja":      "返金は代金の一部のため、この返金で購入したエピソードが読めなくなることはありません。",
+		"en":      "Only part of the price was refunded, so this refund does not close the episodes you bought.",
+		"ko":      "결제 금액의 일부만 환불되었으므로, 이 환불로 구매하신 에피소드가 닫히지는 않습니다.",
+		"zh-Hans": "仅退还了部分款项，此次退款不会关闭您购买的章节。",
+		"zh-Hant": "僅退還了部分款項，此次退款不會關閉您購買的章節。",
 	},
 	"email.purchase_refund_notice.preview": {
 		"ja":      "{$title}の代金を返金しました。",

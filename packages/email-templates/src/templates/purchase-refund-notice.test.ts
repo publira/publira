@@ -128,18 +128,18 @@ describe("PurchaseRefundNoticeEmail", () => {
       "The purchase is refunded in full, so the episodes it opened are closed to you."
     );
     expect(html).not.toContain("Refunded in total");
-    expect(html).not.toContain("stay open");
+    expect(html).not.toContain("does not close");
     expect(html).toContain('href="https://aoto.example.com/my/library"');
     expect(html).not.toContain("Publira");
   });
 
-  it("states the amount and the total of a refund in part, and that the episode stays open", async () => {
+  it("states the amount and the total of a refund in part, and that it does not close the episode", async () => {
     const html = await render("en", inPart);
 
     expect(html).toContain("Amount refunded: ¥100 (JPY)");
     expect(html).toContain("Refunded in total: ¥300 of the ¥500 paid");
     expect(html).toContain(
-      "Only part of the price was refunded, so the episodes you bought stay open to you."
+      "Only part of the price was refunded, so this refund does not close the episodes you bought."
     );
     expect(html).not.toContain("closed to you");
   });
@@ -174,7 +174,7 @@ describe("PurchaseRefundNoticeEmail", () => {
     expect(full).not.toContain("Series:");
 
     expect(await render("en", { ...pack, ...inPart })).toContain(
-      "Only part of the price was refunded, so you keep the Points it gave you."
+      "Only part of the price was refunded, so none of the Points it gave you are taken back."
     );
   });
 
@@ -189,7 +189,7 @@ describe("PurchaseRefundNoticeEmail", () => {
     expect(html).toContain("Tip for the Authors of: The First Night");
     expect(html).toContain("Amount refunded: ¥300 (JPY)");
     expect(html).not.toContain("closed to you");
-    expect(html).not.toContain("stay open");
+    expect(html).not.toContain("does not close");
   });
 
   it("says a refund in the provider's test mode moved no money", async () => {
@@ -208,7 +208,7 @@ describe("PurchaseRefundNoticeEmail", () => {
       "お支払いいただいた￥500のうち、これまでの返金額の合計は￥300です。"
     );
     expect(html).toContain(
-      "返金は代金の一部のため、購入したエピソードは引き続きお読みいただけます。"
+      "返金は代金の一部のため、この返金で購入したエピソードが読めなくなることはありません。"
     );
   });
 });

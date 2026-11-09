@@ -98,7 +98,7 @@ func TestPurchaseRefundNoticeEmailTellsTheReaderTheEpisodeClosed(t *testing.T) {
 }
 
 // A refund of part of the price says how much it returned, what the refunds
-// add up to so far against the price, and that the episode stays open.
+// add up to so far against the price, and that it does not close the episode.
 func TestPurchaseRefundNoticeEmailTellsTheReaderTheEpisodeStaysOpen(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -118,7 +118,7 @@ func TestPurchaseRefundNoticeEmailTellsTheReaderTheEpisodeStaysOpen(t *testing.T
 	for _, fragment := range []string{
 		"Amount refunded: ¥100 (JPY)",
 		"Refunded in total: ¥300 of the ¥500 paid",
-		"the episodes you bought stay open to you",
+		"this refund does not close the episodes you bought",
 	} {
 		if !strings.Contains(text, fragment) {
 			t.Errorf("the mail does not carry %q:\n%s", fragment, text)

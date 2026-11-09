@@ -1065,7 +1065,7 @@ func TestEmailCopyWritesAPurchaseRefundNotice(t *testing.T) {
 				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
 				"Amount refunded: ¥100 (JPY)\n\n" +
 				"Refunded in total: ¥300 of the ¥500 paid\n\n" +
-				"Only part of the price was refunded, so the episodes you bought stay open to you.\n\n" +
+				"Only part of the price was refunded, so this refund does not close the episodes you bought.\n\n" +
 				links,
 		},
 		{
@@ -1109,7 +1109,7 @@ func TestEmailCopyWritesAPurchaseRefundNotice(t *testing.T) {
 				"Aoto Pressでお支払いいただいた代金を返金しました。\n\n" +
 				"シリーズ「The Lighthouse Keeper」\n\nエピソード「Episode 1」\n\n" +
 				"返金額は￥200 (JPY) です。\n\n" +
-				"返金は代金の一部のため、購入したエピソードは引き続きお読みいただけます。\n\n" +
+				"返金は代金の一部のため、この返金で購入したエピソードが読めなくなることはありません。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",

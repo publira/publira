@@ -285,9 +285,10 @@ func purchaseReceiptCopy(c *emailComposer) {
 // made on one of their purchases. It names what was bought as the receipt
 // does, what this refund returned, and, once more than one refund has been
 // made, what they add up to against the price paid. It then says what the
-// refund leaves open: a purchase refunded in full no longer opens what it
-// bought, and a pack refunded in full takes back the coins it has left, while
-// a refund of part of the price leaves either as it was. A tip opened nothing,
+// refund takes away: a purchase refunded in full no longer opens what it
+// bought, and a pack refunded in full gives up the coins it has left, while a
+// refund of part of the price takes neither. That promises no access, since a
+// rental whose period has passed opens nothing either way. A tip opened nothing,
 // so its mail says nothing of it. A purchase made in the provider's test mode
 // says no money moved, as its receipt did.
 func purchaseRefundNoticeCopy(c *emailComposer) {
