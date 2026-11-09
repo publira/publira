@@ -495,6 +495,24 @@ func TestParseNotificationReadsAPaidSubscriptionInvoice(t *testing.T) {
 		}
 	})
 
+	t.Run("only the invoice the subscription was created with started it", func(t *testing.T) {
+		for reason, want := range map[string]bool{
+			"subscription_create": true,
+			"subscription_cycle":  false,
+			"subscription_update": false,
+		} {
+			invoice := invoicePaid("in_"+reason, 980, metadata, [2]int64{1772409600, 1775088000})
+			invoice["billing_reason"] = reason
+			paid, ok := parse(t, invoice).(paymentprovider.SubscriptionPaid)
+			if !ok {
+				t.Fatalf("%s: event is not SubscriptionPaid", reason)
+			}
+			if paid.Started != want {
+				t.Errorf("%s: started = %t, want %t", reason, paid.Started, want)
+			}
+		}
+	})
+
 	t.Run("an invoice that paid nothing is ignored", func(t *testing.T) {
 		if event := parse(t, invoicePaid("in_trial", 0, metadata, [2]int64{1772409600, 1775088000})); !isIgnored(event) {
 			t.Fatalf("event = %T, want Ignored", event)

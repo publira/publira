@@ -63,6 +63,9 @@ type SubscriptionPayment struct {
 	PeriodEnd   time.Time
 	// Test makes it a payment made in the provider's test mode.
 	Test bool
+	// Started makes it the invoice the subscription was created with, and
+	// otherwise one that renewed it.
+	Started bool
 }
 
 // SubscriptionFixture is the fixture of a provider that sells subscription

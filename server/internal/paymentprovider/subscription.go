@@ -238,6 +238,12 @@ type SubscriptionPaid struct {
 	// Test reports a payment made in the provider's test mode, as
 	// [PurchaseCompleted.Test] does.
 	Test bool
+	// Started reports the invoice the subscription was created with, the
+	// first a plan's checkout bills, rather than one that renewed or changed
+	// it. A subscription whose first invoice paid nothing, at the start of a
+	// trial or under a coupon that takes off the whole price, reports no
+	// invoice that started it, since that one is not reported at all.
+	Started bool
 }
 
 func (e SubscriptionPaid) NotificationID() string { return e.ID }

@@ -1188,12 +1188,17 @@ func (f *Fixture) SubscriptionPaid(t testing.TB, credentials paymentprovider.Cre
 		f.API.SetInvoicePayment(credentials[stripe.FieldSecretKey], payment.InvoiceID, payment.PaymentID)
 		f.API.SetPaymentIntent(credentials[stripe.FieldSecretKey], payment.PaymentID, payment.Amount, payment.Currency)
 	}
+	billingReason := stripego.InvoiceBillingReasonSubscriptionCycle
+	if payment.Started {
+		billingReason = stripego.InvoiceBillingReasonSubscriptionCreate
+	}
 	return recorded(t, credentials, "invoice.paid.json", map[string]any{
-		"id":          payment.InvoiceID,
-		"amount_due":  payment.Amount,
-		"amount_paid": payment.Amount,
-		"currency":    strings.ToLower(payment.Currency),
-		"livemode":    !payment.Test,
+		"id":             payment.InvoiceID,
+		"billing_reason": billingReason,
+		"amount_due":     payment.Amount,
+		"amount_paid":    payment.Amount,
+		"currency":       strings.ToLower(payment.Currency),
+		"livemode":       !payment.Test,
 		"lines": map[string]any{
 			"object": "list",
 			"data": []any{map[string]any{

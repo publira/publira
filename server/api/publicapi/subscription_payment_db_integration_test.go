@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,9 +11,11 @@ import (
 	stripego "github.com/stripe/stripe-go/v87"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -193,6 +196,126 @@ func TestDBProcessPaymentWebhookRecordsEachPaidInvoiceOnce(t *testing.T) {
 	}
 	if got := f.countRows(t, "SELECT count(*) FROM subscription_payments WHERE tenant_id = $1 AND stripe_invoice_id = 'in_orphan'", f.tenant.ID); got != 0 {
 		t.Fatalf("payments of a subscription of no plan = %d, want none", got)
+	}
+}
+
+// The invoice a subscription was created with owes its reader one mail of the
+// start, naming the payment it was recorded as, however often it is
+// delivered; a renewal owes none of that kind, and nor does a subscription
+// whose reader's account is gone.
+func TestDBProcessPaymentWebhookOwesTheReaderOneMailWhenTheirSubscriptionStarts(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	subscription := stripetest.Subscription{
+		ID:               "sub_started",
+		CustomerID:       "cus_started",
+		PriceID:          "price_monthly",
+		Status:           "active",
+		CurrentPeriodEnd: time.Date(2026, time.April, 2, 0, 0, 0, 0, time.UTC).Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+	}
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], subscription)
+	start := time.Date(2026, time.March, 2, 0, 0, 0, 0, time.UTC)
+	first := paymentprovidertest.SubscriptionPayment{
+		InvoiceID:      "in_first",
+		SubscriptionID: subscription.ID,
+		PaymentID:      "pi_first",
+		TenantID:       f.tenant.ID,
+		ReaderID:       f.reader.ID,
+		PlanID:         plan.ID,
+		Amount:         980,
+		Currency:       "JPY",
+		PeriodStart:    start,
+		PeriodEnd:      start.AddDate(0, 1, 0),
+		Started:        true,
+	}
+	startedMails := func(t *testing.T) []outbox.SubscriptionStartedPayload {
+		t.Helper()
+		rows, err := f.pg.DB.QueryContext(context.Background(),
+			"SELECT payload FROM outbox_events WHERE tenant_id = $1 AND event_type = $2",
+			f.tenant.ID, outbox.EventTypeSubscriptionStarted)
+		if err != nil {
+			t.Fatalf("read the mails queued: %v", err)
+		}
+		defer rows.Close() //nolint:errcheck
+		var mails []outbox.SubscriptionStartedPayload
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				t.Fatalf("scan a mail queued: %v", err)
+			}
+			var payload outbox.SubscriptionStartedPayload
+			if err := json.Unmarshal(raw, &payload); err != nil {
+				t.Fatalf("decode a mail queued: %v", err)
+			}
+			mails = append(mails, payload)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("read the mails queued: %v", err)
+		}
+		return mails
+	}
+
+	payload, headers := f.stripe.SubscriptionPaid(t, f.credentials, first)
+	for delivery := range 3 {
+		if err := f.deliver(t, payload, headers); err != nil {
+			t.Fatalf("delivery %d of the first invoice: %v", delivery+1, err)
+		}
+	}
+	var paymentID uuid.UUID
+	if err := f.pg.DB.QueryRowContext(context.Background(),
+		"SELECT id FROM subscription_payments WHERE tenant_id = $1 AND stripe_invoice_id = 'in_first'", f.tenant.ID,
+	).Scan(&paymentID); err != nil {
+		t.Fatalf("read the first payment: %v", err)
+	}
+	mails := startedMails(t)
+	if len(mails) != 1 {
+		t.Fatalf("started mails = %d, want one however often the invoice is delivered", len(mails))
+	}
+	if mails[0].TenantID != f.tenant.ID.String() || mails[0].SubscriptionPaymentID != paymentID.String() {
+		t.Fatalf("mail = %+v, want the payment %s of tenant %s", mails[0], paymentID, f.tenant.ID)
+	}
+
+	renewal := first
+	renewal.InvoiceID = "in_renewal"
+	renewal.PaymentID = "pi_renewal"
+	renewal.PeriodStart = first.PeriodEnd
+	renewal.PeriodEnd = first.PeriodEnd.AddDate(0, 1, 0)
+	renewal.Started = false
+	payload, headers = f.stripe.SubscriptionPaid(t, f.credentials, renewal)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the renewal: %v", err)
+	}
+	if got := len(startedMails(t)); got != 1 {
+		t.Fatalf("started mails after a renewal = %d, want still the one", got)
+	}
+
+	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
+		t.Fatalf("DeleteMe: %v", err)
+	}
+	gone := stripetest.Subscription{
+		ID:         "sub_gone",
+		CustomerID: "cus_gone",
+		PriceID:    "price_monthly",
+		Status:     "active",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+	}
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], gone)
+	orphan := first
+	orphan.InvoiceID = "in_gone"
+	orphan.PaymentID = "pi_gone"
+	orphan.SubscriptionID = gone.ID
+	payload, headers = f.stripe.SubscriptionPaid(t, f.credentials, orphan)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the first invoice of a reader who is gone: %v", err)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM subscription_payments WHERE tenant_id = $1 AND stripe_invoice_id = 'in_gone'", f.tenant.ID); got != 1 {
+		t.Fatalf("payments of a reader who is gone = %d, want the one recorded", got)
+	}
+	if got := len(startedMails(t)); got != 1 {
+		t.Fatalf("started mails after a reader is gone = %d, want none for them", got)
 	}
 }
 

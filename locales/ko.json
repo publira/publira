@@ -286,6 +286,20 @@
       "series": "시리즈: {$series_title}",
       "subject": "반려: {$episode_title}"
     },
+    "subscription_started": {
+      "action": "마이페이지 열기",
+      "amount": "결제 금액: {$amount} ({$currency})",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "플랜 이용이 시작되었습니다",
+      "intro": "{$tenant_name}의 플랜을 구독해 주셔서 감사합니다. 첫 결제 내역을 알려 드립니다.",
+      "manage": "카드 변경, 청구서 확인, 해지는 마이페이지의 결제 관리에서 할 수 있습니다.",
+      "open_until": "{$period_end}까지 이 플랜에 포함된 에피소드를 읽을 수 있습니다. 해지하지 않으면 그때 플랜이 자동으로 갱신됩니다.",
+      "period": "결제 대상 기간: {$period_start} ~ {$period_end}",
+      "plan": "플랜: {$plan_name}",
+      "preview": "{$plan_name} 이용이 시작되었습니다.",
+      "subject": "{$tenant_name} 플랜 구독 완료",
+      "test_notice": "결제 제공자의 테스트 모드에서 시작된 구독입니다. 요금은 청구되지 않았습니다."
+    },
     "tenant_admin_invitation": {
       "action": "초대 수락하기",
       "body": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}의 편집 담당으로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}\ntenant_auditor {{{$tenant_name}의 감사 담당으로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}\n* {{{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}",

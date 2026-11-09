@@ -286,6 +286,20 @@
       "series": "シリーズ「{$series_title}」",
       "subject": "差し戻し: {$episode_title}"
     },
+    "subscription_started": {
+      "action": "マイページを開く",
+      "amount": "お支払い金額は{$amount} ({$currency}) です。",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "プランのご利用が始まりました",
+      "intro": "{$tenant_name}のプランにお申し込みいただきありがとうございます。初回のお支払いの内容をお知らせします。",
+      "manage": "カードの変更、請求書の確認、解約は、マイページの「支払いの管理」から行えます。",
+      "open_until": "{$period_end}まで、このプランの対象のエピソードを読めます。解約しない限り、その時点でプランは自動で更新されます。",
+      "period": "お支払いの対象期間は{$period_start}から{$period_end}までです。",
+      "plan": "プラン「{$plan_name}」",
+      "preview": "{$plan_name}のご利用が始まりました。",
+      "subject": "{$tenant_name}プランのお申し込み完了",
+      "test_notice": "これは決済サービスのテストモードでのお申し込みです。料金は請求されていません。"
+    },
     "tenant_admin_invitation": {
       "action": "招待を承諾する",
       "body": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}の編集担当として招待されています。以下のボタンから招待を承諾してください。}}\ntenant_auditor {{{$tenant_name}の監査担当として招待されています。以下のボタンから招待を承諾してください。}}\n* {{{$tenant_name}のテナント管理者として招待されています。以下のボタンから招待を承諾してください。}}",

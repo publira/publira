@@ -723,7 +723,9 @@ func recordIDStrings(ids []uuid.UUID) []string {
 // the subscription as the provider holds it now: the notification of the
 // payment can arrive before the one that starts the subscription, and a paid
 // renewal moves its period on. A redelivered notification records nothing
-// twice. A refund or a dispute whose notification overtook the payment's is
+// twice. The invoice the subscription was created with also owes its reader
+// the mail of its start, queued with the payment; a subscription whose
+// reader's account is gone owes nobody one. A refund or a dispute whose notification overtook the payment's is
 // applied and released in the same transaction, under the lock a refund or a
 // dispute takes to match or hold itself, so a payment is never committed
 // without the one held for it.
@@ -774,6 +776,11 @@ func (s *apiServer) recordSubscriptionPayment(
 			if err != nil {
 				return s.internalDBError(ctx, "failed to record a subscription payment", err, logAttrs...)
 			}
+			if event.Started && subscription.UserID.Valid {
+				if err := queueSubscriptionStarted(ctx, queries, tenantID, subscription.ID, payment.ID); err != nil {
+					return s.internalError(ctx, "failed to queue the mail of a subscription's start", err, append(logAttrs, "subscription_id", subscription.ID.String())...)
+				}
+			}
 			if paymentID.Valid {
 				if err := s.applyHeldRefundToSubscriptionPayment(ctx, queries, tenantID, provider.Declaration().ID, event.PaymentID); err != nil {
 					return s.internalDBError(ctx, "failed to apply a held refund to a subscription payment", err, logAttrs...)
@@ -790,6 +797,23 @@ func (s *apiServer) recordSubscriptionPayment(
 			)...)
 			return nil
 		})
+}
+
+// queueSubscriptionStarted owes the reader of subscriptionID the mail of its
+// start, which names the payment paymentID that started it.
+func queueSubscriptionStarted(ctx context.Context, queries *dbmodels.Queries, tenantID, subscriptionID, paymentID uuid.UUID) error {
+	payload, err := json.Marshal(outbox.SubscriptionStartedPayload{
+		TenantID:              tenantID.String(),
+		SubscriptionPaymentID: paymentID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal subscription started event: %w", err)
+	}
+	if err := insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeSubscriptionStarted, payload,
+		outbox.SubscriptionStartedIdempotencyKey(subscriptionID)); err != nil {
+		return fmt.Errorf("enqueue subscription started: %w", err)
+	}
+	return nil
 }
 
 // applyHeldRefundToSubscriptionPayment writes the refund held for paymentID
