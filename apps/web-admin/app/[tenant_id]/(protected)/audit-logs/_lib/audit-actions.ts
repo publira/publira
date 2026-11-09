@@ -10,6 +10,7 @@ export const auditActions = [
   "series_translation_deleted",
   "episode_created",
   "episode_updated",
+  "episode_deleted",
   "episode_translation_deleted",
   "episode_image_uploaded",
   "episode_eye_catch_aspect_image_uploaded",

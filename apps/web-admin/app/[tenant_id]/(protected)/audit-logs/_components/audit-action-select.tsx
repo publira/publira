@@ -65,6 +65,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "episode_updated",
             },
             {
+              label: t("admin.audit.actions.episode_deleted"),
+              value: "episode_deleted",
+            },
+            {
               label: t("admin.audit.actions.episode_translation_deleted"),
               value: "episode_translation_deleted",
             },

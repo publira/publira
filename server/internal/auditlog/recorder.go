@@ -115,8 +115,10 @@ type TenantEntry struct {
 	TargetType    string // e.g. "series", "episode", "creator", "label"
 	TargetID      string // ID of the affected resource
 	Outcome       string // "success" or "failure"
-	Reason        string // why the action was taken, or why it failed
-	ClientIP      string
+	// Why the action was taken, or why it failed. An entry that deletes a
+	// record names it here instead, since no row is left to join its ID to.
+	Reason   string
+	ClientIP string
 }
 
 // Recorder records structured audit log entries without affecting the caller's

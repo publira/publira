@@ -13,8 +13,8 @@ import type { AdminMessageAccessor, AdminMessageKey } from "#lib/messages";
 import { formatTenantAmount } from "#lib/price";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
-/** An action on series or episodes. */
-const catalogActionName = (action: string) => {
+/** An action on series. */
+const seriesActionName = (action: string) => {
   switch (action) {
     case "series_created": {
       return <Message message="admin.audit.actions.series_created" />;
@@ -60,12 +60,25 @@ const catalogActionName = (action: string) => {
       );
     }
 
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An action on episodes. */
+const episodeActionName = (action: string) => {
+  switch (action) {
     case "episode_created": {
       return <Message message="admin.audit.actions.episode_created" />;
     }
 
     case "episode_updated": {
       return <Message message="admin.audit.actions.episode_updated" />;
+    }
+
+    case "episode_deleted": {
+      return <Message message="admin.audit.actions.episode_deleted" />;
     }
 
     case "episode_translation_deleted": {
@@ -987,7 +1000,8 @@ const mfaActionName = (action: string) => {
 
 /** The name of an action the admin API records, or `null` for any other. */
 const actionName = (action: string) =>
-  catalogActionName(action) ??
+  seriesActionName(action) ??
+  episodeActionName(action) ??
   episodeReviewActionName(action) ??
   volumeActionName(action) ??
   taxonomyActionName(action) ??
