@@ -1,5 +1,10 @@
 import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+  RPC_ERROR_REASON,
+} from "@publira/api-client/errors";
 import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import type { Tenant } from "@publira/api-client/platform/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +14,7 @@ import {
   cancelPlatformTenantAdminInvitation,
   createPlatformTenantAdminInvitation,
   createPlatformTenant,
+  deletePlatformTenant,
   getPlatformTenant,
   listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
@@ -57,6 +63,7 @@ const {
   mockCacheTag,
   mockCreateTenant,
   mockCreateTenantAdminInvitation,
+  mockDeleteTenant,
   mockGetPlatformLocale,
   mockGetTenant,
   mockListTenantAdminInvitations,
@@ -81,6 +88,7 @@ const {
   mockCancelTenantAdminInvitation: vi.fn(),
   mockCreateTenant: vi.fn(),
   mockCreateTenantAdminInvitation: vi.fn(),
+  mockDeleteTenant: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListOperators: vi.fn(),
@@ -122,6 +130,7 @@ vi.mock("./api-client", () => ({
       cancelTenantAdminInvitation: mockCancelTenantAdminInvitation,
       createTenant: mockCreateTenant,
       createTenantAdminInvitation: mockCreateTenantAdminInvitation,
+      deleteTenant: mockDeleteTenant,
       getTenant: mockGetTenant,
       listTenantAdminInvitations: mockListTenantAdminInvitations,
       listTenantMembers: mockListTenantMembers,
@@ -725,6 +734,78 @@ describe("createPlatformTenant", () => {
       message: "No user was found with that email address.",
       ok: false,
     });
+  });
+});
+
+describe("deletePlatformTenant", () => {
+  it("sends the name exactly as it was typed", async () => {
+    mockDeleteTenant.mockResolvedValueOnce({});
+
+    await expect(
+      deletePlatformTenant(tenantId, " Blue Maple ", "en")
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockDeleteTenant).toHaveBeenCalledWith(
+      { name: " Blue Maple ", tenantId },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("says the name does not match when the server refuses the name", async () => {
+    mockDeleteTenant.mockRejectedValueOnce(
+      new ConnectError("name does not match", Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "name" }] },
+        },
+      ])
+    );
+
+    await expect(deletePlatformTenant(tenantId, "Blue", "en")).resolves.toEqual(
+      {
+        message:
+          "The name does not match the tenant's name. Type it exactly as it is shown.",
+        ok: false,
+      }
+    );
+  });
+
+  it("asks for the tenant to be suspended first when it is active", async () => {
+    mockDeleteTenant.mockRejectedValueOnce(
+      new ConnectError(
+        "tenant is not suspended",
+        Code.FailedPrecondition,
+        undefined,
+        [
+          {
+            desc: ErrorInfoSchema,
+            value: {
+              domain: "publira",
+              reason: RPC_ERROR_REASON.tenantNotSuspended,
+            },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      deletePlatformTenant(tenantId, "Blue Maple", "en")
+    ).resolves.toEqual({
+      message: "Only a suspended tenant can be deleted. Suspend it first.",
+      ok: false,
+    });
+  });
+
+  it("sends nothing without a session", async () => {
+    mockResolveSessionId.mockResolvedValueOnce(null);
+
+    await expect(
+      deletePlatformTenant(tenantId, "Blue Maple", "en")
+    ).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+    });
+    expect(mockDeleteTenant).not.toHaveBeenCalled();
   });
 });
 

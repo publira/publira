@@ -2,7 +2,7 @@ import type { Locale } from "@publira/i18n";
 
 import { getMessagesFor } from "./messages";
 
-export type TenantStatusTone = "destructive" | "info" | "success";
+export type TenantStatusTone = "destructive" | "info" | "muted" | "success";
 
 /**
  * Each label takes the `locale` and reads the catalog itself. The value has to
@@ -25,6 +25,10 @@ export const getTenantStatusLabel = async (
       return t("platform.common.tenant_status.suspended");
     }
 
+    case "deleting": {
+      return t("platform.common.tenant_status.deleting");
+    }
+
     default: {
       return status;
     }
@@ -39,6 +43,10 @@ export const getTenantStatusTone = (status: string): TenantStatusTone => {
 
     case "suspended": {
       return "destructive";
+    }
+
+    case "deleting": {
+      return "muted";
     }
 
     default: {

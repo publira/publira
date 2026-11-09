@@ -7997,7 +7997,8 @@
       "suspend": "停止する",
       "tenant_status": {
         "active": "稼働中",
-        "suspended": "停止中"
+        "suspended": "停止中",
+        "deleting": "削除中"
       },
       "try_later": "時間をおいて再試行してください。繰り返す場合は、エラーIDを添えて管理者に連絡してください。",
       "unset": "未設定"
@@ -8403,6 +8404,20 @@
       "resend_invite_precondition": "この招待は再送できない状態です。",
       "resend_invite_success": "招待メールを再送しました。",
       "resume": "再開する",
+      "delete": "テナントを削除",
+      "delete_title": "「{$name}」を削除しますか？",
+      "delete_description": "このテナントについてPubliraが保持しているものはすべて消去されます。シリーズ、エピソード、画像、読者とその購入やコイン、スタッフ、設定、テナント自身の監査ログが対象です。消去後、ホスト名はどのテナントのものでもなくなります。この操作は取り消せません。",
+      "delete_outside_note": "Publiraの外へは何も通知されません。読者がテナントの決済サービスやアプリストアで契約しているサブスクリプションは解約されず、返金も行われません。",
+      "delete_name_label": "確認のため、テナント名を入力してください",
+      "delete_action": "削除する",
+      "delete_pending": "削除中...",
+      "delete_requested": "テナントはまもなく削除されます。",
+      "delete_name_required": "テナント名を入力してください。",
+      "delete_name_mismatch": "テナント名と一致しません。表示されているとおりに入力してください。",
+      "delete_not_suspended": "削除できるのは停止中のテナントだけです。先に停止してください。",
+      "delete_failed": "テナントを削除できませんでした。時間をおいて再試行してください。",
+      "deleting_notice_title": "このテナントは削除中です",
+      "deleting_notice": "publira workerが消去を終えると、テナント一覧から消えます。それまで、このページでは何も変更できません。",
       "role_update_description": "{$name} ({$email}) のロールを更新します。",
       "role_updated": "ロールを更新しました。",
       "search_placeholder": "テナント名かIDで検索",

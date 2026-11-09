@@ -80,6 +80,14 @@ const platformWebPushSettingsSpecs = /platform\.webpush-settings\./u;
 const platformConfigurationStatusSpecs = /platform\.configuration-status\./u;
 
 /**
+ * The spec that deletes a tenant and waits for the worker to erase it. The
+ * erasure files a notification for every operator, which
+ * `platform.notifications.spec.ts` asserts the seeded Super admin does not
+ * have, so this one runs after the web-platform project rather than beside it.
+ */
+const platformTenantDeletionSpecs = /platform\.tenant-deletion\./u;
+
+/**
  * This spec changes its tenant's saved comment mode twice and waits for the
  * public cache to observe each value. It runs after the parallel projects so
  * their requests cannot keep the old mode live while that round trip runs.
@@ -384,6 +392,7 @@ const mainProjects: PlaywrightTestProject[] = [
       platformStorageSettingsSpecs,
       platformWebPushSettingsSpecs,
       platformConfigurationStatusSpecs,
+      platformTenantDeletionSpecs,
       platformSetupSpecs,
       platformMfaSignInSpecs,
       performanceSpecs,
@@ -606,6 +615,22 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_PLATFORM_BASE_URL,
     },
   },
+  // Deletes a tenant and waits up to minutes for the worker to erase it. It
+  // follows the platform chain, past the web-platform project whose inbox
+  // spec its notifications would break, and runs beside the rest of the
+  // exclusive chain, which `platform-mfa-sign-in` joins it back into before
+  // the platform starts requiring two-step verification of its operators.
+  {
+    dependencies: ["platform-configuration-status"],
+    fullyParallel: false,
+    name: "platform-tenant-deletion",
+    testMatch: [platformTenantDeletionSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
   // This round trip changes a tenant-wide setting and asks web-storefront to
   // read both values through its cache. It follows every parallel project so
   // concurrent requests cannot race either cache revalidation.
@@ -695,7 +720,7 @@ const exclusiveProjects: PlaywrightTestProject[] = [
   // it runs, so it follows the admin one rather than running beside a suite
   // that signs in to the Platform Console.
   {
-    dependencies: ["admin-mfa-sign-in"],
+    dependencies: ["admin-mfa-sign-in", "platform-tenant-deletion"],
     fullyParallel: false,
     name: "platform-mfa-sign-in",
     testMatch: [platformMfaSignInSpecs],

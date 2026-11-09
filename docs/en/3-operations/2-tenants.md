@@ -1,8 +1,8 @@
 ---
 title: Tenants
-description: Create a tenant, choose its domain, console host, and image host, change them later, and suspend a tenant.
+description: Create a tenant, choose its domain, console host, and image host, change them later, and suspend or delete a tenant.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-11-09
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -82,7 +82,7 @@ Once an administrator has signed in, the rest of the tenant's setup — its site
 
 ## Changing a tenant
 
-A tenant's name, domain, console host, and image host can be changed after it is created. Its languages and time zone belong to its administrators, who change them from the tenant console. A tenant cannot be deleted.
+A tenant's name, domain, console host, and image host can be changed after it is created. Its languages and time zone belong to its administrators, who change them from the tenant console.
 
 ### From the Platform Console
 
@@ -118,7 +118,7 @@ Moving the domain also moves everything built on it:
 
 ![The top of an active tenant's page: Back to list, View audit logs, and Suspend.](./tenants-suspend.png)
 
-![A suspended tenant's page: Resume in place of Suspend, and Suspended as its status under Profile.](./tenants-suspended.png)
+![A suspended tenant's page: Resume in place of Suspend, Delete tenant beside it, and Suspended as its status under Profile.](./tenants-suspended.png)
 
 ![The dashboard's tenant counts: Total tenants, Active tenants, Suspended tenants, and Pending users.](./tenants-dashboard-counts.png)
 
@@ -135,3 +135,35 @@ Suspension stops serving the tenant, and changes nothing else about it:
 - Its details, members, and invitations can still be changed from the Platform Console and `publiractl`, as [A tenant's staff](./3-tenant-staff.md) describes.
 
 Nothing about the tenant is deleted or changed by suspending it or resuming it, and resuming it serves it again at once, with nothing else to do.
+
+## Deleting a tenant
+
+A suspended tenant can be deleted, which erases everything the install keeps for it: its series, episodes, and images, its readers with their purchases and coins, its staff, its settings, and its own audit log. It cannot be undone, and only a **Super admin** can do it.
+
+An active tenant cannot be deleted, so suspend it first and leave it suspended for as long as you want its readers and staff to be refused before anything is erased. Once it is deleted it can no longer be resumed.
+
+Nothing outside the install is told. A subscription a reader holds with the tenant's payment provider or app store goes on renewing there, and nothing is refunded: a refund the publisher owes is theirs to make with that provider before the tenant is deleted.
+
+### From the Platform Console
+
+Open the suspended tenant from **Tenants**. **Delete tenant**, beside **Resume**, opens a dialog that says what is erased and asks for the tenant's name. Type it exactly as it is saved; the dialog's **Delete tenant** stays unavailable until the two match. An Operator or an Auditor is not shown the button.
+
+![The Delete tenant dialog: what is erased, that nothing outside Publira is told, the tenant's name typed under Type the tenant's name to confirm, Cancel, and Delete tenant.](./tenants-delete.png)
+
+From then on the tenant is shown as **Deleting** in the list and on its page, which says it is being deleted and lets nothing on it be changed: **Resume** and the **Save** buttons are unavailable.
+
+### From publiractl
+
+```bash
+publiractl tenant delete --tenant comics.example.com --name "Example Comics"
+```
+
+`--name` has to be the tenant's name exactly, which is how the command confirms which tenant it is deleting. `publiractl tenant show` prints the tenant as `deleting` until it is erased.
+
+### What happens next
+
+`publira worker` erases the tenant within a minute: its rows in every table, its objects in the bucket, its documents in the search engine's index, and the converted images and rate limit counters it left in Valkey, and then the tenant itself. Until then it is refused like a suspended tenant. Once it is erased its host names belong to no tenant, and can be taken out of DNS, the certificates, and the edge's routing, or given to another tenant.
+
+The tenant then leaves the list. The Platform Console keeps a list it has read for up to a minute, so a reload can still show the tenant as **Deleting** for that long. Every operator gets a notification titled "A tenant was deleted" under **Notifications**, and **Audit logs** keeps an entry of the request and one of the deletion, with the tenant's name, domain, and console host.
+
+A tenant that stays **Deleting** is one the worker could not finish erasing; [Other scheduled jobs](./10-scheduled-jobs.md#other-scheduled-jobs) says what happens then.

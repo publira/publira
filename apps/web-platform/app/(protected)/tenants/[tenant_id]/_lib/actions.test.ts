@@ -7,6 +7,7 @@ const {
   mockAssertSameOrigin,
   mockCancelPlatformTenantAdminInvitation,
   mockCreatePlatformTenantAdminInvitation,
+  mockDeletePlatformTenant,
   mockGetPlatformLocale,
   mockRemovePlatformTenantMember,
   mockResendPlatformTenantAdminInvitation,
@@ -21,6 +22,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockCancelPlatformTenantAdminInvitation: vi.fn(),
   mockCreatePlatformTenantAdminInvitation: vi.fn(),
+  mockDeletePlatformTenant: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockRemovePlatformTenantMember: vi.fn(),
   mockResendPlatformTenantAdminInvitation: vi.fn(),
@@ -50,6 +52,7 @@ vi.mock("#lib/tenants", () => ({
   addPlatformTenantMember: mockAddPlatformTenantMember,
   cancelPlatformTenantAdminInvitation: mockCancelPlatformTenantAdminInvitation,
   createPlatformTenantAdminInvitation: mockCreatePlatformTenantAdminInvitation,
+  deletePlatformTenant: mockDeletePlatformTenant,
   platformTenantCacheTag: (tenantId: string) => `platform:tenants:${tenantId}`,
   platformTenantsCacheTag: "platform:tenants",
   removePlatformTenantMember: mockRemovePlatformTenantMember,
@@ -111,6 +114,71 @@ describe("tenant detail actions", () => {
     ];
 
     expect(clearedTags()).toEqual([...expected, ...expected]);
+  });
+
+  it("deleting a tenant sends the name as it was typed and clears the tenants, the dashboard, and the audit log", async () => {
+    mockDeletePlatformTenant.mockResolvedValueOnce({ ok: true });
+
+    const { deleteTenantAction } = await import("./actions");
+
+    await expect(
+      deleteTenantAction(
+        null,
+        formData({
+          tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+          tenant_name_confirmation: " Blue Maple ",
+        })
+      )
+    ).resolves.toEqual({
+      message: "The tenant will be deleted shortly.",
+      ok: true,
+    });
+
+    expect(mockDeletePlatformTenant).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      " Blue Maple ",
+      "en"
+    );
+    expect(clearedTags()).toEqual([
+      "platform:tenants",
+      "platform:dashboard",
+      "platform:audit-logs",
+    ]);
+  });
+
+  it("deleting a tenant answers with the refusal the request met", async () => {
+    mockDeletePlatformTenant.mockResolvedValueOnce({
+      message: "The name does not match.",
+      ok: false,
+    });
+
+    const { deleteTenantAction } = await import("./actions");
+
+    await expect(
+      deleteTenantAction(
+        null,
+        formData({
+          tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+          tenant_name_confirmation: "Blue",
+        })
+      )
+    ).resolves.toEqual({ message: "The name does not match.", ok: false });
+  });
+
+  it("deleting a tenant with no name typed sends no request", async () => {
+    const { deleteTenantAction } = await import("./actions");
+
+    const result = await deleteTenantAction(
+      null,
+      formData({
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+        tenant_name_confirmation: "",
+      })
+    );
+
+    expect(result?.ok).toBe(false);
+    expect(mockDeletePlatformTenant).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
   it("renaming a tenant also clears the end users, whose rows name their tenant", async () => {

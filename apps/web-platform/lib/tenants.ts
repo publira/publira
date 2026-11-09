@@ -486,6 +486,62 @@ export const resumePlatformTenant = async (
   }
 };
 
+export type DeletePlatformTenantResult =
+  | { ok: true }
+  | { message: string; ok: false };
+
+/**
+ * Marks the suspended tenant for the worker to erase. `name` is what the
+ * operator typed to confirm it, sent as it was typed: the server compares it
+ * with the saved name exactly, so trimming it here would accept a name the
+ * operator did not type.
+ */
+export const deletePlatformTenant = async (
+  tenantId: string,
+  name: string,
+  locale: Locale
+): Promise<DeletePlatformTenantResult> => {
+  const {
+    locale: resolvedLocale,
+    sid,
+    t,
+  } = await loadTenantCopyAndSession(locale);
+
+  if (!sid) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.tenants.deleteTenant(
+      { name, tenantId },
+      buildSessionHeaders(sid)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    if (rpcErrorHasFieldViolation(error, "name")) {
+      return {
+        message: t("platform.tenants.delete_name_mismatch"),
+        ok: false,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(error, t("platform.tenants.delete_failed"), {
+        locale: resolvedLocale,
+        overrides: {
+          "not-found": t("platform.tenants.not_found"),
+          precondition: t("platform.tenants.delete_not_suspended"),
+        },
+      }),
+      ok: false,
+    };
+  }
+};
+
 /**
  * `already_exists` may name any of the three host fields. The server identifies
  * the rejected field with `google.rpc.BadRequest`, so this wording stays stable

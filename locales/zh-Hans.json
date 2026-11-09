@@ -7997,7 +7997,8 @@
       "suspend": "暂停",
       "tenant_status": {
         "active": "运行中",
-        "suspended": "已暂停"
+        "suspended": "已暂停",
+        "deleting": "正在删除"
       },
       "try_later": "请稍后再试。如果问题持续出现，请携带错误ID联系管理员。",
       "unset": "未设置"
@@ -8403,6 +8404,20 @@
       "resend_invite_precondition": "此邀请无法重新发送。",
       "resend_invite_success": "邀请邮件已重新发送。",
       "resume": "恢复",
+      "delete": "删除租户",
+      "delete_title": "要删除“{$name}”吗？",
+      "delete_description": "Publira为该租户保存的所有内容都将被清除：系列、章节、图片、读者及其购买记录和代币、工作人员、设置，以及租户自己的审计日志。之后它的主机名将不再属于任何租户。此操作无法撤销。",
+      "delete_outside_note": "不会通知Publira以外的任何一方：读者在该租户的支付服务或应用商店中的订阅不会被取消，也不会退款。",
+      "delete_name_label": "请输入租户名称以确认",
+      "delete_action": "删除",
+      "delete_pending": "正在删除…",
+      "delete_requested": "该租户即将被删除。",
+      "delete_name_required": "请输入租户名称。",
+      "delete_name_mismatch": "与租户名称不一致。请按显示的内容准确输入。",
+      "delete_not_suspended": "只能删除已暂停的租户。请先暂停它。",
+      "delete_failed": "无法删除租户。请稍后再试。",
+      "deleting_notice_title": "该租户正在删除",
+      "deleting_notice": "publira worker清除完成后，它将从租户列表中消失。在此之前，此页面上的任何内容都无法更改。",
       "role_update_description": "更新{$name}（{$email}）的角色。",
       "role_updated": "角色已更新。",
       "search_placeholder": "按租户名称或ID搜索",

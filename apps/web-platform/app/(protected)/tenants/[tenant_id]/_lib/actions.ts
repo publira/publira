@@ -23,6 +23,7 @@ import {
   addPlatformTenantMember,
   cancelPlatformTenantAdminInvitation,
   createPlatformTenantAdminInvitation,
+  deletePlatformTenant,
   platformTenantCacheTag,
   platformTenantsCacheTag,
   removePlatformTenantMember,
@@ -81,6 +82,24 @@ const updateTenantDomainFormSchema = async (locale: Locale) => {
     adminDomain: optionalTrimmedString(),
     domain: requiredTrimmedString(t("platform.tenants.domain_required")),
     imageDomain: optionalTrimmedString(),
+    tenantId,
+  });
+};
+
+/**
+ * The name is checked for presence and nothing else: the server compares it
+ * with the tenant's saved name exactly, so it is sent untrimmed.
+ */
+const deleteTenantFormSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  const nameRequired = t("platform.tenants.delete_name_required");
+
+  return z.object({
+    name: z.string({ error: nameRequired }).min(1, nameRequired),
     tenantId,
   });
 };
@@ -188,6 +207,44 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
   updateTag(platformTenantsCacheTag);
   updateTag(platformDashboardCacheTag);
   updateTag(platformAuditLogsCacheTag);
+};
+
+export const deleteTenantAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getPlatformLocale();
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    deleteTenantFormSchema(locale),
+  ]);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      name: { kind: "value", name: "tenant_name_confirmation" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    deletePlatformTenant(parsed.data.tenantId, parsed.data.name, locale)
+  );
+
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return { message: t("platform.tenants.delete_requested"), ok: true };
 };
 
 export const updateTenantNameAction = async (
