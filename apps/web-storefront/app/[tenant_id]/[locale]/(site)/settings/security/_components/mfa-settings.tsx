@@ -198,7 +198,12 @@ const MfaEnrollmentSecret = () => {
           {t("storefront.settings.mfa_secret_label")}
         </p>
         <Identifier.Root>
-          <code className="font-mono text-sm break-all">
+          {/*
+            The padding, taken back by the margin, keeps the last glyph inside
+            the element's box, which is what the documentation's screenshots
+            cover the key with.
+          */}
+          <code className="-mx-1 px-1 font-mono text-sm break-all">
             {enrollment.secret}
           </code>
           <Identifier.Copy

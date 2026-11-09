@@ -88,11 +88,11 @@ test.describe("web-storefront two-step verification documentation screenshots", 
         .getByRole("button", { name: t("storefront.settings.mfa_confirm") })
         .click();
 
-      const recoveryCodes = section
-        .getByRole("list", {
-          name: t("storefront.settings.mfa_recovery_codes_title"),
-        })
-        .getByRole("code");
+      const recoveryCodeList = section.getByRole("list", {
+        name: t("storefront.settings.mfa_recovery_codes_title"),
+      });
+
+      const recoveryCodes = recoveryCodeList.getByRole("code");
 
       await expect(recoveryCodes).toHaveCount(10);
       // The codes arrive with the submission's answer, ahead of the section
@@ -109,8 +109,10 @@ test.describe("web-storefront two-step verification documentation screenshots", 
         element: section,
         locale,
         // The day it was turned on is the day the shot is taken.
+        // The list is covered whole rather than code by code: a glyph of a
+        // code can reach past its own box, and the codes differ every run.
         mask: [
-          recoveryCodes,
+          recoveryCodeList,
           section.getByText(
             docsTextPattern(locale, "storefront.settings.mfa_status_enabled")
           ),
