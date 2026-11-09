@@ -364,6 +364,11 @@ const SeriesEpisodesPage = ({
           keyName="reorder_error"
           message="admin.series.episodes.reorder_error"
         />
+        <FlashToast
+          keyName="deleted"
+          message="admin.series.episodes.delete.deleted"
+          valueParams={{ title: "deleted_title" }}
+        />
         {/*
           A failed read hands back an empty `episodes`, so the empty state
           has to stay behind `result.ok`. Otherwise the screen says the list

@@ -19,18 +19,35 @@ interface FlashToastProps {
   keyName?: string;
   message?: AdminClientMessageKey;
   title?: string;
+  /**
+   * The query parameter each placeholder of `message` is filled from, which
+   * leaves the URL with the flag. A screen redirected to once a record is gone
+   * names the record this way, since nothing is left to read its name from.
+   */
+  valueParams?: Readonly<Record<string, string>>;
 }
+
+const noValueParams: Readonly<Record<string, string>> = {};
 
 const FlashToastEffect = ({
   keyName = "created",
   message,
   title,
+  valueParams = noValueParams,
 }: FlashToastProps) => {
   const t = useClientMessages();
-  const resolvedTitle = title ?? (message ? t(message) : "");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const values = Object.fromEntries(
+    Object.entries(valueParams).map(([placeholder, param]) => [
+      placeholder,
+      searchParams.get(param) ?? "",
+    ])
+  );
+
+  const resolvedTitle = title ?? (message ? t(message, values) : "");
   const { add } = Toast.useManager();
   const firedRef = useRef(false);
 
@@ -39,6 +56,11 @@ const FlashToastEffect = ({
     startTransition(() => {
       const next = new URLSearchParams(searchParams.toString());
       next.delete(keyName);
+
+      for (const param of Object.values(valueParams)) {
+        next.delete(param);
+      }
+
       const nextQuery = next.toString();
       // This lands a round trip after the reader may have scrolled on, even
       // mid-drag, so it must not send the page back to the top.

@@ -18,6 +18,7 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorReason } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -47,6 +48,7 @@ import {
   mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import type { PurchaseAvailabilityOverride } from "./purchase-availability";
 import {
   READING_DIRECTION_ENUM,
@@ -206,6 +208,16 @@ export type DeleteEpisodeImageResult =
 export type ReplaceEpisodeImageResult =
   | { ok: true; images: EpisodeImageItem[] }
   | { ok: false; message: string };
+
+/**
+ * The console list that holds what keeps an episode from being deleted, for a
+ * refusal whose reference lives in one.
+ */
+export type EpisodeDeletionReference = "access_tickets" | "purchases";
+
+export type DeleteEpisodeResult =
+  | { ok: true }
+  | { ok: false; message: string; reference?: EpisodeDeletionReference };
 
 export type UpdateEpisodeTitleResult =
   | { ok: true; episode: EpisodeItem }
@@ -1811,6 +1823,117 @@ export const deleteEpisodeImage = async (
         error,
         t("admin.series.episodes.image_delete.failed"),
         locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * What `DeleteEpisode` refuses an episode for, in the order the API checks
+ * them, with the sentence each is worded in and the list that holds it. A
+ * purchase made in a store or paid with coins is a purchase as well, and
+ * **Purchases** lists it.
+ */
+const EPISODE_DELETION_REFUSALS: readonly {
+  message: AdminMessageKey;
+  reason: RpcErrorReason;
+  reference?: EpisodeDeletionReference;
+}[] = [
+  {
+    message: "admin.series.episodes.delete.refused.purchased",
+    reason: RPC_ERROR_REASON.episodePurchased,
+    reference: "purchases",
+  },
+  {
+    message: "admin.series.episodes.delete.refused.store_purchased",
+    reason: RPC_ERROR_REASON.episodeStorePurchased,
+    reference: "purchases",
+  },
+  {
+    message: "admin.series.episodes.delete.refused.payment_pending",
+    reason: RPC_ERROR_REASON.episodePaymentPending,
+  },
+  {
+    message: "admin.series.episodes.delete.refused.access_ticket_issued",
+    reason: RPC_ERROR_REASON.episodeAccessTicketIssued,
+    reference: "access_tickets",
+  },
+  {
+    message: "admin.series.episodes.delete.refused.on_royalty_statement",
+    reason: RPC_ERROR_REASON.episodeOnRoyaltyStatement,
+  },
+  {
+    message: "admin.series.episodes.delete.refused.paid_with_coins",
+    reason: RPC_ERROR_REASON.episodePaidWithCoins,
+    reference: "purchases",
+  },
+  {
+    message: "admin.series.episodes.delete.refused.promotion_code_redeemed",
+    reason: RPC_ERROR_REASON.episodePromotionCodeRedeemed,
+  },
+  {
+    message: "admin.series.episodes.delete.refused.in_published_volume",
+    reason: RPC_ERROR_REASON.episodeInPublishedVolume,
+  },
+];
+
+/**
+ * Deletes an episode nothing that has to be kept refers to. A refusal names
+ * what refers to it from the ErrorInfo reason rather than the server's English
+ * message, and one with no reason this console knows is still worded as a
+ * refusal rather than a failure.
+ */
+export const deleteEpisode = async (
+  input: { tenantId: string; episodeId: string },
+  locale: Locale
+): Promise<DeleteEpisodeResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.series.deleteEpisode(
+      {
+        episodeId: input.episodeId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = EPISODE_DELETION_REFUSALS.find(({ reason }) =>
+      rpcErrorHasReason(error, reason)
+    );
+
+    if (refusal) {
+      return {
+        message: t(refusal.message),
+        ok: false,
+        reference: refusal.reference,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.series.episodes.delete.failed"),
+        {
+          locale,
+          overrides: {
+            "not-found": t("admin.series.episodes.delete.not_found"),
+            precondition: t("admin.series.episodes.delete.refused.referenced"),
+          },
+        }
       ),
       ok: false,
     };

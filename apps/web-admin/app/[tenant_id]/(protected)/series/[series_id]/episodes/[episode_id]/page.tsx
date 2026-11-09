@@ -63,6 +63,7 @@ import {
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCampaignPricesSection } from "./_components/episode-campaign-prices-section";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
+import { EpisodeDeleteDialog } from "./_components/episode-delete-dialog";
 import { EpisodeEyeCatchForm } from "./_components/episode-eye-catch-form";
 import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
@@ -82,6 +83,7 @@ import {
   createEpisodeCampaignPriceAction,
   createEpisodeFreeWindowAction,
   decideEpisodeReviewAction,
+  deleteEpisodeAction,
   deleteEpisodeCampaignPriceAction,
   deleteEpisodeFreeWindowAction,
   deleteEpisodeTranslationAction,
@@ -1078,6 +1080,70 @@ const EpisodeEyeCatchSection = async ({ params }: EditEpisodeSectionProps) => {
   );
 };
 
+/**
+ * Deleting the episode, for a Tenant admin alone: the API refuses anyone else.
+ * The dialog asks for the title the episode is saved under, and the series'
+ * internal id clears the volumes that held it.
+ */
+const EpisodeDeleteSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+
+  const [episodeResult, seriesResult] = await Promise.all([
+    loadEpisode(context),
+    getSeries({ publicId: context.seriesId }),
+  ]);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.delete.error" />}
+      />
+    );
+  }
+
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+
+    return (
+      <EpisodeSectionError
+        message={seriesResult.message}
+        title={<Message message="admin.series.episodes.delete.error" />}
+      />
+    );
+  }
+
+  return (
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
+            <Message message="admin.series.episodes.delete.title" />
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
+            <Message message="admin.series.episodes.delete.description" />
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
+          <EpisodeDeleteDialog
+            action={deleteEpisodeAction}
+            episodeId={episodeResult.episode.id}
+            episodePublicId={context.episodeId}
+            // A rename remounts the dialog with the title it now has to match.
+            key={`${context.episodeId}:delete:${episodeResult.episode.title}`}
+            seriesId={seriesResult.series.id}
+            seriesPublicId={context.seriesId}
+            tenantId={context.tenantId}
+            title={episodeResult.episode.title}
+          />
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
+    </ConsoleSection.Root>
+  );
+};
+
 /** The sections below, while the tab and the operator's role are read. */
 const EditEpisodeSectionsSkeleton = () => (
   <div className="grid gap-6">
@@ -1187,6 +1253,12 @@ const EditEpisodeTabContent = async ({
           <EpisodePreviewSection params={params} />
         </Suspense>
       </ConsoleSection.Root>
+
+      <TenantAdminOnly>
+        <Suspense fallback={<Skeleton className="h-24" />}>
+          <EpisodeDeleteSection params={params} />
+        </Suspense>
+      </TenantAdminOnly>
     </>
   );
 };
