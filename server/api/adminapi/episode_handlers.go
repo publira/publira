@@ -1036,6 +1036,7 @@ func (s *adminServer) ReorderEpisodeImages(
 	}); err != nil {
 		return nil, err
 	}
+	s.recordEpisodeUpdated(ctx, tenant.ID, episode.PublicID)
 
 	updatedRows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {

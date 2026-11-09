@@ -80,6 +80,10 @@ func TestDBACatalogWriteKeyPutsAnEpisodeInUnderItsName(t *testing.T) {
 			t.Fatalf("a page answered to a key carries a query: %q", image.ImageUrl)
 		}
 	}
+	keyUpdates := func() int {
+		return env.countRows(t, `SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_api_key_id = $2 AND action = 'episode_updated'`, admin.Tenant.ID, writer.ApiKey.Id)
+	}
+	updatesBeforeReorder := keyUpdates()
 	reordered, err := series.ReorderEpisodeImages(withKey(writer.Key), &publiraadminv1.ReorderEpisodeImagesRequest{
 		Tenant:    tenant,
 		EpisodeId: episodeID,
@@ -91,51 +95,59 @@ func TestDBACatalogWriteKeyPutsAnEpisodeInUnderItsName(t *testing.T) {
 	if reordered.Images[0].Id != uploaded.Images[1].Id {
 		t.Fatalf("first page after the reorder = %s, want %s", reordered.Images[0].Id, uploaded.Images[1].Id)
 	}
+	// The order is what a reader turns the pages in, so it is recorded too.
+	if got := keyUpdates() - updatesBeforeReorder; got != 1 {
+		t.Fatalf("episode_updated entries the reorder filed under the key = %d, want 1", got)
+	}
 
 	// The rest of what the scope admits, each answered rather than refused.
-	for name, write := range map[string]func(context.Context) error{
-		"UpdateSeries": func(ctx context.Context) error {
+	// In order: an episode takes its aspect variants only once it has an eye-catch.
+	for _, w := range []struct {
+		name  string
+		write func(context.Context) error
+	}{
+		{"UpdateSeries", func(ctx context.Context) error {
 			_, err := series.UpdateSeries(ctx, &publiraadminv1.UpdateSeriesRequest{Tenant: tenant, SeriesId: createdSeries.Series.Id, Title: "Renamed by the editorial system"})
 			return err
-		},
-		"UpdateEpisodeTitle": func(ctx context.Context) error {
+		}},
+		{"UpdateEpisodeTitle", func(ctx context.Context) error {
 			_, err := series.UpdateEpisodeTitle(ctx, &publiraadminv1.UpdateEpisodeTitleRequest{Tenant: tenant, EpisodeId: episodeID, Title: "Episode 1, renamed"})
 			return err
-		},
-		"UpdateEpisodePricing": func(ctx context.Context) error {
+		}},
+		{"UpdateEpisodePricing", func(ctx context.Context) error {
 			_, err := series.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{Tenant: tenant, EpisodeId: episodeID})
 			return err
-		},
-		"UpdateEpisodeLayout": func(ctx context.Context) error {
+		}},
+		{"UpdateEpisodeLayout", func(ctx context.Context) error {
 			_, err := series.UpdateEpisodeLayout(ctx, &publiraadminv1.UpdateEpisodeLayoutRequest{Tenant: tenant, EpisodeId: episodeID, ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT})
 			return err
-		},
-		"ReplaceEpisodeCredits": func(ctx context.Context) error {
+		}},
+		{"ReplaceEpisodeCredits", func(ctx context.Context) error {
 			_, err := series.ReplaceEpisodeCredits(ctx, &publiraadminv1.ReplaceEpisodeCreditsRequest{Tenant: tenant, EpisodeId: episodeID})
 			return err
-		},
-		"UploadSeriesEyeCatchAspectImage": func(ctx context.Context) error {
+		}},
+		{"UploadSeriesEyeCatchAspectImage", func(ctx context.Context) error {
 			_, err := series.UploadSeriesEyeCatchAspectImage(ctx, &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{Tenant: tenant, SeriesId: createdSeries.Series.Id, VariantType: "landscape", ImageData: aspectJPEG(t, 1600, 900), ImageContentType: "image/jpeg"})
 			return err
-		},
-		"UploadEpisodeEyeCatchImage": func(ctx context.Context) error {
+		}},
+		{"UploadEpisodeEyeCatchImage", func(ctx context.Context) error {
 			_, err := series.UploadEpisodeEyeCatchImage(ctx, &publiraadminv1.UploadEpisodeEyeCatchImageRequest{Tenant: tenant, EpisodeId: episodeID, ImageData: aspectJPEG(t, 2400, 3200), ImageContentType: "image/jpeg"})
 			return err
-		},
-		"UploadEpisodeEyeCatchAspectImage": func(ctx context.Context) error {
+		}},
+		{"UploadEpisodeEyeCatchAspectImage", func(ctx context.Context) error {
 			_, err := series.UploadEpisodeEyeCatchAspectImage(ctx, &publiraadminv1.UploadEpisodeEyeCatchAspectImageRequest{Tenant: tenant, EpisodeId: episodeID, VariantType: "landscape", ImageData: aspectJPEG(t, 1600, 900), ImageContentType: "image/jpeg"})
 			return err
-		},
-		"ReplaceEpisodeImage": func(ctx context.Context) error {
+		}},
+		{"ReplaceEpisodeImage", func(ctx context.Context) error {
 			_, err := series.ReplaceEpisodeImage(ctx, &publiraadminv1.ReplaceEpisodeImageRequest{Tenant: tenant, EpisodeId: episodeID, ImageId: reordered.Images[1].Id, Filename: "003.png", ContentType: "image/png", Data: oneByOnePNG})
 			return err
-		},
+		}},
 	} {
-		if code := connect.CodeOf(write(withKey(reader.Key))); code != connect.CodePermissionDenied {
-			t.Errorf("%s with a catalog:read key = %v, want %v", name, code, connect.CodePermissionDenied)
+		if code := connect.CodeOf(w.write(withKey(reader.Key))); code != connect.CodePermissionDenied {
+			t.Errorf("%s with a catalog:read key = %v, want %v", w.name, code, connect.CodePermissionDenied)
 		}
-		if err := write(withKey(writer.Key)); err != nil {
-			t.Errorf("%s with a catalog:write key: %v", name, err)
+		if err := w.write(withKey(writer.Key)); err != nil {
+			t.Errorf("%s with a catalog:write key: %v", w.name, err)
 		}
 	}
 	remaining, err := series.DeleteEpisodeImage(withKey(writer.Key), &publiraadminv1.DeleteEpisodeImageRequest{Tenant: tenant, EpisodeId: episodeID, ImageId: reordered.Images[0].Id})
