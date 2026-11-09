@@ -7997,7 +7997,8 @@
       "suspend": "Suspend",
       "tenant_status": {
         "active": "Active",
-        "suspended": "Suspended"
+        "suspended": "Suspended",
+        "deleting": "Deleting"
       },
       "try_later": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
       "unset": "Not set"
@@ -8403,6 +8404,20 @@
       "resend_invite_precondition": "This invitation cannot be resent.",
       "resend_invite_success": "Invitation email resent.",
       "resume": "Resume",
+      "delete": "Delete tenant",
+      "delete_title": "Delete {$name}?",
+      "delete_description": "Everything Publira keeps for this tenant is erased: its series, episodes, and images, its readers with their purchases and coins, its staff, its settings, and its own audit log. Its host names then belong to no tenant. This cannot be undone.",
+      "delete_outside_note": "Nothing outside Publira is told: subscriptions readers hold with the tenant's payment providers or app stores are not cancelled, and nothing is refunded.",
+      "delete_name_label": "Type the tenant's name to confirm",
+      "delete_action": "Delete tenant",
+      "delete_pending": "Deleting...",
+      "delete_requested": "The tenant will be deleted shortly.",
+      "delete_name_required": "Type the tenant's name.",
+      "delete_name_mismatch": "The name does not match the tenant's name. Type it exactly as it is shown.",
+      "delete_not_suspended": "Only a suspended tenant can be deleted. Suspend it first.",
+      "delete_failed": "Could not delete the tenant. Please try again later.",
+      "deleting_notice_title": "This tenant is being deleted",
+      "deleting_notice": "It leaves the tenant list once publira worker has erased it. Nothing on this page can be changed in the meantime.",
       "role_update_description": "Update the role for {$name} ({$email}).",
       "role_updated": "Role updated.",
       "search_placeholder": "Search by tenant name or ID",

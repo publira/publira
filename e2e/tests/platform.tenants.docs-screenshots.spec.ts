@@ -5,6 +5,7 @@ import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
 import {
   DOCS_LOCALES,
+  docsLabelPattern,
   docsScreen,
   docsScreenHeader,
   docsSection,
@@ -29,7 +30,8 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
  * The tenants, staff, readers, and invitations photographed here are written
  * by `db/seeds/scenarios/470_docs_platform.sql`, with fixed dates, on two
  * tenants of their own: the tenant console's screenshots photograph the seed
- * tenant's readers and staff. Nothing is filled in or saved.
+ * tenant's readers and staff. Nothing is saved: the dialog that deletes a
+ * tenant is photographed with the tenant's name typed and left unconfirmed.
  */
 test.use({ baseURL: WEB_PLATFORM_BASE_URL });
 
@@ -115,6 +117,47 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: "operations/tenants",
           subject: "suspended",
+        });
+      });
+
+      test("the dialog that deletes a suspended tenant, with its name typed", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/tenants/${DOCS_PLATFORM_SUSPENDED_TENANT.publicId}`
+        );
+        await page
+          .getByRole("button", {
+            exact: true,
+            name: t("platform.tenants.delete"),
+          })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+        await dialog
+          .getByRole("textbox", {
+            name: docsLabelPattern(
+              locale,
+              "platform.tenants.delete_name_label"
+            ),
+          })
+          .fill(DOCS_PLATFORM_SUSPENDED_TENANT.name);
+        await expect(
+          dialog.getByRole("button", {
+            exact: true,
+            name: t("platform.tenants.delete_action"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "operations/tenants",
+          subject: "delete",
         });
       });
 

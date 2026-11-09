@@ -19,6 +19,12 @@ describe("getTenantStatusLabel", () => {
     );
   });
 
+  it("returns the deleting label for deleting", async () => {
+    await expect(getTenantStatusLabel("deleting", en)).resolves.toBe(
+      "Deleting"
+    );
+  });
+
   it("returns unknown values unchanged", async () => {
     await expect(getTenantStatusLabel("unknown_status", en)).resolves.toBe(
       "unknown_status"
@@ -39,6 +45,10 @@ describe("getTenantStatusTone", () => {
 
   it("suspended → destructive", () => {
     expect(getTenantStatusTone("suspended")).toBe("destructive");
+  });
+
+  it("deleting → muted", () => {
+    expect(getTenantStatusTone("deleting")).toBe("muted");
   });
 
   it("returns info for unknown values", () => {

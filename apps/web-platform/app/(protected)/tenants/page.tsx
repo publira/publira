@@ -43,8 +43,12 @@ const TenantStatusCell = async ({
   status: string;
 }) => await getTenantStatusLabel(status, locale);
 
-/** The statuses the `tenants.status` check constraint allows. */
-const statusFilterValues = ["active", "suspended"] as const;
+/**
+ * The statuses `ListTenants` answers and filters by: the two the
+ * `tenants.status` check constraint allows, and `deleting`, which the API
+ * reports for a suspended tenant an operator asked to delete.
+ */
+const statusFilterValues = ["active", "suspended", "deleting"] as const;
 const allowedStatusValues = new Set<string>(statusFilterValues);
 const pageSize = 20;
 
