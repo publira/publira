@@ -2,6 +2,7 @@
 title: 租戶
 description: 建立租戶、選擇它的網域、主控台主機與圖片主機、之後變更它們，以及暫停或刪除租戶。
 published: 2026-11-03
+updated: 2026-11-09
 source_updated: 2026-11-09
 ---
 

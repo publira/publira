@@ -2,6 +2,7 @@
 title: 租户
 description: 创建租户，选择它的域名、控制台主机和图片主机，之后更改它们，以及暂停或删除租户。
 published: 2026-11-03
+updated: 2026-11-09
 source_updated: 2026-11-09
 ---
 
