@@ -26,7 +26,7 @@ catalog:
   "@publira/comic-viewer": 1.0.0
   "@publira/next-cache-handlers": 1.1.1
   "@simplewebauthn/browser": 14.0.0
-  "@tailwindcss/postcss": 4.3.4
+  "@tailwindcss/postcss": 4.3.5
   "@testing-library/dom": 10.4.2
   "@testing-library/react": 16.3.3
   "@types/node": 26.6.6
@@ -40,7 +40,7 @@ catalog:
   oxlint: 1.92.0
   react: 19.3.1
   react-dom: 19.3.1
-  tailwindcss: 4.3.4
+  tailwindcss: 4.3.5
   temporal-polyfill: 1.0.8
   tsdown: 0.23.7
   typescript: 7.0.2
