@@ -160,7 +160,9 @@ For test cards, `4242 4242 4242 4242` with any future date and any three-digit C
 
 ### Adding a payment provider
 
-GMO Payment Gateway, SB Payment Service, Sony Payment Services, and Veritrans give their specifications and test environments to merchants under contract only, so such a provider comes from a contributor who holds one. Its tests run from notifications recorded in its sandbox, so it stays tested in CI without one.
+A provider whose specification and sandbox are public, such as PayPay or Paidy, is contributed to this repository through the steps below. GMO Payment Gateway, SB Payment Service, Sony Payment Services, and Veritrans give their specifications and test environments to merchants under contract only, and a provider of theirs is not contributed here: nobody without a contract can read what its code is written against, so nobody here could review it or keep it working when the provider changes. The operator who holds the contract implements it in their own fork of this repository, as the Apache License 2.0 permits, and runs it from there.
+
+The steps are written for that fork as much as for this repository. A fork registers its provider and records its fixture in the same way, and the notifications recorded in the provider's sandbox are what hold the provider to the same contract as Stripe and PAY.JP in the fork's own CI.
 
 ```text
 internal/paymentprovider/
@@ -186,7 +188,7 @@ internal/paymentprovider/
 5. **Add its console copy.** The payment settings page of `web-admin` lists the provider under its `DisplayName` and labels each field with `admin.settings.payment.fields.<id>.<field>`, a key every catalog in `locales/` carries and `PaymentCredentialName` in `apps/web-admin/app/[tenant_id]/(protected)/integrations/payment/_components/tenant-payment-settings-form.tsx` renders. A field with no key shows the name it is declared under.
 6. **Document its setup** in a section beside [Stripe](#stripe): what a tenant registers with the provider, and how to reach the sandbox from local development.
 
-The settings store, the admin RPCs, the console form, the webhook route, and the proxy routes are generic over the declaration, so nothing else changes.
+The settings store, the admin RPCs, the console form, the webhook route, and the proxy routes are generic over the declaration, so nothing else changes, in this repository or in a fork.
 
 ## Subscription plans
 
