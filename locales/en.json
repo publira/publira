@@ -447,6 +447,7 @@
         "all": "All",
         "series_created": "Series created",
         "series_updated": "Series updated",
+        "series_deleted": "Series deleted",
         "series_translation_deleted": "Series translation deleted",
         "episode_created": "Episode created",
         "creator_created": "Author created",

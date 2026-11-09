@@ -238,6 +238,44 @@ message UpdateSeriesResponse {
   repeated SeriesTranslation translations = 7;
 }
 
+// Deletes a series that holds nothing and that nothing refers to: one made by
+// mistake, or emptied of its episodes with DeleteEpisode. Its translations,
+// credits, genres and tags, listing, cover images, wait-free and free-after
+// settings, follows and the follower counts and changes kept from them, its
+// readers' wait-free tickets and daily activity, and the content events
+// recorded on it go with it, and so do the bundle checkouts started on it,
+// none of which anyone paid for once no episode is left, and the promotion
+// codes for it that were deleted before anyone redeemed them. It leaves the
+// site, the app, the sitemap, and the search index, the labels and Authors it
+// was published through are indexed again without it, and its images are
+// reclaimed by the orphan image sweep.
+//
+// The daily figures already rebuilt from its content events stay, as every
+// past day's do, and so do the ranking snapshots already cut, which every
+// read joins to the series and so no longer answers. The audit log keeps the
+// series' public id and title.
+//
+// A series something refers to is failed_precondition with an ErrorInfo
+// reason naming the first of these, in this order:
+//
+//   - SERIES_HAS_EPISODES: an episode, whatever its state. Delete each one
+//     with DeleteEpisode first.
+//   - SERIES_HAS_VOLUMES: a volume, which cannot be deleted.
+//   - SERIES_IN_SUBSCRIPTION_PLAN: a subscription plan whose scope names it.
+//   - SERIES_IN_PROMOTION_CODE: a promotion code for it that has not been
+//     deleted, or that someone redeemed.
+//
+// Nothing is deleted with the refusal: take the series off the site instead,
+// by clearing its publication date.
+// A series that does not exist, a second request for one deleted already
+// included, is not_found.
+message DeleteSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+}
+
+message DeleteSeriesResponse {}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListSeriesRequest {
   // Removed with the move to cursor pagination.
@@ -1460,6 +1498,8 @@ service AdminSeriesService {
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteSeries(DeleteSeriesRequest) returns (DeleteSeriesResponse) {}
   // Minimum role: tenant_auditor.
   rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
   // Minimum role: tenant_auditor.

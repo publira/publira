@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_reader_daily_activity_tenant_series_id;

@@ -127,6 +127,13 @@ const (
 	// ReasonReaderIsTenantStaff refuses rating an episode to a reader whose
 	// account holds a staff role in the tenant.
 	ReasonReaderIsTenantStaff = "READER_IS_TENANT_STAFF"
+	// The refusals of deleting a series something refers to, one per kind of
+	// reference: an episode, a volume, a subscription plan whose scope names
+	// it, and a promotion code for it that is live or that someone used.
+	ReasonSeriesHasEpisodes        = "SERIES_HAS_EPISODES"
+	ReasonSeriesHasVolumes         = "SERIES_HAS_VOLUMES"
+	ReasonSeriesInSubscriptionPlan = "SERIES_IN_SUBSCRIPTION_PLAN"
+	ReasonSeriesInPromotionCode    = "SERIES_IN_PROMOTION_CODE"
 	// ReasonSignUpClosed refuses a request that would create a reader account
 	// while the tenant does not accept new readers.
 	ReasonSignUpClosed           = "SIGN_UP_CLOSED"

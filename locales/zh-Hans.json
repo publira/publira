@@ -447,6 +447,7 @@
         "all": "全部",
         "series_created": "创建了系列",
         "series_updated": "更新了系列",
+        "series_deleted": "删除了系列",
         "series_translation_deleted": "删除了系列翻译",
         "episode_created": "创建了章节",
         "creator_created": "创建了作者",

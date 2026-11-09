@@ -447,6 +447,7 @@
         "all": "すべて",
         "series_created": "シリーズ作成",
         "series_updated": "シリーズ更新",
+        "series_deleted": "シリーズ削除",
         "series_translation_deleted": "シリーズの翻訳の削除",
         "episode_created": "エピソード作成",
         "creator_created": "著者作成",
