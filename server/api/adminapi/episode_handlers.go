@@ -1395,13 +1395,19 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 }
 
 // saveEpisodePublishSchedule saves scheduledAt on an episode without publishing
-// it, and answers whether the save took a published episode off the site.
+// it, and answers whether the save took a published episode off the site. The
+// listing is locked first, so a publication the job commits while the save
+// waits is one the save sees and reports taking back.
 func (s *adminServer) saveEpisodePublishSchedule(
 	txCtx context.Context,
 	tenantID uuid.UUID,
 	episodeID uuid.UUID,
 	scheduledAt sql.NullTime,
 ) (dbmodels.UpdateEpisodePublishScheduleByIDForTenantRow, error) {
+	var saved dbmodels.UpdateEpisodePublishScheduleByIDForTenantRow
+	if err := s.queriesFor(txCtx).LockEpisodeListingForScheduleSave(txCtx, dbmodels.LockEpisodeListingForScheduleSaveParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
+		return saved, s.internalDBError(txCtx, "failed to lock the episode listing for the schedule save", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
+	}
 	saved, err := s.queriesFor(txCtx).UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenantID, ID: episodeID, ScheduledAt: scheduledAt})
 	if errors.Is(err, sql.ErrNoRows) {
 		return saved, connect.NewError(connect.CodeNotFound, "episode not found")

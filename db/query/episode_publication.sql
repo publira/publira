@@ -61,6 +61,19 @@ WHERE episode_id = $1
     AND scheduled_at <= NOW()
     AND episode_review_cleared(tenant_id, review_approved_at);
 
+-- name: LockEpisodeListingForScheduleSave :exec
+-- Locks the listing a save of its publish schedule is about to replace, in the
+-- save's transaction and ahead of it. A publication the job has written but not
+-- committed holds the save here until it commits, so the save's own statement
+-- then reads the listing as published and reports taking that publication back.
+-- Without the lock the statement would wait inside itself and still read the
+-- listing it started on, which was not published yet.
+SELECT 1
+FROM episode_listings
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id')
+FOR UPDATE;
+
 -- name: UpdateEpisodePublishScheduleByIDForTenant :one
 -- Taking the episode off the site settles what it owed: no reader can open it,
 -- and the publication that puts it back owes its own announcement if its
@@ -72,8 +85,9 @@ WHERE episode_id = $1
 -- withdraws_publication answers whether the episode was published, so that
 -- this save takes it off the site, and withdrawn_published_at is the instant
 -- of the publication it takes back. The old row is read through the
--- self-join, which sees it as it was before this statement. An id naming no
--- episode answers no row.
+-- self-join, which sees it as it was when this statement started, so the
+-- caller locks the listing first with LockEpisodeListingForScheduleSave. An id
+-- naming no episode answers no row.
 UPDATE episode_listings el
 SET status = CASE
         WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN 'draft'

@@ -887,6 +887,9 @@ func (s *adminServer) UpdateSeries(
 	// off the site with it. The publication it ends is named by when it was
 	// applied, which differs each time the series is made public even with the
 	// same instant, or by its instant while nothing has applied it yet.
+	// UpdateSeriesBase above already holds the series row, so the statement
+	// read the row it replaced rather than one a concurrent save had moved on
+	// from.
 	if publication.WithdrawsPublication {
 		ended := publication.WithdrawnPublishedAt.Time
 		if publication.WithdrawnPublicationRevalidatedAt.Valid {

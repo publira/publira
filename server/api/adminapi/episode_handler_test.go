@@ -211,6 +211,9 @@ func expectNoEpisodeUnpublishedWebhooks(mock sqlmock.Sqlmock, tenantID uuid.UUID
 // expectEpisodeScheduleSave expects scheduledAt saved on an episode that was
 // not published, so the save takes nothing off the site.
 func expectEpisodeScheduleSave(mock sqlmock.Sqlmock, tenantID uuid.UUID, scheduledAt sql.NullTime) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockEpisodeListingForScheduleSave)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
 		WithArgs(scheduledAt, tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"withdraws_publication", "withdrawn_published_at"}).AddRow(false, nil))
@@ -219,6 +222,9 @@ func expectEpisodeScheduleSave(mock sqlmock.Sqlmock, tenantID uuid.UUID, schedul
 // expectEpisodeScheduleSaveWithdrawing expects scheduledAt saved on an episode
 // published at publishedAt, which the save takes off the site.
 func expectEpisodeScheduleSaveWithdrawing(mock sqlmock.Sqlmock, tenantID uuid.UUID, scheduledAt sql.NullTime, publishedAt time.Time) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockEpisodeListingForScheduleSave)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
 		WithArgs(scheduledAt, tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"withdraws_publication", "withdrawn_published_at"}).AddRow(true, publishedAt))

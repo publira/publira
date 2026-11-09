@@ -3653,6 +3653,13 @@ type Querier interface {
 	// decision, and the publication job's promotion of the same episode happen one
 	// after another.
 	LockEpisodeListingForReview(ctx context.Context, arg LockEpisodeListingForReviewParams) (LockEpisodeListingForReviewRow, error)
+	// Locks the listing a save of its publish schedule is about to replace, in the
+	// save's transaction and ahead of it. A publication the job has written but not
+	// committed holds the save here until it commits, so the save's own statement
+	// then reads the listing as published and reports taking that publication back.
+	// Without the lock the statement would wait inside itself and still read the
+	// listing it started on, which was not published yet.
+	LockEpisodeListingForScheduleSave(ctx context.Context, arg LockEpisodeListingForScheduleSaveParams) error
 	// Episode ratings and the public tally kept beside them. Every statement here
 	// runs on the reader's own connection: episode_ratings is member-isolated, so a
 	// rating is written and read under the reader whose rating it is.
@@ -4748,8 +4755,9 @@ type Querier interface {
 	// withdraws_publication answers whether the episode was published, so that
 	// this save takes it off the site, and withdrawn_published_at is the instant
 	// of the publication it takes back. The old row is read through the
-	// self-join, which sees it as it was before this statement. An id naming no
-	// episode answers no row.
+	// self-join, which sees it as it was when this statement started, so the
+	// caller locks the listing first with LockEpisodeListingForScheduleSave. An id
+	// naming no episode answers no row.
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) (UpdateEpisodePublishScheduleByIDForTenantRow, error)
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error

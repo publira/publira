@@ -385,6 +385,30 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
+const LockEpisodeListingForScheduleSave = `-- name: LockEpisodeListingForScheduleSave :exec
+SELECT 1
+FROM episode_listings
+WHERE tenant_id = $1
+    AND episode_id = $2
+FOR UPDATE
+`
+
+type LockEpisodeListingForScheduleSaveParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Locks the listing a save of its publish schedule is about to replace, in the
+// save's transaction and ahead of it. A publication the job has written but not
+// committed holds the save here until it commits, so the save's own statement
+// then reads the listing as published and reports taking that publication back.
+// Without the lock the statement would wait inside itself and still read the
+// listing it started on, which was not published yet.
+func (q *Queries) LockEpisodeListingForScheduleSave(ctx context.Context, arg LockEpisodeListingForScheduleSaveParams) error {
+	_, err := q.db.ExecContext(ctx, LockEpisodeListingForScheduleSave, arg.TenantID, arg.EpisodeID)
+	return err
+}
+
 const MarkEpisodePublished = `-- name: MarkEpisodePublished :execrows
 UPDATE episode_listings
 SET status = 'published',
@@ -594,8 +618,9 @@ type UpdateEpisodePublishScheduleByIDForTenantRow struct {
 // withdraws_publication answers whether the episode was published, so that
 // this save takes it off the site, and withdrawn_published_at is the instant
 // of the publication it takes back. The old row is read through the
-// self-join, which sees it as it was before this statement. An id naming no
-// episode answers no row.
+// self-join, which sees it as it was when this statement started, so the
+// caller locks the listing first with LockEpisodeListingForScheduleSave. An id
+// naming no episode answers no row.
 func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) (UpdateEpisodePublishScheduleByIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
 	var i UpdateEpisodePublishScheduleByIDForTenantRow
