@@ -47,6 +47,19 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $2.DeletePasskeyRequest request);
   $async.Future<$2.BeginPasskeyConfirmationResponse> beginPasskeyConfirmation(
       $pb.ServerContext ctx, $2.BeginPasskeyConfirmationRequest request);
+  $async.Future<$2.VerifyMfaResponse> verifyMfa(
+      $pb.ServerContext ctx, $2.VerifyMfaRequest request);
+  $async.Future<$2.GetMfaStatusResponse> getMfaStatus(
+      $pb.ServerContext ctx, $2.GetMfaStatusRequest request);
+  $async.Future<$2.StartMfaEnrollmentResponse> startMfaEnrollment(
+      $pb.ServerContext ctx, $2.StartMfaEnrollmentRequest request);
+  $async.Future<$2.ConfirmMfaEnrollmentResponse> confirmMfaEnrollment(
+      $pb.ServerContext ctx, $2.ConfirmMfaEnrollmentRequest request);
+  $async.Future<$2.DisableMfaResponse> disableMfa(
+      $pb.ServerContext ctx, $2.DisableMfaRequest request);
+  $async.Future<$2.RegenerateMfaRecoveryCodesResponse>
+      regenerateMfaRecoveryCodes(
+          $pb.ServerContext ctx, $2.RegenerateMfaRecoveryCodesRequest request);
   $async.Future<$2.CreateUserResponse> createUser(
       $pb.ServerContext ctx, $2.CreateUserRequest request);
   $async.Future<$2.VerifyUserEmailResponse> verifyUserEmail(
@@ -136,6 +149,18 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return $2.DeletePasskeyRequest();
       case 'BeginPasskeyConfirmation':
         return $2.BeginPasskeyConfirmationRequest();
+      case 'VerifyMfa':
+        return $2.VerifyMfaRequest();
+      case 'GetMfaStatus':
+        return $2.GetMfaStatusRequest();
+      case 'StartMfaEnrollment':
+        return $2.StartMfaEnrollmentRequest();
+      case 'ConfirmMfaEnrollment':
+        return $2.ConfirmMfaEnrollmentRequest();
+      case 'DisableMfa':
+        return $2.DisableMfaRequest();
+      case 'RegenerateMfaRecoveryCodes':
+        return $2.RegenerateMfaRecoveryCodesRequest();
       case 'CreateUser':
         return $2.CreateUserRequest();
       case 'VerifyUserEmail':
@@ -231,6 +256,20 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
       case 'BeginPasskeyConfirmation':
         return beginPasskeyConfirmation(
             ctx, request as $2.BeginPasskeyConfirmationRequest);
+      case 'VerifyMfa':
+        return verifyMfa(ctx, request as $2.VerifyMfaRequest);
+      case 'GetMfaStatus':
+        return getMfaStatus(ctx, request as $2.GetMfaStatusRequest);
+      case 'StartMfaEnrollment':
+        return startMfaEnrollment(ctx, request as $2.StartMfaEnrollmentRequest);
+      case 'ConfirmMfaEnrollment':
+        return confirmMfaEnrollment(
+            ctx, request as $2.ConfirmMfaEnrollmentRequest);
+      case 'DisableMfa':
+        return disableMfa(ctx, request as $2.DisableMfaRequest);
+      case 'RegenerateMfaRecoveryCodes':
+        return regenerateMfaRecoveryCodes(
+            ctx, request as $2.RegenerateMfaRecoveryCodesRequest);
       case 'CreateUser':
         return createUser(ctx, request as $2.CreateUserRequest);
       case 'VerifyUserEmail':

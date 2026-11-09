@@ -44,6 +44,7 @@ var proceduresWithoutLegalPageAgreement = map[string]bool{
 	publirav1connect.AuthServiceDownloadMyDataExportProcedure: true,
 	publirav1connect.AuthServiceListMyIdentitiesProcedure:     true,
 	publirav1connect.AuthServiceListMyPasskeysProcedure:       true,
+	publirav1connect.AuthServiceGetMfaStatusProcedure:         true,
 	// An account with neither a password nor a linked provider confirms
 	// DeleteMe with a passkey alone, so refusing this would leave it unable to
 	// close itself until it agreed.

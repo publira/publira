@@ -1,11 +1,12 @@
-// Package mfaflow is the second-factor flow the tenant consoles and the
-// Platform Console share: deciding what a correct password still leaves owed,
+// Package mfaflow is the second-factor flow the tenant consoles, the site,
+// and the Platform Console share: deciding what a correct password still leaves owed,
 // enrolling and confirming an authenticator, settling a sign-in with a code or
 // a recovery code, counting failures toward the lock, spending the challenge a
 // password earned, taking the factor off, and replacing the recovery codes.
 //
 // The flow is written once over [Account], which each API implements for its
-// own principal: tenant staff over users and audit_logs, operators over
+// own principal: tenant staff over users and audit_logs, readers on the site
+// over the same users rows and the security log, operators over
 // platform_users and platform_audit_logs. The two keep separate tables,
 // database roles, and row-level security on purpose, so an Account is what
 // the flow reaches them through rather than a schema they share. What one side
@@ -60,6 +61,14 @@
 // RP ID the console no longer derives, after its host has moved, is neither a
 // factor nor listed, and the account's recovery codes stay while one is
 // stored, since moving the console back makes it a factor again.
+//
+// A reader's factor is the same account's as the console's, so the site
+// reads and writes the user_mfa_* rows the tenant console does, counts toward
+// the same lock, and spends its challenges in the same table: one enrollment
+// is asked for wherever the account signs in. The site requires the factor of
+// no one, so it issues verify challenges alone, and its own passkeys are a
+// way to sign in rather than a factor, so its Account counts none. A passkey
+// sign-in there owes no code.
 //
 // For operators of the Platform Console, the factor lives in the
 // platform_user_mfa_* tables, which publira_platform alone reaches apart from

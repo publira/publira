@@ -150,6 +150,15 @@ message DeleteReaderResponse {
   string reader_id = 2;
 }
 
+message ResetReaderMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string reader_id = 2;
+}
+
+message ResetReaderMfaResponse {
+  AdminReader reader = 1;
+}
+
 service AdminUserService {
   // Minimum role: tenant_admin.
   rpc ListTenantUsers(ListTenantUsersRequest) returns (ListTenantUsersResponse) {}
@@ -197,4 +206,18 @@ service AdminUserService {
   //
   // Minimum role: tenant_admin.
   rpc DeleteReader(DeleteReaderRequest) returns (DeleteReaderResponse) {}
+  // Removes the account's two-step verification, for a reader who has lost
+  // their authenticator and every recovery code: the authenticator, every
+  // recovery code, the count of refused codes, and, as publiractl tenant
+  // member reset-mfa does, every passkey a staff account registered in the
+  // console. The passkeys the reader signs in to the site with stay, and so do
+  // the password and any role. The next sign-in asks for the password alone,
+  // or for an enrollment where the platform requires the factor of the
+  // account's console role. not_found as GetReader. failed_precondition for
+  // an account that has no two-step verification set up, and, with the
+  // OWN_ACCOUNT reason, for the caller's own account, which a stolen session
+  // could otherwise strip of its second factor.
+  //
+  // Minimum role: tenant_admin.
+  rpc ResetReaderMfa(ResetReaderMfaRequest) returns (ResetReaderMfaResponse) {}
 }

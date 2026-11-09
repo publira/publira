@@ -359,6 +359,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "reader_icon_removed",
             },
             {
+              label: t("admin.audit.actions.reader_mfa_reset"),
+              value: "reader_mfa_reset",
+            },
+            {
               label: t("admin.audit.actions.reader_deleted"),
               value: "reader_deleted",
             },

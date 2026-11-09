@@ -216,6 +216,15 @@ func (s *apiServer) Login(
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "email is not verified")
 	}
+	challenge, err := s.mfaChallengeAfterSignIn(ctx, s.queriesFor(ctx), tenant, user)
+	if err != nil {
+		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "mfa_challenge_failed")
+		return nil, err
+	}
+	if challenge != nil {
+		auth.AuditEvent(ctx, "login", "success", tenant.PublicID, user.PublicID, "mfa_challenge_issued")
+		return &publirav1.LoginResponse{MfaChallenge: challenge}, nil
+	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
 		return nil, err

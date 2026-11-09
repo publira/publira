@@ -494,4 +494,24 @@ func TestIssueMFAChallengeToken(t *testing.T) {
 			t.Error("platform challenge verified as an admin one, want it refused")
 		}
 	})
+
+	// A reader's challenge is the site's alone, so neither console accepts it
+	// and it is no session either.
+	t.Run("a site challenge names a tenant and is the site's alone", func(t *testing.T) {
+		if _, _, err := manager.IssueMFAChallengeToken("user-public-id", AudiencePublicMFAVerify, "", 0, now); err == nil {
+			t.Error("site challenge without a tenant: error = nil, want one")
+		}
+		token, _, err := manager.IssueMFAChallengeToken("user-public-id", AudiencePublicMFAVerify, "tenant-id", 1, now)
+		if err != nil {
+			t.Fatalf("IssueMFAChallengeToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudiencePublicMFAVerify); err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		for _, audience := range []string{AudiencePublic, AudienceAdminMFAVerify} {
+			if _, err := manager.Verify(token, audience); err == nil {
+				t.Errorf("site challenge verified as %s, want it refused", audience)
+			}
+		}
+	})
 }

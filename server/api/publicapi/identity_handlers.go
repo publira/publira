@@ -192,6 +192,21 @@ func (s *apiServer) LoginWithIdToken(
 		}
 	}
 
+	// Asked after the nonce is spent and a new link is made, both of which
+	// commit with the challenge: the provider proved the account as a
+	// password would, and the code is still owed on every sign-in after.
+	challenge, err := s.mfaChallengeAfterSignIn(ctx, txq, tenant, user)
+	if err != nil {
+		return fail(user.PublicID, "mfa_challenge_failed", err)
+	}
+	if challenge != nil {
+		if err := tx.Commit(); err != nil {
+			return fail(user.PublicID, "transaction_commit_failed", s.internalDBError(ctx, "failed to commit id token sign-in", err, "tenant_id", tenant.ID.String()))
+		}
+		auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, "mfa_challenge_issued")
+		return &publirav1.LoginWithIdTokenResponse{MfaChallenge: challenge}, nil
+	}
+
 	roles, err := txq.ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return fail(user.PublicID, "role_lookup_failed", s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", user.ID.String()))

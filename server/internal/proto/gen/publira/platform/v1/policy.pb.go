@@ -254,8 +254,9 @@ type PlatformPolicy struct {
 	// held back.
 	MfaRequiredForTenantAdmin bool `protobuf:"varint,1,opt,name=mfa_required_for_tenant_admin,json=mfaRequiredForTenantAdmin,proto3" json:"mfa_required_for_tenant_admin,omitempty"`
 	// How often one account's password may be verified by the RPCs that ask for
-	// it on top of the session, counted across all of them and cleared by a
-	// verification that succeeds.
+	// it on top of the session, and the site's two-step verification RPCs may
+	// write the account's authenticator or check a code from it, counted across
+	// all of them and cleared by a verification that succeeds.
 	PasswordVerification *MinuteDayLimit `protobuf:"bytes,2,opt,name=password_verification,json=passwordVerification,proto3" json:"password_verification,omitempty"`
 	// Mail the forms that take an address may cause for one address, counted per
 	// tenant (or for the platform console) and shared by all of those forms.

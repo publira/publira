@@ -57,6 +57,21 @@ const (
 	// AuthServiceBeginPasskeyConfirmationProcedure is the procedure name of the AuthService's
 	// BeginPasskeyConfirmation RPC.
 	AuthServiceBeginPasskeyConfirmationProcedure = "/publira.v1.AuthService/BeginPasskeyConfirmation"
+	// AuthServiceVerifyMfaProcedure is the procedure name of the AuthService's VerifyMfa RPC.
+	AuthServiceVerifyMfaProcedure = "/publira.v1.AuthService/VerifyMfa"
+	// AuthServiceGetMfaStatusProcedure is the procedure name of the AuthService's GetMfaStatus RPC.
+	AuthServiceGetMfaStatusProcedure = "/publira.v1.AuthService/GetMfaStatus"
+	// AuthServiceStartMfaEnrollmentProcedure is the procedure name of the AuthService's
+	// StartMfaEnrollment RPC.
+	AuthServiceStartMfaEnrollmentProcedure = "/publira.v1.AuthService/StartMfaEnrollment"
+	// AuthServiceConfirmMfaEnrollmentProcedure is the procedure name of the AuthService's
+	// ConfirmMfaEnrollment RPC.
+	AuthServiceConfirmMfaEnrollmentProcedure = "/publira.v1.AuthService/ConfirmMfaEnrollment"
+	// AuthServiceDisableMfaProcedure is the procedure name of the AuthService's DisableMfa RPC.
+	AuthServiceDisableMfaProcedure = "/publira.v1.AuthService/DisableMfa"
+	// AuthServiceRegenerateMfaRecoveryCodesProcedure is the procedure name of the AuthService's
+	// RegenerateMfaRecoveryCodes RPC.
+	AuthServiceRegenerateMfaRecoveryCodesProcedure = "/publira.v1.AuthService/RegenerateMfaRecoveryCodes"
 	// AuthServiceCreateUserProcedure is the procedure name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceVerifyUserEmailProcedure is the procedure name of the AuthService's VerifyUserEmail
@@ -227,6 +242,48 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("BeginPasskeyConfirmation"),
 			Procedure:  AuthServiceBeginPasskeyConfirmationProcedure,
+		}
+	})
+	authServiceVerifyMfaSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("VerifyMfa"),
+			Procedure:  AuthServiceVerifyMfaProcedure,
+		}
+	})
+	authServiceGetMfaStatusSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetMfaStatus"),
+			Procedure:  AuthServiceGetMfaStatusProcedure,
+		}
+	})
+	authServiceStartMfaEnrollmentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("StartMfaEnrollment"),
+			Procedure:  AuthServiceStartMfaEnrollmentProcedure,
+		}
+	})
+	authServiceConfirmMfaEnrollmentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ConfirmMfaEnrollment"),
+			Procedure:  AuthServiceConfirmMfaEnrollmentProcedure,
+		}
+	})
+	authServiceDisableMfaSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("DisableMfa"),
+			Procedure:  AuthServiceDisableMfaProcedure,
+		}
+	})
+	authServiceRegenerateMfaRecoveryCodesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RegenerateMfaRecoveryCodes"),
+			Procedure:  AuthServiceRegenerateMfaRecoveryCodesProcedure,
 		}
 	})
 	authServiceCreateUserSpec = sync.OnceValue(func() connect.Spec {
@@ -449,6 +506,24 @@ type AuthServiceClient interface {
 	RenamePasskey(context.Context, *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error)
 	DeletePasskey(context.Context, *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error)
 	BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error)
+	// Settles the second step of a sign-in Login or LoginWithIdToken answered
+	// with an MfaChallenge, for the session.
+	VerifyMfa(context.Context, *v1.VerifyMfaRequest) (*v1.VerifyMfaResponse, error)
+	// The two-step verification of the signed-in reader's account. The
+	// authenticator is the account's, so one set up in the tenant's console is
+	// reported, and changed, here too.
+	GetMfaStatus(context.Context, *v1.GetMfaStatusRequest) (*v1.GetMfaStatusResponse, error)
+	StartMfaEnrollment(context.Context, *v1.StartMfaEnrollmentRequest) (*v1.StartMfaEnrollmentResponse, error)
+	// Turns the authenticator StartMfaEnrollment set up on, and answers the
+	// recovery codes that stand in for it.
+	ConfirmMfaEnrollment(context.Context, *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off, with its recovery codes unless the account
+	// keeps a passkey in the tenant's console that they stand in for too.
+	// failed_precondition for an account that holds none.
+	DisableMfa(context.Context, *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error)
+	// Replaces the recovery codes. failed_precondition for an account that holds
+	// no authenticator.
+	RegenerateMfaRecoveryCodes(context.Context, *v1.RegenerateMfaRecoveryCodesRequest) (*v1.RegenerateMfaRecoveryCodesResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -556,6 +631,24 @@ type AuthServiceHandler interface {
 	RenamePasskey(context.Context, *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error)
 	DeletePasskey(context.Context, *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error)
 	BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error)
+	// Settles the second step of a sign-in Login or LoginWithIdToken answered
+	// with an MfaChallenge, for the session.
+	VerifyMfa(context.Context, *v1.VerifyMfaRequest) (*v1.VerifyMfaResponse, error)
+	// The two-step verification of the signed-in reader's account. The
+	// authenticator is the account's, so one set up in the tenant's console is
+	// reported, and changed, here too.
+	GetMfaStatus(context.Context, *v1.GetMfaStatusRequest) (*v1.GetMfaStatusResponse, error)
+	StartMfaEnrollment(context.Context, *v1.StartMfaEnrollmentRequest) (*v1.StartMfaEnrollmentResponse, error)
+	// Turns the authenticator StartMfaEnrollment set up on, and answers the
+	// recovery codes that stand in for it.
+	ConfirmMfaEnrollment(context.Context, *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off, with its recovery codes unless the account
+	// keeps a passkey in the tenant's console that they stand in for too.
+	// failed_precondition for an account that holds none.
+	DisableMfa(context.Context, *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error)
+	// Replaces the recovery codes. failed_precondition for an account that holds
+	// no authenticator.
+	RegenerateMfaRecoveryCodes(context.Context, *v1.RegenerateMfaRecoveryCodesRequest) (*v1.RegenerateMfaRecoveryCodesResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -638,6 +731,12 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceRenamePasskeySpec(), Handler: adapter.renamePasskey},
 		connect.Method{Spec: authServiceDeletePasskeySpec(), Handler: adapter.deletePasskey},
 		connect.Method{Spec: authServiceBeginPasskeyConfirmationSpec(), Handler: adapter.beginPasskeyConfirmation},
+		connect.Method{Spec: authServiceVerifyMfaSpec(), Handler: adapter.verifyMfa},
+		connect.Method{Spec: authServiceGetMfaStatusSpec(), Handler: adapter.getMfaStatus},
+		connect.Method{Spec: authServiceStartMfaEnrollmentSpec(), Handler: adapter.startMfaEnrollment},
+		connect.Method{Spec: authServiceConfirmMfaEnrollmentSpec(), Handler: adapter.confirmMfaEnrollment},
+		connect.Method{Spec: authServiceDisableMfaSpec(), Handler: adapter.disableMfa},
+		connect.Method{Spec: authServiceRegenerateMfaRecoveryCodesSpec(), Handler: adapter.regenerateMfaRecoveryCodes},
 		connect.Method{Spec: authServiceCreateUserSpec(), Handler: adapter.createUser},
 		connect.Method{Spec: authServiceVerifyUserEmailSpec(), Handler: adapter.verifyUserEmail},
 		connect.Method{Spec: authServiceRequestEmailVerificationSpec(), Handler: adapter.requestEmailVerification},
@@ -739,6 +838,30 @@ func (UnimplementedAuthServiceHandler) DeletePasskey(context.Context, *v1.Delete
 
 func (UnimplementedAuthServiceHandler) BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.BeginPasskeyConfirmation is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) VerifyMfa(context.Context, *v1.VerifyMfaRequest) (*v1.VerifyMfaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.VerifyMfa is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) GetMfaStatus(context.Context, *v1.GetMfaStatusRequest) (*v1.GetMfaStatusResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetMfaStatus is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) StartMfaEnrollment(context.Context, *v1.StartMfaEnrollmentRequest) (*v1.StartMfaEnrollmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.StartMfaEnrollment is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) ConfirmMfaEnrollment(context.Context, *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ConfirmMfaEnrollment is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) DisableMfa(context.Context, *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.DisableMfa is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) RegenerateMfaRecoveryCodes(context.Context, *v1.RegenerateMfaRecoveryCodesRequest) (*v1.RegenerateMfaRecoveryCodesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RegenerateMfaRecoveryCodes is not implemented")
 }
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error) {
@@ -960,6 +1083,54 @@ func (c *authServiceClient) DeletePasskey(ctx context.Context, req *v1.DeletePas
 func (c *authServiceClient) BeginPasskeyConfirmation(ctx context.Context, req *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error) {
 	var res v1.BeginPasskeyConfirmationResponse
 	if err := c.client.CallUnary(ctx, authServiceBeginPasskeyConfirmationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) VerifyMfa(ctx context.Context, req *v1.VerifyMfaRequest) (*v1.VerifyMfaResponse, error) {
+	var res v1.VerifyMfaResponse
+	if err := c.client.CallUnary(ctx, authServiceVerifyMfaSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetMfaStatus(ctx context.Context, req *v1.GetMfaStatusRequest) (*v1.GetMfaStatusResponse, error) {
+	var res v1.GetMfaStatusResponse
+	if err := c.client.CallUnary(ctx, authServiceGetMfaStatusSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) StartMfaEnrollment(ctx context.Context, req *v1.StartMfaEnrollmentRequest) (*v1.StartMfaEnrollmentResponse, error) {
+	var res v1.StartMfaEnrollmentResponse
+	if err := c.client.CallUnary(ctx, authServiceStartMfaEnrollmentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ConfirmMfaEnrollment(ctx context.Context, req *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error) {
+	var res v1.ConfirmMfaEnrollmentResponse
+	if err := c.client.CallUnary(ctx, authServiceConfirmMfaEnrollmentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) DisableMfa(ctx context.Context, req *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error) {
+	var res v1.DisableMfaResponse
+	if err := c.client.CallUnary(ctx, authServiceDisableMfaSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) RegenerateMfaRecoveryCodes(ctx context.Context, req *v1.RegenerateMfaRecoveryCodesRequest) (*v1.RegenerateMfaRecoveryCodesResponse, error) {
+	var res v1.RegenerateMfaRecoveryCodesResponse
+	if err := c.client.CallUnary(ctx, authServiceRegenerateMfaRecoveryCodesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1349,6 +1520,78 @@ func (h authServiceHandler) beginPasskeyConfirmation(ctx context.Context, _ conn
 		return err
 	}
 	res, err := h.svc.BeginPasskeyConfirmation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) verifyMfa(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.VerifyMfaRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.VerifyMfa(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getMfaStatus(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMfaStatusRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMfaStatus(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) startMfaEnrollment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartMfaEnrollmentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartMfaEnrollment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) confirmMfaEnrollment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConfirmMfaEnrollmentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmMfaEnrollment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) disableMfa(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DisableMfaRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DisableMfa(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) regenerateMfaRecoveryCodes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RegenerateMfaRecoveryCodesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RegenerateMfaRecoveryCodes(ctx, &req)
 	if err != nil {
 		return err
 	}

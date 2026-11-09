@@ -518,6 +518,7 @@
         "reader_birth_date_changed": "更改了读者出生日期",
         "reader_birth_date_cleared": "清除了读者出生日期",
         "reader_icon_removed": "删除了读者头像",
+        "reader_mfa_reset": "移除了读者的两步验证",
         "reader_deleted": "删除了读者",
         "access_ticket_issued": "发放了阅读券",
         "access_ticket_revoked": "撤销了阅读券",

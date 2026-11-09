@@ -37,8 +37,11 @@ const (
 	// a point files an event of its own.
 	actionRateEpisode readerAction = "episode.rate"
 	// The step-up password check ChangePassword, DeleteMe and RequestEmailChange
-	// make on top of the session. One action for all three: an allowance held
-	// per RPC would hand a guesser three budgets to rotate between.
+	// make on top of the session, and the codes the two-step verification RPCs
+	// check, from VerifyMfa's sign-in to DisableMfa. One action for all of
+	// them: an allowance held per RPC would hand a guesser a budget for each to
+	// rotate between, and a code is as much the account's secret as its
+	// password is.
 	//
 	// This one is charged before the password is verified rather than before the
 	// first write, so an attempt past the limit costs no bcrypt and reaches no

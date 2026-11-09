@@ -22,6 +22,7 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
@@ -731,7 +732,7 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 			if required {
 				return errLastRequiredFactor
 			}
-			if err := deleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
+			if err := tenantmembers.DeleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
 				return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
 			}
 		}
@@ -740,20 +741,4 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 		return s.internalDBError(ctx, "failed to commit passkey removal", err, "user_id", userID.String())
 	}
 	return nil
-}
-
-// deleteRecoveryCodesWithTheLastFactor deletes the account's recovery codes
-// once nothing they could stand in for is left, counting a console passkey of
-// any RP ID. A passkey the account signs in to the storefront with is no
-// second factor and keeps no code. The caller holds lockMfaFactors and has already removed what it is
-// removing.
-func deleteRecoveryCodesWithTheLastFactor(ctx context.Context, q dbmodels.Querier, userID uuid.UUID) error {
-	passkeys, err := q.CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{UserID: userID, RelyingParty: tenantwebauthn.KindAdminConsole})
-	if err != nil {
-		return err
-	}
-	if passkeys > 0 {
-		return nil
-	}
-	return q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID)
 }
