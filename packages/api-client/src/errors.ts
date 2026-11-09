@@ -44,6 +44,7 @@ export const RPC_ERROR_REASON = {
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
   mfaPasskeyRefused: "MFA_PASSKEY_REFUSED",
+  mfaSetUpInConsole: "MFA_SET_UP_IN_CONSOLE",
   ownAccount: "OWN_ACCOUNT",
   promotionCodeAlreadyRedeemed: "PROMOTION_CODE_ALREADY_REDEEMED",
   promotionCodeExhausted: "PROMOTION_CODE_EXHAUSTED",

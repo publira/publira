@@ -217,7 +217,7 @@ go -C server run ./cmd/publiractl policy show
 | `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing | Off |
 | `--mfa-required-for-platform-operator` | Holds a Platform Console operator with no authenticator at enrollment instead of giving it a session on a password alone, whatever its role. `=false` stops holding | Off |
 | `--tenant-coins-allowed` | Lets tenants issue coins that readers buy in advance and spend on episodes. `=false` stops every tenant's coins from being sold or spent and keeps every balance | Off |
-| `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session | 5, 50 |
+| `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session, and the site's two-step verification RPCs may write its authenticator or check a code | 5, 50 |
 | `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify | 10, 100 |
 | `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |
 | `--legal-page-agreement-per-minute`, `--legal-page-agreement-per-day` | How many times one reader may send an agreement to the tenant's terms and privacy policy | 10, 50 |
@@ -506,7 +506,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, with the series ones per surface and the tenant-wide series ones per age rating |
 | `purge-content-events` | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
-| `purge-mfa-challenges` | Deletes the spent MFA challenges of tenant staff and platform operators whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
+| `purge-mfa-challenges` | Deletes the spent MFA challenges of a tenant's accounts, on the site and in the console, and of platform operators whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
@@ -691,7 +691,7 @@ The first run against a table that has accumulated since before this job existed
 
 Deletes `user_mfa_used_challenges` and `platform_user_mfa_used_challenges` rows whose challenge token has expired, and `user_webauthn_ceremonies` rows whose ceremony has, across every tenant, in chunked `DELETE`s.
 
-A row in the first two refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after login. A ceremony row is the server's half of a passkey registration or assertion, deleted by the finish that spends it, so what is left past its five minutes is one nobody finished. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
+A row in the first two refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after the sign-in that earned it. A ceremony row is the server's half of a passkey registration or assertion, deleted by the finish that spends it, so what is left past its five minutes is one nobody finished. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
 
 For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 

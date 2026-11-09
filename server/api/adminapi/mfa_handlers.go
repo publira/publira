@@ -19,6 +19,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
@@ -213,7 +214,7 @@ func (a mfaAccount) CreateRecoveryCode(ctx context.Context, q dbmodels.Querier, 
 }
 
 func (a mfaAccount) ReleaseRecoveryCodes(ctx context.Context, q dbmodels.Querier) error {
-	return deleteRecoveryCodesWithTheLastFactor(ctx, q, a.actor.User.ID)
+	return tenantmembers.DeleteRecoveryCodesWithTheLastFactor(ctx, q, a.actor.User.ID)
 }
 
 func (a mfaAccount) FromChallenge() bool {

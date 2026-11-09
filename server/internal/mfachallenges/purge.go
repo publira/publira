@@ -1,5 +1,5 @@
 // Package mfachallenges holds the retention side of the spent MFA challenges,
-// the tenant consoles' and the platform console's alike. A row in
+// the tenant consoles', the site's, and the platform console's alike. A row in
 // user_mfa_used_challenges or platform_user_mfa_used_challenges exists to
 // refuse the second exchange of a challenge token, so it stops meaning
 // anything the moment that token expires — five minutes after it was issued.

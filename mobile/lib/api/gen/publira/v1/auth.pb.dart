@@ -112,10 +112,12 @@ class LoginResponse extends $pb.GeneratedMessage {
   factory LoginResponse({
     $0.User? user,
     $0.AccessToken? accessToken,
+    MfaChallenge? mfaChallenge,
   }) {
     final result = LoginResponse._();
     if (user != null) result.user = user;
     if (accessToken != null) result.accessToken = accessToken;
+    if (mfaChallenge != null) result.mfaChallenge = mfaChallenge;
     return result;
   }
 
@@ -136,6 +138,8 @@ class LoginResponse extends $pb.GeneratedMessage {
         subBuilder: $0.User.$_createMessage)
     ..aOM<$0.AccessToken>(2, _omitFieldNames ? '' : 'accessToken',
         subBuilder: $0.AccessToken.$_createMessage)
+    ..aOM<MfaChallenge>(3, _omitFieldNames ? '' : 'mfaChallenge',
+        subBuilder: MfaChallenge.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -160,6 +164,8 @@ class LoginResponse extends $pb.GeneratedMessage {
           LoginResponse.$_createMessage);
   static LoginResponse? _defaultInstance;
 
+  /// Empty while mfa_challenge is set: the password was right, but the session
+  /// is not issued until VerifyMfa settles the second step.
   @$pb.TagNumber(1)
   $0.User get user => $_getN(0);
   @$pb.TagNumber(1)
@@ -181,6 +187,94 @@ class LoginResponse extends $pb.GeneratedMessage {
   void clearAccessToken() => $_clearField(2);
   @$pb.TagNumber(2)
   $0.AccessToken ensureAccessToken() => $_ensure(1);
+
+  /// Set for an account that holds an authenticator, whether it was set up on
+  /// the site, in the app, or in the tenant's console: the account has one
+  /// second factor, and every place it signs in asks for it.
+  @$pb.TagNumber(3)
+  MfaChallenge get mfaChallenge => $_getN(2);
+  @$pb.TagNumber(3)
+  set mfaChallenge(MfaChallenge value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMfaChallenge() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMfaChallenge() => $_clearField(3);
+  @$pb.TagNumber(3)
+  MfaChallenge ensureMfaChallenge() => $_ensure(2);
+}
+
+/// The half-finished session a password, or a provider's sign-in, earns an
+/// account that holds an authenticator. The token is signed, lives five
+/// minutes, buys one session, and no RPC but VerifyMfa accepts it. A password
+/// change, or a suspension, ends it.
+class MfaChallenge extends $pb.GeneratedMessage {
+  factory MfaChallenge({
+    $core.String? token,
+    $core.String? expiresAt,
+  }) {
+    final result = MfaChallenge._();
+    if (token != null) result.token = token;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    return result;
+  }
+
+  MfaChallenge._();
+
+  factory MfaChallenge.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MfaChallenge()..mergeFromBuffer(data, registry);
+  factory MfaChallenge.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      MfaChallenge()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'MfaChallenge',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: MfaChallenge.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'token')
+    ..aOS(2, _omitFieldNames ? '' : 'expiresAt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MfaChallenge clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MfaChallenge copyWith(void Function(MfaChallenge) updates) =>
+      super.copyWith((message) => updates(message as MfaChallenge))
+          as MfaChallenge;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MfaChallenge() / MfaChallenge.new instead')
+  static MfaChallenge create() => MfaChallenge._();
+  static $pb.GeneratedMessage $_createMessage() => MfaChallenge._();
+  @$core.override
+  MfaChallenge createEmptyInstance() => MfaChallenge._();
+  @$core.pragma('dart2js:noInline')
+  static MfaChallenge getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MfaChallenge>(
+          MfaChallenge.$_createMessage);
+  static MfaChallenge? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get token => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set token($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearToken() => $_clearField(1);
+
+  /// RFC 3339.
+  @$pb.TagNumber(2)
+  $core.String get expiresAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set expiresAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExpiresAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExpiresAt() => $_clearField(2);
 }
 
 class LoginWithIdTokenRequest extends $pb.GeneratedMessage {
@@ -368,11 +462,13 @@ class LoginWithIdTokenResponse extends $pb.GeneratedMessage {
     $0.User? user,
     $0.AccessToken? accessToken,
     $core.bool? accountCreated,
+    MfaChallenge? mfaChallenge,
   }) {
     final result = LoginWithIdTokenResponse._();
     if (user != null) result.user = user;
     if (accessToken != null) result.accessToken = accessToken;
     if (accountCreated != null) result.accountCreated = accountCreated;
+    if (mfaChallenge != null) result.mfaChallenge = mfaChallenge;
     return result;
   }
 
@@ -394,6 +490,8 @@ class LoginWithIdTokenResponse extends $pb.GeneratedMessage {
     ..aOM<$0.AccessToken>(2, _omitFieldNames ? '' : 'accessToken',
         subBuilder: $0.AccessToken.$_createMessage)
     ..aOB(3, _omitFieldNames ? '' : 'accountCreated')
+    ..aOM<MfaChallenge>(4, _omitFieldNames ? '' : 'mfaChallenge',
+        subBuilder: MfaChallenge.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -421,6 +519,7 @@ class LoginWithIdTokenResponse extends $pb.GeneratedMessage {
           LoginWithIdTokenResponse.$_createMessage);
   static LoginWithIdTokenResponse? _defaultInstance;
 
+  /// Empty while mfa_challenge is set, as in LoginResponse.
   @$pb.TagNumber(1)
   $0.User get user => $_getN(0);
   @$pb.TagNumber(1)
@@ -452,6 +551,21 @@ class LoginWithIdTokenResponse extends $pb.GeneratedMessage {
   $core.bool hasAccountCreated() => $_has(2);
   @$pb.TagNumber(3)
   void clearAccountCreated() => $_clearField(3);
+
+  /// Set, as in LoginResponse, for an account that holds an authenticator. The
+  /// provider's sign-in stands in for the password, not for the second factor.
+  /// The nonce is spent and a provider account linked by this sign-in stays
+  /// linked whether or not the challenge is then settled.
+  @$pb.TagNumber(4)
+  MfaChallenge get mfaChallenge => $_getN(3);
+  @$pb.TagNumber(4)
+  set mfaChallenge(MfaChallenge value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMfaChallenge() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMfaChallenge() => $_clearField(4);
+  @$pb.TagNumber(4)
+  MfaChallenge ensureMfaChallenge() => $_ensure(3);
 }
 
 /// A provider account linked to the signed-in reader.
@@ -2108,8 +2222,8 @@ class DeletePasskeyResponse extends $pb.GeneratedMessage {
   static DeletePasskeyResponse? _defaultInstance;
 }
 
-/// Begins the fresh assertion that confirms DeleteMe or RequestEmailChange in
-/// place of a password, allowing the caller's own passkeys alone.
+/// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange, or
+/// DisableMfa in place of a password, allowing the caller's own passkeys alone.
 /// failed_precondition for a reader who holds none.
 class BeginPasskeyConfirmationRequest extends $pb.GeneratedMessage {
   factory BeginPasskeyConfirmationRequest({
@@ -2243,6 +2357,962 @@ class BeginPasskeyConfirmationResponse extends $pb.GeneratedMessage {
   $core.bool hasRequestOptionsJson() => $_has(0);
   @$pb.TagNumber(1)
   void clearRequestOptionsJson() => $_clearField(1);
+}
+
+class VerifyMfaRequest extends $pb.GeneratedMessage {
+  factory VerifyMfaRequest({
+    $0.TenantContext? tenant,
+    $core.String? challengeToken,
+    $core.String? code,
+  }) {
+    final result = VerifyMfaRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (challengeToken != null) result.challengeToken = challengeToken;
+    if (code != null) result.code = code;
+    return result;
+  }
+
+  VerifyMfaRequest._();
+
+  factory VerifyMfaRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VerifyMfaRequest()..mergeFromBuffer(data, registry);
+  factory VerifyMfaRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VerifyMfaRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VerifyMfaRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: VerifyMfaRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'challengeToken')
+    ..aOS(3, _omitFieldNames ? '' : 'code')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VerifyMfaRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VerifyMfaRequest copyWith(void Function(VerifyMfaRequest) updates) =>
+      super.copyWith((message) => updates(message as VerifyMfaRequest))
+          as VerifyMfaRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VerifyMfaRequest() / VerifyMfaRequest.new instead')
+  static VerifyMfaRequest create() => VerifyMfaRequest._();
+  static $pb.GeneratedMessage $_createMessage() => VerifyMfaRequest._();
+  @$core.override
+  VerifyMfaRequest createEmptyInstance() => VerifyMfaRequest._();
+  @$core.pragma('dart2js:noInline')
+  static VerifyMfaRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VerifyMfaRequest>(
+          VerifyMfaRequest.$_createMessage);
+  static VerifyMfaRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The token of the MfaChallenge Login or LoginWithIdToken answered.
+  /// Unauthenticated when it is not one, has expired, has bought a session
+  /// already, or names an account that is no longer active or has changed its
+  /// password since.
+  @$pb.TagNumber(2)
+  $core.String get challengeToken => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set challengeToken($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasChallengeToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearChallengeToken() => $_clearField(2);
+
+  /// A code from the authenticator, or one of the recovery codes handed out
+  /// when it was set up. A wrong one is unauthenticated with the ErrorInfo
+  /// reason MFA_INVALID_CODE, which a client tells apart from the end of the
+  /// challenge, and counts toward the lock the tenant's console applies to the
+  /// same account: past five, every code is resource_exhausted with
+  /// MFA_LOCKED for fifteen minutes. Each attempt also spends one of the
+  /// account's password verifications, and one that succeeds clears them.
+  @$pb.TagNumber(3)
+  $core.String get code => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set code($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCode() => $_clearField(3);
+}
+
+class VerifyMfaResponse extends $pb.GeneratedMessage {
+  factory VerifyMfaResponse({
+    $0.User? user,
+    $0.AccessToken? accessToken,
+    $core.bool? recoveryCodeUsed,
+    $core.int? remainingRecoveryCodes,
+  }) {
+    final result = VerifyMfaResponse._();
+    if (user != null) result.user = user;
+    if (accessToken != null) result.accessToken = accessToken;
+    if (recoveryCodeUsed != null) result.recoveryCodeUsed = recoveryCodeUsed;
+    if (remainingRecoveryCodes != null)
+      result.remainingRecoveryCodes = remainingRecoveryCodes;
+    return result;
+  }
+
+  VerifyMfaResponse._();
+
+  factory VerifyMfaResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VerifyMfaResponse()..mergeFromBuffer(data, registry);
+  factory VerifyMfaResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      VerifyMfaResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'VerifyMfaResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: VerifyMfaResponse.$_createMessage)
+    ..aOM<$0.User>(1, _omitFieldNames ? '' : 'user',
+        subBuilder: $0.User.$_createMessage)
+    ..aOM<$0.AccessToken>(2, _omitFieldNames ? '' : 'accessToken',
+        subBuilder: $0.AccessToken.$_createMessage)
+    ..aOB(3, _omitFieldNames ? '' : 'recoveryCodeUsed')
+    ..aI(4, _omitFieldNames ? '' : 'remainingRecoveryCodes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VerifyMfaResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  VerifyMfaResponse copyWith(void Function(VerifyMfaResponse) updates) =>
+      super.copyWith((message) => updates(message as VerifyMfaResponse))
+          as VerifyMfaResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VerifyMfaResponse() / VerifyMfaResponse.new instead')
+  static VerifyMfaResponse create() => VerifyMfaResponse._();
+  static $pb.GeneratedMessage $_createMessage() => VerifyMfaResponse._();
+  @$core.override
+  VerifyMfaResponse createEmptyInstance() => VerifyMfaResponse._();
+  @$core.pragma('dart2js:noInline')
+  static VerifyMfaResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VerifyMfaResponse>(
+          VerifyMfaResponse.$_createMessage);
+  static VerifyMfaResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.User get user => $_getN(0);
+  @$pb.TagNumber(1)
+  set user($0.User value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.User ensureUser() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $0.AccessToken get accessToken => $_getN(1);
+  @$pb.TagNumber(2)
+  set accessToken($0.AccessToken value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccessToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccessToken() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $0.AccessToken ensureAccessToken() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get recoveryCodeUsed => $_getBF(2);
+  @$pb.TagNumber(3)
+  set recoveryCodeUsed($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRecoveryCodeUsed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRecoveryCodeUsed() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get remainingRecoveryCodes => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set remainingRecoveryCodes($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRemainingRecoveryCodes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRemainingRecoveryCodes() => $_clearField(4);
+}
+
+class GetMfaStatusRequest extends $pb.GeneratedMessage {
+  factory GetMfaStatusRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = GetMfaStatusRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  GetMfaStatusRequest._();
+
+  factory GetMfaStatusRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMfaStatusRequest()..mergeFromBuffer(data, registry);
+  factory GetMfaStatusRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMfaStatusRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetMfaStatusRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetMfaStatusRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMfaStatusRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMfaStatusRequest copyWith(void Function(GetMfaStatusRequest) updates) =>
+      super.copyWith((message) => updates(message as GetMfaStatusRequest))
+          as GetMfaStatusRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use GetMfaStatusRequest() / GetMfaStatusRequest.new instead')
+  static GetMfaStatusRequest create() => GetMfaStatusRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetMfaStatusRequest._();
+  @$core.override
+  GetMfaStatusRequest createEmptyInstance() => GetMfaStatusRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetMfaStatusRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetMfaStatusRequest>(
+          GetMfaStatusRequest.$_createMessage);
+  static GetMfaStatusRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class GetMfaStatusResponse extends $pb.GeneratedMessage {
+  factory GetMfaStatusResponse({
+    $core.bool? enabled,
+    $core.String? enabledAt,
+    $core.int? remainingRecoveryCodes,
+  }) {
+    final result = GetMfaStatusResponse._();
+    if (enabled != null) result.enabled = enabled;
+    if (enabledAt != null) result.enabledAt = enabledAt;
+    if (remainingRecoveryCodes != null)
+      result.remainingRecoveryCodes = remainingRecoveryCodes;
+    return result;
+  }
+
+  GetMfaStatusResponse._();
+
+  factory GetMfaStatusResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMfaStatusResponse()..mergeFromBuffer(data, registry);
+  factory GetMfaStatusResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetMfaStatusResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetMfaStatusResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetMfaStatusResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'enabled')
+    ..aOS(2, _omitFieldNames ? '' : 'enabledAt')
+    ..aI(3, _omitFieldNames ? '' : 'remainingRecoveryCodes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMfaStatusResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetMfaStatusResponse copyWith(void Function(GetMfaStatusResponse) updates) =>
+      super.copyWith((message) => updates(message as GetMfaStatusResponse))
+          as GetMfaStatusResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetMfaStatusResponse() / GetMfaStatusResponse.new instead')
+  static GetMfaStatusResponse create() => GetMfaStatusResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetMfaStatusResponse._();
+  @$core.override
+  GetMfaStatusResponse createEmptyInstance() => GetMfaStatusResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetMfaStatusResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetMfaStatusResponse>(
+          GetMfaStatusResponse.$_createMessage);
+  static GetMfaStatusResponse? _defaultInstance;
+
+  /// The account holds a confirmed authenticator, wherever it was set up.
+  @$pb.TagNumber(1)
+  $core.bool get enabled => $_getBF(0);
+  @$pb.TagNumber(1)
+  set enabled($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEnabled() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEnabled() => $_clearField(1);
+
+  /// RFC 3339, empty while enabled is false.
+  @$pb.TagNumber(2)
+  $core.String get enabledAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set enabledAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEnabledAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEnabledAt() => $_clearField(2);
+
+  /// What is left of the ten recovery codes. Zero while enabled is false.
+  @$pb.TagNumber(3)
+  $core.int get remainingRecoveryCodes => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set remainingRecoveryCodes($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRemainingRecoveryCodes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRemainingRecoveryCodes() => $_clearField(3);
+}
+
+/// Starts setting an authenticator up, replacing one that was started and
+/// never confirmed. failed_precondition for an account that holds a confirmed
+/// one already, which DisableMfa takes off first, and for an install with no
+/// secret manager to keep the secret in. failed_precondition with the
+/// MFA_SET_UP_IN_CONSOLE reason, here and at ConfirmMfaEnrollment, for a member
+/// of staff who holds a passkey in the tenant's console: the site cannot ask
+/// for that passkey, so a site session proves the password alone, and the
+/// authenticator is set up in the console instead, where the session that asks
+/// has proved the passkey.
+class StartMfaEnrollmentRequest extends $pb.GeneratedMessage {
+  factory StartMfaEnrollmentRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = StartMfaEnrollmentRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  StartMfaEnrollmentRequest._();
+
+  factory StartMfaEnrollmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartMfaEnrollmentRequest()..mergeFromBuffer(data, registry);
+  factory StartMfaEnrollmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartMfaEnrollmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartMfaEnrollmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartMfaEnrollmentRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartMfaEnrollmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartMfaEnrollmentRequest copyWith(
+          void Function(StartMfaEnrollmentRequest) updates) =>
+      super.copyWith((message) => updates(message as StartMfaEnrollmentRequest))
+          as StartMfaEnrollmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartMfaEnrollmentRequest() / StartMfaEnrollmentRequest.new instead')
+  static StartMfaEnrollmentRequest create() => StartMfaEnrollmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartMfaEnrollmentRequest._();
+  @$core.override
+  StartMfaEnrollmentRequest createEmptyInstance() =>
+      StartMfaEnrollmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartMfaEnrollmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartMfaEnrollmentRequest>(
+          StartMfaEnrollmentRequest.$_createMessage);
+  static StartMfaEnrollmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class StartMfaEnrollmentResponse extends $pb.GeneratedMessage {
+  factory StartMfaEnrollmentResponse({
+    $core.String? secret,
+    $core.String? otpauthUri,
+  }) {
+    final result = StartMfaEnrollmentResponse._();
+    if (secret != null) result.secret = secret;
+    if (otpauthUri != null) result.otpauthUri = otpauthUri;
+    return result;
+  }
+
+  StartMfaEnrollmentResponse._();
+
+  factory StartMfaEnrollmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartMfaEnrollmentResponse()..mergeFromBuffer(data, registry);
+  factory StartMfaEnrollmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartMfaEnrollmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartMfaEnrollmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartMfaEnrollmentResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'secret')
+    ..aOS(2, _omitFieldNames ? '' : 'otpauthUri')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartMfaEnrollmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartMfaEnrollmentResponse copyWith(
+          void Function(StartMfaEnrollmentResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartMfaEnrollmentResponse))
+          as StartMfaEnrollmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartMfaEnrollmentResponse() / StartMfaEnrollmentResponse.new instead')
+  static StartMfaEnrollmentResponse create() => StartMfaEnrollmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartMfaEnrollmentResponse._();
+  @$core.override
+  StartMfaEnrollmentResponse createEmptyInstance() =>
+      StartMfaEnrollmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartMfaEnrollmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartMfaEnrollmentResponse>(
+          StartMfaEnrollmentResponse.$_createMessage);
+  static StartMfaEnrollmentResponse? _defaultInstance;
+
+  /// Base32 secret, for an authenticator that is typed into rather than
+  /// scanned. It is readable only here and only until the next start.
+  @$pb.TagNumber(1)
+  $core.String get secret => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set secret($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSecret() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSecret() => $_clearField(1);
+
+  /// otpauth:// URI (RFC 6238 parameters) a client renders as a QR code.
+  @$pb.TagNumber(2)
+  $core.String get otpauthUri => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set otpauthUri($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOtpauthUri() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOtpauthUri() => $_clearField(2);
+}
+
+class ConfirmMfaEnrollmentRequest extends $pb.GeneratedMessage {
+  factory ConfirmMfaEnrollmentRequest({
+    $0.TenantContext? tenant,
+    $core.String? code,
+  }) {
+    final result = ConfirmMfaEnrollmentRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (code != null) result.code = code;
+    return result;
+  }
+
+  ConfirmMfaEnrollmentRequest._();
+
+  factory ConfirmMfaEnrollmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmMfaEnrollmentRequest()..mergeFromBuffer(data, registry);
+  factory ConfirmMfaEnrollmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmMfaEnrollmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConfirmMfaEnrollmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ConfirmMfaEnrollmentRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'code')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmMfaEnrollmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmMfaEnrollmentRequest copyWith(
+          void Function(ConfirmMfaEnrollmentRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ConfirmMfaEnrollmentRequest))
+          as ConfirmMfaEnrollmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ConfirmMfaEnrollmentRequest() / ConfirmMfaEnrollmentRequest.new instead')
+  static ConfirmMfaEnrollmentRequest create() =>
+      ConfirmMfaEnrollmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ConfirmMfaEnrollmentRequest._();
+  @$core.override
+  ConfirmMfaEnrollmentRequest createEmptyInstance() =>
+      ConfirmMfaEnrollmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ConfirmMfaEnrollmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConfirmMfaEnrollmentRequest>(
+          ConfirmMfaEnrollmentRequest.$_createMessage);
+  static ConfirmMfaEnrollmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// A code from the authenticator StartMfaEnrollment set up. A recovery code
+  /// is refused: there are none yet. A wrong one is answered as in
+  /// VerifyMfaRequest.
+  @$pb.TagNumber(2)
+  $core.String get code => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set code($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCode() => $_clearField(2);
+}
+
+class ConfirmMfaEnrollmentResponse extends $pb.GeneratedMessage {
+  factory ConfirmMfaEnrollmentResponse({
+    $core.Iterable<$core.String>? recoveryCodes,
+  }) {
+    final result = ConfirmMfaEnrollmentResponse._();
+    if (recoveryCodes != null) result.recoveryCodes.addAll(recoveryCodes);
+    return result;
+  }
+
+  ConfirmMfaEnrollmentResponse._();
+
+  factory ConfirmMfaEnrollmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmMfaEnrollmentResponse()..mergeFromBuffer(data, registry);
+  factory ConfirmMfaEnrollmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmMfaEnrollmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConfirmMfaEnrollmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ConfirmMfaEnrollmentResponse.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'recoveryCodes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmMfaEnrollmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmMfaEnrollmentResponse copyWith(
+          void Function(ConfirmMfaEnrollmentResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ConfirmMfaEnrollmentResponse))
+          as ConfirmMfaEnrollmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ConfirmMfaEnrollmentResponse() / ConfirmMfaEnrollmentResponse.new instead')
+  static ConfirmMfaEnrollmentResponse create() =>
+      ConfirmMfaEnrollmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ConfirmMfaEnrollmentResponse._();
+  @$core.override
+  ConfirmMfaEnrollmentResponse createEmptyInstance() =>
+      ConfirmMfaEnrollmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ConfirmMfaEnrollmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConfirmMfaEnrollmentResponse>(
+          ConfirmMfaEnrollmentResponse.$_createMessage);
+  static ConfirmMfaEnrollmentResponse? _defaultInstance;
+
+  /// The ten recovery codes, in plaintext exactly once; only hashes are kept.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get recoveryCodes => $_getList(0);
+}
+
+class DisableMfaRequest extends $pb.GeneratedMessage {
+  factory DisableMfaRequest({
+    $0.TenantContext? tenant,
+    $core.String? code,
+    $core.String? password,
+    IdentityProvider? provider,
+    $core.String? idToken,
+    $core.String? nonce,
+    $core.String? passkeyCredentialJson,
+  }) {
+    final result = DisableMfaRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (code != null) result.code = code;
+    if (password != null) result.password = password;
+    if (provider != null) result.provider = provider;
+    if (idToken != null) result.idToken = idToken;
+    if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
+    return result;
+  }
+
+  DisableMfaRequest._();
+
+  factory DisableMfaRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DisableMfaRequest()..mergeFromBuffer(data, registry);
+  factory DisableMfaRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DisableMfaRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DisableMfaRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DisableMfaRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'code')
+    ..aOS(3, _omitFieldNames ? '' : 'password')
+    ..aE<IdentityProvider>(4, _omitFieldNames ? '' : 'provider',
+        enumValues: IdentityProvider.values)
+    ..aOS(5, _omitFieldNames ? '' : 'idToken')
+    ..aOS(6, _omitFieldNames ? '' : 'nonce')
+    ..aOS(7, _omitFieldNames ? '' : 'passkeyCredentialJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableMfaRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableMfaRequest copyWith(void Function(DisableMfaRequest) updates) =>
+      super.copyWith((message) => updates(message as DisableMfaRequest))
+          as DisableMfaRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DisableMfaRequest() / DisableMfaRequest.new instead')
+  static DisableMfaRequest create() => DisableMfaRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DisableMfaRequest._();
+  @$core.override
+  DisableMfaRequest createEmptyInstance() => DisableMfaRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DisableMfaRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DisableMfaRequest>(
+          DisableMfaRequest.$_createMessage);
+  static DisableMfaRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// A code from the authenticator, or a recovery code, so a reader who lost
+  /// the authenticator can still take it off. A wrong one is answered as in
+  /// VerifyMfaRequest.
+  @$pb.TagNumber(2)
+  $core.String get code => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set code($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCode() => $_clearField(2);
+
+  /// The account's password, wrong being invalid_argument on password. An
+  /// account without one confirms with a fresh sign-in instead, as
+  /// RequestEmailChangeRequest describes: an ID token and its nonce from a
+  /// provider linked to the account, or an assertion made with one of its
+  /// passkeys. Exactly one of the three is sent, and it is spent before the
+  /// code is checked, so a wrong code asks for a fresh one.
+  @$pb.TagNumber(3)
+  $core.String get password => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set password($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPassword() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPassword() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  IdentityProvider get provider => $_getN(3);
+  @$pb.TagNumber(4)
+  set provider(IdentityProvider value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProvider() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProvider() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get idToken => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set idToken($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIdToken() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIdToken() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get nonce => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set nonce($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNonce() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNonce() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get passkeyCredentialJson => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set passkeyCredentialJson($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPasskeyCredentialJson() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPasskeyCredentialJson() => $_clearField(7);
+}
+
+class DisableMfaResponse extends $pb.GeneratedMessage {
+  factory DisableMfaResponse() => DisableMfaResponse._();
+
+  DisableMfaResponse._();
+
+  factory DisableMfaResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DisableMfaResponse()..mergeFromBuffer(data, registry);
+  factory DisableMfaResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DisableMfaResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DisableMfaResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DisableMfaResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableMfaResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableMfaResponse copyWith(void Function(DisableMfaResponse) updates) =>
+      super.copyWith((message) => updates(message as DisableMfaResponse))
+          as DisableMfaResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DisableMfaResponse() / DisableMfaResponse.new instead')
+  static DisableMfaResponse create() => DisableMfaResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DisableMfaResponse._();
+  @$core.override
+  DisableMfaResponse createEmptyInstance() => DisableMfaResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DisableMfaResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DisableMfaResponse>(
+          DisableMfaResponse.$_createMessage);
+  static DisableMfaResponse? _defaultInstance;
+}
+
+class RegenerateMfaRecoveryCodesRequest extends $pb.GeneratedMessage {
+  factory RegenerateMfaRecoveryCodesRequest({
+    $0.TenantContext? tenant,
+    $core.String? code,
+  }) {
+    final result = RegenerateMfaRecoveryCodesRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (code != null) result.code = code;
+    return result;
+  }
+
+  RegenerateMfaRecoveryCodesRequest._();
+
+  factory RegenerateMfaRecoveryCodesRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegenerateMfaRecoveryCodesRequest()..mergeFromBuffer(data, registry);
+  factory RegenerateMfaRecoveryCodesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegenerateMfaRecoveryCodesRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegenerateMfaRecoveryCodesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RegenerateMfaRecoveryCodesRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'code')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegenerateMfaRecoveryCodesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegenerateMfaRecoveryCodesRequest copyWith(
+          void Function(RegenerateMfaRecoveryCodesRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as RegenerateMfaRecoveryCodesRequest))
+          as RegenerateMfaRecoveryCodesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RegenerateMfaRecoveryCodesRequest() / RegenerateMfaRecoveryCodesRequest.new instead')
+  static RegenerateMfaRecoveryCodesRequest create() =>
+      RegenerateMfaRecoveryCodesRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RegenerateMfaRecoveryCodesRequest._();
+  @$core.override
+  RegenerateMfaRecoveryCodesRequest createEmptyInstance() =>
+      RegenerateMfaRecoveryCodesRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RegenerateMfaRecoveryCodesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegenerateMfaRecoveryCodesRequest>(
+          RegenerateMfaRecoveryCodesRequest.$_createMessage);
+  static RegenerateMfaRecoveryCodesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// A code from the authenticator. A recovery code is refused: one leaked
+  /// code that could mint ten more would never expire. A wrong one is
+  /// answered as in VerifyMfaRequest.
+  @$pb.TagNumber(2)
+  $core.String get code => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set code($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCode() => $_clearField(2);
+}
+
+class RegenerateMfaRecoveryCodesResponse extends $pb.GeneratedMessage {
+  factory RegenerateMfaRecoveryCodesResponse({
+    $core.Iterable<$core.String>? recoveryCodes,
+  }) {
+    final result = RegenerateMfaRecoveryCodesResponse._();
+    if (recoveryCodes != null) result.recoveryCodes.addAll(recoveryCodes);
+    return result;
+  }
+
+  RegenerateMfaRecoveryCodesResponse._();
+
+  factory RegenerateMfaRecoveryCodesResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegenerateMfaRecoveryCodesResponse()..mergeFromBuffer(data, registry);
+  factory RegenerateMfaRecoveryCodesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegenerateMfaRecoveryCodesResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegenerateMfaRecoveryCodesResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RegenerateMfaRecoveryCodesResponse.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'recoveryCodes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegenerateMfaRecoveryCodesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegenerateMfaRecoveryCodesResponse copyWith(
+          void Function(RegenerateMfaRecoveryCodesResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as RegenerateMfaRecoveryCodesResponse))
+          as RegenerateMfaRecoveryCodesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RegenerateMfaRecoveryCodesResponse() / RegenerateMfaRecoveryCodesResponse.new instead')
+  static RegenerateMfaRecoveryCodesResponse create() =>
+      RegenerateMfaRecoveryCodesResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RegenerateMfaRecoveryCodesResponse._();
+  @$core.override
+  RegenerateMfaRecoveryCodesResponse createEmptyInstance() =>
+      RegenerateMfaRecoveryCodesResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RegenerateMfaRecoveryCodesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegenerateMfaRecoveryCodesResponse>(
+          RegenerateMfaRecoveryCodesResponse.$_createMessage);
+  static RegenerateMfaRecoveryCodesResponse? _defaultInstance;
+
+  /// Replaces every code the account held, used or not.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get recoveryCodes => $_getList(0);
 }
 
 /// A tenant whose GetTenantResponse.sign_up_open is false refuses the request
@@ -7496,6 +8566,51 @@ class AuthServiceApi {
           'BeginPasskeyConfirmation',
           request,
           BeginPasskeyConfirmationResponse());
+
+  /// Settles the second step of a sign-in Login or LoginWithIdToken answered
+  /// with an MfaChallenge, for the session.
+  $async.Future<VerifyMfaResponse> verifyMfa(
+          $pb.ClientContext? ctx, VerifyMfaRequest request) =>
+      _client.invoke<VerifyMfaResponse>(
+          ctx, 'AuthService', 'VerifyMfa', request, VerifyMfaResponse());
+
+  /// The two-step verification of the signed-in reader's account. The
+  /// authenticator is the account's, so one set up in the tenant's console is
+  /// reported, and changed, here too.
+  $async.Future<GetMfaStatusResponse> getMfaStatus(
+          $pb.ClientContext? ctx, GetMfaStatusRequest request) =>
+      _client.invoke<GetMfaStatusResponse>(
+          ctx, 'AuthService', 'GetMfaStatus', request, GetMfaStatusResponse());
+  $async.Future<StartMfaEnrollmentResponse> startMfaEnrollment(
+          $pb.ClientContext? ctx, StartMfaEnrollmentRequest request) =>
+      _client.invoke<StartMfaEnrollmentResponse>(ctx, 'AuthService',
+          'StartMfaEnrollment', request, StartMfaEnrollmentResponse());
+
+  /// Turns the authenticator StartMfaEnrollment set up on, and answers the
+  /// recovery codes that stand in for it.
+  $async.Future<ConfirmMfaEnrollmentResponse> confirmMfaEnrollment(
+          $pb.ClientContext? ctx, ConfirmMfaEnrollmentRequest request) =>
+      _client.invoke<ConfirmMfaEnrollmentResponse>(ctx, 'AuthService',
+          'ConfirmMfaEnrollment', request, ConfirmMfaEnrollmentResponse());
+
+  /// Takes the authenticator off, with its recovery codes unless the account
+  /// keeps a passkey in the tenant's console that they stand in for too.
+  /// failed_precondition for an account that holds none.
+  $async.Future<DisableMfaResponse> disableMfa(
+          $pb.ClientContext? ctx, DisableMfaRequest request) =>
+      _client.invoke<DisableMfaResponse>(
+          ctx, 'AuthService', 'DisableMfa', request, DisableMfaResponse());
+
+  /// Replaces the recovery codes. failed_precondition for an account that holds
+  /// no authenticator.
+  $async.Future<RegenerateMfaRecoveryCodesResponse> regenerateMfaRecoveryCodes(
+          $pb.ClientContext? ctx, RegenerateMfaRecoveryCodesRequest request) =>
+      _client.invoke<RegenerateMfaRecoveryCodesResponse>(
+          ctx,
+          'AuthService',
+          'RegenerateMfaRecoveryCodes',
+          request,
+          RegenerateMfaRecoveryCodesResponse());
   $async.Future<CreateUserResponse> createUser(
           $pb.ClientContext? ctx, CreateUserRequest request) =>
       _client.invoke<CreateUserResponse>(

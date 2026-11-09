@@ -14,8 +14,24 @@ message LoginRequest {
 }
 
 message LoginResponse {
+  // Empty while mfa_challenge is set: the password was right, but the session
+  // is not issued until VerifyMfa settles the second step.
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
+  // Set for an account that holds an authenticator, whether it was set up on
+  // the site, in the app, or in the tenant's console: the account has one
+  // second factor, and every place it signs in asks for it.
+  MfaChallenge mfa_challenge = 3;
+}
+
+// The half-finished session a password, or a provider's sign-in, earns an
+// account that holds an authenticator. The token is signed, lives five
+// minutes, buys one session, and no RPC but VerifyMfa accepts it. A password
+// change, or a suspension, ends it.
+message MfaChallenge {
+  string token = 1;
+  // RFC 3339.
+  string expires_at = 2;
 }
 
 // A provider a reader signs in with instead of a password.
@@ -64,10 +80,16 @@ message LoginWithIdTokenRequest {
 }
 
 message LoginWithIdTokenResponse {
+  // Empty while mfa_challenge is set, as in LoginResponse.
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
   // True when this sign-in created the account.
   bool account_created = 3;
+  // Set, as in LoginResponse, for an account that holds an authenticator. The
+  // provider's sign-in stands in for the password, not for the second factor.
+  // The nonce is spent and a provider account linked by this sign-in stays
+  // linked whether or not the challenge is then settled.
+  MfaChallenge mfa_challenge = 4;
 }
 
 // A provider account linked to the signed-in reader.
@@ -253,8 +275,8 @@ message DeletePasskeyRequest {
 
 message DeletePasskeyResponse {}
 
-// Begins the fresh assertion that confirms DeleteMe or RequestEmailChange in
-// place of a password, allowing the caller's own passkeys alone.
+// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange, or
+// DisableMfa in place of a password, allowing the caller's own passkeys alone.
 // failed_precondition for a reader who holds none.
 message BeginPasskeyConfirmationRequest {
   publira.types.v1.TenantContext tenant = 1;
@@ -265,6 +287,111 @@ message BeginPasskeyConfirmationResponse {
   // answers it. The assertion made over it goes in the passkey_credential_json
   // of the request it confirms, and confirms that one request.
   string request_options_json = 1;
+}
+
+message VerifyMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The token of the MfaChallenge Login or LoginWithIdToken answered.
+  // Unauthenticated when it is not one, has expired, has bought a session
+  // already, or names an account that is no longer active or has changed its
+  // password since.
+  string challenge_token = 2;
+  // A code from the authenticator, or one of the recovery codes handed out
+  // when it was set up. A wrong one is unauthenticated with the ErrorInfo
+  // reason MFA_INVALID_CODE, which a client tells apart from the end of the
+  // challenge, and counts toward the lock the tenant's console applies to the
+  // same account: past five, every code is resource_exhausted with
+  // MFA_LOCKED for fifteen minutes. Each attempt also spends one of the
+  // account's password verifications, and one that succeeds clears them.
+  string code = 3;
+}
+
+message VerifyMfaResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  bool recovery_code_used = 3;
+  int32 remaining_recovery_codes = 4;
+}
+
+message GetMfaStatusRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetMfaStatusResponse {
+  // The account holds a confirmed authenticator, wherever it was set up.
+  bool enabled = 1;
+  // RFC 3339, empty while enabled is false.
+  string enabled_at = 2;
+  // What is left of the ten recovery codes. Zero while enabled is false.
+  int32 remaining_recovery_codes = 3;
+}
+
+// Starts setting an authenticator up, replacing one that was started and
+// never confirmed. failed_precondition for an account that holds a confirmed
+// one already, which DisableMfa takes off first, and for an install with no
+// secret manager to keep the secret in. failed_precondition with the
+// MFA_SET_UP_IN_CONSOLE reason, here and at ConfirmMfaEnrollment, for a member
+// of staff who holds a passkey in the tenant's console: the site cannot ask
+// for that passkey, so a site session proves the password alone, and the
+// authenticator is set up in the console instead, where the session that asks
+// has proved the passkey.
+message StartMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message StartMfaEnrollmentResponse {
+  // Base32 secret, for an authenticator that is typed into rather than
+  // scanned. It is readable only here and only until the next start.
+  string secret = 1;
+  // otpauth:// URI (RFC 6238 parameters) a client renders as a QR code.
+  string otpauth_uri = 2;
+}
+
+message ConfirmMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A code from the authenticator StartMfaEnrollment set up. A recovery code
+  // is refused: there are none yet. A wrong one is answered as in
+  // VerifyMfaRequest.
+  string code = 2;
+}
+
+message ConfirmMfaEnrollmentResponse {
+  // The ten recovery codes, in plaintext exactly once; only hashes are kept.
+  repeated string recovery_codes = 1;
+}
+
+message DisableMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A code from the authenticator, or a recovery code, so a reader who lost
+  // the authenticator can still take it off. A wrong one is answered as in
+  // VerifyMfaRequest.
+  string code = 2;
+  // The account's password, wrong being invalid_argument on password. An
+  // account without one confirms with a fresh sign-in instead, as
+  // RequestEmailChangeRequest describes: an ID token and its nonce from a
+  // provider linked to the account, or an assertion made with one of its
+  // passkeys. Exactly one of the three is sent, and it is spent before the
+  // code is checked, so a wrong code asks for a fresh one.
+  string password = 3;
+  IdentityProvider provider = 4;
+  string id_token = 5;
+  string nonce = 6;
+  string passkey_credential_json = 7;
+}
+
+message DisableMfaResponse {}
+
+message RegenerateMfaRecoveryCodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A code from the authenticator. A recovery code is refused: one leaked
+  // code that could mint ten more would never expire. A wrong one is
+  // answered as in VerifyMfaRequest.
+  string code = 2;
+}
+
+message RegenerateMfaRecoveryCodesResponse {
+  // Replaces every code the account held, used or not.
+  repeated string recovery_codes = 1;
 }
 
 // A tenant whose GetTenantResponse.sign_up_open is false refuses the request
@@ -815,6 +942,24 @@ service AuthService {
   rpc RenamePasskey(RenamePasskeyRequest) returns (RenamePasskeyResponse) {}
   rpc DeletePasskey(DeletePasskeyRequest) returns (DeletePasskeyResponse) {}
   rpc BeginPasskeyConfirmation(BeginPasskeyConfirmationRequest) returns (BeginPasskeyConfirmationResponse) {}
+  // Settles the second step of a sign-in Login or LoginWithIdToken answered
+  // with an MfaChallenge, for the session.
+  rpc VerifyMfa(VerifyMfaRequest) returns (VerifyMfaResponse) {}
+  // The two-step verification of the signed-in reader's account. The
+  // authenticator is the account's, so one set up in the tenant's console is
+  // reported, and changed, here too.
+  rpc GetMfaStatus(GetMfaStatusRequest) returns (GetMfaStatusResponse) {}
+  rpc StartMfaEnrollment(StartMfaEnrollmentRequest) returns (StartMfaEnrollmentResponse) {}
+  // Turns the authenticator StartMfaEnrollment set up on, and answers the
+  // recovery codes that stand in for it.
+  rpc ConfirmMfaEnrollment(ConfirmMfaEnrollmentRequest) returns (ConfirmMfaEnrollmentResponse) {}
+  // Takes the authenticator off, with its recovery codes unless the account
+  // keeps a passkey in the tenant's console that they stand in for too.
+  // failed_precondition for an account that holds none.
+  rpc DisableMfa(DisableMfaRequest) returns (DisableMfaResponse) {}
+  // Replaces the recovery codes. failed_precondition for an account that holds
+  // no authenticator.
+  rpc RegenerateMfaRecoveryCodes(RegenerateMfaRecoveryCodesRequest) returns (RegenerateMfaRecoveryCodesResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}

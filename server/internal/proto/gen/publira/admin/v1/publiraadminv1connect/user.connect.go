@@ -47,6 +47,9 @@ const (
 	// AdminUserServiceDeleteReaderProcedure is the procedure name of the AdminUserService's
 	// DeleteReader RPC.
 	AdminUserServiceDeleteReaderProcedure = "/publira.admin.v1.AdminUserService/DeleteReader"
+	// AdminUserServiceResetReaderMfaProcedure is the procedure name of the AdminUserService's
+	// ResetReaderMfa RPC.
+	AdminUserServiceResetReaderMfaProcedure = "/publira.admin.v1.AdminUserService/ResetReaderMfa"
 )
 
 var (
@@ -106,6 +109,13 @@ var (
 			Procedure:  AdminUserServiceDeleteReaderProcedure,
 		}
 	})
+	adminUserServiceResetReaderMfaSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_user_proto.Services().ByName("AdminUserService").Methods().ByName("ResetReaderMfa"),
+			Procedure:  AdminUserServiceResetReaderMfaProcedure,
+		}
+	})
 )
 
 // AdminUserServiceClient is a client for the publira.admin.v1.AdminUserService service.
@@ -156,6 +166,20 @@ type AdminUserServiceClient interface {
 	//
 	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error)
+	// Removes the account's two-step verification, for a reader who has lost
+	// their authenticator and every recovery code: the authenticator, every
+	// recovery code, the count of refused codes, and, as publiractl tenant
+	// member reset-mfa does, every passkey a staff account registered in the
+	// console. The passkeys the reader signs in to the site with stay, and so do
+	// the password and any role. The next sign-in asks for the password alone,
+	// or for an enrollment where the platform requires the factor of the
+	// account's console role. not_found as GetReader. failed_precondition for
+	// an account that has no two-step verification set up, and, with the
+	// OWN_ACCOUNT reason, for the caller's own account, which a stolen session
+	// could otherwise strip of its second factor.
+	//
+	// Minimum role: tenant_admin.
+	ResetReaderMfa(context.Context, *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error)
 }
 
 // NewAdminUserServiceClient constructs a client for the publira.admin.v1.AdminUserService service.
@@ -212,6 +236,20 @@ type AdminUserServiceHandler interface {
 	//
 	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error)
+	// Removes the account's two-step verification, for a reader who has lost
+	// their authenticator and every recovery code: the authenticator, every
+	// recovery code, the count of refused codes, and, as publiractl tenant
+	// member reset-mfa does, every passkey a staff account registered in the
+	// console. The passkeys the reader signs in to the site with stay, and so do
+	// the password and any role. The next sign-in asks for the password alone,
+	// or for an enrollment where the platform requires the factor of the
+	// account's console role. not_found as GetReader. failed_precondition for
+	// an account that has no two-step verification set up, and, with the
+	// OWN_ACCOUNT reason, for the caller's own account, which a stolen session
+	// could otherwise strip of its second factor.
+	//
+	// Minimum role: tenant_admin.
+	ResetReaderMfa(context.Context, *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error)
 }
 
 // RegisterAdminUserServiceHandler registers svc as the publira.admin.v1.AdminUserService
@@ -227,6 +265,7 @@ func RegisterAdminUserServiceHandler(server *connect.Server, svc AdminUserServic
 		connect.Method{Spec: adminUserServiceSetReaderBirthDateSpec(), Handler: adapter.setReaderBirthDate},
 		connect.Method{Spec: adminUserServiceRemoveReaderIconSpec(), Handler: adapter.removeReaderIcon},
 		connect.Method{Spec: adminUserServiceDeleteReaderSpec(), Handler: adapter.deleteReader},
+		connect.Method{Spec: adminUserServiceResetReaderMfaSpec(), Handler: adapter.resetReaderMfa},
 	)
 }
 
@@ -263,6 +302,10 @@ func (UnimplementedAdminUserServiceHandler) RemoveReaderIcon(context.Context, *v
 
 func (UnimplementedAdminUserServiceHandler) DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminUserService.DeleteReader is not implemented")
+}
+
+func (UnimplementedAdminUserServiceHandler) ResetReaderMfa(context.Context, *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminUserService.ResetReaderMfa is not implemented")
 }
 
 type adminUserServiceClient struct {
@@ -328,6 +371,14 @@ func (c *adminUserServiceClient) RemoveReaderIcon(ctx context.Context, req *v1.R
 func (c *adminUserServiceClient) DeleteReader(ctx context.Context, req *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error) {
 	var res v1.DeleteReaderResponse
 	if err := c.client.CallUnary(ctx, adminUserServiceDeleteReaderSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminUserServiceClient) ResetReaderMfa(ctx context.Context, req *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error) {
+	var res v1.ResetReaderMfaResponse
+	if err := c.client.CallUnary(ctx, adminUserServiceResetReaderMfaSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -425,6 +476,18 @@ func (h adminUserServiceHandler) deleteReader(ctx context.Context, _ connect.Spe
 		return err
 	}
 	res, err := h.svc.DeleteReader(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminUserServiceHandler) resetReaderMfa(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResetReaderMfaRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResetReaderMfa(ctx, &req)
 	if err != nil {
 		return err
 	}

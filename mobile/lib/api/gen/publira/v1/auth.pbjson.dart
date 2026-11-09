@@ -94,6 +94,14 @@ const LoginResponse$json = {
       '6': '.publira.types.v1.AccessToken',
       '10': 'accessToken'
     },
+    {
+      '1': 'mfa_challenge',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.MfaChallenge',
+      '10': 'mfaChallenge'
+    },
   ],
 };
 
@@ -101,7 +109,22 @@ const LoginResponse$json = {
 final $typed_data.Uint8List loginResponseDescriptor = $convert.base64Decode(
     'Cg1Mb2dpblJlc3BvbnNlEioKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXJSBH'
     'VzZXISQAoMYWNjZXNzX3Rva2VuGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5BY2Nlc3NUb2tl'
-    'blILYWNjZXNzVG9rZW4=');
+    'blILYWNjZXNzVG9rZW4SPQoNbWZhX2NoYWxsZW5nZRgDIAEoCzIYLnB1YmxpcmEudjEuTWZhQ2'
+    'hhbGxlbmdlUgxtZmFDaGFsbGVuZ2U=');
+
+@$core.Deprecated('Use mfaChallengeDescriptor instead')
+const MfaChallenge$json = {
+  '1': 'MfaChallenge',
+  '2': [
+    {'1': 'token', '3': 1, '4': 1, '5': 9, '10': 'token'},
+    {'1': 'expires_at', '3': 2, '4': 1, '5': 9, '10': 'expiresAt'},
+  ],
+};
+
+/// Descriptor for `MfaChallenge`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List mfaChallengeDescriptor = $convert.base64Decode(
+    'CgxNZmFDaGFsbGVuZ2USFAoFdG9rZW4YASABKAlSBXRva2VuEh0KCmV4cGlyZXNfYXQYAiABKA'
+    'lSCWV4cGlyZXNBdA==');
 
 @$core.Deprecated('Use loginWithIdTokenRequestDescriptor instead')
 const LoginWithIdTokenRequest$json = {
@@ -176,6 +199,14 @@ const LoginWithIdTokenResponse$json = {
       '10': 'accessToken'
     },
     {'1': 'account_created', '3': 3, '4': 1, '5': 8, '10': 'accountCreated'},
+    {
+      '1': 'mfa_challenge',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.MfaChallenge',
+      '10': 'mfaChallenge'
+    },
   ],
 };
 
@@ -184,7 +215,8 @@ final $typed_data.Uint8List loginWithIdTokenResponseDescriptor = $convert.base64
     'ChhMb2dpbldpdGhJZFRva2VuUmVzcG9uc2USKgoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZX'
     'MudjEuVXNlclIEdXNlchJACgxhY2Nlc3NfdG9rZW4YAiABKAsyHS5wdWJsaXJhLnR5cGVzLnYx'
     'LkFjY2Vzc1Rva2VuUgthY2Nlc3NUb2tlbhInCg9hY2NvdW50X2NyZWF0ZWQYAyABKAhSDmFjY2'
-    '91bnRDcmVhdGVk');
+    '91bnRDcmVhdGVkEj0KDW1mYV9jaGFsbGVuZ2UYBCABKAsyGC5wdWJsaXJhLnYxLk1mYUNoYWxs'
+    'ZW5nZVIMbWZhQ2hhbGxlbmdl');
 
 @$core.Deprecated('Use linkedIdentityDescriptor instead')
 const LinkedIdentity$json = {
@@ -703,6 +735,277 @@ final $typed_data.Uint8List beginPasskeyConfirmationResponseDescriptor =
     $convert.base64Decode(
         'CiBCZWdpblBhc3NrZXlDb25maXJtYXRpb25SZXNwb25zZRIwChRyZXF1ZXN0X29wdGlvbnNfan'
         'NvbhgBIAEoCVIScmVxdWVzdE9wdGlvbnNKc29u');
+
+@$core.Deprecated('Use verifyMfaRequestDescriptor instead')
+const VerifyMfaRequest$json = {
+  '1': 'VerifyMfaRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'challenge_token', '3': 2, '4': 1, '5': 9, '10': 'challengeToken'},
+    {'1': 'code', '3': 3, '4': 1, '5': 9, '10': 'code'},
+  ],
+};
+
+/// Descriptor for `VerifyMfaRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List verifyMfaRequestDescriptor = $convert.base64Decode(
+    'ChBWZXJpZnlNZmFSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVG'
+    'VuYW50Q29udGV4dFIGdGVuYW50EicKD2NoYWxsZW5nZV90b2tlbhgCIAEoCVIOY2hhbGxlbmdl'
+    'VG9rZW4SEgoEY29kZRgDIAEoCVIEY29kZQ==');
+
+@$core.Deprecated('Use verifyMfaResponseDescriptor instead')
+const VerifyMfaResponse$json = {
+  '1': 'VerifyMfaResponse',
+  '2': [
+    {
+      '1': 'user',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.User',
+      '10': 'user'
+    },
+    {
+      '1': 'access_token',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.AccessToken',
+      '10': 'accessToken'
+    },
+    {
+      '1': 'recovery_code_used',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'recoveryCodeUsed'
+    },
+    {
+      '1': 'remaining_recovery_codes',
+      '3': 4,
+      '4': 1,
+      '5': 5,
+      '10': 'remainingRecoveryCodes'
+    },
+  ],
+};
+
+/// Descriptor for `VerifyMfaResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List verifyMfaResponseDescriptor = $convert.base64Decode(
+    'ChFWZXJpZnlNZmFSZXNwb25zZRIqCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2'
+    'VyUgR1c2VyEkAKDGFjY2Vzc190b2tlbhgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuQWNjZXNz'
+    'VG9rZW5SC2FjY2Vzc1Rva2VuEiwKEnJlY292ZXJ5X2NvZGVfdXNlZBgDIAEoCFIQcmVjb3Zlcn'
+    'lDb2RlVXNlZBI4ChhyZW1haW5pbmdfcmVjb3ZlcnlfY29kZXMYBCABKAVSFnJlbWFpbmluZ1Jl'
+    'Y292ZXJ5Q29kZXM=');
+
+@$core.Deprecated('Use getMfaStatusRequestDescriptor instead')
+const GetMfaStatusRequest$json = {
+  '1': 'GetMfaStatusRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `GetMfaStatusRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getMfaStatusRequestDescriptor = $convert.base64Decode(
+    'ChNHZXRNZmFTdGF0dXNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudj'
+    'EuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use getMfaStatusResponseDescriptor instead')
+const GetMfaStatusResponse$json = {
+  '1': 'GetMfaStatusResponse',
+  '2': [
+    {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'enabled_at', '3': 2, '4': 1, '5': 9, '10': 'enabledAt'},
+    {
+      '1': 'remaining_recovery_codes',
+      '3': 3,
+      '4': 1,
+      '5': 5,
+      '10': 'remainingRecoveryCodes'
+    },
+  ],
+};
+
+/// Descriptor for `GetMfaStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getMfaStatusResponseDescriptor = $convert.base64Decode(
+    'ChRHZXRNZmFTdGF0dXNSZXNwb25zZRIYCgdlbmFibGVkGAEgASgIUgdlbmFibGVkEh0KCmVuYW'
+    'JsZWRfYXQYAiABKAlSCWVuYWJsZWRBdBI4ChhyZW1haW5pbmdfcmVjb3ZlcnlfY29kZXMYAyAB'
+    'KAVSFnJlbWFpbmluZ1JlY292ZXJ5Q29kZXM=');
+
+@$core.Deprecated('Use startMfaEnrollmentRequestDescriptor instead')
+const StartMfaEnrollmentRequest$json = {
+  '1': 'StartMfaEnrollmentRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `StartMfaEnrollmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startMfaEnrollmentRequestDescriptor =
+    $convert.base64Decode(
+        'ChlTdGFydE1mYUVucm9sbG1lbnRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
+        'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use startMfaEnrollmentResponseDescriptor instead')
+const StartMfaEnrollmentResponse$json = {
+  '1': 'StartMfaEnrollmentResponse',
+  '2': [
+    {'1': 'secret', '3': 1, '4': 1, '5': 9, '10': 'secret'},
+    {'1': 'otpauth_uri', '3': 2, '4': 1, '5': 9, '10': 'otpauthUri'},
+  ],
+};
+
+/// Descriptor for `StartMfaEnrollmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startMfaEnrollmentResponseDescriptor =
+    $convert.base64Decode(
+        'ChpTdGFydE1mYUVucm9sbG1lbnRSZXNwb25zZRIWCgZzZWNyZXQYASABKAlSBnNlY3JldBIfCg'
+        'tvdHBhdXRoX3VyaRgCIAEoCVIKb3RwYXV0aFVyaQ==');
+
+@$core.Deprecated('Use confirmMfaEnrollmentRequestDescriptor instead')
+const ConfirmMfaEnrollmentRequest$json = {
+  '1': 'ConfirmMfaEnrollmentRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'code', '3': 2, '4': 1, '5': 9, '10': 'code'},
+  ],
+};
+
+/// Descriptor for `ConfirmMfaEnrollmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List confirmMfaEnrollmentRequestDescriptor =
+    $convert.base64Decode(
+        'ChtDb25maXJtTWZhRW5yb2xsbWVudFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
+        '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSEgoEY29kZRgCIAEoCVIEY29kZQ==');
+
+@$core.Deprecated('Use confirmMfaEnrollmentResponseDescriptor instead')
+const ConfirmMfaEnrollmentResponse$json = {
+  '1': 'ConfirmMfaEnrollmentResponse',
+  '2': [
+    {'1': 'recovery_codes', '3': 1, '4': 3, '5': 9, '10': 'recoveryCodes'},
+  ],
+};
+
+/// Descriptor for `ConfirmMfaEnrollmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List confirmMfaEnrollmentResponseDescriptor =
+    $convert.base64Decode(
+        'ChxDb25maXJtTWZhRW5yb2xsbWVudFJlc3BvbnNlEiUKDnJlY292ZXJ5X2NvZGVzGAEgAygJUg'
+        '1yZWNvdmVyeUNvZGVz');
+
+@$core.Deprecated('Use disableMfaRequestDescriptor instead')
+const DisableMfaRequest$json = {
+  '1': 'DisableMfaRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'code', '3': 2, '4': 1, '5': 9, '10': 'code'},
+    {'1': 'password', '3': 3, '4': 1, '5': 9, '10': 'password'},
+    {
+      '1': 'provider',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.IdentityProvider',
+      '10': 'provider'
+    },
+    {'1': 'id_token', '3': 5, '4': 1, '5': 9, '10': 'idToken'},
+    {'1': 'nonce', '3': 6, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
+  ],
+};
+
+/// Descriptor for `DisableMfaRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List disableMfaRequestDescriptor = $convert.base64Decode(
+    'ChFEaXNhYmxlTWZhUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLl'
+    'RlbmFudENvbnRleHRSBnRlbmFudBISCgRjb2RlGAIgASgJUgRjb2RlEhoKCHBhc3N3b3JkGAMg'
+    'ASgJUghwYXNzd29yZBI4Cghwcm92aWRlchgEIAEoDjIcLnB1YmxpcmEudjEuSWRlbnRpdHlQcm'
+    '92aWRlclIIcHJvdmlkZXISGQoIaWRfdG9rZW4YBSABKAlSB2lkVG9rZW4SFAoFbm9uY2UYBiAB'
+    'KAlSBW5vbmNlEjYKF3Bhc3NrZXlfY3JlZGVudGlhbF9qc29uGAcgASgJUhVwYXNza2V5Q3JlZG'
+    'VudGlhbEpzb24=');
+
+@$core.Deprecated('Use disableMfaResponseDescriptor instead')
+const DisableMfaResponse$json = {
+  '1': 'DisableMfaResponse',
+};
+
+/// Descriptor for `DisableMfaResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List disableMfaResponseDescriptor =
+    $convert.base64Decode('ChJEaXNhYmxlTWZhUmVzcG9uc2U=');
+
+@$core.Deprecated('Use regenerateMfaRecoveryCodesRequestDescriptor instead')
+const RegenerateMfaRecoveryCodesRequest$json = {
+  '1': 'RegenerateMfaRecoveryCodesRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'code', '3': 2, '4': 1, '5': 9, '10': 'code'},
+  ],
+};
+
+/// Descriptor for `RegenerateMfaRecoveryCodesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List regenerateMfaRecoveryCodesRequestDescriptor =
+    $convert.base64Decode(
+        'CiFSZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucH'
+        'VibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSEgoEY29kZRgCIAEoCVIEY29k'
+        'ZQ==');
+
+@$core.Deprecated('Use regenerateMfaRecoveryCodesResponseDescriptor instead')
+const RegenerateMfaRecoveryCodesResponse$json = {
+  '1': 'RegenerateMfaRecoveryCodesResponse',
+  '2': [
+    {'1': 'recovery_codes', '3': 1, '4': 3, '5': 9, '10': 'recoveryCodes'},
+  ],
+};
+
+/// Descriptor for `RegenerateMfaRecoveryCodesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List regenerateMfaRecoveryCodesResponseDescriptor =
+    $convert.base64Decode(
+        'CiJSZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1Jlc3BvbnNlEiUKDnJlY292ZXJ5X2NvZGVzGA'
+        'EgAygJUg1yZWNvdmVyeUNvZGVz');
 
 @$core.Deprecated('Use createUserRequestDescriptor instead')
 const CreateUserRequest$json = {
@@ -2436,6 +2739,36 @@ const $core.Map<$core.String, $core.dynamic> AuthServiceBase$json = {
       '3': '.publira.v1.BeginPasskeyConfirmationResponse'
     },
     {
+      '1': 'VerifyMfa',
+      '2': '.publira.v1.VerifyMfaRequest',
+      '3': '.publira.v1.VerifyMfaResponse'
+    },
+    {
+      '1': 'GetMfaStatus',
+      '2': '.publira.v1.GetMfaStatusRequest',
+      '3': '.publira.v1.GetMfaStatusResponse'
+    },
+    {
+      '1': 'StartMfaEnrollment',
+      '2': '.publira.v1.StartMfaEnrollmentRequest',
+      '3': '.publira.v1.StartMfaEnrollmentResponse'
+    },
+    {
+      '1': 'ConfirmMfaEnrollment',
+      '2': '.publira.v1.ConfirmMfaEnrollmentRequest',
+      '3': '.publira.v1.ConfirmMfaEnrollmentResponse'
+    },
+    {
+      '1': 'DisableMfa',
+      '2': '.publira.v1.DisableMfaRequest',
+      '3': '.publira.v1.DisableMfaResponse'
+    },
+    {
+      '1': 'RegenerateMfaRecoveryCodes',
+      '2': '.publira.v1.RegenerateMfaRecoveryCodesRequest',
+      '3': '.publira.v1.RegenerateMfaRecoveryCodesResponse'
+    },
+    {
       '1': 'CreateUser',
       '2': '.publira.v1.CreateUserRequest',
       '3': '.publira.v1.CreateUserResponse'
@@ -2593,6 +2926,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.User': $0.User$json,
   '.publira.types.v1.UserIconVariant': $0.UserIconVariant$json,
   '.publira.types.v1.AccessToken': $0.AccessToken$json,
+  '.publira.v1.MfaChallenge': MfaChallenge$json,
   '.publira.v1.LoginWithIdTokenRequest': LoginWithIdTokenRequest$json,
   '.publira.v1.LoginWithIdTokenResponse': LoginWithIdTokenResponse$json,
   '.publira.v1.ListMyIdentitiesRequest': ListMyIdentitiesRequest$json,
@@ -2625,6 +2959,20 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       BeginPasskeyConfirmationRequest$json,
   '.publira.v1.BeginPasskeyConfirmationResponse':
       BeginPasskeyConfirmationResponse$json,
+  '.publira.v1.VerifyMfaRequest': VerifyMfaRequest$json,
+  '.publira.v1.VerifyMfaResponse': VerifyMfaResponse$json,
+  '.publira.v1.GetMfaStatusRequest': GetMfaStatusRequest$json,
+  '.publira.v1.GetMfaStatusResponse': GetMfaStatusResponse$json,
+  '.publira.v1.StartMfaEnrollmentRequest': StartMfaEnrollmentRequest$json,
+  '.publira.v1.StartMfaEnrollmentResponse': StartMfaEnrollmentResponse$json,
+  '.publira.v1.ConfirmMfaEnrollmentRequest': ConfirmMfaEnrollmentRequest$json,
+  '.publira.v1.ConfirmMfaEnrollmentResponse': ConfirmMfaEnrollmentResponse$json,
+  '.publira.v1.DisableMfaRequest': DisableMfaRequest$json,
+  '.publira.v1.DisableMfaResponse': DisableMfaResponse$json,
+  '.publira.v1.RegenerateMfaRecoveryCodesRequest':
+      RegenerateMfaRecoveryCodesRequest$json,
+  '.publira.v1.RegenerateMfaRecoveryCodesResponse':
+      RegenerateMfaRecoveryCodesResponse$json,
   '.publira.v1.CreateUserRequest': CreateUserRequest$json,
   '.publira.v1.CreateUserResponse': CreateUserResponse$json,
   '.publira.v1.VerifyUserEmailRequest': VerifyUserEmailRequest$json,
@@ -2730,55 +3078,65 @@ final $typed_data.Uint8List authServiceDescriptor = $convert.base64Decode(
     'oNRGVsZXRlUGFzc2tleRIgLnB1YmxpcmEudjEuRGVsZXRlUGFzc2tleVJlcXVlc3QaIS5wdWJs'
     'aXJhLnYxLkRlbGV0ZVBhc3NrZXlSZXNwb25zZRJ1ChhCZWdpblBhc3NrZXlDb25maXJtYXRpb2'
     '4SKy5wdWJsaXJhLnYxLkJlZ2luUGFzc2tleUNvbmZpcm1hdGlvblJlcXVlc3QaLC5wdWJsaXJh'
-    'LnYxLkJlZ2luUGFzc2tleUNvbmZpcm1hdGlvblJlc3BvbnNlEksKCkNyZWF0ZVVzZXISHS5wdW'
-    'JsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9u'
-    'c2USWgoPVmVyaWZ5VXNlckVtYWlsEiIucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXF1ZX'
-    'N0GiMucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXNwb25zZRJ1ChhSZXF1ZXN0RW1haWxW'
-    'ZXJpZmljYXRpb24SKy5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvblJlcXVlc3'
-    'QaLC5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvblJlc3BvbnNlEmMKElJlcXVl'
-    'c3RFbWFpbENoYW5nZRIlLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVxdWVzdBomLn'
-    'B1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2USYwoSQ29uZmlybUVtYWlsQ2hh'
-    'bmdlEiUucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0GiYucHVibGlyYS52MS'
-    '5Db25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRJpChRSZXF1ZXN0UGFzc3dvcmRSZXNldBInLnB1'
-    'YmxpcmEudjEuUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0GigucHVibGlyYS52MS5SZXF1ZX'
-    'N0UGFzc3dvcmRSZXNldFJlc3BvbnNlEmkKFENvbmZpcm1QYXNzd29yZFJlc2V0EicucHVibGly'
-    'YS52MS5Db25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1QYX'
-    'Nzd29yZFJlc2V0UmVzcG9uc2USVwoOQ2hhbmdlUGFzc3dvcmQSIS5wdWJsaXJhLnYxLkNoYW5n'
-    'ZVBhc3N3b3JkUmVxdWVzdBoiLnB1YmxpcmEudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRI/Cg'
-    'ZMb2dvdXQSGS5wdWJsaXJhLnYxLkxvZ291dFJlcXVlc3QaGi5wdWJsaXJhLnYxLkxvZ291dFJl'
-    'c3BvbnNlEjwKBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLk'
-    'dldE1lUmVzcG9uc2USRQoIVXBkYXRlTWUSGy5wdWJsaXJhLnYxLlVwZGF0ZU1lUmVxdWVzdBoc'
-    'LnB1YmxpcmEudjEuVXBkYXRlTWVSZXNwb25zZRJRCgxVcGxvYWRNeUljb24SHy5wdWJsaXJhLn'
-    'YxLlVwbG9hZE15SWNvblJlcXVlc3QaIC5wdWJsaXJhLnYxLlVwbG9hZE15SWNvblJlc3BvbnNl'
-    'ElEKDFNlbGVjdE15SWNvbhIfLnB1YmxpcmEudjEuU2VsZWN0TXlJY29uUmVxdWVzdBogLnB1Ym'
-    'xpcmEudjEuU2VsZWN0TXlJY29uUmVzcG9uc2USUQoMRGVsZXRlTXlJY29uEh8ucHVibGlyYS52'
-    'MS5EZWxldGVNeUljb25SZXF1ZXN0GiAucHVibGlyYS52MS5EZWxldGVNeUljb25SZXNwb25zZR'
-    'JFCghEZWxldGVNZRIbLnB1YmxpcmEudjEuRGVsZXRlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5E'
-    'ZWxldGVNZVJlc3BvbnNlEnIKF0dldE5vdGlmaWNhdGlvblNldHRpbmdzEioucHVibGlyYS52MS'
-    '5HZXROb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QaKy5wdWJsaXJhLnYxLkdldE5vdGlmaWNh'
-    'dGlvblNldHRpbmdzUmVzcG9uc2USewoaVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3MSLS5wdW'
-    'JsaXJhLnYxLlVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBouLnB1YmxpcmEudjEu'
-    'VXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZRJpChRHZXRWaWV3ZXJQcmVmZXJlbm'
-    'NlcxInLnB1YmxpcmEudjEuR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0GigucHVibGlyYS52'
-    'MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1Jlc3BvbnNlEnIKF1VwZGF0ZVZpZXdlclByZWZlcmVuY2'
-    'VzEioucHVibGlyYS52MS5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3QaKy5wdWJsaXJh'
-    'LnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2USWgoPR2V0QW5ub3VuY2VtZW50Ei'
-    'IucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRBbm5v'
-    'dW5jZW1lbnRSZXNwb25zZRJsChVHZXRQaW5uZWRBbm5vdW5jZW1lbnQSKC5wdWJsaXJhLnYxLk'
-    'dldFBpbm5lZEFubm91bmNlbWVudFJlcXVlc3QaKS5wdWJsaXJhLnYxLkdldFBpbm5lZEFubm91'
-    'bmNlbWVudFJlc3BvbnNlEmAKEUxpc3RBbm5vdW5jZW1lbnRzEiQucHVibGlyYS52MS5MaXN0QW'
-    '5ub3VuY2VtZW50c1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9u'
-    'c2USbwoWTWFya0Fubm91bmNlbWVudEFzUmVhZBIpLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbW'
-    'VudEFzUmVhZFJlcXVlc3QaKi5wdWJsaXJhLnYxLk1hcmtBbm5vdW5jZW1lbnRBc1JlYWRSZXNw'
-    'b25zZRJ7ChpNYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZBItLnB1YmxpcmEudjEuTWFya0FsbE'
-    'Fubm91bmNlbWVudHNBc1JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJrQWxsQW5ub3VuY2Vt'
-    'ZW50c0FzUmVhZFJlc3BvbnNlEnUKGEdldE15TGVnYWxQYWdlQWdyZWVtZW50cxIrLnB1Ymxpcm'
-    'EudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1lbnRzUmVxdWVzdBosLnB1YmxpcmEudjEuR2V0TXlM'
-    'ZWdhbFBhZ2VBZ3JlZW1lbnRzUmVzcG9uc2USYAoRQWdyZWVUb0xlZ2FsUGFnZXMSJC5wdWJsaX'
-    'JhLnYxLkFncmVlVG9MZWdhbFBhZ2VzUmVxdWVzdBolLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2Fs'
-    'UGFnZXNSZXNwb25zZRJmChNSZXF1ZXN0TXlEYXRhRXhwb3J0EiYucHVibGlyYS52MS5SZXF1ZX'
-    'N0TXlEYXRhRXhwb3J0UmVxdWVzdBonLnB1YmxpcmEudjEuUmVxdWVzdE15RGF0YUV4cG9ydFJl'
-    'c3BvbnNlEloKD0dldE15RGF0YUV4cG9ydBIiLnB1YmxpcmEudjEuR2V0TXlEYXRhRXhwb3J0Um'
-    'VxdWVzdBojLnB1YmxpcmEudjEuR2V0TXlEYXRhRXhwb3J0UmVzcG9uc2USawoURG93bmxvYWRN'
-    'eURhdGFFeHBvcnQSJy5wdWJsaXJhLnYxLkRvd25sb2FkTXlEYXRhRXhwb3J0UmVxdWVzdBooLn'
-    'B1YmxpcmEudjEuRG93bmxvYWRNeURhdGFFeHBvcnRSZXNwb25zZTAB');
+    'LnYxLkJlZ2luUGFzc2tleUNvbmZpcm1hdGlvblJlc3BvbnNlEkgKCVZlcmlmeU1mYRIcLnB1Ym'
+    'xpcmEudjEuVmVyaWZ5TWZhUmVxdWVzdBodLnB1YmxpcmEudjEuVmVyaWZ5TWZhUmVzcG9uc2US'
+    'UQoMR2V0TWZhU3RhdHVzEh8ucHVibGlyYS52MS5HZXRNZmFTdGF0dXNSZXF1ZXN0GiAucHVibG'
+    'lyYS52MS5HZXRNZmFTdGF0dXNSZXNwb25zZRJjChJTdGFydE1mYUVucm9sbG1lbnQSJS5wdWJs'
+    'aXJhLnYxLlN0YXJ0TWZhRW5yb2xsbWVudFJlcXVlc3QaJi5wdWJsaXJhLnYxLlN0YXJ0TWZhRW'
+    '5yb2xsbWVudFJlc3BvbnNlEmkKFENvbmZpcm1NZmFFbnJvbGxtZW50EicucHVibGlyYS52MS5D'
+    'b25maXJtTWZhRW5yb2xsbWVudFJlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1NZmFFbnJvbG'
+    'xtZW50UmVzcG9uc2USSwoKRGlzYWJsZU1mYRIdLnB1YmxpcmEudjEuRGlzYWJsZU1mYVJlcXVl'
+    'c3QaHi5wdWJsaXJhLnYxLkRpc2FibGVNZmFSZXNwb25zZRJ7ChpSZWdlbmVyYXRlTWZhUmVjb3'
+    'ZlcnlDb2RlcxItLnB1YmxpcmEudjEuUmVnZW5lcmF0ZU1mYVJlY292ZXJ5Q29kZXNSZXF1ZXN0'
+    'Gi4ucHVibGlyYS52MS5SZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1Jlc3BvbnNlEksKCkNyZW'
+    'F0ZVVzZXISHS5wdWJsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVh'
+    'dGVVc2VyUmVzcG9uc2USWgoPVmVyaWZ5VXNlckVtYWlsEiIucHVibGlyYS52MS5WZXJpZnlVc2'
+    'VyRW1haWxSZXF1ZXN0GiMucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXNwb25zZRJ1ChhS'
+    'ZXF1ZXN0RW1haWxWZXJpZmljYXRpb24SKy5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaW'
+    'NhdGlvblJlcXVlc3QaLC5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvblJlc3Bv'
+    'bnNlEmMKElJlcXVlc3RFbWFpbENoYW5nZRIlLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbm'
+    'dlUmVxdWVzdBomLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2USYwoSQ29u'
+    'ZmlybUVtYWlsQ2hhbmdlEiUucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0Gi'
+    'YucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRJpChRSZXF1ZXN0UGFzc3dv'
+    'cmRSZXNldBInLnB1YmxpcmEudjEuUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0GigucHVibG'
+    'lyYS52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldFJlc3BvbnNlEmkKFENvbmZpcm1QYXNzd29yZFJl'
+    'c2V0EicucHVibGlyYS52MS5Db25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJsaXJhLn'
+    'YxLkNvbmZpcm1QYXNzd29yZFJlc2V0UmVzcG9uc2USVwoOQ2hhbmdlUGFzc3dvcmQSIS5wdWJs'
+    'aXJhLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoiLnB1YmxpcmEudjEuQ2hhbmdlUGFzc3dvcm'
+    'RSZXNwb25zZRI/CgZMb2dvdXQSGS5wdWJsaXJhLnYxLkxvZ291dFJlcXVlc3QaGi5wdWJsaXJh'
+    'LnYxLkxvZ291dFJlc3BvbnNlEjwKBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS'
+    '5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2USRQoIVXBkYXRlTWUSGy5wdWJsaXJhLnYxLlVwZGF0'
+    'ZU1lUmVxdWVzdBocLnB1YmxpcmEudjEuVXBkYXRlTWVSZXNwb25zZRJRCgxVcGxvYWRNeUljb2'
+    '4SHy5wdWJsaXJhLnYxLlVwbG9hZE15SWNvblJlcXVlc3QaIC5wdWJsaXJhLnYxLlVwbG9hZE15'
+    'SWNvblJlc3BvbnNlElEKDFNlbGVjdE15SWNvbhIfLnB1YmxpcmEudjEuU2VsZWN0TXlJY29uUm'
+    'VxdWVzdBogLnB1YmxpcmEudjEuU2VsZWN0TXlJY29uUmVzcG9uc2USUQoMRGVsZXRlTXlJY29u'
+    'Eh8ucHVibGlyYS52MS5EZWxldGVNeUljb25SZXF1ZXN0GiAucHVibGlyYS52MS5EZWxldGVNeU'
+    'ljb25SZXNwb25zZRJFCghEZWxldGVNZRIbLnB1YmxpcmEudjEuRGVsZXRlTWVSZXF1ZXN0Ghwu'
+    'cHVibGlyYS52MS5EZWxldGVNZVJlc3BvbnNlEnIKF0dldE5vdGlmaWNhdGlvblNldHRpbmdzEi'
+    'oucHVibGlyYS52MS5HZXROb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QaKy5wdWJsaXJhLnYx'
+    'LkdldE5vdGlmaWNhdGlvblNldHRpbmdzUmVzcG9uc2USewoaVXBkYXRlTm90aWZpY2F0aW9uU2'
+    'V0dGluZ3MSLS5wdWJsaXJhLnYxLlVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBou'
+    'LnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZRJpChRHZXRWaW'
+    'V3ZXJQcmVmZXJlbmNlcxInLnB1YmxpcmEudjEuR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0'
+    'GigucHVibGlyYS52MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1Jlc3BvbnNlEnIKF1VwZGF0ZVZpZX'
+    'dlclByZWZlcmVuY2VzEioucHVibGlyYS52MS5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1JlcXVl'
+    'c3QaKy5wdWJsaXJhLnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2USWgoPR2V0QW'
+    '5ub3VuY2VtZW50EiIucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXF1ZXN0GiMucHVibGly'
+    'YS52MS5HZXRBbm5vdW5jZW1lbnRSZXNwb25zZRJsChVHZXRQaW5uZWRBbm5vdW5jZW1lbnQSKC'
+    '5wdWJsaXJhLnYxLkdldFBpbm5lZEFubm91bmNlbWVudFJlcXVlc3QaKS5wdWJsaXJhLnYxLkdl'
+    'dFBpbm5lZEFubm91bmNlbWVudFJlc3BvbnNlEmAKEUxpc3RBbm5vdW5jZW1lbnRzEiQucHVibG'
+    'lyYS52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3RBbm5vdW5j'
+    'ZW1lbnRzUmVzcG9uc2USbwoWTWFya0Fubm91bmNlbWVudEFzUmVhZBIpLnB1YmxpcmEudjEuTW'
+    'Fya0Fubm91bmNlbWVudEFzUmVhZFJlcXVlc3QaKi5wdWJsaXJhLnYxLk1hcmtBbm5vdW5jZW1l'
+    'bnRBc1JlYWRSZXNwb25zZRJ7ChpNYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZBItLnB1Ymxpcm'
+    'EudjEuTWFya0FsbEFubm91bmNlbWVudHNBc1JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJr'
+    'QWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlc3BvbnNlEnUKGEdldE15TGVnYWxQYWdlQWdyZWVtZW'
+    '50cxIrLnB1YmxpcmEudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1lbnRzUmVxdWVzdBosLnB1Ymxp'
+    'cmEudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1lbnRzUmVzcG9uc2USYAoRQWdyZWVUb0xlZ2FsUG'
+    'FnZXMSJC5wdWJsaXJhLnYxLkFncmVlVG9MZWdhbFBhZ2VzUmVxdWVzdBolLnB1YmxpcmEudjEu'
+    'QWdyZWVUb0xlZ2FsUGFnZXNSZXNwb25zZRJmChNSZXF1ZXN0TXlEYXRhRXhwb3J0EiYucHVibG'
+    'lyYS52MS5SZXF1ZXN0TXlEYXRhRXhwb3J0UmVxdWVzdBonLnB1YmxpcmEudjEuUmVxdWVzdE15'
+    'RGF0YUV4cG9ydFJlc3BvbnNlEloKD0dldE15RGF0YUV4cG9ydBIiLnB1YmxpcmEudjEuR2V0TX'
+    'lEYXRhRXhwb3J0UmVxdWVzdBojLnB1YmxpcmEudjEuR2V0TXlEYXRhRXhwb3J0UmVzcG9uc2US'
+    'awoURG93bmxvYWRNeURhdGFFeHBvcnQSJy5wdWJsaXJhLnYxLkRvd25sb2FkTXlEYXRhRXhwb3'
+    'J0UmVxdWVzdBooLnB1YmxpcmEudjEuRG93bmxvYWRNeURhdGFFeHBvcnRSZXNwb25zZTAB');

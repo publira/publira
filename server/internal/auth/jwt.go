@@ -86,6 +86,12 @@ const (
 	// one console earned cannot be completed at the other.
 	AudiencePlatformMFAVerify = "platform-mfa-verify"
 	AudiencePlatformMFAEnroll = "platform-mfa-enroll"
+	// AudiencePublicMFAVerify is the site's counterpart, for a reader's
+	// sign-in that owes a code. The site never requires the factor, so it has
+	// no enroll audience, and an account that signed in to one of the consoles
+	// cannot finish at the site with the challenge it earned there, nor the
+	// other way round.
+	AudiencePublicMFAVerify = "public-mfa-verify"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -225,8 +231,9 @@ func (m *TokenManager) IssueFreeEpisodeMediaToken(
 // what the challenge may complete: AudienceAdminMFAVerify for an account that
 // owes a code, AudienceAdminMFAEnroll for one that owes an enrollment, and
 // AudiencePlatformMFAVerify and AudiencePlatformMFAEnroll for an operator of
-// the platform console. An admin challenge names its tenant and a platform one
-// names none, because an operator belongs to no tenant. It carries no role,
+// the platform console, and AudiencePublicMFAVerify for a reader signing in
+// to the site. An admin or a site challenge names its tenant and a platform
+// one names none, because an operator belongs to no tenant. It carries no role,
 // so nothing that authorizes on one can act on it, and it carries the
 // credentials version, so a password change ends it.
 //
@@ -246,7 +253,7 @@ func (m *TokenManager) IssueMFAChallengeToken(
 	}
 	tenantID = strings.TrimSpace(tenantID)
 	switch strings.TrimSpace(audience) {
-	case AudienceAdminMFAVerify, AudienceAdminMFAEnroll:
+	case AudienceAdminMFAVerify, AudienceAdminMFAEnroll, AudiencePublicMFAVerify:
 		if tenantID == "" {
 			return "", time.Time{}, errors.New("tenant is required")
 		}

@@ -158,8 +158,9 @@ export type PlatformPolicy = Message<"publira.platform.v1.PlatformPolicy"> & {
 
   /**
    * How often one account's password may be verified by the RPCs that ask for
-   * it on top of the session, counted across all of them and cleared by a
-   * verification that succeeds.
+   * it on top of the session, and the site's two-step verification RPCs may
+   * write the account's authenticator or check a code from it, counted across
+   * all of them and cleared by a verification that succeeds.
    *
    * @generated from field: publira.platform.v1.MinuteDayLimit password_verification = 2;
    */

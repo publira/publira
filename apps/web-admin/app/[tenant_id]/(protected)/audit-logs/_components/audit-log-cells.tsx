@@ -597,6 +597,10 @@ const readerActionName = (action: string) => {
       return <Message message="admin.audit.actions.reader_icon_removed" />;
     }
 
+    case "reader_mfa_reset": {
+      return <Message message="admin.audit.actions.reader_mfa_reset" />;
+    }
+
     case "reader_deleted": {
       return <Message message="admin.audit.actions.reader_deleted" />;
     }

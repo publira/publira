@@ -90,3 +90,21 @@ func ResetMFA(ctx context.Context, tx *sql.Tx, p ResetMFAParams) (Member, error)
 	}
 	return member, nil
 }
+
+// DeleteRecoveryCodesWithTheLastFactor deletes the account's recovery codes
+// once nothing they could stand in for is left, counting a console passkey of
+// any RP ID. A passkey the account signs in to the storefront with is no
+// second factor and keeps no code. The caller holds LockUserMfaFactors and has
+// already removed what it is removing, on the site or in the console, since
+// the account's codes stand in for every factor it holds, wherever it set
+// each one up.
+func DeleteRecoveryCodesWithTheLastFactor(ctx context.Context, q dbmodels.Querier, userID uuid.UUID) error {
+	passkeys, err := q.CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{UserID: userID, RelyingParty: tenantwebauthn.KindAdminConsole})
+	if err != nil {
+		return err
+	}
+	if passkeys > 0 {
+		return nil
+	}
+	return q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID)
+}
