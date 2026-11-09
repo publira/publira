@@ -7748,6 +7748,8 @@
         "tenant_admin_invite_resent": "重新寄送了租戶成員邀請",
         "tenant_admin_invited": "邀請了租戶成員",
         "tenant_created": "建立了租戶",
+        "tenant_deleted": "刪除了租戶",
+        "tenant_deletion_requested": "開始刪除租戶",
         "tenant_info_updated": "更新了租戶資訊",
         "tenant_member_added": "新增了租戶成員",
         "tenant_member_created": "建立了租戶成員帳戶",
@@ -8143,6 +8145,10 @@
         "subject_in_series": "《{$episode}》（{$series}）",
         "subject_series": "《{$series}》的章節",
         "subject_unnamed": "預約發布的章節",
+        "tenant_deleted_description": "租戶「{$tenant}」（{$domain}）及本安裝為其保留的所有資料已被刪除。",
+        "tenant_deleted_title": "租戶已刪除",
+        "tenant_deletion_failed_description": "租戶「{$tenant}」的刪除因錯誤而中斷。系統每分鐘重試一次，錯誤內容記錄在publira worker的日誌中。",
+        "tenant_deletion_failed_title": "租戶刪除失敗",
         "unknown_description": "沒有更多詳細資訊。",
         "unknown_title": "通知"
       }

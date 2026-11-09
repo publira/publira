@@ -9,8 +9,12 @@ INSERT INTO platform_audit_logs (
     outcome,
     reason,
     client_ip,
-    tenant_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+    tenant_id,
+    tenant_public_id,
+    tenant_name,
+    tenant_domain,
+    tenant_admin_domain
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
 -- An entry can land after its actor's account is gone: the async recorder
 -- writes it once the request has answered, and the account can be deleted in
@@ -60,7 +64,9 @@ FROM (SELECT 1) AS entry
 -- read in index order, so each scan direction gets its own query.
 -- The tenant is the one the entry was written for, which stays on the entry
 -- after its target is deleted; an invitation entry still names the invited
--- address through the invitation's row.
+-- address through the invitation's row. A tenant that is itself deleted is
+-- named from what the entries of its deletion kept of it, and the domains are
+-- read from those alone: every other entry reads the tenant through its row.
 -- cursor rules: proto/README.md.
 -- name: ListPlatformAuditLogsDesc :many
 SELECT a.id,
@@ -75,16 +81,18 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(entry_t.name, ''::text) AS tenant_name,
-    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, a.tenant_name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, a.tenant_public_id, ''::text) AS tenant_public_id,
+    COALESCE(a.tenant_domain, ''::text) AS tenant_domain,
+    COALESCE(a.tenant_admin_domain, ''::text) AS tenant_admin_domain,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, a.tenant_public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
         ELSE ''::text
     END AS target_public_id,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, a.tenant_name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
         WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
@@ -133,16 +141,18 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(entry_t.name, ''::text) AS tenant_name,
-    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, a.tenant_name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, a.tenant_public_id, ''::text) AS tenant_public_id,
+    COALESCE(a.tenant_domain, ''::text) AS tenant_domain,
+    COALESCE(a.tenant_admin_domain, ''::text) AS tenant_admin_domain,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, a.tenant_public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
         ELSE ''::text
     END AS target_public_id,
     CASE
-        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, a.tenant_name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
         WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
@@ -264,3 +274,21 @@ WHERE a.tenant_id = sqlc.arg('tenant_id')
     )
 ORDER BY a.created_at ASC, a.id ASC
 LIMIT sqlc.arg('limit');
+
+-- The operator who asked for a tenant's deletion, as the latest entry of the
+-- request recorded them, for the worker to file the deletion under once it is
+-- done. No row when nothing recorded a request.
+-- name: GetTenantDeletionRequester :one
+SELECT actor_platform_user_id, actor_role
+FROM platform_audit_logs
+WHERE target_type = 'tenant'
+    AND target_id = sqlc.arg('tenant_id')::uuid::text
+    AND action = 'tenant_deletion_requested'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+-- name: EraseTenantAuditLogs :one
+-- Deletes up to batch_size entries of the audit log of a tenant marked for
+-- deletion, through the one function that may: the log is append-only for
+-- every role the processes connect as.
+SELECT erase_tenant_audit_logs(sqlc.arg('tenant_id')::uuid, sqlc.arg('batch_size')::integer)::bigint AS erased;

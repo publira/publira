@@ -2,8 +2,8 @@
 title: スケールアウト
 description: 最初の構成では足りなくなったときに増やすプロセス、どのインスタンスにも共有させるもの、増やしても負荷が分散しない部分を説明します。
 published: 2026-10-29
-updated: 2026-11-02
-source_updated: 2026-11-02
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 Publiraの動作が遅くなってきたときや、これから利用が増える見込みのときは、いま動かしているプロセスを増やして対応します。負荷の高いプロセスのインスタンスを増やし、`publira server`は受け持つトラフィックごとに、`publira worker`は受け持つ処理ごとに分けます。このページでは次のことを説明します。
@@ -53,7 +53,7 @@ Publiraの動作が遅くなってきたときや、これから利用が増え�
 | 変換済みの画像 | `publira server` | 各インスタンスが変換した画像を自分のメモリーに持つので、同じ画像をインスタンスごとに変換し直します |
 | Webアプリがキャッシュするページとデータ | `web-storefront`、`web-admin`、`web-platform` | Webアプリが描画したものは何もキャッシュされません。リクエストのたびにページを描画し直し、そこに載るデータをすべて`publira server`から取得します |
 
-Webアプリはそれぞれ専用のキープレフィックスでエントリーを保存するので、同じValkeyを使ってもエントリーは混ざりません。書き込みでキャッシュ済みのページが古くなると、サーバーは各Webアプリのいずれか1つのインスタンスにキャッシュの再検証を送ります。受け取ったインスタンスはキャッシュの破棄をValkeyに記録し、ほかのインスタンスはその記録を読みます。インスタンスがいくつあっても、キャッシュは最新に保たれます。`publira worker`と`email-renderer`はValkeyを使いません。
+Webアプリはそれぞれ専用のキープレフィックスでエントリーを保存するので、同じValkeyを使ってもエントリーは混ざりません。書き込みでキャッシュ済みのページが古くなると、サーバーは各Webアプリのいずれか1つのインスタンスにキャッシュの再検証を送ります。受け取ったインスタンスはキャッシュの破棄をValkeyに記録し、ほかのインスタンスはその記録を読みます。インスタンスがいくつあっても、キャッシュは最新に保たれます。`publira worker`はValkeyに何も保存しません。同じ`PUBLIRA_REDIS_URL`を渡すと、オペレーターが削除したテナントの変換済み画像とカウンターをValkeyから削除します。`email-renderer`はValkeyを使いません。
 
 ## 負荷がかかる場所
 
@@ -132,7 +132,7 @@ Publiraの処理で最も重いのは画像の変換です。`publira server`は
 
 ## ワーカーをキューごとに分ける
 
-ワーカーの処理は6つのキューに分かれています。
+ワーカーの処理は7つのキューに分かれています。
 
 | キュー | 処理 |
 | --- | --- |
@@ -142,12 +142,13 @@ Publiraの処理で最も重いのは画像の変換です。`publira server`は
 | `search_index` | 検索インデックスの構築 |
 | `payment_reconciliation` | テナント管理者が始めた決済の照合 |
 | `data_export` | 読者が依頼した自分のデータの写し |
+| `tenant_erasure` | オペレーターが削除したテナントのデータの消去 |
 
 `--queue`を指定したインスタンスは、指定したキューの処理だけを受け持ちます。アウトボックス専用のインスタンスを用意すれば、1時間かかる再構築を実行するインスタンスとは別に規模を決められます。再構築の最中もメールやプッシュ通知を遅らせずに送りたい場合は、1つの`publira worker`の代わりに次の2つのプロセスを動かします。
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure
 ```
 
 1つ目は送信と再検証だけを行います。アウトボックスの負荷に合わせてスケールし、データベースには3つではなく1つのログインで接続します。2つ目はすべての定期ジョブを実行します。インスタンスがいくつあっても、どのジョブも一度に1つのインスタンスでしか実行されないので、2つ目のインスタンスが必要になることはほとんどありません。`publira server --with-worker`でも、同じフラグで内蔵のワーカーが受け持つキューを絞れます。
@@ -169,7 +170,7 @@ publira worker --queue ticker,maintenance,search_index,payment_reconciliation,da
 | レプリカを設定して`storefront`を提供する`publira server` | さらに1。プライマリーではなくレプリカに接続します |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1。`ticker`を含めばさらに1、`maintenance`と`search_index`、`payment_reconciliation`、`data_export`のいずれかを含めばさらに1 (`--queue outbox`なら1) |
+| `publira worker --queue <queues>` | 1。`ticker`を含めばさらに1、`maintenance`と`search_index`、`payment_reconciliation`、`data_export`、`tenant_erasure`のいずれかを含めばさらに1 (`--queue outbox`なら1) |
 | レプリカを設定して`maintenance`を受け持つ`publira worker` | さらに1。プライマリーではなくレプリカに接続します |
 | 実行中の`publiractl`コマンド | 1。レプリカを指定した`job aggregate-content-stats`と`job build-recommend-features`は、レプリカにさらに1 |
 

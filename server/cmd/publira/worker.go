@@ -27,10 +27,12 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tenanterasure"
 	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/webpushsettings"
@@ -52,8 +54,8 @@ const (
 // workerQueues is which River queues a worker process hosts. A queue is named
 // for the work on it: outbox is River's default queue, which the Outbox drain
 // has to itself, and ticker, maintenance, search_index,
-// payment_reconciliation, and data_export are the queues of those names the
-// job families bring. A queue brings the pool its jobs connect
+// payment_reconciliation, data_export, and tenant_erasure are the queues of
+// those names the job families bring. A queue brings the pool its jobs connect
 // as, and every queue brings publira_outbox, which the River client itself
 // connects as.
 type workerQueues struct {
@@ -64,20 +66,22 @@ type workerQueues struct {
 
 	paymentReconciliation bool
 	dataExport            bool
+	tenantErasure         bool
 }
 
 // allWorkerQueues is what a worker hosts unless --queue names some.
-var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true, paymentReconciliation: true, dataExport: true}
+var allWorkerQueues = workerQueues{outbox: true, ticker: true, maintenance: true, searchIndex: true, paymentReconciliation: true, dataExport: true, tenantErasure: true}
 
 func (q workerQueues) any() bool {
-	return q.outbox || q.ticker || q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport
+	return q.outbox || q.ticker || q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport || q.tenantErasure
 }
 
 // contentStats reports whether the process opens the publira_content_stats
 // pool, which the maintenance jobs, the search index build, the payment
-// reconciliations, and the readers' archives all run on.
+// reconciliations, the readers' archives, and the erasure of deleted tenants
+// all run on.
 func (q workerQueues) contentStats() bool {
-	return q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport
+	return q.maintenance || q.searchIndex || q.paymentReconciliation || q.dataExport || q.tenantErasure
 }
 
 // workerQueueEntry is one queue as --queue names it and as River does.
@@ -95,6 +99,7 @@ var workerQueueTable = []workerQueueEntry{
 	{"search_index", maintenancejobs.SearchIndexQueueName, func(q *workerQueues) *bool { return &q.searchIndex }},
 	{"payment_reconciliation", maintenancejobs.PaymentReconciliationQueueName, func(q *workerQueues) *bool { return &q.paymentReconciliation }},
 	{"data_export", maintenancejobs.DataExportQueueName, func(q *workerQueues) *bool { return &q.dataExport }},
+	{"tenant_erasure", maintenancejobs.TenantErasureQueueName, func(q *workerQueues) *bool { return &q.tenantErasure }},
 }
 
 // names answers the --queue names of the queues hosted or, with hosted false,
@@ -127,11 +132,11 @@ func (q *workerQueues) add(value string) error {
 	for name := range strings.SplitSeq(value, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export")
+			return errors.New("--queue names an empty queue; name outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure")
 		}
 		i := slices.IndexFunc(workerQueueTable, func(queue workerQueueEntry) bool { return queue.name == name })
 		if i < 0 {
-			return fmt.Errorf("--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export, not %q", name)
+			return fmt.Errorf("--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure, not %q", name)
 		}
 		hosted := workerQueueTable[i].field(q)
 		if *hosted {
@@ -243,6 +248,21 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			Logger:  logger,
 		}, platformstorage.NewStorage)
 		reclaimers := platformstorage.Reclaimers{Resolver: bucket}
+		// The erasure of a deleted tenant reaches into the Redis the API
+		// processes share, when the install runs one. It is refused here, as
+		// publira server refuses it, rather than left to fail every pass.
+		redisURL, err := redisurl.FromEnv()
+		if err != nil {
+			return half{}, failed("failed to load config", err)
+		}
+		var tenantCache tenanterasure.CacheEraser
+		if redisURL != "" {
+			cache, err := tenanterasure.NewRedisCache(redisURL)
+			if err != nil {
+				return half{}, failed("failed to load config", fmt.Errorf("%s: %w", redisurl.Env, err))
+			}
+			tenantCache = cache
+		}
 		maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
 			DB:         contentStatsDB,
 			Replica:    pools.contentStatsReplica,
@@ -256,6 +276,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			AppStoreVerifier: appstore.NewVerifier(),
 			DataExports:      platformstorage.Provider{Resolver: bucket},
 			DataExportBucket: reclaimers,
+			TenantCache:      tenantCache,
 		})
 		if err != nil {
 			return half{}, failed("failed to initialize the maintenance jobs", err)

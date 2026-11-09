@@ -89,11 +89,22 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // the tenant console the platform relay's from address and nothing else of
 // it, which TestAdminRoleReadsOnlyThePlatformSMTPFromAddress holds it to, and
 // all three the platform's default currency and nothing else of its settings,
-// which TestTenantRolesReadOnlyThePlatformDefaultCurrency holds them to.
+// which TestTenantRolesReadOnlyThePlatformDefaultCurrency holds them to. The
+// maintenance role also reads, for the erasure of a deleted tenant, who filed
+// an entry of the platform audit log, the operators' notifications, and which
+// operators there are, by the columns
+// TestMaintenanceRoleReadsNoOperatorSecretWhileItRecordsAnErasure holds it to.
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_config", "platform_policy_config", "platform_search_config", "platform_storage_config", "platform_webpush_config"},
 	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
-	"publira_content_stats": {"platform_config", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
+	"publira_content_stats": {"platform_audit_logs", "platform_config", "platform_notifications", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges", "platform_user_roles", "platform_users"},
+}
+
+// insertablePlatformTables are, per role, the platform tables it adds rows to:
+// the erasure of a deleted tenant files the entry of the deletion and a
+// notification for every operator on the maintenance pool.
+var insertablePlatformTables = map[string][]string{
+	"publira_content_stats": {"platform_audit_logs", "platform_notifications"},
 }
 
 // purgeablePlatformTables are, per role, the platform tables it deletes from:
@@ -133,7 +144,9 @@ func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 			} else {
 				assertRefused(t, ctx, conn, role, query)
 			}
-			assertRefused(t, ctx, conn, role, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
+			if !slices.Contains(insertablePlatformTables[role], table) {
+				assertRefused(t, ctx, conn, role, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
+			}
 			deletion := fmt.Sprintf("DELETE FROM %s", table)
 			if slices.Contains(purgeablePlatformTables[role], table) {
 				if _, err := conn.ExecContext(ctx, deletion); err != nil {
@@ -166,6 +179,51 @@ func TestPublicRoleReadsOnlyThePublishedWebPushColumns(t *testing.T) {
 	}
 	assertRefused(t, ctx, public, "publira_public", "SELECT vapid_private_key_encrypted FROM platform_webpush_config")
 	assertRefused(t, ctx, public, "publira_public", "SELECT * FROM platform_webpush_config")
+}
+
+// The erasure of a deleted tenant files its end under the operator who asked
+// for it and tells every operator, on the maintenance pool. Its grants name the
+// columns that say who filed an entry and which operators there are, so the
+// operators' password hashes and addresses, and what else an entry records,
+// stay out of its reach.
+func TestMaintenanceRoleReadsNoOperatorSecretWhileItRecordsAnErasure(t *testing.T) {
+	pg := testutil.StartIsolatedPostgres(t)
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	maintenance := pg.OpenContentStatsDB(t)
+	for _, query := range []string{
+		"SELECT id FROM platform_users",
+		"SELECT platform_user_id FROM platform_user_roles",
+		"SELECT id, actor_platform_user_id, actor_role, action, target_type, target_id, created_at FROM platform_audit_logs",
+		"SELECT * FROM platform_notifications",
+	} {
+		rows, err := maintenance.QueryContext(ctx, query)
+		if err != nil {
+			t.Fatalf("%q as publira_content_stats: %v", query, err)
+		}
+		_ = rows.Close()
+	}
+	for _, query := range []string{
+		"SELECT password_hash FROM platform_users",
+		"SELECT email FROM platform_users",
+		"SELECT * FROM platform_users",
+		"SELECT role FROM platform_user_roles",
+		"SELECT reason FROM platform_audit_logs",
+		"SELECT client_ip FROM platform_audit_logs",
+		"UPDATE platform_audit_logs SET reason = 'rewritten'",
+		"UPDATE platform_users SET status = 'active'",
+	} {
+		assertRefused(t, ctx, maintenance, "publira_content_stats", query)
+	}
+	if _, err := maintenance.ExecContext(ctx, `
+		INSERT INTO platform_audit_logs (id, actor_role, action, outcome)
+		VALUES (gen_random_uuid(), 'system', 'tenant_deleted', 'success')
+	`); err != nil {
+		t.Fatalf("file a platform audit entry as publira_content_stats: %v", err)
+	}
 }
 
 // The tenant console names the address a tenant on the platform's mail is sent

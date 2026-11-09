@@ -2,8 +2,8 @@
 title: 水平擴展
 description: 安裝實例超出起初的規模時該多執行哪些處理程序、每個副本必須共用什麼，以及哪些部分無法水平擴展。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 安裝實例變慢或即將成長時，要增加的是它原本就在執行的處理程序：繁忙的處理程序多執行幾個副本，`publira server`依其回應的流量拆分，`publira worker`依其負責的工作拆分。本頁說明哪些處理程序可以執行多個副本、在那之前必須先準備好什麼、安裝實例的負載落在哪裡、`publira server`可以拆分到什麼程度、`publira worker`如何拆分、副本增加時資料庫必須能接受什麼、如何把讀者的目錄讀取與worker處理程序的每日重建移到資料庫的複本上，以及哪些部分無論增加多少副本都無法減輕負擔。本頁適用於任何平台，[Kubernetes](./5-kubernetes/index.md)與[在AWS Fargate上執行Amazon ECS](./6-ecs-fargate/index.md)頁面備有對應的資訊清單與指令。
@@ -30,7 +30,7 @@ source_updated: 2026-11-02
 | 轉換後的圖片 | `publira server` | 每個副本把自己轉換的圖片保存在自己的記憶體中，因此每個副本都會重新轉換同一張圖片 |
 | Web應用程式快取的頁面與資料 | `web-storefront`、`web-admin`、`web-platform` | Web應用程式算繪的內容都不會被快取：每個請求都會重新算繪頁面，並為頁面上的所有內容呼叫`publira server` |
 
-每個Web應用程式都以自己的鍵前綴保存項目，因此各應用程式共用同一台伺服器而不共用項目。當某次寫入使快取的頁面過時，伺服器的快取重新驗證會送達每個Web應用程式的其中一個副本，該副本把這次清除記錄到Valkey，其他所有副本都會從那裡讀取：無論執行多少副本，快取都保持最新。`publira worker`與`email-renderer`不使用Valkey。
+每個Web應用程式都以自己的鍵前綴保存項目，因此各應用程式共用同一台伺服器而不共用項目。當某次寫入使快取的頁面過時，伺服器的快取重新驗證會送達每個Web應用程式的其中一個副本，該副本把這次清除記錄到Valkey，其他所有副本都會從那裡讀取：無論執行多少副本，快取都保持最新。`publira worker`不在其中保存任何內容；給它同一個`PUBLIRA_REDIS_URL`後，它會從中刪除營運人員已刪除的租戶的轉換後圖片與計數器。`email-renderer`不使用Valkey。
 
 ## 負載的去向
 
@@ -85,11 +85,11 @@ source_updated: 2026-11-02
 
 ## 依佇列拆分worker處理程序
 
-worker處理程序把工作放在六個佇列上：`outbox`是outbox的郵件、推播通知與快取重新驗證；`ticker`是在排定時間執行的工作；`maintenance`是重建與清除；`search_index`是搜尋索引的建置；`payment_reconciliation`是租戶管理員發起的付款對帳；`data_export`是讀者要求的資料副本。以`--queue`啟動的副本只會負責它所指定佇列的工作，不會負責其他佇列，因此outbox可以擁有專屬的副本，與執行長達一小時重建的副本分開規劃規模。當安裝實例的郵件與推播通知必須在重建進行時及時寄出，請以兩個處理程序取代原本的一個`publira worker`：
+worker處理程序把工作放在七個佇列上：`outbox`是outbox的郵件、推播通知與快取重新驗證；`ticker`是在排定時間執行的工作；`maintenance`是重建與清除；`search_index`是搜尋索引的建置；`payment_reconciliation`是租戶管理員發起的付款對帳；`data_export`是讀者要求的資料副本；`tenant_erasure`是刪除營運人員已刪除的租戶的資料。以`--queue`啟動的副本只會負責它所指定佇列的工作，不會負責其他佇列，因此outbox可以擁有專屬的副本，與執行長達一小時重建的副本分開規劃規模。當安裝實例的郵件與推播通知必須在重建進行時及時寄出，請以兩個處理程序取代原本的一個`publira worker`：
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure
 ```
 
 第一個處理程序只負責寄送與重新驗證，不做其他事：請隨outbox的負載擴展它，而且它以一個登入而非三個登入連線到資料庫。第二個處理程序執行所有排程工作，很少需要第二個副本，因為無論有多少副本，它的每項工作同一時間都只在一個副本上執行。在`publira server --with-worker`上，同一個旗標會縮小它所承載的worker處理程序的範圍。
@@ -111,7 +111,7 @@ publira worker --queue ticker,maintenance,search_index,payment_reconciliation,da
 | 使用複本提供`storefront`的`publira server` | 再多1個，位於複本而非主要資料庫上 |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1個，含`ticker`時再多1個，含`maintenance`、`search_index`、`payment_reconciliation`與`data_export`任一者時再多1個：`--queue outbox`為1個 |
+| `publira worker --queue <queues>` | 1個，含`ticker`時再多1個，含`maintenance`、`search_index`、`payment_reconciliation`、`data_export`與`tenant_erasure`任一者時再多1個：`--queue outbox`為1個 |
 | 使用複本承載`maintenance`的`publira worker` | 再多1個，位於複本而非主要資料庫上 |
 | 執行中的`publiractl`指令 | 1個；指定了複本時，`job aggregate-content-stats`與`job build-recommend-features`會在複本上再多1個 |
 

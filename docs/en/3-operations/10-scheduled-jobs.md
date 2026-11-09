@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-11-04
+updated: 2026-11-09
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -33,6 +33,7 @@ Start from what you see, and look at the job that owns it:
 | The search does not move to a newly saved engine | The search index build | [Search](./7-search.md#when-the-build-fails) |
 | A payment reconciliation a Tenant admin started never finishes | The payment reconciliations | [Other scheduled jobs](#other-scheduled-jobs) |
 | A reader's download of their data stays pending | The data downloads | [Other scheduled jobs](#other-scheduled-jobs) |
+| A tenant deleted with `publiractl tenant delete` is still listed as `deleting` | The tenant erasure | [Other scheduled jobs](#other-scheduled-jobs) |
 | Old records are not deleted | The purges | [Other scheduled jobs](#other-scheduled-jobs) |
 
 Every one of them first needs `publira worker` to be running and ready: an install whose worker is stopped serves every page, but publishes nothing, sends nothing, and rebuilds nothing. `GET /readyz` on the worker names a check for each database login it signs in as, so a login that stopped answering is named there. On an install that splits the worker by queue, each job also needs a running worker that takes its queue, as [Workers that take some of the jobs](#workers-that-take-some-of-the-jobs) describes.
@@ -103,11 +104,12 @@ The worker remembers, per tenant, the last day each link finished, and starts fr
 | Search index build (`build-search-index`) | Every 30 seconds | Builds the index on a newly saved search engine and moves the search onto it, as [Search](./7-search.md#moving-to-another-engine) describes |
 | Payment reconciliations (`reconcile-payments`) | Every 10 seconds | Runs each reconciliation a Tenant admin started, reading the payments of its period from the tenant's payment provider or store, as [Selling episodes](../4-console/4-selling-episodes.md#reconciling-with-the-provider) describes. A run the source refuses is recorded as failed for the Tenant admin to start again, rather than retried. A run a stopped worker was in the middle of is taken up again after two hours |
 | Data downloads (`build-data-exports`) | Every 10 seconds | Prepares each copy of their data a reader asked for, stores it in the bucket, and tells the reader it is ready, as [Reader accounts](../4-console/2-readers/1-accounts.md#a-readers-download-of-their-data) describes. A request made while no object storage is set up is recorded as failed for the reader to ask again, rather than retried. One a stopped worker was in the middle of is taken up again after 15 minutes |
+| Tenant erasure (`erase-tenants`) | Every minute | Erases each tenant an operator deleted with `publiractl tenant delete`: its rows in every table, its objects in the bucket, its documents in the search engine's index, and the converted images and rate limit counters it left in Valkey, and then the tenant itself, after which its hosts belong to no tenant. The deletion is recorded in the Platform Console's **Audit logs**, and every operator gets a notification titled "A tenant was deleted" under **Notifications**. A run that stops on an error leaves the tenant `deleting`, refused like a suspended one, and every operator gets a notification titled "A tenant could not be deleted", once per tenant; the next run, a minute later, takes the tenant up again from what is left, and the error is in the worker's log. A worker that is not given `PUBLIRA_REDIS_URL` leaves the converted images and the counters in Valkey to expire on their own: the images once their cache lifetime is up, and a counter once its window ends |
 | The purges (`purge-*`) | Every hour or every 24 hours | Delete withdrawn comments, analytics events, and ranking snapshots past their retention period, as [Platform defaults and policies](./9-platform-policies.md#retention) describes; the challenges a two-step sign-in has finished with; the readers' data downloads seven days after they were ready, and those of deleted accounts; and the images nothing on any tenant uses any more, once they are a day old |
 
 ## Workers that take some of the jobs
 
-A worker started with `--queue` runs the jobs of the queues it names and leaves the others to the workers that name them, as [Splitting the worker by queue](../2-deployments/7-scaling-out.md#splitting-the-worker-by-queue) describes. The jobs on this page are on six queues, which `river_job` names the same way except `outbox`, which it names `default`:
+A worker started with `--queue` runs the jobs of the queues it names and leaves the others to the workers that name them, as [Splitting the worker by queue](../2-deployments/7-scaling-out.md#splitting-the-worker-by-queue) describes. The jobs on this page are on seven queues, which `river_job` names the same way except `outbox`, which it names `default`:
 
 | Queue | Jobs |
 | --- | --- |
@@ -117,6 +119,7 @@ A worker started with `--queue` runs the jobs of the queues it names and leaves 
 | `search_index` | The search index build |
 | `payment_reconciliation` | The payment reconciliations |
 | `data_export` | The data downloads |
+| `tenant_erasure` | The tenant erasure |
 
 Every queue needs at least one running worker that takes it. Whichever worker schedules the jobs schedules all of them, whatever queues it takes itself, so a job whose queue no running worker takes is not lost, but nothing runs it: it waits in `river_job` until a worker that takes its queue starts, and then runs as it would [after downtime](#after-downtime). Each worker logs the queues it leaves to others when it starts, as `worker leaves queues to other replicas` with `not_hosted` naming them. A queue whose jobs are waiting shows in `river_job`:
 
@@ -145,6 +148,7 @@ A worker that was stopped, or that ran without a working database, does nothing 
 | Search index build | Builds a pending index |
 | Payment reconciliations | Runs every reconciliation started in the meantime |
 | Data downloads | Prepares every copy asked for in the meantime |
+| Tenant erasure | Erases every tenant deleted in the meantime, and finishes one a stopped worker was in the middle of |
 | The purges | Run only when none has finished in its current hour or day, counted on the clock rather than from when the worker started; the first run then deletes everything that expired in the meantime |
 | Google Play refund sync | Runs, like a purge, only when none has finished in its current hour. A worker that was down longer than 30 days misses the refunds Google Play no longer lists |
 
@@ -200,7 +204,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   publira/publiractl:<tag> job purge-content-events
 ```
 
-On a [Docker Compose](../2-deployments/3-docker-compose.md) install, `docker compose run --rm publiractl job purge-content-events` has the connection already. The image purge, the data downloads and their purge, the Google Play refund sync, the payment reconciliations, and the search index build also need `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` when the credential they use is saved in the install, as the bucket's access key, a tenant's payment provider and store credentials, or the search engine's password is.
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, `docker compose run --rm publiractl job purge-content-events` has the connection already. The image purge, the data downloads and their purge, the Google Play refund sync, the payment reconciliations, the search index build, and the tenant erasure also need `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` when the credential they use is saved in the install, as the bucket's access key, a tenant's payment provider and store credentials, or the search engine's password is. The tenant erasure also takes `PUBLIRA_REDIS_URL`, the one `publira server` is given, to reach the converted images and the counters in Valkey.
 
 A job logs to standard output, and exits `1` when the pass failed. A job that works through the tenants one at a time finishes the others before it exits, and its log names each tenant that failed.
 
@@ -252,6 +256,7 @@ Every job can be run again, and alongside the worker's own pass of it:
 | `build-search-index` | Does nothing when no build is due, or when the worker is already building |
 | `reconcile-payments` | Does nothing when no reconciliation is waiting. One the worker is running is not taken up a second time |
 | `build-data-exports` | Does nothing when no reader is waiting for a copy. One the worker is preparing is not taken up a second time |
+| `erase-tenants` | Does nothing when no tenant is waiting to be erased, or when the worker is erasing one |
 
 The one exception is timing: do not run `purge-orphan-images` or `purge-data-exports` while a backup of the bucket is being copied, as [Backup and restore](../2-deployments/9-backup-and-restore.md#1-stop-the-worker) describes.
 

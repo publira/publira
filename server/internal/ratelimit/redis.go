@@ -11,6 +11,15 @@ import (
 // deployment's Redis, so flushing them is a pattern an operator can name.
 const redisKeyPrefix = "publira:rl:"
 
+// TenantKeyMatch is the SCAN MATCH pattern of every counter the shared store
+// keeps on behalf of the tenant tenantID names, for the erasure of a deleted
+// tenant. Every subject charged on a tenant's behalf names the tenant's ID,
+// which is what makes them findable by it; a subject that names a client alone
+// is that client's, whichever tenant it was charged on, and is not matched.
+func TenantKeyMatch(tenantID string) string {
+	return redisKeyPrefix + "*" + tenantID + "*"
+}
+
 // minRedisTTL is the shortest expiry a counter is written with. Redis measures
 // an expiry in milliseconds and drops a key whose expiry rounds to zero, which
 // a counter created in the last moments of its window otherwise would: the key

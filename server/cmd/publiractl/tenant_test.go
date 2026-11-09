@@ -205,3 +205,44 @@ func TestTenantCreateOffersTheLanguagesGiven(t *testing.T) {
 		}
 	}
 }
+
+// tenant delete takes a suspended tenant and its name, marks it for the
+// worker, and names the flag behind a refusal.
+func TestTenantDeleteMarksASuspendedTenantForTheWorker(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+
+	run := func(args ...string) (int, string, string) {
+		var stdout, stderr bytes.Buffer
+		code := runGroup(&tenantGroup, args, pipedConsole("", &stderr), &stdout)
+		return code, stdout.String(), stderr.String()
+	}
+	if code, _, stderr := run("delete", "--tenant", "TENANTAAAAAA", "--name", "Tenant A"); code != 1 || stderr != "publiractl: only a suspended tenant can be deleted\n" {
+		t.Fatalf("delete of an active tenant = %d %q, want the refusal", code, stderr)
+	}
+	if code, _, stderr := run("suspend", "--tenant", "TENANTAAAAAA"); code != 0 {
+		t.Fatalf("suspend: exit code = %d\n%s", code, stderr)
+	}
+	if code, _, stderr := run("delete", "--tenant", "TENANTAAAAAA", "--name", "Tenant B"); code != 1 || stderr != "publiractl: --name: name does not match the tenant's name\n" {
+		t.Fatalf("delete with another name = %d %q, want the refusal naming --name", code, stderr)
+	}
+	code, stdout, stderr := run("delete", "--tenant", "tenant-a.example.com", "--name", "Tenant A")
+	if code != 0 {
+		t.Fatalf("delete: exit code = %d\n%s", code, stderr)
+	}
+	if want := "Marked tenant TENANTAAAAAA for tenant-a.example.com for deletion; the worker erases it next\n"; stdout != want {
+		t.Fatalf("stdout = %q, want %q", stdout, want)
+	}
+	var marked bool
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT deletion_requested_at IS NOT NULL FROM tenants WHERE id = $1`, tenant.ID).Scan(&marked); err != nil {
+		t.Fatalf("read the tenant: %v", err)
+	}
+	if !marked {
+		t.Fatal("the tenant is not marked for deletion")
+	}
+	if code, stdout, _ := run("show", "--tenant", "TENANTAAAAAA"); code != 0 || !strings.Contains(stdout, "deleting") {
+		t.Fatalf("show = %d %q, want the tenant listed as deleting", code, stdout)
+	}
+}

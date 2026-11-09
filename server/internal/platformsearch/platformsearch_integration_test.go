@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opensearch-project/opensearch-go/v5"
@@ -853,5 +854,39 @@ func TestALanguagesAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
 				t.Fatalf("Save = %v (on %q), want it refused on %s", err, fielderr.Field(err), test.field)
 			}
 		})
+	}
+}
+
+// A tenant's documents are not deleted while a build runs, because the build
+// may already have copied them into indices it is about to swap into the
+// search: the eraser answers ErrBuildRunning and waits for the next pass. It
+// works on one connection, the one a pass leaves it on the smallest pool.
+func TestTheTenantEraserWaitsForABuildToComplete(t *testing.T) {
+	pg := testutil.StartIsolatedPostgres(t)
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	db := pg.OpenContentStatsDB(t)
+	one := pg.OpenContentStatsDB(t)
+	one.SetMaxOpenConns(1)
+	eraser := platformsearch.TenantEraser{DB: one}
+
+	build, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer build.Close() //nolint:errcheck
+	if _, err := build.ExecContext(ctx, "SELECT pg_advisory_lock(hashtextextended('platform_search_build', 0))"); err != nil {
+		t.Fatalf("take the build lock: %v", err)
+	}
+	if err := eraser.EraseTenant(ctx, uuid.New()); !errors.Is(err, platformsearch.ErrBuildRunning) {
+		t.Fatalf("EraseTenant during a build = %v, want ErrBuildRunning", err)
+	}
+
+	if _, err := build.ExecContext(ctx, "SELECT pg_advisory_unlock(hashtextextended('platform_search_build', 0))"); err != nil {
+		t.Fatalf("release the build lock: %v", err)
+	}
+	if err := eraser.EraseTenant(ctx, uuid.New()); err != nil {
+		t.Fatalf("EraseTenant once the build is done: %v", err)
 	}
 }

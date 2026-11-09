@@ -19,6 +19,11 @@ message PlatformAuditLog {
   string actor_name = 11;
   string tenant_name = 12;
   string target_name = 13;
+  // The tenant's domain and console host as the entry kept them, on the
+  // entries of a tenant's deletion, which outlive the tenant. Empty on every
+  // other entry.
+  string tenant_domain = 15;
+  string tenant_admin_domain = 16;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

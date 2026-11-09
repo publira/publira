@@ -37,6 +37,11 @@ type PlatformAuditLog struct {
 	ActorName         string                 `protobuf:"bytes,11,opt,name=actor_name,json=actorName,proto3" json:"actor_name,omitempty"`
 	TenantName        string                 `protobuf:"bytes,12,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
 	TargetName        string                 `protobuf:"bytes,13,opt,name=target_name,json=targetName,proto3" json:"target_name,omitempty"`
+	// The tenant's domain and console host as the entry kept them, on the
+	// entries of a tenant's deletion, which outlive the tenant. Empty on every
+	// other entry.
+	TenantDomain      string `protobuf:"bytes,15,opt,name=tenant_domain,json=tenantDomain,proto3" json:"tenant_domain,omitempty"`
+	TenantAdminDomain string `protobuf:"bytes,16,opt,name=tenant_admin_domain,json=tenantAdminDomain,proto3" json:"tenant_admin_domain,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -165,6 +170,20 @@ func (x *PlatformAuditLog) GetTenantName() string {
 func (x *PlatformAuditLog) GetTargetName() string {
 	if x != nil {
 		return x.TargetName
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetTenantDomain() string {
+	if x != nil {
+		return x.TenantDomain
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetTenantAdminDomain() string {
+	if x != nil {
+		return x.TenantAdminDomain
 	}
 	return ""
 }
@@ -472,7 +491,7 @@ var File_publira_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xdb\x03\n" +
+	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xb0\x04\n" +
 	"\x10PlatformAuditLog\x12/\n" +
 	"\x14actor_user_public_id\x18\x01 \x01(\tR\x11actorUserPublicId\x12\x1d\n" +
 	"\n" +
@@ -494,7 +513,9 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\vtenant_name\x18\f \x01(\tR\n" +
 	"tenantName\x12\x1f\n" +
 	"\vtarget_name\x18\r \x01(\tR\n" +
-	"targetName\"\x90\x02\n" +
+	"targetName\x12#\n" +
+	"\rtenant_domain\x18\x0f \x01(\tR\ftenantDomain\x12.\n" +
+	"\x13tenant_admin_domain\x18\x10 \x01(\tR\x11tenantAdminDomain\"\x90\x02\n" +
 	"\x14ListAuditLogsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12/\n" +
 	"\x14actor_user_public_id\x18\x04 \x01(\tR\x11actorUserPublicId\x12\x16\n" +

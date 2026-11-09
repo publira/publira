@@ -11,6 +11,7 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
@@ -347,5 +348,63 @@ func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {
 	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+}
+
+// Deleting a tenant is a Super admin's alone, takes a suspended tenant and its
+// name typed back, and leaves it deleting: listed under that status, and no
+// longer one that can be resumed.
+func TestDBDeleteTenantMarksASuspendedTenantForASuperAdmin(t *testing.T) {
+	t.Parallel()
+
+	ts, pg, admin := newDBIntegrationSuperAdminServer(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	as := func(who testutil.PlatformOperator) context.Context {
+		return testutil.WithBearer(context.Background(), issueDBIntegrationToken(who))
+	}
+
+	created, err := client.CreateTenant(as(admin), &publirasplatformv1.CreateTenantRequest{
+		DefaultLocale: "ja",
+		Name:          "Leaving Tenant",
+		Domain:        "leaving.example.com",
+	})
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	tenantID := created.Tenant.Id
+	request := &publirasplatformv1.DeleteTenantRequest{TenantId: tenantID, Name: "Leaving Tenant"}
+
+	if _, err := client.DeleteTenant(as(admin), request); connect.CodeOf(err) != connect.CodeFailedPrecondition || mfaErrorReason(t, err) != rpcerrors.ReasonTenantNotSuspended {
+		t.Fatalf("DeleteTenant of an active tenant: err = %v, want failed_precondition %s", err, rpcerrors.ReasonTenantNotSuspended)
+	}
+	if _, err := client.SuspendTenant(as(admin), &publirasplatformv1.SuspendTenantRequest{TenantId: tenantID}); err != nil {
+		t.Fatalf("SuspendTenant: %v", err)
+	}
+	if _, err := client.DeleteTenant(as(operator), request); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("DeleteTenant as an operator: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	}
+	_, err = client.DeleteTenant(as(admin), &publirasplatformv1.DeleteTenantRequest{TenantId: tenantID, Name: "Leaving"})
+	assertFieldViolation(t, err, "name")
+
+	deleted, err := client.DeleteTenant(as(admin), request)
+	if err != nil {
+		t.Fatalf("DeleteTenant: %v", err)
+	}
+	if deleted.Tenant.Status != tenantstatus.Deleting {
+		t.Fatalf("status = %q, want %q", deleted.Tenant.Status, tenantstatus.Deleting)
+	}
+
+	if _, err := client.ResumeTenant(as(admin), &publirasplatformv1.ResumeTenantRequest{TenantId: tenantID}); connect.CodeOf(err) != connect.CodeFailedPrecondition || mfaErrorReason(t, err) != rpcerrors.ReasonTenantDeleting {
+		t.Fatalf("ResumeTenant of a deleting tenant: err = %v, want failed_precondition %s", err, rpcerrors.ReasonTenantDeleting)
+	}
+	for status, want := range map[string]int{tenantstatus.Deleting: 1, tenantstatus.Suspended: 0} {
+		listed, err := client.ListTenants(as(admin), &publirasplatformv1.ListTenantsRequest{Status: status})
+		if err != nil {
+			t.Fatalf("ListTenants %s: %v", status, err)
+		}
+		if len(listed.Tenants) != want {
+			t.Fatalf("ListTenants %s = %d tenants, want %d", status, len(listed.Tenants), want)
+		}
 	}
 }

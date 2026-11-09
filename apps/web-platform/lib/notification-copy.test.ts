@@ -118,4 +118,34 @@ describe("notificationDisplay", () => {
       title: "Notification",
     });
   });
+
+  it("names a deleted tenant by its name and domain, with nothing to link to", async () => {
+    await expect(
+      notificationDisplay(
+        "tenant_deleted",
+        { tenant_domain: "acme.example.com", tenant_name: "Acme" },
+        en
+      )
+    ).resolves.toEqual({
+      description:
+        "The tenant “Acme” (acme.example.com) has been deleted, together with everything the install kept for it.",
+      href: undefined,
+      title: "A tenant was deleted",
+    });
+  });
+
+  it("links a tenant whose deletion stopped to its page", async () => {
+    await expect(
+      notificationDisplay(
+        "tenant_deletion_failed",
+        { tenant_id: "SeedTNNTAAA1", tenant_name: "Acme" },
+        en
+      )
+    ).resolves.toEqual({
+      description:
+        "Deleting the tenant “Acme” stopped on an error. The worker tries again every minute, and its log names the error.",
+      href: "/tenants/SeedTNNTAAA1",
+      title: "A tenant could not be deleted",
+    });
+  });
 });

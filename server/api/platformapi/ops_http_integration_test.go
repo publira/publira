@@ -60,9 +60,9 @@ func TestListAuditLogs(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
-			AddRow(uuid.Must(uuid.NewV7()), actorID1, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, "203.0.113.10", now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One").
-			AddRow(uuid.Must(uuid.NewV7()), actorID2, "platform_super_admin", "operator_updated", "operator", targetOperatorID.String(), "success", nil, nil, now.Add(-time.Minute), "Operator Two", "PLATUSER002", "", "", "PLATUSER003", "Operator Three"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "tenant_domain", "tenant_admin_domain", "target_public_id", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), actorID1, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, "203.0.113.10", now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", nil, nil, "TENANT001", "Tenant One").
+			AddRow(uuid.Must(uuid.NewV7()), actorID2, "platform_super_admin", "operator_updated", "operator", targetOperatorID.String(), "success", nil, nil, now.Add(-time.Minute), "Operator Two", "PLATUSER002", "", "", nil, nil, "PLATUSER003", "Operator Three"))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	resp, err := client.ListAuditLogs(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ListAuditLogsRequest{})
@@ -91,8 +91,8 @@ func TestListAuditLogsWithFilters(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{String: "PLATUSER001", Valid: true}, uuid.NullUUID{UUID: tenantID, Valid: true}, sql.NullString{String: "tenant_created", Valid: true}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(11)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
-			AddRow(uuid.Must(uuid.NewV7()), actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, nil, now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "tenant_domain", "tenant_admin_domain", "target_public_id", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, nil, now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", nil, nil, "TENANT001", "Tenant One"))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	resp, err := client.ListAuditLogs(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ListAuditLogsRequest{Limit: 10, TenantId: tenantID.String(), ActorUserPublicId: "PLATUSER001", Action: "tenant_created"})
@@ -119,7 +119,7 @@ func TestListAuditLogsOutOfRangeLimitFallsBackToDefault(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "tenant_domain", "tenant_admin_domain", "target_public_id", "target_name"}))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	_, err := client.ListAuditLogs(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ListAuditLogsRequest{Limit: 999})
@@ -133,7 +133,7 @@ func platformAuditLogColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id",
 		"outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id",
-		"tenant_name", "tenant_public_id", "target_public_id", "target_name",
+		"tenant_name", "tenant_public_id", "tenant_domain", "tenant_admin_domain", "target_public_id", "target_name",
 	})
 }
 
@@ -151,7 +151,7 @@ func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
 		rows = rows.AddRow(
 			id, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
 			"success", nil, nil, now.Add(-time.Duration(i)*time.Minute), "Operator One", "PLATUSER001",
-			"Tenant One", "TENANT001", "TENANT001", "Tenant One",
+			"Tenant One", "TENANT001", nil, nil, "TENANT001", "Tenant One",
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
@@ -197,7 +197,7 @@ func TestListAuditLogsFollowsNextToken(t *testing.T) {
 		WillReturnRows(platformAuditLogColumns().AddRow(
 			resultID, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
 			"success", nil, nil, resultAt, "Operator One", "PLATUSER001",
-			"Tenant One", "TENANT001", "TENANT001", "Tenant One",
+			"Tenant One", "TENANT001", nil, nil, "TENANT001", "Tenant One",
 		))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

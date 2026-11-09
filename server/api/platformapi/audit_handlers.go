@@ -23,54 +23,62 @@ type platformAuditLogPageRow struct {
 	actorRole      string
 	tenantPublicID string
 	tenantName     string
-	action         string
-	targetType     sql.NullString
-	targetID       sql.NullString
-	targetPublicID string
-	targetName     string
-	outcome        string
-	reason         sql.NullString
-	clientIP       sql.NullString
-	createdAt      time.Time
+	// tenantDomain and tenantAdminDomain are what the entries of a tenant's
+	// deletion kept of it, empty on every other entry.
+	tenantDomain      string
+	tenantAdminDomain string
+	action            string
+	targetType        sql.NullString
+	targetID          sql.NullString
+	targetPublicID    string
+	targetName        string
+	outcome           string
+	reason            sql.NullString
+	clientIP          sql.NullString
+	createdAt         time.Time
 }
 
 func platformAuditLogPageFromDesc(row dbmodels.ListPlatformAuditLogsDescRow) platformAuditLogPageRow {
 	return platformAuditLogPageRow{
-		id:             row.ID,
-		actorPublicID:  row.ActorPublicID,
-		actorName:      row.ActorName,
-		actorRole:      row.ActorRole,
-		tenantPublicID: row.TenantPublicID,
-		tenantName:     row.TenantName,
-		action:         row.Action,
-		targetType:     row.TargetType,
-		targetID:       row.TargetID,
-		targetPublicID: row.TargetPublicID,
-		targetName:     row.TargetName,
-		outcome:        row.Outcome,
-		reason:         row.Reason,
-		clientIP:       row.ClientIp,
-		createdAt:      row.CreatedAt,
+		id:                row.ID,
+		actorPublicID:     row.ActorPublicID,
+		actorName:         row.ActorName,
+		actorRole:         row.ActorRole,
+		tenantPublicID:    row.TenantPublicID,
+		tenantName:        row.TenantName,
+		tenantDomain:      row.TenantDomain.String,
+		tenantAdminDomain: row.TenantAdminDomain.String,
+		action:            row.Action,
+		targetType:        row.TargetType,
+		targetID:          row.TargetID,
+		targetPublicID:    row.TargetPublicID,
+		targetName:        row.TargetName,
+		outcome:           row.Outcome,
+		reason:            row.Reason,
+		clientIP:          row.ClientIp,
+		createdAt:         row.CreatedAt,
 	}
 }
 
 func platformAuditLogPageFromAsc(row dbmodels.ListPlatformAuditLogsAscRow) platformAuditLogPageRow {
 	return platformAuditLogPageRow{
-		id:             row.ID,
-		actorPublicID:  row.ActorPublicID,
-		actorName:      row.ActorName,
-		actorRole:      row.ActorRole,
-		tenantPublicID: row.TenantPublicID,
-		tenantName:     row.TenantName,
-		action:         row.Action,
-		targetType:     row.TargetType,
-		targetID:       row.TargetID,
-		targetPublicID: row.TargetPublicID,
-		targetName:     row.TargetName,
-		outcome:        row.Outcome,
-		reason:         row.Reason,
-		clientIP:       row.ClientIp,
-		createdAt:      row.CreatedAt,
+		id:                row.ID,
+		actorPublicID:     row.ActorPublicID,
+		actorName:         row.ActorName,
+		actorRole:         row.ActorRole,
+		tenantPublicID:    row.TenantPublicID,
+		tenantName:        row.TenantName,
+		tenantDomain:      row.TenantDomain.String,
+		tenantAdminDomain: row.TenantAdminDomain.String,
+		action:            row.Action,
+		targetType:        row.TargetType,
+		targetID:          row.TargetID,
+		targetPublicID:    row.TargetPublicID,
+		targetName:        row.TargetName,
+		outcome:           row.Outcome,
+		reason:            row.Reason,
+		clientIP:          row.ClientIp,
+		createdAt:         row.CreatedAt,
 	}
 }
 
@@ -84,6 +92,8 @@ func platformAuditLogToProto(row platformAuditLogPageRow) *publirasplatformv1.Pl
 		ActorName:         row.actorName,
 		TenantName:        row.tenantName,
 		TargetName:        row.targetName,
+		TenantDomain:      row.tenantDomain,
+		TenantAdminDomain: row.tenantAdminDomain,
 	}
 	if row.tenantPublicID != "" {
 		item.TenantPublicId = row.tenantPublicID

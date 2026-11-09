@@ -334,7 +334,8 @@ REVOKE EXECUTE ON FUNCTION
     public.tenant_image_shown_by_brand_mark(uuid, uuid),
     public.count_announcement_audience(jsonb),
     public.count_announcement_deliveries(uuid),
-    public.count_announcement_opens(uuid)
+    public.count_announcement_opens(uuid),
+    public.erase_tenant_audit_logs(uuid, integer)
 FROM PUBLIC;
 
 -- tenant_image_shown_by_brand_mark is called from the restrictive policy on
@@ -343,6 +344,10 @@ FROM PUBLIC;
 -- the maintenance role the orphan image sweep runs as. A tenant's deletion
 -- reaches its images through foreign keys, which no policy filters.
 GRANT EXECUTE ON FUNCTION public.tenant_image_shown_by_brand_mark(uuid, uuid) TO publira_admin, publira_content_stats;
+
+-- erase_tenant_audit_logs is the worker's erasure of a tenant an operator
+-- asked to delete, which runs on the maintenance pool.
+GRANT EXECUTE ON FUNCTION public.erase_tenant_audit_logs(uuid, integer) TO publira_content_stats;
 
 -- count_announcement_audience is the console's: an editor sees how many readers
 -- an audience reaches before delivering to it.
@@ -451,6 +456,20 @@ GRANT SELECT ON platform_storage_config TO publira_public, publira_admin, publir
 -- that keeps two runs off each other's rows needs UPDATE on at least one
 -- column, so the grant names one and no more.
 GRANT SELECT, DELETE, UPDATE (used_at) ON platform_user_mfa_used_challenges TO publira_content_stats;
+
+-- The erasure of a tenant an operator asked to delete runs on the maintenance
+-- pool, and records its end where the request was recorded: an entry in the
+-- platform audit log, filed under the operator who asked, whom the entry of
+-- the request names, and a notification to every operator. So that role may
+-- append an entry and read who filed one, which no secret is among; file a
+-- notification, which carries the tenant's name; and read which operators
+-- there are, by the columns that say so and no others, so the operators'
+-- password hashes and addresses stay out of its reach.
+GRANT INSERT ON platform_audit_logs TO publira_content_stats;
+GRANT SELECT (id, actor_platform_user_id, actor_role, action, target_type, target_id, created_at) ON platform_audit_logs TO publira_content_stats;
+GRANT SELECT, INSERT ON platform_notifications TO publira_content_stats;
+GRANT SELECT (id) ON platform_users TO publira_content_stats;
+GRANT SELECT (platform_user_id) ON platform_user_roles TO publira_content_stats;
 
 -- The catalog search engine is read by the worker, which writes every
 -- catalog_index_sync event into the index the search answers from and into the

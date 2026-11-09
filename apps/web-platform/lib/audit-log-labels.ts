@@ -118,6 +118,14 @@ export const getAuditActionOptions = async (
       value: "tenant_created",
     },
     {
+      label: t("platform.audit.actions.tenant_deleted"),
+      value: "tenant_deleted",
+    },
+    {
+      label: t("platform.audit.actions.tenant_deletion_requested"),
+      value: "tenant_deletion_requested",
+    },
+    {
       label: t("platform.audit.actions.tenant_info_updated"),
       value: "tenant_info_updated",
     },

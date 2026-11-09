@@ -55,7 +55,7 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 const CreateTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (id, public_id, domain, admin_domain, image_domain, name, status, timezone, default_locale, supported_locales)
 VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, $9::text[])
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 `
 
 type CreateTenantParams struct {
@@ -99,6 +99,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -143,8 +144,24 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (T
 	return i, err
 }
 
+const DeleteTenantMarkedForDeletion = `-- name: DeleteTenantMarkedForDeletion :execrows
+DELETE FROM tenants
+WHERE id = $1
+    AND deletion_requested_at IS NOT NULL
+`
+
+// Deletes the tenant row once the worker has erased everything else it held.
+// A tenant that is not marked is left alone.
+func (q *Queries) DeleteTenantMarkedForDeletion(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteTenantMarkedForDeletion, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const GetAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain, t.deletion_requested_at
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -173,6 +190,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -194,7 +212,7 @@ func (q *Queries) GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.U
 }
 
 const GetTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain, t.deletion_requested_at
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -218,12 +236,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const GetTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -244,12 +263,43 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
+	)
+	return i, err
+}
+
+const GetTenantByIDForUpdate = `-- name: GetTenantByIDForUpdate :one
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
+FROM tenants
+WHERE id = $1
+FOR UPDATE
+`
+
+// The tenant, locked until the transaction ends, for a change of its status
+// that depends on the status it reads: resuming a tenant, and marking one for
+// deletion, each wait for the other rather than both committing.
+func (q *Queries) GetTenantByIDForUpdate(ctx context.Context, id uuid.UUID) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantByIDForUpdate, id)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+		&i.Timezone,
+		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const GetTenantByImageDomains = `-- name: GetTenantByImageDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain, t.deletion_requested_at
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.image_domain = candidate.domain
 ORDER BY candidate.ord
@@ -273,12 +323,13 @@ func (q *Queries) GetTenantByImageDomains(ctx context.Context, domains []string)
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const GetTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -299,6 +350,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -543,10 +595,14 @@ func (q *Queries) GetTenantTipAmounts(ctx context.Context, tenantID uuid.UUID) (
 }
 
 const ListTenantsAsc = `-- name: ListTenantsAsc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
-  AND ($2::text = '' OR status = $2::text)
+  AND (
+    $2::text = ''
+    OR ($2::text = 'deleting' AND deletion_requested_at IS NOT NULL)
+    OR (status = $2::text AND deletion_requested_at IS NULL)
+  )
   AND (
     $3::uuid IS NULL
     OR (
@@ -599,6 +655,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 			&i.DefaultLocale,
 			pq.Array(&i.SupportedLocales),
 			&i.ImageDomain,
+			&i.DeletionRequestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -614,10 +671,14 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 }
 
 const ListTenantsDesc = `-- name: ListTenantsDesc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
-  AND ($2::text = '' OR status = $2::text)
+  AND (
+    $2::text = ''
+    OR ($2::text = 'deleting' AND deletion_requested_at IS NOT NULL)
+    OR (status = $2::text AND deletion_requested_at IS NULL)
+  )
   AND (
     $3::uuid IS NULL
     OR (
@@ -644,7 +705,9 @@ type ListTenantsDescParams struct {
 
 // ListTenants is (created_at, id) DESC. Forward uses the DESC query;
 // backward uses ASC so the index can be scanned in reverse. The handler
-// flips ASC rows back into display order.
+// flips ASC rows back into display order. The status filter names the status
+// the platform API answers, where a tenant marked for deletion is 'deleting'
+// rather than the 'suspended' its row keeps.
 // cursor rules: proto/README.md.
 func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantsDesc,
@@ -674,6 +737,51 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 			&i.DefaultLocale,
 			pq.Array(&i.SupportedLocales),
 			&i.ImageDomain,
+			&i.DeletionRequestedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListTenantsMarkedForDeletion = `-- name: ListTenantsMarkedForDeletion :many
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
+FROM tenants
+WHERE deletion_requested_at IS NOT NULL
+ORDER BY deletion_requested_at, id
+`
+
+// The tenants waiting to be erased, the longest waiting first.
+func (q *Queries) ListTenantsMarkedForDeletion(ctx context.Context) ([]Tenant, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantsMarkedForDeletion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tenant
+	for rows.Next() {
+		var i Tenant
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Domain,
+			&i.Name,
+			&i.CreatedAt,
+			&i.Status,
+			&i.AdminDomain,
+			&i.Timezone,
+			&i.DefaultLocale,
+			pq.Array(&i.SupportedLocales),
+			&i.ImageDomain,
+			&i.DeletionRequestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -768,6 +876,37 @@ func (q *Queries) LockTenantHosts(ctx context.Context) error {
 	return err
 }
 
+const MarkTenantForDeletion = `-- name: MarkTenantForDeletion :one
+UPDATE tenants
+SET deletion_requested_at = COALESCE(deletion_requested_at, now())
+WHERE id = $1
+    AND status = 'suspended'
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
+`
+
+// Marks a suspended tenant for the worker to erase, keeping the time of the
+// first request when it is asked again. No row for a tenant that is not
+// suspended, or that no longer exists.
+func (q *Queries) MarkTenantForDeletion(ctx context.Context, id uuid.UUID) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, MarkTenantForDeletion, id)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+		&i.Timezone,
+		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
+		&i.DeletionRequestedAt,
+	)
+	return i, err
+}
+
 const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
 UPDATE tenants
 SET default_locale = $1,
@@ -777,7 +916,7 @@ WHERE id = $3
         default_locale <> $1
         OR supported_locales <> $2::text[]
     )
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 `
 
 type UpdateTenantDefaultLocaleParams struct {
@@ -805,6 +944,7 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -816,7 +956,7 @@ SET name = $1,
     admin_domain = $3,
     image_domain = $4
 WHERE id = $5
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 `
 
 type UpdateTenantInfoParams struct {
@@ -849,6 +989,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -857,7 +998,7 @@ const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 `
 
 type UpdateTenantStatusParams struct {
@@ -881,6 +1022,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
@@ -890,7 +1032,7 @@ UPDATE tenants
 SET timezone = $1
 WHERE id = $2
     AND timezone <> $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain, deletion_requested_at
 `
 
 type UpdateTenantTimezoneParams struct {
@@ -916,6 +1058,7 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
 		&i.ImageDomain,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }

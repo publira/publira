@@ -65,13 +65,13 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		{[]string{"server", "--queue", "outbox"}, "--queue names the queues of the worker --with-worker hosts"},
 		{[]string{"server", "--queue", "outbox,ticker,maintenance,search_index"}, "--queue names the queues of the worker --with-worker hosts"},
 		{[]string{"server", "--with-worker=false", "--queue", "outbox"}, "--queue names the queues of the worker --with-worker hosts"},
-		{[]string{"server", "--with-worker", "--queue", "storefront"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export, not "storefront"`},
+		{[]string{"server", "--with-worker", "--queue", "storefront"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure, not "storefront"`},
 		{[]string{"worker", "--role", "storefront"}, "flag provided but not defined: -role"},
 		{[]string{"worker", "extra"}, "worker takes no arguments other than --queue"},
 		{[]string{"worker", "--queue", "outbox", "extra"}, "worker takes no arguments other than --queue"},
 		{[]string{"worker", "--with-worker"}, "flag provided but not defined: -with-worker"},
-		{[]string{"worker", "--queue", "default"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export, not "default"`},
-		{[]string{"worker", "--queue", "searchindex"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, or data_export, not "searchindex"`},
+		{[]string{"worker", "--queue", "default"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure, not "default"`},
+		{[]string{"worker", "--queue", "searchindex"}, `--queue must be outbox, ticker, maintenance, search_index, payment_reconciliation, data_export, or tenant_erasure, not "searchindex"`},
 		{[]string{"worker", "--queue", ""}, "--queue names an empty queue"},
 		{[]string{"worker", "--queue", "outbox,"}, "--queue names an empty queue"},
 		{[]string{"worker", "--queue", "ticker,ticker"}, `--queue names "ticker" twice`},
@@ -140,7 +140,8 @@ func TestParseWorkerFlags(t *testing.T) {
 		{[]string{"--queue", "maintenance", "--queue", "ticker"}, workerQueues{ticker: true, maintenance: true}},
 		{[]string{"--queue", "payment_reconciliation"}, workerQueues{paymentReconciliation: true}},
 		{[]string{"--queue", "data_export"}, workerQueues{dataExport: true}},
-		{[]string{"--queue", "search_index, outbox,ticker,maintenance,payment_reconciliation,data_export"}, allWorkerQueues},
+		{[]string{"--queue", "tenant_erasure"}, workerQueues{tenantErasure: true}},
+		{[]string{"--queue", "search_index, outbox,ticker,maintenance,payment_reconciliation,data_export,tenant_erasure"}, allWorkerQueues},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			got, err := parseWorkerFlags(tc.args)

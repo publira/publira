@@ -414,7 +414,7 @@ func TestWorkerReplicasSplitTheQueues(t *testing.T) {
 					"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
 					"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
 					"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
-				}, revalidationWithoutPlatformConsole()), "worker", "--queue", "ticker,maintenance,search_index,payment_reconciliation,data_export")
+				}, revalidationWithoutPlatformConsole()), "worker", "--queue", "ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure")
 				base := listenerURL(t, p, "worker")
 				p.WaitReady(t, base+"/readyz")
 				assertReadyChecks(t, base+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
@@ -489,7 +489,7 @@ func TestWorkerReplicasSplitTheQueues(t *testing.T) {
 				t.Fatalf("default queue attempted by %v and the other queues by %v, want one client each and not the same one", drainClients, jobsClients)
 			}
 
-			if out := drain.Output(); !strings.Contains(out, `not_hosted="[ticker maintenance search_index payment_reconciliation data_export]"`) {
+			if out := drain.Output(); !strings.Contains(out, `not_hosted="[ticker maintenance search_index payment_reconciliation data_export tenant_erasure]"`) {
 				t.Fatalf("the drain replica does not name the queues it leaves to others:\n%s", out)
 			}
 			if out := jobs.Output(); !strings.Contains(out, `not_hosted=[outbox]`) {

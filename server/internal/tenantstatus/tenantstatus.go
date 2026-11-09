@@ -1,6 +1,11 @@
 // Package tenantstatus names the states a tenant is in, and the answer every
 // surface that serves a tenant gives one that is suspended.
 //
+// A tenant an operator asked to delete stays suspended until the worker has
+// erased it, and is told apart by tenants.deletion_requested_at rather than by
+// a status of its own: every surface that refuses a suspended tenant refuses
+// it with no check of its own, the previous release's included.
+//
 // Suspension is checked where a request is resolved to its tenant — the public
 // and admin APIs' tenant-scoped interceptors, their GetTenantByDomain, and the
 // image routes — rather than in the queries that read the row: the Platform
@@ -22,6 +27,23 @@ const (
 	Active    = "active"
 	Suspended = "suspended"
 )
+
+// Deleting is the status the platform answers for a suspended tenant marked
+// for deletion. No row stores it.
+const Deleting = "deleting"
+
+// Of is the status the platform answers for tenant.
+func Of(tenant dbmodels.Tenant) string {
+	if IsDeleting(tenant) {
+		return Deleting
+	}
+	return tenant.Status
+}
+
+// IsDeleting reports whether an operator asked for tenant to be deleted.
+func IsDeleting(tenant dbmodels.Tenant) bool {
+	return tenant.DeletionRequestedAt.Valid
+}
 
 // ErrSuspended is the cause of every refusal a suspended tenant gets.
 var ErrSuspended = errors.New("tenant is suspended")

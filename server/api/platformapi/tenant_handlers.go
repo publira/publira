@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -45,7 +46,7 @@ func tenantToProto(t dbmodels.Tenant, platformDefaultTimezone func() string) *pu
 		Id:          t.ID.String(),
 		PublicId:    t.PublicID,
 		Name:        t.Name,
-		Status:      t.Status,
+		Status:      tenantstatus.Of(t),
 		CreatedAt:   t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		Domain:      t.Domain,
 		AdminDomain: adminDomain,
@@ -219,6 +220,10 @@ func (s *platformServer) tenantError(ctx context.Context, msg string, err error,
 		return connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationAccepted), errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
+	case errors.Is(err, platformtenants.ErrNotSuspended):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonTenantNotSuspended)
+	case errors.Is(err, platformtenants.ErrDeleting):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonTenantDeleting)
 	default:
 		return s.internalDBError(ctx, msg, err, keyvals...)
 	}
@@ -246,6 +251,28 @@ func (s *platformServer) ResumeTenant(
 		return nil, err
 	}
 	return &publirasplatformv1.ResumeTenantResponse{
+		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
+	}, nil
+}
+
+func (s *platformServer) DeleteTenant(
+	ctx context.Context,
+	req *publirasplatformv1.DeleteTenantRequest,
+) (*publirasplatformv1.DeleteTenantResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
+		return nil, err
+	}
+	tenant, err := s.setTenantStatus(ctx, req.TenantId, func(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
+		return platformtenants.Delete(ctx, tx, logger, actor, id, req.Name)
+	}, "delete tenant")
+	if err != nil {
+		return nil, err
+	}
+	return &publirasplatformv1.DeleteTenantResponse{
 		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}, nil
 }

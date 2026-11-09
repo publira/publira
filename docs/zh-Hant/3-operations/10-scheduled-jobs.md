@@ -2,8 +2,8 @@
 title: 排程工作與維護工作
 description: publira worker依自身排程所做的事、停機後如何補上進度、如何重試外寄的郵件、推播與快取重新驗證，以及何時以publiractl job手動執行工作。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 安裝實例在沒有請求的情況下所做的一切，都由`publira worker`完成：它會發布排定在此刻的章節、告訴Web應用程式哪些快取頁面因變更而過時、寄送郵件和推播通知、重新建立統計和排行榜，並刪除超過保留期限的內容。不需要其他任何東西依計時器執行，也不需要主機的cron或Kubernetes CronJob。本頁說明什麼工作在何時執行、如何判斷症狀背後是哪個工作，以及如何以`publiractl job`手動執行工作。
@@ -34,6 +34,7 @@ source_updated: 2026-11-04
 | 搜尋沒有切換到新儲存的引擎 | 搜尋索引建立 | [搜尋](./7-search.md#建立失敗時) |
 | 租戶管理員開始的付款對帳始終沒有完成 | 付款對帳 | [其他排程工作](#其他排程工作) |
 | 讀者的資料下載一直處於等待中 | 資料下載 | [其他排程工作](#其他排程工作) |
+| 以`publiractl tenant delete`刪除的租戶仍顯示為`deleting` | 租戶刪除 | [其他排程工作](#其他排程工作) |
 | 舊記錄沒有被刪除 | 清除工作 | [其他排程工作](#其他排程工作) |
 
 這些工作全都需要`publira worker`先處於執行中且就緒的狀態：worker停止的安裝實例雖然能提供每個頁面，卻不會發布、不會寄送，也不會重新建立任何東西。worker上的`GET /readyz`會為它登入時所用的每個資料庫登入身分列出一項檢查，因此停止回應的登入身分會在那裡被指出。在依佇列拆分worker的安裝實例上，每個工作還需要一個負責其佇列且正在執行的worker，如[只負責部分工作的worker](#只負責部分工作的worker)所述。
@@ -104,11 +105,12 @@ worker會為每個租戶記住每個環節最後完成的日期，並從其下�
 | 搜尋索引建立（`build-search-index`） | 每30秒 | 在新儲存的搜尋引擎上建立索引，並將搜尋切換過去，如[搜尋](./7-search.md#遷移到其他引擎)所述 |
 | 付款對帳（`reconcile-payments`） | 每10秒 | 執行租戶管理員開始的每項對帳，從租戶的付款服務商或商店讀取其期間內的付款，如[販售章節](../4-console/4-selling-episodes.md#與付款服務商對帳)所述。來源拒絕的執行會記錄為失敗，由租戶管理員重新開始，而不會重試。停止的worker執行到一半的對帳，會在兩小時後重新接手 |
 | 資料下載（`build-data-exports`） | 每10秒 | 準備讀者索取的每份資料副本，將其儲存到儲存貯體中，並告訴讀者已準備就緒，如[讀者帳戶](../4-console/2-readers/1-accounts.md#讀者下載的個人資料)所述。在未設定物件儲存時提出的請求會記錄為失敗，由讀者重新索取，而不會重試。停止的worker處理到一半的請求，會在15分鐘後重新接手 |
+| 租戶刪除（`erase-tenants`） | 每分鐘 | 刪除營運人員以`publiractl tenant delete`刪除的每個租戶的資料：其在每張資料表中的列、儲存貯體中的物件、搜尋引擎索引中的文件，以及留在Valkey中的轉換後圖片與速率限制計數器，最後刪除租戶本身，此後其主機不再屬於任何租戶。刪除會記錄在平台主控台的**稽核記錄**中，每位營運人員都會在**通知**下收到一則標題為「租戶已刪除」的通知。因錯誤而中斷的執行會讓租戶維持`deleting`，像已暫停的租戶一樣被拒絕，每位營運人員會收到一則標題為「租戶刪除失敗」的通知，每個租戶一次；一分鐘後的下一次執行會從剩下的部分繼續刪除，錯誤內容在worker的日誌中。未取得`PUBLIRA_REDIS_URL`的worker不會刪除Valkey中的轉換後圖片與計數器，而是讓它們自行過期：圖片在快取有效期結束時過期，計數器在其時間區間結束時過期 |
 | 清除工作（`purge-*`） | 每小時或每24小時 | 刪除超過保留期限的已撤回留言、分析事件和排行榜快照，如[平台預設值與政策](./9-platform-policies.md#保留期限)所述；兩步驟登入已用完的驗證挑戰；準備就緒七天後的讀者資料下載，以及已刪除帳戶的資料下載；以及任何租戶都不再使用、且已存在一天以上的圖片 |
 
 ## 只負責部分工作的worker
 
-以`--queue`啟動的worker會執行其指定佇列的工作，其他工作則留給指定那些佇列的worker，如[依佇列拆分worker處理程序](../2-deployments/7-scaling-out.md#依佇列拆分worker處理程序)所述。本頁的工作分佈在六個佇列上，`river_job`以相同的名稱稱呼它們，唯有`outbox`被稱為`default`：
+以`--queue`啟動的worker會執行其指定佇列的工作，其他工作則留給指定那些佇列的worker，如[依佇列拆分worker處理程序](../2-deployments/7-scaling-out.md#依佇列拆分worker處理程序)所述。本頁的工作分佈在七個佇列上，`river_job`以相同的名稱稱呼它們，唯有`outbox`被稱為`default`：
 
 | 佇列 | 工作 |
 | --- | --- |
@@ -118,6 +120,7 @@ worker會為每個租戶記住每個環節最後完成的日期，並從其下�
 | `search_index` | 搜尋索引建立 |
 | `payment_reconciliation` | 付款對帳 |
 | `data_export` | 資料下載 |
+| `tenant_erasure` | 租戶刪除 |
 
 每個佇列都至少需要一個負責它且正在執行的worker。負責排程的worker會排程所有工作，無論它自己負責哪些佇列，因此沒有任何執行中的worker負責其佇列的工作不會遺失，但也沒有東西執行它：它會在`river_job`中等待，直到負責其佇列的worker啟動，然後如[停機後](#停機後)那樣執行。每個worker在啟動時都會以`worker leaves queues to other replicas`記錄它留給其他worker的佇列，並以`not_hosted`列出這些佇列。工作處於等待狀態的佇列會顯示在`river_job`中：
 
@@ -146,6 +149,7 @@ GROUP BY queue, kind;
 | 搜尋索引建立 | 建立待建立的索引 |
 | 付款對帳 | 執行期間內開始的所有對帳 |
 | 資料下載 | 準備期間內索取的所有副本 |
+| 租戶刪除 | 刪除期間內被刪除的所有租戶的資料，並完成已停止的worker未做完的刪除 |
 | 清除工作 | 只有在目前的小時或日期內（依時鐘計算，而不是從worker啟動時計算）尚未完成任何一次時才執行；此時的第一次執行會刪除期間內過期的所有內容 |
 | Google Play退款同步 | 與清除工作一樣，只有在目前的小時內尚未完成任何一次時才執行。停機超過30天的worker會錯過Google Play已不再列出的退款 |
 
@@ -201,7 +205,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   publira/publiractl:<tag> job purge-content-events
 ```
 
-在[Docker Compose](../2-deployments/3-docker-compose.md)安裝實例上，`docker compose run --rm publiractl job purge-content-events`已經具備該連線。圖片清除、資料下載及其清除、Google Play退款同步、付款對帳和搜尋索引建立，在其使用的認證資訊保存在安裝實例中時（例如儲存貯體的存取金鑰、租戶的付款服務商和商店認證資訊，或搜尋引擎的密碼），還需要`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。
+在[Docker Compose](../2-deployments/3-docker-compose.md)安裝實例上，`docker compose run --rm publiractl job purge-content-events`已經具備該連線。圖片清除、資料下載及其清除、Google Play退款同步、付款對帳、搜尋索引建立和租戶刪除，在其使用的認證資訊保存在安裝實例中時（例如儲存貯體的存取金鑰、租戶的付款服務商和商店認證資訊，或搜尋引擎的密碼），還需要`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。租戶刪除還需要與`publira server`相同的`PUBLIRA_REDIS_URL`，以便刪除Valkey中的轉換後圖片與計數器。
 
 工作會將日誌輸出到標準輸出，並在執行失敗時以`1`結束。逐一處理租戶的工作，會在結束前處理完其他租戶，其日誌會指出每個失敗的租戶。
 
@@ -253,6 +257,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 | `build-search-index` | 沒有到期的建立作業，或worker已在建立時，什麼都不做 |
 | `reconcile-payments` | 沒有等待中的對帳時，什麼都不做。worker正在執行的對帳不會被重複接手 |
 | `build-data-exports` | 沒有讀者在等待副本時，什麼都不做。worker正在準備的副本不會被重複接手 |
+| `erase-tenants` | 沒有等待刪除的租戶，或worker正在刪除時，什麼都不做 |
 
 唯一的例外是時機：在複製儲存貯體的備份期間，請勿執行`purge-orphan-images`或`purge-data-exports`，如[備份與還原](../2-deployments/9-backup-and-restore.md#1-停止worker處理程序)所述。
 

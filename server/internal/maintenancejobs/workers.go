@@ -416,3 +416,31 @@ func (w *purgeDataExportsWorker) Work(ctx context.Context, job *river.Job[PurgeD
 		return err
 	})
 }
+
+// EraseTenantsArgs erases the tenants operators asked to delete.
+type EraseTenantsArgs struct{}
+
+func (EraseTenantsArgs) Kind() string { return kindEraseTenants }
+
+func (EraseTenantsArgs) InsertOpts() river.InsertOpts {
+	opts := insertOpts()
+	opts.Queue = TenantErasureQueueName
+	return opts
+}
+
+type eraseTenantsWorker struct {
+	river.WorkerDefaults[EraseTenantsArgs]
+	jobs *Jobs
+}
+
+// Timeout bounds one pass and not one erasure: a tenant whose rows outlast it
+// is taken up by the next pass where this one stopped.
+func (w *eraseTenantsWorker) Timeout(*river.Job[EraseTenantsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *eraseTenantsWorker) Work(ctx context.Context, job *river.Job[EraseTenantsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameEraseTenants, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.tenantErasure.Run(ctx, deps)
+	})
+}

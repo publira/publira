@@ -675,6 +675,9 @@ type Querier interface {
 	DeleteTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
+	// Deletes the tenant row once the worker has erased everything else it held.
+	// A tenant that is not marked is left alone.
+	DeleteTenantMarkedForDeletion(ctx context.Context, id uuid.UUID) (int64, error)
 	// Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
 	// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
@@ -751,6 +754,10 @@ type Querier interface {
 	// Gives a tenant that has saved nothing its row, with every column at its
 	// default, so the save after it always has a row to lock.
 	EnsureTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) error
+	// Deletes up to batch_size entries of the audit log of a tenant marked for
+	// deletion, through the one function that may: the log is append-only for
+	// every role the processes connect as.
+	EraseTenantAuditLogs(ctx context.Context, arg EraseTenantAuditLogsParams) (int64, error)
 	// Records, across every tenant, the coins of up to `batch` grants that expired
 	// unspent, and zeroes what the grants have left so that the next pass does not
 	// reach them again. Each expiry is dated when its grant expired. A grant a
@@ -1429,6 +1436,10 @@ type Querier interface {
 	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
+	// The tenant, locked until the transaction ends, for a change of its status
+	// that depends on the status it reads: resuming a tenant, and marking one for
+	// deletion, each wait for the other rather than both committing.
+	GetTenantByIDForUpdate(ctx context.Context, id uuid.UUID) (Tenant, error)
 	// Return the first tenant whose image_domain matches, keeping the order of the
 	// candidate host names.
 	GetTenantByImageDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -1456,6 +1467,10 @@ type Querier interface {
 	// No row is a tenant without a dark palette, which the caller answers as an
 	// absent one rather than as the light palette's defaults.
 	GetTenantDarkThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantThemeDark, error)
+	// The operator who asked for a tenant's deletion, as the latest entry of the
+	// request recorded them, for the worker to file the deletion under once it is
+	// done. No row when nothing recorded a request.
+	GetTenantDeletionRequester(ctx context.Context, tenantID uuid.UUID) (GetTenantDeletionRequesterRow, error)
 	// Returns no rows for a tenant that has saved nothing, which reads as the
 	// disposable-domain list off.
 	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
@@ -1822,6 +1837,10 @@ type Querier interface {
 	// endpoint — the same change recorded twice — writes nothing and returns no
 	// row.
 	InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error)
+	// Whether the tenant's documents are written at all: a tenant marked for
+	// deletion has its documents deleted by the erasure, and one already deleted
+	// has none left to write.
+	IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
@@ -2674,7 +2693,9 @@ type Querier interface {
 	// read in index order, so each scan direction gets its own query.
 	// The tenant is the one the entry was written for, which stays on the entry
 	// after its target is deleted; an invitation entry still names the invited
-	// address through the invitation's row.
+	// address through the invitation's row. A tenant that is itself deleted is
+	// named from what the entries of its deletion kept of it, and the domains are
+	// read from those alone: every other entry reads the tenant through its row.
 	// cursor rules: proto/README.md.
 	ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error)
 	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)
@@ -3427,9 +3448,13 @@ type Querier interface {
 	ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error)
 	// ListTenants is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler
-	// flips ASC rows back into display order.
+	// flips ASC rows back into display order. The status filter names the status
+	// the platform API answers, where a tenant marked for deletion is 'deleting'
+	// rather than the 'suspended' its row keeps.
 	// cursor rules: proto/README.md.
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	// The tenants waiting to be erased, the longest waiting first.
+	ListTenantsMarkedForDeletion(ctx context.Context) ([]Tenant, error)
 	// The tenants whose Google Play store is enabled and names its app, which are
 	// the ones whose voided purchases the worker reads. Read across tenants, so
 	// only a role that bypasses row-level security sees them all.
@@ -3951,6 +3976,10 @@ type Querier interface {
 	// between the listing and this mark keeps its drop owed for the new instant.
 	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
+	// Marks a suspended tenant for the worker to erase, keeping the time of the
+	// first request when it is asked again. No row for a tenant that is not
+	// suspended, or that no longer exists.
+	MarkTenantForDeletion(ctx context.Context, id uuid.UUID) (Tenant, error)
 	// Records the stored archive, as long as the claim is still the one that
 	// built it and the account still exists. No row otherwise, and the archive is
 	// then nobody's.

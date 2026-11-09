@@ -6,6 +6,13 @@ import { getMessagesFor } from "./messages";
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
   "episode_publish_failed";
 
+/** The worker erased a tenant an operator deleted, and the tenant row last. */
+export const NOTIFICATION_TYPE_TENANT_DELETED = "tenant_deleted";
+
+/** A pass of the worker's erasure of a deleted tenant stopped on an error. */
+export const NOTIFICATION_TYPE_TENANT_DELETION_FAILED =
+  "tenant_deletion_failed";
+
 /**
  * Public IDs that can sit in a path segment. Anything else is dropped so a
  * payload cannot push the inbox onto `//`, query strings, or another origin.
@@ -42,6 +49,7 @@ const payloadSchema = z.object({
   episode_title: optionalLabel,
   series_id: optionalResourceId,
   series_title: optionalLabel,
+  tenant_domain: optionalLabel,
   tenant_id: optionalResourceId,
   tenant_name: optionalLabel,
 });
@@ -167,6 +175,37 @@ export const notificationDisplay = async (
       description,
       href,
       title: t("platform.notifications.events.publish_failed_title"),
+    };
+  }
+
+  // A deleted tenant has no page left, so its payload names no tenant to
+  // link to, and the row says which tenant it was by its name and domain.
+  if (type === NOTIFICATION_TYPE_TENANT_DELETED) {
+    return {
+      description:
+        payload.tenant_name && payload.tenant_domain
+          ? t("platform.notifications.events.tenant_deleted_description", {
+              domain: payload.tenant_domain,
+              tenant: payload.tenant_name,
+            })
+          : t("platform.notifications.events.unknown_description"),
+      href,
+      title: t("platform.notifications.events.tenant_deleted_title"),
+    };
+  }
+
+  if (type === NOTIFICATION_TYPE_TENANT_DELETION_FAILED) {
+    return {
+      description: payload.tenant_name
+        ? t(
+            "platform.notifications.events.tenant_deletion_failed_description",
+            {
+              tenant: payload.tenant_name,
+            }
+          )
+        : t("platform.notifications.events.unknown_description"),
+      href,
+      title: t("platform.notifications.events.tenant_deletion_failed_title"),
     };
   }
 

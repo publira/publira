@@ -2,8 +2,8 @@
 title: 定时任务与维护任务
 description: publira worker按自己的时间表执行哪些工作、停机后如何补做、如何重试外发的邮件、推送和缓存重新验证，以及何时使用publiractl job手动运行任务。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 安装实例在没有请求的情况下所做的一切都由`publira worker`完成：它发布预约在此刻发布的章节，告知Web应用哪些缓存页面因更改而过时，发送邮件和推送通知，重建统计数据和排行榜，并删除超过保留期限的内容。没有其他任何东西需要按定时器运行，也不需要主机的cron或Kubernetes CronJob。本页说明什么在何时运行、如何判断某个症状背后是哪个任务，以及如何使用`publiractl job`手动运行任务。
@@ -34,6 +34,7 @@ source_updated: 2026-11-04
 | 搜索没有切换到新保存的引擎 | 搜索索引构建 | [搜索](./7-search.md#构建失败时) |
 | 租户管理员发起的支付对账始终未完成 | 支付对账 | [其他定时任务](#其他定时任务) |
 | 读者的数据下载一直处于等待状态 | 数据下载 | [其他定时任务](#其他定时任务) |
+| 用`publiractl tenant delete`删除的租户仍显示为`deleting` | 租户删除 | [其他定时任务](#其他定时任务) |
 | 旧记录没有被删除 | 清除任务 | [其他定时任务](#其他定时任务) |
 
 这些任务都首先需要`publira worker`正在运行并已就绪：worker进程停止的安装实例仍能提供所有页面，但不发布、不发送、也不重建任何东西。worker进程上的`GET /readyz`会为它登录的每个数据库登录名列出一项检查，因此停止响应的登录名会在那里显示出来。在按队列拆分worker进程的安装实例上，每个任务还需要一个处理其队列的正在运行的worker进程，详见[只处理部分任务的worker进程](#只处理部分任务的worker进程)。
@@ -104,11 +105,12 @@ worker进程会按租户记住每个环节最后完成的日期，并从其下�
 | 搜索索引构建（`build-search-index`） | 每30秒 | 在新保存的搜索引擎上构建索引，并将搜索切换过去，详见[搜索](./7-search.md#迁移到另一个引擎) |
 | 支付对账（`reconcile-payments`） | 每10秒 | 执行租户管理员发起的每次对账，从租户的支付服务商或商店读取该期间的付款，详见[销售章节](../4-console/4-selling-episodes.md#与支付服务商对账)。被数据来源拒绝的运行会记录为失败，由租户管理员重新发起，而不会重试。已停止的worker进程执行到一半的运行会在两小时后重新处理 |
 | 数据下载（`build-data-exports`） | 每10秒 | 准备读者申请的每份数据副本，将其保存到存储桶中，并告知读者已准备就绪，详见[读者账户](../4-console/2-readers/1-accounts.md#读者下载的个人数据)。在未设置对象存储时提出的申请会记录为失败，由读者重新申请，而不会重试。已停止的worker进程处理到一半的申请会在15分钟后重新处理 |
+| 租户删除（`erase-tenants`） | 每分钟 | 删除运营人员用`publiractl tenant delete`删除的每个租户的数据：其在每张表中的行、存储桶中的对象、搜索引擎索引中的文档，以及留在Valkey中的转换后图片和速率限制计数器，最后删除租户本身，此后其主机不再属于任何租户。删除会记录在平台控制台的**审计日志**中，每位运营人员都会在**通知**下收到一条标题为“租户已删除”的通知。因错误而中断的运行会让租户保持`deleting`，像已暂停的租户一样被拒绝，每位运营人员会收到一条标题为“租户删除失败”的通知，每个租户一次；一分钟后的下一次运行会从剩余部分继续删除，错误内容在worker进程的日志中。未获得`PUBLIRA_REDIS_URL`的worker进程不会删除Valkey中的转换后图片和计数器，而是让它们自行过期：图片在缓存有效期结束时过期，计数器在其时间窗口结束时过期 |
 | 清除任务（`purge-*`） | 每小时或每24小时 | 删除超过保留期限的已撤回评论、分析事件和排行榜快照，详见[平台默认值与策略](./9-platform-policies.md#保留期限)；删除两步验证登录已用完的验证挑战；删除读者的数据下载（准备就绪七天后），以及已删除账户的数据下载；删除任何租户都不再使用、且已存在一天以上的图片 |
 
 ## 只处理部分任务的worker进程
 
-以`--queue`启动的worker进程只运行其指定队列中的任务，其他任务留给指定了那些队列的worker进程，详见[按队列拆分worker进程](../2-deployments/7-scaling-out.md#按队列拆分worker进程)。本页的任务分布在六个队列中，`river_job`中的名称与之相同，只有`outbox`在其中名为`default`：
+以`--queue`启动的worker进程只运行其指定队列中的任务，其他任务留给指定了那些队列的worker进程，详见[按队列拆分worker进程](../2-deployments/7-scaling-out.md#按队列拆分worker进程)。本页的任务分布在七个队列中，`river_job`中的名称与之相同，只有`outbox`在其中名为`default`：
 
 | 队列 | 任务 |
 | --- | --- |
@@ -118,6 +120,7 @@ worker进程会按租户记住每个环节最后完成的日期，并从其下�
 | `search_index` | 搜索索引构建 |
 | `payment_reconciliation` | 支付对账 |
 | `data_export` | 数据下载 |
+| `tenant_erasure` | 租户删除 |
 
 每个队列都需要至少一个处理它的正在运行的worker进程。无论负责调度任务的worker进程自己处理哪些队列，它都会调度所有任务，因此队列没有任何正在运行的worker进程处理的任务不会丢失，但也没有任何东西运行它：它会在`river_job`中等待，直到处理其队列的worker进程启动，然后像[停机后](#停机后)那样运行。每个worker进程在启动时都会记录它留给其他进程的队列，日志为`worker leaves queues to other replicas`，并以`not_hosted`列出这些队列。任务在等待的队列会显示在`river_job`中：
 
@@ -146,6 +149,7 @@ GROUP BY queue, kind;
 | 搜索索引构建 | 构建待处理的索引 |
 | 支付对账 | 执行在此期间发起的所有对账 |
 | 数据下载 | 准备在此期间申请的所有副本 |
+| 租户删除 | 删除在此期间被删除的所有租户的数据，并完成已停止的worker进程未做完的删除 |
 | 清除任务 | 只有在当前小时或当天内尚未完成过时才运行，按时钟计算，而不是从worker进程启动时算起；之后第一次运行会删除在此期间过期的所有内容 |
 | Google Play退款同步 | 与清除任务一样，只有在当前小时内尚未完成过时才运行。停机超过30天的worker进程会错过Google Play不再列出的退款 |
 
@@ -201,7 +205,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   publira/publiractl:<tag> job purge-content-events
 ```
 
-在[Docker Compose](../2-deployments/3-docker-compose.md)安装实例上，`docker compose run --rm publiractl job purge-content-events`已经带有该连接。图片清除、数据下载及其清除、Google Play退款同步、支付对账和搜索索引构建，在其使用的凭据保存在安装实例中时（例如存储桶的访问密钥、租户的支付服务商和商店凭据，或搜索引擎的密码），还需要`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。
+在[Docker Compose](../2-deployments/3-docker-compose.md)安装实例上，`docker compose run --rm publiractl job purge-content-events`已经带有该连接。图片清除、数据下载及其清除、Google Play退款同步、支付对账、搜索索引构建和租户删除，在其使用的凭据保存在安装实例中时（例如存储桶的访问密钥、租户的支付服务商和商店凭据，或搜索引擎的密码），还需要`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。租户删除还需要与`publira server`相同的`PUBLIRA_REDIS_URL`，以便删除Valkey中的转换后图片和计数器。
 
 任务将日志输出到标准输出，运行失败时以`1`退出。逐个处理租户的任务会先处理完其他租户再退出，其日志会注明每个失败的租户。
 
@@ -253,6 +257,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 | `build-search-index` | 没有需要进行的构建，或worker进程已在构建时，不做任何事 |
 | `reconcile-payments` | 没有等待中的对账时，不做任何事。worker进程正在执行的对账不会被再次处理 |
 | `build-data-exports` | 没有读者在等待副本时，不做任何事。worker进程正在准备的副本不会被再次处理 |
+| `erase-tenants` | 没有等待删除的租户，或worker进程正在删除时，不做任何事 |
 
 唯一的例外是时机：在复制存储桶的备份时，请不要运行`purge-orphan-images`或`purge-data-exports`，详见[备份与恢复](../2-deployments/9-backup-and-restore.md#1-停止worker进程)。
 

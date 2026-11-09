@@ -78,6 +78,18 @@ type PlatformEntry struct {
 	Outcome    string // "success" or "failure"
 	Reason     string // populated on failure
 	ClientIP   string
+	// What the entry keeps of the tenant once the tenant row is gone, which
+	// only the entries of a tenant's deletion carry. Every other entry names
+	// its tenant through the row.
+	Tenant TenantSnapshot
+}
+
+// TenantSnapshot is a tenant as an entry that outlives it records it.
+type TenantSnapshot struct {
+	PublicID    string
+	Name        string
+	Domain      string
+	AdminDomain string
 }
 
 // TenantEntry holds the data for a tenant audit log event.
@@ -151,6 +163,10 @@ func logPlatformEntry(ctx context.Context, logger *slog.Logger, e PlatformEntry)
 		"outcome", e.Outcome,
 		"reason", e.Reason,
 		"client_ip", e.ClientIP,
+		"tenant_public_id", e.Tenant.PublicID,
+		"tenant_name", e.Tenant.Name,
+		"tenant_domain", e.Tenant.Domain,
+		"tenant_admin_domain", e.Tenant.AdminDomain,
 	)
 }
 
@@ -171,6 +187,10 @@ func platformEntryParams(e PlatformEntry) (dbmodels.InsertPlatformAuditLogParams
 		Reason:              sql.NullString{String: e.Reason, Valid: e.Reason != ""},
 		ClientIp:            sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
 		TenantID:            uuid.NullUUID{UUID: e.TenantID, Valid: e.TenantID != uuid.Nil},
+		TenantPublicID:      sql.NullString{String: e.Tenant.PublicID, Valid: e.Tenant.PublicID != ""},
+		TenantName:          sql.NullString{String: e.Tenant.Name, Valid: e.Tenant.Name != ""},
+		TenantDomain:        sql.NullString{String: e.Tenant.Domain, Valid: e.Tenant.Domain != ""},
+		TenantAdminDomain:   sql.NullString{String: e.Tenant.AdminDomain, Valid: e.Tenant.AdminDomain != ""},
 	}, nil
 }
 

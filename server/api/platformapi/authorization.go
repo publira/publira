@@ -30,6 +30,7 @@ var platformWriteProcedures = map[string]struct{}{
 	publirasplatformv1connect.PlatformTenantServiceUpdateTenantProcedure:                           {},
 	publirasplatformv1connect.PlatformTenantServiceSuspendTenantProcedure:                          {},
 	publirasplatformv1connect.PlatformTenantServiceResumeTenantProcedure:                           {},
+	publirasplatformv1connect.PlatformTenantServiceDeleteTenantProcedure:                           {},
 	publirasplatformv1connect.PlatformTenantServiceAddTenantMemberProcedure:                        {},
 	publirasplatformv1connect.PlatformTenantServiceUpdateTenantMemberRoleProcedure:                 {},
 	publirasplatformv1connect.PlatformTenantServiceRemoveTenantMemberProcedure:                     {},

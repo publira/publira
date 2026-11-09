@@ -2,7 +2,8 @@
 title: 스케일 아웃
 description: 설치 환경이 처음 구성한 규모를 넘어설 때 무엇을 늘려야 하는지, 모든 복제본이 공유해야 하는 것은 무엇인지, 그리고 스케일 아웃되지 않는 부분을 설명합니다.
 published: 2026-11-03
-source_updated: 2026-11-02
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 느려졌거나 곧 커질 설치 환경은 이미 실행 중인 프로세스를 늘려서 대응합니다. 바쁜 프로세스의 복제본을 늘리고, `publira server`는 응답하는 트래픽별로, `publira worker`는 처리하는 작업별로 나눕니다. 이 페이지에서는 어떤 프로세스를 여러 개 실행할 수 있고 그 전에 무엇을 갖춰야 하는지, 설치 환경의 부하가 어디로 가는지, `publira server`를 어디까지 나눌 수 있는지, `publira worker`를 어떻게 나누는지, 복제본이 늘어날 때 데이터베이스가 무엇을 받아들여야 하는지, 독자의 카탈로그 읽기와 워커의 일일 재구축을 데이터베이스의 레플리카로 옮기는 방법, 그리고 복제본을 아무리 늘려도 부하가 줄지 않는 부분을 설명합니다. 이 내용은 어느 플랫폼에나 적용되며, 매니페스트와 명령은 [Kubernetes](./5-kubernetes/index.md)와 [AWS Fargate의 Amazon ECS](./6-ecs-fargate/index.md)에 있습니다.
@@ -29,7 +30,7 @@ source_updated: 2026-11-02
 | 변환된 이미지 | `publira server` | 복제본마다 자신이 변환한 이미지를 자기 메모리에 보관하므로, 모든 복제본이 같은 이미지를 다시 변환합니다 |
 | 웹 앱이 캐시하는 페이지와 데이터 | `web-storefront`, `web-admin`, `web-platform` | 웹 앱이 렌더링하는 것은 아무것도 캐시되지 않습니다. 요청마다 페이지를 다시 렌더링하고, 페이지에 들어가는 모든 것을 `publira server`에 요청합니다 |
 
-각 웹 앱은 자기만의 키 접두사 아래에 항목을 보관하므로, 앱들은 서버를 공유하되 항목은 공유하지 않습니다. 쓰기로 인해 캐시된 페이지가 오래된 것이 되면, 서버의 캐시 재검증은 각 웹 앱의 복제본 하나에 도달하고, 그 복제본이 무효화를 Valkey에 기록합니다. 다른 모든 복제본은 그 기록을 읽으므로, 복제본이 몇 개든 캐시는 최신 상태를 유지합니다. `publira worker`와 `email-renderer`는 Valkey를 사용하지 않습니다.
+각 웹 앱은 자기만의 키 접두사 아래에 항목을 보관하므로, 앱들은 서버를 공유하되 항목은 공유하지 않습니다. 쓰기로 인해 캐시된 페이지가 오래된 것이 되면, 서버의 캐시 재검증은 각 웹 앱의 복제본 하나에 도달하고, 그 복제본이 무효화를 Valkey에 기록합니다. 다른 모든 복제본은 그 기록을 읽으므로, 복제본이 몇 개든 캐시는 최신 상태를 유지합니다. `publira worker`는 Valkey에 아무것도 보관하지 않으며, 같은 `PUBLIRA_REDIS_URL`을 받으면 운영자가 삭제한 테넌트의 변환된 이미지와 카운터를 Valkey에서 삭제합니다. `email-renderer`는 Valkey를 사용하지 않습니다.
 
 ## 부하가 가는 곳
 
@@ -84,11 +85,11 @@ source_updated: 2026-11-02
 
 ## 큐별로 워커 나누기
 
-워커는 작업을 여섯 개의 큐에 보관합니다. `outbox`는 아웃박스의 메일, 푸시 알림, 캐시 재검증이고, `ticker`는 예약된 시각에 실행되는 작업, `maintenance`는 재구축과 삭제, `search_index`는 검색 인덱스 빌드, `payment_reconciliation`은 테넌트 관리자가 시작하는 결제 대사, `data_export`는 독자가 요청하는 자기 데이터의 사본입니다. `--queue`를 지정한 복제본은 지정한 큐의 작업만 맡고 다른 작업은 맡지 않으므로, 아웃박스에 전용 복제본을 두고 1시간짜리 재구축을 실행하는 복제본과 따로 크기를 정할 수 있습니다. 재구축이 실행되는 동안에도 메일과 푸시 알림이 지체 없이 나가야 한다면, `publira worker` 하나 대신 두 프로세스를 실행하세요.
+워커는 작업을 일곱 개의 큐에 보관합니다. `outbox`는 아웃박스의 메일, 푸시 알림, 캐시 재검증이고, `ticker`는 예약된 시각에 실행되는 작업, `maintenance`는 재구축과 삭제, `search_index`는 검색 인덱스 빌드, `payment_reconciliation`은 테넌트 관리자가 시작하는 결제 대사, `data_export`는 독자가 요청하는 자기 데이터의 사본, `tenant_erasure`는 운영자가 삭제하는 테넌트의 소거입니다. `--queue`를 지정한 복제본은 지정한 큐의 작업만 맡고 다른 작업은 맡지 않으므로, 아웃박스에 전용 복제본을 두고 1시간짜리 재구축을 실행하는 복제본과 따로 크기를 정할 수 있습니다. 재구축이 실행되는 동안에도 메일과 푸시 알림이 지체 없이 나가야 한다면, `publira worker` 하나 대신 두 프로세스를 실행하세요.
 
 ```bash
 publira worker --queue outbox
-publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export
+publira worker --queue ticker,maintenance,search_index,payment_reconciliation,data_export,tenant_erasure
 ```
 
 첫 번째 프로세스는 전송과 재검증만 하고 다른 일은 하지 않습니다. 아웃박스의 부하에 맞춰 확장하며, 데이터베이스에는 세 개가 아니라 하나의 로그인으로 로그인합니다. 두 번째 프로세스는 모든 예약 작업을 실행하며, 복제본이 몇 개든 각 작업은 한 번에 한 복제본에서만 실행되므로 두 번째 복제본이 필요한 경우는 드뭅니다. `publira server --with-worker`에서는 같은 플래그로 함께 실행하는 워커의 범위를 좁힙니다.
@@ -110,7 +111,7 @@ publira worker --queue ticker,maintenance,search_index,payment_reconciliation,da
 | 레플리카와 함께 `storefront`를 제공하는 `publira server` | 1 추가. 프라이머리가 아니라 레플리카에 연결 |
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
-| `publira worker --queue <queues>` | 1, `ticker`가 있으면 1 추가, `maintenance`, `search_index`, `payment_reconciliation`, `data_export` 중 하나라도 있으면 1 추가: `--queue outbox`는 1 |
+| `publira worker --queue <queues>` | 1, `ticker`가 있으면 1 추가, `maintenance`, `search_index`, `payment_reconciliation`, `data_export`, `tenant_erasure` 중 하나라도 있으면 1 추가: `--queue outbox`는 1 |
 | 레플리카와 함께 `maintenance`를 맡는 `publira worker` | 1 추가. 프라이머리가 아니라 레플리카에 연결 |
 | 실행 중인 `publiractl` 명령 | 1, 레플리카를 지정한 `job aggregate-content-stats`와 `job build-recommend-features`는 레플리카에 1 추가 |
 
