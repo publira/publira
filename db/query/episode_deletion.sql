@@ -1,7 +1,7 @@
 -- Deleting an episode, which the console allows only while nothing that has to
 -- be kept refers to it: a record of money a reader paid or was granted, a
 -- payment that can still be taken, a royalty statement, a promotion code
--- someone redeemed, or a published volume.
+-- someone redeemed, or a volume that has been on sale.
 -- What is the episode's alone goes with it, in the transaction that deletes it.
 --
 -- The statements run in the order they appear here. The locks come first and
@@ -27,7 +27,7 @@ FOR UPDATE OF e;
 
 -- name: LockVolumesHoldingEpisode :many
 -- The volumes that hold the episode, so none is published between the check
--- and the deletion that takes the episode out of the drafts among them.
+-- and the deletion that takes the episode out of the ones never on sale.
 -- Publishing a volume updates its row, which a share lock holds off.
 SELECT v.id
 FROM volumes v
@@ -72,7 +72,9 @@ FOR UPDATE OF b;
 --   coin_payment      a purchase paid with the tenant's coins
 --   promotion_code    a promotion code for it that someone redeemed, deleted
 --                     or not
---   published_volume  a published volume that holds it
+--   published_volume  a volume that holds it and has been on sale, whether or
+--                     not it still is: a checkout started while it was can
+--                     still complete after it was taken off sale
 --
 -- Each kind of purchase is named once, by what paid for it, so a purchase
 -- made with coins is a coin payment rather than a purchase.
@@ -176,21 +178,23 @@ SELECT (
                         AND v.id = ve.volume_id
                 WHERE ve.tenant_id = sqlc.arg('tenant_id')
                     AND ve.episode_id = sqlc.arg('episode_id')::uuid
-                    AND v.is_published
+                    AND v.published_at IS NOT NULL
             ) THEN 'published_volume'
             ELSE ''
         END
     )::text AS blocker;
 
--- name: DeleteEpisodeFromDraftVolumes :exec
--- A volume nobody can buy yet loses the episode and keeps the rest of its run.
+-- name: DeleteEpisodeFromUnsoldVolumes :exec
+-- A volume that has never been on sale loses the episode and keeps the rest
+-- of its run. published_at is set when a volume is first put on sale and is
+-- never cleared, so it covers every volume a checkout could have started on.
 DELETE FROM volume_episodes ve
 USING volumes v
 WHERE ve.tenant_id = sqlc.arg('tenant_id')
     AND ve.episode_id = sqlc.arg('episode_id')::uuid
     AND v.tenant_id = ve.tenant_id
     AND v.id = ve.volume_id
-    AND NOT v.is_published;
+    AND v.published_at IS NULL;
 
 -- name: DeleteEpisodeFromUnpaidSeriesBundles :exec
 -- A bundle checkout that expired unpaid loses the episode. The bundles someone

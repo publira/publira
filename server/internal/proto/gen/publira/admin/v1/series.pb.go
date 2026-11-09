@@ -3325,8 +3325,8 @@ func (x *ReorderEpisodeImagesResponse) GetImages() []*v1.EpisodeImage {
 // with it, and so does what readers left on it: comments and their reports,
 // follows, reactions, reading positions, and reads. It leaves the site, the
 // app, and the search index as an episode taken back to a draft does, and its
-// images are reclaimed by the orphan image sweep. A draft volume that holds
-// it, a bundle checkout that expired unpaid and names it, and a promotion code
+// images are reclaimed by the orphan image sweep. A volume that holds it and
+// has never been on sale, a bundle checkout that expired unpaid and names it, and a promotion code
 // for it that nobody redeemed lose it.
 //
 // An episode something refers to is failed_precondition with an ErrorInfo
@@ -3347,7 +3347,8 @@ func (x *ReorderEpisodeImagesResponse) GetImages() []*v1.EpisodeImage {
 //   - EPISODE_PAID_WITH_COINS: a purchase paid with the tenant's coins.
 //   - EPISODE_PROMOTION_CODE_REDEEMED: a promotion code for it that someone
 //     redeemed.
-//   - EPISODE_IN_PUBLISHED_VOLUME: a published volume that holds it.
+//   - EPISODE_IN_PUBLISHED_VOLUME: a volume that holds it and has been on
+//     sale, taken off sale since or not.
 //
 // Each is a record of money or of what a reader was granted, or a payment
 // that would become one, so nothing is deleted and nothing is anonymized: take

@@ -83,8 +83,9 @@ func (f *episodeDeletionFixture) purchase(t *testing.T, episodeID uuid.UUID, col
 }
 
 // An episode nothing has to be kept for goes with everything that is its alone,
-// leaves its series' other episodes, its draft volumes, and the rest of an
-// unpaid bundle as they were, and is named in the audit log by its title.
+// leaves its series' other episodes, its volumes never on sale, and the rest
+// of an expired bundle as they were, and is named in the audit log by its
+// title.
 func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 	t.Parallel()
 
@@ -168,7 +169,7 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 		t.Errorf("the other episode's content events = %d, want 1", got)
 	}
 	if got := f.env.countRows(t, "SELECT count(*) FROM volume_episodes WHERE volume_id = $1", draft.ID); got != 1 {
-		t.Errorf("episodes left in the draft volume = %d, want 1", got)
+		t.Errorf("episodes left in the volume never on sale = %d, want 1", got)
 	}
 	if got := f.env.countRows(t, "SELECT count(*) FROM series_bundle_episodes WHERE series_bundle_id = $1", bundleID); got != 1 {
 		t.Errorf("episodes left in the expired bundle = %d, want 1", got)
@@ -276,6 +277,10 @@ func TestDBDeleteEpisodeRefusesWhatHasToBeKept(t *testing.T) {
 		}, rpcerrors.ReasonEpisodePromotionCodeRedeemed},
 		{"a published volume", func(t *testing.T, episode testutil.Episode) {
 			f.env.PG.SeedVolume(t, tenantID, f.series.ID, testutil.VolumeSeed{PublicID: f.publicID("VOL"), Title: "Published volume", OrderIndex: int32(f.next), Price: 100, Published: true, EpisodeIDs: []uuid.UUID{episode.ID}})
+		}, rpcerrors.ReasonEpisodeInPublishedVolume},
+		{"a volume taken off sale", func(t *testing.T, episode testutil.Episode) {
+			volume := f.env.PG.SeedVolume(t, tenantID, f.series.ID, testutil.VolumeSeed{PublicID: f.publicID("VOL"), Title: "Volume taken off sale", OrderIndex: int32(f.next), Price: 100, Published: true, EpisodeIDs: []uuid.UUID{episode.ID}})
+			f.exec(t, "UPDATE volumes SET is_published = false WHERE tenant_id = $1 AND id = $2", tenantID, volume.ID)
 		}, rpcerrors.ReasonEpisodeInPublishedVolume},
 		{"an access ticket and a published volume", func(t *testing.T, episode testutil.Episode) {
 			f.env.PG.SeedVolume(t, tenantID, f.series.ID, testutil.VolumeSeed{PublicID: f.publicID("VOL"), Title: "Published volume", OrderIndex: int32(f.next), Price: 100, Published: true, EpisodeIDs: []uuid.UUID{episode.ID}})

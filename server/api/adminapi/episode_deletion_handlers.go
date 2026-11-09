@@ -116,8 +116,8 @@ func (s *adminServer) deleteEpisode(txCtx context.Context, tenantID, episodeID u
 		)
 	}
 
-	if err := q.DeleteEpisodeFromDraftVolumes(txCtx, dbmodels.DeleteEpisodeFromDraftVolumesParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
-		return episode, fail("failed to take the episode out of draft volumes", err)
+	if err := q.DeleteEpisodeFromUnsoldVolumes(txCtx, dbmodels.DeleteEpisodeFromUnsoldVolumesParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
+		return episode, fail("failed to take the episode out of volumes never on sale", err)
 	}
 	if err := q.DeleteEpisodeFromUnpaidSeriesBundles(txCtx, dbmodels.DeleteEpisodeFromUnpaidSeriesBundlesParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
 		return episode, fail("failed to take the episode out of unpaid bundle checkouts", err)
