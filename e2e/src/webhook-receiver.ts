@@ -5,8 +5,15 @@ import {
 
 /** A delivery the stand-in for a tenant's receiver was sent. */
 export interface WebhookReceiverDelivery {
-  /** The body, as JSON. */
-  body: { id: string; type: string };
+  /**
+   * The body, as JSON, with the fields of `data` the suite reads; an event
+   * that carries none of them, such as `webhook.test`, leaves them out.
+   */
+  body: {
+    data: { episode_public_id?: string; title?: string };
+    id: string;
+    type: string;
+  };
   /** `X-Publira-Delivery`. */
   delivery: string;
   /** `X-Publira-Event`. */

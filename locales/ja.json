@@ -3971,6 +3971,8 @@
           "subscription_started_description": "定期購読の課金が始まったとき。",
           "subscription_ended": "定期購読の終了",
           "subscription_ended_description": "定期購読の課金が止まったとき。",
+          "episode_published": "エピソードの公開",
+          "episode_published_description": "エピソードが予約した日時に、またはすぐに公開されたとき。",
           "test": "テストイベント"
         },
         "enabled": "有効",

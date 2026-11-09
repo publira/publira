@@ -45,6 +45,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "reader.signed_up",
   "subscription.started",
   "subscription.ended",
+  "episode.published",
 ] as const;
 
 export type WebhookEventTypeValue = (typeof WEBHOOK_EVENT_TYPES)[number];
@@ -65,6 +66,7 @@ export type WebhookDeliveryStatusValue =
 const eventValues: Partial<
   Record<WebhookEventType, WebhookDeliveryEventValue>
 > = {
+  [WebhookEventType.EPISODE_PUBLISHED]: "episode.published",
   [WebhookEventType.PURCHASE_COMPLETED]: "purchase.completed",
   [WebhookEventType.PURCHASE_REFUNDED]: "purchase.refunded",
   [WebhookEventType.READER_SIGNED_UP]: "reader.signed_up",
@@ -74,6 +76,7 @@ const eventValues: Partial<
 };
 
 const rpcEventTypes: Record<WebhookEventTypeValue, WebhookEventType> = {
+  "episode.published": WebhookEventType.EPISODE_PUBLISHED,
   "purchase.completed": WebhookEventType.PURCHASE_COMPLETED,
   "purchase.refunded": WebhookEventType.PURCHASE_REFUNDED,
   "reader.signed_up": WebhookEventType.READER_SIGNED_UP,

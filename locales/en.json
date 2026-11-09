@@ -3971,6 +3971,8 @@
           "subscription_started_description": "A subscription starts to be billed.",
           "subscription_ended": "Subscription ended",
           "subscription_ended_description": "A subscription stops being billed.",
+          "episode_published": "Episode published",
+          "episode_published_description": "An episode is published, at its scheduled time or at once.",
           "test": "Test event"
         },
         "enabled": "Enabled",

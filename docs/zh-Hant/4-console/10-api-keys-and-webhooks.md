@@ -1,12 +1,12 @@
 ---
 title: API金鑰與Webhook
-description: 為租戶自有的系統提供讀取管理API或透過管理API新增系列與章節的金鑰、向它們傳送銷售、退款、註冊與訂閱的簽章事件、驗證簽章，以及重新傳送已被放棄的傳送。
+description: 為租戶自有的系統提供讀取管理API或透過管理API新增系列與章節的金鑰、向它們傳送銷售、退款、註冊、訂閱與章節發布的簽章事件、驗證簽章，以及重新傳送已被放棄的傳送。
 published: 2026-11-04
 updated: 2026-11-09
 source_updated: 2026-11-09
 ---
 
-**整合** › **API金鑰與Webhook**會將租戶與出版社自己運作的系統連接起來，例如CRM、資料倉儲或會計系統。系統以**API金鑰**讀取租戶的作品目錄與購買記錄，或在作品目錄中新增系列與章節，並透過**Webhook端點**在銷售、退款、新讀者或訂閱發生的當下得知。Webhook端點是系統自己的一個URL，每個事件都會傳送到那裡。**傳送記錄**會列出傳送給每個端點的內容，以及被放棄的內容。
+**整合** › **API金鑰與Webhook**會將租戶與出版社自己運作的系統連接起來，例如CRM、資料倉儲或會計系統。系統以**API金鑰**讀取租戶的作品目錄與購買記錄，或在作品目錄中新增系列與章節，並透過**Webhook端點**在銷售、退款、新讀者、訂閱或章節發布發生的當下得知。Webhook端點是系統自己的一個URL，每個事件都會傳送到那裡。**傳送記錄**會列出傳送給每個端點的內容，以及被放棄的內容。
 
 只有租戶管理員看得到**API金鑰與Webhook**，其中的每項變更都會記錄在**稽核記錄**中：**建立了API金鑰**、**撤銷了API金鑰**、**建立了Webhook端點**、**更新了Webhook端點**、**刪除了Webhook端點**、**重新產生了Webhook簽章密鑰**與**重新傳送了Webhook**。
 
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhook端點
 
-![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的五個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
+![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的六個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
 
 端點是出版社自己的https URL，每發生一個它訂閱的事件，都會收到一個附簽章的`POST`請求。一個租戶最多可保留五個端點，每個端點都有自己的表單。
 
@@ -103,6 +103,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **讀者註冊**（`reader.signed_up`） | 讀者開通了帳戶，使用地址與密碼，或以Apple或Google登入 | 讀者 |
 | **訂閱開始**（`subscription.started`） | 訂閱開始計費 | 訂閱 |
 | **訂閱結束**（`subscription.ended`） | 訂閱停止計費 | 訂閱 |
+| **章節發布**（`episode.published`） | 章節發布時：預定時間到達時，或以已經過去的時間建立、預約或核准而立即發布時。即使系列尚未公開也會傳送。每次發布都是一個獨立的事件，因此退回草稿後再次發布的章節會再次傳送 | 章節 |
 | **測試事件**（`webhook.test`） | 選擇了**傳送測試事件** | 空 |
 
 ### 請求本文
@@ -127,6 +128,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 購買 | `purchase_id`，即`GetPurchase`所接受的ID；`kind`：`purchase`、`rental`或`tip`；`item`：`episode`、`volume`、`series_bundle`或`coin_pack`，並在適用時附帶`series_public_id`、`episode_public_id`與`volume_public_id`；`reader_public_id`與`reader_email`，讀者刪除帳戶後兩者皆為空；`price`為讀者支付的金額，`list_price`為扣除促銷代碼折扣前的價格，兩者皆以貨幣的最小單位表示，並附帶`currency`；`refunded_amount`；`purchased_at`、`expires_at`與`refunded_at`；`provider`為金流服務商或`coins`，`store`為`app_store`或`google_play`，對於促銷代碼贈與的購買，兩者皆為空；以及`test` |
 | 讀者 | `reader_public_id`、`email`、`name`、`email_verified`（讀者確認地址之前為false），以及`signed_up_at` |
+| 章節 | `episode_public_id`與`series_public_id`；租戶預設語言的`title`；以及`published_at` |
 | 訂閱 | `plan_public_id`與`plan_name`；`reader_public_id`與`reader_email`，讀者刪除帳戶後兩者皆為空；`provider`：`stripe`、`app_store`或`google_play`；`status`；`current_period_end`與`cancel_at_period_end`；`started_at`；以及`test` |
 
 每次傳送也都帶有以下標頭：

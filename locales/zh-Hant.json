@@ -3971,6 +3971,8 @@
           "subscription_started_description": "訂閱開始計費。",
           "subscription_ended": "訂閱結束",
           "subscription_ended_description": "訂閱停止計費。",
+          "episode_published": "章節發布",
+          "episode_published_description": "章節按預定時間發布，或立即發布。",
           "test": "測試事件"
         },
         "enabled": "啟用",

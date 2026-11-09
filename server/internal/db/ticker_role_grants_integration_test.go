@@ -56,6 +56,13 @@ func TestTickerRoleRunsPublishEpisodes(t *testing.T) {
 		t.Fatalf("insert series follow: %v", err)
 	}
 
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['episode.published'])
+	`, uuid.Must(uuid.NewV7()), tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+
 	ticker := pg.OpenTickerDB(t)
 	publishepisodes.New(ticker, dbmodels.New(ticker), nil, discardLogger(), 0).RunOnce(ctx)
 
@@ -96,6 +103,27 @@ func TestTickerRoleRunsPublishEpisodes(t *testing.T) {
 	}
 	if events != 1 {
 		t.Fatalf("member push outbox events = %d, want 1", events)
+	}
+
+	// The tenant's endpoint is owed the publication, with the outbox event
+	// that sends it.
+	var (
+		episodePublicID, seriesPublicID, title, publishedAt string
+		publishedAtStored                                   time.Time
+	)
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT d.payload->'data'->>'episode_public_id', d.payload->'data'->>'series_public_id',
+			d.payload->'data'->>'title', d.payload->'data'->>'published_at', el.published_at
+		FROM webhook_deliveries d
+			JOIN outbox_events o ON o.idempotency_key = 'webhook_delivery:' || d.id::text
+			JOIN episode_listings el ON el.episode_id = $2
+		WHERE d.tenant_id = $1 AND d.event_type = 'episode.published'
+	`, tenant.ID, episode.ID).Scan(&episodePublicID, &seriesPublicID, &title, &publishedAt, &publishedAtStored); err != nil {
+		t.Fatalf("read the episode.published delivery: %v", err)
+	}
+	if episodePublicID != episode.PublicID || seriesPublicID != series.PublicID || title != "Ticker Episode" || publishedAt != publishedAtStored.UTC().Format(time.RFC3339) {
+		t.Fatalf("delivery data = %s, %s, %q, %s; want the episode, its series, its title, and %s",
+			episodePublicID, seriesPublicID, title, publishedAt, publishedAtStored.UTC().Format(time.RFC3339))
 	}
 }
 

@@ -1,12 +1,12 @@
 ---
 title: API 키와 웹훅
-description: 테넌트 자체 시스템에 관리 API를 읽거나 관리 API로 시리즈와 에피소드를 등록하는 키를 주고, 판매·환불·가입·구독에 대한 서명된 이벤트를 보내며, 서명을 검증하고, 포기된 전송을 다시 보냅니다.
+description: 테넌트 자체 시스템에 관리 API를 읽거나 관리 API로 시리즈와 에피소드를 등록하는 키를 주고, 판매·환불·가입·구독·에피소드 공개에 대한 서명된 이벤트를 보내며, 서명을 검증하고, 포기된 전송을 다시 보냅니다.
 published: 2026-11-04
 updated: 2026-11-09
 source_updated: 2026-11-09
 ---
 
-**연동** › **API 키와 웹훅**은 CRM, 데이터 웨어하우스, 회계 시스템처럼 출판사가 직접 운영하는 시스템과 테넌트를 연결합니다. 시스템은 **API 키**로 테넌트의 카탈로그와 구매를 읽거나 카탈로그에 시리즈와 에피소드를 등록하고, 각 이벤트를 받을 시스템 자체의 URL인 **웹훅 엔드포인트**를 통해 판매, 환불, 새 독자, 구독을 일어나는 즉시 알게 됩니다. **전송 내역**에는 각 엔드포인트로 보낸 것과 포기한 것이 나열됩니다.
+**연동** › **API 키와 웹훅**은 CRM, 데이터 웨어하우스, 회계 시스템처럼 출판사가 직접 운영하는 시스템과 테넌트를 연결합니다. 시스템은 **API 키**로 테넌트의 카탈로그와 구매를 읽거나 카탈로그에 시리즈와 에피소드를 등록하고, 각 이벤트를 받을 시스템 자체의 URL인 **웹훅 엔드포인트**를 통해 판매, 환불, 새 독자, 구독, 에피소드 공개를 일어나는 즉시 알게 됩니다. **전송 내역**에는 각 엔드포인트로 보낸 것과 포기한 것이 나열됩니다.
 
 **API 키와 웹훅**은 테넌트 관리자에게만 보이며, 이곳에서 한 변경은 모두 **감사 로그**에 기록됩니다. **API 키 생성**, **API 키 폐기**, **웹훅 엔드포인트 생성**, **웹훅 엔드포인트 수정**, **웹훅 엔드포인트 삭제**, **웹훅 서명 시크릿 재발급**, **웹훅 전송 재시도**입니다.
 
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## 웹훅 엔드포인트
 
-![저장된 엔드포인트: 맨 위의 URL과 그 옆의 사용 중, 테스트 이벤트 보내기와 삭제 버튼, 서명 시크릿의 힌트와 마지막 수정 시각, 시크릿 재발급, 그리고 엔드포인트 자체의 양식인 URL, 셋을 선택한 다섯 가지 이벤트, 사용 스위치, 엔드포인트 저장.](./api-keys-and-webhooks-endpoint.png)
+![저장된 엔드포인트: 맨 위의 URL과 그 옆의 사용 중, 테스트 이벤트 보내기와 삭제 버튼, 서명 시크릿의 힌트와 마지막 수정 시각, 시크릿 재발급, 그리고 엔드포인트 자체의 양식인 URL, 셋을 선택한 여섯 가지 이벤트, 사용 스위치, 엔드포인트 저장.](./api-keys-and-webhooks-endpoint.png)
 
 엔드포인트는 출판사가 직접 운영하는 https URL로, 구독한 이벤트마다 서명된 `POST`를 받습니다. 테넌트당 최대 다섯 개까지 둘 수 있으며, 엔드포인트마다 별도의 양식이 있습니다.
 
@@ -103,6 +103,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **독자 가입** (`reader.signed_up`) | 주소와 비밀번호로, 또는 Apple이나 Google로 로그인해 독자의 계정이 개설될 때 | 독자 |
 | **구독 시작** (`subscription.started`) | 구독 결제가 시작될 때 | 구독 |
 | **구독 종료** (`subscription.ended`) | 구독 결제가 멈출 때 | 구독 |
+| **에피소드 공개** (`episode.published`) | 에피소드가 공개될 때. 예약한 시각이 지나 공개될 때와, 이미 지난 시각으로 작성, 예약, 승인되어 바로 공개될 때가 모두 포함됩니다. 시리즈가 아직 공개되지 않았어도 보냅니다. 공개될 때마다 별도의 이벤트이므로, 임시저장으로 되돌렸다가 다시 공개한 에피소드는 다시 보냅니다 | 에피소드 |
 | **테스트 이벤트** (`webhook.test`) | **테스트 이벤트 보내기**를 선택했을 때 | 비어 있음 |
 
 ### 본문
@@ -127,6 +128,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 구매 | `GetPurchase`가 받는 `purchase_id`, `purchase`, `rental`, `tip` 중 하나인 `kind`, `episode`, `volume`, `series_bundle`, `coin_pack` 중 하나인 `item`과 해당하는 경우의 `series_public_id`, `episode_public_id`, `volume_public_id`, 독자가 계정을 삭제하면 둘 다 비는 `reader_public_id`와 `reader_email`, 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 프로모션 코드 할인 전 금액 `list_price`, 그리고 `currency`, `refunded_amount`, `purchased_at`, `expires_at`, `refunded_at`, 결제 제공자 또는 `coins`인 `provider`와 `app_store` 또는 `google_play`인 `store`(프로모션 코드로 부여된 구매에서는 둘 다 비어 있음), 그리고 `test` |
 | 독자 | `reader_public_id`, `email`, `name`, 독자가 주소를 확인하기 전까지 false인 `email_verified`, `signed_up_at` |
+| 에피소드 | `episode_public_id`와 `series_public_id`, 테넌트의 기본 언어로 된 `title`, 그리고 `published_at` |
 | 구독 | `plan_public_id`와 `plan_name`, 독자가 계정을 삭제하면 둘 다 비는 `reader_public_id`와 `reader_email`, `stripe`, `app_store`, `google_play` 중 하나인 `provider`, `status`, `current_period_end`와 `cancel_at_period_end`, `started_at`, 그리고 `test` |
 
 모든 전송에는 다음 헤더도 붙습니다.

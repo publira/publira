@@ -287,6 +287,51 @@ func (q *Queries) GetWebhookDeliveryToSend(ctx context.Context, arg GetWebhookDe
 	return i, err
 }
 
+const GetWebhookEpisode = `-- name: GetWebhookEpisode :one
+SELECT e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    et.title,
+    el.published_at::timestamptz AS published_at
+FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.id = $2
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+`
+
+type GetWebhookEpisodeParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookEpisodeRow struct {
+	EpisodePublicID string    `json:"episode_public_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	Title           string    `json:"title"`
+	PublishedAt     time.Time `json:"published_at"`
+}
+
+// An episode as an episode.published event carries it, read in the
+// transaction that publishes it: the ids the admin API answers the episode and
+// its series by, its title in the tenant's default language, and the instant
+// the publication recorded. An episode that is not published answers no row.
+func (q *Queries) GetWebhookEpisode(ctx context.Context, arg GetWebhookEpisodeParams) (GetWebhookEpisodeRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookEpisode, arg.TenantID, arg.ID)
+	var i GetWebhookEpisodeRow
+	err := row.Scan(
+		&i.EpisodePublicID,
+		&i.SeriesPublicID,
+		&i.Title,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
 const GetWebhookPurchase = `-- name: GetWebhookPurchase :one
 SELECT p.id,
     p.kind,

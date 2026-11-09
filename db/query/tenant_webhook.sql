@@ -349,6 +349,26 @@ FROM subscriptions s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.id = sqlc.arg('id');
 
+-- name: GetWebhookEpisode :one
+-- An episode as an episode.published event carries it, read in the
+-- transaction that publishes it: the ids the admin API answers the episode and
+-- its series by, its title in the tenant's default language, and the instant
+-- the publication recorded. An episode that is not published answers no row.
+SELECT e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    et.title,
+    el.published_at::timestamptz AS published_at
+FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = sqlc.arg('id')
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL;
+
 -- name: GetWebhookDelivery :one
 -- One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 SELECT d.id,

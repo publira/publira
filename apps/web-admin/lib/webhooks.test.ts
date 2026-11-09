@@ -63,6 +63,7 @@ const storedEndpoint = {
   eventTypes: [
     WebhookEventType.PURCHASE_COMPLETED,
     WebhookEventType.SUBSCRIPTION_ENDED,
+    WebhookEventType.EPISODE_PUBLISHED,
   ],
   id: ENDPOINT_ID,
   secretHint: "whsec_••••••••abcd",
@@ -112,7 +113,11 @@ describe("webhooks", () => {
         {
           createdAt: "2026-11-01T00:00:00Z",
           enabled: true,
-          eventTypes: ["purchase.completed", "subscription.ended"],
+          eventTypes: [
+            "purchase.completed",
+            "subscription.ended",
+            "episode.published",
+          ],
           id: ENDPOINT_ID,
           secretHint: "whsec_••••••••abcd",
           updatedAt: "2026-11-02T00:00:00Z",
