@@ -30,6 +30,9 @@ const (
 	// AdminSeriesServiceUpdateSeriesProcedure is the procedure name of the AdminSeriesService's
 	// UpdateSeries RPC.
 	AdminSeriesServiceUpdateSeriesProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeries"
+	// AdminSeriesServiceDeleteSeriesProcedure is the procedure name of the AdminSeriesService's
+	// DeleteSeries RPC.
+	AdminSeriesServiceDeleteSeriesProcedure = "/publira.admin.v1.AdminSeriesService/DeleteSeries"
 	// AdminSeriesServiceListSeriesProcedure is the procedure name of the AdminSeriesService's
 	// ListSeries RPC.
 	AdminSeriesServiceListSeriesProcedure = "/publira.admin.v1.AdminSeriesService/ListSeries"
@@ -204,6 +207,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateSeries"),
 			Procedure:  AdminSeriesServiceUpdateSeriesProcedure,
+		}
+	})
+	adminSeriesServiceDeleteSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteSeries"),
+			Procedure:  AdminSeriesServiceDeleteSeriesProcedure,
 		}
 	})
 	adminSeriesServiceListSeriesSpec = sync.OnceValue(func() connect.Spec {
@@ -585,6 +595,8 @@ type AdminSeriesServiceClient interface {
 	CreateSeries(context.Context, *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteSeries(context.Context, *v1.DeleteSeriesRequest) (*v1.DeleteSeriesResponse, error)
 	// Minimum role: tenant_auditor.
 	ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error)
 	// Minimum role: tenant_auditor.
@@ -733,6 +745,8 @@ type AdminSeriesServiceHandler interface {
 	CreateSeries(context.Context, *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteSeries(context.Context, *v1.DeleteSeriesRequest) (*v1.DeleteSeriesResponse, error)
 	// Minimum role: tenant_auditor.
 	ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error)
 	// Minimum role: tenant_auditor.
@@ -875,6 +889,7 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 	server.Register(
 		connect.Method{Spec: adminSeriesServiceCreateSeriesSpec(), Handler: adapter.createSeries},
 		connect.Method{Spec: adminSeriesServiceUpdateSeriesSpec(), Handler: adapter.updateSeries},
+		connect.Method{Spec: adminSeriesServiceDeleteSeriesSpec(), Handler: adapter.deleteSeries},
 		connect.Method{Spec: adminSeriesServiceListSeriesSpec(), Handler: adapter.listSeries},
 		connect.Method{Spec: adminSeriesServiceGetSeriesSpec(), Handler: adapter.getSeries},
 		connect.Method{Spec: adminSeriesServiceListEpisodesSpec(), Handler: adapter.listEpisodes},
@@ -940,6 +955,10 @@ func (UnimplementedAdminSeriesServiceHandler) CreateSeries(context.Context, *v1.
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeries is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteSeries(context.Context, *v1.DeleteSeriesRequest) (*v1.DeleteSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteSeries is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error) {
@@ -1169,6 +1188,14 @@ func (c *adminSeriesServiceClient) CreateSeries(ctx context.Context, req *v1.Cre
 func (c *adminSeriesServiceClient) UpdateSeries(ctx context.Context, req *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error) {
 	var res v1.UpdateSeriesResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteSeries(ctx context.Context, req *v1.DeleteSeriesRequest) (*v1.DeleteSeriesResponse, error) {
+	var res v1.DeleteSeriesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteSeriesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1618,6 +1645,18 @@ func (h adminSeriesServiceHandler) updateSeries(ctx context.Context, _ connect.S
 		return err
 	}
 	res, err := h.svc.UpdateSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteSeries(ctx, &req)
 	if err != nil {
 		return err
 	}

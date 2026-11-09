@@ -447,6 +447,7 @@
         "all": "전체",
         "series_created": "시리즈 생성",
         "series_updated": "시리즈 변경",
+        "series_deleted": "시리즈 삭제",
         "series_translation_deleted": "시리즈 번역 삭제",
         "episode_created": "에피소드 생성",
         "creator_created": "작가 생성",

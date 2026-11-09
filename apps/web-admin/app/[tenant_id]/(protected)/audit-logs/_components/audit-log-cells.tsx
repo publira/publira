@@ -24,6 +24,10 @@ const seriesActionName = (action: string) => {
       return <Message message="admin.audit.actions.series_updated" />;
     }
 
+    case "series_deleted": {
+      return <Message message="admin.audit.actions.series_deleted" />;
+    }
+
     case "series_eye_catch_aspect_image_uploaded": {
       return (
         <Message message="admin.audit.actions.series_eye_catch_aspect_image_uploaded" />

@@ -2,6 +2,7 @@
 export const auditActions = [
   "series_created",
   "series_updated",
+  "series_deleted",
   "series_eye_catch_aspect_image_uploaded",
   "series_free_windows_created",
   "series_campaign_prices_created",
