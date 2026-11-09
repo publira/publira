@@ -463,8 +463,13 @@ func TestTheTenantWriteLockWaitsOutAWriteInFlight(t *testing.T) {
 		err    error
 	}
 	locked := make(chan lockResult, 1)
+	erasure, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer erasure.Close() //nolint:errcheck
 	go func() {
-		unlock, err := catalogindex.LockTenantWrites(ctx, db, tenant.ID)
+		unlock, err := catalogindex.LockTenantWrites(ctx, erasure, tenant.ID)
 		locked <- lockResult{unlock, err}
 	}()
 	select {

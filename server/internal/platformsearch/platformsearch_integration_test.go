@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opensearch-project/opensearch-go/v5"
@@ -858,13 +859,17 @@ func TestALanguagesAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
 
 // A tenant's documents are not deleted while a build runs, because the build
 // may already have copied them into indices it is about to swap into the
-// search: the eraser answers ErrBuildRunning and waits for the next pass.
+// search: the eraser answers ErrBuildRunning and waits for the next pass. It
+// works on one connection, the one a pass leaves it on the smallest pool.
 func TestTheTenantEraserWaitsForABuildToComplete(t *testing.T) {
 	pg := testutil.StartIsolatedPostgres(t)
 	t.Parallel()
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	db := pg.OpenContentStatsDB(t)
-	eraser := platformsearch.TenantEraser{DB: db, Queries: dbmodels.New(db)}
+	one := pg.OpenContentStatsDB(t)
+	one.SetMaxOpenConns(1)
+	eraser := platformsearch.TenantEraser{DB: one}
 
 	build, err := db.Conn(ctx)
 	if err != nil {

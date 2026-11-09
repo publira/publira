@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/tenanterasure"
 )
@@ -27,7 +26,6 @@ func (TenantErasure) Run(ctx context.Context, deps Deps) error {
 		Archives: deps.DataExportBucket,
 		Search: platformsearch.TenantEraser{
 			DB:      deps.DB,
-			Queries: dbmodels.New(deps.DB),
 			Secrets: deps.Secrets,
 			Logger:  logger,
 		},

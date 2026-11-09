@@ -212,18 +212,29 @@ func lockBuild(ctx context.Context, db *sql.DB) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("platformsearch: connect for the build lock: %w", err)
 	}
+	unlock, err := lockBuildOn(ctx, conn)
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return func() {
+		unlock()
+		_ = conn.Close()
+	}, nil
+}
+
+// lockBuildOn takes the build lock on conn, which the caller keeps and closes
+// once the returned function has released it.
+func lockBuildOn(ctx context.Context, conn *sql.Conn) (func(), error) {
 	var locked bool
 	if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", buildLockKey).Scan(&locked); err != nil {
-		_ = conn.Close()
 		return nil, fmt.Errorf("platformsearch: take the build lock: %w", err)
 	}
 	if !locked {
-		_ = conn.Close()
 		return nil, ErrBuildRunning
 	}
 	return func() {
 		_, _ = conn.ExecContext(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", buildLockKey)
-		_ = conn.Close()
 	}, nil
 }
 

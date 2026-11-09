@@ -4,20 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/catalogindex"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 // TenantEraser deletes a tenant's documents from the search engines a catalog
 // write goes to: the one the search answers from, and the one a build is
 // filling. The SQL engine keeps no index, so on it there is nothing to delete.
 type TenantEraser struct {
-	// DB is the maintenance role's pool, which takes the build lock.
-	DB      *sql.DB
-	Queries Querier
+	// DB is the maintenance role's pool. An erasure holds one connection of
+	// it, which takes both locks and reads the saved engine.
+	DB *sql.DB
 	// Secrets decrypts a saved password, as [ResolverConfig] does.
 	Secrets Decrypter
 	Logger  *slog.Logger
@@ -38,12 +40,17 @@ func (e TenantEraser) EraseTenant(ctx context.Context, tenantID uuid.UUID) error
 	if e.DB == nil {
 		return errors.New("platformsearch: the tenant eraser has no database to take the build lock on")
 	}
-	unlock, err := lockBuild(ctx, e.DB)
+	conn, err := e.DB.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("platformsearch: connect to erase the tenant's documents: %w", err)
+	}
+	defer conn.Close() //nolint:errcheck
+	unlock, err := lockBuildOn(ctx, conn)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	unlockWrites, err := catalogindex.LockTenantWrites(ctx, e.DB, tenantID)
+	unlockWrites, err := catalogindex.LockTenantWrites(ctx, conn, tenantID)
 	if err != nil {
 		return err
 	}
@@ -51,7 +58,7 @@ func (e TenantEraser) EraseTenant(ctx context.Context, tenantID uuid.UUID) error
 
 	// A resolver of its own, reading the row afresh, so an engine saved since
 	// the last pass is the one the documents are deleted from.
-	targets, err := NewResolver(ResolverConfig{Queries: e.Queries, Secrets: e.Secrets, Interval: -1, Logger: e.Logger}).Targets(ctx)
+	targets, err := NewResolver(ResolverConfig{Queries: dbmodels.New(conn), Secrets: e.Secrets, Interval: -1, Logger: e.Logger}).Targets(ctx)
 	if err != nil {
 		return err
 	}
