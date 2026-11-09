@@ -596,6 +596,12 @@ type Querier interface {
 	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
+	// The episode, and through the foreign keys that cascade from it everything
+	// that is its alone: its pages, eye-catch, translations, credits, listing, free
+	// windows, campaign prices, review rounds, comments and their reports, follows,
+	// reactions, reading positions, reads, and the record of its checkouts that
+	// expired. The objects of its images are left to the orphan image sweep.
+	DeleteEpisodeByIDForTenant(ctx context.Context, arg DeleteEpisodeByIDForTenantParams) error
 	// Returns the deleted row so a concurrent second delete is told apart from a
 	// campaign that never existed. end_revalidated_at says whether
 	// apply-campaign-prices has already ended the campaign on the public site.
@@ -604,6 +610,11 @@ type Querier interface {
 	// at all. It names no status: content under a legal takedown has to go whatever
 	// state it is in, and the reversible removal is a different query.
 	DeleteEpisodeCommentByIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByIDForTenantParams) (int64, error)
+	// The views, completions, and the rest of what readers did on the episode. Its
+	// foreign key restricts rather than cascades, so a deletion that forgot them
+	// fails instead of taking them unnoticed. The daily figures already rebuilt
+	// from them stay, as every past day's do.
+	DeleteEpisodeContentEvents(ctx context.Context, arg DeleteEpisodeContentEventsParams) error
 	DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteEpisodeEyeCatchImageVariantsByType(ctx context.Context, arg DeleteEpisodeEyeCatchImageVariantsByTypeParams) (int64, error)
@@ -619,12 +630,26 @@ type Querier interface {
 	// the rule stops covering the episode. No row comes back for one, and the
 	// caller reads the window to tell it apart from one that does not exist.
 	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
+	// A bundle checkout that expired unpaid loses the episode. The bundles someone
+	// paid for, and the ones that can still be paid, refuse the deletion before
+	// this runs.
+	DeleteEpisodeFromUnpaidSeriesBundles(ctx context.Context, arg DeleteEpisodeFromUnpaidSeriesBundlesParams) error
+	// A volume that has never been on sale loses the episode and keeps the rest
+	// of its run. published_at is set when a volume is first put on sale and is
+	// never cleared, so it covers every volume a checkout could have started on.
+	DeleteEpisodeFromUnsoldVolumes(ctx context.Context, arg DeleteEpisodeFromUnsoldVolumesParams) error
 	// Takes one page out of its episode, its renditions with it, and answers the
 	// place it held so a replacement can be put there. No page is renumbered: the
 	// body is read in display_order, so a gap leaves every other page where it was
 	// relative to the rest. The objects the renditions named are left for the
 	// orphan image sweep, which deletes them once no row names them.
 	DeleteEpisodeImageByIDForEpisode(ctx context.Context, arg DeleteEpisodeImageByIDForEpisodeParams) (int32, error)
+	// The promotion codes for the episode, none of which anyone redeemed, since a
+	// redeemed one refuses the deletion. A code is not tied to the episode by a
+	// foreign key, so it would otherwise stay behind applying to nothing. Run it
+	// after the episode is deleted, which takes the store intents that named such
+	// a code with it.
+	DeleteEpisodePromotionCodes(ctx context.Context, arg DeleteEpisodePromotionCodesParams) error
 	DeleteEpisodeTranslation(ctx context.Context, arg DeleteEpisodeTranslationParams) (int64, error)
 	// The finished run of a period and source, which a run started again
 	// replaces. An unfinished one is left for the worker, and the run started
@@ -921,6 +946,31 @@ type Querier interface {
 	// and again after writing, so the answer describes the stored rows rather than
 	// what the transition was assumed to produce.
 	GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error)
+	// The first of the references that keep the episode from being deleted, in the
+	// order the refusal names them, or '' when there is none:
+	//
+	//   purchase          a purchase, a rental, or a tip on it, through the
+	//                     payment provider or granted by staff, and a volume or a
+	//                     bundle someone bought with it
+	//   store_purchase    a purchase through the App Store or Google Play
+	//   pending_payment   a payment that can still be taken: a store payment
+	//                     sheet opened for it that no confirmed transaction used,
+	//                     or a bundle checkout naming it that is neither paid nor
+	//                     reported expired, either of which records a purchase
+	//                     once the payment arrives
+	//   access_ticket     an access ticket, revoked or expired ones included
+	//   royalty_statement a line of a royalty statement, or the subscription
+	//                     revenue a statement gave it a part of
+	//   coin_payment      a purchase paid with the tenant's coins
+	//   promotion_code    a promotion code for it that someone redeemed, deleted
+	//                     or not
+	//   published_volume  a volume that holds it and has been on sale, whether or
+	//                     not it still is: a checkout started while it was can
+	//                     still complete after it was taken off sale
+	//
+	// Each kind of purchase is named once, by what paid for it, so a purchase
+	// made with coins is a coin payment rather than a purchase.
+	GetEpisodeDeletionBlocker(ctx context.Context, arg GetEpisodeDeletionBlockerParams) (string, error)
 	// Which grant opens the episode to the reader, when one does. A reader can
 	// hold several, and the creator grant is reported first because it is the
 	// standing one: it is what the credit line says, where a purchase or a ticket
@@ -3575,6 +3625,22 @@ type Querier interface {
 	// start, so a read that waited for the lock inside the same statement would
 	// still answer from before the wait.
 	LockEpisodeByIDForTenant(ctx context.Context, arg LockEpisodeByIDForTenantParams) (LockEpisodeByIDForTenantRow, error)
+	// Deleting an episode, which the console allows only while nothing that has to
+	// be kept refers to it: a record of money a reader paid or was granted, a
+	// payment that can still be taken, a royalty statement, a promotion code
+	// someone redeemed, or a volume that has been on sale.
+	// What is the episode's alone goes with it, in the transaction that deletes it.
+	//
+	// The statements run in the order they appear here. The locks come first and
+	// the check after them, in statements of their own: READ COMMITTED freezes a
+	// statement's snapshot at its start, so a check made inside the statement that
+	// waited for a lock would still answer from before the wait.
+	// The episode, with the title the audit entry keeps once no row is left to
+	// join. The row lock is what keeps a reference from arriving while the episode
+	// is deleted: every row that refers to the episode through a foreign key takes
+	// a key share lock on it when it is written, which waits for this one, and
+	// fails once the episode is gone.
+	LockEpisodeForDeletion(ctx context.Context, arg LockEpisodeForDeletionParams) (LockEpisodeForDeletionRow, error)
 	// The listing a review step reads and writes, locked so a submission, a
 	// decision, and the publication job's promotion of the same episode happen one
 	// after another.
@@ -3691,6 +3757,12 @@ type Querier interface {
 	// volume free see what the other committed before they check what the reader
 	// holds. Taken before LockPromotionCodeRedemptions, always in that order.
 	LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error
+	// The bundle checkouts that name the episode, so none is paid for between the
+	// check and the deletion that takes the episode out of the unpaid ones. The
+	// purchase that records a bundle's payment refers to the bundle rather than to
+	// its episodes, and takes a key share lock on the bundle row, which this lock
+	// holds off.
+	LockSeriesBundlesNamingEpisode(ctx context.Context, arg LockSeriesBundlesNamingEpisodeParams) ([]uuid.UUID, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -3887,6 +3959,10 @@ type Querier interface {
 	// so a reorder can check the client's expected order against a list no
 	// concurrent write can move underneath it.
 	LockVolumesForSeries(ctx context.Context, arg LockVolumesForSeriesParams) ([]uuid.UUID, error)
+	// The volumes that hold the episode, so none is published between the check
+	// and the deletion that takes the episode out of the ones never on sale.
+	// Publishing a volume updates its row, which a share lock holds off.
+	LockVolumesHoldingEpisode(ctx context.Context, arg LockVolumesHoldingEpisodeParams) ([]uuid.UUID, error)
 	// Inserts a read row for every announcement listed to the caller that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)

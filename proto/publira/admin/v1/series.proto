@@ -613,6 +613,49 @@ message ReorderEpisodeImagesResponse {
   repeated publira.types.v1.EpisodeImage images = 1;
 }
 
+// Deletes an episode nothing that has to be kept refers to: a draft, a
+// scheduled episode, or a published one nobody bought. Its pages, eye-catch,
+// translations, credits, free windows, campaign prices, and review rounds go
+// with it, and so does what readers left on it: comments and their reports,
+// follows, reactions, reading positions, and reads. It leaves the site, the
+// app, and the search index as an episode taken back to a draft does, and its
+// images are reclaimed by the orphan image sweep. A volume that holds it and
+// has never been on sale, a bundle checkout that expired unpaid and names it, and a promotion code
+// for it that nobody redeemed lose it.
+//
+// An episode something refers to is failed_precondition with an ErrorInfo
+// reason naming the first of these, in this order:
+//
+//   - EPISODE_PURCHASED: a purchase, a rental, or a tip, through the payment
+//     provider or granted by staff, or a volume or a bundle bought with it.
+//   - EPISODE_STORE_PURCHASED: a purchase through the App Store or Google
+//     Play.
+//   - EPISODE_PAYMENT_PENDING: a payment for it that can still be taken: an
+//     App Store or Google Play payment sheet a reader opened for it that no
+//     confirmed transaction has used yet, or a bundle checkout that names it
+//     and is neither paid nor reported expired by the payment provider.
+//   - EPISODE_ACCESS_TICKET_ISSUED: an access ticket, revoked or expired ones
+//     included.
+//   - EPISODE_ON_ROYALTY_STATEMENT: a line of a royalty statement, or a part
+//     of the subscription revenue a statement gave it.
+//   - EPISODE_PAID_WITH_COINS: a purchase paid with the tenant's coins.
+//   - EPISODE_PROMOTION_CODE_REDEEMED: a promotion code for it that someone
+//     redeemed.
+//   - EPISODE_IN_PUBLISHED_VOLUME: a volume that holds it and has been on
+//     sale, taken off sale since or not.
+//
+// Each is a record of money or of what a reader was granted, or a payment
+// that would become one, so nothing is deleted and nothing is anonymized: take
+// the episode off the site instead.
+// An episode that does not exist, a second request for one deleted already
+// included, is not_found.
+message DeleteEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+}
+
+message DeleteEpisodeResponse {}
+
 // Takes one page out of an episode's body. The pages after it move up one
 // place, in the order they had.
 //
@@ -1445,6 +1488,8 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   // Minimum role: tenant_editor.
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteEpisode(DeleteEpisodeRequest) returns (DeleteEpisodeResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteEpisodeImage(DeleteEpisodeImageRequest) returns (DeleteEpisodeImageResponse) {}
   // Minimum role: tenant_editor.

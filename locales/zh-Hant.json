@@ -453,6 +453,7 @@
         "series_wait_free_settings_updated": "更新了等待即可免費設定",
         "series_free_after_settings_updated": "更新了發布後免費設定",
         "episode_updated": "更新了章節",
+        "episode_deleted": "刪除了章節",
         "episode_translation_deleted": "刪除了章節翻譯",
         "episode_image_uploaded": "上傳了章節正文圖片",
         "episode_eye_catch_aspect_image_uploaded": "上傳了章節封面圖",

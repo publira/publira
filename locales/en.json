@@ -453,6 +453,7 @@
         "series_wait_free_settings_updated": "Free-if-you-wait settings updated",
         "series_free_after_settings_updated": "Free-after settings updated",
         "episode_updated": "Episode updated",
+        "episode_deleted": "Episode deleted",
         "episode_translation_deleted": "Episode translation deleted",
         "episode_image_uploaded": "Episode body image uploaded",
         "episode_eye_catch_aspect_image_uploaded": "Episode cover image uploaded",

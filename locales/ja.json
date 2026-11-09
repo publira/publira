@@ -453,6 +453,7 @@
         "series_wait_free_settings_updated": "待てば無料の設定変更",
         "series_free_after_settings_updated": "公開後無料の設定変更",
         "episode_updated": "エピソード更新",
+        "episode_deleted": "エピソード削除",
         "episode_translation_deleted": "エピソードの翻訳の削除",
         "episode_image_uploaded": "エピソード本文画像のアップロード",
         "episode_eye_catch_aspect_image_uploaded": "エピソードのアイキャッチ画像アップロード",
