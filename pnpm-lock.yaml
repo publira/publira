@@ -1035,8 +1035,8 @@ importers:
         specifier: 0.223.0
         version: 0.223.0
       '@opentelemetry/instrumentation':
-        specifier: 0.300.0
-        version: 0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
+        specifier: 0.301.0
+        version: 0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
       '@opentelemetry/resources':
         specifier: 2.12.0
         version: 2.12.0(@opentelemetry/api@1.10.0)
@@ -1054,7 +1054,7 @@ importers:
         version: 1.44.0
       '@vercel/otel':
         specifier: 2.3.0
-        version: 2.3.0(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/instrumentation@0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0))(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.223.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))
+        version: 2.3.0(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/instrumentation@0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0))(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.223.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -1919,8 +1919,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
-  '@opentelemetry/instrumentation@0.300.0':
-    resolution: {integrity: sha512-8ugx3X75uK2+rFZ9pX252ruDRELE2F7T3Zwazyll21aXksm+d2JLc9Np9SPS48K4ohGeaaXXHSX4ghxuNQ/gMg==}
+  '@opentelemetry/instrumentation@0.301.0':
+    resolution: {integrity: sha512-ubspM+RvsFAzW1pAN3np0T1GxVh+/yzoZI24LDGhy+hFxcdXs9wQkSZH4qx6xnZ1035gO3EZVpCPmqR3ZZwhjg==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@opentelemetry/api': '>=1.10.0 <1.11.0'
@@ -6602,7 +6602,7 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/semantic-conventions': 1.44.0
 
-  '@opentelemetry/instrumentation@0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)':
+  '@opentelemetry/instrumentation@0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)':
     dependencies:
       '@opentelemetry/api': 1.10.0
       import-in-the-middle: 3.5.3
@@ -7518,11 +7518,11 @@ snapshots:
 
   '@ungap/structured-clone@1.4.0': {}
 
-  '@vercel/otel@2.3.0(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/instrumentation@0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0))(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.223.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))':
+  '@vercel/otel@2.3.0(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/instrumentation@0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0))(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.223.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))':
     dependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/api-logs': 0.223.0
-      '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
+      '@opentelemetry/instrumentation': 0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
       '@opentelemetry/resources': 2.12.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-logs': 0.223.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-metrics': 2.12.0(@opentelemetry/api@1.10.0)
