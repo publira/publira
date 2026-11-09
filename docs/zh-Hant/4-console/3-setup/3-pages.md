@@ -2,7 +2,8 @@
 title: 頁面
 description: 在富文字編輯器中撰寫網站自己的頁面、發布及還原其版本、翻譯頁面、將其中兩個頁面設為讀者同意的服務條款與隱私權政策，並了解網站在讀者瀏覽器中儲存的內容。
 published: 2026-11-03
-source_updated: 2026-10-28
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 **頁面**位於**網站**下，存放出版社為網站撰寫的頁面：服務條款、隱私權政策、介紹出版社的頁面、投稿指南，以及其他任何不屬於系列的內容。頁面在富文字編輯器中撰寫，以版本保存，並可以翻譯成網站的每一種語言。
@@ -100,6 +101,7 @@ Publira沒有用於法律文字的特殊頁面類型。服務條款與隱私權�
 | `publira_web_storefront_signup_pending_email`、`publira_web_storefront_reset_password_email`、`publira_web_storefront_resend_verification_email` | 讀者送出註冊表單、要求重設密碼，或再次要求確認連結時 | 郵件寄送的電子郵件地址，讓下一個頁面可以顯示該地址，而不必將它放進頁面的網址中 | 一分鐘 |
 | `publira_web_storefront_sign_in` | 讀者選擇**透過Apple繼續**或**透過Google繼續**時 | 進行中的登入，經過加密，用來核對Apple或Google的回應 | 十分鐘，或直到收到回應為止 |
 | `publira_web_storefront_sign_up` | 首次透過Apple或Google登入的讀者看到**完成註冊**時 | Apple或Google傳回的讀者相關資訊，經過加密，保留到讀者同意條款為止 | 四分鐘 |
+| `publira_web_storefront_mfa` | 開啟了兩步驟驗證的讀者輸入密碼，或透過Apple或Google登入後，被要求輸入驗證碼時 | 等待驗證碼的登入，經過加密 | 五分鐘，或直到驗證碼被接受為止 |
 | `publira_web_storefront_dismissed_announcement` | 讀者選擇**關閉該公告**時 | 讀者所關閉公告的識別碼 | 一年 |
 | `publira_resolved_locale` | 造訪時，只要該Cookie尚未包含網站的預設語言 | 網站的預設語言代碼，例如`en`，不含任何讀者相關資訊 | 一年 |
 | `publira_web_storefront_view_actor` | 未登入的讀者開啟系列或章節時；如果網站會先詢問，則在讀者於同意橫幅上同意之後 | 只用來計算瀏覽次數的隨機識別碼。它不與任何帳戶關聯，網站上的任何內容也不會依據它進行個人化 | 180天 |

@@ -19,13 +19,14 @@ export const CONFIRMING_SCREENS: Record<
   delete: "/settings",
   email_change: "/settings/security",
   link: "/settings/security",
+  mfa_disable: "/settings/security",
 };
 
 /**
  * Where a sign-in that did not finish sends the reader back to: the sign-in
- * screen, or the settings screen a deletion, an email change, or a link was
- * started from. Without a message the reader chose to stop, and nothing is
- * said about it.
+ * screen, or the settings screen a deletion, an email change, a link, or
+ * turning two-step verification off was started from. Without a message the
+ * reader chose to stop, and nothing is said about it.
  */
 export const signInFailurePath = async (
   { intent, locale, returnTo, tenantId }: SignInOrigin,

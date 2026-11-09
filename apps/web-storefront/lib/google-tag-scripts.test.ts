@@ -113,6 +113,7 @@ describe("googleTagScripts", () => {
 describe("loadsGoogleTagOn", () => {
   it.each([
     "/login",
+    "/login/two-step",
     "/signup",
     "/signup/continue",
     "/signup/pending",

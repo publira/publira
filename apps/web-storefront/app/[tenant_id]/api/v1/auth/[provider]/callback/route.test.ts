@@ -2,10 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { getMessagesFor } from "#lib/messages";
+import { MFA_CHALLENGE_COOKIE_NAME } from "#lib/mfa-challenge";
 
 const {
   cookieJar,
   mockDeleteMe,
+  mockDisableMyMfa,
   mockGetTenantSignInClients,
   mockLinkMyIdentity,
   mockLoginWithIdToken,
@@ -15,6 +18,7 @@ const {
 } = vi.hoisted(() => ({
   cookieJar: new Map<string, string>(),
   mockDeleteMe: vi.fn(),
+  mockDisableMyMfa: vi.fn(),
   mockGetTenantSignInClients: vi.fn(),
   mockLinkMyIdentity: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
@@ -59,6 +63,8 @@ vi.mock("#lib/auth", () => ({
   loginWithIdToken: mockLoginWithIdToken,
   requestPublicEmailChange: mockRequestPublicEmailChange,
 }));
+
+vi.mock("#lib/mfa", () => ({ disableMyMfa: mockDisableMyMfa }));
 
 vi.mock("#lib/auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
@@ -159,6 +165,25 @@ const startLink = async (provider = "google") => {
   return redirectedTo(linkIdentityAction(data));
 };
 
+/** Ask to turn two-step verification off from the security settings. */
+const startMfaDisable = async (code = "abcde-12345") => {
+  const { disableMfaWithProviderAction } =
+    await import("../../../../../[locale]/(site)/settings/security/_lib/mfa-actions");
+
+  const data = new FormData();
+
+  for (const [name, value] of Object.entries({
+    code,
+    locale: "en",
+    provider: "google",
+    tenantId,
+  })) {
+    data.set(name, value);
+  }
+
+  return redirectedTo(disableMfaWithProviderAction(data));
+};
+
 const postAnswer = async (
   provider: string,
   fields: Record<string, string>
@@ -217,6 +242,24 @@ describe("Apple and Google sign-in round trip", () => {
     expect(mockSealPublicSessionCookie).toHaveBeenCalledWith(session, tenantId);
     expect(response.status).toBe(303);
     expect(response.headers.get("Location")).toBe("/en/series");
+  });
+
+  it("keeps the challenge of an account with an authenticator and asks for its code", async () => {
+    const authorization = await startSignIn();
+    mockLoginWithIdToken.mockResolvedValueOnce({
+      challenge: { expiresAt: "2999-01-01T00:05:00Z", token: "chl" },
+      kind: "mfa_required",
+    });
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(mockSealPublicSessionCookie).not.toHaveBeenCalled();
+    expect(cookieJar.has(MFA_CHALLENGE_COOKIE_NAME)).toBe(true);
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe("/en/login/two-step");
   });
 
   it("sends Apple's code and the name it hands over once", async () => {
@@ -409,6 +452,62 @@ describe("Apple and Google sign-in round trip", () => {
 
     expect(location.pathname).toBe("/en/settings/security");
     expect(location.searchParams.get("status")).toBe("success");
+  });
+
+  it("turns two-step verification off with the code typed before the sign-in", async () => {
+    const authorization = await startMfaDisable();
+    mockDisableMyMfa.mockResolvedValueOnce({ ok: true });
+    const t = await getMessagesFor("en");
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    // The code waits in the sealed request while the reader is at Google.
+    expect(mockDisableMyMfa).toHaveBeenCalledWith(
+      tenantId,
+      "abcde-12345",
+      {
+        idToken: "header.payload.signature",
+        nonce: authorization.searchParams.get("nonce"),
+        provider: "google",
+      },
+      "access-token"
+    );
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("success");
+    expect(location.searchParams.get("message")).toBe(
+      t("storefront.settings.mfa_disabled")
+    );
+  });
+
+  it("returns a refused code to the security settings", async () => {
+    const authorization = await startMfaDisable("000000");
+    mockDisableMyMfa.mockResolvedValueOnce({ code: "invalid_code", ok: false });
+    const t = await getMessagesFor("en");
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.get("message")).toBe(
+      t("storefront.auth.two_step.errors.invalid_code_or_recovery_code")
+    );
   });
 
   it("returns a refused email change to the security settings", async () => {

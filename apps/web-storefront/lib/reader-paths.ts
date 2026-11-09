@@ -19,8 +19,16 @@ export const MEMBER_PATH_PREFIXES = [
   "/settings",
 ] as const;
 
-/** Pages a signed-in reader is sent away from. */
-export const GUEST_ONLY_PATHS = ["/login", "/signup"] as const;
+/**
+ * Pages a signed-in reader is sent away from. The code step finishes a sign-in
+ * that has not issued a session yet, so a reader who has one has nothing left
+ * to finish there.
+ */
+export const GUEST_ONLY_PATHS = [
+  "/login",
+  "/login/two-step",
+  "/signup",
+] as const;
 
 /**
  * The steps of an account flow a mail or a form leads one reader through,

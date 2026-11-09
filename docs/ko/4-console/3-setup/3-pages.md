@@ -2,7 +2,8 @@
 title: 페이지
 description: 사이트 자체의 페이지를 리치 텍스트 편집기로 작성하고, 버전을 공개하거나 롤백하고, 번역하고, 그중 두 페이지를 독자가 동의하는 이용약관과 개인정보 처리방침으로 지정하며, 사이트가 독자의 브라우저에 저장하는 것을 확인합니다.
 published: 2026-11-03
-source_updated: 2026-10-28
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 **사이트** 아래의 **페이지**에는 출판사가 사이트를 위해 작성하는 페이지가 있습니다. 이용약관, 개인정보 처리방침, 출판사 소개 페이지, 투고 안내, 그 밖에 시리즈가 아닌 모든 것입니다. 페이지는 리치 텍스트 편집기로 작성하며, 버전으로 관리되고, 사이트의 각 언어로 번역할 수 있습니다.
@@ -100,6 +101,7 @@ Publira에는 법적 문서를 위한 특별한 종류의 페이지가 없습니
 | `publira_web_storefront_signup_pending_email`, `publira_web_storefront_reset_password_email`, `publira_web_storefront_resend_verification_email` | 독자가 회원가입 양식을 제출하거나, 비밀번호 재설정을 요청하거나, 확인 링크를 다시 요청할 때 | 메시지를 보낸 이메일 주소. 페이지 주소에 넣지 않고 다음 페이지에서 그 주소를 보여 주기 위한 것입니다 | 1분 |
 | `publira_web_storefront_sign_in` | 독자가 **Apple로 계속하기** 또는 **Google로 계속하기**를 선택할 때 | 진행 중인 로그인을 암호화한 것으로, Apple이나 Google의 응답을 이것과 대조합니다 | 10분 또는 응답이 도착할 때까지 |
 | `publira_web_storefront_sign_up` | Apple이나 Google로 처음 로그인하는 독자에게 **회원가입 완료**가 표시될 때 | 독자가 약관에 동의할 때까지, Apple이나 Google이 독자에 대해 돌려준 내용을 암호화한 것 | 4분 |
+| `publira_web_storefront_mfa` | 2단계 인증을 켠 독자가 비밀번호를 입력하거나 Apple이나 Google로 로그인한 뒤 코드를 요청받을 때 | 코드 입력을 기다리는 로그인을 암호화한 것 | 5분, 또는 코드가 받아들여질 때까지 |
 | `publira_web_storefront_dismissed_announcement` | 독자가 **이 공지사항 닫기**를 선택할 때 | 독자가 닫은 공지사항의 식별자 | 1년 |
 | `publira_resolved_locale` | 방문할 때, 쿠키에 사이트의 기본 언어가 아직 담겨 있지 않을 때마다 | `en` 같은 사이트의 기본 언어 코드이며, 독자에 관한 정보는 없습니다 | 1년 |
 | `publira_web_storefront_view_actor` | 로그인하지 않은 독자가 시리즈나 에피소드를 열 때. 사이트가 먼저 묻는 경우에는 동의 배너에서 동의한 뒤 | 조회 수를 세는 데만 쓰는 무작위 식별자. 계정과 연결되지 않으며, 사이트의 어떤 것도 이 식별자로 개인화되지 않습니다 | 180일 |

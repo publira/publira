@@ -14,6 +14,9 @@ import { sealPublicSessionCookie } from "#lib/auth-session";
 import { buildLoginPath, PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { emailRefusalMessage } from "#lib/email-refusal-message";
 import { getMessagesFor } from "#lib/messages";
+import { disableMyMfa } from "#lib/mfa";
+import { MFA_CHALLENGE_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
+import { mfaDisableRefusalMessage } from "#lib/mfa-refusal-message";
 import {
   SIGN_IN_PROVIDER_NAMES,
   SIGN_IN_PROVIDERS,
@@ -123,6 +126,24 @@ const finishLogin = async (
 
     return seeOther(
       await tenantLocalePath(request.tenantId, request.locale, request.returnTo)
+    );
+  }
+
+  if (outcome.kind === "mfa_required") {
+    await writeMfaChallenge({
+      challengeToken: outcome.challenge.token,
+      expiresAt: outcome.challenge.expiresAt,
+      locale: request.locale,
+      returnTo: request.returnTo,
+      tenantId: request.tenantId,
+    });
+
+    return seeOther(
+      await tenantLocalePath(
+        request.tenantId,
+        request.locale,
+        MFA_CHALLENGE_PATH
+      )
     );
   }
 
@@ -285,6 +306,53 @@ const finishEmailChange = async (
 };
 
 /**
+ * Turn two-step verification off with the code the reader typed before they
+ * left and the sign-in they just made, back on the screen it was asked from.
+ */
+const finishMfaDisable = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, locale, mfaCode, tenantId } = request;
+  const t = await getMessagesFor(locale);
+
+  if (!mfaCode) {
+    return failure(request, t("storefront.settings.mfa_disable_failed"));
+  }
+
+  const disabled = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.mfa_disable,
+    () =>
+      disableMyMfa(tenantId, mfaCode, { idToken, nonce, provider }, accessToken)
+  );
+
+  if (disabled instanceof Response) {
+    return disabled;
+  }
+
+  if (!disabled.ok) {
+    return failure(
+      request,
+      mfaDisableRefusalMessage(t, locale, disabled, "fresh_sign_in")
+    );
+  }
+
+  const path = await tenantLocalePath(
+    tenantId,
+    locale,
+    CONFIRMING_SCREENS.mfa_disable
+  );
+
+  const params = new URLSearchParams({
+    message: t("storefront.settings.mfa_disabled"),
+    status: "success",
+  });
+
+  return seeOther(`${path}?${params.toString()}`);
+};
+
+/**
  * Link the provider account the reader just signed in to, whatever address it
  * carries, to the account the link was asked from.
  */
@@ -427,6 +495,10 @@ export const POST = async (
 
     case "link": {
       return finishLink(signInRequest, signIn);
+    }
+
+    case "mfa_disable": {
+      return finishMfaDisable(signInRequest, signIn);
     }
 
     default: {

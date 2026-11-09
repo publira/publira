@@ -22,6 +22,7 @@ import { getTenantId } from "#lib/tenant-id";
 
 import * as PasskeyConfirmation from "../_components/passkey-confirmation";
 import { beginPasskeyConfirmationAction } from "../_lib/passkey-confirmation-actions";
+import { MfaSection } from "./_components/mfa-section";
 import * as PasskeyAddition from "./_components/passkey-addition";
 import {
   changePasswordAction,
@@ -758,6 +759,9 @@ const SecuritySettingsPage = () => (
     </Suspense>
     <Suspense fallback={<PasswordChangeSectionFallback />}>
       <PasswordChangeSection />
+    </Suspense>
+    <Suspense fallback={null}>
+      <MfaSection readMyIdentities={readMyIdentities} />
     </Suspense>
     <Suspense fallback={null}>
       <PasskeysSection />

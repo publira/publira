@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in a rich text editor, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-10-28
+updated: 2026-11-09
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in a rich text editor, kept in versions, and can be translated into each of the site's languages.
@@ -100,6 +100,7 @@ A privacy policy says what the site keeps in its readers' browsers. These are al
 | `publira_web_storefront_signup_pending_email`, `publira_web_storefront_reset_password_email`, `publira_web_storefront_resend_verification_email` | The reader submits the sign-up form, asks to reset their password, or asks for the confirmation link again | The email address the message was sent to, so the next page can name it without putting it in the page's address | One minute |
 | `publira_web_storefront_sign_in` | The reader chooses **Continue with Apple** or **Continue with Google** | The sign-in in progress, encrypted, which Apple's or Google's answer is checked against | Ten minutes, or until the answer arrives |
 | `publira_web_storefront_sign_up` | A reader signing in with Apple or Google for the first time is shown **Finish signing up** | What Apple or Google returned about the reader, encrypted, until they agree to the terms | Four minutes |
+| `publira_web_storefront_mfa` | A reader with two-step verification turned on enters their password, or signs in with Apple or Google, and is asked for the code | The sign-in waiting for the code, encrypted | Five minutes, or until the code is accepted |
 | `publira_web_storefront_dismissed_announcement` | The reader chooses **Close this announcement** | The identifier of the announcement they closed | A year |
 | `publira_resolved_locale` | A visit, whenever the cookie does not already hold the site's default language | The site's default language code, such as `en`, and nothing about the reader | A year |
 | `publira_web_storefront_view_actor` | A signed-out reader opens a series or an episode, once they have agreed on the consent banner where the site asks first | A random identifier that counts their views and nothing else. It is not tied to an account, and nothing on the site is personalised by it | 180 days |

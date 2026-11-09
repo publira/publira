@@ -1,8 +1,8 @@
 ---
 title: Reader accounts
-description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, and know what a reader's download of their data holds.
+description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, and know how a reader's two-step verification works and what a reader's download of their data holds.
 published: 2026-10-21
-updated: 2026-11-02
+updated: 2026-11-09
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -50,6 +50,20 @@ Whether readers may upload an icon, pick one of the tenant's own, or show none a
 **Suspend** signs the reader out on every device and refuses their sign-in, with a password or with Apple or Google, until the suspension is lifted. Nothing else about the account changes: their published comments stay on the site, and their purchases and access tickets stay theirs, unusable only while they cannot sign in.
 
 **Lift suspension**, on the same page, returns the account to **Active**, or to **Inactive** if its email address was never confirmed. The reader signs in again; the sessions the suspension ended stay ended. To find a suspended reader, set **Status** to **Suspended**.
+
+## A reader's two-step verification
+
+A reader can ask to be asked for a code from an authenticator app as well as their password, from **Two-step verification** under **Security** in the site's **Account settings**. **Turn on** shows a QR code to scan and the same key to type in by hand, and the reader turns it on with the 6-digit code their app then shows. The site then shows ten recovery codes, once, with a button to copy them: each one signs the reader in once when their app is not at hand. **Regenerate recovery codes** replaces all ten, used or not, with a code from the app. **Turn off** asks for the reader's password and a code from the app or a recovery code; a reader without a password confirms with one of their passkeys, or by signing in again with Apple or Google, instead of the password.
+
+![Two-step verification under Security on the site while it is being set up: the QR code and the setup key, both covered over, with a button to copy the key, the Verification code field, and Turn on two-step verification.](./accounts-two-step-setup.png)
+
+Once it is on, signing in with the password, or with Apple or Google, stops at a code before the reader is signed in, and then goes on to where they were heading. **Use a recovery code** takes one of the recovery codes instead. Signing in with a passkey asks for no code, since the passkey is already a second factor. After five wrong codes in a row, every code is refused for fifteen minutes.
+
+![The code a sign-in stops at: Two-step verification, the Verification code field, Verify, Use a recovery code, and Back to sign in.](./accounts-two-step-code.png)
+
+An account has one second factor wherever it signs in. A member of the staff who set up an authenticator in the console is asked for its code on the site too, and one set up on the site is asked for when the same account signs in to the console. A member of the staff who has a passkey for the console sets the authenticator up from **Account settings** in the console rather than on the site, and the site says so.
+
+Two-step verification is never required of readers: the requirement the operator can set covers Tenant admins alone, as [Two-step verification](../../3-operations/12-security/2-two-step-verification.md) describes.
 
 ## A reader's download of their data
 

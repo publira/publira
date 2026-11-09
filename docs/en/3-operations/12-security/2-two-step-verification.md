@@ -1,10 +1,11 @@
 ---
 title: Two-step verification
-description: Require two-step verification of tenant staff and of Platform Console operators, and recover an account that lost its second factor.
+description: Require two-step verification of tenant staff and of Platform Console operators, know how readers turn it on for themselves, and recover an account that lost its second factor.
 published: 2026-10-21
+updated: 2026-11-09
 ---
 
-This page is for the operator: how tenant staff and Platform Console operators protect their accounts with a second factor, how to require it of them, and what to do when one is lost.
+This page is for the operator: how tenant staff, readers, and Platform Console operators protect their accounts with a second factor, how to require it of staff and operators, and what to do when one is lost.
 
 ## Tenant staff
 
@@ -27,6 +28,16 @@ publiractl policy set --mfa-required-for-tenant-admin
 A member of staff who has lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in again, and the tenant's other administrators cannot remove two-step verification from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](../3-tenant-staff.md#lost-two-step-verification) describes.
 
 Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](./1-rotating-secrets.md#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out. Passkeys are not: the install keeps only each passkey's public key, which proves nothing to anyone who reads it, so rotating or removing a key leaves them working.
+
+## Readers
+
+Readers can protect their account on the site the same way, with an authenticator app and ten recovery codes, from **Two-step verification** under **Security** in the site's **Account settings**, as [A reader's two-step verification](../../4-console/2-readers/1-accounts.md#a-readers-two-step-verification) describes. Once it is on, signing in on the site with a password, or with Apple or Google, asks for the code too. Signing in with a passkey does not, since the passkey is already a second factor.
+
+![Two-step verification under Security on the site just after it was turned on: the message that it is now on, the ten recovery codes, covered over, with a button to copy them, the date it was turned on, covered over, how many recovery codes are left, Regenerate recovery codes with its Verification code field, and Turn off with the Current password and Verification code fields.](./two-step-verification-reader-settings.png)
+
+It is never required of readers, and no setting on this page changes that: the requirements it describes cover Tenant admins and operators alone. An account has one second factor wherever it signs in, so a member of the staff who set one up in the console is asked for it on the site too, and a reader who becomes staff is asked in the console for the one they set up on the site.
+
+A reader's authenticator secret is sealed with the encryption keys, as the staff's is, so [removing an old key](./1-rotating-secrets.md#4-remove-the-old-key-only-when-nothing-uses-it) can lock readers out too.
 
 ## Platform operators
 
