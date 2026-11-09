@@ -144,16 +144,39 @@ func (s *Syncer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id u
 		}
 		only = nil
 	}
+	_, err := writeTenant(ctx, s.db, s.index, tenantID, only)
+	return err
+}
+
+// writeTenant reads the documents of the tenant's rows, or of the row only
+// names, from one snapshot and writes them on w, holding the tenant's write
+// lock from before the read until w has them. A tenant marked for deletion, or
+// deleted, has nothing written and comes back with no documents.
+func writeTenant(ctx context.Context, db *sql.DB, w Writer, tenantID uuid.UUID, only *Ref) ([]opensearchbackend.Document, error) {
+	conn, release, err := holdTenantWrite(ctx, db, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	var docs []opensearchbackend.Document
-	err := inSnapshot(ctx, s.db, func(q *dbmodels.Queries, version int64) error {
-		var err error
+	err = inSnapshot(ctx, conn, func(q *dbmodels.Queries, version int64) error {
+		kept, err := q.IsCatalogIndexTenantKept(ctx, tenantID)
+		if err != nil {
+			return fmt.Errorf("catalogindex: read whether the tenant is kept: %w", err)
+		}
+		if !kept {
+			return nil
+		}
 		docs, err = readDocuments(ctx, q, tenantID, only, version)
 		return err
 	})
-	if err != nil {
-		return err
+	if err != nil || len(docs) == 0 {
+		return nil, err
 	}
-	return s.index.PutAll(ctx, docs)
+	if err := w.PutAll(ctx, docs); err != nil {
+		return nil, err
+	}
+	return docs, nil
 }
 
 // errUnknownKind is a payload naming no kind of document. No retry can fix it.
@@ -164,8 +187,8 @@ var errUnknownKind = errors.New("catalogindex: unknown document kind")
 // transaction started, which precedes the snapshot. A write the snapshot misses
 // commits after that instant, so the event it queued is read under a higher
 // version and its document replaces this one.
-func inSnapshot(ctx context.Context, db *sql.DB, read func(q *dbmodels.Queries, version int64) error) error {
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+func inSnapshot(ctx context.Context, conn *sql.Conn, read func(q *dbmodels.Queries, version int64) error) error {
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
 	if err != nil {
 		return fmt.Errorf("catalogindex: begin: %w", err)
 	}
@@ -266,16 +289,8 @@ func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID,
 // It works on the live index: an event draining at the same time carries a
 // later read of its row, and the version keeps that read in place.
 func SyncTenant(ctx context.Context, db *sql.DB, w Writer, tenantID uuid.UUID) (written, deleted int, err error) {
-	var docs []opensearchbackend.Document
-	err = inSnapshot(ctx, db, func(q *dbmodels.Queries, version int64) error {
-		var err error
-		docs, err = readDocuments(ctx, q, tenantID, nil, version)
-		return err
-	})
+	docs, err := writeTenant(ctx, db, w, tenantID, nil)
 	if err != nil {
-		return 0, 0, err
-	}
-	if err := w.PutAll(ctx, docs); err != nil {
 		return 0, 0, err
 	}
 	for _, doc := range docs {

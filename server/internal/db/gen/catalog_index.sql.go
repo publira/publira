@@ -49,6 +49,25 @@ func (q *Queries) GetCatalogIndexSnapshotTime(ctx context.Context) (time.Time, e
 	return snapshot_at, err
 }
 
+const IsCatalogIndexTenantKept = `-- name: IsCatalogIndexTenantKept :one
+SELECT EXISTS (
+    SELECT 1
+    FROM tenants
+    WHERE id = $1
+        AND deletion_requested_at IS NULL
+) AS kept
+`
+
+// Whether the tenant's documents are written at all: a tenant marked for
+// deletion has its documents deleted by the erasure, and one already deleted
+// has none left to write.
+func (q *Queries) IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, IsCatalogIndexTenantKept, tenantID)
+	var kept bool
+	err := row.Scan(&kept)
+	return kept, err
+}
+
 const ListCatalogIndexCreators = `-- name: ListCatalogIndexCreators :many
 SELECT c.id,
     c.name,

@@ -177,7 +177,8 @@ func RunPending(ctx context.Context, deps Deps) (Summary, error) {
 // and the index documents after them, because the rows are what the worker
 // writes both from: an archive a reader asked for, an index update a catalog
 // change queued. Deleted first, those would be written again from rows still
-// there.
+// there. An index update that read a row before it was deleted is waited for
+// before the documents are deleted, as [platformsearch.TenantEraser] does.
 func erase(ctx context.Context, deps Deps, logger *slog.Logger, tables []table, tenant dbmodels.Tenant) error {
 	if deps.Cache != nil {
 		n, err := deps.Cache.EraseTenant(ctx, tenant)

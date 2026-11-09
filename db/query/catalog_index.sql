@@ -25,6 +25,17 @@
 -- queued is read later still, under a higher version.
 SELECT transaction_timestamp()::timestamptz AS snapshot_at;
 
+-- name: IsCatalogIndexTenantKept :one
+-- Whether the tenant's documents are written at all: a tenant marked for
+-- deletion has its documents deleted by the erasure, and one already deleted
+-- has none left to write.
+SELECT EXISTS (
+    SELECT 1
+    FROM tenants
+    WHERE id = sqlc.arg('tenant_id')
+        AND deletion_requested_at IS NULL
+) AS kept;
+
 -- name: ListCatalogIndexTenantIDs :many
 SELECT id
 FROM tenants

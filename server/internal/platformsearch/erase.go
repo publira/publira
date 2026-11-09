@@ -7,6 +7,8 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/catalogindex"
 )
 
 // TenantEraser deletes a tenant's documents from the search engines a catalog
@@ -28,6 +30,10 @@ type TenantEraser struct {
 // search with the swap. Holding the lock through the delete keeps a build from
 // starting until it is done, and one that starts after reads none of the
 // tenant's rows.
+//
+// The tenant's write lock is held through the delete as well, which first
+// waits for every write of its documents in flight, an outbox event that read
+// a row before it was deleted among them, to reach the engine.
 func (e TenantEraser) EraseTenant(ctx context.Context, tenantID uuid.UUID) error {
 	if e.DB == nil {
 		return errors.New("platformsearch: the tenant eraser has no database to take the build lock on")
@@ -37,6 +43,11 @@ func (e TenantEraser) EraseTenant(ctx context.Context, tenantID uuid.UUID) error
 		return err
 	}
 	defer unlock()
+	unlockWrites, err := catalogindex.LockTenantWrites(ctx, e.DB, tenantID)
+	if err != nil {
+		return err
+	}
+	defer unlockWrites()
 
 	// A resolver of its own, reading the row afresh, so an engine saved since
 	// the last pass is the one the documents are deleted from.

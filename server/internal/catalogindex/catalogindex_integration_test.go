@@ -440,3 +440,80 @@ func TestATenantEventRewritesWhatTheDefaultLocaleFallsBackTo(t *testing.T) {
 		idx.assertHitsIn(t, searchSeries, tenant.ID, "ja", "garden", series.ID)
 	})
 }
+
+// An erasure's lock over a tenant's writes waits for a write that read the
+// tenant's rows before they were deleted to reach the engine, so the documents
+// it deletes next include that write's. A write that starts once the tenant is
+// marked for deletion writes nothing.
+func TestTheTenantWriteLockWaitsOutAWriteInFlight(t *testing.T) {
+	pg := testutil.StartIsolatedPostgres(t)
+	t.Parallel()
+	ctx := context.Background()
+	tenant := pg.SeedTenant(t, "INDEXLOCK001", "index-lock.example.com", "Index Lock Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXLOCK002", Title: "Seed Garden", Published: true})
+	db := pg.OpenContentStatsDB(t)
+
+	inFlight := &blockingWriter{entered: make(chan struct{}), release: make(chan struct{})}
+	synced := make(chan error, 1)
+	go func() { synced <- catalogindex.NewSyncer(db, inFlight).Sync(ctx, tenant.ID, "series", series.ID) }()
+	<-inFlight.entered
+
+	type lockResult struct {
+		unlock func()
+		err    error
+	}
+	locked := make(chan lockResult, 1)
+	go func() {
+		unlock, err := catalogindex.LockTenantWrites(ctx, db, tenant.ID)
+		locked <- lockResult{unlock, err}
+	}()
+	select {
+	case <-locked:
+		t.Fatal("LockTenantWrites returned while a write of the tenant was in flight")
+	case <-time.After(500 * time.Millisecond):
+	}
+	close(inFlight.release)
+	if err := <-synced; err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	result := <-locked
+	if result.err != nil {
+		t.Fatalf("LockTenantWrites: %v", result.err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE tenants SET status = 'suspended', deletion_requested_at = now() WHERE id = $1`, tenant.ID); err != nil {
+		t.Fatalf("mark the tenant for deletion: %v", err)
+	}
+	result.unlock()
+
+	after := &recordingWriter{}
+	if err := catalogindex.NewSyncer(db, after).Sync(ctx, tenant.ID, "series", series.ID); err != nil {
+		t.Fatalf("Sync of a tenant marked for deletion: %v", err)
+	}
+	if written, deleted, err := catalogindex.SyncTenant(ctx, db, after, tenant.ID); err != nil || written != 0 || deleted != 0 {
+		t.Fatalf("SyncTenant of a tenant marked for deletion = (%d, %d, %v), want nothing written", written, deleted, err)
+	}
+	if len(after.docs) != 0 {
+		t.Errorf("a tenant marked for deletion had %d documents written, want none", len(after.docs))
+	}
+}
+
+// blockingWriter holds its first write until release is closed, as a write
+// to a slow engine does.
+type blockingWriter struct {
+	entered, release chan struct{}
+}
+
+func (w *blockingWriter) PutAll(context.Context, []opensearchbackend.Document) error {
+	close(w.entered)
+	<-w.release
+	return nil
+}
+
+type recordingWriter struct {
+	docs []opensearchbackend.Document
+}
+
+func (w *recordingWriter) PutAll(_ context.Context, docs []opensearchbackend.Document) error {
+	w.docs = append(w.docs, docs...)
+	return nil
+}

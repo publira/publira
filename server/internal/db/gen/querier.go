@@ -1837,6 +1837,10 @@ type Querier interface {
 	// endpoint — the same change recorded twice — writes nothing and returns no
 	// row.
 	InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error)
+	// Whether the tenant's documents are written at all: a tenant marked for
+	// deletion has its documents deleted by the erasure, and one already deleted
+	// has none left to write.
+	IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and

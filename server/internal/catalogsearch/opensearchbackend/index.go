@@ -426,7 +426,8 @@ func encodeDocument(encoder *json.Encoder, index, locale string, doc Document) e
 //
 // A write that lands after it — an index update the worker was sending when
 // the tenant's rows were deleted — puts its document back, so the caller
-// deletes the rows such writes are made from first.
+// deletes the rows such writes are made from first, and waits for the writes
+// that read them before then.
 func (b *Backend) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	body, err := json.Marshal(map[string]any{
 		"query": map[string]any{"term": map[string]any{"tenant_id": tenantID.String()}},
