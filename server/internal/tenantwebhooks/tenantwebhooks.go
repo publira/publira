@@ -34,6 +34,7 @@ const (
 	EventSubscriptionEnded   = "subscription.ended"
 	EventEpisodePublished    = "episode.published"
 	EventEpisodeUnpublished  = "episode.unpublished"
+	EventCommentPosted       = "comment.posted"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -49,6 +50,7 @@ var EventTypes = []string{
 	EventSubscriptionEnded,
 	EventEpisodePublished,
 	EventEpisodeUnpublished,
+	EventCommentPosted,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -69,6 +71,7 @@ type Queries interface {
 	GetWebhookEpisode(ctx context.Context, arg dbmodels.GetWebhookEpisodeParams) (dbmodels.GetWebhookEpisodeRow, error)
 	GetWebhookUnpublishedEpisode(ctx context.Context, arg dbmodels.GetWebhookUnpublishedEpisodeParams) (dbmodels.GetWebhookUnpublishedEpisodeRow, error)
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.ListWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.ListWebhookPublishedEpisodesOfSeriesRow, error)
+	GetWebhookComment(ctx context.Context, arg dbmodels.GetWebhookCommentParams) (dbmodels.GetWebhookCommentRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -194,6 +197,20 @@ type EpisodeWithdrawal struct {
 	SeriesPublicID  string `json:"series_public_id"`
 	// Withdrawn is [WithdrawnEpisode] or [WithdrawnSeries].
 	Withdrawn string `json:"withdrawn"`
+}
+
+// Comment is the data of [EventCommentPosted]. It names the comment, its
+// episode, and its series by their public ids, and its writer by their public
+// id and display name, never by their address.
+type Comment struct {
+	CommentPublicID string `json:"comment_public_id"`
+	EpisodePublicID string `json:"episode_public_id"`
+	SeriesPublicID  string `json:"series_public_id"`
+	Body            string `json:"body"`
+	AuthorPublicID  string `json:"author_public_id"`
+	// AuthorName is the writer's display name, as stored on their account.
+	AuthorName  string `json:"author_name"`
+	PublishedAt string `json:"published_at"`
 }
 
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
@@ -345,6 +362,29 @@ func QueueSeriesUnpublished(ctx context.Context, q Queries, tenantID, seriesID u
 			})
 		}
 		return events, nil
+	})
+}
+
+// QueueCommentPosted owes the event of a reader's comment just made visible,
+// called in the transaction that makes it so: posting it where comments need
+// no approval, or approving it. A comment becomes visible for the first time
+// once, so the key names the comment alone: restoring one staff hid shows
+// again a comment already announced, and does not call this.
+func QueueCommentPosted(ctx context.Context, q Queries, tenantID, commentID uuid.UUID) error {
+	return queue(ctx, q, tenantID, EventCommentPosted, EventCommentPosted+":"+commentID.String(), func() (any, error) {
+		row, err := q.GetWebhookComment(ctx, dbmodels.GetWebhookCommentParams{TenantID: tenantID, ID: commentID})
+		if err != nil {
+			return nil, fmt.Errorf("read the comment of a webhook event: %w", err)
+		}
+		return Comment{
+			CommentPublicID: row.CommentPublicID,
+			EpisodePublicID: row.EpisodePublicID,
+			SeriesPublicID:  row.SeriesPublicID,
+			Body:            row.Body,
+			AuthorPublicID:  row.AuthorPublicID,
+			AuthorName:      row.AuthorName,
+			PublishedAt:     formatTime(row.PublishedAt),
+		}, nil
 	})
 }
 

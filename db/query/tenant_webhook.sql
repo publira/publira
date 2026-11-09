@@ -399,6 +399,30 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
 ORDER BY e.order_index,
     e.id;
 
+-- name: GetWebhookComment :one
+-- A comment as a comment.posted event carries it, read in the transaction that
+-- makes it visible: its public id and those of its episode and series, the
+-- body, the instant it became visible, and its writer's public id and display
+-- name, never their address. A comment that is not published answers no row.
+SELECT c.public_id AS comment_public_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    c.body,
+    c.published_at::timestamptz AS published_at,
+    u.public_id AS author_public_id,
+    u.name AS author_name
+FROM episode_comments c
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+    AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+    AND u.id = c.user_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.id = sqlc.arg('id')
+    AND c.status = 'published'
+    AND c.published_at IS NOT NULL;
+
 -- name: GetWebhookDelivery :one
 -- One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 SELECT d.id,

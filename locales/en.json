@@ -4083,6 +4083,8 @@
           "episode_published_description": "An episode is published, at its scheduled time or at once.",
           "episode_unpublished": "Episode unpublished",
           "episode_unpublished_description": "A published episode goes back to a draft or to a later time, or its series is unpublished.",
+          "comment_posted": "Comment posted",
+          "comment_posted_description": "A reader's comment appears on an episode, at once or once it is approved.",
           "test": "Test event"
         },
         "enabled": "Enabled",
