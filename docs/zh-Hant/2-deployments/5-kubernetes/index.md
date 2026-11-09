@@ -2,7 +2,8 @@
 title: Kubernetes
 description: 在Kubernetes叢集上執行安裝實例，從Secret與Deployment、置於其前方的Gateway或Ingress，一直到第一次登入租戶主控台。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 本頁從Kubernetes叢集上一個空的namespace開始，帶著安裝實例一路走到第一次登入租戶主控台。它執行的步驟與[安裝](../2-installing.md)相同；每個步驟為何存在、每個密鑰保護什麼、每個資料庫角色能存取什麼，都在該頁說明。邊緣則依[邊緣](../4-edge/index.md#邊緣必須做的事)的要求設置於前方。本頁涵蓋叢集特有的部分：每個部分會成為哪些資源，以及如何用這些資源滿足上述兩頁的每項要求。
@@ -84,6 +85,7 @@ kubectl create secret generic publira-server \
 
 kubectl create secret generic publira-worker \
   --from-literal=PUBLIRA_REVALIDATE_TOKEN="$REVALIDATE_TOKEN" \
+  --from-literal=PUBLIRA_REDIS_URL="$REDIS_URL" \
   --from-literal=PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:$OUTBOX_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:$TICKER_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_CONTENT_STATS_DB_URL="postgres://publira_content_stats:$CONTENT_STATS_DB_PASSWORD@$DB"

@@ -2,8 +2,8 @@
 title: Amazon ECS (Fargate)
 description: CloudFrontとApplication Load Balancerの背後で、PubliraをAWS Fargate上のAmazon ECSサービスとして動かす手順を、パラメーターとタスク定義の用意からテナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 このページでは、マネージドサービスを用意したVPCから始めて、テナント管理画面に初めてログインするまでを説明します。プロセスはすべてAWS Fargate上のAmazon ECSサービスとして動かし、CloudFrontとApplication Load Balancerをリバースプロキシにします。手順は[インストール](../2-installing.md)と同じです。各手順がなぜ必要か、シークレットがそれぞれ何を守るか、データベースロールがそれぞれどこまで触れられるかは、そちらで説明しています。リバースプロキシは[リバースプロキシで必要な設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに置きます。このページで扱うのはECSとFargateに固有のことで、Publiraの各部分をどのAWSリソースにするか、2つのページの要件をそのリソースでどう満たすかです。
@@ -122,7 +122,7 @@ done
 | `storefront-auth-secret`、`admin-auth-secret` | `web-storefront`と`web-admin`が1つずつ | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`、`publira-worker`、`web-storefront`、`web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server`と`web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`と、`web-storefront`と`web-admin` | `publira-server`と`web-storefront`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
+| `redis-url` | `publira-server`、`publira-worker`、`web-storefront`、`web-admin` | `publira-server`、`publira-worker`、`web-storefront`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
 | `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`。`db-url/platform`は`publiractl setup`も読みます | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`、`db-url/ticker`、`db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`、`PUBLIRA_TICKER_DB_URL`、`PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | `db`タスクだけです。[管理用ログイン](../2-installing.md#サービスを用意する)の接続を読むのは`db`コマンドだけなので、常駐するプロセスには渡しません | `PUBLIRA_DB_URL` |
@@ -210,7 +210,7 @@ done
 for caller in "$SERVER_SG" "$WORKER_SG" "$PUBLIRACTL_SG"; do
   allow "$DB_SG" 5432 "$caller"
 done
-for caller in "$SERVER_SG" "$WEB_SG"; do
+for caller in "$SERVER_SG" "$WORKER_SG" "$WEB_SG"; do
   allow "$VALKEY_SG" 6379 "$caller"
 done
 ```
@@ -222,9 +222,9 @@ done
 | `publira-web` | `3000`、`4000` | ロードバランサーと、キャッシュの再検証を送るサーバーとワーカー |
 | `publira-worker`、`publiractl` | なし | 呼び出すものはありません |
 | データベースのセキュリティグループ | `5432` | サーバー、ワーカー、`publiractl` |
-| Valkeyクラスターのセキュリティグループ | `6379` | サーバーとWebアプリ |
+| Valkeyクラスターのセキュリティグループ | `6379` | サーバー、ワーカー、Webアプリ |
 
-ワーカーと`publiractl`はValkeyを、Webアプリはデータベースを使わないので、それらの経路は開きません。どのセキュリティグループでも、外向きの接続を許可する既定のルールは残しておきます。タスクがイメージの取得、AWSのAPI、S3、SMTPに接続するのに必要です。
+`publiractl`はValkeyを、Webアプリはデータベースを使わないので、それらの経路は開きません。どのセキュリティグループでも、外向きの接続を許可する既定のルールは残しておきます。タスクがイメージの取得、AWSのAPI、S3、SMTPに接続するのに必要です。
 
 ほかから呼び出されるサービスには、Cloud Mapで、VPCのプライベートDNS名前空間の名前を付けます。
 
@@ -600,6 +600,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" },
         {
           "name": "PUBLIRA_WORKER_DB_URL",
           "valueFrom": "/publira/db-url/outbox"

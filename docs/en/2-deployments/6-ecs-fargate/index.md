@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -94,7 +94,7 @@ Write your ElastiCache primary endpoint and your RDS endpoint in place of the on
 | `storefront-auth-secret`, `admin-auth-secret` | `web-storefront` and `web-admin`, one each | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`, `publira-worker`, `web-storefront`, and `web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server` and `web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server` and `web-storefront`; `web-storefront` and `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
+| `redis-url` | `publira-server`, `publira-worker`, and `web-storefront`; `web-storefront` and `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
 | `db-url/public`, `db-url/admin`, `db-url/platform` | `publira-server`, and `publiractl setup` for `db-url/platform` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`, `db-url/ticker`, `db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | The `db` tasks alone: the `db` commands are the only ones that read the [administrative login](../2-installing.md#provision-the-services)'s connection, so nothing kept running is given it | `PUBLIRA_DB_URL` |
@@ -182,7 +182,7 @@ done
 for caller in "$SERVER_SG" "$WORKER_SG" "$PUBLIRACTL_SG"; do
   allow "$DB_SG" 5432 "$caller"
 done
-for caller in "$SERVER_SG" "$WEB_SG"; do
+for caller in "$SERVER_SG" "$WORKER_SG" "$WEB_SG"; do
   allow "$VALKEY_SG" 6379 "$caller"
 done
 ```
@@ -194,9 +194,9 @@ done
 | `publira-web` | `3000`, `4000` | The load balancer, and the server and the worker sending cache revalidations |
 | `publira-worker`, `publiractl` | Nothing | Nothing calls them |
 | The database's | `5432` | The server, the worker, and `publiractl` |
-| The Valkey cluster's | `6379` | The server and the web apps |
+| The Valkey cluster's | `6379` | The server, the worker, and the web apps |
 
-The worker and `publiractl` reach nothing in Valkey, and the web apps nothing in the database, so neither path is opened. Every group keeps the default rule that lets it connect out, which the tasks need for the images, the AWS APIs, S3, and SMTP.
+`publiractl` reaches nothing in Valkey, and the web apps nothing in the database, so neither path is opened. Every group keeps the default rule that lets it connect out, which the tasks need for the images, the AWS APIs, S3, and SMTP.
 
 Cloud Map gives each service that something calls a name under a private DNS namespace of the VPC:
 
@@ -572,6 +572,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" },
         {
           "name": "PUBLIRA_WORKER_DB_URL",
           "valueFrom": "/publira/db-url/outbox"

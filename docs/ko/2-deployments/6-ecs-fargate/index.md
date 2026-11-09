@@ -2,7 +2,8 @@
 title: AWS Fargate의 Amazon ECS
 description: 파라미터와 태스크 정의부터 테넌트 콘솔에 처음 로그인하기까지, CloudFront와 Application Load Balancer 뒤에서 AWS Fargate의 Amazon ECS 서비스로 설치 환경을 실행합니다.
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 이 페이지는 관리형 서비스를 준비한 VPC에서 시작해 테넌트 콘솔에 처음 로그인하기까지 설치 환경을 만들어 갑니다. 모든 프로세스는 AWS Fargate의 Amazon ECS 서비스이며, 엣지는 Application Load Balancer 앞의 CloudFront입니다. 단계는 [설치](../2-installing.md)와 같습니다. 각 단계가 왜 필요한지, 각 시크릿이 무엇을 보호하는지, 각 데이터베이스 역할이 무엇에 접근할 수 있는지는 그 페이지가 설명하며, 엣지는 [엣지](../4-edge/index.md#엣지가-해야-하는-일)가 요구하는 방식으로 앞에 둡니다. 이 페이지는 ECS와 Fargate에 고유한 부분, 즉 각 구성 요소가 어떤 리소스가 되는지, 그리고 두 페이지의 각 요구 사항을 그 리소스로 어떻게 충족하는지를 다룹니다.
@@ -94,7 +95,7 @@ done
 | `storefront-auth-secret`, `admin-auth-secret` | `web-storefront`와 `web-admin`이 각각 하나씩 | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`, `publira-worker`, `web-storefront`, `web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server`와 `web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`와 `web-storefront`; `web-storefront`와 `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
+| `redis-url` | `publira-server`, `publira-worker`, `web-storefront`; `web-storefront`와 `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
 | `db-url/public`, `db-url/admin`, `db-url/platform` | `publira-server`, 그리고 `db-url/platform`은 `publiractl setup`도 | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`, `db-url/ticker`, `db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | `db` 태스크만. [관리용 로그인](../2-installing.md#서비스-준비)의 연결을 읽는 것은 `db` 명령뿐이므로, 계속 실행되는 어떤 것에도 전달하지 않습니다 | `PUBLIRA_DB_URL` |
@@ -182,7 +183,7 @@ done
 for caller in "$SERVER_SG" "$WORKER_SG" "$PUBLIRACTL_SG"; do
   allow "$DB_SG" 5432 "$caller"
 done
-for caller in "$SERVER_SG" "$WEB_SG"; do
+for caller in "$SERVER_SG" "$WORKER_SG" "$WEB_SG"; do
   allow "$VALKEY_SG" 6379 "$caller"
 done
 ```
@@ -194,9 +195,9 @@ done
 | `publira-web` | `3000`, `4000` | 로드 밸런서, 그리고 캐시 재검증을 보내는 서버와 워커 |
 | `publira-worker`, `publiractl` | 없음 | 호출하는 곳이 없습니다 |
 | 데이터베이스의 보안 그룹 | `5432` | 서버, 워커, `publiractl` |
-| Valkey 클러스터의 보안 그룹 | `6379` | 서버와 웹 앱 |
+| Valkey 클러스터의 보안 그룹 | `6379` | 서버, 워커, 웹 앱 |
 
-워커와 `publiractl`은 Valkey에, 웹 앱은 데이터베이스에 접근할 일이 없으므로 그 경로는 열지 않습니다. 모든 그룹은 외부로 연결할 수 있게 하는 기본 규칙을 유지합니다. 태스크는 이미지, AWS API, S3, SMTP를 위해 이 규칙이 필요합니다.
+`publiractl`은 Valkey에, 웹 앱은 데이터베이스에 접근할 일이 없으므로 그 경로는 열지 않습니다. 모든 그룹은 외부로 연결할 수 있게 하는 기본 규칙을 유지합니다. 태스크는 이미지, AWS API, S3, SMTP를 위해 이 규칙이 필요합니다.
 
 Cloud Map은 무언가가 호출하는 각 서비스에 VPC의 프라이빗 DNS 네임스페이스 아래 이름을 부여합니다.
 
@@ -572,6 +573,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" },
         {
           "name": "PUBLIRA_WORKER_DB_URL",
           "valueFrom": "/publira/db-url/outbox"
