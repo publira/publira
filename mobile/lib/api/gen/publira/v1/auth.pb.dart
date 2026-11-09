@@ -2704,7 +2704,12 @@ class GetMfaStatusResponse extends $pb.GeneratedMessage {
 /// Starts setting an authenticator up, replacing one that was started and
 /// never confirmed. failed_precondition for an account that holds a confirmed
 /// one already, which DisableMfa takes off first, and for an install with no
-/// secret manager to keep the secret in.
+/// secret manager to keep the secret in. failed_precondition with the
+/// MFA_SET_UP_IN_CONSOLE reason, here and at ConfirmMfaEnrollment, for a member
+/// of staff who holds a passkey in the tenant's console: the site cannot ask
+/// for that passkey, so a site session proves the password alone, and the
+/// authenticator is set up in the console instead, where the session that asks
+/// has proved the passkey.
 class StartMfaEnrollmentRequest extends $pb.GeneratedMessage {
   factory StartMfaEnrollmentRequest({
     $0.TenantContext? tenant,

@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
 // mfaActions are the actions a reader's second factor writes to the security
@@ -367,6 +368,32 @@ func (s *apiServer) clearMfaAction(ctx context.Context, actor mfaActor) {
 	s.clearReaderAction(ctx, actionVerifyPassword, actor.Tenant.ID, actor.User.ID)
 }
 
+// refuseConsoleFactor refuses setting an authenticator up on the site for an
+// account that holds a passkey in the tenant's console, whatever host it was
+// registered for. The site asks no code of such an account, so its session
+// proves the password alone, and an authenticator enrolled through it would
+// answer the console's challenge in place of the passkey and replace the
+// recovery codes the passkey keeps. The console enrolls it instead, from a
+// session the passkey already answered.
+func (s *apiServer) refuseConsoleFactor(ctx context.Context, actor mfaActor) error {
+	passkeys, err := s.queriesFor(ctx).CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{
+		UserID:       actor.User.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+	})
+	if err != nil {
+		return s.internalDBError(ctx, "failed to count console passkeys", err, "user_id", actor.User.ID.String())
+	}
+	if passkeys > 0 {
+		auth.AuditEvent(ctx, mfaActions.Enrolled, "failure", actor.Tenant.PublicID, actor.User.PublicID, "console_passkey_held")
+		return rpcerrors.NewErrorInfoError(
+			connect.CodeFailedPrecondition,
+			errors.New("the account's second factor is a passkey in the tenant's console, where the authenticator is set up"),
+			rpcerrors.ReasonMfaSetUpInConsole,
+		)
+	}
+	return nil
+}
+
 func (s *apiServer) VerifyMfa(
 	ctx context.Context,
 	req *publirav1.VerifyMfaRequest,
@@ -431,6 +458,9 @@ func (s *apiServer) StartMfaEnrollment(
 	if err := s.chargeMfaAction(ctx, actor, mfaActions.Enrolled); err != nil {
 		return nil, err
 	}
+	if err := s.refuseConsoleFactor(ctx, actor); err != nil {
+		return nil, err
+	}
 	enrollment, err := mfaflow.StartEnrollment(ctx, s.mfaAccount(actor))
 	if err != nil {
 		return nil, err
@@ -453,6 +483,11 @@ func (s *apiServer) ConfirmMfaEnrollment(
 		return nil, mfaflow.CodeRequiredError()
 	}
 	if err := s.chargeMfaAction(ctx, actor, mfaActions.Enrolled); err != nil {
+		return nil, err
+	}
+	// Asked again here: a passkey registered in the console after the start
+	// is held by the time the authenticator would be turned on.
+	if err := s.refuseConsoleFactor(ctx, actor); err != nil {
 		return nil, err
 	}
 	confirmation, err := mfaflow.ConfirmEnrollment(ctx, s.mfaAccount(actor), req.Code)

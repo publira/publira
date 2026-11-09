@@ -475,13 +475,7 @@ func TestDBMfaDisableKeepsTheCodesOfAConsolePasskey(t *testing.T) {
 	env := newMfaDBEnv(t)
 	staff := env.PG.SeedTenantUser(t, env.tenant.ID, "MFASTAFFA001", "admin@tenant-a.example.com", "Admin", auth.RoleTenantAdmin)
 	secret, _ := env.enroll(t, staff)
-	if _, err := env.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO user_webauthn_credentials (
-			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
-		) VALUES (gen_random_uuid(), 'MFAPASSKEY01', $1, $2, 'admin_console', 'admin.tenant-a.example.com', '\x01', '\x01', 0, gen_random_uuid(), false, false)
-	`, env.tenant.ID, staff.ID); err != nil {
-		t.Fatalf("seed a console passkey: %v", err)
-	}
+	seedConsolePasskey(t, env, staff)
 
 	if _, err := env.authClient().DisableMfa(env.session(t, staff), &publirav1.DisableMfaRequest{
 		Tenant:   tenantContext(env.tenant),
@@ -492,6 +486,47 @@ func TestDBMfaDisableKeepsTheCodesOfAConsolePasskey(t *testing.T) {
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", staff.ID); got != mfa.RecoveryCodeCount {
 		t.Fatalf("recovery codes left = %d, want the console passkey's %d", got, mfa.RecoveryCodeCount)
+	}
+}
+
+// A console passkey is a factor the site cannot ask for, so its session
+// proves the password alone, and an authenticator set up through it would
+// answer the console in the passkey's place.
+func TestDBMfaEnrollmentRefusesAnAccountWithAConsolePasskey(t *testing.T) {
+	t.Parallel()
+
+	env := newMfaDBEnv(t)
+	staff := env.PG.SeedTenantUser(t, env.tenant.ID, "MFASTAFFA001", "admin@tenant-a.example.com", "Admin", auth.RoleTenantAdmin)
+	seedConsolePasskey(t, env, staff)
+	ctx := env.session(t, staff)
+
+	_, err := env.authClient().StartMfaEnrollment(ctx, &publirav1.StartMfaEnrollmentRequest{Tenant: tenantContext(env.tenant)})
+	assertReason(t, err, connect.CodeFailedPrecondition, rpcerrors.ReasonMfaSetUpInConsole)
+	_, err = env.authClient().ConfirmMfaEnrollment(ctx, &publirav1.ConfirmMfaEnrollmentRequest{Tenant: tenantContext(env.tenant), Code: "000000"})
+	assertReason(t, err, connect.CodeFailedPrecondition, rpcerrors.ReasonMfaSetUpInConsole)
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1", staff.ID); got != 0 {
+		t.Fatalf("authenticators = %d, want none stored", got)
+	}
+}
+
+// An authenticator started on the site before the console's passkey was
+// registered is not turned on after it.
+func TestDBMfaConfirmationRefusesAConsolePasskeyRegisteredSinceTheStart(t *testing.T) {
+	t.Parallel()
+
+	env := newMfaDBEnv(t)
+	staff := env.PG.SeedTenantUser(t, env.tenant.ID, "MFASTAFFA001", "admin@tenant-a.example.com", "Admin", auth.RoleTenantAdmin)
+	ctx := env.session(t, staff)
+	started, err := env.authClient().StartMfaEnrollment(ctx, &publirav1.StartMfaEnrollmentRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment: %v", err)
+	}
+	seedConsolePasskey(t, env, staff)
+
+	_, err = env.authClient().ConfirmMfaEnrollment(ctx, &publirav1.ConfirmMfaEnrollmentRequest{Tenant: tenantContext(env.tenant), Code: mfaCode(t, started.Secret, 0)})
+	assertReason(t, err, connect.CodeFailedPrecondition, rpcerrors.ReasonMfaSetUpInConsole)
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1 AND enabled_at IS NOT NULL", staff.ID); got != 0 {
+		t.Fatalf("confirmed authenticators = %d, want none", got)
 	}
 }
 
@@ -544,5 +579,18 @@ func TestDBMfaResetLeavesThePasswordAlone(t *testing.T) {
 
 	if login := env.login(t, env.reader); login.AccessToken.GetToken() == "" || login.MfaChallenge != nil {
 		t.Fatalf("Login after the reset = %+v, want a session on the password alone", login)
+	}
+}
+
+// seedConsolePasskey stores a passkey for user as the console registers one.
+// Nothing here asserts with it, so its key is no real one.
+func seedConsolePasskey(t *testing.T, env *mfaDBEnv, user testutil.TenantUser) {
+	t.Helper()
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'MFAPASSKEY01', $1, $2, 'admin_console', 'admin.tenant-a.example.com', '\x01', '\x01', 0, gen_random_uuid(), false, false)
+	`, env.tenant.ID, user.ID); err != nil {
+		t.Fatalf("seed a console passkey: %v", err)
 	}
 }

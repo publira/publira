@@ -88,6 +88,11 @@ const (
 	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"
 	ReasonMfaInvalidCode  = "MFA_INVALID_CODE"
 	ReasonMfaLocked       = "MFA_LOCKED"
+	// ReasonMfaSetUpInConsole refuses setting an authenticator up on the site
+	// for an account whose second factor is a passkey in the tenant's console:
+	// a site session proves the password alone, which is not enough to add a
+	// factor beside one the console holds.
+	ReasonMfaSetUpInConsole = "MFA_SET_UP_IN_CONSOLE"
 	// ReasonMfaPasskeyRefused refuses a passkey response that did not verify:
 	// a signature, an origin, or a challenge that was not the one expected.
 	ReasonMfaPasskeyRefused = "MFA_PASSKEY_REFUSED"

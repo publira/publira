@@ -68,7 +68,9 @@
 // is asked for wherever the account signs in. The site requires the factor of
 // no one, so it issues verify challenges alone, and its own passkeys are a
 // way to sign in rather than a factor, so its Account counts none. A passkey
-// sign-in there owes no code.
+// sign-in there owes no code. Nor can the site ask for a console passkey, so
+// it signs such an account in on the password, and refuses it an
+// authenticator, which would answer the console in the passkey's place.
 //
 // For operators of the Platform Console, the factor lives in the
 // platform_user_mfa_* tables, which publira_platform alone reaches apart from
