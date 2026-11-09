@@ -120,12 +120,10 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 	draft := f.env.PG.SeedVolume(t, tenantID, f.series.ID, testutil.VolumeSeed{PublicID: "VOLUME01", Title: "Volume 1", OrderIndex: 1, Price: 200, EpisodeIDs: []uuid.UUID{episode.ID, kept.ID}})
 
 	bundleID := uuid.Must(uuid.NewV7())
-	f.exec(t, "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price) VALUES ($1, $2, $3, $4, 'bundle-open', 240)", bundleID, tenantID, f.series.ID, f.reader.ID)
+	f.exec(t, "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price, expired_provider, expired_provider_checkout_id, expired_at) VALUES ($1, $2, $3, $4, 'bundle-expired', 240, 'stripe', 'cs_expired', now())", bundleID, tenantID, f.series.ID, f.reader.ID)
 	for i, target := range []uuid.UUID{episode.ID, kept.ID} {
 		f.exec(t, "INSERT INTO series_bundle_episodes (tenant_id, series_bundle_id, episode_id, position, list_price, price) VALUES ($1, $2, $3, $4, 120, 120)", tenantID, bundleID, target, i)
 	}
-	f.exec(t, "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, currency) VALUES ($1, $2, $3, $4, 120, 'com.example.episode.120', $5)",
-		uuid.Must(uuid.NewV7()), tenantID, f.reader.ID, episode.ID, f.env.PG.TenantCurrency(t, tenantID))
 	f.exec(t, "INSERT INTO promotion_codes (id, tenant_id, code, discount_kind, discount_value, target_kind, target_id) VALUES ($1, $2, 'CHAPTER10', 'percent', 10, 'episode', $3)",
 		uuid.Must(uuid.NewV7()), tenantID, episode.ID)
 
@@ -152,7 +150,6 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 		"content_events WHERE episode_id = $1",
 		"volume_episodes WHERE episode_id = $1",
 		"series_bundle_episodes WHERE episode_id = $1",
-		"store_purchase_intents WHERE episode_id = $1",
 		"promotion_codes WHERE target_id = $1",
 	} {
 		if got := f.env.countRows(t, "SELECT count(*) FROM "+table, episode.ID); got != 0 {
@@ -174,7 +171,7 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 		t.Errorf("episodes left in the draft volume = %d, want 1", got)
 	}
 	if got := f.env.countRows(t, "SELECT count(*) FROM series_bundle_episodes WHERE series_bundle_id = $1", bundleID); got != 1 {
-		t.Errorf("episodes left in the unpaid bundle = %d, want 1", got)
+		t.Errorf("episodes left in the expired bundle = %d, want 1", got)
 	}
 
 	// It leaves the search index as an unpublished one does.
@@ -240,6 +237,15 @@ func TestDBDeleteEpisodeRefusesWhatHasToBeKept(t *testing.T) {
 		{"a store purchase", func(t *testing.T, episode testutil.Episode) {
 			f.purchase(t, episode.ID, ", store, store_transaction_id", "app_store", f.publicID("txn-"))
 		}, rpcerrors.ReasonEpisodeStorePurchased},
+		{"a store payment sheet no transaction used yet", func(t *testing.T, episode testutil.Episode) {
+			f.exec(t, "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, currency) VALUES ($1, $2, $3, $4, 120, 'com.example.episode.120', $5)",
+				uuid.Must(uuid.NewV7()), tenantID, f.reader.ID, episode.ID, f.env.PG.TenantCurrency(t, tenantID))
+		}, rpcerrors.ReasonEpisodePaymentPending},
+		{"a bundle checkout that can still be paid", func(t *testing.T, episode testutil.Episode) {
+			bundleID := uuid.Must(uuid.NewV7())
+			f.exec(t, "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price) VALUES ($1, $2, $3, $4, $5, 120)", bundleID, tenantID, f.series.ID, f.reader.ID, f.publicID("bundle-"))
+			f.exec(t, "INSERT INTO series_bundle_episodes (tenant_id, series_bundle_id, episode_id, position, list_price, price) VALUES ($1, $2, $3, 0, 120, 120)", tenantID, bundleID, episode.ID)
+		}, rpcerrors.ReasonEpisodePaymentPending},
 		{"an access ticket", func(t *testing.T, episode testutil.Episode) {
 			f.exec(t, "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id, revoked_at) VALUES ($1, $2, $3, $4, $5, now())",
 				uuid.Must(uuid.NewV7()), tenantID, f.publicID("TKT"), episode.ID, f.reader.ID)

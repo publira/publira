@@ -3326,8 +3326,8 @@ func (x *ReorderEpisodeImagesResponse) GetImages() []*v1.EpisodeImage {
 // follows, reactions, reading positions, and reads. It leaves the site, the
 // app, and the search index as an episode taken back to a draft does, and its
 // images are reclaimed by the orphan image sweep. A draft volume that holds
-// it, an unpaid bundle checkout that names it, and a promotion code for it
-// that nobody redeemed lose it.
+// it, a bundle checkout that expired unpaid and names it, and a promotion code
+// for it that nobody redeemed lose it.
 //
 // An episode something refers to is failed_precondition with an ErrorInfo
 // reason naming the first of these, in this order:
@@ -3336,6 +3336,10 @@ func (x *ReorderEpisodeImagesResponse) GetImages() []*v1.EpisodeImage {
 //     provider or granted by staff, or a volume or a bundle bought with it.
 //   - EPISODE_STORE_PURCHASED: a purchase through the App Store or Google
 //     Play.
+//   - EPISODE_PAYMENT_PENDING: a payment for it that can still be taken: an
+//     App Store or Google Play payment sheet a reader opened for it that no
+//     confirmed transaction has used yet, or a bundle checkout that names it
+//     and is neither paid nor reported expired by the payment provider.
 //   - EPISODE_ACCESS_TICKET_ISSUED: an access ticket, revoked or expired ones
 //     included.
 //   - EPISODE_ON_ROYALTY_STATEMENT: a line of a royalty statement, or a part
@@ -3345,8 +3349,9 @@ func (x *ReorderEpisodeImagesResponse) GetImages() []*v1.EpisodeImage {
 //     redeemed.
 //   - EPISODE_IN_PUBLISHED_VOLUME: a published volume that holds it.
 //
-// Each is a record of money or of what a reader was granted, so nothing is
-// deleted and nothing is anonymized: take the episode off the site instead.
+// Each is a record of money or of what a reader was granted, or a payment
+// that would become one, so nothing is deleted and nothing is anonymized: take
+// the episode off the site instead.
 // An episode that does not exist, a second request for one deleted already
 // included, is not_found.
 type DeleteEpisodeRequest struct {

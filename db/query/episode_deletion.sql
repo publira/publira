@@ -1,6 +1,7 @@
 -- Deleting an episode, which the console allows only while nothing that has to
 -- be kept refers to it: a record of money a reader paid or was granted, a
--- royalty statement, a promotion code someone redeemed, or a published volume.
+-- payment that can still be taken, a royalty statement, a promotion code
+-- someone redeemed, or a published volume.
 -- What is the episode's alone goes with it, in the transaction that deletes it.
 --
 -- The statements run in the order they appear here. The locks come first and
@@ -60,6 +61,11 @@ FOR UPDATE OF b;
 --                     payment provider or granted by staff, and a volume or a
 --                     bundle someone bought with it
 --   store_purchase    a purchase through the App Store or Google Play
+--   pending_payment   a payment that can still be taken: a store payment
+--                     sheet opened for it that no confirmed transaction used,
+--                     or a bundle checkout naming it that is neither paid nor
+--                     reported expired, either of which records a purchase
+--                     once the payment arrives
 --   access_ticket     an access ticket, revoked or expired ones included
 --   royalty_statement a line of a royalty statement, or the subscription
 --                     revenue a statement gave it a part of
@@ -106,6 +112,28 @@ SELECT (
                     AND p.episode_id = sqlc.arg('episode_id')::uuid
                     AND p.store IS NOT NULL
             ) THEN 'store_purchase'
+            WHEN EXISTS (
+                SELECT 1
+                FROM store_purchase_intents i
+                WHERE i.tenant_id = sqlc.arg('tenant_id')
+                    AND i.episode_id = sqlc.arg('episode_id')::uuid
+                    AND i.consumed_at IS NULL
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM series_bundle_episodes sbe
+                    JOIN series_bundles b ON b.tenant_id = sbe.tenant_id
+                        AND b.id = sbe.series_bundle_id
+                WHERE sbe.tenant_id = sqlc.arg('tenant_id')
+                    AND sbe.episode_id = sqlc.arg('episode_id')::uuid
+                    AND b.expired_at IS NULL
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM purchases p
+                        WHERE p.tenant_id = b.tenant_id
+                            AND p.series_bundle_id = b.id
+                    )
+            ) THEN 'pending_payment'
             WHEN EXISTS (
                 SELECT 1
                 FROM access_tickets at
@@ -165,8 +193,9 @@ WHERE ve.tenant_id = sqlc.arg('tenant_id')
     AND NOT v.is_published;
 
 -- name: DeleteEpisodeFromUnpaidSeriesBundles :exec
--- A bundle checkout nobody paid for, open or expired, loses the episode. The
--- bundles someone paid for refuse the deletion before this runs.
+-- A bundle checkout that expired unpaid loses the episode. The bundles someone
+-- paid for, and the ones that can still be paid, refuse the deletion before
+-- this runs.
 DELETE FROM series_bundle_episodes sbe
 WHERE sbe.tenant_id = sqlc.arg('tenant_id')
     AND sbe.episode_id = sqlc.arg('episode_id')::uuid
@@ -190,8 +219,8 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- The episode, and through the foreign keys that cascade from it everything
 -- that is its alone: its pages, eye-catch, translations, credits, listing, free
 -- windows, campaign prices, review rounds, comments and their reports, follows,
--- reactions, reading positions, reads, and the checkouts and store intents
--- that named it. The objects of its images are left to the orphan image sweep.
+-- reactions, reading positions, reads, and the record of its checkouts that
+-- expired. The objects of its images are left to the orphan image sweep.
 DELETE FROM episodes
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');

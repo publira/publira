@@ -33,6 +33,7 @@ export const RPC_ERROR_REASON = {
   episodeInPublishedVolume: "EPISODE_IN_PUBLISHED_VOLUME",
   episodeOnRoyaltyStatement: "EPISODE_ON_ROYALTY_STATEMENT",
   episodePaidWithCoins: "EPISODE_PAID_WITH_COINS",
+  episodePaymentPending: "EPISODE_PAYMENT_PENDING",
   episodePromotionCodeRedeemed: "EPISODE_PROMOTION_CODE_REDEEMED",
   episodePurchased: "EPISODE_PURCHASED",
   episodeStorePurchased: "EPISODE_STORE_PURCHASED",

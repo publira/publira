@@ -64,11 +64,12 @@ const (
 	// The refusals of deleting an episode something that has to be kept
 	// refers to, one per kind of reference: a purchase, a rental, or a tip,
 	// or a volume or a bundle bought with it; a purchase through an app store;
-	// an access ticket; a royalty statement; a purchase paid with coins; a
+	// a payment for it that can still be taken; an access ticket; a royalty statement; a purchase paid with coins; a
 	// promotion code for it that someone redeemed; and a published volume
 	// that holds it.
 	ReasonEpisodePurchased             = "EPISODE_PURCHASED"
 	ReasonEpisodeStorePurchased        = "EPISODE_STORE_PURCHASED"
+	ReasonEpisodePaymentPending        = "EPISODE_PAYMENT_PENDING"
 	ReasonEpisodeAccessTicketIssued    = "EPISODE_ACCESS_TICKET_ISSUED"
 	ReasonEpisodeOnRoyaltyStatement    = "EPISODE_ON_ROYALTY_STATEMENT"
 	ReasonEpisodePaidWithCoins         = "EPISODE_PAID_WITH_COINS"

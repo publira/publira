@@ -23,6 +23,7 @@ import (
 var episodeDeletionBlockers = map[string]string{
 	"purchase":          rpcerrors.ReasonEpisodePurchased,
 	"store_purchase":    rpcerrors.ReasonEpisodeStorePurchased,
+	"pending_payment":   rpcerrors.ReasonEpisodePaymentPending,
 	"access_ticket":     rpcerrors.ReasonEpisodeAccessTicketIssued,
 	"royalty_statement": rpcerrors.ReasonEpisodeOnRoyaltyStatement,
 	"coin_payment":      rpcerrors.ReasonEpisodePaidWithCoins,
