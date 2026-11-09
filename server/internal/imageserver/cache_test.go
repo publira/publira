@@ -100,27 +100,3 @@ func TestJoinSplitCachePayload(t *testing.T) {
 		t.Fatal("splitCachePayload(invalid) = true")
 	}
 }
-
-// A rendition of a tenant's image is stored behind the tenant's public ID, so
-// the erasure of a deleted tenant finds every one of them by that ID alone,
-// while the key the response names it by stays the digest.
-func TestCacheEntryKeyNamesTheTenantOfTheObject(t *testing.T) {
-	for _, tc := range []struct {
-		objectKey string
-		want      string
-	}{
-		{"tenants/SeedTNNTAAA1/series/SR01/cover.jpg", "SeedTNNTAAA1:digest"},
-		{"tenants/SeedTNNTAAA1/", "SeedTNNTAAA1:digest"},
-		{"tenants/", "digest"},
-		{"tenants//cover.jpg", "digest"},
-		{"data-exports/SeedTNNTAAA1/a.zip", "digest"},
-		{"obj", "digest"},
-	} {
-		if got := cacheEntryKey(tc.objectKey, "digest"); got != tc.want {
-			t.Errorf("cacheEntryKey(%q) = %q, want %q", tc.objectKey, got, tc.want)
-		}
-	}
-	if got, want := TenantCacheMatch("SeedTNNTAAA1"), redisKeyPrefix+"SeedTNNTAAA1:*"; got != want {
-		t.Errorf("TenantCacheMatch = %q, want %q", got, want)
-	}
-}

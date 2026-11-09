@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/publira/publira/server/internal/imagecachekey"
 )
 
-const redisKeyPrefix = "publira:img:"
+const redisKeyPrefix = imagecachekey.RedisPrefix
 
 type redisCache struct {
 	client *redis.Client

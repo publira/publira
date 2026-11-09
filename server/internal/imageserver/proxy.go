@@ -14,6 +14,7 @@ import (
 
 	"manael.org/x/manael/v3"
 
+	"github.com/publira/publira/server/internal/imagecachekey"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -181,7 +182,7 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHo
 		return
 	}
 	key := cacheKey(storeVersion, objectKey, r)
-	entryKey := cacheEntryKey(objectKey, key)
+	entryKey := imagecachekey.Entry(objectKey, key)
 	if entry, ok := h.cache.Get(r.Context(), entryKey); ok {
 		h.writeConvertedImage(w, entry.ContentType, cacheControl, "hit", http.StatusOK, entry.Data, cipher, key)
 		return

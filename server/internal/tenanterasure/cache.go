@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/imageserver"
+	"github.com/publira/publira/server/internal/imagecachekey"
 	"github.com/publira/publira/server/internal/ratelimit"
 )
 
@@ -47,7 +47,7 @@ func (c *RedisCache) Close() error {
 func (c *RedisCache) EraseTenant(ctx context.Context, tenant dbmodels.Tenant) (int, error) {
 	var erased int
 	for _, match := range []string{
-		imageserver.TenantCacheMatch(tenant.PublicID),
+		imagecachekey.TenantMatch(tenant.PublicID),
 		ratelimit.TenantKeyMatch(tenant.ID.String()),
 	} {
 		n, err := c.erase(ctx, match)

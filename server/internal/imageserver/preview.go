@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/imagecachekey"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -96,7 +97,7 @@ func (h *Handler) servePreview(w http.ResponseWriter, r *http.Request, adminHost
 	if !ok {
 		return
 	}
-	key := cacheEntryKey(objectKey, previewCacheKey(storeVersion, objectKey))
+	key := imagecachekey.Entry(objectKey, previewCacheKey(storeVersion, objectKey))
 	if entry, ok := h.cache.Get(ctx, key); ok {
 		writeImage(w, entry.ContentType, publicImageCacheControl, "hit", http.StatusOK, entry.Data)
 		return
