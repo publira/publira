@@ -2,7 +2,8 @@
 title: 在AWS Fargate上執行Amazon ECS
 description: 將安裝實例作為AWS Fargate上的Amazon ECS服務，在CloudFront與Application Load Balancer之後執行，從參數與任務定義，一直到第一次登入租戶主控台。
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 本頁從一個已準備好代管服務的VPC開始，帶著安裝實例一路走到第一次登入租戶主控台；其中每個處理程序都是AWS Fargate上的一個Amazon ECS服務，並以位於Application Load Balancer前方的CloudFront作為邊緣。它執行的步驟與[安裝](../2-installing.md)相同；每個步驟為何存在、每個密鑰保護什麼、每個資料庫角色能存取什麼，都在該頁說明。邊緣則依[邊緣](../4-edge/index.md#邊緣必須做的事)的要求設置於前方。本頁涵蓋ECS與Fargate特有的部分：每個部分會成為哪些資源，以及如何用這些資源滿足上述兩頁的每項要求。
@@ -94,7 +95,7 @@ done
 | `storefront-auth-secret`、`admin-auth-secret` | `web-storefront`與`web-admin`，各用一個 | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`、`publira-worker`、`web-storefront`與`web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server`與`web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`與`web-storefront`；`web-storefront`與`web-admin` | `PUBLIRA_REDIS_URL`；`PNCH_REDIS_URL` |
+| `redis-url` | `publira-server`、`publira-worker`與`web-storefront`；`web-storefront`與`web-admin` | `PUBLIRA_REDIS_URL`；`PNCH_REDIS_URL` |
 | `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`，以及讀取`db-url/platform`的`publiractl setup` | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`、`db-url/ticker`、`db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`、`PUBLIRA_TICKER_DB_URL`、`PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | 只有`db`系列的任務：只有`db`系列指令會讀取[管理登入](../2-installing.md#佈建服務)的連線，因此任何持續執行的處理程序都不會拿到它 | `PUBLIRA_DB_URL` |
@@ -182,7 +183,7 @@ done
 for caller in "$SERVER_SG" "$WORKER_SG" "$PUBLIRACTL_SG"; do
   allow "$DB_SG" 5432 "$caller"
 done
-for caller in "$SERVER_SG" "$WEB_SG"; do
+for caller in "$SERVER_SG" "$WORKER_SG" "$WEB_SG"; do
   allow "$VALKEY_SG" 6379 "$caller"
 done
 ```
@@ -194,9 +195,9 @@ done
 | `publira-web` | `3000`、`4000` | 負載平衡器，以及傳送快取重新驗證的伺服器與worker |
 | `publira-worker`、`publiractl` | 無 | 沒有任何東西呼叫它們 |
 | 資料庫的安全群組 | `5432` | 伺服器、worker與`publiractl` |
-| Valkey叢集的安全群組 | `6379` | 伺服器與Web應用程式 |
+| Valkey叢集的安全群組 | `6379` | 伺服器、worker與Web應用程式 |
 
-worker與`publiractl`不會存取Valkey中的任何東西，Web應用程式也不會存取資料庫中的任何東西，因此這兩條路徑都不開通。每個群組都保留允許向外連線的預設規則，任務需要它來存取映像檔、AWS API、S3與SMTP。
+`publiractl`不會存取Valkey中的任何東西，Web應用程式也不會存取資料庫中的任何東西，因此這兩條路徑都不開通。每個群組都保留允許向外連線的預設規則，任務需要它來存取映像檔、AWS API、S3與SMTP。
 
 Cloud Map會在VPC的私有DNS命名空間下，為每個會被呼叫的服務提供一個名稱：
 
@@ -572,6 +573,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" },
         {
           "name": "PUBLIRA_WORKER_DB_URL",
           "valueFrom": "/publira/db-url/outbox"

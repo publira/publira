@@ -2,7 +2,8 @@
 title: Kubernetes
 description: Secret과 Deployment, 그 앞에 두는 Gateway 또는 Ingress부터 테넌트 콘솔에 처음 로그인하기까지, Kubernetes 클러스터에서 설치 환경을 실행합니다.
 published: 2026-11-03
-source_updated: 2026-10-31
+updated: 2026-11-09
+source_updated: 2026-11-09
 ---
 
 이 페이지는 Kubernetes 클러스터의 빈 네임스페이스에서 시작해 테넌트 콘솔에 처음 로그인하기까지 설치 환경을 만들어 갑니다. 단계는 [설치](../2-installing.md)와 같습니다. 각 단계가 왜 필요한지, 각 시크릿이 무엇을 보호하는지, 각 데이터베이스 역할이 무엇에 접근할 수 있는지는 그 페이지가 설명하며, 엣지는 [엣지](../4-edge/index.md#엣지가-해야-하는-일)가 요구하는 방식으로 앞에 둡니다. 이 페이지는 클러스터에 고유한 부분, 즉 각 구성 요소가 어떤 리소스가 되는지, 그리고 두 페이지의 각 요구 사항을 그 리소스로 어떻게 충족하는지를 다룹니다.
@@ -84,6 +85,7 @@ kubectl create secret generic publira-server \
 
 kubectl create secret generic publira-worker \
   --from-literal=PUBLIRA_REVALIDATE_TOKEN="$REVALIDATE_TOKEN" \
+  --from-literal=PUBLIRA_REDIS_URL="$REDIS_URL" \
   --from-literal=PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:$OUTBOX_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:$TICKER_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_CONTENT_STATS_DB_URL="postgres://publira_content_stats:$CONTENT_STATS_DB_PASSWORD@$DB"

@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Run an install on a Kubernetes cluster, from its Secrets and Deployments and a Gateway or an Ingress in front of them to the first sign-in to the tenant console.
 published: 2026-10-13
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -84,6 +84,7 @@ kubectl create secret generic publira-server \
 
 kubectl create secret generic publira-worker \
   --from-literal=PUBLIRA_REVALIDATE_TOKEN="$REVALIDATE_TOKEN" \
+  --from-literal=PUBLIRA_REDIS_URL="$REDIS_URL" \
   --from-literal=PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:$OUTBOX_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:$TICKER_DB_PASSWORD@$DB" \
   --from-literal=PUBLIRA_CONTENT_STATS_DB_URL="postgres://publira_content_stats:$CONTENT_STATS_DB_PASSWORD@$DB"
