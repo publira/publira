@@ -420,6 +420,10 @@ func encodeDocument(encoder *json.Encoder, index, locale string, doc Document) e
 // longer find them. An index that does not exist holds none of them, so it is
 // passed over rather than refused.
 //
+// Each index is refreshed first: a delete by query matches only what a search
+// can see, and a write [Backend.PutAll] made without waiting for a refresh is
+// not visible until the next one, so it would be left behind.
+//
 // A write that lands after it — an index update the worker was sending when
 // the tenant's rows were deleted — puts its document back, so the caller
 // deletes the rows such writes are made from first.
@@ -432,6 +436,12 @@ func (b *Backend) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	}
 	ignoreUnavailable := true
 	for _, t := range b.targets() {
+		if _, err := b.client.Indices.Refresh(ctx, &opensearchapi.IndicesRefreshReq{
+			Indices: []string{t.alias},
+			Params:  &opensearchapi.IndicesRefreshParams{IgnoreUnavailable: &ignoreUnavailable},
+		}); err != nil {
+			return fmt.Errorf("opensearchbackend: refresh %q before deleting the tenant's documents: %w", t.alias, err)
+		}
 		if _, err := b.client.DeleteByQuery(ctx, &opensearchapi.DeleteByQueryReq{
 			Indices:    []string{t.alias},
 			BodyReader: bytes.NewReader(body),

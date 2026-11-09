@@ -26,6 +26,7 @@ func (TenantErasure) Run(ctx context.Context, deps Deps) error {
 		Images:   deps.Storage,
 		Archives: deps.DataExportBucket,
 		Search: platformsearch.TenantEraser{
+			DB:      deps.DB,
 			Queries: dbmodels.New(deps.DB),
 			Secrets: deps.Secrets,
 			Logger:  logger,
@@ -36,13 +37,14 @@ func (TenantErasure) Run(ctx context.Context, deps Deps) error {
 	attrs := []any{
 		"erased_count", summary.Erased,
 		"failed_count", summary.Failed,
+		"deferred_count", summary.Deferred,
 		"duration", time.Since(started),
 	}
 	if err != nil {
 		logger.ErrorContext(ctx, "tenant erasure pass failed", append(attrs, "error", err)...)
 		return err
 	}
-	if summary.Erased > 0 {
+	if summary.Erased > 0 || summary.Deferred > 0 {
 		logger.InfoContext(ctx, "tenant erasure pass completed", attrs...)
 	}
 	return nil

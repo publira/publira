@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dbroles"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformtenants"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -94,8 +95,9 @@ func (d Deps) batchSize() int {
 // Summary is what a pass did.
 type Summary struct {
 	// Erased counts the tenants deleted in full, Failed those a step failed
-	// for, which the next pass takes up again.
-	Erased, Failed int
+	// for, and Deferred those left while a build of the search index runs,
+	// all of which the next pass takes up again.
+	Erased, Failed, Deferred int
 	// Skipped reports a pass that found another holding the lock.
 	Skipped bool
 }
@@ -103,7 +105,8 @@ type Summary struct {
 // RunPending erases every tenant marked for deletion, the longest waiting
 // first. A tenant whose erasure fails is logged, told to the operators, and
 // left marked for the next pass, and the others are erased all the same; the
-// returned error joins every failure.
+// returned error joins every failure. A tenant whose index documents wait on a
+// build is left marked as well, without a failure.
 func RunPending(ctx context.Context, deps Deps) (Summary, error) {
 	if deps.DB == nil {
 		return Summary{}, errors.New("tenanterasure: db is nil")
@@ -148,6 +151,13 @@ func RunPending(ctx context.Context, deps Deps) (Summary, error) {
 		}
 		if ctx.Err() != nil {
 			return summary, errors.Join(append(errs, err)...)
+		}
+		if errors.Is(err, platformsearch.ErrBuildRunning) {
+			// Not a failure: the build holds the index the documents are
+			// deleted from, and the next pass after it finds the lock free.
+			summary.Deferred++
+			tenantLogger.InfoContext(ctx, "tenant erasure deferred until the catalog index build completes")
+			continue
 		}
 		summary.Failed++
 		tenantLogger.ErrorContext(ctx, "tenant erasure failed", "error", err)

@@ -18,6 +18,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformtenants"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/storage/storagetest"
@@ -206,6 +207,48 @@ func TestDBRunPendingFinishesAnErasureAFailedPassLeftHalfDone(t *testing.T) {
 	}
 	if left != 0 {
 		t.Fatal("the seed tenant row is left after the pass that finished")
+	}
+}
+
+// A pass that finds a build of the search index running leaves the tenant
+// marked without calling it a failure: no operator is told, and the pass
+// after the build erases it.
+func TestDBRunPendingWaitsOutACatalogIndexBuild(t *testing.T) {
+	pg := testutil.StartIsolatedPostgres(t)
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	applySeeds(ctx, t, pg.DB)
+	operatorID := deleteSeedTenantAsAnOperator(ctx, t, pg)
+
+	db := pg.OpenContentStatsDB(t)
+	building := &recordingSearch{err: fmt.Errorf("erase: %w", platformsearch.ErrBuildRunning)}
+	summary, err := tenanterasure.RunPending(ctx, tenanterasure.Deps{DB: db, Search: building, Logger: discard()})
+	if err != nil || summary.Deferred != 1 || summary.Failed != 0 || summary.Erased != 0 {
+		t.Fatalf("RunPending during a build = (%+v, %v), want the tenant deferred", summary, err)
+	}
+	var marked bool
+	if err := pg.DB.QueryRowContext(ctx, `SELECT deletion_requested_at IS NOT NULL FROM tenants WHERE public_id = 'SeedTNNTAAA1'`).Scan(&marked); err != nil {
+		t.Fatalf("read the seed tenant: %v", err)
+	}
+	if !marked {
+		t.Fatal("the seed tenant is no longer marked after a deferred pass")
+	}
+	var failures int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM platform_notifications
+		WHERE notification_type = $1 AND platform_user_id = $2
+	`, tenanterasure.NotificationTypeTenantDeletionFailed, operatorID).Scan(&failures); err != nil {
+		t.Fatalf("count the failure notifications: %v", err)
+	}
+	if failures != 0 {
+		t.Errorf("the operator was told of %d failures for a deferred pass, want none", failures)
+	}
+
+	summary, err = tenanterasure.RunPending(ctx, tenanterasure.Deps{DB: db, Search: &recordingSearch{}, Logger: discard()})
+	if err != nil || summary.Erased != 1 {
+		t.Fatalf("RunPending once the build is done = (%+v, %v), want the tenant erased", summary, err)
 	}
 }
 

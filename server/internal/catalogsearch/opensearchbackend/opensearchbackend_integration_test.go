@@ -1178,6 +1178,19 @@ func TestDeleteTenantRemovesOnlyThatTenantsDocuments(t *testing.T) {
 		if err := backend.DeleteTenant(context.Background(), deleted); err != nil {
 			t.Fatalf("DeleteTenant again: %v", err)
 		}
+
+		// A write no refresh has made visible yet, as the worker's last index
+		// update before the tenant's rows were deleted can be, is deleted too.
+		if err := backend.PutAll(context.Background(), []Document{publishedSeries(deleted, "Seed Garden", "")}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		if err := backend.DeleteTenant(context.Background(), deleted); err != nil {
+			t.Fatalf("DeleteTenant after an unrefreshed write: %v", err)
+		}
+		refresh(t, backend)
+		if got := countTenantDocuments(t, backend, deleted); got != 0 {
+			t.Errorf("the deleted tenant holds %d documents written before the delete, want none", got)
+		}
 	})
 }
 
