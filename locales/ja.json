@@ -122,6 +122,27 @@
       "tip_subject": "{$tenant_name}チップ受付完了",
       "volume": "巻「{$volume_title}」"
     },
+    "purchase_refund_notice": {
+      "action": "購入済み一覧を開く",
+      "amount": "返金額は{$amount} ({$currency}) です。",
+      "closed": "全額を返金したため、この購入で読めるようになっていたエピソードは読めなくなりました。サイトから改めて購入できます。",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name} (うちボーナス{$bonus})}}",
+      "coins_closed": "全額を返金したため、この購入で付与された{$coin_name}の残りは取り消されました。",
+      "coins_open": "返金は代金の一部のため、この購入で付与された{$coin_name}は取り消されません。",
+      "episode": "エピソード「{$episode_title}」",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "返金のお知らせ",
+      "intro": "{$tenant_name}でお支払いいただいた代金を返金しました。",
+      "open": "返金は代金の一部のため、この返金で購入したエピソードが読めなくなることはありません。",
+      "preview": "{$title}の代金を返金しました。",
+      "series": "シリーズ「{$series_title}」",
+      "series_bundle": "残りのエピソード{$count :integer}話",
+      "subject": "{$tenant_name}返金のお知らせ",
+      "test_notice": "これは決済サービスのテストモードでの購入です。実際の返金は行われていません。",
+      "tip": "著者にチップを贈ったエピソード「{$episode_title}」",
+      "total": "お支払いいただいた{$price}のうち、これまでの返金額の合計は{$total}です。",
+      "volume": "巻「{$volume_title}」"
+    },
     "reader_announcement_posted": {
       "action": "お知らせを読む",
       "everyone": "このお知らせは、通知設定にかかわらず{$tenant_name}のすべての読者に送信されています。",

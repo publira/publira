@@ -165,6 +165,7 @@ The long-lived background process. It hosts one River client, on which it drains
 | `reader_password_changed_notice_email` | Reader notice that the password on the account was changed |
 | `reader_signup_attempt_notice_email` | Reader notice that a sign-up was attempted with an address that already has an account |
 | `purchase_receipt` | Reader receipt for a purchase recorded from a payment provider's notification, one per purchase however often the notification is redelivered |
+| `purchase_refund_notice` | Reader notice of a refund recorded from a payment provider's notification, whatever the reader's notification settings say: one per refund that adds to what the purchase has had refunded, however often the notification is redelivered. A refund through the App Store or Google Play sends none |
 | `admin_password_reset_email` | Admin console password reset |
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |

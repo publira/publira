@@ -46,7 +46,10 @@ type Querier interface {
 	// The held row is left for the caller to delete once this has committed. A
 	// crash in between costs a repeat of an update that is idempotent, whereas
 	// deleting here would lose the refund if the update never landed.
-	ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (Purchase, error)
+	//
+	// previous_amount is the total recorded before this write, as
+	// RecordRefundOnPurchase answers it.
+	ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (ApplyUnappliedRefundToPurchaseRow, error)
 	// Writes a refund held because its notification overtook the payment's onto
 	// the payment, by the rules RecordRefundOnSubscriptionPayment uses. Nothing
 	// matches when no refund is held for the PaymentIntent, which is the ordinary
@@ -1217,7 +1220,8 @@ type Querier interface {
 	// surface cannot sell what it cannot show, and a volume none of whose episodes
 	// is out yet sells nothing the reader could open.
 	GetPurchasableVolumeForTenant(ctx context.Context, arg GetPurchasableVolumeForTenantParams) (GetPurchasableVolumeForTenantRow, error)
-	// What the receipt of one purchase says, read by the outbox worker, which
+	// What the receipt of one purchase says, and the mail of a refund recorded on
+	// it names as refunded, read by the outbox worker, which
 	// connects past RLS and therefore names the tenant itself. The reader is
 	// joined within the tenant, so an account that was deleted after paying, whose
 	// purchase keeps no user, answers no address rather than no receipt.
@@ -4267,7 +4271,10 @@ type Querier interface {
 	// the total counts every refund of the payment, one made in the provider's
 	// dashboard among them, so only SettleStaffRefundInPart, once the provider
 	// answers that the refund made under its key is on the payment, ends it.
-	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error)
+	//
+	// previous_amount is the total recorded before this write, so the caller can
+	// tell a refund that added to it from a delivery of one already recorded.
+	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (RecordRefundOnPurchaseRow, error)
 	// Records what Stripe has refunded against one subscription payment, matched
 	// by the PaymentIntent the refund notification names, by the rules
 	// RecordRefundOnPurchase applies to a purchase: the total only grows, and one

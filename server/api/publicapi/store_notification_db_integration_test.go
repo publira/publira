@@ -103,6 +103,10 @@ func TestDBAppStoreRefundClosesTheReadingRightAndLeavesTheRoyaltyStatement(t *te
 	if got := env.royaltyGross(t); got != 0 {
 		t.Fatalf("royalty gross after the refund = %d, want 0", got)
 	}
+	// Apple tells the reader of its refund itself, so the site mails nothing.
+	if got := env.count(t, "SELECT count(*) FROM outbox_events WHERE event_type = 'purchase_refund_notice'"); got != 0 {
+		t.Fatalf("refund notices = %d, want none for a store refund", got)
+	}
 	// With the purchase refunded, the episode can be bought again.
 	if again := env.start(t, env.token); again.IntentId == intent.IntentId {
 		t.Fatal("a new start reused the consumed intent")

@@ -168,6 +168,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"platform_console_operator_role_granted":     platformConsoleOperatorRoleGrantedCopy,
 	"platform_console_password_reset":            platformConsolePasswordResetCopy,
 	"purchase_receipt":                           purchaseReceiptCopy,
+	"purchase_refund_notice":                     purchaseRefundNoticeCopy,
 	"reader_announcement_posted":                 readerAnnouncementPostedCopy,
 	"reader_comment_approved":                    readerCommentApprovedCopy,
 	"reader_data_export_ready":                   readerDataExportReadyCopy,
@@ -278,6 +279,63 @@ func purchaseReceiptCopy(c *emailComposer) {
 	}
 	c.linkLine("email.purchase_receipt.action", nil, libraryURL)
 	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)
+}
+
+// purchaseRefundNoticeCopy words the mail that tells a reader a refund was
+// made on one of their purchases. It names what was bought as the receipt
+// does, what this refund returned, and, once more than one refund has been
+// made, what they add up to against the price paid. It then says what the
+// refund takes away: a purchase refunded in full no longer opens what it
+// bought, and a pack refunded in full gives up the coins it has left, while a
+// refund of part of the price takes neither. That promises no access, since a
+// rental whose period has passed opens nothing either way. A tip opened nothing,
+// so its mail says nothing of it. A purchase made in the provider's test mode
+// says no money moved, as its receipt did.
+func purchaseRefundNoticeCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	libraryURL := c.value("library_url")
+	tip := c.flag("is_tip")
+	closed := c.flag("closed")
+	c.setSubject("email.purchase_refund_notice.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.purchase_refund_notice.heading", nil)
+	c.line("email.purchase_refund_notice.intro", map[string]any{"tenant_name": brand})
+	if c.flag("is_test") {
+		c.line("email.purchase_refund_notice.test_notice", nil)
+	}
+	coins, bonusCoins := c.integer("coin_pack_coins"), c.integer("coin_pack_bonus_coins")
+	if coins == 0 {
+		c.line("email.purchase_refund_notice.series", map[string]any{"series_title": c.value("series_title")})
+	}
+	switch count := c.integer("series_bundle_episode_count"); {
+	case tip:
+		c.line("email.purchase_refund_notice.tip", map[string]any{"episode_title": c.value("episode_title")})
+	case coins > 0:
+		c.line("email.purchase_refund_notice.coin_pack", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins + bonusCoins), "bonus": int(bonusCoins)})
+	case c.value("volume_title") != "":
+		c.line("email.purchase_refund_notice.volume", map[string]any{"volume_title": c.value("volume_title")})
+	case count > 0:
+		c.line("email.purchase_refund_notice.series_bundle", map[string]any{"count": int(count)})
+	default:
+		c.line("email.purchase_refund_notice.episode", map[string]any{"episode_title": c.value("episode_title")})
+	}
+	c.line("email.purchase_refund_notice.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	if c.integer("refunded_total") > c.integer("amount") {
+		c.line("email.purchase_refund_notice.total", map[string]any{"total": c.price("refunded_total", "currency"), "price": c.price("price", "currency")})
+	}
+	switch {
+	case tip:
+	case coins > 0 && closed:
+		c.line("email.purchase_refund_notice.coins_closed", map[string]any{"coin_name": c.value("coin_name")})
+	case coins > 0:
+		c.line("email.purchase_refund_notice.coins_open", map[string]any{"coin_name": c.value("coin_name")})
+	case closed:
+		c.line("email.purchase_refund_notice.closed", nil)
+	default:
+		c.line("email.purchase_refund_notice.open", nil)
+	}
+	c.linkLine("email.purchase_refund_notice.action", nil, libraryURL)
+	c.linkLine("email.purchase_refund_notice.fallback_link", nil, libraryURL)
 }
 
 // readerEpisodePublishedCopy words the mail that tells a reader an episode

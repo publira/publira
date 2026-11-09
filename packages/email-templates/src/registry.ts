@@ -52,6 +52,11 @@ import {
   purchaseReceiptPreview,
 } from "./templates/purchase-receipt";
 import {
+  PurchaseRefundNoticeEmail,
+  purchaseRefundNoticeDataSchema,
+  purchaseRefundNoticePreview,
+} from "./templates/purchase-refund-notice";
+import {
   ReaderAnnouncementPostedEmail,
   readerAnnouncementPostedDataSchema,
   readerAnnouncementPostedPreview,
@@ -142,6 +147,7 @@ export const TEMPLATE_IDS = [
   "staff_contact_reply",
   "staff_episode_review_returned",
   "purchase_receipt",
+  "purchase_refund_notice",
   "reader_episode_published",
   "reader_announcement_posted",
   "reader_comment_approved",
@@ -326,6 +332,12 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: purchaseReceiptPreview,
     schema: purchaseReceiptDataSchema,
+  }),
+  purchase_refund_notice: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(PurchaseRefundNoticeEmail, { data, locale, messages }),
+    preview: purchaseRefundNoticePreview,
+    schema: purchaseRefundNoticeDataSchema,
   }),
   reader_announcement_posted: defineTemplate({
     element: ({ data, locale, messages }) =>

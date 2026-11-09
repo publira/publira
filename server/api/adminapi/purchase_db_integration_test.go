@@ -463,8 +463,8 @@ func TestDBRefundPurchaseRefundsThroughTheProviderOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("record the refund notification: %v", err)
 	}
-	if !recorded.RefundedAt.Valid || recorded.RevocationReason.String != purchaseRevocationStaff {
-		t.Fatalf("after the notification refunded_at = %v and reason = %q, want refunded and still staff", recorded.RefundedAt, recorded.RevocationReason.String)
+	if !recorded.Purchase.RefundedAt.Valid || recorded.Purchase.RevocationReason.String != purchaseRevocationStaff {
+		t.Fatalf("after the notification refunded_at = %v and reason = %q, want refunded and still staff", recorded.Purchase.RefundedAt, recorded.Purchase.RevocationReason.String)
 	}
 }
 

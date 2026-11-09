@@ -47,7 +47,7 @@ func (f *purchaseFixture) recordRefundNotification(t *testing.T, paymentID strin
 	t.Helper()
 
 	queries := dbmodels.New(f.env.PG.DB)
-	purchase, err := queries.RecordRefundOnPurchase(context.Background(), dbmodels.RecordRefundOnPurchaseParams{
+	row, err := queries.RecordRefundOnPurchase(context.Background(), dbmodels.RecordRefundOnPurchaseParams{
 		TenantID:          f.admin.Tenant.ID,
 		Provider:          stripe.ID,
 		ProviderPaymentID: paymentID,
@@ -57,6 +57,7 @@ func (f *purchaseFixture) recordRefundNotification(t *testing.T, paymentID strin
 	if err != nil {
 		t.Fatalf("record the refund notification: %v", err)
 	}
+	purchase := row.Purchase
 	if !purchase.StaffRefundRequestedAmount.Valid {
 		return
 	}

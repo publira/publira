@@ -122,6 +122,27 @@
       "tip_subject": "{$tenant_name}打赏成功",
       "volume": "卷：{$volume_title}"
     },
+    "purchase_refund_notice": {
+      "action": "查看已购买",
+      "amount": "退款金额：{$amount}（{$currency}）",
+      "closed": "已全额退款，此次购买开放的章节将无法再阅读。您可以在网站上重新购买。",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含赠送{$bonus}）}}",
+      "coins_closed": "已全额退款，此次购买获得的{$coin_name}中剩余部分已被收回。",
+      "coins_open": "仅退还了部分款项，此次购买获得的{$coin_name}不会被收回。",
+      "episode": "章节：{$episode_title}",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "您的付款已退款",
+      "intro": "您在{$tenant_name}支付的款项已退款。",
+      "open": "仅退还了部分款项，此次退款不会关闭您购买的章节。",
+      "preview": "{$title}的款项已退款。",
+      "series": "系列：{$series_title}",
+      "series_bundle": "剩余章节：{$count :integer}章",
+      "subject": "{$tenant_name}退款通知",
+      "test_notice": "这是在支付服务测试模式下的购买，未产生任何实际退款。",
+      "tip": "打赏章节的作者：{$episode_title}",
+      "total": "累计退款：{$total}（支付金额{$price}）",
+      "volume": "卷：{$volume_title}"
+    },
     "reader_announcement_posted": {
       "action": "查看公告",
       "everyone": "此公告已发送给{$tenant_name}的所有读者，不受通知设置影响。",

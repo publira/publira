@@ -122,6 +122,27 @@
       "tip_subject": "{$tenant_name} tip receipt",
       "volume": "Volume: {$volume_title}"
     },
+    "purchase_refund_notice": {
+      "action": "Open your purchases",
+      "amount": "Amount refunded: {$amount} ({$currency})",
+      "closed": "The purchase is refunded in full, so the episodes it opened are closed to you. You can buy them again on the site.",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (including {$bonus} bonus)}}",
+      "coins_closed": "The purchase is refunded in full, so the {$coin_name} it gave you that are left have been taken back.",
+      "coins_open": "Only part of the price was refunded, so none of the {$coin_name} it gave you are taken back.",
+      "episode": "Episode: {$episode_title}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your payment was refunded",
+      "intro": "{$tenant_name} has refunded a payment you made.",
+      "open": "Only part of the price was refunded, so this refund does not close the episodes you bought.",
+      "preview": "A refund was made on {$title}.",
+      "series": "Series: {$series_title}",
+      "series_bundle": ".input {$count :integer}\n.match $count\none {{Remaining episodes: {$count} episode}}\n* {{Remaining episodes: {$count} episodes}}",
+      "subject": "{$tenant_name} refund",
+      "test_notice": "This was a purchase in the payment provider's test mode. No money was refunded.",
+      "tip": "Tip for the Authors of: {$episode_title}",
+      "total": "Refunded in total: {$total} of the {$price} paid",
+      "volume": "Volume: {$volume_title}"
+    },
     "reader_announcement_posted": {
       "action": "Read the announcement",
       "everyone": "{$tenant_name} sent this announcement to every reader, whatever their notification settings.",
