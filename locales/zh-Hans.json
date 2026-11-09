@@ -3995,6 +3995,8 @@
           "subscription_ended_description": "订阅停止计费。",
           "episode_published": "章节发布",
           "episode_published_description": "章节按预定时间发布，或立即发布。",
+          "episode_unpublished": "章节取消发布",
+          "episode_unpublished_description": "已发布的章节被改回草稿或改为之后的时间，或其系列变为未发布。",
           "test": "测试事件"
         },
         "enabled": "启用",

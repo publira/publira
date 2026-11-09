@@ -3995,6 +3995,8 @@
           "subscription_ended_description": "訂閱停止計費。",
           "episode_published": "章節發布",
           "episode_published_description": "章節按預定時間發布，或立即發布。",
+          "episode_unpublished": "章節取消發布",
+          "episode_unpublished_description": "已發布的章節被改回草稿或改為之後的時間，或其系列變為未發布。",
           "test": "測試事件"
         },
         "enabled": "啟用",

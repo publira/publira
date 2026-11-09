@@ -356,6 +356,10 @@ RETURNING *;
 -- then does what the batch would have done, since the batch will not list the
 -- series any more. The old row is read through the self-join, which sees it as
 -- it was before this statement.
+--
+-- withdraws_publication answers whether this save takes a public series off
+-- the site, and the two withdrawn_ columns are the publication it ends: its
+-- instant, and when the save or the batch applied it, null while nothing has.
 UPDATE series s
 SET published_at = sqlc.narg(published_at)::timestamptz,
     is_published = CASE
@@ -373,7 +377,19 @@ WHERE s.id = $1
 RETURNING (
     old.publication_revalidated_at IS NULL
     AND s.publication_revalidated_at IS NOT NULL
-)::boolean AS applies_publication;
+)::boolean AS applies_publication,
+    (
+        old.is_published
+        AND old.published_at IS NOT NULL
+        AND old.published_at <= NOW()
+        AND NOT (
+            s.is_published
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+        )
+    )::boolean AS withdraws_publication,
+    old.published_at AS withdrawn_published_at,
+    old.publication_revalidated_at AS withdrawn_publication_revalidated_at;
 
 -- name: ListSeriesPublicationsDue :many
 -- Every published series whose publication instant has passed and whose drop

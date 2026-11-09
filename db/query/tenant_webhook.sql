@@ -369,6 +369,36 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL;
 
+-- name: GetWebhookUnpublishedEpisode :one
+-- An episode as an episode.unpublished event carries it when the episode itself
+-- is taken off the site, read in the transaction that takes it off: the ids the
+-- admin API answers the episode and its series by.
+SELECT e.public_id AS episode_public_id,
+    s.public_id AS series_public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = sqlc.arg('id');
+
+-- name: ListWebhookPublishedEpisodesOfSeries :many
+-- The episodes an episode.unpublished event is owed for when their series is
+-- hidden, read in the transaction that hides it: every episode of the series
+-- that is published, with the ids the admin API answers it and the series by.
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND el.status = 'published'
+ORDER BY e.order_index,
+    e.id;
+
 -- name: GetWebhookDelivery :one
 -- One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 SELECT d.id,

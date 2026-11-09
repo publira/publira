@@ -380,3 +380,161 @@ func TestDBEpisodePublishedIsOwedOncePerPublication(t *testing.T) {
 		t.Fatalf("deliveries after creating a published episode = %+v, want one for %s", got, created.Episode.PublicId)
 	}
 }
+
+// A published episode taken off the site owes episode.unpublished to the
+// endpoints that subscribed to it, once per withdrawal: clearing its schedule
+// or moving it to a time still ahead owes one for the episode, a save that
+// leaves a draft a draft owes nothing, and hiding its series owes one for each
+// episode published in it, and nothing more when the series is saved hidden
+// again. An endpoint that did not subscribe to it is owed none.
+func TestDBEpisodeUnpublishedIsOwedOncePerWithdrawal(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "HOOKTENANT5", "hooks-unpublish.example.com", "Hook Unpublish Tenant", "HOOKADMIN05", "admin@hooks-unpublish.example.com")
+	ctx := testutil.WithBearer(context.Background(), admin.token())
+	for _, endpoint := range []struct {
+		url    string
+		events []publiraadminv1.WebhookEventType
+	}{
+		{url: "https://cms.example.com/publira", events: []publiraadminv1.WebhookEventType{publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED}},
+		{url: "https://crm.example.com/publira", events: purchaseEvents},
+	} {
+		if _, err := env.webhookClient().CreateWebhookEndpoint(ctx, &publiraadminv1.CreateWebhookEndpointRequest{
+			Tenant:     admin.tenantContext(),
+			Url:        endpoint.url,
+			EventTypes: endpoint.events,
+			Enabled:    true,
+		}); err != nil {
+			t.Fatalf("CreateWebhookEndpoint %s: %v", endpoint.url, err)
+		}
+	}
+
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, admin, "Withdrawn Series")
+	seriesID := env.seriesID(t, seriesPublicID)
+	publishSeries := func(publishedAt string) {
+		t.Helper()
+		if _, err := client.UpdateSeries(ctx, &publiraadminv1.UpdateSeriesRequest{
+			Tenant:      admin.tenantContext(),
+			SeriesId:    seriesID,
+			Title:       "Withdrawn Series",
+			PublishedAt: publishedAt,
+		}); err != nil {
+			t.Fatalf("UpdateSeries %q: %v", publishedAt, err)
+		}
+	}
+	publishSeries("2000-01-01T00:00:00Z")
+	createEpisode := func(title, scheduledAt string) *publirattypesv1.Episode {
+		t.Helper()
+		res, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+			Tenant:      admin.tenantContext(),
+			SeriesId:    seriesID,
+			Title:       title,
+			ScheduledAt: scheduledAt,
+		})
+		if err != nil {
+			t.Fatalf("CreateEpisode %q: %v", title, err)
+		}
+		return res.Episode
+	}
+	first := createEpisode("First", "2000-01-01T00:00:00Z")
+	second := createEpisode("Second", "2000-01-02T00:00:00Z")
+	createEpisode("Draft", "")
+	schedule := func(episode *publirattypesv1.Episode, scheduledAt string) {
+		t.Helper()
+		if _, err := client.UpdateEpisodePublishSchedule(ctx, &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+			Tenant:      admin.tenantContext(),
+			EpisodeId:   episode.Id,
+			ScheduledAt: scheduledAt,
+		}); err != nil {
+			t.Fatalf("UpdateEpisodePublishSchedule %q: %v", scheduledAt, err)
+		}
+	}
+	type delivered struct {
+		url     string
+		eventID string
+		data    tenantwebhooks.EpisodeWithdrawal
+	}
+	deliveries := func() []delivered {
+		t.Helper()
+		rows, err := env.PG.DB.QueryContext(context.Background(), `
+			SELECT e.url, d.event_id, d.payload->'data'
+			FROM webhook_deliveries d
+				JOIN tenant_webhook_endpoints e ON e.id = d.endpoint_id
+			WHERE d.tenant_id = $1 AND d.event_type = 'episode.unpublished'
+			ORDER BY d.created_at, d.payload->'data'->>'episode_public_id'
+		`, admin.Tenant.ID)
+		if err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		defer func() { _ = rows.Close() }()
+		var got []delivered
+		for rows.Next() {
+			var row delivered
+			var data []byte
+			if err := rows.Scan(&row.url, &row.eventID, &data); err != nil {
+				t.Fatalf("scan a delivery: %v", err)
+			}
+			if err := json.Unmarshal(data, &row.data); err != nil {
+				t.Fatalf("decode a delivery's data %s: %v", data, err)
+			}
+			got = append(got, row)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		return got
+	}
+	withdrawal := func(episode *publirattypesv1.Episode, withdrawn string) tenantwebhooks.EpisodeWithdrawal {
+		return tenantwebhooks.EpisodeWithdrawal{EpisodePublicID: episode.PublicId, SeriesPublicID: seriesPublicID, Withdrawn: withdrawn}
+	}
+
+	schedule(first, "")
+	got := deliveries()
+	if len(got) != 1 || got[0].url != "https://cms.example.com/publira" || got[0].data != withdrawal(first, tenantwebhooks.WithdrawnEpisode) {
+		t.Fatalf("deliveries after clearing the schedule = %+v, want one for the episode to the subscribed endpoint", got)
+	}
+
+	// The episode is a draft already, so saving it as one takes nothing off
+	// the site.
+	schedule(first, "")
+	if got := deliveries(); len(got) != 1 {
+		t.Fatalf("deliveries after saving the draft again = %d, want 1", len(got))
+	}
+
+	// Published again and moved to a time still ahead, it leaves the site
+	// again, which is a withdrawal of its own.
+	schedule(first, "2001-01-01T00:00:00Z")
+	schedule(first, "2999-01-01T00:00:00Z")
+	got = deliveries()
+	if len(got) != 2 || got[1].eventID == got[0].eventID || got[1].data != withdrawal(first, tenantwebhooks.WithdrawnEpisode) {
+		t.Fatalf("deliveries after moving the published episode ahead = %+v, want a second event for it", got)
+	}
+
+	// Hiding the series takes off each episode published in it, and neither
+	// the scheduled one nor the draft.
+	schedule(first, "2002-01-01T00:00:00Z")
+	publishSeries("")
+	got = deliveries()
+	if len(got) != 4 {
+		t.Fatalf("deliveries after hiding the series = %+v, want one more for each published episode", got)
+	}
+	hidden := map[tenantwebhooks.EpisodeWithdrawal]bool{got[2].data: true, got[3].data: true}
+	if !hidden[withdrawal(first, tenantwebhooks.WithdrawnSeries)] || !hidden[withdrawal(second, tenantwebhooks.WithdrawnSeries)] {
+		t.Fatalf("deliveries for the hidden series = %+v, want one for each of its published episodes", got[2:])
+	}
+
+	// Saving the hidden series hidden again takes nothing more off the site,
+	// while hiding it again once it is public is a withdrawal of its own.
+	publishSeries("")
+	if got := deliveries(); len(got) != 4 {
+		t.Fatalf("deliveries after saving the hidden series again = %d, want 4", len(got))
+	}
+	publishSeries("2000-01-01T00:00:00Z")
+	publishSeries("2999-01-01T00:00:00Z")
+	got = deliveries()
+	if len(got) != 6 || got[4].eventID == got[2].eventID || got[4].eventID == got[3].eventID {
+		t.Fatalf("deliveries after hiding the series a second time = %+v, want two more events of their own", got)
+	}
+}

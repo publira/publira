@@ -3995,6 +3995,8 @@
           "subscription_ended_description": "구독 결제가 멈출 때.",
           "episode_published": "에피소드 공개",
           "episode_published_description": "에피소드가 예약한 시각에, 또는 바로 공개될 때.",
+          "episode_unpublished": "에피소드 공개 내림",
+          "episode_unpublished_description": "공개된 에피소드가 임시저장으로 되돌려지거나 이후 시각으로 바뀌거나, 시리즈가 비공개가 될 때.",
           "test": "테스트 이벤트"
         },
         "enabled": "사용",

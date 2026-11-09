@@ -1670,6 +1670,10 @@ type Querier interface {
 	GetWebhookPurchase(ctx context.Context, arg GetWebhookPurchaseParams) (GetWebhookPurchaseRow, error)
 	GetWebhookReader(ctx context.Context, arg GetWebhookReaderParams) (GetWebhookReaderRow, error)
 	GetWebhookSubscription(ctx context.Context, arg GetWebhookSubscriptionParams) (GetWebhookSubscriptionRow, error)
+	// An episode as an episode.unpublished event carries it when the episode itself
+	// is taken off the site, read in the transaction that takes it off: the ids the
+	// admin API answers the episode and its series by.
+	GetWebhookUnpublishedEpisode(ctx context.Context, arg GetWebhookUnpublishedEpisodeParams) (GetWebhookUnpublishedEpisodeRow, error)
 	// Gives up a delivery no attempt was made at, its endpoint disabled since it
 	// was queued.
 	GiveUpWebhookDelivery(ctx context.Context, arg GiveUpWebhookDeliveryParams) error
@@ -3587,6 +3591,10 @@ type Querier interface {
 	// The tenant's deliveries, newest first, narrowed to one status when one is
 	// named.
 	ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhookDeliveriesDescParams) ([]ListWebhookDeliveriesDescRow, error)
+	// The episodes an episode.unpublished event is owed for when their series is
+	// hidden, read in the transaction that hides it: every episode of the series
+	// that is published, with the ids the admin API answers it and the series by.
+	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg ListWebhookPublishedEpisodesOfSeriesParams) ([]ListWebhookPublishedEpisodesOfSeriesRow, error)
 	// Serializes the image writes on one banner; the caller re-reads image_id
 	// behind it.
 	LockCampaignBannerByIDForTenant(ctx context.Context, arg LockCampaignBannerByIDForTenantParams) (uuid.UUID, error)
@@ -3645,6 +3653,13 @@ type Querier interface {
 	// decision, and the publication job's promotion of the same episode happen one
 	// after another.
 	LockEpisodeListingForReview(ctx context.Context, arg LockEpisodeListingForReviewParams) (LockEpisodeListingForReviewRow, error)
+	// Locks the listing a save of its publish schedule is about to replace, in the
+	// save's transaction and ahead of it. A publication the job has written but not
+	// committed holds the save here until it commits, so the save's own statement
+	// then reads the listing as published and reports taking that publication back.
+	// Without the lock the statement would wait inside itself and still read the
+	// listing it started on, which was not published yet.
+	LockEpisodeListingForScheduleSave(ctx context.Context, arg LockEpisodeListingForScheduleSaveParams) error
 	// Episode ratings and the public tally kept beside them. Every statement here
 	// runs on the reader's own connection: episode_ratings is member-isolated, so a
 	// rating is written and read under the reader whose rating it is.
@@ -4736,7 +4751,14 @@ type Querier interface {
 	//
 	// A draft has no time to review, so taking an episode back to one clears its
 	// review state as well; the rounds already decided stay in episode_reviews.
-	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
+	//
+	// withdraws_publication answers whether the episode was published, so that
+	// this save takes it off the site, and withdrawn_published_at is the instant
+	// of the publication it takes back. The old row is read through the
+	// self-join, which sees it as it was when this statement started, so the
+	// caller locks the listing first with LockEpisodeListingForScheduleSave. An id
+	// naming no episode answers no row.
+	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) (UpdateEpisodePublishScheduleByIDForTenantRow, error)
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
 	// The slug is the caller's to derive, from the name genre_translation_for
@@ -4793,7 +4815,11 @@ type Querier interface {
 	// then does what the batch would have done, since the batch will not list the
 	// series any more. The old row is read through the self-join, which sees it as
 	// it was before this statement.
-	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (bool, error)
+	//
+	// withdraws_publication answers whether this save takes a public series off
+	// the site, and the two withdrawn_ columns are the publication it ends: its
+	// instant, and when the save or the batch applied it, null while nothing has.
+	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (UpdateSeriesPublicationRow, error)
 	UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscriptionPlanParams) (int64, error)
 	// A resend passes the role the invitation already grants; inviting the same
 	// address again passes the role that invitation asks for.

@@ -523,6 +523,36 @@ func (q *Queries) GetWebhookSubscription(ctx context.Context, arg GetWebhookSubs
 	return i, err
 }
 
+const GetWebhookUnpublishedEpisode = `-- name: GetWebhookUnpublishedEpisode :one
+SELECT e.public_id AS episode_public_id,
+    s.public_id AS series_public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+WHERE e.tenant_id = $1
+    AND e.id = $2
+`
+
+type GetWebhookUnpublishedEpisodeParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookUnpublishedEpisodeRow struct {
+	EpisodePublicID string `json:"episode_public_id"`
+	SeriesPublicID  string `json:"series_public_id"`
+}
+
+// An episode as an episode.unpublished event carries it when the episode itself
+// is taken off the site, read in the transaction that takes it off: the ids the
+// admin API answers the episode and its series by.
+func (q *Queries) GetWebhookUnpublishedEpisode(ctx context.Context, arg GetWebhookUnpublishedEpisodeParams) (GetWebhookUnpublishedEpisodeRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookUnpublishedEpisode, arg.TenantID, arg.ID)
+	var i GetWebhookUnpublishedEpisodeRow
+	err := row.Scan(&i.EpisodePublicID, &i.SeriesPublicID)
+	return i, err
+}
+
 const GiveUpWebhookDelivery = `-- name: GiveUpWebhookDelivery :exec
 UPDATE webhook_deliveries
 SET status = 'dead',
@@ -912,6 +942,59 @@ func (q *Queries) ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhook
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListWebhookPublishedEpisodesOfSeries = `-- name: ListWebhookPublishedEpisodesOfSeries :many
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.series_id = $2
+    AND el.status = 'published'
+ORDER BY e.order_index,
+    e.id
+`
+
+type ListWebhookPublishedEpisodesOfSeriesParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+type ListWebhookPublishedEpisodesOfSeriesRow struct {
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+}
+
+// The episodes an episode.unpublished event is owed for when their series is
+// hidden, read in the transaction that hides it: every episode of the series
+// that is published, with the ids the admin API answers it and the series by.
+func (q *Queries) ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg ListWebhookPublishedEpisodesOfSeriesParams) ([]ListWebhookPublishedEpisodesOfSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListWebhookPublishedEpisodesOfSeries, arg.TenantID, arg.SeriesID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWebhookPublishedEpisodesOfSeriesRow
+	for rows.Next() {
+		var i ListWebhookPublishedEpisodesOfSeriesRow
+		if err := rows.Scan(&i.EpisodeID, &i.EpisodePublicID, &i.SeriesPublicID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

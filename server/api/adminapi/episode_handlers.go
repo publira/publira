@@ -1307,12 +1307,13 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			return nil, err
 		}
 		published := false
+		var saved dbmodels.UpdateEpisodePublishScheduleByIDForTenantRow
 		switch {
 		case reviewing:
 			// The time is saved as it is, passed or not, and the episode waits
 			// for a Tenant admin's approval rather than being published.
-			if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
-				return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			if saved, err = s.saveEpisodePublishSchedule(txCtx, tenant.ID, episodeID, scheduledAt); err != nil {
+				return nil, err
 			}
 			if err := s.openEpisodeReview(txCtx, tenant.ID, listing); err != nil {
 				return nil, err
@@ -1324,8 +1325,8 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			}
 			published = rows > 0
 		default:
-			if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
-				return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			if saved, err = s.saveEpisodePublishSchedule(txCtx, tenant.ID, episodeID, scheduledAt); err != nil {
+				return nil, err
 			}
 			// A draft has no time to review, so a round still waiting on one
 			// is withdrawn with it.
@@ -1358,6 +1359,11 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			if err := catalogindex.Queue(txCtx, q, tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
 				return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 			}
+			if saved.WithdrawsPublication {
+				if err := tenantwebhooks.QueueEpisodeUnpublished(txCtx, q, tenant.ID, episodeID, saved.WithdrawnPublishedAt.Time); err != nil {
+					return nil, s.internalDBError(ctx, "failed to queue the episode.unpublished webhook", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+				}
+			}
 		}
 		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {
@@ -1386,6 +1392,30 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}, nil
+}
+
+// saveEpisodePublishSchedule saves scheduledAt on an episode without publishing
+// it, and answers whether the save took a published episode off the site. The
+// listing is locked first, so a publication the job commits while the save
+// waits is one the save sees and reports taking back.
+func (s *adminServer) saveEpisodePublishSchedule(
+	txCtx context.Context,
+	tenantID uuid.UUID,
+	episodeID uuid.UUID,
+	scheduledAt sql.NullTime,
+) (dbmodels.UpdateEpisodePublishScheduleByIDForTenantRow, error) {
+	var saved dbmodels.UpdateEpisodePublishScheduleByIDForTenantRow
+	if err := s.queriesFor(txCtx).LockEpisodeListingForScheduleSave(txCtx, dbmodels.LockEpisodeListingForScheduleSaveParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
+		return saved, s.internalDBError(txCtx, "failed to lock the episode listing for the schedule save", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
+	}
+	saved, err := s.queriesFor(txCtx).UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenantID, ID: episodeID, ScheduledAt: scheduledAt})
+	if errors.Is(err, sql.ErrNoRows) {
+		return saved, connect.NewError(connect.CodeNotFound, "episode not found")
+	}
+	if err != nil {
+		return saved, s.internalDBError(txCtx, "failed to update episode publish schedule", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
+	}
+	return saved, nil
 }
 
 // scheduleNeedsReview answers whether saving scheduledAt on the episode puts

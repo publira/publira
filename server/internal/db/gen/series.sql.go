@@ -1287,12 +1287,31 @@ WHERE s.id = $1
 RETURNING (
     old.publication_revalidated_at IS NULL
     AND s.publication_revalidated_at IS NOT NULL
-)::boolean AS applies_publication
+)::boolean AS applies_publication,
+    (
+        old.is_published
+        AND old.published_at IS NOT NULL
+        AND old.published_at <= NOW()
+        AND NOT (
+            s.is_published
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+        )
+    )::boolean AS withdraws_publication,
+    old.published_at AS withdrawn_published_at,
+    old.publication_revalidated_at AS withdrawn_publication_revalidated_at
 `
 
 type UpdateSeriesPublicationParams struct {
 	ID          uuid.UUID    `json:"id"`
 	PublishedAt sql.NullTime `json:"published_at"`
+}
+
+type UpdateSeriesPublicationRow struct {
+	AppliesPublication                bool         `json:"applies_publication"`
+	WithdrawsPublication              bool         `json:"withdraws_publication"`
+	WithdrawnPublishedAt              sql.NullTime `json:"withdrawn_published_at"`
+	WithdrawnPublicationRevalidatedAt sql.NullTime `json:"withdrawn_publication_revalidated_at"`
 }
 
 // The save drops the site caches itself when the instant it stores has already
@@ -1305,9 +1324,18 @@ type UpdateSeriesPublicationParams struct {
 // then does what the batch would have done, since the batch will not list the
 // series any more. The old row is read through the self-join, which sees it as
 // it was before this statement.
-func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (bool, error) {
+//
+// withdraws_publication answers whether this save takes a public series off
+// the site, and the two withdrawn_ columns are the publication it ends: its
+// instant, and when the save or the batch applied it, null while nothing has.
+func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (UpdateSeriesPublicationRow, error) {
 	row := q.db.QueryRowContext(ctx, UpdateSeriesPublication, arg.ID, arg.PublishedAt)
-	var applies_publication bool
-	err := row.Scan(&applies_publication)
-	return applies_publication, err
+	var i UpdateSeriesPublicationRow
+	err := row.Scan(
+		&i.AppliesPublication,
+		&i.WithdrawsPublication,
+		&i.WithdrawnPublishedAt,
+		&i.WithdrawnPublicationRevalidatedAt,
+	)
+	return i, err
 }
