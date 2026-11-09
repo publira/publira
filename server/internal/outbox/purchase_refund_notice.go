@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -44,13 +43,14 @@ type PurchaseRefundNoticePayload struct {
 	Closed bool `json:"closed"`
 }
 
-// PurchaseRefundNoticeIdempotencyKey is the outbox key for the refund that
-// brought a purchase's refunded total to refundedTotal. The total only grows,
-// so it tells one refund in part from the next, and a redelivered
-// notification from a second refund, as the tenant's purchase.refunded event
-// does.
-func PurchaseRefundNoticeIdempotencyKey(purchaseID uuid.UUID, refundedTotal int32) string {
-	return EventTypePurchaseRefundNotice + ":" + purchaseID.String() + ":" + strconv.FormatInt(int64(refundedTotal), 10)
+// PurchaseRefundNoticeIdempotencyKey is the outbox key for the mail of one
+// recorded refund. A redelivered notification adds nothing to the purchase's
+// refunded total and queues no mail at all, so the key does not have to tell
+// it apart: it names this refund alone, because the total is no name for one.
+// A refund that fails lowers the total again, and the one that replaces it
+// brings it back to the same amount.
+func PurchaseRefundNoticeIdempotencyKey(purchaseID uuid.UUID) string {
+	return EventTypePurchaseRefundNotice + ":" + purchaseID.String() + ":" + uuid.Must(uuid.NewV7()).String()
 }
 
 // NewPurchaseRefundNoticeEmailHandler sends the reader the mail of a refund,

@@ -38,7 +38,7 @@ func (e purchaseReceiptEnv) refundNoticeEvent(t *testing.T, purchaseID uuid.UUID
 		TenantID:       uuid.NullUUID{UUID: e.tenantID, Valid: true},
 		EventType:      outbox.EventTypePurchaseRefundNotice,
 		Payload:        payload,
-		IdempotencyKey: outbox.PurchaseRefundNoticeIdempotencyKey(purchaseID, int32(total)),
+		IdempotencyKey: outbox.PurchaseRefundNoticeIdempotencyKey(purchaseID),
 	}
 }
 

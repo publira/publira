@@ -296,6 +296,33 @@ func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 	env.assertRefundNotices(t, refundNotice(200, 200, false), refundNotice(300, 500, true))
 }
 
+// A refund that fails takes the total back down, and the refund staff make in
+// its place brings it up to the same amount again. That is a second refund,
+// and the reader is told of it as well.
+func TestDBProcessPaymentWebhookMailsARefundMadeAgainAfterOneFailed(t *testing.T) {
+	t.Parallel()
+
+	env := newRefundWebhookEnv(t, "REFUNDAGN", "refund-again.example.com", "pi_refund_again")
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_again", 500, 500))
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
+
+	if _, err := env.queries.RecordFailedRefundOnPurchase(context.Background(), dbmodels.RecordFailedRefundOnPurchaseParams{
+		TenantID:          env.tenant.ID,
+		Provider:          stripe.ID,
+		ProviderPaymentID: "pi_refund_again",
+		Currency:          "JPY",
+		RefundedAmount:    0,
+	}); err != nil {
+		t.Fatalf("RecordFailedRefundOnPurchase: %v", err)
+	}
+	if amount, _ := env.refundState(t); amount.Int32 != 0 {
+		t.Fatalf("refunded_amount after the failure = %v, want 0", amount)
+	}
+
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_again", 500, 500))
+	env.assertRefundNotices(t, refundNotice(500, 500, true), refundNotice(500, 500, true))
+}
+
 func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 	t.Parallel()
 

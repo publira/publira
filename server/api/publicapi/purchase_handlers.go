@@ -930,7 +930,8 @@ func (s *apiServer) recordRefund(
 // endpoints, in one transaction. The reader's mail says how much this refund
 // added, which only the write that added it can tell, so a mail that failed
 // to be queued takes the write back with it and leaves the redelivery to make
-// both again. Two notifications of the same payment wait for each other on
+// both again; a redelivery of a refund that committed adds nothing and queues
+// no mail. Two notifications of the same payment wait for each other on
 // the payment's lock, so the second reads the total the first recorded rather
 // than the one both started from. It answers false when no purchase here has
 // the payment.
@@ -1002,7 +1003,7 @@ func queueRefundEvents(ctx context.Context, queries *dbmodels.Queries, purchase 
 		return fmt.Errorf("marshal purchase refund notice event: %w", err)
 	}
 	if err := insertPublicOutboxEvent(ctx, queries, purchase.TenantID, outbox.EventTypePurchaseRefundNotice, payload,
-		outbox.PurchaseRefundNoticeIdempotencyKey(purchase.ID, purchase.RefundedAmount.Int32)); err != nil {
+		outbox.PurchaseRefundNoticeIdempotencyKey(purchase.ID)); err != nil {
 		return fmt.Errorf("enqueue purchase refund notice: %w", err)
 	}
 	return nil
