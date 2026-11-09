@@ -182,7 +182,8 @@ var emailTemplates = map[string]func(*emailComposer){
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
 	"staff_episode_review_returned":              staffEpisodeReviewReturnedCopy,
-	"subscription_started":                       subscriptionStartedCopy,
+	"subscription_renewed":                       subscriptionPaymentCopy("subscription_renewed"),
+	"subscription_started":                       subscriptionPaymentCopy("subscription_started"),
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
 }
 
@@ -282,32 +283,37 @@ func purchaseReceiptCopy(c *emailComposer) {
 	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)
 }
 
-// subscriptionStartedCopy words the mail that tells a reader the first payment
-// of their subscription went through. It names the plan, the price paid with
-// its currency by code as well as by symbol, as the receipt does, and the
-// period that payment covers, whose end is when the plan's episodes stay open
-// until and when the plan renews unless the reader cancels it. The reader
-// manages the subscription from Manage billing on My Page, which the mail
-// links to. A subscription started in the provider's test mode says no money
-// moved, as a receipt does.
-func subscriptionStartedCopy(c *emailComposer) {
-	brand := c.value("tenant_name")
-	myPageURL := c.value("my_page_url")
-	c.setSubject("email.subscription_started.subject", map[string]any{"tenant_name": brand})
-	c.from(brand)
-	c.line("email.subscription_started.heading", nil)
-	c.line("email.subscription_started.intro", map[string]any{"tenant_name": brand})
-	if c.flag("is_test") {
-		c.line("email.subscription_started.test_notice", nil)
+// subscriptionPaymentCopy words the mails that tell a reader an invoice of
+// their subscription was paid: the first one, which started it, or a later one,
+// which renewed it for a new period. template is the mail's ID, which is also
+// the namespace of its copy, the only thing in which the two differ. The mail
+// names the plan, the price paid with its currency by code as well as by
+// symbol, as the receipt does, and the period that payment covers, whose end is
+// when the plan's episodes stay open until and when the plan renews next unless
+// the reader cancels it. The reader manages the subscription from Manage
+// billing on My Page, which the mail links to. An invoice paid in the
+// provider's test mode says no money moved, as a receipt does.
+func subscriptionPaymentCopy(template string) func(*emailComposer) {
+	key := func(name string) string { return "email." + template + "." + name }
+	return func(c *emailComposer) {
+		brand := c.value("tenant_name")
+		myPageURL := c.value("my_page_url")
+		c.setSubject(key("subject"), map[string]any{"tenant_name": brand})
+		c.from(brand)
+		c.line(key("heading"), nil)
+		c.line(key("intro"), map[string]any{"tenant_name": brand})
+		if c.flag("is_test") {
+			c.line(key("test_notice"), nil)
+		}
+		periodEnd := c.instant("period_end")
+		c.line(key("plan"), map[string]any{"plan_name": c.value("plan_name")})
+		c.line(key("amount"), map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+		c.line(key("period"), map[string]any{"period_start": c.instant("period_start"), "period_end": periodEnd})
+		c.line(key("open_until"), map[string]any{"period_end": periodEnd})
+		c.line(key("manage"), nil)
+		c.linkLine(key("action"), nil, myPageURL)
+		c.linkLine(key("fallback_link"), nil, myPageURL)
 	}
-	periodEnd := c.instant("period_end")
-	c.line("email.subscription_started.plan", map[string]any{"plan_name": c.value("plan_name")})
-	c.line("email.subscription_started.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
-	c.line("email.subscription_started.period", map[string]any{"period_start": c.instant("period_start"), "period_end": periodEnd})
-	c.line("email.subscription_started.open_until", map[string]any{"period_end": periodEnd})
-	c.line("email.subscription_started.manage", nil)
-	c.linkLine("email.subscription_started.action", nil, myPageURL)
-	c.linkLine("email.subscription_started.fallback_link", nil, myPageURL)
 }
 
 // purchaseRefundNoticeCopy words the mail that tells a reader a refund was

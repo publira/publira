@@ -122,10 +122,10 @@ import {
   staffEpisodeReviewReturnedPreview,
 } from "./templates/staff-episode-review-returned";
 import {
-  SubscriptionStartedEmail,
-  subscriptionStartedDataSchema,
-  subscriptionStartedPreview,
-} from "./templates/subscription-started";
+  SubscriptionPaymentEmail,
+  subscriptionPaymentDataSchema,
+  subscriptionPaymentPreview,
+} from "./templates/subscription-payment";
 import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
@@ -154,6 +154,7 @@ export const TEMPLATE_IDS = [
   "purchase_receipt",
   "purchase_refund_notice",
   "subscription_started",
+  "subscription_renewed",
   "reader_episode_published",
   "reader_announcement_posted",
   "reader_comment_approved",
@@ -465,16 +466,29 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
     preview: staffEpisodeReviewReturnedPreview,
     schema: staffEpisodeReviewReturnedDataSchema,
   }),
-  subscription_started: defineTemplate({
+  subscription_renewed: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
-      createElement(SubscriptionStartedEmail, {
+      createElement(SubscriptionPaymentEmail, {
         data,
         locale,
         messages,
+        template: "subscription_renewed",
         timeZone,
       }),
-    preview: subscriptionStartedPreview,
-    schema: subscriptionStartedDataSchema,
+    preview: subscriptionPaymentPreview("subscription_renewed"),
+    schema: subscriptionPaymentDataSchema,
+  }),
+  subscription_started: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(SubscriptionPaymentEmail, {
+        data,
+        locale,
+        messages,
+        template: "subscription_started",
+        timeZone,
+      }),
+    preview: subscriptionPaymentPreview("subscription_started"),
+    schema: subscriptionPaymentDataSchema,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

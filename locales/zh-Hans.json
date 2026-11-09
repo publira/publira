@@ -286,6 +286,20 @@
       "series": "系列：{$series_title}",
       "subject": "已退回：{$episode_title}"
     },
+    "subscription_renewed": {
+      "action": "打开个人中心",
+      "amount": "支付金额：{$amount}（{$currency}）",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "您的方案已续订",
+      "intro": "感谢您继续订阅{$tenant_name}的方案。以下是本次付款的明细。",
+      "manage": "如需更换银行卡、查看账单或取消订阅，请在个人中心选择“管理付款”。",
+      "open_until": "在{$period_end}之前，您可以阅读此方案包含的章节。除非您取消，方案届时将再次自动续订。",
+      "period": "付款涵盖期间：{$period_start}至{$period_end}",
+      "plan": "方案：{$plan_name}",
+      "preview": "您的方案“{$plan_name}”已续订。",
+      "subject": "{$tenant_name}方案续订成功",
+      "test_notice": "这是在支付服务测试模式下续订的订阅，未产生任何扣款。"
+    },
     "subscription_started": {
       "action": "打开个人中心",
       "amount": "支付金额：{$amount}（{$currency}）",

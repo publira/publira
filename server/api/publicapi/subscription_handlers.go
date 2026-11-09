@@ -723,12 +723,13 @@ func recordIDStrings(ids []uuid.UUID) []string {
 // the subscription as the provider holds it now: the notification of the
 // payment can arrive before the one that starts the subscription, and a paid
 // renewal moves its period on. A redelivered notification records nothing
-// twice. The invoice the subscription was created with also owes its reader
-// the mail of its start, queued with the payment; a subscription whose
-// reader's account is gone owes nobody one. A refund or a dispute whose notification overtook the payment's is
-// applied and released in the same transaction, under the lock a refund or a
-// dispute takes to match or hold itself, so a payment is never committed
-// without the one held for it.
+// twice. Each payment recorded also owes its reader a mail, queued with it:
+// the invoice the subscription was created with the mail of its start, and
+// every later one the mail of the renewal it paid for; a subscription whose
+// reader's account is gone owes nobody one. A refund or a dispute whose
+// notification overtook the payment's is applied and released in the same
+// transaction, under the lock a refund or a dispute takes to match or hold
+// itself, so a payment is never committed without the one held for it.
 func (s *apiServer) recordSubscriptionPayment(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -776,9 +777,9 @@ func (s *apiServer) recordSubscriptionPayment(
 			if err != nil {
 				return s.internalDBError(ctx, "failed to record a subscription payment", err, logAttrs...)
 			}
-			if event.Started && subscription.UserID.Valid {
-				if err := queueSubscriptionStarted(ctx, queries, tenantID, subscription.ID, payment.ID); err != nil {
-					return s.internalError(ctx, "failed to queue the mail of a subscription's start", err, append(logAttrs, "subscription_id", subscription.ID.String())...)
+			if subscription.UserID.Valid {
+				if err := queueSubscriptionPaymentEmail(ctx, queries, tenantID, subscription.ID, payment.ID, event.Started); err != nil {
+					return s.internalError(ctx, "failed to queue the mail of a subscription payment", err, append(logAttrs, "subscription_id", subscription.ID.String())...)
 				}
 			}
 			if paymentID.Valid {
@@ -799,19 +800,25 @@ func (s *apiServer) recordSubscriptionPayment(
 		})
 }
 
-// queueSubscriptionStarted owes the reader of subscriptionID the mail of its
-// start, which names the payment paymentID that started it.
-func queueSubscriptionStarted(ctx context.Context, queries *dbmodels.Queries, tenantID, subscriptionID, paymentID uuid.UUID) error {
-	payload, err := json.Marshal(outbox.SubscriptionStartedPayload{
+// queueSubscriptionPaymentEmail owes the reader of subscriptionID the mail of
+// the payment paymentID: the mail of its start when started says that invoice
+// created the subscription, and otherwise the mail of the renewal it paid for.
+func queueSubscriptionPaymentEmail(ctx context.Context, queries *dbmodels.Queries, tenantID, subscriptionID, paymentID uuid.UUID, started bool) error {
+	eventType := outbox.EventTypeSubscriptionRenewed
+	idempotencyKey := outbox.SubscriptionRenewedIdempotencyKey(paymentID)
+	if started {
+		eventType = outbox.EventTypeSubscriptionStarted
+		idempotencyKey = outbox.SubscriptionStartedIdempotencyKey(subscriptionID)
+	}
+	payload, err := json.Marshal(outbox.SubscriptionPaymentEmailPayload{
 		TenantID:              tenantID.String(),
 		SubscriptionPaymentID: paymentID.String(),
 	})
 	if err != nil {
-		return fmt.Errorf("marshal subscription started event: %w", err)
+		return fmt.Errorf("marshal %s event: %w", eventType, err)
 	}
-	if err := insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeSubscriptionStarted, payload,
-		outbox.SubscriptionStartedIdempotencyKey(subscriptionID)); err != nil {
-		return fmt.Errorf("enqueue subscription started: %w", err)
+	if err := insertPublicOutboxEvent(ctx, queries, tenantID, eventType, payload, idempotencyKey); err != nil {
+		return fmt.Errorf("enqueue %s: %w", eventType, err)
 	}
 	return nil
 }

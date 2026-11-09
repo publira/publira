@@ -148,7 +148,7 @@ func (q *Queries) GetSubscriptionPaymentIDByPaymentIntent(ctx context.Context, a
 	return id, err
 }
 
-const GetSubscriptionStartedMailForTenant = `-- name: GetSubscriptionStartedMailForTenant :one
+const GetSubscriptionPaymentMailForTenant = `-- name: GetSubscriptionPaymentMailForTenant :one
 SELECT
     sp.id,
     sp.amount,
@@ -172,12 +172,12 @@ WHERE sp.tenant_id = $1::uuid
     AND sp.id = $2::uuid
 `
 
-type GetSubscriptionStartedMailForTenantParams struct {
+type GetSubscriptionPaymentMailForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	ID       uuid.UUID `json:"id"`
 }
 
-type GetSubscriptionStartedMailForTenantRow struct {
+type GetSubscriptionPaymentMailForTenantRow struct {
 	ID          uuid.UUID      `json:"id"`
 	Amount      int32          `json:"amount"`
 	Currency    string         `json:"currency"`
@@ -188,14 +188,15 @@ type GetSubscriptionStartedMailForTenantRow struct {
 	ReaderEmail sql.NullString `json:"reader_email"`
 }
 
-// What the mail of a subscription's start says about the payment that started
-// it, read by the outbox worker, which connects past RLS and therefore names
-// the tenant itself. The plan is the one the payment was recorded on, under
+// What the mail of a paid invoice of a subscription, the one that started it
+// or one that renewed it, says about the payment it was recorded as, read by
+// the outbox worker, which connects past RLS and therefore names the tenant
+// itself. The plan is the one the payment was recorded on, under
 // the name it has when the mail is sent. The reader is joined within the
 // tenant, so an account deleted since answers no address rather than no row.
-func (q *Queries) GetSubscriptionStartedMailForTenant(ctx context.Context, arg GetSubscriptionStartedMailForTenantParams) (GetSubscriptionStartedMailForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetSubscriptionStartedMailForTenant, arg.TenantID, arg.ID)
-	var i GetSubscriptionStartedMailForTenantRow
+func (q *Queries) GetSubscriptionPaymentMailForTenant(ctx context.Context, arg GetSubscriptionPaymentMailForTenantParams) (GetSubscriptionPaymentMailForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionPaymentMailForTenant, arg.TenantID, arg.ID)
+	var i GetSubscriptionPaymentMailForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.Amount,

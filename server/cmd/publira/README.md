@@ -167,6 +167,7 @@ The long-lived background process. It hosts one River client, on which it drains
 | `purchase_receipt` | Reader receipt for a purchase recorded from a payment provider's notification, one per purchase however often the notification is redelivered |
 | `purchase_refund_notice` | Reader notice of a refund recorded from a payment provider's notification, whatever the reader's notification settings say: one per refund that adds to what the purchase has had refunded, however often the notification is redelivered. A refund through the App Store or Google Play sends none |
 | `subscription_started` | Reader notice that the first invoice of a subscription bought on the site was paid, whatever the reader's notification settings say: one per subscription however often the invoice's notification is redelivered. A subscription sold through the App Store or Google Play sends none |
+| `subscription_renewed` | Reader notice that a later invoice of a subscription bought on the site was paid, for a new period, whatever the reader's notification settings say: one per invoice however often its notification is redelivered. A subscription sold through the App Store or Google Play sends none |
 | `admin_password_reset_email` | Admin console password reset |
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |
