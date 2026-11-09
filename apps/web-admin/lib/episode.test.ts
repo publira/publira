@@ -8,6 +8,7 @@ import {
   BadRequestSchema,
   Code,
   ConnectError,
+  ErrorInfoSchema,
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,6 +34,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockCreateEpisode,
+  mockDeleteEpisode,
   mockDeleteEpisodeEyeCatchImage,
   mockDeleteEpisodeImage,
   mockDeleteEpisodeTranslation,
@@ -55,6 +57,7 @@ const {
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
+  mockDeleteEpisode: vi.fn(),
   mockDeleteEpisodeEyeCatchImage: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
   mockDeleteEpisodeTranslation: vi.fn(),
@@ -88,6 +91,7 @@ vi.mock("./api", () => ({
     series: {
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       createEpisode: mockCreateEpisode,
+      deleteEpisode: mockDeleteEpisode,
       deleteEpisodeEyeCatchImage: mockDeleteEpisodeEyeCatchImage,
       deleteEpisodeImage: mockDeleteEpisodeImage,
       deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
@@ -1398,6 +1402,125 @@ describe("deleteEpisodeImage", () => {
 
     expect(result).toEqual({
       message: "The page could not be found. Reload the screen and try again.",
+      ok: false,
+    });
+  });
+});
+
+const episodeReferencedError = (reason: string) =>
+  new ConnectError(
+    "episode is referenced",
+    Code.FailedPrecondition,
+    undefined,
+    [
+      {
+        desc: ErrorInfoSchema,
+        value: { domain: "publira", reason },
+      },
+    ]
+  );
+
+describe("deleteEpisode", () => {
+  it("deletes the episode with the operator's session", async () => {
+    mockDeleteEpisode.mockResolvedValue({});
+
+    const { deleteEpisode } = await import("./episode");
+
+    const result = await deleteEpisode(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteEpisode).toHaveBeenCalledWith(
+      { episodeId: "EPISODE001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each([
+    {
+      message:
+        "This episode cannot be deleted: it has been bought, rented, or tipped, or bought with a volume or a bundle discount. Take it off the site instead.",
+      reason: "EPISODE_PURCHASED",
+      reference: "purchases",
+    },
+    {
+      message:
+        "This episode cannot be deleted: it has been bought in the App Store or Google Play. Take it off the site instead.",
+      reason: "EPISODE_STORE_PURCHASED",
+      reference: "purchases",
+    },
+    {
+      message:
+        "This episode cannot be deleted: it has been bought with coins. Take it off the site instead.",
+      reason: "EPISODE_PAID_WITH_COINS",
+      reference: "purchases",
+    },
+    {
+      message:
+        "This episode cannot be deleted: an access ticket has been issued for it, counting revoked and expired ones. Take it off the site instead.",
+      reason: "EPISODE_ACCESS_TICKET_ISSUED",
+      reference: "access_tickets",
+    },
+    {
+      message:
+        "This episode cannot be deleted: it is in a volume that has been on sale. Take it off the site instead.",
+      reason: "EPISODE_IN_PUBLISHED_VOLUME",
+      reference: undefined,
+    },
+  ])(
+    "words $reason as what refers to the episode",
+    async ({ message, reason, reference }) => {
+      mockDeleteEpisode.mockRejectedValue(episodeReferencedError(reason));
+
+      const { deleteEpisode } = await import("./episode");
+
+      const result = await deleteEpisode(
+        { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(result).toEqual({ message, ok: false, reference });
+    }
+  );
+
+  // A server newer than this console may refuse for a reason it has no
+  // sentence for yet, which is still a refusal rather than a failure.
+  it("words a refusal for a reason it does not know as a refusal", async () => {
+    mockDeleteEpisode.mockRejectedValue(
+      episodeReferencedError("EPISODE_SOMETHING_NEW")
+    );
+
+    const { deleteEpisode } = await import("./episode");
+
+    const result = await deleteEpisode(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This episode cannot be deleted: a record that has to be kept refers to it. Take it off the site instead.",
+      ok: false,
+    });
+  });
+
+  it("says an episode deleted already is gone", async () => {
+    mockDeleteEpisode.mockRejectedValue(
+      new ConnectError("episode not found", Code.NotFound)
+    );
+
+    const { deleteEpisode } = await import("./episode");
+
+    const result = await deleteEpisode(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This episode has already been deleted. Go back to the episode list.",
       ok: false,
     });
   });

@@ -1,8 +1,8 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, import a series and its episodes from a ZIP, change its title in each language, its price, its reading period, its rental, and its preview pages, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, and see what goes out when on the calendar.
+description: Create an episode, add, replace, and delete its pages, import a series and its episodes from a ZIP, change its title in each language, its price, its reading period, its rental, and its preview pages, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, see what goes out when on the calendar, and delete an episode nothing has to keep.
 published: 2026-10-07
-updated: 2026-11-06
+updated: 2026-11-09
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -311,10 +311,27 @@ The calendar opens on the current month, with today marked. **Previous month** a
 
 ### Taking an episode off the site
 
-A published episode cannot be deleted. To take it off the site:
+An episode that has been sold, or that another record has to keep, cannot be deleted, as [Deleting an episode](#deleting-an-episode) describes. To take a published episode off the site instead:
 
 - **Empty the field** under **Publishing settings** and save. The episode goes back to **Draft**.
 - **Enter a time in the future** and save. The episode is off the site until then, and is published again at that time without announcing it to followers a second time.
 - **Set Shown on** so it is shown nowhere. The episode stays published, and comes back as soon as the setting is changed.
 
 Readers who bought the episode lose access to it with any of these, until it is back.
+
+### Deleting an episode
+
+A Tenant admin deletes an episode with **Delete this episode**, at the end of the **Basic information** tab of its edit screen; an Editor or an Auditor is not offered it. The dialog asks for the episode's title, and **Delete episode** stays unavailable until it is typed exactly. Choosing it deletes the episode with its pages, cover image, translations, credits, free reading periods, campaign prices, and review history, and with what readers left on it: comments and their reports, follows, reactions, and reading history. It leaves the site, the app, and the search index at once, and the console returns to the series' episode list. A deletion cannot be undone, and **Audit logs** records it with the episode's title.
+
+![The dialog that deletes an episode: what is deleted with it, which episodes are kept and that the reason is shown, the episode's title typed into the confirmation field, Cancel, and Delete episode.](./episodes-delete.png)
+
+An episode is kept while any of these refers to it, and the dialog says which instead of deleting it:
+
+- A purchase, a rental, or a tip, whether a reader paid for it or staff granted it, including one made in the App Store or Google Play or paid with coins, or a volume or a bundle discount bought with it. **View its purchases** opens **Purchases** filtered to the episode.
+- A payment for it that can still go through.
+- An access ticket, revoked and expired ones included. **View its access tickets** opens **Access tickets** filtered to the episode.
+- A royalty statement that includes it.
+- A promotion code for it that a reader redeemed.
+- A volume that holds it and has been on sale, whether or not it still is.
+
+Each of these is a record of money or of what a reader was granted, so neither it nor the episode is deleted: take the episode off the site instead. A volume that has never been on sale and a promotion code for the episode that nobody redeemed simply lose the episode when it is deleted.

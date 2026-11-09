@@ -697,6 +697,46 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      // The dialog is left with the title typed and never submitted, so the
+      // seed episode stays.
+      test("the dialog that deletes an episode, with its title typed", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(page, consoleSessions, locale, editPath);
+        await page
+          .getByRole("button", {
+            name: t("admin.series.episodes.delete.action"),
+          })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+
+        const heading =
+          (await dialog.getByRole("heading").first().textContent()) ?? "";
+
+        // The heading quotes the title in the locale's own marks.
+        const title = heading.slice(
+          heading.search(/[“「]/u) + 1,
+          Math.max(heading.lastIndexOf("”"), heading.lastIndexOf("」"))
+        );
+
+        expect(title).not.toBe("");
+        await dialog.getByRole("textbox").fill(title);
+        await expect(
+          dialog.getByRole("button", {
+            name: t("admin.series.episodes.delete.confirm_action"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "console/catalog/episodes",
+          subject: "delete",
+        });
+      });
+
       test.describe("the episode list's dialogs", () => {
         test.beforeEach(async ({ consoleSessions, page }) => {
           await openScreen(page, consoleSessions, locale, episodesPath);

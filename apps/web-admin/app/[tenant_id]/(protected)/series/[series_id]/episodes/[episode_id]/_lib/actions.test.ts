@@ -7,6 +7,7 @@ const {
   mockAssertSameOrigin,
   mockCreateEpisodeCampaignPrice,
   mockCreateEpisodeFreeWindow,
+  mockDeleteEpisode,
   mockDeleteEpisodeCampaignPrice,
   mockDeleteEpisodeEyeCatchImage,
   mockDeleteEpisodeFreeWindow,
@@ -36,6 +37,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockCreateEpisodeCampaignPrice: vi.fn(),
   mockCreateEpisodeFreeWindow: vi.fn(),
+  mockDeleteEpisode: vi.fn(),
   mockDeleteEpisodeCampaignPrice: vi.fn(),
   mockDeleteEpisodeEyeCatchImage: vi.fn(),
   mockDeleteEpisodeFreeWindow: vi.fn(),
@@ -108,7 +110,17 @@ vi.mock("#lib/purchase", () => ({
   purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
 }));
 
+vi.mock("#lib/promotion-code", () => ({
+  promotionCodesCacheTag: (tenantId: string) => `promotion-codes-${tenantId}`,
+}));
+
+vi.mock("#lib/volume", () => ({
+  volumesCacheTag: (tenantId: string, seriesId: string) =>
+    `volumes-${tenantId}-${seriesId}`,
+}));
+
 vi.mock("#lib/episode", () => ({
+  deleteEpisode: mockDeleteEpisode,
   deleteEpisodeEyeCatchImage: mockDeleteEpisodeEyeCatchImage,
   deleteEpisodeImage: mockDeleteEpisodeImage,
   deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
@@ -2129,5 +2141,107 @@ describe("renewEpisodePreviewUrlsAction", () => {
         "018f0e6a-4000-7000-8000-000000000001"
       )
     ).resolves.toEqual({});
+  });
+});
+
+describe("deleteEpisodeAction", () => {
+  const episodeId = "018f0e6a-4000-7000-8000-000000000001";
+  const seriesId = "018f0e6a-4000-7000-8000-0000000000aa";
+
+  const deleteEpisodeFormData = (titleConfirmation: string) =>
+    layoutFormData({
+      series_id: seriesId,
+      title_confirmation: titleConfirmation,
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetEpisode.mockResolvedValue({
+      episode: { id: episodeId, publicId: "EP001", title: "Chapter 1" },
+      ok: true,
+    });
+  });
+
+  it("refuses a title that is not the episode's without calling the API", async () => {
+    const { deleteEpisodeAction } = await import("./actions");
+
+    const result = await deleteEpisodeAction(
+      null,
+      deleteEpisodeFormData("Chapter 1 ")
+    );
+
+    expect(result).toEqual({
+      message: "The title entered is not this episode's title.",
+      ok: false,
+    });
+    expect(mockDeleteEpisode).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses an episode the URL does not name", async () => {
+    mockGetEpisode.mockResolvedValueOnce({
+      episode: {
+        id: "018f0e6a-4000-7000-8000-000000000002",
+        publicId: "EP001",
+        title: "Chapter 1",
+      },
+      ok: true,
+    });
+
+    const { deleteEpisodeAction } = await import("./actions");
+
+    const result = await deleteEpisodeAction(
+      null,
+      deleteEpisodeFormData("Chapter 1")
+    );
+
+    expect(result).toEqual({ message: "Episode ID is missing.", ok: false });
+    expect(mockDeleteEpisode).not.toHaveBeenCalled();
+  });
+
+  it("keeps a refusal and the list it points to in the dialog", async () => {
+    mockDeleteEpisode.mockResolvedValueOnce({
+      message: "This episode cannot be deleted.",
+      ok: false,
+      reference: "purchases",
+    });
+
+    const { deleteEpisodeAction } = await import("./actions");
+
+    const result = await deleteEpisodeAction(
+      null,
+      deleteEpisodeFormData("Chapter 1")
+    );
+
+    expect(result).toEqual({
+      message: "This episode cannot be deleted.",
+      ok: false,
+      reference: "purchases",
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("deletes the episode and names it to the series' episode list", async () => {
+    mockDeleteEpisode.mockResolvedValueOnce({ ok: true });
+
+    const { deleteEpisodeAction } = await import("./actions");
+    await deleteEpisodeAction(null, deleteEpisodeFormData("Chapter 1"));
+
+    expect(mockDeleteEpisode).toHaveBeenCalledWith(
+      { episodeId, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `episode-TENANT001-${episodeId}`
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(`volumes-TENANT001-${seriesId}`);
+    expect(mockUpdateTag).toHaveBeenCalledWith("promotion-codes-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes?deleted=1&deleted_title=Chapter+1"
+    );
   });
 });

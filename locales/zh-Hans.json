@@ -2623,6 +2623,35 @@
             "comment_too_long": "评语请控制在2,000个字符以内。",
             "decision_missing": "请选择批准或退回该章节。"
           }
+        },
+        "delete": {
+          "title": "删除章节",
+          "description": "将本章连同其页面和读者留下的内容一起永久删除。已售出的章节，或有需要保留的记录引用的章节，无法删除，请改为在网站上停止发布。",
+          "action": "删除本章",
+          "error": "无法显示本章的删除",
+          "confirm_title": "要删除“{$title}”吗？",
+          "confirm_description": "其页面、评论、关注、阅读记录、免费阅读期和活动价格会一并删除，并立即从网站和应用中消失。此操作无法撤销。",
+          "confirm_kept": "有过购买、租借或打赏的章节，阅读券或版税明细中包含的章节，以及所在的卷曾经出售过的章节不会被删除，原因会显示在这里。",
+          "title_label": "请输入章节标题以确认",
+          "confirm_action": "删除章节",
+          "pending": "正在删除...",
+          "deleted": "已删除“{$title}”。",
+          "failed": "无法删除章节。请稍后再试。",
+          "not_found": "该章节已被删除。请返回章节列表。",
+          "title_mismatch": "输入的标题与本章标题不一致。",
+          "view_purchases": "查看本章的购买记录",
+          "view_access_tickets": "查看本章的阅读券",
+          "refused": {
+            "purchased": "本章已有购买、租借或打赏，或已随卷或打包优惠被购买，因此无法删除。请改为在网站上停止发布。",
+            "store_purchased": "本章已在App Store或Google Play中被购买，因此无法删除。请改为在网站上停止发布。",
+            "payment_pending": "本章仍有可能完成的付款，因此无法删除。请改为在网站上停止发布。",
+            "access_ticket_issued": "本章已发放阅读券（包括已撤销和已过期的），因此无法删除。请改为在网站上停止发布。",
+            "on_royalty_statement": "本章已列入版税明细，因此无法删除。请改为在网站上停止发布。",
+            "paid_with_coins": "本章已用代币购买，因此无法删除。请改为在网站上停止发布。",
+            "promotion_code_redeemed": "本章的优惠码已被使用，因此无法删除。请改为在网站上停止发布。",
+            "in_published_volume": "本章所在的卷曾经出售过，因此无法删除。请改为在网站上停止发布。",
+            "referenced": "有需要保留的记录引用了本章，因此无法删除。请改为在网站上停止发布。"
+          }
         }
       },
       "status": {

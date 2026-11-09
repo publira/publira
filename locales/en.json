@@ -2623,6 +2623,35 @@
             "comment_too_long": "Keep the comment to 2,000 characters or fewer.",
             "decision_missing": "Choose whether to approve or return the episode."
           }
+        },
+        "delete": {
+          "title": "Deleting this episode",
+          "description": "Deletes this episode for good, with its pages and what readers left on it. An episode that has been sold, or that another record has to keep, cannot be deleted: take it off the site instead.",
+          "action": "Delete this episode",
+          "error": "Could not display the deletion of this episode",
+          "confirm_title": "Delete “{$title}”?",
+          "confirm_description": "Its pages, comments, follows, reading history, free reading periods, and campaign prices are deleted with it, and it leaves the site and the app at once. This cannot be undone.",
+          "confirm_kept": "An episode that has been bought, rented, or tipped, that an access ticket or a royalty statement names, or that is in a volume that has been on sale is not deleted, and the reason is shown here.",
+          "title_label": "Enter the episode's title to confirm",
+          "confirm_action": "Delete episode",
+          "pending": "Deleting...",
+          "deleted": "“{$title}” was deleted.",
+          "failed": "Could not delete the episode. Please try again later.",
+          "not_found": "This episode has already been deleted. Go back to the episode list.",
+          "title_mismatch": "The title entered is not this episode's title.",
+          "view_purchases": "View its purchases",
+          "view_access_tickets": "View its access tickets",
+          "refused": {
+            "purchased": "This episode cannot be deleted: it has been bought, rented, or tipped, or bought with a volume or a bundle discount. Take it off the site instead.",
+            "store_purchased": "This episode cannot be deleted: it has been bought in the App Store or Google Play. Take it off the site instead.",
+            "payment_pending": "This episode cannot be deleted: a payment for it can still go through. Take it off the site instead.",
+            "access_ticket_issued": "This episode cannot be deleted: an access ticket has been issued for it, counting revoked and expired ones. Take it off the site instead.",
+            "on_royalty_statement": "This episode cannot be deleted: a royalty statement includes it. Take it off the site instead.",
+            "paid_with_coins": "This episode cannot be deleted: it has been bought with coins. Take it off the site instead.",
+            "promotion_code_redeemed": "This episode cannot be deleted: a promotion code for it has been redeemed. Take it off the site instead.",
+            "in_published_volume": "This episode cannot be deleted: it is in a volume that has been on sale. Take it off the site instead.",
+            "referenced": "This episode cannot be deleted: a record that has to be kept refers to it. Take it off the site instead."
+          }
         }
       },
       "status": {

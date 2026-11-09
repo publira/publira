@@ -19,6 +19,7 @@ import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
+  deleteEpisode,
   deleteEpisodeEyeCatchImage,
   deleteEpisodeImage,
   deleteEpisodeTranslation,
@@ -73,6 +74,7 @@ import {
   parseTenantPrice,
   rawPriceFormSchema,
 } from "#lib/price-action";
+import { promotionCodesCacheTag } from "#lib/promotion-code";
 import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
@@ -80,8 +82,12 @@ import { toScheduledPeriod } from "#lib/scheduled-period";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { translationEditPath } from "#lib/translation-locales";
+import { volumesCacheTag } from "#lib/volume";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
+import type {
+  EpisodeDeleteActionState,
+  EpisodeEditActionState,
+} from "../episode-edit-types";
 
 const hiddenParamsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -645,6 +651,110 @@ export const deleteEpisodeTranslationAction = async (
       undefined,
       "translation_deleted"
     )
+  );
+};
+
+const deleteEpisodeSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    seriesId: requiredRecordId(
+      t("admin.series.episodes.validation.series_missing")
+    ),
+    // Compared as it was typed, as the dialog compares it.
+    titleConfirmation: z.string().catch(""),
+  });
+};
+
+/**
+ * Deletes the episode once the title typed into the dialog is the one it has,
+ * then leaves for the series' episode list. The list names the title in its
+ * toast from the query string, since no episode is left to read it from.
+ */
+export const deleteEpisodeAction = async (
+  _prevState: EpisodeDeleteActionState,
+  formData: FormData
+): Promise<EpisodeDeleteActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteEpisodeSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      seriesId: { kind: "value", name: "series_id" },
+      titleConfirmation: { kind: "value", name: "title_confirmation" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { episodeId, seriesId, seriesPublicId, tenantId, titleConfirmation } =
+    parsed.data;
+
+  await verifyAdminSession(tenantId);
+
+  const [t, target] = await Promise.all([
+    getMessagesFor(locale),
+    getEpisodeForTenant(
+      {
+        publicId: parsed.data.episodePublicId,
+        seriesPublicId,
+        tenantId,
+      },
+      locale
+    ),
+  ]);
+
+  if (!target.ok || target.episode.id !== episodeId) {
+    return {
+      message:
+        !target.ok && "message" in target && target.message
+          ? target.message
+          : t("admin.series.episodes.validation.episode_missing"),
+      ok: false,
+    };
+  }
+
+  const { title } = target.episode;
+
+  if (titleConfirmation !== title) {
+    return {
+      message: t("admin.series.episodes.delete.title_mismatch"),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteEpisode({ episodeId, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+      reference: result.reference,
+    };
+  }
+
+  updateTag(tenantDashboardCacheTag(tenantId));
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+  // What was the episode's alone went with it: its free reading periods and
+  // campaign prices, its place in a volume never on sale, and the promotion
+  // codes for it nobody redeemed.
+  updateTag(episodeFreeWindowsCacheTag(tenantId));
+  updateTag(episodeCampaignPricesCacheTag(tenantId));
+  updateTag(volumesCacheTag(tenantId, seriesId));
+  updateTag(promotionCodesCacheTag(tenantId));
+
+  redirect(
+    `/series/${seriesPublicId}/episodes?${new URLSearchParams({ deleted: "1", deleted_title: title }).toString()}`
   );
 };
 
