@@ -33,6 +33,7 @@ describe("TEMPLATE_IDS", () => {
       "staff_contact_reply",
       "staff_episode_review_returned",
       "purchase_receipt",
+      "purchase_refund_notice",
       "reader_episode_published",
       "reader_announcement_posted",
       "reader_comment_approved",

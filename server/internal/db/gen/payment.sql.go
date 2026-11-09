@@ -93,6 +93,7 @@ WITH held AS (
 ),
 refund AS (
     SELECT p.id,
+        COALESCE(p.refunded_amount, 0)::integer AS previous_amount,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
             COALESCE(
@@ -123,13 +124,18 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id, refund.previous_amount
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
 	TenantID          uuid.UUID `json:"tenant_id"`
 	Provider          string    `json:"provider"`
 	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+type ApplyUnappliedRefundToPurchaseRow struct {
+	Purchase       Purchase `json:"purchase"`
+	PreviousAmount int32    `json:"previous_amount"`
 }
 
 // Writes a held refund onto the purchase that has since been created, by the
@@ -139,40 +145,44 @@ type ApplyUnappliedRefundToPurchaseParams struct {
 // The held row is left for the caller to delete once this has committed. A
 // crash in between costs a repeat of an update that is idempotent, whereas
 // deleting here would lose the refund if the update never landed.
-func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (Purchase, error) {
+//
+// previous_amount is the total recorded before this write, as
+// RecordRefundOnPurchase answers it.
+func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (ApplyUnappliedRefundToPurchaseRow, error) {
 	row := q.db.QueryRowContext(ctx, ApplyUnappliedRefundToPurchase, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
-	var i Purchase
+	var i ApplyUnappliedRefundToPurchaseRow
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.EpisodeID,
-		&i.PriceAtPurchase,
-		&i.ExpiresAt,
-		&i.PurchasedAt,
-		&i.TenantID,
-		&i.ProviderCheckoutID,
-		&i.ProviderPaymentID,
-		&i.RefundedAmount,
-		&i.RefundedAt,
-		&i.Store,
-		&i.StoreTransactionID,
-		&i.IsTest,
-		&i.Provider,
-		&i.Currency,
-		&i.RevokedAt,
-		&i.RevocationReason,
-		&i.StaffRefundAttempt,
-		&i.DisputeLostAt,
-		&i.Kind,
-		&i.VolumeID,
-		&i.SeriesBundleID,
-		&i.ProviderPromotionCodeID,
-		&i.CoinPackID,
-		&i.StaffRefundRequestedAmount,
-		&i.TaxRateBps,
-		&i.TaxAmount,
-		&i.ListPrice,
-		&i.PromotionCodeID,
+		&i.Purchase.ID,
+		&i.Purchase.UserID,
+		&i.Purchase.EpisodeID,
+		&i.Purchase.PriceAtPurchase,
+		&i.Purchase.ExpiresAt,
+		&i.Purchase.PurchasedAt,
+		&i.Purchase.TenantID,
+		&i.Purchase.ProviderCheckoutID,
+		&i.Purchase.ProviderPaymentID,
+		&i.Purchase.RefundedAmount,
+		&i.Purchase.RefundedAt,
+		&i.Purchase.Store,
+		&i.Purchase.StoreTransactionID,
+		&i.Purchase.IsTest,
+		&i.Purchase.Provider,
+		&i.Purchase.Currency,
+		&i.Purchase.RevokedAt,
+		&i.Purchase.RevocationReason,
+		&i.Purchase.StaffRefundAttempt,
+		&i.Purchase.DisputeLostAt,
+		&i.Purchase.Kind,
+		&i.Purchase.VolumeID,
+		&i.Purchase.SeriesBundleID,
+		&i.Purchase.ProviderPromotionCodeID,
+		&i.Purchase.CoinPackID,
+		&i.Purchase.StaffRefundRequestedAmount,
+		&i.Purchase.TaxRateBps,
+		&i.Purchase.TaxAmount,
+		&i.Purchase.ListPrice,
+		&i.Purchase.PromotionCodeID,
+		&i.PreviousAmount,
 	)
 	return i, err
 }
@@ -631,7 +641,8 @@ type GetPurchaseReceiptForTenantRow struct {
 	ReaderEmail               sql.NullString `json:"reader_email"`
 }
 
-// What the receipt of one purchase says, read by the outbox worker, which
+// What the receipt of one purchase says, and the mail of a refund recorded on
+// it names as refunded, read by the outbox worker, which
 // connects past RLS and therefore names the tenant itself. The reader is
 // joined within the tenant, so an account that was deleted after paying, whose
 // purchase keeps no user, answers no address rather than no receipt.
@@ -2094,6 +2105,7 @@ func (q *Queries) RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLos
 const RecordRefundOnPurchase = `-- name: RecordRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,
+        COALESCE(p.refunded_amount, 0)::integer AS previous_amount,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
             COALESCE(
@@ -2124,7 +2136,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_amount, p.tax_rate_bps, p.tax_amount, p.list_price, p.promotion_code_id, refund.previous_amount
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -2133,6 +2145,11 @@ type RecordRefundOnPurchaseParams struct {
 	TenantID          uuid.UUID      `json:"tenant_id"`
 	Provider          string         `json:"provider"`
 	ProviderPaymentID string         `json:"provider_payment_id"`
+}
+
+type RecordRefundOnPurchaseRow struct {
+	Purchase       Purchase `json:"purchase"`
+	PreviousAmount int32    `json:"previous_amount"`
 }
 
 // Records what the provider has refunded against one purchase, matched by the
@@ -2154,7 +2171,10 @@ type RecordRefundOnPurchaseParams struct {
 // the total counts every refund of the payment, one made in the provider's
 // dashboard among them, so only SettleStaffRefundInPart, once the provider
 // answers that the refund made under its key is on the payment, ends it.
-func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error) {
+//
+// previous_amount is the total recorded before this write, so the caller can
+// tell a refund that added to it from a delivery of one already recorded.
+func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (RecordRefundOnPurchaseRow, error) {
 	row := q.db.QueryRowContext(ctx, RecordRefundOnPurchase,
 		arg.Currency,
 		arg.RefundedAmount,
@@ -2162,38 +2182,39 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		arg.Provider,
 		arg.ProviderPaymentID,
 	)
-	var i Purchase
+	var i RecordRefundOnPurchaseRow
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.EpisodeID,
-		&i.PriceAtPurchase,
-		&i.ExpiresAt,
-		&i.PurchasedAt,
-		&i.TenantID,
-		&i.ProviderCheckoutID,
-		&i.ProviderPaymentID,
-		&i.RefundedAmount,
-		&i.RefundedAt,
-		&i.Store,
-		&i.StoreTransactionID,
-		&i.IsTest,
-		&i.Provider,
-		&i.Currency,
-		&i.RevokedAt,
-		&i.RevocationReason,
-		&i.StaffRefundAttempt,
-		&i.DisputeLostAt,
-		&i.Kind,
-		&i.VolumeID,
-		&i.SeriesBundleID,
-		&i.ProviderPromotionCodeID,
-		&i.CoinPackID,
-		&i.StaffRefundRequestedAmount,
-		&i.TaxRateBps,
-		&i.TaxAmount,
-		&i.ListPrice,
-		&i.PromotionCodeID,
+		&i.Purchase.ID,
+		&i.Purchase.UserID,
+		&i.Purchase.EpisodeID,
+		&i.Purchase.PriceAtPurchase,
+		&i.Purchase.ExpiresAt,
+		&i.Purchase.PurchasedAt,
+		&i.Purchase.TenantID,
+		&i.Purchase.ProviderCheckoutID,
+		&i.Purchase.ProviderPaymentID,
+		&i.Purchase.RefundedAmount,
+		&i.Purchase.RefundedAt,
+		&i.Purchase.Store,
+		&i.Purchase.StoreTransactionID,
+		&i.Purchase.IsTest,
+		&i.Purchase.Provider,
+		&i.Purchase.Currency,
+		&i.Purchase.RevokedAt,
+		&i.Purchase.RevocationReason,
+		&i.Purchase.StaffRefundAttempt,
+		&i.Purchase.DisputeLostAt,
+		&i.Purchase.Kind,
+		&i.Purchase.VolumeID,
+		&i.Purchase.SeriesBundleID,
+		&i.Purchase.ProviderPromotionCodeID,
+		&i.Purchase.CoinPackID,
+		&i.Purchase.StaffRefundRequestedAmount,
+		&i.Purchase.TaxRateBps,
+		&i.Purchase.TaxAmount,
+		&i.Purchase.ListPrice,
+		&i.Purchase.PromotionCodeID,
+		&i.PreviousAmount,
 	)
 	return i, err
 }

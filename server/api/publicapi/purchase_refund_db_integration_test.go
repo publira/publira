@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -158,6 +160,63 @@ func (e refundWebhookEnv) hasContentAccess(t *testing.T) bool {
 	return access
 }
 
+// refundNotices is every refund mail queued for the tenant's readers, in the
+// order the refunds were recorded.
+func (e refundWebhookEnv) refundNotices(t *testing.T) []outbox.PurchaseRefundNoticePayload {
+	t.Helper()
+	rows, err := e.pg.DB.QueryContext(context.Background(), `
+		SELECT payload
+		FROM outbox_events
+		WHERE tenant_id = $1
+			AND event_type = $2
+		ORDER BY id
+	`, e.tenant.ID, outbox.EventTypePurchaseRefundNotice)
+	if err != nil {
+		t.Fatalf("read refund notices: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var notices []outbox.PurchaseRefundNoticePayload
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatalf("scan a refund notice: %v", err)
+		}
+		var notice outbox.PurchaseRefundNoticePayload
+		if err := json.Unmarshal(raw, &notice); err != nil {
+			t.Fatalf("decode a refund notice: %v", err)
+		}
+		notices = append(notices, notice)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read refund notices: %v", err)
+	}
+	return notices
+}
+
+// assertRefundNotices checks the refund mails queued so far, each as the
+// amount it refunded, the total it brought the purchase to, and whether that
+// closed it.
+func (e refundWebhookEnv) assertRefundNotices(t *testing.T, want ...outbox.PurchaseRefundNoticePayload) {
+	t.Helper()
+	got := e.refundNotices(t)
+	if len(got) != len(want) {
+		t.Fatalf("refund notices = %+v, want %d", got, len(want))
+	}
+	for i, notice := range got {
+		if notice.TenantID != e.tenant.ID.String() || notice.PurchaseID == "" || notice.Currency != "JPY" {
+			t.Errorf("refund notice %d = %+v, want one of this tenant's purchases in JPY", i, notice)
+		}
+		if notice.RefundedAmount != want[i].RefundedAmount || notice.RefundedTotal != want[i].RefundedTotal || notice.Closed != want[i].Closed {
+			t.Errorf("refund notice %d = %+v, want %d of %d refunded and closed %t",
+				i, notice, want[i].RefundedAmount, want[i].RefundedTotal, want[i].Closed)
+		}
+	}
+}
+
+func refundNotice(amount, total int64, closed bool) outbox.PurchaseRefundNoticePayload {
+	return outbox.PurchaseRefundNoticePayload{RefundedAmount: amount, RefundedTotal: total, Closed: closed}
+}
+
 func refundedCharge(paymentIntentID string, amount, amountRefunded int64) map[string]any {
 	return map[string]any{
 		"id":              "ch_" + paymentIntentID,
@@ -190,6 +249,7 @@ func TestDBProcessPaymentWebhookRecordsFullRefundIdempotently(t *testing.T) {
 	if env.hasContentAccess(t) {
 		t.Fatal("a refunded purchase still opens the episode")
 	}
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
 
 	env.deliver(t, "charge.refunded", charge)
 	repeatAmount, repeatAt := env.refundState(t)
@@ -197,6 +257,8 @@ func TestDBProcessPaymentWebhookRecordsFullRefundIdempotently(t *testing.T) {
 		t.Fatalf("a repeated delivery changed the refund: amount %v -> %v, at %v -> %v",
 			amount, repeatAmount, at.Time, repeatAt.Time)
 	}
+	// The reader is told of the refund once, however often it is delivered.
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
 }
 
 func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
@@ -215,9 +277,10 @@ func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 	if !env.hasContentAccess(t) {
 		t.Fatal("a partially refunded purchase no longer opens the episode")
 	}
+	env.assertRefundNotices(t, refundNotice(200, 200, false))
 
 	// Stripe reports the amount refunded so far, so the delivery that completes
-	// the price carries the whole of it.
+	// the price carries the whole of it, and the reader is told what it added.
 	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_partial", 500, 500))
 	amount, at = env.refundState(t)
 	if amount.Int32 != 500 || !at.Valid {
@@ -226,6 +289,11 @@ func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 	if env.hasContentAccess(t) {
 		t.Fatal("a fully refunded purchase still opens the episode")
 	}
+	env.assertRefundNotices(t, refundNotice(200, 200, false), refundNotice(300, 500, true))
+
+	// The first refund delivered again after the second adds nothing.
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_partial", 500, 200))
+	env.assertRefundNotices(t, refundNotice(200, 200, false), refundNotice(300, 500, true))
 }
 
 func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
@@ -244,6 +312,7 @@ func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 	if env.hasContentAccess(t) {
 		t.Fatal("a refunded purchase still opens the episode")
 	}
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
 }
 
 func TestDBProcessPaymentWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
@@ -262,6 +331,7 @@ func TestDBProcessPaymentWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
 	if held := env.heldRefundCount(t); held != 1 {
 		t.Fatalf("held refunds = %d, want the unmatched one kept", held)
 	}
+	env.assertRefundNotices(t)
 }
 
 // Stripe orders neither its events nor its retries, so the refund of a payment
@@ -280,6 +350,7 @@ func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *te
 	if env.hasContentAccess(t) {
 		t.Fatal("an episode with no purchase already opens")
 	}
+	env.assertRefundNotices(t)
 
 	env.deliverCheckout(t, "pi_refund_early")
 	amount, at := env.refundState(t)
@@ -292,6 +363,7 @@ func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *te
 	if held := env.heldRefundCount(t); held != 0 {
 		t.Fatalf("held refunds = %d, want the applied one released", held)
 	}
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
 
 	// A redelivery of the Checkout event finds nothing held and changes
 	// nothing.
@@ -301,6 +373,7 @@ func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *te
 		t.Fatalf("a repeated Checkout delivery changed the refund: amount %v -> %v, at %v -> %v",
 			amount, repeatAmount, at.Time, repeatAt.Time)
 	}
+	env.assertRefundNotices(t, refundNotice(500, 500, true))
 }
 
 // A partial refund that arrives first leaves the purchase readable, the same
@@ -326,4 +399,5 @@ func TestDBProcessPaymentWebhookAppliesAnEarlyPartialRefundWithoutRevokingAccess
 	if held := env.heldRefundCount(t); held != 0 {
 		t.Fatalf("held refunds = %d, want the applied one released", held)
 	}
+	env.assertRefundNotices(t, refundNotice(200, 200, false))
 }

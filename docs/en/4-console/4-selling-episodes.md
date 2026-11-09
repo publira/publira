@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-05
+updated: 2026-11-09
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -335,7 +335,7 @@ The episode's Authors are paid royalties on the price before the code, as [Royal
 
 ## Refunds
 
-A purchase on the site is refunded from the console, as [Refunding from the console](#refunding-from-the-console) describes, or in the Stripe or PAY.JP dashboard. A purchase in the app is refunded by Apple or Google. Publira does not tell the reader either way.
+A purchase on the site is refunded from the console, as [Refunding from the console](#refunding-from-the-console) describes, or in the Stripe or PAY.JP dashboard. Either way, once the provider reports the refund, the site mails the reader in the tenant's name, as it does the receipt, whatever the reader's notification settings say. The mail names what was bought, the amount refunded and, once there has been an earlier refund, what the refunds add up to against the price paid, and whether the episode stays open. A purchase made through the App Store or Google Play is refunded by Apple or Google, who tell the reader themselves, and the site mails nothing for it.
 
 - **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
 - **A partial refund** leaves the episode open until the refunds on the payment add up to what the reader paid. It still lowers the sales the episode's Authors are paid royalties on.

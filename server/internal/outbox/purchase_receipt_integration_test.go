@@ -36,6 +36,13 @@ func newPurchaseReceiptEnv(t *testing.T, ctx context.Context) purchaseReceiptEnv
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
+	return newPurchaseReceiptEnvOn(t, ctx, pg)
+}
+
+// newPurchaseReceiptEnvOn seeds the same on pg, a database of the test's own.
+func newPurchaseReceiptEnvOn(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv) purchaseReceiptEnv {
+	t.Helper()
+
 	tenant := pg.SeedTenant(t, "OUTBOXPR001", "aoto.example.test", "Aoto Press")
 	if _, err := pg.DB.ExecContext(ctx,
 		`UPDATE tenants SET default_locale = 'en', timezone = 'Asia/Tokyo' WHERE id = $1`, tenant.ID); err != nil {

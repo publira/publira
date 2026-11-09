@@ -845,14 +845,11 @@ func (s *apiServer) recordRefund(
 		)
 	}
 
-	purchase, err := queries.RecordRefundOnPurchase(ctx, dbmodels.RecordRefundOnPurchaseParams{
-		TenantID:          tenantID,
-		Provider:          providerID,
-		ProviderPaymentID: event.PaymentID,
-		RefundedAmount:    refundedAmount,
-		Currency:          currency,
-	})
-	if errors.Is(err, sql.ErrNoRows) {
+	purchase, recorded, err := s.recordRefundOnPurchase(ctx, tenantID, providerID, event, refundedAmount, currency)
+	if err != nil {
+		return err
+	}
+	if !recorded {
 		// Matched against a subscription payment, or held, under the lock
 		// recordSubscriptionPayment takes, so a payment being recorded at the
 		// same moment either is seen here or sees what is held.
@@ -899,9 +896,6 @@ func (s *apiServer) recordRefund(
 			return nil
 		})
 	}
-	if err != nil {
-		return s.internalDBError(ctx, "failed to record refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
-	}
 	if currency.Valid && currency.String != purchase.Currency {
 		s.logger.WarnContext(ctx, "refund was reported in a currency other than its purchase's and is recorded as a full refund",
 			"tenant_id", tenantID,
@@ -918,9 +912,6 @@ func (s *apiServer) recordRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
-	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
-		return s.internalError(ctx, "failed to queue the webhook events of a refund", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
-	}
 	if purchase.StaffRefundRequestedAmount.Valid {
 		if err := s.settleStaffRefundInPart(ctx, queries, tenantID, provider, credentials, event, purchase); err != nil {
 			return err
@@ -930,6 +921,89 @@ func (s *apiServer) recordRefund(
 	// pays for. Refunded in full, it grants nothing more.
 	if purchase.RefundedAt.Valid {
 		return s.revokeCoinPackGrant(ctx, purchase)
+	}
+	return nil
+}
+
+// recordRefundOnPurchase writes the refund onto the purchase whose payment it
+// names, and queues what the refund owes the reader and the tenant's webhook
+// endpoints, in one transaction. The reader's mail says how much this refund
+// added, which only the write that added it can tell, so a mail that failed
+// to be queued takes the write back with it and leaves the redelivery to make
+// both again. Two notifications of the same payment wait for each other on
+// the payment's lock, so the second reads the total the first recorded rather
+// than the one both started from. It answers false when no purchase here has
+// the payment.
+func (s *apiServer) recordRefundOnPurchase(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	providerID string,
+	event paymentprovider.Refunded,
+	refundedAmount sql.NullInt32,
+	currency sql.NullString,
+) (dbmodels.Purchase, bool, error) {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return dbmodels.Purchase{}, false, s.internalDBError(ctx, "failed to begin the refund transaction", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	if err := queries.LockProviderPayment(ctx, dbmodels.LockProviderPaymentParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+	}); err != nil {
+		return dbmodels.Purchase{}, false, s.internalDBError(ctx, "failed to lock a payment", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	row, err := queries.RecordRefundOnPurchase(ctx, dbmodels.RecordRefundOnPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+		RefundedAmount:    refundedAmount,
+		Currency:          currency,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.Purchase{}, false, nil
+	}
+	if err != nil {
+		return dbmodels.Purchase{}, false, s.internalDBError(ctx, "failed to record refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	if err := queueRefundEvents(ctx, queries, row.Purchase, row.PreviousAmount); err != nil {
+		return dbmodels.Purchase{}, false, s.internalError(ctx, "failed to queue the events of a refund", err, "tenant_id", tenantID.String(), "purchase_id", row.Purchase.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return dbmodels.Purchase{}, false, s.internalDBError(ctx, "failed to commit the refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	return row.Purchase, true, nil
+}
+
+// queueRefundEvents owes the tenant's webhook endpoints the purchase.refunded
+// of a refund just recorded on purchase, and the reader its mail. The write
+// answered with the total the purchase had before it, and a write that added
+// nothing to it is a delivery of a refund already recorded, or one a later
+// total overtook, which has nothing new to tell the reader.
+func queueRefundEvents(ctx context.Context, queries *dbmodels.Queries, purchase dbmodels.Purchase, previousAmount int32) error {
+	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
+		return err
+	}
+	refunded := purchase.RefundedAmount.Int32 - previousAmount
+	if refunded <= 0 {
+		return nil
+	}
+	payload, err := json.Marshal(outbox.PurchaseRefundNoticePayload{
+		TenantID:       purchase.TenantID.String(),
+		PurchaseID:     purchase.ID.String(),
+		RefundedAmount: int64(refunded),
+		RefundedTotal:  int64(purchase.RefundedAmount.Int32),
+		Currency:       purchase.Currency,
+		Closed:         purchase.RefundedAt.Valid,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal purchase refund notice event: %w", err)
+	}
+	if err := insertPublicOutboxEvent(ctx, queries, purchase.TenantID, outbox.EventTypePurchaseRefundNotice, payload,
+		outbox.PurchaseRefundNoticeIdempotencyKey(purchase.ID, purchase.RefundedAmount.Int32)); err != nil {
+		return fmt.Errorf("enqueue purchase refund notice: %w", err)
 	}
 	return nil
 }
@@ -1564,12 +1638,12 @@ func enqueuePurchaseReceipt(ctx context.Context, queries *dbmodels.Queries, tena
 // existed. Ordinarily nothing is held and this costs one lookup.
 func (s *apiServer) applyHeldRefund(
 	ctx context.Context,
-	queries Querier,
+	queries *dbmodels.Queries,
 	tenantID uuid.UUID,
 	providerID string,
 	paymentID string,
 ) error {
-	purchase, err := queries.ApplyUnappliedRefundToPurchase(ctx, dbmodels.ApplyUnappliedRefundToPurchaseParams{
+	row, err := queries.ApplyUnappliedRefundToPurchase(ctx, dbmodels.ApplyUnappliedRefundToPurchaseParams{
 		TenantID:          tenantID,
 		Provider:          providerID,
 		ProviderPaymentID: paymentID,
@@ -1580,6 +1654,7 @@ func (s *apiServer) applyHeldRefund(
 	if err != nil {
 		return fmt.Errorf("apply held refund: %w", err)
 	}
+	purchase := row.Purchase
 	if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
 		TenantID:          tenantID,
 		Provider:          providerID,
@@ -1594,7 +1669,7 @@ func (s *apiServer) applyHeldRefund(
 		}
 		s.logRevokedCoins(ctx, purchase, revocation)
 	}
-	if err := tenantwebhooks.QueuePurchaseRefunded(ctx, queries, purchase); err != nil {
+	if err := queueRefundEvents(ctx, queries, purchase, row.PreviousAmount); err != nil {
 		return err
 	}
 	s.logger.InfoContext(ctx, "applied a refund that arrived before its purchase",

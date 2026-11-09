@@ -403,7 +403,8 @@ ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
 
 -- name: GetPurchaseReceiptForTenant :one
--- What the receipt of one purchase says, read by the outbox worker, which
+-- What the receipt of one purchase says, and the mail of a refund recorded on
+-- it names as refunded, read by the outbox worker, which
 -- connects past RLS and therefore names the tenant itself. The reader is
 -- joined within the tenant, so an account that was deleted after paying, whose
 -- purchase keeps no user, answers no address rather than no receipt.
@@ -495,8 +496,12 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
 -- the total counts every refund of the payment, one made in the provider's
 -- dashboard among them, so only SettleStaffRefundInPart, once the provider
 -- answers that the refund made under its key is on the payment, ends it.
+--
+-- previous_amount is the total recorded before this write, so the caller can
+-- tell a refund that added to it from a delivery of one already recorded.
 WITH refund AS (
     SELECT p.id,
+        COALESCE(p.refunded_amount, 0)::integer AS previous_amount,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
             COALESCE(
@@ -527,7 +532,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.*;
+RETURNING sqlc.embed(p), refund.previous_amount;
 
 -- name: LiftStaffRevocation :one
 -- Takes back the revocation RevokePurchaseForStaff made when the refund it was
@@ -654,6 +659,9 @@ SET refunded_amount = CASE
 -- The held row is left for the caller to delete once this has committed. A
 -- crash in between costs a repeat of an update that is idempotent, whereas
 -- deleting here would lose the refund if the update never landed.
+--
+-- previous_amount is the total recorded before this write, as
+-- RecordRefundOnPurchase answers it.
 WITH held AS (
     SELECT r.tenant_id,
         r.provider,
@@ -667,6 +675,7 @@ WITH held AS (
 ),
 refund AS (
     SELECT p.id,
+        COALESCE(p.refunded_amount, 0)::integer AS previous_amount,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
             COALESCE(
@@ -697,7 +706,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.*;
+RETURNING sqlc.embed(p), refund.previous_amount;
 
 -- name: ReplaceUnappliedRefund :exec
 -- Sets a held refund to the total that stays refunded once one of the refunds

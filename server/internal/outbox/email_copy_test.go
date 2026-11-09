@@ -494,6 +494,48 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "purchase_refund_notice for a full refund of an episode",
+		subjects: map[string]string{"en": "Aoto Press refund", "ja": "Aoto Press返金のお知らせ"},
+		request: emailrenderer.Request{
+			Template: "purchase_refund_notice",
+			Data:     refundNoticeData(nil),
+		},
+	},
+	{
+		name: "purchase_refund_notice for a refund in part of a volume",
+		request: emailrenderer.Request{
+			Template: "purchase_refund_notice",
+			Data: refundNoticeData(map[string]any{
+				"amount":         int64(100),
+				"refunded_total": int64(300),
+				"closed":         false,
+				"episode_title":  "",
+				"volume_title":   "Volume One",
+			}),
+		},
+	},
+	{
+		name: "purchase_refund_notice for a pack in the provider's test mode",
+		request: emailrenderer.Request{
+			Template: "purchase_refund_notice",
+			Data: refundNoticeData(map[string]any{
+				"coin_name":             "Points",
+				"coin_pack_bonus_coins": int64(100),
+				"coin_pack_coins":       int64(1000),
+				"episode_title":         "",
+				"is_test":               true,
+				"series_title":          "",
+			}),
+		},
+	},
+	{
+		name: "purchase_refund_notice for a tip",
+		request: emailrenderer.Request{
+			Template: "purchase_refund_notice",
+			Data:     refundNoticeData(map[string]any{"is_tip": true}),
+		},
+	},
+	{
 		name:     "reader_episode_published",
 		subjects: map[string]string{"en": "New episode of The Lighthouse Keeper", "ja": "The Lighthouse Keeperの新しいエピソード"},
 		request: emailrenderer.Request{
@@ -946,6 +988,138 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 					"invoice_legal_name":          testCase.legalName,
 					"invoice_registration_number": testCase.registrationNumber,
 				},
+				TimeZone: "Asia/Tokyo",
+			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+		})
+	}
+}
+
+// refundNoticeData is the data of the mail of a ¥500 episode refunded in full
+// at once, with overrides in place of its values.
+func refundNoticeData(overrides map[string]any) map[string]any {
+	data := map[string]any{
+		"amount":                      int64(500),
+		"refunded_total":              int64(500),
+		"price":                       int64(500),
+		"currency":                    "JPY",
+		"closed":                      true,
+		"episode_title":               "Episode 1",
+		"volume_title":                "",
+		"series_bundle_episode_count": int64(0),
+		"coin_pack_coins":             int64(0),
+		"coin_pack_bonus_coins":       int64(0),
+		"coin_name":                   "",
+		"is_test":                     false,
+		"is_tip":                      false,
+		"library_url":                 "https://reader.example.test/my/library",
+		"series_title":                "The Lighthouse Keeper",
+		"tenant_name":                 "Aoto Press",
+	}
+	for name, value := range overrides {
+		data[name] = value
+	}
+	return data
+}
+
+// The mail of a refund names what was bought, what this refund returned, and
+// what is left open: everything for a refund of part of the price, nothing a
+// purchase refunded in full opened, and of a pack's coins none of those left.
+// The total stands beside the price once an earlier refund makes it differ
+// from this one, and a tip says nothing of reading.
+func TestEmailCopyWritesAPurchaseRefundNotice(t *testing.T) {
+	const links = "Open your purchases https://reader.example.test/my/library\n\n" +
+		"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+		"This email was sent by Aoto Press."
+	for _, testCase := range []struct {
+		name      string
+		locale    string
+		overrides map[string]any
+		wantText  string
+	}{
+		{
+			name:   "in English for an episode refunded in full",
+			locale: "en",
+			wantText: "Aoto Press\n\nYour payment was refunded\n\n" +
+				"Aoto Press has refunded a payment you made.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
+				"Amount refunded: ¥500 (JPY)\n\n" +
+				"The purchase is refunded in full, so the episodes it opened are closed to you. You can buy them again on the site.\n\n" +
+				links,
+		},
+		{
+			name:   "in English for a second refund in part",
+			locale: "en",
+			overrides: map[string]any{
+				"amount":         int64(100),
+				"refunded_total": int64(300),
+				"closed":         false,
+			},
+			wantText: "Aoto Press\n\nYour payment was refunded\n\n" +
+				"Aoto Press has refunded a payment you made.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
+				"Amount refunded: ¥100 (JPY)\n\n" +
+				"Refunded in total: ¥300 of the ¥500 paid\n\n" +
+				"Only part of the price was refunded, so the episodes you bought stay open to you.\n\n" +
+				links,
+		},
+		{
+			name:   "in English for a pack refunded in full in test mode",
+			locale: "en",
+			overrides: map[string]any{
+				"coin_name":             "Points",
+				"coin_pack_bonus_coins": int64(100),
+				"coin_pack_coins":       int64(1000),
+				"episode_title":         "",
+				"is_test":               true,
+				"series_title":          "",
+			},
+			wantText: "Aoto Press\n\nYour payment was refunded\n\n" +
+				"Aoto Press has refunded a payment you made.\n\n" +
+				"This was a purchase in the payment provider's test mode. No money was refunded.\n\n" +
+				"Points: 1,100 (including 100 bonus)\n\n" +
+				"Amount refunded: ¥500 (JPY)\n\n" +
+				"The purchase is refunded in full, so the Points it gave you that are left have been taken back.\n\n" +
+				links,
+		},
+		{
+			name:      "in English for a tip",
+			locale:    "en",
+			overrides: map[string]any{"is_tip": true, "amount": int64(300), "refunded_total": int64(300), "price": int64(300)},
+			wantText: "Aoto Press\n\nYour payment was refunded\n\n" +
+				"Aoto Press has refunded a payment you made.\n\n" +
+				"Series: The Lighthouse Keeper\n\nTip for the Authors of: Episode 1\n\n" +
+				"Amount refunded: ¥300 (JPY)\n\n" +
+				links,
+		},
+		{
+			name:   "in Japanese for a refund in part",
+			locale: "ja",
+			overrides: map[string]any{
+				"amount":         int64(200),
+				"refunded_total": int64(200),
+				"closed":         false,
+			},
+			wantText: "Aoto Press\n\n返金のお知らせ\n\n" +
+				"Aoto Pressでお支払いいただいた代金を返金しました。\n\n" +
+				"シリーズ「The Lighthouse Keeper」\n\nエピソード「Episode 1」\n\n" +
+				"返金額は￥200 (JPY) です。\n\n" +
+				"返金は代金の一部のため、購入したエピソードは引き続きお読みいただけます。\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(emailrenderer.Request{
+				Template: "purchase_refund_notice",
+				Locale:   testCase.locale,
+				Data:     refundNoticeData(testCase.overrides),
 				TimeZone: "Asia/Tokyo",
 			})
 			if err != nil {
