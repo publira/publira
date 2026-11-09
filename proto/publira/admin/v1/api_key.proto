@@ -6,8 +6,8 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
-// What an API key may read. Each scope admits a fixed set of this namespace's
-// reads, and no scope admits a write.
+// What an API key may call. Each scope admits a fixed set of this namespace's
+// procedures, and only API_KEY_SCOPE_CATALOG_WRITE admits a write.
 enum ApiKeyScope {
   API_KEY_SCOPE_UNSPECIFIED = 0;
   // The catalog: AdminSeriesService's series, episode, and volume reads, and
@@ -16,15 +16,26 @@ enum ApiKeyScope {
   // AdminPurchaseService.ListPurchases, GetPurchase, and ListReaderPurchases,
   // which answer each buyer's address.
   API_KEY_SCOPE_PURCHASES_READ = 2;
+  // The writes that put an episode in: AdminSeriesService.CreateSeries,
+  // UpdateSeries, CreateEpisode, UpdateEpisodeTitle, UpdateEpisodePricing,
+  // UpdateEpisodeLayout, UpdateEpisodePublishSchedule, UploadEpisodeImages,
+  // ReplaceEpisodeImage, ReorderEpisodeImages, DeleteEpisodeImage,
+  // ReplaceEpisodeCredits, UploadSeriesEyeCatchAspectImage,
+  // UploadEpisodeEyeCatchImage, and UploadEpisodeEyeCatchAspectImage. Each is
+  // recorded in the audit log under the key, and a schedule set while the
+  // tenant requires review submits the episode for review as a member's does.
+  // The pages those writes answer carry no media token, which names the
+  // operator it is issued to.
+  API_KEY_SCOPE_CATALOG_WRITE = 3;
 }
 
-// A read-only credential the tenant hands to its own systems. A request sends
-// it as `Authorization: Bearer <key>` on this namespace, with the tenant in
-// the request's TenantContext as a person's session does; one that names
-// another tenant is unauthenticated. A key is charged against the platform
-// policy's api_key_request limit, and a request past it is resource_exhausted
-// with Retry-After. A procedure none of the key's scopes admits is
-// permission_denied, and a revoked key is unauthenticated.
+// A credential the tenant hands to its own systems. A request sends it as
+// `Authorization: Bearer <key>` on this namespace, with the tenant in the
+// request's TenantContext as a person's session does; one that names another
+// tenant is unauthenticated. A key is charged against the platform policy's
+// api_key_request limit, its writes included, and a request past it is
+// resource_exhausted with Retry-After. A procedure none of the key's scopes
+// admits is permission_denied, and a revoked key is unauthenticated.
 message ApiKey {
   // A UUID.
   string id = 1;

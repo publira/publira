@@ -38,6 +38,8 @@ func auditLogColumns() *sqlmock.Rows {
 		"created_at",
 		"actor_public_id",
 		"actor_name",
+		"actor_api_key_id",
+		"actor_api_key_prefix",
 	})
 }
 
@@ -61,6 +63,8 @@ func addAuditLogRow(
 		createdAt,
 		"USER001",
 		"User One",
+		nil,
+		"",
 	)
 }
 

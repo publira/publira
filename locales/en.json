@@ -1089,6 +1089,7 @@
         "tenant_member": "Member",
         "tenant_owner": "Owner",
         "system": "Automatic",
+        "api_key": "API key",
         "unset": "No role"
       },
       "cancel": "Cancel",
@@ -3896,7 +3897,7 @@
       },
       "api_keys": {
         "title": "API keys",
-        "description": "A key reads the admin API for this tenant with nobody signed in. It reads only what its scopes name, and it changes nothing.",
+        "description": "A key calls the admin API for this tenant with nobody signed in. It reads and changes only what its scopes name.",
         "tenant_id": "Tenant ID",
         "tenant_id_description": "A request made with a key names the tenant by this ID.",
         "copy_tenant_id": "Copy the tenant ID",
@@ -3919,7 +3920,9 @@
           "catalog_label": "Catalog",
           "catalog_description": "Series, episodes, volumes, labels, genres, Authors, and Author roles.",
           "purchases_label": "Purchases",
-          "purchases_description": "Purchases, with the email address of each buyer."
+          "purchases_description": "Purchases, with the email address of each buyer.",
+          "catalog_write_label": "Catalog changes",
+          "catalog_write_description": "Creates and updates series and episodes with their pages, cover images, and Authors, and schedules episodes. While review before publishing is required, a scheduled episode waits for a Tenant admin's approval."
         },
         "create_title": "Create API key",
         "name": "Name",

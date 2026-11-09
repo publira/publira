@@ -22,8 +22,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// What an API key may read. Each scope admits a fixed set of this namespace's
-// reads, and no scope admits a write.
+// What an API key may call. Each scope admits a fixed set of this namespace's
+// procedures, and only API_KEY_SCOPE_CATALOG_WRITE admits a write.
 type ApiKeyScope int32
 
 const (
@@ -34,6 +34,17 @@ const (
 	// AdminPurchaseService.ListPurchases, GetPurchase, and ListReaderPurchases,
 	// which answer each buyer's address.
 	ApiKeyScope_API_KEY_SCOPE_PURCHASES_READ ApiKeyScope = 2
+	// The writes that put an episode in: AdminSeriesService.CreateSeries,
+	// UpdateSeries, CreateEpisode, UpdateEpisodeTitle, UpdateEpisodePricing,
+	// UpdateEpisodeLayout, UpdateEpisodePublishSchedule, UploadEpisodeImages,
+	// ReplaceEpisodeImage, ReorderEpisodeImages, DeleteEpisodeImage,
+	// ReplaceEpisodeCredits, UploadSeriesEyeCatchAspectImage,
+	// UploadEpisodeEyeCatchImage, and UploadEpisodeEyeCatchAspectImage. Each is
+	// recorded in the audit log under the key, and a schedule set while the
+	// tenant requires review submits the episode for review as a member's does.
+	// The pages those writes answer carry no media token, which names the
+	// operator it is issued to.
+	ApiKeyScope_API_KEY_SCOPE_CATALOG_WRITE ApiKeyScope = 3
 )
 
 // Enum value maps for ApiKeyScope.
@@ -42,11 +53,13 @@ var (
 		0: "API_KEY_SCOPE_UNSPECIFIED",
 		1: "API_KEY_SCOPE_CATALOG_READ",
 		2: "API_KEY_SCOPE_PURCHASES_READ",
+		3: "API_KEY_SCOPE_CATALOG_WRITE",
 	}
 	ApiKeyScope_value = map[string]int32{
 		"API_KEY_SCOPE_UNSPECIFIED":    0,
 		"API_KEY_SCOPE_CATALOG_READ":   1,
 		"API_KEY_SCOPE_PURCHASES_READ": 2,
+		"API_KEY_SCOPE_CATALOG_WRITE":  3,
 	}
 )
 
@@ -77,13 +90,13 @@ func (ApiKeyScope) EnumDescriptor() ([]byte, []int) {
 	return file_publira_admin_v1_api_key_proto_rawDescGZIP(), []int{0}
 }
 
-// A read-only credential the tenant hands to its own systems. A request sends
-// it as `Authorization: Bearer <key>` on this namespace, with the tenant in
-// the request's TenantContext as a person's session does; one that names
-// another tenant is unauthenticated. A key is charged against the platform
-// policy's api_key_request limit, and a request past it is resource_exhausted
-// with Retry-After. A procedure none of the key's scopes admits is
-// permission_denied, and a revoked key is unauthenticated.
+// A credential the tenant hands to its own systems. A request sends it as
+// `Authorization: Bearer <key>` on this namespace, with the tenant in the
+// request's TenantContext as a person's session does; one that names another
+// tenant is unauthenticated. A key is charged against the platform policy's
+// api_key_request limit, its writes included, and a request past it is
+// resource_exhausted with Retry-After. A procedure none of the key's scopes
+// admits is permission_denied, and a revoked key is unauthenticated.
 type ApiKey struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A UUID.
@@ -516,11 +529,12 @@ const file_publira_admin_v1_api_key_proto_rawDesc = "" +
 	"\n" +
 	"api_key_id\x18\x02 \x01(\tR\bapiKeyId\"I\n" +
 	"\x14RevokeApiKeyResponse\x121\n" +
-	"\aapi_key\x18\x01 \x01(\v2\x18.publira.admin.v1.ApiKeyR\x06apiKey*n\n" +
+	"\aapi_key\x18\x01 \x01(\v2\x18.publira.admin.v1.ApiKeyR\x06apiKey*\x8f\x01\n" +
 	"\vApiKeyScope\x12\x1d\n" +
 	"\x19API_KEY_SCOPE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aAPI_KEY_SCOPE_CATALOG_READ\x10\x01\x12 \n" +
-	"\x1cAPI_KEY_SCOPE_PURCHASES_READ\x10\x022\xb4\x02\n" +
+	"\x1cAPI_KEY_SCOPE_PURCHASES_READ\x10\x02\x12\x1f\n" +
+	"\x1bAPI_KEY_SCOPE_CATALOG_WRITE\x10\x032\xb4\x02\n" +
 	"\x12AdminApiKeyService\x12\\\n" +
 	"\vListApiKeys\x12$.publira.admin.v1.ListApiKeysRequest\x1a%.publira.admin.v1.ListApiKeysResponse\"\x00\x12_\n" +
 	"\fCreateApiKey\x12%.publira.admin.v1.CreateApiKeyRequest\x1a&.publira.admin.v1.CreateApiKeyResponse\"\x00\x12_\n" +

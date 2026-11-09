@@ -21,6 +21,8 @@ import { getTenantDisplayTimeZone } from "./tenant-timezone";
 
 export interface AuditLogItem {
   action: string;
+  /** The key's `pbk_` prefix for an entry filed under an API key, else empty. */
+  actorApiKeyPrefix: string;
   actorName: string;
   actorRole: string;
   actorUserPublicId: string;
@@ -113,6 +115,7 @@ const normalizeDateEnd = (
 type RawAuditLog = Pick<
   AdminAuditLog,
   | "action"
+  | "actorApiKeyPrefix"
   | "actorName"
   | "actorRole"
   | "actorUserPublicId"
@@ -126,6 +129,7 @@ type RawAuditLog = Pick<
 
 const mapAuditLog = (item: RawAuditLog): AuditLogItem => ({
   action: item.action,
+  actorApiKeyPrefix: item.actorApiKeyPrefix,
   actorName: item.actorName,
   actorRole: item.actorRole,
   actorUserPublicId: item.actorUserPublicId,

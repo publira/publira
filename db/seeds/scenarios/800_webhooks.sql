@@ -116,8 +116,9 @@ ON CONFLICT (user_id, role) DO NOTHING;
 DELETE FROM tenant_webhook_endpoints
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'WhokTNNTAAA1');
 
-DELETE FROM tenant_api_keys
+-- An entry a key made holds the key back, so the entries go first.
+DELETE FROM audit_logs
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'WhokTNNTAAA1');
 
-DELETE FROM audit_logs
+DELETE FROM tenant_api_keys
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'WhokTNNTAAA1');

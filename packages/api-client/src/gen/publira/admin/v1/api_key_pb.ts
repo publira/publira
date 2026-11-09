@@ -12,16 +12,16 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/api_key.proto.
  */
 export const file_publira_admin_v1_api_key: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2FwaV9rZXkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEinwEKBkFwaUtleRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnByZWZpeBgDIAEoCRItCgZzY29wZXMYBCADKA4yHS5wdWJsaXJhLmFkbWluLnYxLkFwaUtleVNjb3BlEhIKCmNyZWF0ZWRfYXQYBSABKAkSFAoMbGFzdF91c2VkX2F0GAYgASgJEhIKCnJldm9rZWRfYXQYByABKAkiRQoSTGlzdEFwaUtleXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJBChNMaXN0QXBpS2V5c1Jlc3BvbnNlEioKCGFwaV9rZXlzGAEgAygLMhgucHVibGlyYS5hZG1pbi52MS5BcGlLZXkigwEKE0NyZWF0ZUFwaUtleVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSLQoGc2NvcGVzGAMgAygOMh0ucHVibGlyYS5hZG1pbi52MS5BcGlLZXlTY29wZSJOChRDcmVhdGVBcGlLZXlSZXNwb25zZRIpCgdhcGlfa2V5GAEgASgLMhgucHVibGlyYS5hZG1pbi52MS5BcGlLZXkSCwoDa2V5GAIgASgJIloKE1Jldm9rZUFwaUtleVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmFwaV9rZXlfaWQYAiABKAkiQQoUUmV2b2tlQXBpS2V5UmVzcG9uc2USKQoHYXBpX2tleRgBIAEoCzIYLnB1YmxpcmEuYWRtaW4udjEuQXBpS2V5Km4KC0FwaUtleVNjb3BlEh0KGUFQSV9LRVlfU0NPUEVfVU5TUEVDSUZJRUQQABIeChpBUElfS0VZX1NDT1BFX0NBVEFMT0dfUkVBRBABEiAKHEFQSV9LRVlfU0NPUEVfUFVSQ0hBU0VTX1JFQUQQAjK0AgoSQWRtaW5BcGlLZXlTZXJ2aWNlElwKC0xpc3RBcGlLZXlzEiQucHVibGlyYS5hZG1pbi52MS5MaXN0QXBpS2V5c1JlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkxpc3RBcGlLZXlzUmVzcG9uc2UiABJfCgxDcmVhdGVBcGlLZXkSJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFwaUtleVJlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFwaUtleVJlc3BvbnNlIgASXwoMUmV2b2tlQXBpS2V5EiUucHVibGlyYS5hZG1pbi52MS5SZXZva2VBcGlLZXlSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5SZXZva2VBcGlLZXlSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2FwaV9rZXkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEinwEKBkFwaUtleRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnByZWZpeBgDIAEoCRItCgZzY29wZXMYBCADKA4yHS5wdWJsaXJhLmFkbWluLnYxLkFwaUtleVNjb3BlEhIKCmNyZWF0ZWRfYXQYBSABKAkSFAoMbGFzdF91c2VkX2F0GAYgASgJEhIKCnJldm9rZWRfYXQYByABKAkiRQoSTGlzdEFwaUtleXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJBChNMaXN0QXBpS2V5c1Jlc3BvbnNlEioKCGFwaV9rZXlzGAEgAygLMhgucHVibGlyYS5hZG1pbi52MS5BcGlLZXkigwEKE0NyZWF0ZUFwaUtleVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSLQoGc2NvcGVzGAMgAygOMh0ucHVibGlyYS5hZG1pbi52MS5BcGlLZXlTY29wZSJOChRDcmVhdGVBcGlLZXlSZXNwb25zZRIpCgdhcGlfa2V5GAEgASgLMhgucHVibGlyYS5hZG1pbi52MS5BcGlLZXkSCwoDa2V5GAIgASgJIloKE1Jldm9rZUFwaUtleVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmFwaV9rZXlfaWQYAiABKAkiQQoUUmV2b2tlQXBpS2V5UmVzcG9uc2USKQoHYXBpX2tleRgBIAEoCzIYLnB1YmxpcmEuYWRtaW4udjEuQXBpS2V5Ko8BCgtBcGlLZXlTY29wZRIdChlBUElfS0VZX1NDT1BFX1VOU1BFQ0lGSUVEEAASHgoaQVBJX0tFWV9TQ09QRV9DQVRBTE9HX1JFQUQQARIgChxBUElfS0VZX1NDT1BFX1BVUkNIQVNFU19SRUFEEAISHwobQVBJX0tFWV9TQ09QRV9DQVRBTE9HX1dSSVRFEAMytAIKEkFkbWluQXBpS2V5U2VydmljZRJcCgtMaXN0QXBpS2V5cxIkLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFwaUtleXNSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5MaXN0QXBpS2V5c1Jlc3BvbnNlIgASXwoMQ3JlYXRlQXBpS2V5EiUucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBcGlLZXlSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVBcGlLZXlSZXNwb25zZSIAEl8KDFJldm9rZUFwaUtleRIlLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQXBpS2V5UmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQXBpS2V5UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
- * A read-only credential the tenant hands to its own systems. A request sends
- * it as `Authorization: Bearer <key>` on this namespace, with the tenant in
- * the request's TenantContext as a person's session does; one that names
- * another tenant is unauthenticated. A key is charged against the platform
- * policy's api_key_request limit, and a request past it is resource_exhausted
- * with Retry-After. A procedure none of the key's scopes admits is
- * permission_denied, and a revoked key is unauthenticated.
+ * A credential the tenant hands to its own systems. A request sends it as
+ * `Authorization: Bearer <key>` on this namespace, with the tenant in the
+ * request's TenantContext as a person's session does; one that names another
+ * tenant is unauthenticated. A key is charged against the platform policy's
+ * api_key_request limit, its writes included, and a request past it is
+ * resource_exhausted with Retry-After. A procedure none of the key's scopes
+ * admits is permission_denied, and a revoked key is unauthenticated.
  *
  * @generated from message publira.admin.v1.ApiKey
  */
@@ -213,8 +213,8 @@ export const RevokeApiKeyResponseSchema: GenMessage<RevokeApiKeyResponse> = /*@_
   messageDesc(file_publira_admin_v1_api_key, 6);
 
 /**
- * What an API key may read. Each scope admits a fixed set of this namespace's
- * reads, and no scope admits a write.
+ * What an API key may call. Each scope admits a fixed set of this namespace's
+ * procedures, and only API_KEY_SCOPE_CATALOG_WRITE admits a write.
  *
  * @generated from enum publira.admin.v1.ApiKeyScope
  */
@@ -239,6 +239,22 @@ export enum ApiKeyScope {
    * @generated from enum value: API_KEY_SCOPE_PURCHASES_READ = 2;
    */
   PURCHASES_READ = 2,
+
+  /**
+   * The writes that put an episode in: AdminSeriesService.CreateSeries,
+   * UpdateSeries, CreateEpisode, UpdateEpisodeTitle, UpdateEpisodePricing,
+   * UpdateEpisodeLayout, UpdateEpisodePublishSchedule, UploadEpisodeImages,
+   * ReplaceEpisodeImage, ReorderEpisodeImages, DeleteEpisodeImage,
+   * ReplaceEpisodeCredits, UploadSeriesEyeCatchAspectImage,
+   * UploadEpisodeEyeCatchImage, and UploadEpisodeEyeCatchAspectImage. Each is
+   * recorded in the audit log under the key, and a schedule set while the
+   * tenant requires review submits the episode for review as a member's does.
+   * The pages those writes answer carry no media token, which names the
+   * operator it is issued to.
+   *
+   * @generated from enum value: API_KEY_SCOPE_CATALOG_WRITE = 3;
+   */
+  CATALOG_WRITE = 3,
 }
 
 /**

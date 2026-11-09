@@ -8,7 +8,8 @@ import { getMessagesFor } from "./messages";
  *
  * `system` is not a role anyone holds: it is what an audit entry carries when
  * the platform acted on a setting the tenant saved earlier, with no account
- * behind it.
+ * behind it. `api_key` is what one carries when one of the tenant's API keys
+ * made the change.
  */
 export const getTenantRoleLabel = async (
   role: string,
@@ -19,6 +20,10 @@ export const getTenantRoleLabel = async (
   switch (role.trim().toLowerCase()) {
     case "": {
       return t("admin.common.roles.unset");
+    }
+
+    case "api_key": {
+      return t("admin.common.roles.api_key");
     }
 
     case "system": {

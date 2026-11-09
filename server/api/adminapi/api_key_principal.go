@@ -20,32 +20,50 @@ import (
 	"github.com/publira/publira/server/internal/tenantapikeys"
 )
 
-// apiKeyProcedures are the reads a tenant's API key may make, by the scope
-// that admits each. Nothing that writes belongs here, and neither does a read
-// that needs a person: ListEpisodeImages answers images signed for the
-// operator who asked, and ListEpisodeReviews is the editors' own workflow.
-// TestAPIKeyProceduresAreReads keeps the list to reads.
+// apiKeyProcedures are the procedures a tenant's API key may call, by the
+// scope that admits each. The reads are catalog:read's and purchases:read's;
+// a read that needs a person is neither: ListEpisodeImages answers images
+// signed for the operator who asked, and ListEpisodeReviews is the editors'
+// own workflow. The writes are catalog:write's alone, and are the ones that
+// put an episode in: settings, members, payments, and readers, and the review
+// decisions, stay with a signed-in member. TestAPIKeyProceduresKeepToTheirScopes
+// holds every entry to what its scope is for.
 var apiKeyProcedures = map[string]string{
-	publiraadminv1connect.AdminSeriesServiceListSeriesProcedure:                    tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceGetSeriesProcedure:                     tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListEpisodesProcedure:                  tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListEpisodesByPublicationDateProcedure: tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure:                    tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure:            tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure:        tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListEpisodeCampaignPricesProcedure:     tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure:     tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure:    tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminSeriesServiceListVolumesProcedure:                   tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminLabelServiceListLabelsProcedure:                     tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminLabelServiceGetLabelProcedure:                       tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminGenreServiceListGenresProcedure:                     tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure:                 tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminCreatorServiceGetCreatorProcedure:                   tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminCreatorRoleServiceListCreatorRolesProcedure:         tenantapikeys.ScopeCatalogRead,
-	publiraadminv1connect.AdminPurchaseServiceListPurchasesProcedure:               tenantapikeys.ScopePurchasesRead,
-	publiraadminv1connect.AdminPurchaseServiceGetPurchaseProcedure:                 tenantapikeys.ScopePurchasesRead,
-	publiraadminv1connect.AdminPurchaseServiceListReaderPurchasesProcedure:         tenantapikeys.ScopePurchasesRead,
+	publiraadminv1connect.AdminSeriesServiceListSeriesProcedure:                       tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceGetSeriesProcedure:                        tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListEpisodesProcedure:                     tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListEpisodesByPublicationDateProcedure:    tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure:                       tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure:               tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure:           tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListEpisodeCampaignPricesProcedure:        tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure:        tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure:       tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminSeriesServiceListVolumesProcedure:                      tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminLabelServiceListLabelsProcedure:                        tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminLabelServiceGetLabelProcedure:                          tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminGenreServiceListGenresProcedure:                        tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure:                    tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminCreatorServiceGetCreatorProcedure:                      tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminCreatorRoleServiceListCreatorRolesProcedure:            tenantapikeys.ScopeCatalogRead,
+	publiraadminv1connect.AdminPurchaseServiceListPurchasesProcedure:                  tenantapikeys.ScopePurchasesRead,
+	publiraadminv1connect.AdminPurchaseServiceGetPurchaseProcedure:                    tenantapikeys.ScopePurchasesRead,
+	publiraadminv1connect.AdminPurchaseServiceListReaderPurchasesProcedure:            tenantapikeys.ScopePurchasesRead,
+	publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure:                     tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUpdateSeriesProcedure:                     tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceCreateEpisodeProcedure:                    tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUpdateEpisodeTitleProcedure:               tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUpdateEpisodePricingProcedure:             tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUpdateEpisodeLayoutProcedure:              tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUpdateEpisodePublishScheduleProcedure:     tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure:              tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceReplaceEpisodeImageProcedure:              tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceReorderEpisodeImagesProcedure:             tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceDeleteEpisodeImageProcedure:               tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceReplaceEpisodeCreditsProcedure:            tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:  tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure:       tenantapikeys.ScopeCatalogWrite,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure: tenantapikeys.ScopeCatalogWrite,
 }
 
 func invalidAPIKeyError() error {

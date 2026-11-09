@@ -41,7 +41,7 @@ vi.mock("#lib/session", () => ({
 }));
 
 vi.mock("#lib/api-keys", () => ({
-  API_KEY_SCOPES: ["catalog", "purchases"],
+  API_KEY_SCOPES: ["catalog", "purchases", "catalog_write"],
   apiKeysCacheTag: (tenantId: string) => `tenant:${tenantId}:api-keys`,
   createApiKey: mockCreateApiKey,
   revokeApiKey: mockRevokeApiKey,

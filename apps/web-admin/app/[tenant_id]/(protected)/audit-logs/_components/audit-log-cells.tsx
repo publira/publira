@@ -1270,6 +1270,7 @@ interface AuditLogDateCellProps {
 }
 
 interface AuditLogActorCellProps {
+  actorApiKeyPrefix: string;
   actorName: string;
   actorRole: string;
   actorUserPublicId: string;
@@ -1385,6 +1386,7 @@ export const AuditLogDateCell = ({
 );
 
 export const AuditLogActorCell = async ({
+  actorApiKeyPrefix,
   actorName,
   actorRole,
   actorUserPublicId,
@@ -1398,7 +1400,10 @@ export const AuditLogActorCell = async ({
         {actorName || t("admin.audit.actor_unnamed")}
       </div>
       <div className="text-xs text-muted-foreground">
-        {actorUserPublicId || t("admin.audit.actor_id_unknown")}
+        {/* A key is named by its prefix, as API keys and webhooks lists it. */}
+        {actorUserPublicId ||
+          actorApiKeyPrefix ||
+          t("admin.audit.actor_id_unknown")}
         {actorRole ? ` / ${await getTenantRoleLabel(actorRole, locale)}` : ""}
       </div>
     </Table.Cell>

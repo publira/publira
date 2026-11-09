@@ -20,7 +20,8 @@ import {
 /**
  * A tenant administrator handing the tenant's own systems an API key and a
  * webhook endpoint: the key and the signing secret are shown once and only
- * their start afterwards, a revoked key is refused, an `http` URL is refused
+ * their start afterwards, a revoked key is refused, a key that writes the
+ * catalog is named in the audit log by its own name, an `http` URL is refused
  * on the form, a test event that is given up can be resent, and one sent to a
  * receiver arrives signed.
  *
@@ -84,12 +85,16 @@ const endpointRegion = (page: Page, url: string) =>
 const textOf = async (locator: Locator): Promise<string> =>
   ((await locator.textContent()) ?? "").trim();
 
-/** Whether the admin API answers `ListLabels` for the tenant with `key`. */
-const listLabelsWith = async (key: string): Promise<number> => {
+/** The status the admin API answers `procedure` for the tenant with `key`. */
+const adminApiStatus = async (
+  key: string,
+  procedure: string,
+  body: { readonly title?: string } = {}
+): Promise<number> => {
   const response = await fetch(
-    `${PUBLIC_API_BASE_URL}/publira.admin.v1.AdminLabelService/ListLabels`,
+    `${PUBLIC_API_BASE_URL}/publira.admin.v1.${procedure}`,
     {
-      body: JSON.stringify({ tenant: { tenantId: TENANT_UUID } }),
+      body: JSON.stringify({ ...body, tenant: { tenantId: TENANT_UUID } }),
       headers: {
         Authorization: `Bearer ${key}`,
         "content-type": "application/json",
@@ -100,6 +105,10 @@ const listLabelsWith = async (key: string): Promise<number> => {
 
   return response.status;
 };
+
+/** Whether the admin API answers `ListLabels` for the tenant with `key`. */
+const listLabelsWith = (key: string): Promise<number> =>
+  adminApiStatus(key, "AdminLabelService/ListLabels");
 
 /** Reads the audit log until an entry for `action` appears. */
 const expectAuditEntry = async (page: Page, action: string): Promise<void> => {
@@ -195,6 +204,43 @@ test.describe("API keys and webhooks", () => {
       expect(await listLabelsWith(key)).toBe(401);
 
       await expectAuditEntry(page, "API key revoked");
+    });
+
+    test("creates a key that writes the catalog, which the audit log names", async ({
+      page,
+    }) => {
+      await openPage(page);
+      const keys = section(page, "API keys");
+
+      await keys.getByLabel("Name").fill("Editorial system");
+      await keys
+        .getByRole("checkbox", { exact: true, name: "Catalog changes" })
+        .check();
+      await keys.getByRole("button", { name: "Create API key" }).click();
+      await expect(keys.getByText("Your new API key")).toBeVisible();
+
+      const key = await textOf(keys.getByText(KEY_PATTERN));
+      const prefix = key.slice(0, "pbk_".length + 12);
+
+      // A write is what the scope admits, and a read is not.
+      expect(
+        await adminApiStatus(key, "AdminSeriesService/CreateSeries", {
+          title: "Written by the editorial system",
+        })
+      ).toBe(200);
+      expect(await listLabelsWith(key)).toBe(403);
+
+      const entry = page
+        .getByRole("row")
+        .filter({ hasText: "Series created" })
+        .filter({ hasText: "Editorial system" });
+
+      // The entry is written by the audit log's asynchronous recorder.
+      await expect(async () => {
+        await page.goto(adminUrl("/audit-logs"));
+        await expect(entry.first()).toBeVisible({ timeout: 5000 });
+      }).toPass({ timeout: 30_000 });
+      await expect(entry.first()).toContainText(`${prefix} / API key`);
     });
 
     test("refuses a key with no scope on the form", async ({ page }) => {

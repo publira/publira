@@ -227,7 +227,7 @@ func TestCreateAnnouncementStoresAndRecordsItsDelivery(t *testing.T) {
 
 			mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 				WithArgs(
-					sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					"announcement_created", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sql.NullString{String: "delivery=" + tc.stored, Valid: true}, sqlmock.AnyArg(),
 				).

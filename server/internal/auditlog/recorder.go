@@ -26,6 +26,10 @@ const (
 	// when the condition it names is met; on the platform, a change made from
 	// publiractl. The roles the consoles write come from the session instead.
 	RoleSystem = "system"
+
+	// RoleAPIKey is the actor role of an entry one of the tenant's API keys
+	// produced, which names the key rather than an account.
+	RoleAPIKey = "api_key"
 )
 
 // PlatformActor is who a platform entry is filed under. The platform API
@@ -80,9 +84,9 @@ type PlatformEntry struct {
 type TenantEntry struct {
 	TenantID uuid.UUID
 	// The member who acted, or uuid.Nil for an action the platform took on the
-	// tenant's own standing instruction. Leaving it empty files the entry under
-	// RoleSystem, which is the only value the stored row accepts without an
-	// account beside it.
+	// tenant's own standing instruction, filed under RoleSystem, or one a key
+	// took, filed under RoleAPIKey beside ActorAPIKeyID. Those are the only
+	// roles the stored row accepts without an account beside it.
 	ActorUserID uuid.UUID
 	// What the entry keeps of the actor if the account is deleted before the
 	// row lands, which the async recorder makes possible: it writes after the
@@ -90,6 +94,10 @@ type TenantEntry struct {
 	// session when that session is the actor's, which is every console action.
 	ActorPublicID string
 	ActorName     string
+	// The tenant's API key that acted, filed under RoleAPIKey. Left empty with
+	// no member and no role either, it is taken from the request's session
+	// when that session is a key's, which is every write a key may make.
+	ActorAPIKeyID uuid.UUID
 	ActorRole     string
 	Action        string
 	TargetType    string // e.g. "series", "episode", "creator", "label"
@@ -185,9 +193,13 @@ func WritePlatform(ctx context.Context, queries Querier, logger *slog.Logger, e 
 // logTenantEntry emits the structured line every tenant entry gets, whether or
 // not the row behind it lands.
 func logTenantEntry(ctx context.Context, logger *slog.Logger, e TenantEntry) {
+	actor := slog.Any("actor_user_id", e.ActorUserID)
+	if e.ActorAPIKeyID != uuid.Nil {
+		actor = slog.Any("actor_api_key_id", e.ActorAPIKeyID)
+	}
 	logging.Audit(logger).InfoContext(ctx, "audit",
 		"tenant_id", e.TenantID,
-		"actor_user_id", e.ActorUserID,
+		actor,
 		"actor_role", e.ActorRole,
 		"action", e.Action,
 		"target_type", e.TargetType,
@@ -198,19 +210,20 @@ func logTenantEntry(ctx context.Context, logger *slog.Logger, e TenantEntry) {
 	)
 }
 
-// tenantEntryParams is the row one tenant entry becomes.
-func tenantEntryParams(ctx context.Context, e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
+// tenantEntryParams is the row one tenant entry becomes, once withSessionActor
+// has filled its actor.
+func tenantEntryParams(e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return dbmodels.InsertAuditLogParams{}, err
 	}
-	e = withSessionActor(ctx, e)
 	return dbmodels.InsertAuditLogParams{
 		ID:            id,
 		TenantID:      e.TenantID,
 		ActorUserID:   uuid.NullUUID{UUID: e.ActorUserID, Valid: e.ActorUserID != uuid.Nil},
 		ActorPublicID: sql.NullString{String: e.ActorPublicID, Valid: e.ActorPublicID != ""},
 		ActorName:     sql.NullString{String: e.ActorName, Valid: e.ActorPublicID != ""},
+		ActorApiKeyID: uuid.NullUUID{UUID: e.ActorAPIKeyID, Valid: e.ActorAPIKeyID != uuid.Nil},
 		ActorRole:     e.ActorRole,
 		Action:        e.Action,
 		TargetType:    sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
@@ -223,14 +236,22 @@ func tenantEntryParams(ctx context.Context, e TenantEntry) (dbmodels.InsertAudit
 
 // withSessionActor fills what an entry keeps of its actor from the request's
 // session when the caller left it out and the session is the actor's. Every
-// console handler files its entries under the signed-in member, so this is
-// what keeps a new call site from forgetting it.
+// console handler files its entries under the session's member, which is no
+// one and no role on a key's session, so this is also what files a key's
+// write under the key without each call site having to tell the two apart.
 func withSessionActor(ctx context.Context, e TenantEntry) TenantEntry {
-	if e.ActorPublicID != "" || e.ActorUserID == uuid.Nil {
+	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if !ok {
 		return e
 	}
-	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
-	if !ok || session.User.ID != e.ActorUserID {
+	if e.ActorUserID == uuid.Nil {
+		if e.ActorAPIKeyID == uuid.Nil && e.ActorRole == "" && session.APIKeyID != uuid.Nil {
+			e.ActorAPIKeyID = session.APIKeyID
+			e.ActorRole = RoleAPIKey
+		}
+		return e
+	}
+	if e.ActorPublicID != "" || session.User.ID != e.ActorUserID {
 		return e
 	}
 	e.ActorPublicID = session.User.PublicID
@@ -249,9 +270,10 @@ func WriteTenant(ctx context.Context, queries Querier, logger *slog.Logger, e Te
 	if logger == nil {
 		logger = slog.Default()
 	}
+	e = withSessionActor(ctx, e)
 	logTenantEntry(ctx, logger, e)
 
-	params, err := tenantEntryParams(ctx, e)
+	params, err := tenantEntryParams(e)
 	if err != nil {
 		return err
 	}
@@ -429,9 +451,10 @@ func (r *AsyncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 
 // RecordTenant enqueues a tenant audit entry without blocking on the DB.
 func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
+	e = withSessionActor(ctx, e)
 	logTenantEntry(ctx, r.logger, e)
 
-	params, err := tenantEntryParams(ctx, e)
+	params, err := tenantEntryParams(e)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
 		return

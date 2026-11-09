@@ -78,7 +78,7 @@ func TestDBAnAPIKeyReadsWhatItsScopesAdmit(t *testing.T) {
 	if _, err := listSeries(purchases.Key, admin); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListSeries with a purchases:read key = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
 	}
-	// No scope admits a write, or a read that is not listed.
+	// A read scope admits no write, and no scope a read that is not listed.
 	if _, err := env.apiKeyClient().ListApiKeys(withKey(catalog.Key), &publiraadminv1.ListApiKeysRequest{Tenant: admin.tenantContext()}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListApiKeys with a key = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
 	}

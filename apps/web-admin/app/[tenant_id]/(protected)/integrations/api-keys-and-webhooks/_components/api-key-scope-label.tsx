@@ -17,6 +17,12 @@ export const ApiKeyScopeLabel = ({ scope }: { scope: ApiKeyScopeValue }) => {
       );
     }
 
+    case "catalog_write": {
+      return (
+        <Message message="admin.settings.api_keys.scopes.catalog_write_label" />
+      );
+    }
+
     default: {
       return null;
     }

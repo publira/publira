@@ -53,7 +53,11 @@ const storedKey = {
   name: "CRM",
   prefix: "pbk_abcdefghijkl",
   revokedAt: "",
-  scopes: [ApiKeyScope.CATALOG_READ, ApiKeyScope.PURCHASES_READ],
+  scopes: [
+    ApiKeyScope.CATALOG_READ,
+    ApiKeyScope.PURCHASES_READ,
+    ApiKeyScope.CATALOG_WRITE,
+  ],
 };
 
 const invalidField = (field: string) =>
@@ -83,7 +87,7 @@ describe("api-keys", () => {
           name: "CRM",
           prefix: "pbk_abcdefghijkl",
           revokedAt: "",
-          scopes: ["catalog", "purchases"],
+          scopes: ["catalog", "purchases", "catalog_write"],
         },
       ],
       ok: true,
@@ -126,7 +130,11 @@ describe("api-keys", () => {
     const { createApiKey } = await import("./api-keys");
 
     const result = await createApiKey(
-      { name: "CRM", scopes: ["purchases"], tenantId: "TENANT001" },
+      {
+        name: "CRM",
+        scopes: ["purchases", "catalog_write"],
+        tenantId: "TENANT001",
+      },
       "en"
     );
 
@@ -137,7 +145,7 @@ describe("api-keys", () => {
     expect(mockCreateApi).toHaveBeenCalledWith(
       {
         name: "CRM",
-        scopes: [ApiKeyScope.PURCHASES_READ],
+        scopes: [ApiKeyScope.PURCHASES_READ, ApiKeyScope.CATALOG_WRITE],
         tenant: { tenantId: "TENANT001" },
       },
       SESSION_HEADERS

@@ -1089,6 +1089,7 @@
         "tenant_member": "成员",
         "tenant_owner": "所有者",
         "system": "自动",
+        "api_key": "API密钥",
         "unset": "无角色"
       },
       "cancel": "取消",
@@ -3896,7 +3897,7 @@
       },
       "api_keys": {
         "title": "API密钥",
-        "description": "密钥无需任何人登录，即可代表该租户读取管理API。它只能读取其范围所列的内容，不能更改任何内容。",
+        "description": "密钥无需任何人登录，即可代表该租户调用管理API。它只能读取和更改其范围所列的内容。",
         "tenant_id": "租户ID",
         "tenant_id_description": "使用密钥发出的请求以此ID指定租户。",
         "copy_tenant_id": "复制租户ID",
@@ -3919,7 +3920,9 @@
           "catalog_label": "作品",
           "catalog_description": "系列、章节、卷、书系、题材、作者及作者角色。",
           "purchases_label": "购买记录",
-          "purchases_description": "购买记录，以及每位购买者的电子邮件地址。"
+          "purchases_description": "购买记录，以及每位购买者的电子邮件地址。",
+          "catalog_write_label": "编辑作品",
+          "catalog_write_description": "创建和更新系列与章节及其页面、封面图和作者，并预约章节的发布。发布前必须审核时，已预约的章节须等待租户管理员批准。"
         },
         "create_title": "创建API密钥",
         "name": "名称",

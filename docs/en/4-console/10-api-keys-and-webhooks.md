@@ -1,31 +1,32 @@
 ---
 title: API keys and webhooks
-description: Give the tenant's own systems a read-only key for the admin API, send them signed events for sales, refunds, sign-ups, and subscriptions, verify the signature, and resend a delivery that was given up.
+description: Give the tenant's own systems a key that reads the admin API or puts series and episodes in through it, send them signed events for sales, refunds, sign-ups, and subscriptions, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
-updated: 2026-11-05
+updated: 2026-11-09
 ---
 
-**Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases with an **API key**, and learns of a sale, a refund, a new reader, or a subscription as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
+**Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases, or puts series and episodes into the catalog, with an **API key**, and learns of a sale, a refund, a new reader, or a subscription as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
 
 Only a Tenant admin sees **API keys and webhooks**, and every change on it is recorded in **Audit logs**: **API key created**, **API key revoked**, **Webhook endpoint created**, **Webhook endpoint updated**, **Webhook endpoint deleted**, **Webhook signing secret rotated**, and **Webhook delivery resent**.
 
 ## API keys
 
-![The API keys part: Tenant ID with its copy control, a table of three keys with their prefix, scopes, when each was created and last used, and whether it is active or revoked, a Revoke button beside each active one, and the Create API key form with Name and the Catalog and Purchases scopes.](./api-keys-and-webhooks-api-keys.png)
+![The API keys part: Tenant ID with its copy control, a table of three keys with their prefix, scopes, when each was created and last used, and whether it is active or revoked, a Revoke button beside each active one, and the Create API key form with Name and the Catalog, Purchases, and Catalog changes scopes.](./api-keys-and-webhooks-api-keys.png)
 
-A key reads the admin API for this tenant with nobody signed in. It reads only what its scopes name, and no key can change anything.
+A key calls the admin API for this tenant with nobody signed in. It reads and changes only what its scopes name, and only a key with **Catalog changes** changes anything.
 
 ### Creating a key
 
 1. Under **Create API key**, enter a **Name** that says what the key is for, such as the system it is handed to, of up to 100 characters.
 2. Choose its **Scopes**, at least one of:
 
-   | Scope | What the key reads |
+   | Scope | What the key can do |
    | --- | --- |
-   | **Catalog** | Series, episodes, volumes, labels, genres, Authors, and Author roles |
-   | **Purchases** | Purchases, the tenant's or one reader's, with the email address of each buyer |
+   | **Catalog** | Read series, episodes, volumes, labels, genres, Authors, and Author roles |
+   | **Purchases** | Read purchases, the tenant's or one reader's, with the email address of each buyer |
+   | **Catalog changes** | Create and change series and episodes, add, replace, reorder, and delete an episode's pages, upload their cover images, set an episode's Authors, and schedule an episode, as [Changing the catalog with a key](#changing-the-catalog-with-a-key) describes |
 
-   Choose only what the system needs: **Purchases** hands it every buyer's address.
+   Choose only what the system needs: **Purchases** hands it every buyer's address, and **Catalog changes** lets it change what readers see. A scope does not include another: a system that changes the catalog and reads it back needs **Catalog** as well.
 
 3. Choose **Create API key**.
 
@@ -49,8 +50,16 @@ The edge in front of the install does not forward the admin API, so a key is use
 The procedures and their fields are in the [admin API's definitions](https://github.com/publira/publira/tree/main/proto/publira/admin/v1). A key is answered:
 
 - **`unauthenticated`** when it is revoked or unknown, or the request names another tenant.
-- **`permission_denied`** on a procedure none of its scopes admits, every write included.
+- **`permission_denied`** on a procedure none of its scopes admits, such as a write made with a key that has no **Catalog changes**.
 - **`resource_exhausted`**, with `Retry-After`, past the install's limit on requests made with a key: 600 a minute and 100,000 a day, unless the operator set another.
+
+### Changing the catalog with a key
+
+A key with **Catalog changes** puts an episode in the way the console does, one procedure at a time: `CreateSeries` and `UpdateSeries` for the series, `CreateEpisode` for the episode, `UploadEpisodeImages` for its pages, a ZIP or ePub of them included, and `UpdateEpisodePublishSchedule` for its time. `UpdateEpisodeTitle`, `UpdateEpisodePricing`, `UpdateEpisodeLayout`, `ReplaceEpisodeImage`, `ReorderEpisodeImages`, `DeleteEpisodeImage`, `ReplaceEpisodeCredits`, `UploadSeriesEyeCatchAspectImage`, `UploadEpisodeEyeCatchImage`, and `UploadEpisodeEyeCatchAspectImage` change the rest. Nothing else changes with a key: the tenant's settings, its members, its payments, its readers, and the decisions of [Review before publishing](./1-catalog/2-episodes.md#review-before-publishing) stay with a signed-in member.
+
+Each change is recorded in [Audit logs](./3-setup/8-audit-log.md) as the console's are, with the key as its **Actor**: the key's name, its prefix, and **API key** in place of a role. Each counts towards the key's limit on requests like any other.
+
+While **Require review before publishing** is on, a time a key saves submits the episode for review, as one an Editor saves does, and the episode is published only once a Tenant admin approves it.
 
 ### Revoking a key
 
