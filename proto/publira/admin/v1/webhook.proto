@@ -48,6 +48,13 @@ enum WebhookEventType {
   WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED = 5;
   // "webhook.test": what SendTestWebhook sends. No endpoint subscribes to it.
   WEBHOOK_EVENT_TYPE_TEST = 6;
+  // "episode.published": an episode is published: by the scheduled
+  // publication job once its time passes, or at once when it is created,
+  // scheduled, or approved with a time that has already passed. It is sent
+  // whether or not the episode's series is public yet. Each publication is an
+  // event of its own, so an episode taken back to a draft and published again
+  // is sent again. `data` is the episode.
+  WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED = 7;
 }
 
 // How a delivery stands.

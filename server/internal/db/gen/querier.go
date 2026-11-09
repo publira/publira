@@ -1606,6 +1606,11 @@ type Querier interface {
 	GetWebhookDeliveryForUpdate(ctx context.Context, arg GetWebhookDeliveryForUpdateParams) (WebhookDelivery, error)
 	// A delivery with the endpoint it goes to, as the worker sends it.
 	GetWebhookDeliveryToSend(ctx context.Context, arg GetWebhookDeliveryToSendParams) (GetWebhookDeliveryToSendRow, error)
+	// An episode as an episode.published event carries it, read in the
+	// transaction that publishes it: the ids the admin API answers the episode and
+	// its series by, its title in the tenant's default language, and the instant
+	// the publication recorded. An episode that is not published answers no row.
+	GetWebhookEpisode(ctx context.Context, arg GetWebhookEpisodeParams) (GetWebhookEpisodeRow, error)
 	// A purchase as a webhook event carries it: the ids the admin API answers it
 	// by, and the reader's address.
 	GetWebhookPurchase(ctx context.Context, arg GetWebhookPurchaseParams) (GetWebhookPurchaseRow, error)

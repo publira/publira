@@ -6,6 +6,10 @@ import { expect, test } from "@playwright/test";
 import { signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import {
+  nudgeScheduledEpisodeReady,
+  waitUntilEpisodePublishedInDb,
+} from "../src/publish";
+import {
   WEBHOOKS_ADMIN,
   WEBHOOKS_EDITOR,
   WEBHOOKS_SCENARIO,
@@ -22,8 +26,9 @@ import {
  * webhook endpoint: the key and the signing secret are shown once and only
  * their start afterwards, a revoked key is refused, a key that writes the
  * catalog is named in the audit log by its own name, an `http` URL is refused
- * on the form, a test event that is given up can be resent, and one sent to a
- * receiver arrives signed.
+ * on the form, a test event that is given up can be resent, one sent to a
+ * receiver arrives signed, and an episode the key publishes, at once or once
+ * its time passes, is announced to a receiver that subscribed to it.
  *
  * The worker the stack runs dials a public address and the receiver's alone,
  * `127.0.0.1`, so {@link ENDPOINT_URL} is on another loopback address: the
@@ -85,26 +90,51 @@ const endpointRegion = (page: Page, url: string) =>
 const textOf = async (locator: Locator): Promise<string> =>
   ((await locator.textContent()) ?? "").trim();
 
+/** What the admin API answers `procedure` for the tenant with `key`. */
+const callAdminApi = (
+  key: string,
+  procedure: string,
+  body: Readonly<Record<string, string>> = {}
+): Promise<Response> =>
+  fetch(`${PUBLIC_API_BASE_URL}/publira.admin.v1.${procedure}`, {
+    body: JSON.stringify({ ...body, tenant: { tenantId: TENANT_UUID } }),
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+
 /** The status the admin API answers `procedure` for the tenant with `key`. */
 const adminApiStatus = async (
   key: string,
   procedure: string,
-  body: { readonly title?: string } = {}
+  body: Readonly<Record<string, string>> = {}
 ): Promise<number> => {
-  const response = await fetch(
-    `${PUBLIC_API_BASE_URL}/publira.admin.v1.${procedure}`,
-    {
-      body: JSON.stringify({ ...body, tenant: { tenantId: TENANT_UUID } }),
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      method: "POST",
-    }
-  );
+  const response = await callAdminApi(key, procedure, body);
 
   return response.status;
 };
+
+/** The body the admin API answers `procedure` with, failing on any refusal. */
+const adminApiJson = async <T>(
+  key: string,
+  procedure: string,
+  body: Readonly<Record<string, string>>
+): Promise<T> => {
+  const response = await callAdminApi(key, procedure, body);
+
+  expect(response.status, await response.clone().text()).toBe(200);
+
+  // SAFETY: the Connect JSON body of `procedure`'s response message, which
+  // the caller names.
+  return (await response.json()) as T;
+};
+
+/** The episode a `CreateEpisode` answer carries, as far as the suite reads it. */
+interface CreatedEpisode {
+  episode: { publicId: string; status: string };
+}
 
 /** Whether the admin API answers `ListLabels` for the tenant with `key`. */
 const listLabelsWith = (key: string): Promise<number> =>
@@ -437,6 +467,120 @@ test.describe("API keys and webhooks", () => {
         event: "webhook.test",
         verified: true,
       });
+    });
+
+    test("announces an episode published at once and one whose time passes to a receiver", async ({
+      page,
+    }) => {
+      const receiverName = randomUUID();
+      const receiverUrl = webhookReceiverEndpoint(receiverName);
+
+      await openPage(page);
+      const keys = section(page, "API keys");
+
+      await keys.getByLabel("Name").fill("Publishing system");
+      await keys
+        .getByRole("checkbox", { exact: true, name: "Catalog changes" })
+        .check();
+      await keys.getByRole("button", { name: "Create API key" }).click();
+      await expect(keys.getByText("Your new API key")).toBeVisible();
+
+      const key = await textOf(keys.getByText(KEY_PATTERN));
+      const form = addEndpointForm(page);
+
+      await form.getByLabel("URL").fill(receiverUrl);
+      await form.getByRole("checkbox", { name: "Episode published" }).check();
+      await form.getByRole("button", { name: "Add the endpoint" }).click();
+      await expect(form.getByText("The endpoint was added.")).toBeVisible();
+      await setWebhookReceiverSecret(
+        receiverName,
+        await textOf(form.getByText(SECRET_PATTERN))
+      );
+
+      const { series } = await adminApiJson<{ series: { id: string } }>(
+        key,
+        "AdminSeriesService/CreateSeries",
+        { title: "Announced series" }
+      );
+
+      // A time that has already passed publishes the episode as it is created.
+      const atOnce = await adminApiJson<CreatedEpisode>(
+        key,
+        "AdminSeriesService/CreateEpisode",
+        {
+          scheduledAt: "2000-01-01T00:00:00Z",
+          seriesId: series.id,
+          title: "Published at once",
+        }
+      );
+
+      expect(atOnce.episode.status).toBe("published");
+
+      // One saved for later is published by the scheduled publication job once
+      // its time is moved into the past.
+      const scheduled = await adminApiJson<CreatedEpisode>(
+        key,
+        "AdminSeriesService/CreateEpisode",
+        {
+          scheduledAt: "2999-01-01T00:00:00Z",
+          seriesId: series.id,
+          title: "Published on schedule",
+        }
+      );
+
+      expect(scheduled.episode.status).toBe("scheduled");
+      nudgeScheduledEpisodeReady(scheduled.episode.publicId);
+      await waitUntilEpisodePublishedInDb(scheduled.episode.publicId);
+
+      await expect
+        .poll(
+          async () => {
+            const deliveries = await webhookReceiverDeliveries(receiverName);
+
+            return deliveries.length;
+          },
+          { timeout: 60_000 }
+        )
+        .toBe(2);
+      const received = await webhookReceiverDeliveries(receiverName);
+
+      expect(
+        received.map(({ body, event, verified }) => ({
+          episode: body.data.episode_public_id,
+          event,
+          title: body.data.title,
+          verified,
+        }))
+      ).toEqual(
+        expect.arrayContaining([
+          {
+            episode: atOnce.episode.publicId,
+            event: "episode.published",
+            title: "Published at once",
+            verified: true,
+          },
+          {
+            episode: scheduled.episode.publicId,
+            event: "episode.published",
+            title: "Published on schedule",
+            verified: true,
+          },
+        ])
+      );
+
+      const announced = section(page, "Deliveries")
+        .getByRole("row")
+        .filter({ hasText: "Episode published" })
+        .filter({ hasText: receiverUrl });
+
+      await expect(async () => {
+        await page.reload();
+        await expect(announced).toHaveCount(2, { timeout: 3000 });
+        await expect(announced.filter({ hasText: "Delivered" })).toHaveCount(
+          2,
+          { timeout: 3000 }
+        );
+      }).toPass({ timeout: 60_000 });
     });
   });
 });

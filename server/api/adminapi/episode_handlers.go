@@ -32,6 +32,7 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 func parseScheduledAtOrZero(value string) (sql.NullTime, error) {
@@ -836,8 +837,9 @@ func (s *adminServer) CreateEpisode(
 // recordEpisodePublication writes down, in the transaction that publishes the
 // episode, what the scheduled publication job would have written in its own:
 // the announcement the episode owes while its series is not public, the sync
-// of the series' search document, and the notice to the episode's followers,
-// which the worker writes because this connection cannot see them. The drop of
+// of the series' search document, the notice to the episode's followers,
+// which the worker writes because this connection cannot see them, and the
+// episode.published event the tenant's webhooks are owed. The drop of
 // the caches that list the episode and its series is the caller's to record
 // with the rest of its write.
 func recordEpisodePublication(txCtx context.Context, q Querier, tenantID, seriesID, episodeID uuid.UUID) error {
@@ -859,6 +861,9 @@ func recordEpisodePublication(txCtx context.Context, q Querier, tenantID, series
 	}
 	if err := catalogindex.Queue(txCtx, q, tenantID, catalogindex.SeriesRef(seriesID)); err != nil {
 		return fmt.Errorf("queue catalog index sync: %w", err)
+	}
+	if err := tenantwebhooks.QueueEpisodePublished(txCtx, q, tenantID, episodeID); err != nil {
+		return fmt.Errorf("queue the episode.published webhook: %w", err)
 	}
 	return nil
 }

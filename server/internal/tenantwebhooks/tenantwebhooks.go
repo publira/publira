@@ -32,6 +32,7 @@ const (
 	EventReaderSignedUp      = "reader.signed_up"
 	EventSubscriptionStarted = "subscription.started"
 	EventSubscriptionEnded   = "subscription.ended"
+	EventEpisodePublished    = "episode.published"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -45,6 +46,7 @@ var EventTypes = []string{
 	EventReaderSignedUp,
 	EventSubscriptionStarted,
 	EventSubscriptionEnded,
+	EventEpisodePublished,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -62,6 +64,7 @@ type Queries interface {
 	GetWebhookPurchase(ctx context.Context, arg dbmodels.GetWebhookPurchaseParams) (dbmodels.GetWebhookPurchaseRow, error)
 	GetWebhookReader(ctx context.Context, arg dbmodels.GetWebhookReaderParams) (dbmodels.GetWebhookReaderRow, error)
 	GetWebhookSubscription(ctx context.Context, arg dbmodels.GetWebhookSubscriptionParams) (dbmodels.GetWebhookSubscriptionRow, error)
+	GetWebhookEpisode(ctx context.Context, arg dbmodels.GetWebhookEpisodeParams) (dbmodels.GetWebhookEpisodeRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -157,6 +160,17 @@ type Subscription struct {
 	Test              bool   `json:"test"`
 }
 
+// Episode is the data of [EventEpisodePublished]. It names the episode and its
+// series by the public ids the admin API answers them by, and carries no
+// reader's data.
+type Episode struct {
+	EpisodePublicID string `json:"episode_public_id"`
+	SeriesPublicID  string `json:"series_public_id"`
+	// Title is the episode's title in the tenant's default language.
+	Title       string `json:"title"`
+	PublishedAt string `json:"published_at"`
+}
+
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
 // a purchase just recorded. A purchase is completed once, so the event is
 // owed once however often the writer runs.
@@ -242,6 +256,27 @@ func QueueSubscriptionChange(ctx context.Context, q Queries, tenantID, subscript
 	})
 }
 
+// QueueEpisodePublished owes the event of an episode just published, called in
+// the transaction that publishes it. The key names the publication by its
+// instant beside the episode, so an episode taken back to a draft and
+// published again owes the event again, while the same publication read twice
+// owes it once.
+func QueueEpisodePublished(ctx context.Context, q Queries, tenantID, episodeID uuid.UUID) error {
+	return queueKeyed(ctx, q, tenantID, EventEpisodePublished, func() (string, any, error) {
+		row, err := q.GetWebhookEpisode(ctx, dbmodels.GetWebhookEpisodeParams{TenantID: tenantID, ID: episodeID})
+		if err != nil {
+			return "", nil, fmt.Errorf("read the episode of a webhook event: %w", err)
+		}
+		key := EventEpisodePublished + ":" + episodeID.String() + ":" + row.PublishedAt.UTC().Format(time.RFC3339Nano)
+		return key, Episode{
+			EpisodePublicID: row.EpisodePublicID,
+			SeriesPublicID:  row.SeriesPublicID,
+			Title:           row.Title,
+			PublishedAt:     formatTime(row.PublishedAt),
+		}, nil
+	})
+}
+
 // QueueTest owes one endpoint a [EventTest] event, whether it is enabled or
 // subscribed to anything, and answers the delivery's id.
 func QueueTest(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID) (uuid.UUID, error) {
@@ -274,6 +309,14 @@ func QueueResend(ctx context.Context, q Queries, tenantID, deliveryID uuid.UUID)
 // data is read only when one has, so a tenant without webhooks pays one indexed
 // read for every change it records.
 func queue(ctx context.Context, q Queries, tenantID uuid.UUID, eventType, key string, data func() (any, error)) error {
+	return queueKeyed(ctx, q, tenantID, eventType, func() (string, any, error) {
+		body, err := data()
+		return key, body, err
+	})
+}
+
+// queueKeyed is [queue] for an event whose key is read with its data.
+func queueKeyed(ctx context.Context, q Queries, tenantID uuid.UUID, eventType string, data func() (string, any, error)) error {
 	endpoints, err := q.ListTenantWebhookEndpointsForEvent(ctx, dbmodels.ListTenantWebhookEndpointsForEventParams{
 		TenantID:  tenantID,
 		EventType: eventType,
@@ -288,7 +331,7 @@ func queue(ctx context.Context, q Queries, tenantID uuid.UUID, eventType, key st
 	if err != nil {
 		return fmt.Errorf("read the tenant of a webhook event: %w", err)
 	}
-	body, err := data()
+	key, body, err := data()
 	if err != nil {
 		return err
 	}

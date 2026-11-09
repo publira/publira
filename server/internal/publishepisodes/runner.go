@@ -1,6 +1,7 @@
 // Package publishepisodes publishes scheduled episodes and writes follower
-// notifications on success, tenant-admin notifications for the result,
-// and operator notifications when the final attempt fails.
+// notifications and the tenant's episode.published webhook on success,
+// tenant-admin notifications for the result, and operator notifications when
+// the final attempt fails.
 package publishepisodes
 
 import (
@@ -21,6 +22,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -376,6 +378,10 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 	if err := r.notifyFollowers(ctx, qtx, row); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("notify followers: %w", err)
+	}
+	if err := tenantwebhooks.QueueEpisodePublished(ctx, qtx, row.TenantID, row.EpisodeID); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("queue the episode.published webhook: %w", err)
 	}
 	// The drop rides the transaction that promotes the listing: a run that dies
 	// between the two would otherwise leave an episode published behind a cache

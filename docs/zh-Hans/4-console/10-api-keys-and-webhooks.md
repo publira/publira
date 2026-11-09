@@ -1,12 +1,12 @@
 ---
 title: API密钥与Webhook
-description: 为租户自己的系统提供读取管理API或通过管理API添加系列与章节的密钥，向它们发送关于销售、退款、注册和订阅的签名事件，验证签名，以及重新发送已被放弃的发送。
+description: 为租户自己的系统提供读取管理API或通过管理API添加系列与章节的密钥，向它们发送关于销售、退款、注册、订阅和章节发布的签名事件，验证签名，以及重新发送已被放弃的发送。
 published: 2026-11-04
 updated: 2026-11-09
 source_updated: 2026-11-09
 ---
 
-**集成** › **API密钥与Webhook**将租户与出版社自己运行的系统连接起来，例如CRM、数据仓库或会计系统。系统使用**API密钥**读取租户的作品目录和购买记录，或向作品目录添加系列与章节，并通过**Webhook端点**在销售、退款、新读者或订阅发生时立即获知。Webhook端点是系统自己的一个URL，每个事件都会发送到这里。**发送记录**列出发送给每个端点的内容以及被放弃的内容。
+**集成** › **API密钥与Webhook**将租户与出版社自己运行的系统连接起来，例如CRM、数据仓库或会计系统。系统使用**API密钥**读取租户的作品目录和购买记录，或向作品目录添加系列与章节，并通过**Webhook端点**在销售、退款、新读者、订阅或章节发布发生时立即获知。Webhook端点是系统自己的一个URL，每个事件都会发送到这里。**发送记录**列出发送给每个端点的内容以及被放弃的内容。
 
 只有租户管理员能看到**API密钥与Webhook**，其中的每次更改都会记录在**审计日志**中：**创建了API密钥**、**吊销了API密钥**、**创建了Webhook端点**、**更新了Webhook端点**、**删除了Webhook端点**、**重新生成了Webhook签名密钥**和**重新发送了Webhook**。
 
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhook端点
 
-![一个已保存的端点：标题为其URL，旁边显示已启用；发送测试事件和删除按钮；签名密钥的提示和最后更新时间；重新生成密钥；以及它自己的表单：URL、选中了其中三个的五个事件、启用开关和保存端点。](./api-keys-and-webhooks-endpoint.png)
+![一个已保存的端点：标题为其URL，旁边显示已启用；发送测试事件和删除按钮；签名密钥的提示和最后更新时间；重新生成密钥；以及它自己的表单：URL、选中了其中三个的六个事件、启用开关和保存端点。](./api-keys-and-webhooks-endpoint.png)
 
 端点是出版社自己的https URL，每发生一个它订阅的事件，都会收到一个带签名的`POST`请求。一个租户最多可保留五个端点，每个端点都有自己的表单。
 
@@ -103,6 +103,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **读者注册**（`reader.signed_up`） | 读者开通了账户，使用地址和密码，或通过Apple或Google登录 | 读者 |
 | **订阅开始**（`subscription.started`） | 订阅开始计费 | 订阅 |
 | **订阅结束**（`subscription.ended`） | 订阅停止计费 | 订阅 |
+| **章节发布**（`episode.published`） | 章节发布时：预定时间到达时，或以已经过去的时间创建、预约或批准而立即发布时。即使系列尚未公开也会发送。每次发布都是一个单独的事件，因此退回草稿后再次发布的章节会再次发送 | 章节 |
 | **测试事件**（`webhook.test`） | 选择了**发送测试事件** | 空 |
 
 ### 请求正文
@@ -127,6 +128,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 购买 | `purchase_id`，即`GetPurchase`所接收的ID；`kind`：`purchase`、`rental`或`tip`；`item`：`episode`、`volume`、`series_bundle`或`coin_pack`，并在适用时附带`series_public_id`、`episode_public_id`和`volume_public_id`；`reader_public_id`和`reader_email`，读者删除账户后两者都为空；`price`为读者支付的金额，`list_price`为扣除优惠码折扣之前的价格，两者都以货币的最小单位表示，并附带`currency`；`refunded_amount`；`purchased_at`、`expires_at`和`refunded_at`；`provider`为支付服务商或`coins`，`store`为`app_store`或`google_play`，对于优惠码赠予的购买，两者都为空；以及`test` |
 | 读者 | `reader_public_id`、`email`、`name`、`email_verified`（读者确认地址之前为false），以及`signed_up_at` |
+| 章节 | `episode_public_id`和`series_public_id`；租户默认语言的`title`；以及`published_at` |
 | 订阅 | `plan_public_id`和`plan_name`；`reader_public_id`和`reader_email`，读者删除账户后两者都为空；`provider`：`stripe`、`app_store`或`google_play`；`status`；`current_period_end`和`cancel_at_period_end`；`started_at`；以及`test` |
 
 每次发送还带有以下请求头：

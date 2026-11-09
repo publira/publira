@@ -3971,6 +3971,8 @@
           "subscription_started_description": "订阅开始计费。",
           "subscription_ended": "订阅结束",
           "subscription_ended_description": "订阅停止计费。",
+          "episode_published": "章节发布",
+          "episode_published_description": "章节按预定时间发布，或立即发布。",
           "test": "测试事件"
         },
         "enabled": "启用",

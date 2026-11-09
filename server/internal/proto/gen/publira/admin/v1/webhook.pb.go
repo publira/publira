@@ -66,6 +66,13 @@ const (
 	WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED WebhookEventType = 5
 	// "webhook.test": what SendTestWebhook sends. No endpoint subscribes to it.
 	WebhookEventType_WEBHOOK_EVENT_TYPE_TEST WebhookEventType = 6
+	// "episode.published": an episode is published: by the scheduled
+	// publication job once its time passes, or at once when it is created,
+	// scheduled, or approved with a time that has already passed. It is sent
+	// whether or not the episode's series is public yet. Each publication is an
+	// event of its own, so an episode taken back to a draft and published again
+	// is sent again. `data` is the episode.
+	WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED WebhookEventType = 7
 )
 
 // Enum value maps for WebhookEventType.
@@ -78,6 +85,7 @@ var (
 		4: "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED",
 		5: "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED",
 		6: "WEBHOOK_EVENT_TYPE_TEST",
+		7: "WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED",
 	}
 	WebhookEventType_value = map[string]int32{
 		"WEBHOOK_EVENT_TYPE_UNSPECIFIED":          0,
@@ -87,6 +95,7 @@ var (
 		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED": 4,
 		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED":   5,
 		"WEBHOOK_EVENT_TYPE_TEST":                 6,
+		"WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED":    7,
 	}
 )
 
@@ -1373,7 +1382,7 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"\vdelivery_id\x18\x02 \x01(\tR\n" +
 	"deliveryId\"^\n" +
 	"\x1dResendWebhookDeliveryResponse\x12=\n" +
-	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xa9\x02\n" +
+	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xd3\x02\n" +
 	"\x10WebhookEventType\x12\"\n" +
 	"\x1eWEBHOOK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED\x10\x01\x12(\n" +
@@ -1381,7 +1390,8 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"#WEBHOOK_EVENT_TYPE_READER_SIGNED_UP\x10\x03\x12+\n" +
 	"'WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED\x10\x04\x12)\n" +
 	"%WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED\x10\x05\x12\x1b\n" +
-	"\x17WEBHOOK_EVENT_TYPE_TEST\x10\x06*\xd2\x01\n" +
+	"\x17WEBHOOK_EVENT_TYPE_TEST\x10\x06\x12(\n" +
+	"$WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED\x10\a*\xd2\x01\n" +
 	"\x15WebhookDeliveryStatus\x12'\n" +
 	"#WEBHOOK_DELIVERY_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fWEBHOOK_DELIVERY_STATUS_PENDING\x10\x01\x12\"\n" +

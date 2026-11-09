@@ -30,6 +30,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -125,6 +126,7 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
 	expectEpisodePublishedNotification(mock, tenantID, episodeID, now)
 	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
+	expectNoEpisodePublishedWebhooks(mock, tenantID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
@@ -187,6 +189,14 @@ func expectEpisodePublishedNotification(mock sqlmock.Sqlmock, tenantID, episodeI
 			outbox.EpisodePublishedIdempotencyKey(episodeID),
 			"pending", int32(0), now, nil, now, now, nil,
 		))
+}
+
+// expectNoEpisodePublishedWebhooks expects the publication to ask which of the
+// tenant's endpoints are owed episode.published, and to find none.
+func expectNoEpisodePublishedWebhooks(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantWebhookEndpointsForEvent)).
+		WithArgs(tenantID, tenantwebhooks.EventEpisodePublished).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 }
 
 // An unset order_index appends after the current last episode, so the client
@@ -1165,6 +1175,7 @@ func TestUpdateEpisodePublishSchedulePublishesAtOnceWhenTheTimeHasPassed(t *test
 			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, int32(0), "published", scheduledAt, now, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
 	expectEpisodePublishedNotification(mock, tenantID, testEpisodeID, now)
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
+	expectNoEpisodePublishedWebhooks(mock, tenantID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)

@@ -620,3 +620,11 @@ GRANT SELECT, INSERT ON coin_transactions TO publira_ticker;
 -- covers. Its queries name only the windows a rule wrote, and SELECT is
 -- granted above for their RETURNING clauses.
 GRANT INSERT, DELETE ON episode_free_windows TO publira_ticker;
+-- And for the tenant's webhooks: a publication owes episode.published to the
+-- endpoints that subscribed to it, so the job reads which those are and writes
+-- the delivery it owes each one. It reads neither an endpoint's URL nor its
+-- sealed secret, nor the body of any other delivery, which carries a reader's
+-- address, so both grants name the columns its queries touch: the delivery's
+-- conflict target and what the insert returns.
+GRANT SELECT (id, tenant_id, enabled, event_types, created_at) ON tenant_webhook_endpoints TO publira_ticker;
+GRANT SELECT (id, tenant_id, endpoint_id, event_id), INSERT ON webhook_deliveries TO publira_ticker;
