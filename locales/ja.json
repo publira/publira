@@ -4100,6 +4100,8 @@
           "episode_unpublished_description": "公開中のエピソードが下書きに戻されたか先の日時に変更されたとき、またはシリーズが非公開になったとき。",
           "comment_posted": "コメントの公開",
           "comment_posted_description": "読者のコメントが、すぐに、または承認されてエピソードに公開されたとき。",
+          "contact_message_received": "お問い合わせの受信",
+          "contact_message_received_description": "読者がお問い合わせフォームからメッセージを送ったとき、または回答にメールで返信したとき。",
           "test": "テストイベント"
         },
         "enabled": "有効",

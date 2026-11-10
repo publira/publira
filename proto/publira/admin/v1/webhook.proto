@@ -69,6 +69,13 @@ enum WebhookEventType {
   // `data` is the comment, with its writer's public id and display name and
   // never their address.
   WEBHOOK_EVENT_TYPE_COMMENT_POSTED = 9;
+  // "contact_message.received": a reader writes to the tenant: they send a
+  // message through the contact form, or mail a reply to a staff answer. Each
+  // is sent once, and `reply` tells the two apart. `data` is the message's
+  // public id and subject, the body of what was written, and the public id and
+  // display name of the account that sent the message, both empty for a
+  // reader who was not signed in; never the address to answer at.
+  WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED = 10;
 }
 
 // How a delivery stands.

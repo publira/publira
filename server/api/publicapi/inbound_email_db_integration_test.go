@@ -111,6 +111,7 @@ func (h *inboundHarness) newTenant(t *testing.T, fixture inboundprovidertest.Fix
 	`, uuid.New(), tenant.ID, messageID, staff.ID, answerMessageID); err != nil {
 		t.Fatalf("seed the staff answer: %v", err)
 	}
+	subscribeToContactMessages(t, h.pg.DB, tenant.ID)
 	return inboundTenant{tenant: tenant, messageID: messageID, messagePublicID: publicID, answerMessageID: answerMessageID}
 }
 
@@ -275,6 +276,17 @@ func runInboundScenarios(t *testing.T, h *inboundHarness, fixture inboundprovide
 		if len(notices) != 1 || notices[0].MessageID != seeded.messageID.String() {
 			t.Fatalf("queued staff mails = %+v, want one about message %s", notices, seeded.messageID)
 		}
+		// The seeded message was not sent through the form, so the reply is the
+		// one event the tenant is owed.
+		deliveries := contactMessageDeliveries(t, h.pg.DB, seeded.tenant.ID)
+		if len(deliveries) != 1 {
+			t.Fatalf("owed %d contact_message.received deliveries, want 1: %+v", len(deliveries), deliveries)
+		}
+		if got := deliveries[0]; got.MessagePublicID != seeded.messagePublicID || !got.Reply ||
+			got.Subject != "About my purchase" || got.Body != "It opens now, thank you." ||
+			got.ReaderPublicID != "" || got.ReaderName != "" || got.ReceivedAt == "" {
+			t.Errorf("reply = %+v, want the reply to message %s", got, seeded.messagePublicID)
+		}
 
 		// A provider delivers the same mail again when it is not sure the first
 		// delivery landed. It is acknowledged and changes nothing.
@@ -287,6 +299,9 @@ func runInboundScenarios(t *testing.T, h *inboundHarness, fixture inboundprovide
 		}
 		if notices := h.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
 			t.Fatalf("queued %d staff mails after a redelivery, want 1", len(notices))
+		}
+		if deliveries := contactMessageDeliveries(t, h.pg.DB, seeded.tenant.ID); len(deliveries) != 1 {
+			t.Fatalf("owed %d contact_message.received deliveries after a redelivery, want 1", len(deliveries))
 		}
 	})
 

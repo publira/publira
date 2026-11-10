@@ -423,6 +423,45 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.status = 'published'
     AND c.published_at IS NOT NULL;
 
+-- name: GetWebhookContactMessage :one
+-- A contact message as the contact_message.received event of its arrival
+-- carries it, read in the transaction that stores it: its public id, subject,
+-- and body, when it arrived, and the public id and display name of the account
+-- that sent it, empty for a reader who was not signed in. Never the address
+-- the reader asked to be answered at.
+SELECT m.public_id AS message_public_id,
+    m.subject,
+    m.body,
+    m.created_at,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name
+FROM contact_messages m
+    LEFT JOIN users u ON u.tenant_id = m.tenant_id
+    AND u.id = m.user_id
+WHERE m.tenant_id = sqlc.arg('tenant_id')
+    AND m.id = sqlc.arg('id');
+
+-- name: GetWebhookContactMessageReply :one
+-- A reader's reply as the contact_message.received event of its arrival
+-- carries it, read in the transaction that stores it: what
+-- GetWebhookContactMessage answers for the message it replies to, with the
+-- reply's body and arrival in place of the message's. A staff entry answers no
+-- row.
+SELECT m.public_id AS message_public_id,
+    m.subject,
+    me.body,
+    me.created_at,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name
+FROM contact_message_entries me
+    JOIN contact_messages m ON m.tenant_id = me.tenant_id
+    AND m.id = me.contact_message_id
+    LEFT JOIN users u ON u.tenant_id = m.tenant_id
+    AND u.id = m.user_id
+WHERE me.tenant_id = sqlc.arg('tenant_id')
+    AND me.id = sqlc.arg('id')
+    AND me.direction = 'reader';
+
 -- name: GetWebhookDelivery :one
 -- One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 SELECT d.id,

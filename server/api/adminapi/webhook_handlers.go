@@ -29,15 +29,16 @@ const (
 )
 
 var webhookEventTypes = map[publiraadminv1.WebhookEventType]string{
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED:   tenantwebhooks.EventPurchaseCompleted,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED:    tenantwebhooks.EventPurchaseRefunded,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_READER_SIGNED_UP:     tenantwebhooks.EventReaderSignedUp,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED: tenantwebhooks.EventSubscriptionStarted,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED:   tenantwebhooks.EventSubscriptionEnded,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED:    tenantwebhooks.EventEpisodePublished,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED:  tenantwebhooks.EventEpisodeUnpublished,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED:       tenantwebhooks.EventCommentPosted,
-	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_TEST:                 tenantwebhooks.EventTest,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED:       tenantwebhooks.EventPurchaseCompleted,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED:        tenantwebhooks.EventPurchaseRefunded,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_READER_SIGNED_UP:         tenantwebhooks.EventReaderSignedUp,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED:     tenantwebhooks.EventSubscriptionStarted,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED:       tenantwebhooks.EventSubscriptionEnded,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED:        tenantwebhooks.EventEpisodePublished,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED:      tenantwebhooks.EventEpisodeUnpublished,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED:           tenantwebhooks.EventCommentPosted,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED: tenantwebhooks.EventContactMessageReceived,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_TEST:                     tenantwebhooks.EventTest,
 }
 
 var webhookDeliveryStatuses = map[publiraadminv1.WebhookDeliveryStatus]string{

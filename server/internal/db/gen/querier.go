@@ -1723,6 +1723,18 @@ type Querier interface {
 	// body, the instant it became visible, and its writer's public id and display
 	// name, never their address. A comment that is not published answers no row.
 	GetWebhookComment(ctx context.Context, arg GetWebhookCommentParams) (GetWebhookCommentRow, error)
+	// A contact message as the contact_message.received event of its arrival
+	// carries it, read in the transaction that stores it: its public id, subject,
+	// and body, when it arrived, and the public id and display name of the account
+	// that sent it, empty for a reader who was not signed in. Never the address
+	// the reader asked to be answered at.
+	GetWebhookContactMessage(ctx context.Context, arg GetWebhookContactMessageParams) (GetWebhookContactMessageRow, error)
+	// A reader's reply as the contact_message.received event of its arrival
+	// carries it, read in the transaction that stores it: what
+	// GetWebhookContactMessage answers for the message it replies to, with the
+	// reply's body and arrival in place of the message's. A staff entry answers no
+	// row.
+	GetWebhookContactMessageReply(ctx context.Context, arg GetWebhookContactMessageReplyParams) (GetWebhookContactMessageReplyRow, error)
 	// One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (GetWebhookDeliveryRow, error)
 	GetWebhookDeliveryForUpdate(ctx context.Context, arg GetWebhookDeliveryForUpdateParams) (WebhookDelivery, error)

@@ -27,14 +27,15 @@ import (
 // The events an endpoint can subscribe to, as the body's type names them and
 // as tenant_webhook_endpoints.event_types stores them.
 const (
-	EventPurchaseCompleted   = "purchase.completed"
-	EventPurchaseRefunded    = "purchase.refunded"
-	EventReaderSignedUp      = "reader.signed_up"
-	EventSubscriptionStarted = "subscription.started"
-	EventSubscriptionEnded   = "subscription.ended"
-	EventEpisodePublished    = "episode.published"
-	EventEpisodeUnpublished  = "episode.unpublished"
-	EventCommentPosted       = "comment.posted"
+	EventPurchaseCompleted      = "purchase.completed"
+	EventPurchaseRefunded       = "purchase.refunded"
+	EventReaderSignedUp         = "reader.signed_up"
+	EventSubscriptionStarted    = "subscription.started"
+	EventSubscriptionEnded      = "subscription.ended"
+	EventEpisodePublished       = "episode.published"
+	EventEpisodeUnpublished     = "episode.unpublished"
+	EventCommentPosted          = "comment.posted"
+	EventContactMessageReceived = "contact_message.received"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -51,6 +52,7 @@ var EventTypes = []string{
 	EventEpisodePublished,
 	EventEpisodeUnpublished,
 	EventCommentPosted,
+	EventContactMessageReceived,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -72,6 +74,8 @@ type Queries interface {
 	GetWebhookUnpublishedEpisode(ctx context.Context, arg dbmodels.GetWebhookUnpublishedEpisodeParams) (dbmodels.GetWebhookUnpublishedEpisodeRow, error)
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.ListWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.ListWebhookPublishedEpisodesOfSeriesRow, error)
 	GetWebhookComment(ctx context.Context, arg dbmodels.GetWebhookCommentParams) (dbmodels.GetWebhookCommentRow, error)
+	GetWebhookContactMessage(ctx context.Context, arg dbmodels.GetWebhookContactMessageParams) (dbmodels.GetWebhookContactMessageRow, error)
+	GetWebhookContactMessageReply(ctx context.Context, arg dbmodels.GetWebhookContactMessageReplyParams) (dbmodels.GetWebhookContactMessageReplyRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -211,6 +215,26 @@ type Comment struct {
 	// AuthorName is the writer's display name, as stored on their account.
 	AuthorName  string `json:"author_name"`
 	PublishedAt string `json:"published_at"`
+}
+
+// ContactMessage is the data of [EventContactMessageReceived]: a contact message a
+// reader sent, or a reply they mailed to one. It names the reader by the
+// public id and display name of the account that sent the message, both empty
+// when they were not signed in or have deleted the account since, and never by
+// the address they asked to be answered at.
+type ContactMessage struct {
+	MessagePublicID string `json:"message_public_id"`
+	// Subject is the message's, empty when the reader gave it none. A reply
+	// carries the subject of the message it replies to.
+	Subject string `json:"subject"`
+	// Body is what this event announces: the message, or the reply.
+	Body string `json:"body"`
+	// Reply is false for the message the reader sent through the contact
+	// form, and true for a reply they mailed to an answer.
+	Reply          bool   `json:"reply"`
+	ReaderPublicID string `json:"reader_public_id"`
+	ReaderName     string `json:"reader_name"`
+	ReceivedAt     string `json:"received_at"`
 }
 
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
@@ -384,6 +408,47 @@ func QueueCommentPosted(ctx context.Context, q Queries, tenantID, commentID uuid
 			AuthorPublicID:  row.AuthorPublicID,
 			AuthorName:      row.AuthorName,
 			PublishedAt:     formatTime(row.PublishedAt),
+		}, nil
+	})
+}
+
+// QueueContactMessageReceived owes the event of a contact message just
+// stored, called in the transaction that stores it.
+func QueueContactMessageReceived(ctx context.Context, q Queries, tenantID, messageID uuid.UUID) error {
+	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":"+messageID.String(), func() (any, error) {
+		row, err := q.GetWebhookContactMessage(ctx, dbmodels.GetWebhookContactMessageParams{TenantID: tenantID, ID: messageID})
+		if err != nil {
+			return nil, fmt.Errorf("read the contact message of a webhook event: %w", err)
+		}
+		return ContactMessage{
+			MessagePublicID: row.MessagePublicID,
+			Subject:         row.Subject.String,
+			Body:            row.Body,
+			ReaderPublicID:  row.ReaderPublicID.String,
+			ReaderName:      row.ReaderName.String,
+			ReceivedAt:      formatTime(row.CreatedAt),
+		}, nil
+	})
+}
+
+// QueueContactMessageReplyReceived owes the event of a reader's reply just
+// stored under a contact message, called in the transaction that stores it.
+// The key names the entry, so each reply is an event of its own and a mail
+// delivered twice, which stores no second entry, owes none.
+func QueueContactMessageReplyReceived(ctx context.Context, q Queries, tenantID, entryID uuid.UUID) error {
+	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":reply:"+entryID.String(), func() (any, error) {
+		row, err := q.GetWebhookContactMessageReply(ctx, dbmodels.GetWebhookContactMessageReplyParams{TenantID: tenantID, ID: entryID})
+		if err != nil {
+			return nil, fmt.Errorf("read the contact message reply of a webhook event: %w", err)
+		}
+		return ContactMessage{
+			MessagePublicID: row.MessagePublicID,
+			Subject:         row.Subject.String,
+			Body:            row.Body,
+			Reply:           true,
+			ReaderPublicID:  row.ReaderPublicID.String,
+			ReaderName:      row.ReaderName.String,
+			ReceivedAt:      formatTime(row.CreatedAt),
 		}, nil
 	})
 }

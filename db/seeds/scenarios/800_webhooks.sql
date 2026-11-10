@@ -9,7 +9,7 @@
 --
 -- Applying it is also how the suite starts over: the tenant's keys, endpoints,
 -- and deliveries are deleted, and so are the audit log entries the suite
--- reads back.
+-- reads back and the contact messages it sends.
 -- public_id values are hard-coded in e2e/src/scenarios/webhooks.ts.
 --   tenant WhokTNNTAAA1 (webhooks.localhost / admin.webhooks.localhost)
 --   admin  WhokADMNAAA1 (webhooks-admin@example.com)
@@ -121,6 +121,10 @@ ON CONFLICT (user_id, role) DO NOTHING;
 
 -- A delivery goes with its endpoint.
 DELETE FROM tenant_webhook_endpoints
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'WhokTNNTAAA1');
+
+-- The messages the suite sends through the contact form.
+DELETE FROM contact_messages
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'WhokTNNTAAA1');
 
 -- An entry a key made holds the key back, so the entries go first.

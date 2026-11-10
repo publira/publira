@@ -189,6 +189,103 @@ func (q *Queries) GetWebhookComment(ctx context.Context, arg GetWebhookCommentPa
 	return i, err
 }
 
+const GetWebhookContactMessage = `-- name: GetWebhookContactMessage :one
+SELECT m.public_id AS message_public_id,
+    m.subject,
+    m.body,
+    m.created_at,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name
+FROM contact_messages m
+    LEFT JOIN users u ON u.tenant_id = m.tenant_id
+    AND u.id = m.user_id
+WHERE m.tenant_id = $1
+    AND m.id = $2
+`
+
+type GetWebhookContactMessageParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookContactMessageRow struct {
+	MessagePublicID string         `json:"message_public_id"`
+	Subject         sql.NullString `json:"subject"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	ReaderPublicID  sql.NullString `json:"reader_public_id"`
+	ReaderName      sql.NullString `json:"reader_name"`
+}
+
+// A contact message as the contact_message.received event of its arrival
+// carries it, read in the transaction that stores it: its public id, subject,
+// and body, when it arrived, and the public id and display name of the account
+// that sent it, empty for a reader who was not signed in. Never the address
+// the reader asked to be answered at.
+func (q *Queries) GetWebhookContactMessage(ctx context.Context, arg GetWebhookContactMessageParams) (GetWebhookContactMessageRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookContactMessage, arg.TenantID, arg.ID)
+	var i GetWebhookContactMessageRow
+	err := row.Scan(
+		&i.MessagePublicID,
+		&i.Subject,
+		&i.Body,
+		&i.CreatedAt,
+		&i.ReaderPublicID,
+		&i.ReaderName,
+	)
+	return i, err
+}
+
+const GetWebhookContactMessageReply = `-- name: GetWebhookContactMessageReply :one
+SELECT m.public_id AS message_public_id,
+    m.subject,
+    me.body,
+    me.created_at,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name
+FROM contact_message_entries me
+    JOIN contact_messages m ON m.tenant_id = me.tenant_id
+    AND m.id = me.contact_message_id
+    LEFT JOIN users u ON u.tenant_id = m.tenant_id
+    AND u.id = m.user_id
+WHERE me.tenant_id = $1
+    AND me.id = $2
+    AND me.direction = 'reader'
+`
+
+type GetWebhookContactMessageReplyParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookContactMessageReplyRow struct {
+	MessagePublicID string         `json:"message_public_id"`
+	Subject         sql.NullString `json:"subject"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	ReaderPublicID  sql.NullString `json:"reader_public_id"`
+	ReaderName      sql.NullString `json:"reader_name"`
+}
+
+// A reader's reply as the contact_message.received event of its arrival
+// carries it, read in the transaction that stores it: what
+// GetWebhookContactMessage answers for the message it replies to, with the
+// reply's body and arrival in place of the message's. A staff entry answers no
+// row.
+func (q *Queries) GetWebhookContactMessageReply(ctx context.Context, arg GetWebhookContactMessageReplyParams) (GetWebhookContactMessageReplyRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookContactMessageReply, arg.TenantID, arg.ID)
+	var i GetWebhookContactMessageReplyRow
+	err := row.Scan(
+		&i.MessagePublicID,
+		&i.Subject,
+		&i.Body,
+		&i.CreatedAt,
+		&i.ReaderPublicID,
+		&i.ReaderName,
+	)
+	return i, err
+}
+
 const GetWebhookDelivery = `-- name: GetWebhookDelivery :one
 SELECT d.id,
     d.endpoint_id,

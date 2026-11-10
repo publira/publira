@@ -2,6 +2,8 @@ package publicapi
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +18,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -499,5 +502,124 @@ func TestDBContactMessageStaysOnItsOwnTenant(t *testing.T) {
 	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("MarkContactMessageHandled across tenants = %v, want not_found", err)
+	}
+}
+
+// subscribeToContactMessages saves an endpoint on the tenant that subscribed
+// to contact_message.received, and one beside it that did not.
+func subscribeToContactMessages(t *testing.T, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+
+	if _, err := db.ExecContext(context.Background(), `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $3, 'https://helpdesk.example.com/publira', 'sealed', 'whsec_••••', ARRAY['contact_message.received']),
+			($2, $3, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['comment.posted'])
+	`, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), tenantID); err != nil {
+		t.Fatalf("insert webhook endpoints: %v", err)
+	}
+}
+
+// contactMessageDeliveries answers the data of every contact_message.received
+// delivery owed on the tenant, oldest first, each to the endpoint that
+// subscribed to it. It fails on data that names the address the reader asked
+// to be answered at.
+func contactMessageDeliveries(t *testing.T, db *sql.DB, tenantID uuid.UUID) []tenantwebhooks.ContactMessage {
+	t.Helper()
+
+	rows, err := db.QueryContext(context.Background(), `
+		SELECT e.url, d.payload->'data'
+		FROM webhook_deliveries d
+			JOIN tenant_webhook_endpoints e ON e.tenant_id = d.tenant_id AND e.id = d.endpoint_id
+		WHERE d.tenant_id = $1 AND d.event_type = 'contact_message.received'
+		ORDER BY d.created_at, d.id
+	`, tenantID)
+	if err != nil {
+		t.Fatalf("read webhook deliveries: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var got []tenantwebhooks.ContactMessage
+	for rows.Next() {
+		var url string
+		var raw []byte
+		if err := rows.Scan(&url, &raw); err != nil {
+			t.Fatalf("scan webhook delivery: %v", err)
+		}
+		if url != "https://helpdesk.example.com/publira" {
+			t.Errorf("a delivery is owed to %s, which did not subscribe to it", url)
+		}
+		if strings.Contains(string(raw), "@") {
+			t.Errorf("data = %s, want no address in it", raw)
+		}
+		var data tenantwebhooks.ContactMessage
+		if err := json.Unmarshal(raw, &data); err != nil {
+			t.Fatalf("decode webhook delivery: %v", err)
+		}
+		got = append(got, data)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read webhook deliveries: %v", err)
+	}
+	return got
+}
+
+// A message sent through the form owes contact_message.received once, in the
+// transaction that stores it: a guest's names no reader, a signed-in reader's
+// names their account, and neither carries the address to answer at.
+func TestDBContactMessageOwesContactMessageReceived(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "CONTACTWH1", "contact-webhook.example.com", "Aoto Press")
+	reader := env.PG.SeedEndUser(t, tenant.ID, "CONTACTWHR1", "reader@contact-webhook.example.com", "Rin Amagai")
+	subscribeToContactMessages(t, env.PG.DB, tenant.ID)
+
+	if err := env.submitContactMessage(t, tenant, &publirav1.SubmitContactMessageRequest{
+		ReplyToEmail: "guest@example.test",
+		Body:         "Which episodes can I read without an account?",
+	}); err != nil {
+		t.Fatalf("SubmitContactMessage (guest): %v", err)
+	}
+	if _, err := env.contactClient().SubmitContactMessage(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.SubmitContactMessageRequest{
+		Tenant:       tenantContext(tenant),
+		ReplyToEmail: "elsewhere@example.test",
+		Subject:      "My date of birth",
+		Body:         "The date of birth on my account is wrong.",
+	}); err != nil {
+		t.Fatalf("SubmitContactMessage (reader): %v", err)
+	}
+
+	var publicIDs []string
+	rows, err := env.PG.DB.QueryContext(context.Background(), `
+		SELECT public_id FROM contact_messages WHERE tenant_id = $1 ORDER BY created_at, id
+	`, tenant.ID)
+	if err != nil {
+		t.Fatalf("read contact messages: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	for rows.Next() {
+		var publicID string
+		if err := rows.Scan(&publicID); err != nil {
+			t.Fatalf("scan contact message: %v", err)
+		}
+		publicIDs = append(publicIDs, publicID)
+	}
+	if len(publicIDs) != 2 {
+		t.Fatalf("stored %d contact messages, want 2", len(publicIDs))
+	}
+
+	got := contactMessageDeliveries(t, env.PG.DB, tenant.ID)
+	if len(got) != 2 {
+		t.Fatalf("owed %d contact_message.received deliveries, want 2: %+v", len(got), got)
+	}
+	guest, signedIn := got[0], got[1]
+	if guest.MessagePublicID != publicIDs[0] || guest.Reply || guest.Subject != "" ||
+		guest.Body != "Which episodes can I read without an account?" ||
+		guest.ReaderPublicID != "" || guest.ReaderName != "" || guest.ReceivedAt == "" {
+		t.Errorf("guest's message = %+v, want message %s with no subject and no reader", guest, publicIDs[0])
+	}
+	if signedIn.MessagePublicID != publicIDs[1] || signedIn.Reply || signedIn.Subject != "My date of birth" ||
+		signedIn.Body != "The date of birth on my account is wrong." ||
+		signedIn.ReaderPublicID != reader.PublicID || signedIn.ReaderName != "Rin Amagai" || signedIn.ReceivedAt == "" {
+		t.Errorf("reader's message = %+v, want message %s from %s", signedIn, publicIDs[1], reader.PublicID)
 	}
 }
