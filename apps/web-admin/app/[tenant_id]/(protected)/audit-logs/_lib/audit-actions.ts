@@ -40,6 +40,7 @@ export const auditActions = [
   "creator_roles_reordered",
   "label_created",
   "label_updated",
+  "label_deleted",
   "label_eye_catch_aspect_image_uploaded",
   "genre_created",
   "genre_updated",

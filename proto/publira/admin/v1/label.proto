@@ -63,6 +63,33 @@ message UpdateLabelResponse {
   publira.types.v1.Label label = 1;
 }
 
+// Deletes a label that nothing refers to: one entered with a typo, or one
+// whose series have all moved to another label. Its eye-catch goes with it,
+// and so do the promotion codes for it that were deleted before anyone
+// redeemed them. It leaves the label list, its page, the sitemap, and the
+// search index, and the objects of its eye-catch are reclaimed by the orphan
+// image sweep. The audit log keeps the label's public id and name.
+//
+// A label something refers to is failed_precondition with an ErrorInfo reason
+// naming the first of these, in this order:
+//
+//   - LABEL_HAS_SERIES: a series under it, whatever its state. Move each one
+//     to another label, or to none, with UpdateSeries first.
+//   - LABEL_IN_SUBSCRIPTION_PLAN: a subscription plan whose scope names it.
+//   - LABEL_IN_PROMOTION_CODE: a promotion code for it that has not been
+//     deleted, or that someone redeemed.
+//
+// Nothing is deleted with the refusal.
+// A label that does not exist, a second request for one deleted already
+// included, is not_found.
+message DeleteLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The label's primary key (Label.id).
+  string label_id = 2;
+}
+
+message DeleteLabelResponse {}
+
 // Replaces the image of one aspect ratio of a label eye-catch. The other
 // ratios keep the images they already hold.
 message UploadLabelEyeCatchAspectImageRequest {
@@ -93,6 +120,8 @@ service AdminLabelService {
   rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteLabel(DeleteLabelRequest) returns (DeleteLabelResponse) {}
   // Minimum role: tenant_editor.
   rpc UploadLabelEyeCatchAspectImage(UploadLabelEyeCatchAspectImageRequest) returns (UploadLabelEyeCatchAspectImageResponse) {}
 }

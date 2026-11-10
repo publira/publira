@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/label.proto.
  */
 export const file_publira_admin_v1_label: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxInAKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgEIAEoCUoECAMQBFIGb2Zmc2V0ImkKEkxpc3RMYWJlbHNSZXNwb25zZRInCgZsYWJlbHMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiVQoPR2V0TGFiZWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiOgoQR2V0TGFiZWxSZXNwb25zZRImCgVsYWJlbBgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwilwEKEkNyZWF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgDIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAQgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsItkBChJVcGRhdGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAyABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYBCABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgFIAEoCRIdChVjbGVhcl9leWVfY2F0Y2hfaW1hZ2UYBiABKAgSEAoIbGFiZWxfaWQYByABKAlKBAgCEANSCXB1YmxpY19pZCI9ChNVcGRhdGVMYWJlbFJlc3BvbnNlEiYKBWxhYmVsGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCLwAQolVXBsb2FkTGFiZWxFeWVDYXRjaEFzcGVjdEltYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFAoMdmFyaWFudF90eXBlGAMgASgJEhIKCmltYWdlX2RhdGEYBCABKAwSGgoSaW1hZ2VfY29udGVudF90eXBlGAUgASgJEi0KBGNyb3AYBiABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLkltYWdlQ3JvcFJlY3QSEAoIbGFiZWxfaWQYByABKAlKBAgCEANSCXB1YmxpY19pZCJQCiZVcGxvYWRMYWJlbEV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXNwb25zZRImCgVsYWJlbBgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwylwQKEUFkbWluTGFiZWxTZXJ2aWNlElkKCkxpc3RMYWJlbHMSIy5wdWJsaXJhLmFkbWluLnYxLkxpc3RMYWJlbHNSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVzcG9uc2UiABJTCghHZXRMYWJlbBIhLnB1YmxpcmEuYWRtaW4udjEuR2V0TGFiZWxSZXF1ZXN0GiIucHVibGlyYS5hZG1pbi52MS5HZXRMYWJlbFJlc3BvbnNlIgASXAoLQ3JlYXRlTGFiZWwSJC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUxhYmVsUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTGFiZWxSZXNwb25zZSIAElwKC1VwZGF0ZUxhYmVsEiQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVMYWJlbFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUxhYmVsUmVzcG9uc2UiABKVAQoeVXBsb2FkTGFiZWxFeWVDYXRjaEFzcGVjdEltYWdlEjcucHVibGlyYS5hZG1pbi52MS5VcGxvYWRMYWJlbEV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0GjgucHVibGlyYS5hZG1pbi52MS5VcGxvYWRMYWJlbEV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxInAKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgEIAEoCUoECAMQBFIGb2Zmc2V0ImkKEkxpc3RMYWJlbHNSZXNwb25zZRInCgZsYWJlbHMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiVQoPR2V0TGFiZWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiOgoQR2V0TGFiZWxSZXNwb25zZRImCgVsYWJlbBgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwilwEKEkNyZWF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgDIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAQgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsItkBChJVcGRhdGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAyABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYBCABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgFIAEoCRIdChVjbGVhcl9leWVfY2F0Y2hfaW1hZ2UYBiABKAgSEAoIbGFiZWxfaWQYByABKAlKBAgCEANSCXB1YmxpY19pZCI9ChNVcGRhdGVMYWJlbFJlc3BvbnNlEiYKBWxhYmVsGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCJXChJEZWxldGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCGxhYmVsX2lkGAIgASgJIhUKE0RlbGV0ZUxhYmVsUmVzcG9uc2Ui8AEKJVVwbG9hZExhYmVsRXllQ2F0Y2hBc3BlY3RJbWFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhQKDHZhcmlhbnRfdHlwZRgDIAEoCRISCgppbWFnZV9kYXRhGAQgASgMEhoKEmltYWdlX2NvbnRlbnRfdHlwZRgFIAEoCRItCgRjcm9wGAYgASgLMh8ucHVibGlyYS50eXBlcy52MS5JbWFnZUNyb3BSZWN0EhAKCGxhYmVsX2lkGAcgASgJSgQIAhADUglwdWJsaWNfaWQiUAomVXBsb2FkTGFiZWxFeWVDYXRjaEFzcGVjdEltYWdlUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsMvUEChFBZG1pbkxhYmVsU2VydmljZRJZCgpMaXN0TGFiZWxzEiMucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuTGlzdExhYmVsc1Jlc3BvbnNlIgASUwoIR2V0TGFiZWwSIS5wdWJsaXJhLmFkbWluLnYxLkdldExhYmVsUmVxdWVzdBoiLnB1YmxpcmEuYWRtaW4udjEuR2V0TGFiZWxSZXNwb25zZSIAElwKC0NyZWF0ZUxhYmVsEiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVMYWJlbFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUxhYmVsUmVzcG9uc2UiABJcCgtVcGRhdGVMYWJlbBIkLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlTGFiZWxSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVMYWJlbFJlc3BvbnNlIgASXAoLRGVsZXRlTGFiZWwSJC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUxhYmVsUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlTGFiZWxSZXNwb25zZSIAEpUBCh5VcGxvYWRMYWJlbEV5ZUNhdGNoQXNwZWN0SW1hZ2USNy5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZExhYmVsRXllQ2F0Y2hBc3BlY3RJbWFnZVJlcXVlc3QaOC5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZExhYmVsRXllQ2F0Y2hBc3BlY3RJbWFnZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -228,6 +228,63 @@ export const UpdateLabelResponseSchema: GenMessage<UpdateLabelResponse> = /*@__P
   messageDesc(file_publira_admin_v1_label, 7);
 
 /**
+ * Deletes a label that nothing refers to: one entered with a typo, or one
+ * whose series have all moved to another label. Its eye-catch goes with it,
+ * and so do the promotion codes for it that were deleted before anyone
+ * redeemed them. It leaves the label list, its page, the sitemap, and the
+ * search index, and the objects of its eye-catch are reclaimed by the orphan
+ * image sweep. The audit log keeps the label's public id and name.
+ *
+ * A label something refers to is failed_precondition with an ErrorInfo reason
+ * naming the first of these, in this order:
+ *
+ *   - LABEL_HAS_SERIES: a series under it, whatever its state. Move each one
+ *     to another label, or to none, with UpdateSeries first.
+ *   - LABEL_IN_SUBSCRIPTION_PLAN: a subscription plan whose scope names it.
+ *   - LABEL_IN_PROMOTION_CODE: a promotion code for it that has not been
+ *     deleted, or that someone redeemed.
+ *
+ * Nothing is deleted with the refusal.
+ * A label that does not exist, a second request for one deleted already
+ * included, is not_found.
+ *
+ * @generated from message publira.admin.v1.DeleteLabelRequest
+ */
+export type DeleteLabelRequest = Message<"publira.admin.v1.DeleteLabelRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The label's primary key (Label.id).
+   *
+   * @generated from field: string label_id = 2;
+   */
+  labelId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteLabelRequest.
+ * Use `create(DeleteLabelRequestSchema)` to create a new message.
+ */
+export const DeleteLabelRequestSchema: GenMessage<DeleteLabelRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_label, 8);
+
+/**
+ * @generated from message publira.admin.v1.DeleteLabelResponse
+ */
+export type DeleteLabelResponse = Message<"publira.admin.v1.DeleteLabelResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteLabelResponse.
+ * Use `create(DeleteLabelResponseSchema)` to create a new message.
+ */
+export const DeleteLabelResponseSchema: GenMessage<DeleteLabelResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_label, 9);
+
+/**
  * Replaces the image of one aspect ratio of a label eye-catch. The other
  * ratios keep the images they already hold.
  *
@@ -277,7 +334,7 @@ export type UploadLabelEyeCatchAspectImageRequest = Message<"publira.admin.v1.Up
  * Use `create(UploadLabelEyeCatchAspectImageRequestSchema)` to create a new message.
  */
 export const UploadLabelEyeCatchAspectImageRequestSchema: GenMessage<UploadLabelEyeCatchAspectImageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 8);
+  messageDesc(file_publira_admin_v1_label, 10);
 
 /**
  * @generated from message publira.admin.v1.UploadLabelEyeCatchAspectImageResponse
@@ -294,7 +351,7 @@ export type UploadLabelEyeCatchAspectImageResponse = Message<"publira.admin.v1.U
  * Use `create(UploadLabelEyeCatchAspectImageResponseSchema)` to create a new message.
  */
 export const UploadLabelEyeCatchAspectImageResponseSchema: GenMessage<UploadLabelEyeCatchAspectImageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 9);
+  messageDesc(file_publira_admin_v1_label, 11);
 
 /**
  * @generated from service publira.admin.v1.AdminLabelService
@@ -339,6 +396,16 @@ export const AdminLabelService: GenService<{
     methodKind: "unary";
     input: typeof UpdateLabelRequestSchema;
     output: typeof UpdateLabelResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminLabelService.DeleteLabel
+   */
+  deleteLabel: {
+    methodKind: "unary";
+    input: typeof DeleteLabelRequestSchema;
+    output: typeof DeleteLabelResponseSchema;
   },
   /**
    * Minimum role: tenant_editor.

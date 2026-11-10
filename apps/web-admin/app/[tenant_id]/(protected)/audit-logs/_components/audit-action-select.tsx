@@ -187,6 +187,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "label_updated",
             },
             {
+              label: t("admin.audit.actions.label_deleted"),
+              value: "label_deleted",
+            },
+            {
               label: t(
                 "admin.audit.actions.label_eye_catch_aspect_image_uploaded"
               ),

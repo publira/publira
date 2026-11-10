@@ -470,6 +470,7 @@
         "creator_account_unlinked": "著者の読者アカウント紐付け解除",
         "label_created": "レーベル作成",
         "label_updated": "レーベル更新",
+        "label_deleted": "レーベル削除",
         "tenant_member_added": "メンバー追加",
         "tenant_member_role_updated": "メンバーのロール変更",
         "tenant_member_removed": "メンバー削除",

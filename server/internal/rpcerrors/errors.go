@@ -79,6 +79,12 @@ const (
 	// that signs in to another reader of the tenant.
 	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"
 	ReasonInvitationCanceled             = "INVITATION_CANCELED"
+	// The refusals of deleting a label something refers to, one per kind of
+	// reference: a series under it, a subscription plan whose scope names it,
+	// and a promotion code for it that is live or that someone used.
+	ReasonLabelHasSeries          = "LABEL_HAS_SERIES"
+	ReasonLabelInSubscriptionPlan = "LABEL_IN_SUBSCRIPTION_PLAN"
+	ReasonLabelInPromotionCode    = "LABEL_IN_PROMOTION_CODE"
 	// ReasonLegalPageAgreementRequired refuses a signed-in reader who has not
 	// agreed to a version of the tenant's terms of service or privacy policy
 	// that the tenant has asked every reader to agree to.

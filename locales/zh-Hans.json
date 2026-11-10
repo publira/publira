@@ -470,6 +470,7 @@
         "creator_account_unlinked": "解除了作者的读者账户关联",
         "label_created": "创建了书系",
         "label_updated": "更新了书系",
+        "label_deleted": "删除了书系",
         "tenant_member_added": "添加了成员",
         "tenant_member_role_updated": "变更了成员角色",
         "tenant_member_removed": "移除了成员",
