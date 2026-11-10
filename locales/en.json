@@ -6598,6 +6598,7 @@
       "mfa_enable_failed": "Could not turn on two-step verification. Please try again later.",
       "mfa_enable_starting": "Preparing…",
       "mfa_enabled": "Two-step verification is now on.",
+      "mfa_error": "Could not show your two-step verification settings",
       "mfa_heading": "Two-step verification",
       "mfa_qr_label": "QR code for setting up two-step verification",
       "mfa_recovery_codes_copy": "Copy the recovery codes",

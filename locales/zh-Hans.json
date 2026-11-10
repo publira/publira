@@ -6598,6 +6598,7 @@
       "mfa_enable_failed": "无法开启两步验证。请稍后再试。",
       "mfa_enable_starting": "正在准备…",
       "mfa_enabled": "两步验证现已开启。",
+      "mfa_error": "无法显示两步验证设置",
       "mfa_heading": "两步验证",
       "mfa_qr_label": "用于设置两步验证的二维码",
       "mfa_recovery_codes_copy": "复制恢复码",

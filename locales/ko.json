@@ -6598,6 +6598,7 @@
       "mfa_enable_failed": "2단계 인증을 켜지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "mfa_enable_starting": "준비 중…",
       "mfa_enabled": "2단계 인증을 켰습니다.",
+      "mfa_error": "2단계 인증 설정을 표시할 수 없습니다",
       "mfa_heading": "2단계 인증",
       "mfa_qr_label": "2단계 인증을 설정하기 위한 QR 코드",
       "mfa_recovery_codes_copy": "복구 코드 복사",

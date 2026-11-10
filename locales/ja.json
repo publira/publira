@@ -6598,6 +6598,7 @@
       "mfa_enable_failed": "2段階認証を有効にできませんでした。しばらくしてから再試行してください。",
       "mfa_enable_starting": "準備中…",
       "mfa_enabled": "2段階認証を有効にしました。",
+      "mfa_error": "2段階認証の設定を表示できませんでした",
       "mfa_heading": "2段階認証",
       "mfa_qr_label": "2段階認証を設定するためのQRコード",
       "mfa_recovery_codes_copy": "リカバリーコードをコピー",

@@ -9,6 +9,7 @@ import { cache, Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listMyIdentities, listMyPasskeys } from "#lib/auth";
 import { withPublicSessionReauth } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
@@ -760,9 +761,17 @@ const SecuritySettingsPage = () => (
     <Suspense fallback={<PasswordChangeSectionFallback />}>
       <PasswordChangeSection />
     </Suspense>
-    <Suspense fallback={null}>
-      <MfaSection readMyIdentities={readMyIdentities} />
-    </Suspense>
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="storefront.settings.mfa_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <MfaSection readMyIdentities={readMyIdentities} />
+      </Suspense>
+    </SectionErrorBoundary>
     <Suspense fallback={null}>
       <PasskeysSection />
     </Suspense>

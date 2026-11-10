@@ -6598,6 +6598,7 @@
       "mfa_enable_failed": "無法開啟兩步驟驗證。請稍後再試。",
       "mfa_enable_starting": "正在準備…",
       "mfa_enabled": "兩步驟驗證現已開啟。",
+      "mfa_error": "無法顯示兩步驟驗證設定",
       "mfa_heading": "兩步驟驗證",
       "mfa_qr_label": "用於設定兩步驟驗證的QR碼",
       "mfa_recovery_codes_copy": "複製復原碼",
