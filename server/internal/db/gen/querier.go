@@ -659,8 +659,17 @@ type Querier interface {
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
 	DeleteGenreTranslation(ctx context.Context, arg DeleteGenreTranslationParams) (int64, error)
+	// The label, and through the foreign key that cascades from it its eye-catch
+	// images and their variants. The objects of those images are left to the
+	// orphan image sweep.
+	DeleteLabelByIDForTenant(ctx context.Context, arg DeleteLabelByIDForTenantParams) error
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
+	// The promotion codes for the label, every one of which was deleted before
+	// anything used it, since any other refuses the deletion. A code is not tied
+	// to the label by a foreign key, so it would otherwise stay behind naming
+	// nothing.
+	DeleteLabelPromotionCodes(ctx context.Context, arg DeleteLabelPromotionCodesParams) error
 	// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
 	DeletePageTranslation(ctx context.Context, arg DeletePageTranslationParams) (PageTranslation, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -1077,6 +1086,15 @@ type Querier interface {
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByIDForTenant(ctx context.Context, arg GetLabelByIDForTenantParams) (GetLabelByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
+	// The first of the references that keep the label from being deleted, in the
+	// order the refusal names them, or '' when there is none:
+	//
+	//   series             a series under the label, whatever its state
+	//   subscription_plan  a subscription plan whose scope names the label
+	//   promotion_code     a promotion code for the label that has not been
+	//                      deleted, or that a redemption, a purchase, or a store
+	//                      payment sheet names, deleted or not
+	GetLabelDeletionBlocker(ctx context.Context, arg GetLabelDeletionBlockerParams) (string, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	// The provider checkout of the reader's latest purchase of the episode, which
 	// the next checkout's idempotency key names. No row is a reader who has paid
@@ -3751,6 +3769,22 @@ type Querier interface {
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED
 	// freezes this statement's snapshot before it waits for the lock.
 	LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error)
+	// Deleting a label, which the console allows only while nothing that has to
+	// be kept refers to it: no series under it, no subscription plan scoped to it,
+	// and no promotion code for it that is still live or that someone redeemed.
+	// What is the label's alone goes with it, in the transaction that deletes it.
+	//
+	// The statements run in the order they appear here. The lock comes first and
+	// the check after it, in a statement of its own: READ COMMITTED freezes a
+	// statement's snapshot at its start, so a check made inside the statement that
+	// waited for the lock would still answer from before the wait.
+	// The label, with the name the audit entry keeps once no row is left to join.
+	// The row lock is what keeps a reference from arriving while the label is
+	// deleted: a series and a plan scope take a key share lock on the label row
+	// through their foreign keys when they are written, and so does the check a
+	// new promotion code makes of its label, all of which wait for this one and
+	// find the label gone once it commits.
+	LockLabelForDeletion(ctx context.Context, arg LockLabelForDeletionParams) (LockLabelForDeletionRow, error)
 	// Serializes the writers that must not leave a page without a translation.
 	LockPageForTenant(ctx context.Context, arg LockPageForTenantParams) (uuid.UUID, error)
 	// Reads the settings row for update. A save takes this lock first, so the
@@ -4283,10 +4317,11 @@ type Querier interface {
 	// Whether the label, series, volume, or episode a new code names is one of
 	// the tenant's. The catalog is always there.
 	//
-	// A series is read under a key share lock, held until the code is committed:
-	// the code names its series by no foreign key, so the lock is what makes a
-	// DeleteSeries running at the same time either wait for the code and refuse,
-	// or delete the series first and leave nothing here to find.
+	// A label and a series are read under a key share lock, held until the code
+	// is committed: the code names its target by no foreign key, so the lock is
+	// what makes a DeleteLabel or a DeleteSeries running at the same time either
+	// wait for the code and refuse, or delete the target first and leave nothing
+	// here to find.
 	PromotionCodeTargetExists(ctx context.Context, arg PromotionCodeTargetExistsParams) (bool, error)
 	// The console's publication of an episode given a time that has already
 	// passed: what MarkEpisodePublished does once the time is reached, done in the

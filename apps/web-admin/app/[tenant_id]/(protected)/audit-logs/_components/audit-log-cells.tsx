@@ -240,6 +240,10 @@ const taxonomyActionName = (action: string) => {
       return <Message message="admin.audit.actions.label_updated" />;
     }
 
+    case "label_deleted": {
+      return <Message message="admin.audit.actions.label_deleted" />;
+    }
+
     case "label_eye_catch_aspect_image_uploaded": {
       return (
         <Message message="admin.audit.actions.label_eye_catch_aspect_image_uploaded" />

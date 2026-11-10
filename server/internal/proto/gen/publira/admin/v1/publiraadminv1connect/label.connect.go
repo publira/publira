@@ -35,6 +35,9 @@ const (
 	// AdminLabelServiceUpdateLabelProcedure is the procedure name of the AdminLabelService's
 	// UpdateLabel RPC.
 	AdminLabelServiceUpdateLabelProcedure = "/publira.admin.v1.AdminLabelService/UpdateLabel"
+	// AdminLabelServiceDeleteLabelProcedure is the procedure name of the AdminLabelService's
+	// DeleteLabel RPC.
+	AdminLabelServiceDeleteLabelProcedure = "/publira.admin.v1.AdminLabelService/DeleteLabel"
 	// AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure is the procedure name of the
 	// AdminLabelService's UploadLabelEyeCatchAspectImage RPC.
 	AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminLabelService/UploadLabelEyeCatchAspectImage"
@@ -69,6 +72,13 @@ var (
 			Procedure:  AdminLabelServiceUpdateLabelProcedure,
 		}
 	})
+	adminLabelServiceDeleteLabelSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_label_proto.Services().ByName("AdminLabelService").Methods().ByName("DeleteLabel"),
+			Procedure:  AdminLabelServiceDeleteLabelProcedure,
+		}
+	})
 	adminLabelServiceUploadLabelEyeCatchAspectImageSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -88,6 +98,8 @@ type AdminLabelServiceClient interface {
 	CreateLabel(context.Context, *v1.CreateLabelRequest) (*v1.CreateLabelResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateLabel(context.Context, *v1.UpdateLabelRequest) (*v1.UpdateLabelResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteLabel(context.Context, *v1.DeleteLabelRequest) (*v1.DeleteLabelResponse, error)
 	// Minimum role: tenant_editor.
 	UploadLabelEyeCatchAspectImage(context.Context, *v1.UploadLabelEyeCatchAspectImageRequest) (*v1.UploadLabelEyeCatchAspectImageResponse, error)
 }
@@ -108,6 +120,8 @@ type AdminLabelServiceHandler interface {
 	CreateLabel(context.Context, *v1.CreateLabelRequest) (*v1.CreateLabelResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateLabel(context.Context, *v1.UpdateLabelRequest) (*v1.UpdateLabelResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteLabel(context.Context, *v1.DeleteLabelRequest) (*v1.DeleteLabelResponse, error)
 	// Minimum role: tenant_editor.
 	UploadLabelEyeCatchAspectImage(context.Context, *v1.UploadLabelEyeCatchAspectImageRequest) (*v1.UploadLabelEyeCatchAspectImageResponse, error)
 }
@@ -121,6 +135,7 @@ func RegisterAdminLabelServiceHandler(server *connect.Server, svc AdminLabelServ
 		connect.Method{Spec: adminLabelServiceGetLabelSpec(), Handler: adapter.getLabel},
 		connect.Method{Spec: adminLabelServiceCreateLabelSpec(), Handler: adapter.createLabel},
 		connect.Method{Spec: adminLabelServiceUpdateLabelSpec(), Handler: adapter.updateLabel},
+		connect.Method{Spec: adminLabelServiceDeleteLabelSpec(), Handler: adapter.deleteLabel},
 		connect.Method{Spec: adminLabelServiceUploadLabelEyeCatchAspectImageSpec(), Handler: adapter.uploadLabelEyeCatchAspectImage},
 	)
 }
@@ -142,6 +157,10 @@ func (UnimplementedAdminLabelServiceHandler) CreateLabel(context.Context, *v1.Cr
 
 func (UnimplementedAdminLabelServiceHandler) UpdateLabel(context.Context, *v1.UpdateLabelRequest) (*v1.UpdateLabelResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminLabelService.UpdateLabel is not implemented")
+}
+
+func (UnimplementedAdminLabelServiceHandler) DeleteLabel(context.Context, *v1.DeleteLabelRequest) (*v1.DeleteLabelResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminLabelService.DeleteLabel is not implemented")
 }
 
 func (UnimplementedAdminLabelServiceHandler) UploadLabelEyeCatchAspectImage(context.Context, *v1.UploadLabelEyeCatchAspectImageRequest) (*v1.UploadLabelEyeCatchAspectImageResponse, error) {
@@ -179,6 +198,14 @@ func (c *adminLabelServiceClient) CreateLabel(ctx context.Context, req *v1.Creat
 func (c *adminLabelServiceClient) UpdateLabel(ctx context.Context, req *v1.UpdateLabelRequest) (*v1.UpdateLabelResponse, error) {
 	var res v1.UpdateLabelResponse
 	if err := c.client.CallUnary(ctx, adminLabelServiceUpdateLabelSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminLabelServiceClient) DeleteLabel(ctx context.Context, req *v1.DeleteLabelRequest) (*v1.DeleteLabelResponse, error) {
+	var res v1.DeleteLabelResponse
+	if err := c.client.CallUnary(ctx, adminLabelServiceDeleteLabelSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -236,6 +263,18 @@ func (h adminLabelServiceHandler) updateLabel(ctx context.Context, _ connect.Spe
 		return err
 	}
 	res, err := h.svc.UpdateLabel(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminLabelServiceHandler) deleteLabel(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteLabelRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteLabel(ctx, &req)
 	if err != nil {
 		return err
 	}

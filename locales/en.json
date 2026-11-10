@@ -470,6 +470,7 @@
         "creator_account_unlinked": "Reader account unlinked from author",
         "label_created": "Label created",
         "label_updated": "Label updated",
+        "label_deleted": "Label deleted",
         "tenant_member_added": "Member added",
         "tenant_member_role_updated": "Member role changed",
         "tenant_member_removed": "Member removed",

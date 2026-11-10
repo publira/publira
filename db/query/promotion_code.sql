@@ -125,10 +125,11 @@ RETURNING *;
 -- Whether the label, series, volume, or episode a new code names is one of
 -- the tenant's. The catalog is always there.
 --
--- A series is read under a key share lock, held until the code is committed:
--- the code names its series by no foreign key, so the lock is what makes a
--- DeleteSeries running at the same time either wait for the code and refuse,
--- or delete the series first and leave nothing here to find.
+-- A label and a series are read under a key share lock, held until the code
+-- is committed: the code names its target by no foreign key, so the lock is
+-- what makes a DeleteLabel or a DeleteSeries running at the same time either
+-- wait for the code and refuse, or delete the target first and leave nothing
+-- here to find.
 SELECT CASE sqlc.arg('target_kind')::text
         WHEN 'catalog' THEN TRUE
         WHEN 'label' THEN EXISTS (
@@ -136,6 +137,7 @@ SELECT CASE sqlc.arg('target_kind')::text
             FROM labels l
             WHERE l.tenant_id = sqlc.arg('tenant_id')::uuid
                 AND l.id = sqlc.narg('target_id')::uuid
+            FOR KEY SHARE OF l
         )
         WHEN 'series' THEN EXISTS (
             SELECT 1
