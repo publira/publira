@@ -101,6 +101,19 @@ enum AuthFailureKind {
   /// expired, or was deleted, since it was read.
   dataExportGone,
 
+  /// The API turned away a two-step verification code: not the
+  /// authenticator's current one, or a recovery code that is not the
+  /// account's or has been used. Each one counts toward [mfaLocked].
+  mfaInvalidCode,
+
+  /// Too many wrong two-step verification codes: every code is refused for a
+  /// while, the right one included.
+  mfaLocked,
+
+  /// The account is staff who sign in to the tenant's console with a passkey,
+  /// which this app cannot ask for, so its authenticator is set up there.
+  mfaSetUpInConsole,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

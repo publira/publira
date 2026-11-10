@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -17,7 +18,10 @@ import 'package:publira/typography/autospaced_text.dart';
 /// site's, and nothing where there is none of either.
 ///
 /// A first sign-in that would create an account the tenant asks consent for
-/// continues on [AppRoutes.continueSignUp], which is handed the token.
+/// continues on [AppRoutes.continueSignUp], which is handed the token, and a
+/// sign-in to an account that holds an authenticator on
+/// [AppRoutes.twoStepSignIn], which is handed the challenge. A passkey
+/// sign-in is never asked for a code.
 class ProviderSignInButtons extends StatefulWidget {
   const ProviderSignInButtons({super.key, this.returnTo});
 
@@ -113,6 +117,14 @@ class _ProviderSignInButtonsState extends State<ProviderSignInButtons> {
       try {
         await auth.signInWithProvider(credential);
         signedIn = true;
+      } on TwoStepVerificationRequired catch (required) {
+        if (mounted) {
+          context.pushReplacementInTab(
+            AppRoutes.twoStepSignInPath(returnTo: widget.returnTo),
+            extra: required.challenge,
+          );
+        }
+        return;
       } on AuthFailure catch (error) {
         if (error.kind == AuthFailureKind.consentRequired) {
           if (mounted) {

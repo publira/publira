@@ -53,6 +53,21 @@ const dataExportInProgressReason = 'DATA_EXPORT_IN_PROGRESS';
 /// `failed_precondition`, that the tenant's reader icon policy does not allow.
 const readerIconNotAllowedReason = 'READER_ICON_NOT_ALLOWED';
 
+/// The ErrorInfo reason the API turns a two-step verification code away
+/// with, under `unauthenticated`, which only the reason tells apart from a
+/// session or a sign-in challenge it no longer takes.
+const mfaInvalidCodeReason = 'MFA_INVALID_CODE';
+
+/// The ErrorInfo reason the API refuses every two-step verification code with,
+/// under `resource_exhausted`, while too many wrong ones have locked the
+/// account.
+const mfaLockedReason = 'MFA_LOCKED';
+
+/// The ErrorInfo reason the API refuses to set an authenticator up from the
+/// site or the app with, under `failed_precondition`, for staff who sign in to
+/// the tenant's console with a passkey.
+const mfaSetUpInConsoleReason = 'MFA_SET_UP_IN_CONSOLE';
+
 /// The ErrorInfo reason `WaitFreeService` refuses a series with when its
 /// wait-for-free rule is off.
 const waitFreeNotOfferedReason = 'WAIT_FREE_NOT_OFFERED';

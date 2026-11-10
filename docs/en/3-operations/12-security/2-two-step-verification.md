@@ -2,7 +2,7 @@
 title: Two-step verification
 description: Require two-step verification of tenant staff and of Platform Console operators, know how readers turn it on for themselves, and recover an account that lost its second factor.
 published: 2026-10-21
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 This page is for the operator: how tenant staff, readers, and Platform Console operators protect their accounts with a second factor, how to require it of staff and operators, and what to do when one is lost.
@@ -34,6 +34,8 @@ Each authenticator's secret is sealed with the encryption keys, which is why [re
 Readers can protect their account on the site the same way, with an authenticator app and ten recovery codes, from **Two-step verification** under **Security** in the site's **Account settings**, as [A reader's two-step verification](../../4-console/2-readers/1-accounts.md#a-readers-two-step-verification) describes. Once it is on, signing in on the site with a password, or with Apple or Google, asks for the code too. Signing in with a passkey does not, since the passkey is already a second factor.
 
 ![Two-step verification under Security on the site just after it was turned on: the message that it is now on, the ten recovery codes, covered over, with a button to copy them, the date it was turned on, covered over, how many recovery codes are left, Regenerate recovery codes with its Verification code field, and Turn off with the Current password and Verification code fields.](./two-step-verification-reader-settings.png)
+
+The tenant's app offers the same from **Two-step verification** on its **Account** screen, and signing in to the app asks for the code in the same way.
 
 It is never required of readers, and no setting on this page changes that: the requirements it describes cover Tenant admins and operators alone. An account has one second factor wherever it signs in, so a member of the staff who set one up in the console is asked for it on the site too, and a reader who becomes staff is asked in the console for the one they set up on the site.
 

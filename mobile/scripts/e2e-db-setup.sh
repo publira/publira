@@ -25,3 +25,7 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${mobile_records_sql}"
 creator_pages_sql="${REPO_ROOT}/db/seeds/scenarios/730_creator_pages.sql"
 e2e_log "applying ${creator_pages_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${creator_pages_sql}"
+
+reader_mfa_sql="${REPO_ROOT}/db/seeds/scenarios/830_mobile_reader_mfa.sql"
+e2e_log "applying ${reader_mfa_sql}"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${reader_mfa_sql}"

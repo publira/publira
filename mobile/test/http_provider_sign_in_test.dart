@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
@@ -189,6 +190,28 @@ void main() {
       ),
     );
   });
+
+  test(
+    'signInWithProvider answers the challenge of an account that holds an '
+    'authenticator, the provider standing in for the password alone',
+    () async {
+      server.memberMfaEnabled = true;
+
+      await expectLater(
+        auth.signInWithProvider(
+          issueGoogleToken(email: ConnectFixtureServer.memberEmail),
+        ),
+        throwsA(
+          isA<TwoStepVerificationRequired>().having(
+            (required) => required.challenge.token,
+            'challenge',
+            ConnectFixtureServer.mfaChallengeToken,
+          ),
+        ),
+      );
+      expect(server.spentNonces, contains('google-nonce-1'));
+    },
+  );
 
   test('an Apple account the site linked signs in to the same account from '
       'the Android app, with the redirect its code is exchanged at', () async {

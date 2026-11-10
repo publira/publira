@@ -2,7 +2,7 @@
 title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, and know how a reader's two-step verification works and what a reader's download of their data holds.
 published: 2026-10-21
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -62,6 +62,8 @@ Once it is on, signing in with the password, or with Apple or Google, stops at a
 ![The code a sign-in stops at: Two-step verification, the Verification code field, Verify, Use a recovery code, and Back to sign in.](./accounts-two-step-code.png)
 
 An account has one second factor wherever it signs in. A member of the staff who set up an authenticator in the console is asked for its code on the site too, and one set up on the site is asked for when the same account signs in to the console. A member of the staff who has a passkey for the console sets the authenticator up from **Account settings** in the console rather than on the site, and the site says so.
+
+The tenant's app offers the same from **Two-step verification** on its **Account** screen. **Turn on** there shows the setup key, with a button to copy it into an authenticator app on the same phone, and the QR code, for an app on another device; the ten recovery codes it then shows come with buttons to copy and to share them. Signing in to the app with a password, or with Apple or Google, stops at the code in the same way, whether two-step verification was turned on in the app or on the site.
 
 Two-step verification is never required of readers: the requirement the operator can set covers Tenant admins alone, as [Two-step verification](../../3-operations/12-security/2-two-step-verification.md) describes.
 

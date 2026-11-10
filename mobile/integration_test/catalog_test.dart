@@ -23,6 +23,7 @@ import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/catalog/series_tile.dart';
@@ -49,6 +50,7 @@ import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
 import 'support/artifacts.dart';
 import 'support/test_app.dart';
+import 'support/two_step.dart';
 import 'support/type_text.dart';
 
 /// Live public API, used when CI / `task mobile:e2e` starts publira server.
@@ -78,6 +80,93 @@ Finder accountList() => find.descendant(
   of: find.byKey(const ValueKey('account-list')),
   matching: find.byType(Scrollable),
 );
+
+/// Signs [email] in from the account screen on screen, signed out, and waits
+/// for the screen to show the account: with the password alone where
+/// [code] is `null`, and otherwise with the password and then [code] at the
+/// code step, a recovery code where [recovery] says so.
+Future<void> signInFromAccount(
+  WidgetTester tester, {
+  required String email,
+  String? code,
+  bool recovery = false,
+}) async {
+  await tapReachable(tester, find.byKey(const ValueKey('account-sign-in')));
+  await pumpUntilRouteSettled(
+    tester,
+    find.byKey(const ValueKey('sign-in-submit')),
+  );
+  if (code == null) {
+    await typeText(tester, find.byKey(const ValueKey('sign-in-email')), email);
+    await typeText(
+      tester,
+      find.byKey(const ValueKey('sign-in-password')),
+      ConnectFixtureServer.memberPassword,
+    );
+    await tapReachable(tester, find.byKey(const ValueKey('sign-in-submit')));
+  } else {
+    await signInToCodeStep(
+      tester,
+      email: email,
+      password: ConnectFixtureServer.memberPassword,
+    );
+    await enterTwoStepCode(tester, code, recovery: recovery);
+  }
+  await pumpUntilRouteSettled(
+    tester,
+    find.byKey(const ValueKey('account-name')),
+    timeout: const Duration(seconds: 20),
+  );
+}
+
+/// Signs out from the account screen on screen.
+Future<void> signOutFromAccount(WidgetTester tester) async {
+  await tapVisible(
+    tester,
+    find.byKey(const ValueKey('account-sign-out')),
+    scrollable: accountList(),
+  );
+  await pumpUntilFound(tester, find.byKey(const ValueKey('account-sign-in')));
+}
+
+/// The reader [email], signed in on the account screen with a password
+/// alone, turns two-step verification on from it, signs out, and signs in
+/// with the password and the authenticator's code, and then with a recovery
+/// code. [codeFor] answers the authenticator's code for the setup key and the
+/// number of codes asked for before, 0 at the setup.
+Future<void> turnOnTwoStepAndSignInWithIt(
+  WidgetTester tester, {
+  required String email,
+  required String Function(String secret, int use) codeFor,
+}) async {
+  await tapVisible(
+    tester,
+    find.byKey(const ValueKey('account-two-step-verification')),
+    scrollable: accountList(),
+  );
+  final (:secret, :recoveryCodes) = await turnOnTwoStep(
+    tester,
+    codeFor: (secret) => codeFor(secret, 0),
+  );
+  // The account list is still scrolled down to the row the screen was opened
+  // from, and a lazy list keeps nothing built far above what it shows.
+  await tapBack(tester);
+  await pumpUntilRouteSettled(
+    tester,
+    find.byKey(const ValueKey('account-two-step-verification')),
+  );
+
+  await signOutFromAccount(tester);
+  await signInFromAccount(tester, email: email, code: codeFor(secret, 1));
+
+  await signOutFromAccount(tester);
+  await signInFromAccount(
+    tester,
+    email: email,
+    code: recoveryCodes.first,
+    recovery: true,
+  );
+}
 
 /// Waits for the reader to draw the pages it built.
 ///
@@ -2264,6 +2353,37 @@ void main() {
       });
     });
 
+    testApp(
+      'a reader turns on two-step verification and signs in with its code and a recovery code',
+      (tester) async {
+        await withFailureScreenshot(tester, 'fixture-two-step', () async {
+          await pumpApp(tester, initialLocation: AppRoutes.account);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-sign-in')),
+          );
+          await signInFromAccount(
+            tester,
+            email: ConnectFixtureServer.memberEmail,
+          );
+
+          await turnOnTwoStepAndSignInWithIt(
+            tester,
+            email: ConnectFixtureServer.memberEmail,
+            codeFor: (_, _) => ConnectFixtureServer.mfaCode,
+          );
+
+          expect(server.memberMfaEnabled, isTrue);
+          expect(server.memberRecoveryCodes, hasLength(9));
+          expect(server.mfaVerifyRequests.map((request) => request.code), [
+            ConnectFixtureServer.mfaCode,
+            isNot(ConnectFixtureServer.mfaCode),
+          ]);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        });
+      },
+    );
+
     testApp('an expired reset link leads to a fresh request', (tester) async {
       await withFailureScreenshot(tester, 'fixture-reset-expired', () async {
         await pumpApp(
@@ -4215,6 +4335,87 @@ void main() {
         await pumpUntilPagesDrawn(tester);
       });
     });
+
+    testApp(
+      'a reader turns on two-step verification in the app and signs in with its code and a recovery code',
+      (tester) async {
+        await withFailureScreenshot(tester, 'live-two-step-app', () async {
+          await pumpLive(tester, initialLocation: AppRoutes.account);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-sign-in')),
+            timeout: const Duration(seconds: 20),
+          );
+          await signInFromAccount(
+            tester,
+            email: ConnectFixtureServer.mfaAppReaderEmail,
+          );
+
+          // The API takes each step's code once, so the sign-in after the
+          // setup reaches for the next step's rather than waiting for it.
+          await turnOnTwoStepAndSignInWithIt(
+            tester,
+            email: ConnectFixtureServer.mfaAppReaderEmail,
+            codeFor: (secret, use) => totpCode(secret, stepsAhead: use),
+          );
+
+          // The password alone signs the reader in nowhere now.
+          await expectLater(
+            signInSeedAccount(ConnectFixtureServer.mfaAppReaderEmail),
+            throwsA(isA<TwoStepVerificationRequired>()),
+          );
+        });
+      },
+    );
+
+    testApp(
+      'a reader who turned on two-step verification on the site is asked for its code in the app',
+      (tester) async {
+        await withFailureScreenshot(tester, 'live-two-step-site', () async {
+          // Turned on through the public API, as the site's Settings ›
+          // Security does, so the app has never seen the authenticator.
+          final repository = HttpAuthRepository(
+            config: const AppConfig(
+              baseUrl: liveBaseUrl,
+              tenantHost: liveTenantHost,
+            ),
+          );
+          final siteSession = await repository.signIn(
+            email: ConnectFixtureServer.mfaSiteReaderEmail,
+            password: ConnectFixtureServer.memberPassword,
+          );
+          final enrollment = await repository.startMfaEnrollment(siteSession);
+          await repository.confirmMfaEnrollment(
+            siteSession,
+            totpCode(enrollment.secret),
+          );
+
+          await pumpLive(tester, initialLocation: AppRoutes.account);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-sign-in')),
+            timeout: const Duration(seconds: 20),
+          );
+          await signInFromAccount(
+            tester,
+            email: ConnectFixtureServer.mfaSiteReaderEmail,
+            code: totpCode(enrollment.secret, stepsAhead: 1),
+          );
+
+          await tapVisible(
+            tester,
+            find.byKey(const ValueKey('account-two-step-verification')),
+            scrollable: accountList(),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('two-step-verification-remaining')),
+            timeout: const Duration(seconds: 20),
+          );
+          expect(find.text('10 recovery codes left'), findsOneWidget);
+        });
+      },
+    );
 
     testApp('the seed member opens a purchase from any device', (tester) async {
       await withFailureScreenshot(tester, 'live-purchases', () async {

@@ -15,6 +15,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/two_step_verification.dart';
 
 /// Holds the signed-in reader for the whole app and keeps [SessionStore] in
 /// step with it.
@@ -107,9 +108,26 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Throws [AuthFailure] and leaves the current session alone when the API
-  /// turns the credentials down.
+  /// turns the credentials down, and [TwoStepVerificationRequired] for an
+  /// account whose session [verifyMfa] earns.
   Future<void> signIn({required String email, required String password}) async {
     await _adopt(await _repository.signIn(email: email, password: password));
+  }
+
+  /// Signs in with [code], from the authenticator or one of the recovery
+  /// codes, settling the [challenge] a sign-in answered.
+  ///
+  /// Throws [AuthFailure] and leaves the current session alone:
+  /// [AuthFailureKind.mfaInvalidCode] and [AuthFailureKind.mfaLocked] for a
+  /// code the reader tries again, and [AuthFailureKind.sessionExpired] for a
+  /// challenge the API no longer takes.
+  Future<MfaVerification> verifyMfa(MfaChallenge challenge, String code) async {
+    final (session, verification) = await _repository.verifyMfa(
+      challenge,
+      code,
+    );
+    await _adopt(session);
+    return verification;
   }
 
   /// The providers the tenant lets a reader sign in with.
@@ -124,7 +142,8 @@ class AuthController extends ChangeNotifier {
   ///
   /// Throws [AuthFailure] and leaves the current session alone;
   /// [AuthFailureKind.consentRequired] asks for the consent and the same
-  /// [credential] again.
+  /// [credential] again. Throws [TwoStepVerificationRequired] as [signIn]
+  /// does.
   Future<void> signInWithProvider(
     ProviderCredential credential, {
     String birthDate = '',
@@ -233,6 +252,102 @@ class AuthController extends ChangeNotifier {
   Future<void> deletePasskey(String id) async {
     final session = _requireSession();
     await _whileHeld(() => _repository.deletePasskey(session, id));
+  }
+
+  /// Whether the signed-in account holds an authenticator.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in, and signs out on a token the API has stopped accepting.
+  Future<MfaStatus> readMfaStatus() async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.readMfaStatus(session));
+  }
+
+  /// Sets an authenticator up for the signed-in account and returns the
+  /// secret it is set up with, which nothing turns on until
+  /// [confirmMfaEnrollment] has a code from it.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<MfaEnrollment> startMfaEnrollment() async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.startMfaEnrollment(session));
+  }
+
+  /// Turns on the authenticator [startMfaEnrollment] set up, with [code] from
+  /// it, and returns the recovery codes, which are answered this once.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<List<String>> confirmMfaEnrollment(String code) async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.confirmMfaEnrollment(session, code));
+  }
+
+  /// Replaces the signed-in account's recovery codes, with [code] from the
+  /// authenticator, and returns the new ones.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<List<String>> regenerateMfaRecoveryCodes(String code) async {
+    final session = _requireSession();
+    return _whileHeld(
+      () => _repository.regenerateMfaRecoveryCodes(session, code),
+    );
+  }
+
+  /// Takes the authenticator off the signed-in account, confirmed with its
+  /// [password] and [code], from the authenticator or a recovery code.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> disableMfa({
+    required String password,
+    required String code,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(
+      () => _repository.disableMfa(session, password: password, code: code),
+    );
+  }
+
+  /// [disableMfa] for an account without a password, confirmed by a fresh
+  /// sign-in with a provider linked to it.
+  Future<void> disableMfaWithProvider(
+    ProviderCredential credential, {
+    required String code,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(
+      () => _repository.disableMfaWithProvider(
+        session,
+        credential: credential,
+        code: code,
+      ),
+    );
+  }
+
+  /// [disableMfa] for an account without a password, confirmed with one of
+  /// its passkeys, which [authenticator] asks the reader for over a challenge
+  /// the API begins.
+  ///
+  /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator] as
+  /// well.
+  Future<void> disableMfaWithPasskey(
+    PasskeyAuthenticator authenticator, {
+    required String code,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(() async {
+      final credential = await authenticator.authenticate(
+        await _repository.beginPasskeyConfirmation(session),
+      );
+      await _repository.disableMfaWithPasskey(
+        session,
+        credentialJson: credential,
+        code: code,
+      );
+    });
   }
 
   /// Asks for an account, which the API answers by mailing a confirmation

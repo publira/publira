@@ -21,6 +21,21 @@ void main() {
       if (entry is File) entry,
   ];
 
+  test('hands text to the sheet on its own, under its title', () async {
+    final shared = <ShareParams>[];
+    final sheet = PluginShareSheet(
+      cache: () async => cache,
+      present: (params) async => shared.add(params),
+    );
+
+    await sheet.shareText(text: 'one\ntwo', title: 'Recovery codes');
+
+    expect(shared.single.text, 'one\ntwo');
+    expect(shared.single.title, 'Recovery codes');
+    expect(shared.single.subject, 'Recovery codes');
+    expect(shared.single.files, isNull);
+  });
+
   test('hands the whole download to the sheet as one named file', () async {
     final shared = <ShareParams>[];
     final sheet = PluginShareSheet(

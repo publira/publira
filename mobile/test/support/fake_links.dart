@@ -54,6 +54,14 @@ class FakeShareSheet implements ShareSheet {
     this.text = text;
   }
 
+  /// What [shareText] was handed, in order.
+  final texts = <({String text, String title})>[];
+
+  @override
+  Future<void> shareText({required String text, required String title}) async {
+    texts.add((text: text, title: title));
+  }
+
   /// The files [shareFile] and [shareFileStream] were handed, in order.
   final files = <SharedFile>[];
 
