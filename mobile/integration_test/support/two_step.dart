@@ -99,6 +99,12 @@ Future<void> enterTwoStepCode(
   await tapReachable(tester, find.byKey(const ValueKey('two-step-submit')));
 }
 
+/// The scroll view of the two-step verification screen.
+final _twoStepVerificationBody = find.descendant(
+  of: find.byKey(const ValueKey('two-step-verification-body')),
+  matching: find.byType(Scrollable),
+);
+
 /// Turns two-step verification on from its screen, which is on screen, with
 /// the code [codeFor] answers for the setup key the screen shows, and returns
 /// the key and the recovery codes the screen shows once.
@@ -130,9 +136,11 @@ Future<({String secret, List<String> recoveryCodes})> turnOnTwoStep(
     find.byKey(const ValueKey('two-step-verification-code')),
     codeFor(secret),
   );
-  await tapReachable(
+  // Below the setup key and the QR code, which fill a phone's screen.
+  await tapVisible(
     tester,
     find.byKey(const ValueKey('two-step-verification-confirm')),
+    scrollable: _twoStepVerificationBody,
   );
   final codesText = find.byKey(
     const ValueKey('two-step-verification-recovery-codes'),
@@ -144,9 +152,10 @@ Future<({String secret, List<String> recoveryCodes})> turnOnTwoStep(
       .split('\n');
   expect(recoveryCodes, hasLength(10));
 
-  await tapReachable(
+  await tapVisible(
     tester,
     find.byKey(const ValueKey('two-step-verification-done')),
+    scrollable: _twoStepVerificationBody,
   );
   await pumpUntilFound(
     tester,
