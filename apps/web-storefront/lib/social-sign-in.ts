@@ -25,14 +25,16 @@ import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
  * What the fresh sign-in is for: signing in, confirming that an account
- * without a password is to be deleted or to move to another address, or
- * linking the provider account to the signed-in reader's.
+ * without a password is to be deleted, to move to another address, or to turn
+ * two-step verification off, or linking the provider account to the signed-in
+ * reader's.
  */
 export const SIGN_IN_INTENTS = [
   "login",
   "delete",
   "email_change",
   "link",
+  "mfa_disable",
 ] as const;
 
 export type SignInIntent = (typeof SIGN_IN_INTENTS)[number];
@@ -97,6 +99,7 @@ const signInRequestSchema = z.object({
     .optional(),
   intent: z.enum(SIGN_IN_INTENTS),
   locale: localeFormSchema,
+  mfaCode: z.string().min(1).optional(),
   nonce: z.string().min(1),
   provider: z.enum(SIGN_IN_PROVIDERS),
   redirectUri: z.url(),
@@ -119,6 +122,12 @@ export interface SignInRequest {
   emailChange?: { currentEmail: string; newEmail: string };
   intent: SignInIntent;
   locale: Locale;
+  /**
+   * The code that turns two-step verification off, typed before the reader
+   * left for the provider. The API takes it with the provider's sign-in, in
+   * one request.
+   */
+  mfaCode?: string;
   nonce: string;
   provider: SignInProvider;
   redirectUri: string;

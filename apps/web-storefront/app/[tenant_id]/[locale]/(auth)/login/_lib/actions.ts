@@ -24,6 +24,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import type { StorefrontMessageAccessor } from "#lib/messages";
+import { MFA_CHALLENGE_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 import type {
@@ -127,6 +128,18 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     );
 
     redirect(errorPath);
+  }
+
+  if ("mfaChallenge" in result) {
+    await writeMfaChallenge({
+      challengeToken: result.mfaChallenge.token,
+      expiresAt: result.mfaChallenge.expiresAt,
+      locale,
+      returnTo: returnToPath,
+      tenantId,
+    });
+
+    redirect(await tenantLocalePath(tenantId, locale, MFA_CHALLENGE_PATH));
   }
 
   await writePublicSessionCookie(result.session, tenantId);

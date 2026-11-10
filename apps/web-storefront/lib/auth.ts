@@ -34,6 +34,8 @@ import {
   tenantEmailChangeConfirmationTag,
   tenantEmailVerificationTag,
 } from "./cache-tags";
+import { mfaCodeRefusalOf, toPublicMfaChallenge } from "./mfa-shared";
+import type { MfaCodeRefusal, PublicMfaChallenge } from "./mfa-shared";
 import type { SignInProvider } from "./sign-in-provider";
 
 export {
@@ -186,12 +188,15 @@ const toNotificationPreferenceCells = (
 };
 
 /**
- * What a password sign-in came to. A refused one says whether the credentials
- * were wrong or too many attempts had been made for the password to be checked
- * at all: the second is no reason to tell the reader their password is wrong.
+ * What a password sign-in came to. A right password for an account that holds
+ * an authenticator earns a challenge instead of a session, which the code step
+ * settles. A refused one says whether the credentials were wrong or too many
+ * attempts had been made for the password to be checked at all: the second is
+ * no reason to tell the reader their password is wrong.
  */
 export type PublicLoginResult =
   | { ok: true; session: PublicSession }
+  | { mfaChallenge: PublicMfaChallenge; ok: true }
   | { ok: false; refusal: "credentials" | "rate-limited" };
 
 export const loginPublic = async (
@@ -208,6 +213,12 @@ export const loginPublic = async (
       },
       await buildClientAddressHeaders()
     );
+
+    const mfaChallenge = toPublicMfaChallenge(response.mfaChallenge);
+
+    if (mfaChallenge) {
+      return { mfaChallenge, ok: true };
+    }
 
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
 
@@ -231,6 +242,59 @@ export const loginPublic = async (
     }
 
     throw error;
+  }
+};
+
+export type VerifyMfaOutcome =
+  | {
+      kind: "signed_in";
+      /** How many recovery codes are left, read only after one was used. */
+      remainingRecoveryCodes: number;
+      recoveryCodeUsed: boolean;
+      session: PublicSession;
+    }
+  | { kind: "refused"; refusal: MfaCodeRefusal }
+  /**
+   * The challenge is over: it expired, bought a session already, or names an
+   * account that changed its password or can no longer sign in since. The
+   * reader signs in again.
+   */
+  | { kind: "expired" };
+
+/** Exchange the challenge a sign-in answered, and a code, for a session. */
+export const verifyMfaPublic = async (
+  tenantId: string,
+  challengeToken: string,
+  code: string
+): Promise<VerifyMfaOutcome> => {
+  try {
+    const response = await apiClient.auth.verifyMfa(
+      { challengeToken, code, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
+
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+
+    if (!(accessToken && expiresAt)) {
+      throw new Error("VerifyMfa answered without an access token");
+    }
+
+    return {
+      kind: "signed_in",
+      recoveryCodeUsed: response.recoveryCodeUsed,
+      remainingRecoveryCodes: response.remainingRecoveryCodes,
+      session: { accessToken, expiresAt: new Date(expiresAt) },
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = mfaCodeRefusalOf(error);
+
+    if (refusal) {
+      return { kind: "refused", refusal };
+    }
+
+    return { kind: "expired" };
   }
 };
 
@@ -355,6 +419,8 @@ export interface IdTokenSignUp {
 
 export type IdTokenSignInOutcome =
   | { kind: "signed_in"; session: PublicSession }
+  /** The account holds an authenticator, whose code the code step asks for. */
+  | { challenge: PublicMfaChallenge; kind: "mfa_required" }
   /** No account matched, and the tenant asks for consent before one is made. */
   | { kind: "consent_required" }
   /** No account matched, and the tenant has closed sign-up. */
@@ -388,6 +454,12 @@ export const loginWithIdToken = async (
       },
       await buildClientAddressHeaders()
     );
+
+    const challenge = toPublicMfaChallenge(response.mfaChallenge);
+
+    if (challenge) {
+      return { challenge, kind: "mfa_required" };
+    }
 
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
 
@@ -1182,10 +1254,10 @@ export type AccountConfirmation =
   | { passkeyCredential: string };
 
 /**
- * The confirmation fields other than the password that `RequestEmailChange`
- * and `DeleteMe` both take.
+ * The confirmation fields other than the password that `RequestEmailChange`,
+ * `DeleteMe`, and `DisableMfa` all take.
  */
-const freshConfirmationFields = (
+export const freshConfirmationFields = (
   confirmation: Exclude<AccountConfirmation, { password: string }>
 ) =>
   "passkeyCredential" in confirmation

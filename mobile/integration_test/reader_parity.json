@@ -686,6 +686,28 @@
       ]
     },
     {
+      "name": "Entering the two-step verification code after the password or an Apple or Google sign-in",
+      "web": {
+        "routes": ["[locale]/(auth)/login/two-step"],
+        "rpcs": ["VerifyMfa"]
+      },
+      "exception": "Not in the app yet: #5526."
+    },
+    {
+      "name": "Turning two-step verification on and off, and regenerating its recovery codes, from Settings › Security",
+      "web": {
+        "routes": ["[locale]/(site)/settings/security"],
+        "rpcs": [
+          "GetMfaStatus",
+          "StartMfaEnrollment",
+          "ConfirmMfaEnrollment",
+          "RegenerateMfaRecoveryCodes",
+          "DisableMfa"
+        ]
+      },
+      "exception": "Not in the app yet: #5526."
+    },
+    {
       "name": "Signing in with a passkey",
       "web": {
         "routes": ["[locale]/(auth)/login"],

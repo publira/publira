@@ -150,6 +150,7 @@ describe("buildRobotsTxt", () => {
           "/notifications",
           "/settings",
           "/login",
+          "/login/two-step",
           "/signup",
           "/confirm-email",
           "/confirm-password",

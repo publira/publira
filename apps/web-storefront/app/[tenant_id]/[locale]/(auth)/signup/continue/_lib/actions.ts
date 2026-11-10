@@ -20,6 +20,7 @@ import { tenantSiteTag } from "#lib/cache-tags";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { MFA_CHALLENGE_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 import { clearPendingSignUp, readPendingSignUp } from "#lib/social-sign-in";
 import { signInFailurePath, signUpClosedPath } from "#lib/social-sign-in-paths";
 import { readConsentPageVersionIds } from "#lib/tenant";
@@ -161,6 +162,20 @@ export const continueSignUpAction = async (
   }
 
   await clearPendingSignUp();
+
+  // An account this sign-in found rather than made can hold an authenticator,
+  // whose code the code step asks for before any session is written.
+  if (outcome.kind === "mfa_required") {
+    await writeMfaChallenge({
+      challengeToken: outcome.challenge.token,
+      expiresAt: outcome.challenge.expiresAt,
+      locale,
+      returnTo: pending.returnTo,
+      tenantId,
+    });
+    redirect(await tenantLocalePath(tenantId, locale, MFA_CHALLENGE_PATH));
+  }
+
   await writePublicSessionCookie(outcome.session, tenantId);
   redirect(await tenantLocalePath(tenantId, locale, pending.returnTo));
 };

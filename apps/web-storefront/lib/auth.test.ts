@@ -35,6 +35,7 @@ const {
   mockUpdateMe,
   mockUpdateNotificationSettings,
   mockUploadMyIcon,
+  mockVerifyMfa,
   mockVerifyUserEmail,
 } = vi.hoisted(() => ({
   mockBeginPasskeyConfirmation: vi.fn(),
@@ -64,6 +65,7 @@ const {
   mockUpdateMe: vi.fn(),
   mockUpdateNotificationSettings: vi.fn(),
   mockUploadMyIcon: vi.fn(),
+  mockVerifyMfa: vi.fn(),
   mockVerifyUserEmail: vi.fn(),
 }));
 
@@ -101,6 +103,7 @@ vi.mock("./api-client", () => ({
       updateMe: mockUpdateMe,
       updateNotificationSettings: mockUpdateNotificationSettings,
       uploadMyIcon: mockUploadMyIcon,
+      verifyMfa: mockVerifyMfa,
       verifyUserEmail: mockVerifyUserEmail,
     },
   },
@@ -210,6 +213,105 @@ describe("web-storefront auth", () => {
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
     });
+  });
+
+  it("loginPublic: answers the challenge of an account that holds an authenticator", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+    });
+
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+      ok: true,
+    });
+  });
+
+  it("loginPublic: does not take a challenge whose expiry is not an instant", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: { expiresAt: "soon", token: "chl" },
+    });
+
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "credentials",
+    });
+  });
+
+  it("verifyMfaPublic: exchanges the challenge and a code for a session", async () => {
+    const { verifyMfaPublic } = await importAuth();
+    mockVerifyMfa.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
+      recoveryCodeUsed: true,
+      remainingRecoveryCodes: 9,
+    });
+
+    await expect(
+      verifyMfaPublic("TENANT001", "chl", "abcde-12345")
+    ).resolves.toEqual({
+      kind: "signed_in",
+      recoveryCodeUsed: true,
+      remainingRecoveryCodes: 9,
+      session: {
+        accessToken: "tok",
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+    });
+    expect(mockVerifyMfa).toHaveBeenCalledWith(
+      {
+        challengeToken: "chl",
+        code: "abcde-12345",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+  });
+
+  it.each([
+    ["a wrong code", Code.Unauthenticated, "MFA_INVALID_CODE", "invalid_code"],
+    ["a locked account", Code.ResourceExhausted, "MFA_LOCKED", "locked"],
+    ["too many attempts", Code.ResourceExhausted, "", "rate_limited"],
+  ])(
+    "verifyMfaPublic: keeps the challenge on %s",
+    async (_case, code, reason, refusal) => {
+      const { verifyMfaPublic } = await importAuth();
+      mockVerifyMfa.mockRejectedValueOnce(
+        new ConnectError(
+          "no",
+          code,
+          undefined,
+          reason
+            ? [{ desc: ErrorInfoSchema, value: { domain: "publira", reason } }]
+            : undefined
+        )
+      );
+
+      await expect(
+        verifyMfaPublic("TENANT001", "chl", "123456")
+      ).resolves.toEqual({ kind: "refused", refusal });
+    }
+  );
+
+  it("verifyMfaPublic: ends a challenge the API no longer takes", async () => {
+    const { verifyMfaPublic } = await importAuth();
+    mockVerifyMfa.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    await expect(
+      verifyMfaPublic("TENANT001", "chl", "123456")
+    ).resolves.toEqual({ kind: "expired" });
+  });
+
+  it("verifyMfaPublic: lets a failure it cannot explain through", async () => {
+    const { verifyMfaPublic } = await importAuth();
+    const failure = new ConnectError("boom", Code.Internal);
+    mockVerifyMfa.mockRejectedValueOnce(failure);
+
+    await expect(verifyMfaPublic("TENANT001", "chl", "123456")).rejects.toBe(
+      failure
+    );
   });
 
   it("beginPasskeyLoginPublic: answers the options, asked for from the reader's address", async () => {
@@ -327,6 +429,20 @@ describe("web-storefront auth", () => {
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
     });
+  });
+
+  it("loginWithIdToken: answers the challenge of an account that holds an authenticator", async () => {
+    const { loginWithIdToken } = await importAuth();
+    mockLoginWithIdToken.mockResolvedValueOnce({
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+    });
+
+    await expect(loginWithIdToken("TENANT001", idTokenSignIn)).resolves.toEqual(
+      {
+        challenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+        kind: "mfa_required",
+      }
+    );
   });
 
   it("loginWithIdToken: reports the consent a first sign-in still needs", async () => {

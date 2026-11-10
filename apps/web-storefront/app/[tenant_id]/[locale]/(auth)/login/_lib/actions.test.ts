@@ -8,6 +8,7 @@ const {
   mockFinishPasskeyLoginPublic,
   mockLoginPublic,
   mockRedirect,
+  mockWriteMfaChallenge,
   mockWritePublicSessionCookie,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -17,6 +18,7 @@ const {
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  mockWriteMfaChallenge: vi.fn(),
   mockWritePublicSessionCookie: vi.fn(),
 }));
 
@@ -35,6 +37,11 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
+
+vi.mock("#lib/mfa-challenge", () => ({
+  MFA_CHALLENGE_PATH: "/login/two-step",
+  writeMfaChallenge: mockWriteMfaChallenge,
+}));
 
 vi.mock("#lib/tenant", () => ({
   getTenantDefaultLocale: () => "en",
@@ -90,6 +97,27 @@ describe("loginAction", () => {
       session,
       tenantId
     );
+  });
+
+  it("keeps the challenge of an account with an authenticator and asks for its code", async () => {
+    mockLoginPublic.mockResolvedValueOnce({
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+      ok: true,
+    });
+
+    const { loginAction } = await import("./actions");
+
+    await expect(loginAction(loginFormData())).rejects.toThrow(
+      "NEXT_REDIRECT:/login/two-step"
+    );
+    expect(mockWriteMfaChallenge).toHaveBeenCalledWith({
+      challengeToken: "chl",
+      expiresAt: "2030-01-01T00:05:00Z",
+      locale: "en",
+      returnTo: "/my",
+      tenantId,
+    });
+    expect(mockWritePublicSessionCookie).not.toHaveBeenCalled();
   });
 
   it("says the email address or password is incorrect when the credentials are refused", async () => {
