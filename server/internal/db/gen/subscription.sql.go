@@ -187,6 +187,44 @@ func (q *Queries) GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSub
 	return i, err
 }
 
+const GetSubscriptionPaymentFailedMailForTenant = `-- name: GetSubscriptionPaymentFailedMailForTenant :one
+SELECT pl.name AS plan_name,
+    u.email AS reader_email
+FROM subscriptions s
+JOIN subscription_plans pl
+    ON pl.tenant_id = s.tenant_id
+    AND pl.id = $1::uuid
+LEFT JOIN users u
+    ON u.tenant_id = s.tenant_id
+    AND u.id = s.user_id
+WHERE s.tenant_id = $2::uuid
+    AND s.id = $3::uuid
+`
+
+type GetSubscriptionPaymentFailedMailForTenantParams struct {
+	PlanID   uuid.UUID `json:"plan_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetSubscriptionPaymentFailedMailForTenantRow struct {
+	PlanName    string         `json:"plan_name"`
+	ReaderEmail sql.NullString `json:"reader_email"`
+}
+
+// What the mail of a failed attempt to collect a subscription's invoice says
+// beside what the attempt carried, read by the outbox worker, which connects
+// past RLS and therefore names the tenant itself: the plan the attempt was
+// recorded on, under the name it has when the mail is sent, and the reader's
+// address. The reader is joined within the tenant, so an account deleted since
+// answers no address rather than no row.
+func (q *Queries) GetSubscriptionPaymentFailedMailForTenant(ctx context.Context, arg GetSubscriptionPaymentFailedMailForTenantParams) (GetSubscriptionPaymentFailedMailForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionPaymentFailedMailForTenant, arg.PlanID, arg.TenantID, arg.ID)
+	var i GetSubscriptionPaymentFailedMailForTenantRow
+	err := row.Scan(&i.PlanName, &i.ReaderEmail)
+	return i, err
+}
+
 const ListBilledStripeSubscriptionIDsForUser = `-- name: ListBilledStripeSubscriptionIDsForUser :many
 SELECT stripe_subscription_id::text
 FROM billed_subscriptions
@@ -374,7 +412,8 @@ SET plan_id = EXCLUDED.plan_id,
 RETURNING id,
     user_id,
     plan_id,
-    status
+    status,
+    current_period_end
 `
 
 type RecordSubscriptionFromStripeParams struct {
@@ -391,10 +430,11 @@ type RecordSubscriptionFromStripeParams struct {
 }
 
 type RecordSubscriptionFromStripeRow struct {
-	ID     uuid.UUID     `json:"id"`
-	UserID uuid.NullUUID `json:"user_id"`
-	PlanID uuid.UUID     `json:"plan_id"`
-	Status string        `json:"status"`
+	ID               uuid.UUID     `json:"id"`
+	UserID           uuid.NullUUID `json:"user_id"`
+	PlanID           uuid.UUID     `json:"plan_id"`
+	Status           string        `json:"status"`
+	CurrentPeriodEnd sql.NullTime  `json:"current_period_end"`
 }
 
 // Writes a subscription as Stripe reports it now. A subscription already here
@@ -421,6 +461,7 @@ func (q *Queries) RecordSubscriptionFromStripe(ctx context.Context, arg RecordSu
 		&i.UserID,
 		&i.PlanID,
 		&i.Status,
+		&i.CurrentPeriodEnd,
 	)
 	return i, err
 }

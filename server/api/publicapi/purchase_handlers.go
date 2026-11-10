@@ -770,6 +770,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.recordSubscriptionPayment(ctx, tenant.ID, provider, credentials, event); err != nil {
 			return nil, err
 		}
+	case paymentprovider.SubscriptionPaymentFailed:
+		if err := s.recordSubscriptionPaymentFailure(ctx, tenant.ID, provider, credentials, event); err != nil {
+			return nil, err
+		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
 }

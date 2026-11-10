@@ -286,6 +286,21 @@
       "series": "系列：{$series_title}",
       "subject": "已退回：{$episode_title}"
     },
+    "subscription_payment_failed": {
+      "action": "開啟我的頁面",
+      "amount": "應付金額：{$amount}（{$currency}）",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您的付款未能完成",
+      "intro": "我們未能收取續訂您在{$tenant_name}的方案所需的款項。",
+      "manage": "如需繼續閱讀，請在我的頁面的「管理付款」中更新付款方式。",
+      "next_attempt": "我們將於{$next_attempt}再次嘗試收款。",
+      "no_next_attempt": "此後將不再自動嘗試收款。",
+      "open_until": "在付款完成之前，您最晚可在{$period_end}之前閱讀此方案包含的章節。如果訂閱在此之前結束，章節將隨之無法閱讀。",
+      "plan": "方案：{$plan_name}",
+      "preview": "方案「{$plan_name}」的付款未能完成。",
+      "subject": "{$tenant_name}方案付款未完成",
+      "test_notice": "這是在支付服務測試模式下嘗試的付款，不會產生任何扣款。"
+    },
     "subscription_renewed": {
       "action": "開啟我的頁面",
       "amount": "支付金額：{$amount}（{$currency}）",

@@ -174,6 +174,18 @@ func (s SubscriptionStatus) Billed() bool {
 	return false
 }
 
+// Opens reports whether a subscription in status s opens its plan's episodes
+// while its current period runs: the statuses the queries that decide what a
+// reader may read select. A subscription the provider still bills while
+// unpaid or paused opens nothing.
+func (s SubscriptionStatus) Opens() bool {
+	switch s {
+	case SubscriptionTrialing, SubscriptionActive, SubscriptionPastDue:
+		return true
+	}
+	return false
+}
+
 // Subscription is one subscription a plan's checkout started, as the provider
 // reports it now.
 type Subscription struct {
@@ -249,3 +261,32 @@ type SubscriptionPaid struct {
 func (e SubscriptionPaid) NotificationID() string { return e.ID }
 
 func (SubscriptionPaid) isEvent() {}
+
+// SubscriptionPaymentFailed reports an attempt to collect an invoice of a
+// subscription a plan's checkout started that did not go through. Like
+// [SubscriptionChanged] it leaves reading the subscription to
+// [Subscriptions.RetrieveSubscription]; what it carries is the invoice, which
+// nothing else records.
+type SubscriptionPaymentFailed struct {
+	// ID is the provider's id of the notification, which is one attempt: a
+	// later attempt at the same invoice is another notification.
+	ID             string
+	SubscriptionID string
+	// InvoiceID is the provider's id of the invoice.
+	InvoiceID string
+	// Amount is what the invoice asks the subscriber to pay, in the minor unit
+	// of Currency.
+	Amount int64
+	// Currency is the ISO 4217 code of Amount, in capitals.
+	Currency string
+	// NextAttempt is when the provider tries to collect the invoice again, and
+	// zero when it makes no further attempt.
+	NextAttempt time.Time
+	// Test reports an invoice of the provider's test mode, as
+	// [SubscriptionPaid.Test] does.
+	Test bool
+}
+
+func (e SubscriptionPaymentFailed) NotificationID() string { return e.ID }
+
+func (SubscriptionPaymentFailed) isEvent() {}

@@ -719,3 +719,109 @@ func TestDBProcessPaymentWebhookReleasesAnOpenDisputeWhenItsSubscriptionPaymentA
 		t.Fatal("a lost dispute was not recorded")
 	}
 }
+
+// subscriptionPaymentFailedMails answers the mails of failed attempts the
+// webhook has queued for the fixture's tenant.
+func (f *subscriptionFixture) subscriptionPaymentFailedMails(t *testing.T) []outbox.SubscriptionPaymentFailedPayload {
+	t.Helper()
+	rows, err := f.pg.DB.QueryContext(context.Background(),
+		"SELECT payload FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 ORDER BY created_at, id",
+		f.tenant.ID, outbox.EventTypeSubscriptionPaymentFailed)
+	if err != nil {
+		t.Fatalf("read the mails queued: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var mails []outbox.SubscriptionPaymentFailedPayload
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatalf("scan a mail queued: %v", err)
+		}
+		var payload outbox.SubscriptionPaymentFailedPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatalf("decode a mail queued: %v", err)
+		}
+		mails = append(mails, payload)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the mails queued: %v", err)
+	}
+	return mails
+}
+
+// Every failed attempt at a renewal owes its reader one mail, however often
+// its notification is delivered, carrying what the invoice asks for, when it
+// is tried again, and the end of the current period the subscription is
+// recorded with. An attempt after which the subscription opens nothing — one
+// Stripe ended, or one whose period is over — owes none, and nor does an
+// attempt on a subscription whose reader's account is gone.
+func TestDBProcessPaymentWebhookOwesTheReaderOneMailForEachFailedAttempt(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	periodEnd := time.Now().UTC().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	subscription := stripetest.Subscription{
+		ID:               "sub_failing",
+		CustomerID:       "cus_failing",
+		PriceID:          "price_monthly",
+		Status:           "past_due",
+		CurrentPeriodEnd: periodEnd.Unix(),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+	}
+	nextAttempt := time.Now().UTC().Add(3 * 24 * time.Hour).Truncate(time.Second)
+	attempt := func(t *testing.T, eventID string, next time.Time, deliveries int) {
+		t.Helper()
+		payload, headers := f.stripe.InvoicePaymentFailed(t, f.credentials, subscription, stripetest.FailedInvoice{
+			EventID: eventID, InvoiceID: "in_failing", Amount: 980, Currency: "JPY", NextAttempt: next, Test: true,
+		})
+		for delivery := range deliveries {
+			if err := f.deliver(t, payload, headers); err != nil {
+				t.Fatalf("delivery %d of %s: %v", delivery+1, eventID, err)
+			}
+		}
+	}
+
+	attempt(t, "evt_failing_first", nextAttempt, 3)
+	attempt(t, "evt_failing_last", time.Time{}, 2)
+	mails := f.subscriptionPaymentFailedMails(t)
+	if len(mails) != 2 {
+		t.Fatalf("failed payment mails = %d, want one per attempt however often each is delivered", len(mails))
+	}
+	var subscriptionID uuid.UUID
+	if err := f.pg.DB.QueryRowContext(context.Background(),
+		"SELECT id FROM subscriptions WHERE tenant_id = $1 AND stripe_subscription_id = $2", f.tenant.ID, subscription.ID,
+	).Scan(&subscriptionID); err != nil {
+		t.Fatalf("read the subscription: %v", err)
+	}
+	for i, mail := range mails {
+		if mail.TenantID != f.tenant.ID.String() || mail.SubscriptionID != subscriptionID.String() || mail.PlanID != plan.ID.String() ||
+			mail.Amount != 980 || mail.Currency != "JPY" || !mail.PeriodEnd.Equal(periodEnd) || !mail.IsTest {
+			t.Errorf("mail %d = %+v, want 980 JPY on subscription %s of plan %s, open until %s, in test mode", i, mail, subscriptionID, plan.ID, periodEnd)
+		}
+	}
+	if mails[0].NextAttempt == nil || !mails[0].NextAttempt.Equal(nextAttempt) {
+		t.Errorf("next attempt of the first mail = %v, want %s", mails[0].NextAttempt, nextAttempt)
+	}
+	if mails[1].NextAttempt != nil {
+		t.Errorf("next attempt of the last mail = %v, want none", mails[1].NextAttempt)
+	}
+
+	subscription.Status = "canceled"
+	attempt(t, "evt_failing_ended", time.Time{}, 1)
+	subscription.Status = "past_due"
+	subscription.CurrentPeriodEnd = time.Now().Add(-time.Hour).Unix()
+	attempt(t, "evt_failing_over", time.Time{}, 1)
+	if got := len(f.subscriptionPaymentFailedMails(t)); got != 2 {
+		t.Fatalf("failed payment mails after the subscription opens nothing = %d, want none for it", got)
+	}
+
+	subscription.CurrentPeriodEnd = periodEnd.Unix()
+	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
+		t.Fatalf("DeleteMe: %v", err)
+	}
+	attempt(t, "evt_failing_orphan", nextAttempt, 1)
+	if got := len(f.subscriptionPaymentFailedMails(t)); got != 2 {
+		t.Fatalf("failed payment mails after the reader is gone = %d, want none for them", got)
+	}
+}

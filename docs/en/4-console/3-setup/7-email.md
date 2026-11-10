@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, purchase receipts, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -18,6 +18,7 @@ With the tenant's own server turned on, it sends every mail the tenant sends:
 - To readers who tip the Authors of an episode on the site: a receipt naming the episode and the amount given.
 - To readers whose purchase or tip on the site is refunded, in whole or in part: a notice naming what was bought, the amount refunded, and whether the refund closes the episode, as [Refunds](../4-selling-episodes.md#refunds) describes. It goes out whatever the reader's notification settings say.
 - To readers who subscribe to a plan on the site: once the first payment goes through, and again each time a later payment renews the plan for a new period, a notice naming the plan, the price paid, and the period it covers, as [What a reader sees](../5-subscription-plans.md#what-a-reader-sees) describes. It goes out whatever the reader's notification settings say.
+- To readers whose renewal Stripe fails to collect: after each failed attempt, a notice naming the plan, the amount due, when Stripe tries again, and until when the plan's episodes stay open at the latest, as [What a reader sees](../5-subscription-plans.md#what-a-reader-sees) describes. It goes out whatever the reader's notification settings say.
 - To readers whose notification settings take them by email: a new episode of what they follow, the notice that their comment is now public, and announcements, as [What readers see](./4-announcements.md#what-readers-see) describes for an announcement.
 - Replies to readers' contact messages.
 - To staff: invitations to new Tenant admins, the console's password resets and email address changes, and the notice of a new contact message, which goes to the Tenant admins.

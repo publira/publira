@@ -286,6 +286,21 @@
       "series": "Series: {$series_title}",
       "subject": "Returned for changes: {$episode_title}"
     },
+    "subscription_payment_failed": {
+      "action": "Open My Page",
+      "amount": "Amount due: {$amount} ({$currency})",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your payment did not go through",
+      "intro": "We could not collect the payment that renews your subscription on {$tenant_name}.",
+      "manage": "To keep reading, update your payment method under Manage billing on My Page.",
+      "next_attempt": "The payment will be tried again on {$next_attempt}.",
+      "no_next_attempt": "No further attempt will be made to collect the payment.",
+      "open_until": "Until a payment goes through, you can read the episodes the plan covers until {$period_end} at the latest. They close sooner if the subscription ends before then.",
+      "plan": "Plan: {$plan_name}",
+      "preview": "The payment for {$plan_name} did not go through.",
+      "subject": "{$tenant_name} subscription payment failed",
+      "test_notice": "This payment was attempted in the payment provider's test mode. No money is owed."
+    },
     "subscription_renewed": {
       "action": "Open My Page",
       "amount": "Price paid: {$amount} ({$currency})",

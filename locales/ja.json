@@ -286,6 +286,21 @@
       "series": "シリーズ「{$series_title}」",
       "subject": "差し戻し: {$episode_title}"
     },
+    "subscription_payment_failed": {
+      "action": "マイページを開く",
+      "amount": "未払いの金額は{$amount} ({$currency}) です。",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "お支払いが完了しませんでした",
+      "intro": "{$tenant_name}のプランを更新するためのお支払いを受け付けられませんでした。",
+      "manage": "引き続き読むには、マイページの「支払いの管理」から支払い方法を更新してください。",
+      "next_attempt": "{$next_attempt}にもう一度お支払いを試みます。",
+      "no_next_attempt": "これ以降、お支払いを自動で試みることはありません。",
+      "open_until": "お支払いが完了するまでは、遅くとも{$period_end}まで、このプランの対象のエピソードを読めます。それより前にプランが終了した場合は、その時点で読めなくなります。",
+      "plan": "プラン「{$plan_name}」",
+      "preview": "{$plan_name}のお支払いが完了しませんでした。",
+      "subject": "{$tenant_name}プランのお支払いが未完了です",
+      "test_notice": "これは決済サービスのテストモードでのお支払いです。料金は請求されていません。"
+    },
     "subscription_renewed": {
       "action": "マイページを開く",
       "amount": "お支払い金額は{$amount} ({$currency}) です。",

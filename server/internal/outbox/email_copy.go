@@ -182,6 +182,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
 	"staff_episode_review_returned":              staffEpisodeReviewReturnedCopy,
+	"subscription_payment_failed":                subscriptionPaymentFailedCopy,
 	"subscription_renewed":                       subscriptionRenewedCopy,
 	"subscription_started":                       subscriptionStartedCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
@@ -333,6 +334,37 @@ func subscriptionRenewedCopy(c *emailComposer) {
 	c.line("email.subscription_renewed.manage", nil)
 	c.linkLine("email.subscription_renewed.action", nil, myPageURL)
 	c.linkLine("email.subscription_renewed.fallback_link", nil, myPageURL)
+}
+
+// subscriptionPaymentFailedCopy words the mail that tells a reader an attempt
+// to collect the payment renewing their subscription did not go through. It
+// names the plan and what the invoice asks for, when it is tried again or that
+// it is not, and until when the plan's episodes stay open at the latest: the
+// end of the current period, which a subscription the provider ends on its
+// last attempt does not reach. The card is changed from Manage billing on My
+// Page, which the mail links to. An attempt in the provider's test mode says
+// no money is owed.
+func subscriptionPaymentFailedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	myPageURL := c.value("my_page_url")
+	c.setSubject("email.subscription_payment_failed.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.subscription_payment_failed.heading", nil)
+	c.line("email.subscription_payment_failed.intro", map[string]any{"tenant_name": brand})
+	if c.flag("is_test") {
+		c.line("email.subscription_payment_failed.test_notice", nil)
+	}
+	c.line("email.subscription_payment_failed.plan", map[string]any{"plan_name": c.value("plan_name")})
+	c.line("email.subscription_payment_failed.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	if c.value("next_attempt") != "" {
+		c.line("email.subscription_payment_failed.next_attempt", map[string]any{"next_attempt": c.instant("next_attempt")})
+	} else {
+		c.line("email.subscription_payment_failed.no_next_attempt", nil)
+	}
+	c.line("email.subscription_payment_failed.open_until", map[string]any{"period_end": c.instant("period_end")})
+	c.line("email.subscription_payment_failed.manage", nil)
+	c.linkLine("email.subscription_payment_failed.action", nil, myPageURL)
+	c.linkLine("email.subscription_payment_failed.fallback_link", nil, myPageURL)
 }
 
 // purchaseRefundNoticeCopy words the mail that tells a reader a refund was

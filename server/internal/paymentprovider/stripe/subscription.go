@@ -225,8 +225,10 @@ func subscriptionUpdatedEvent(event *stripego.Event) (paymentprovider.Event, err
 	return subscriptionChangedEvent(event, subscription.ID), nil
 }
 
-// invoicePaymentFailedEvent reads the subscription whose invoice could not be
-// paid. An invoice no subscription raised is no concern of a plan.
+// invoicePaymentFailedEvent reads an attempt to collect an invoice of a plan's
+// subscription that did not go through. An invoice no subscription raised is
+// no concern of a plan, and one that asks for nothing has nothing to tell the
+// reader of, so it only names the subscription to read again.
 func invoicePaymentFailedEvent(event *stripego.Event) (paymentprovider.Event, error) {
 	var invoice stripego.Invoice
 	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
@@ -242,7 +244,25 @@ func invoicePaymentFailedEvent(event *stripego.Event) (paymentprovider.Event, er
 	if subscriptionID == "" {
 		return nil, fmt.Errorf("%w: the invoice names no subscription", paymentprovider.ErrMalformedNotification)
 	}
-	return subscriptionChangedEvent(event, subscriptionID), nil
+	if invoice.AmountDue <= 0 {
+		return subscriptionChangedEvent(event, subscriptionID), nil
+	}
+	if strings.TrimSpace(invoice.ID) == "" {
+		return nil, fmt.Errorf("%w: the invoice has no id", paymentprovider.ErrMalformedNotification)
+	}
+	var nextAttempt time.Time
+	if invoice.NextPaymentAttempt > 0 {
+		nextAttempt = time.Unix(invoice.NextPaymentAttempt, 0).UTC()
+	}
+	return paymentprovider.SubscriptionPaymentFailed{
+		ID:             event.ID,
+		SubscriptionID: subscriptionID,
+		InvoiceID:      invoice.ID,
+		Amount:         invoice.AmountDue,
+		Currency:       strings.ToUpper(string(invoice.Currency)),
+		NextAttempt:    nextAttempt,
+		Test:           !invoice.Livemode,
+	}, nil
 }
 
 // invoicePaidEvent reads an invoice of a plan's subscription that Stripe was

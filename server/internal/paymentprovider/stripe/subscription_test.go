@@ -147,9 +147,6 @@ func TestParseNotificationNamesTheSubscription(t *testing.T) {
 		"a deletion": func() ([]byte, map[string][]string) {
 			return fixture.SubscriptionDeleted(t, credentials, subscription)
 		},
-		"a failed renewal": func() ([]byte, map[string][]string) {
-			return fixture.InvoicePaymentFailed(t, credentials, subscription)
-		},
 	}
 	for name, notification := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -167,6 +164,85 @@ func TestParseNotificationNamesTheSubscription(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A failed attempt at a renewal names the subscription to read again and the
+// invoice it could not collect: what it asks for, when Stripe tries again, and
+// whether it is of the test mode. One that asks for nothing only names the
+// subscription.
+func TestParseNotificationReadsAFailedRenewal(t *testing.T) {
+	fixture := stripetest.NewFixture(t)
+	provider := fixture.Provider()
+	credentials := fixture.Credentials()
+	subscription := stripetest.Subscription{
+		ID:         "sub_failed",
+		CustomerID: "cus_failed",
+		PriceID:    "price_monthly",
+		Status:     "past_due",
+		Metadata:   stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly"),
+	}
+	nextAttempt := time.Date(2026, time.April, 5, 3, 0, 0, 0, time.UTC)
+	cases := map[string]struct {
+		invoice stripetest.FailedInvoice
+		want    paymentprovider.SubscriptionPaymentFailed
+	}{
+		"an attempt Stripe follows with another": {
+			invoice: stripetest.FailedInvoice{EventID: "evt_failed_first", InvoiceID: "in_failed", Amount: 980, Currency: "JPY", NextAttempt: nextAttempt},
+			want: paymentprovider.SubscriptionPaymentFailed{
+				ID: "evt_failed_first", SubscriptionID: "sub_failed", InvoiceID: "in_failed",
+				Amount: 980, Currency: "JPY", NextAttempt: nextAttempt,
+			},
+		},
+		"the last attempt of the test mode": {
+			invoice: stripetest.FailedInvoice{EventID: "evt_failed_last", InvoiceID: "in_failed", Amount: 1500, Currency: "USD", Test: true},
+			want: paymentprovider.SubscriptionPaymentFailed{
+				ID: "evt_failed_last", SubscriptionID: "sub_failed", InvoiceID: "in_failed",
+				Amount: 1500, Currency: "USD", Test: true,
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			payload, headers := fixture.InvoicePaymentFailed(t, credentials, subscription, tc.invoice)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			failed, ok := event.(paymentprovider.SubscriptionPaymentFailed)
+			if !ok {
+				t.Fatalf("event = %T, want SubscriptionPaymentFailed", event)
+			}
+			if !failed.NextAttempt.Equal(tc.want.NextAttempt) {
+				t.Fatalf("next attempt = %s, want %s", failed.NextAttempt, tc.want.NextAttempt)
+			}
+			failed.NextAttempt = tc.want.NextAttempt
+			if failed != tc.want {
+				t.Fatalf("event = %+v, want %+v", failed, tc.want)
+			}
+		})
+	}
+
+	t.Run("an invoice that asks for nothing", func(t *testing.T) {
+		payload, headers := stripetest.SignedEvent(t, credentials[stripe.FieldWebhookSecret], "invoice.payment_failed", map[string]any{
+			"id":         "in_nothing",
+			"object":     "invoice",
+			"amount_due": 0,
+			"parent": map[string]any{
+				"type": "subscription_details",
+				"subscription_details": map[string]any{
+					"metadata":     subscription.Metadata,
+					"subscription": subscription.ID,
+				},
+			},
+		})
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		if changed, ok := event.(paymentprovider.SubscriptionChanged); !ok || changed.SubscriptionID != "sub_failed" {
+			t.Fatalf("event = %+v, want SubscriptionChanged naming sub_failed", event)
+		}
+	})
 }
 
 // RetrieveSubscription answers the subscription as Stripe holds it at the
@@ -364,7 +440,7 @@ func TestParseNotificationIgnoresSubscriptionsItDidNotStart(t *testing.T) {
 			return fixture.SubscriptionDeleted(t, credentials, foreign)
 		},
 		"failed renewal": func() ([]byte, map[string][]string) {
-			return fixture.InvoicePaymentFailed(t, credentials, foreign)
+			return fixture.InvoicePaymentFailed(t, credentials, foreign, stripetest.FailedInvoice{})
 		},
 	}
 	for name, notification := range cases {

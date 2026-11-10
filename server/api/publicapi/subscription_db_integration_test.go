@@ -355,7 +355,7 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 
 	subscription.CancelAtPeriodEnd = false
 	subscription.Status = "past_due"
-	payload, headers = f.stripe.InvoicePaymentFailed(t, f.credentials, subscription)
+	payload, headers = f.stripe.InvoicePaymentFailed(t, f.credentials, subscription, stripetest.FailedInvoice{})
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the failed payment: %v", err)
 	}
@@ -946,7 +946,7 @@ func TestDBASubscriptionOwesItsWebhookEndpointItsStartAndItsEnd(t *testing.T) {
 		}
 	}
 	subscription.Status = "past_due"
-	payload, headers = f.stripe.InvoicePaymentFailed(t, f.credentials, subscription)
+	payload, headers = f.stripe.InvoicePaymentFailed(t, f.credentials, subscription, stripetest.FailedInvoice{})
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the failed payment: %v", err)
 	}
