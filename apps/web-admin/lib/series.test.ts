@@ -9,6 +9,7 @@ import {
   BadRequestSchema,
   Code,
   ConnectError,
+  ErrorInfoSchema,
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +35,7 @@ vi.mock("./auth-session", () => ({
 const {
   mockCacheLife,
   mockCacheTag,
+  mockDeleteSeries,
   mockDeleteSeriesTranslation,
   mockGetAccessToken,
   mockGetSeries,
@@ -42,6 +44,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeleteSeries: vi.fn(),
   mockDeleteSeriesTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetSeries: vi.fn(),
@@ -61,6 +64,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     series: {
+      deleteSeries: mockDeleteSeries,
       deleteSeriesTranslation: mockDeleteSeriesTranslation,
       getSeries: mockGetSeries,
       listSeries: mockListSeries,
@@ -1357,4 +1361,115 @@ describe("the operator check before a shared read", () => {
       expect(rpc).not.toHaveBeenCalled();
     }
   );
+});
+
+const seriesReferencedError = (reason: string) =>
+  new ConnectError("series is referenced", Code.FailedPrecondition, undefined, [
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+  ]);
+
+describe("deleteSeries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("deletes the series with the operator's session", async () => {
+    mockDeleteSeries.mockResolvedValue({});
+
+    const { deleteSeries } = await import("./series");
+
+    const result = await deleteSeries(
+      { id: "SERIES001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteSeries).toHaveBeenCalledWith(
+      { seriesId: "SERIES001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each([
+    {
+      message:
+        "This series cannot be deleted while it has episodes. Delete each of them first, or take the series off the site instead.",
+      reason: "SERIES_HAS_EPISODES",
+      reference: "episodes",
+    },
+    {
+      message:
+        "This series cannot be deleted: it has a volume, and a volume cannot be deleted. Take the series off the site instead.",
+      reason: "SERIES_HAS_VOLUMES",
+      reference: "volumes",
+    },
+    {
+      message:
+        "This series cannot be deleted: a subscription plan opens it. Take it out of what the plan opens first, or take the series off the site instead.",
+      reason: "SERIES_IN_SUBSCRIPTION_PLAN",
+      reference: "subscription_plans",
+    },
+    {
+      message:
+        "This series cannot be deleted: a promotion code applies to it that has not been deleted, or that a reader redeemed. Delete the codes nobody redeemed first, or take the series off the site instead.",
+      reason: "SERIES_IN_PROMOTION_CODE",
+      reference: "promotion_codes",
+    },
+  ])(
+    "words $reason as what refers to the series",
+    async ({ message, reason, reference }) => {
+      mockDeleteSeries.mockRejectedValue(seriesReferencedError(reason));
+
+      const { deleteSeries } = await import("./series");
+
+      const result = await deleteSeries(
+        { id: "SERIES001-ID", tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(result).toEqual({ message, ok: false, reference });
+    }
+  );
+
+  // A server newer than this console may refuse for a reason it has no
+  // sentence for yet, which is still a refusal rather than a failure.
+  it("words a refusal for a reason it does not know as a refusal", async () => {
+    mockDeleteSeries.mockRejectedValue(
+      seriesReferencedError("SERIES_SOMETHING_NEW")
+    );
+
+    const { deleteSeries } = await import("./series");
+
+    const result = await deleteSeries(
+      { id: "SERIES001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This series cannot be deleted: a record that has to be kept refers to it. Take it off the site instead.",
+      ok: false,
+    });
+  });
+
+  it("says a series deleted already is gone", async () => {
+    mockDeleteSeries.mockRejectedValue(
+      new ConnectError("series not found", Code.NotFound)
+    );
+
+    const { deleteSeries } = await import("./series");
+
+    const result = await deleteSeries(
+      { id: "SERIES001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This series has already been deleted. Go back to the series list.",
+      ok: false,
+    });
+  });
 });

@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
@@ -124,6 +125,11 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
       </Suspense>
     </ConsolePage.Header>
     <ConsolePage.Content>
+      <FlashToast
+        keyName="deleted"
+        message="admin.series.delete.deleted"
+        valueParams={{ title: "deleted_title" }}
+      />
       <Suspense fallback={<Table.Skeleton />}>
         <SeriesManagerData searchParams={searchParams} />
       </Suspense>

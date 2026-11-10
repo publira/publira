@@ -11,9 +11,12 @@ import type { Series } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorReason } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -38,6 +41,7 @@ import {
   mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import type { PurchaseAvailabilityOverride } from "./purchase-availability";
 import {
   READING_DIRECTION_ENUM,
@@ -225,6 +229,20 @@ export type GetSeriesResult =
 export type DeleteSeriesTranslationResult =
   | { ok: true }
   | { ok: false; message: string };
+
+/**
+ * The console screen that holds what keeps a series from being deleted, for a
+ * refusal it can point to.
+ */
+export type SeriesDeletionReference =
+  | "episodes"
+  | "promotion_codes"
+  | "subscription_plans"
+  | "volumes";
+
+export type DeleteSeriesResult =
+  | { ok: true }
+  | { ok: false; message: string; reference?: SeriesDeletionReference };
 
 const invalidArgumentMessage = async (
   cause: unknown,
@@ -1030,6 +1048,92 @@ export const deleteSeriesTranslation = async (
           },
         }
       ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * What `DeleteSeries` refuses a series for, in the order the API checks them,
+ * with the sentence each is worded in and the screen that holds it.
+ */
+const SERIES_DELETION_REFUSALS: readonly {
+  message: AdminMessageKey;
+  reason: RpcErrorReason;
+  reference: SeriesDeletionReference;
+}[] = [
+  {
+    message: "admin.series.delete.refused.has_episodes",
+    reason: RPC_ERROR_REASON.seriesHasEpisodes,
+    reference: "episodes",
+  },
+  {
+    message: "admin.series.delete.refused.has_volumes",
+    reason: RPC_ERROR_REASON.seriesHasVolumes,
+    reference: "volumes",
+  },
+  {
+    message: "admin.series.delete.refused.in_subscription_plan",
+    reason: RPC_ERROR_REASON.seriesInSubscriptionPlan,
+    reference: "subscription_plans",
+  },
+  {
+    message: "admin.series.delete.refused.in_promotion_code",
+    reason: RPC_ERROR_REASON.seriesInPromotionCode,
+    reference: "promotion_codes",
+  },
+];
+
+/**
+ * Deletes a series that holds nothing and that nothing refers to. A refusal
+ * names what refers to it from the ErrorInfo reason rather than the server's
+ * English message, and one with no reason this console knows is still worded
+ * as a refusal rather than a failure.
+ */
+export const deleteSeries = async (
+  input: { tenantId: string; id: string },
+  locale: Locale
+): Promise<DeleteSeriesResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.series.deleteSeries(
+      { seriesId: input.id, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = SERIES_DELETION_REFUSALS.find(({ reason }) =>
+      rpcErrorHasReason(error, reason)
+    );
+
+    if (refusal) {
+      return {
+        message: t(refusal.message),
+        ok: false,
+        reference: refusal.reference,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(error, t("admin.series.delete.failed"), {
+        locale,
+        overrides: {
+          "not-found": t("admin.series.delete.not_found"),
+          precondition: t("admin.series.delete.refused.referenced"),
+        },
+      }),
       ok: false,
     };
   }

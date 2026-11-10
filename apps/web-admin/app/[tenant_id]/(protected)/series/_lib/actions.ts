@@ -36,11 +36,13 @@ import {
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { promotionCodesCacheTag } from "#lib/promotion-code";
 import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
   createSeries,
+  deleteSeries,
   deleteSeriesTranslation,
   getSeriesForTenant,
   seriesCacheTag,
@@ -78,6 +80,7 @@ import { translationEditPath } from "#lib/translation-locales";
 import type {
   SeriesActionState,
   SeriesCreatorCredit,
+  SeriesDeleteActionState,
   SeriesMutationMode,
 } from "../series-types";
 
@@ -674,6 +677,96 @@ export const deleteSeriesTranslationAction = async (
 
   redirect(
     translationEditPath(`/series/${publicId}`, undefined, "translation_deleted")
+  );
+};
+
+const deleteSeriesSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
+    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    tenantId: requiredTrimmedString(
+      t("admin.series.validation.tenant_missing")
+    ),
+    // Compared as it was typed, as the dialog compares it.
+    titleConfirmation: z.string().catch(""),
+  });
+};
+
+/**
+ * Deletes the series once the title typed into the dialog is the one it has,
+ * then leaves for the series list. The list names the title in its toast from
+ * the query string, since no series is left to read it from.
+ */
+export const deleteSeriesAction = async (
+  _prevState: SeriesDeleteActionState,
+  formData: FormData
+): Promise<SeriesDeleteActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteSeriesSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      id: { kind: "value", name: "series_id" },
+      publicId: { kind: "value", name: "series_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      titleConfirmation: { kind: "value", name: "title_confirmation" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { id, publicId, tenantId, titleConfirmation } = parsed.data;
+  await verifyAdminSession(tenantId);
+
+  const [t, target] = await Promise.all([
+    getMessagesFor(locale),
+    getSeriesForTenant({ publicId, tenantId }, locale),
+  ]);
+
+  if (!target.ok) {
+    return {
+      message: target.notFound
+        ? t("admin.series.delete.not_found")
+        : target.message,
+      ok: false,
+    };
+  }
+
+  if (target.series.id !== id) {
+    return { message: t("admin.series.validation.id_missing"), ok: false };
+  }
+
+  const { title } = target.series;
+
+  if (titleConfirmation !== title) {
+    return { message: t("admin.series.delete.title_mismatch"), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteSeries({ id, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false, reference: result.reference };
+  }
+
+  updateTag(seriesCacheTag(tenantId, publicId));
+  updateTag(seriesListCacheTag(tenantId));
+  updateTag(tenantDashboardCacheTag(tenantId));
+  // What was the series' alone went with it: its Free if you wait and Free
+  // after publication rules, and the promotion codes for it that were deleted
+  // before anyone redeemed them.
+  updateTag(seriesWaitFreeSettingsCacheTag(tenantId, id));
+  updateTag(seriesFreeAfterSettingsCacheTag(tenantId, id));
+  updateTag(promotionCodesCacheTag(tenantId));
+
+  redirect(
+    `/series?${new URLSearchParams({ deleted: "1", deleted_title: title }).toString()}`
   );
 };
 

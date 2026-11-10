@@ -2758,6 +2758,33 @@
         "not_found": "This translation has already been deleted. Reload the page.",
         "last_translation": "A series keeps at least one translation, so its last one cannot be deleted."
       },
+      "delete": {
+        "title": "Deleting this series",
+        "description": "Deletes this series for good. A series that still has an episode or a volume, or that a subscription plan or a promotion code names, cannot be deleted: take it off the site instead.",
+        "action": "Delete this series",
+        "error": "Could not display the deletion of this series",
+        "confirm_title": "Delete “{$title}”?",
+        "confirm_description": "Its titles and synopses, credits, genres and tags, cover images, Free if you wait and Free after publication settings, and its readers' follows are deleted with it, and it leaves the site and the app at once. This cannot be undone.",
+        "confirm_kept": "A series that still has an episode or a volume, or that a subscription plan or a promotion code names, is not deleted, and the reason is shown here.",
+        "title_label": "Enter the series' title to confirm",
+        "confirm_action": "Delete series",
+        "pending": "Deleting...",
+        "deleted": "“{$title}” was deleted.",
+        "failed": "Could not delete the series. Please try again later.",
+        "not_found": "This series has already been deleted. Go back to the series list.",
+        "title_mismatch": "The title entered is not this series' title.",
+        "view_episodes": "View its episodes",
+        "view_volumes": "View its volumes",
+        "view_subscription_plans": "View subscription plans",
+        "view_promotion_codes": "View promotion codes",
+        "refused": {
+          "has_episodes": "This series cannot be deleted while it has episodes. Delete each of them first, or take the series off the site instead.",
+          "has_volumes": "This series cannot be deleted: it has a volume, and a volume cannot be deleted. Take the series off the site instead.",
+          "in_subscription_plan": "This series cannot be deleted: a subscription plan opens it. Take it out of what the plan opens first, or take the series off the site instead.",
+          "in_promotion_code": "This series cannot be deleted: a promotion code applies to it that has not been deleted, or that a reader redeemed. Delete the codes nobody redeemed first, or take the series off the site instead.",
+          "referenced": "This series cannot be deleted: a record that has to be kept refers to it. Take it off the site instead."
+        }
+      },
       "volumes": {
         "title": "Volumes",
         "page_description": "Group the series' episodes into volumes, each sold in one checkout at a price of its own.",

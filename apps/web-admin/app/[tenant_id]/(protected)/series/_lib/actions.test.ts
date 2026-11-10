@@ -5,6 +5,7 @@ import type * as AuthSessionModule from "#lib/auth-session";
 const {
   mockAssertSameOrigin,
   mockCreateSeries,
+  mockDeleteSeries,
   mockDeleteSeriesTranslation,
   mockGetAccessToken,
   mockGetSeriesForTenant,
@@ -18,6 +19,7 @@ const {
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateSeries: vi.fn(),
+  mockDeleteSeries: vi.fn(),
   mockDeleteSeriesTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetSeriesForTenant: vi.fn(),
@@ -60,6 +62,10 @@ vi.mock("#lib/access-ticket", () => ({
   accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
 }));
 
+vi.mock("#lib/promotion-code", () => ({
+  promotionCodesCacheTag: (tenantId: string) => `promotion-codes-${tenantId}`,
+}));
+
 vi.mock("#lib/purchase", () => ({
   purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
 }));
@@ -74,6 +80,7 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/series", () => ({
   createSeries: mockCreateSeries,
+  deleteSeries: mockDeleteSeries,
   deleteSeriesTranslation: mockDeleteSeriesTranslation,
   getSeriesForTenant: mockGetSeriesForTenant,
   seriesCacheTag: (tenantId: string, publicId: string) =>
@@ -1556,5 +1563,141 @@ describe("a series' title and synopsis per language", () => {
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteSeriesAction", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+
+  const deleteSeriesForm = (titleConfirmation: string): FormData => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("series_public_id", "SERIES001");
+    formData.set("title_confirmation", titleConfirmation);
+
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetSeriesForTenant.mockResolvedValue({
+      ok: true,
+      series: {
+        id: SERIES_ID,
+        publicId: "SERIES001",
+        title: "Sea Breeze and Letterpress",
+      },
+    });
+  });
+
+  it("refuses a title that is not the series' without calling the API", async () => {
+    const { deleteSeriesAction } = await import("./actions");
+
+    const result = await deleteSeriesAction(
+      null,
+      deleteSeriesForm("Sea Breeze and Letterpress ")
+    );
+
+    expect(result).toEqual({
+      message: "The title entered is not this series' title.",
+      ok: false,
+    });
+    expect(mockDeleteSeries).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses a series the URL does not name", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: {
+        id: "018f0e6a-2000-7000-8000-000000000002",
+        publicId: "SERIES001",
+        title: "Sea Breeze and Letterpress",
+      },
+    });
+
+    const { deleteSeriesAction } = await import("./actions");
+
+    const result = await deleteSeriesAction(
+      null,
+      deleteSeriesForm("Sea Breeze and Letterpress")
+    );
+
+    expect(result).toEqual({
+      message: "The series ID to update is missing.",
+      ok: false,
+    });
+    expect(mockDeleteSeries).not.toHaveBeenCalled();
+  });
+
+  it("says a series deleted already is gone", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({ notFound: true, ok: false });
+
+    const { deleteSeriesAction } = await import("./actions");
+
+    const result = await deleteSeriesAction(
+      null,
+      deleteSeriesForm("Sea Breeze and Letterpress")
+    );
+
+    expect(result).toEqual({
+      message:
+        "This series has already been deleted. Go back to the series list.",
+      ok: false,
+    });
+    expect(mockDeleteSeries).not.toHaveBeenCalled();
+  });
+
+  it("keeps a refusal and the screen it points to in the dialog", async () => {
+    mockDeleteSeries.mockResolvedValueOnce({
+      message: "This series cannot be deleted while it has episodes.",
+      ok: false,
+      reference: "episodes",
+    });
+
+    const { deleteSeriesAction } = await import("./actions");
+
+    const result = await deleteSeriesAction(
+      null,
+      deleteSeriesForm("Sea Breeze and Letterpress")
+    );
+
+    expect(result).toEqual({
+      message: "This series cannot be deleted while it has episodes.",
+      ok: false,
+      reference: "episodes",
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("deletes the series and names it to the series list", async () => {
+    mockDeleteSeries.mockResolvedValueOnce({ ok: true });
+
+    const { deleteSeriesAction } = await import("./actions");
+    await deleteSeriesAction(
+      null,
+      deleteSeriesForm("Sea Breeze and Letterpress")
+    );
+
+    expect(mockDeleteSeries).toHaveBeenCalledWith(
+      { id: SERIES_ID, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `series-wait-free-TENANT001-${SERIES_ID}`
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `series-free-after-TENANT001-${SERIES_ID}`
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("promotion-codes-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series?deleted=1&deleted_title=Sea+Breeze+and+Letterpress"
+    );
   });
 });
