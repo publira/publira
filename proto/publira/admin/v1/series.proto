@@ -292,6 +292,10 @@ message ListSeriesRequest {
   publira.types.v1.SeriesStatus status = 5;
   // Keep only series for this age group. Unspecified keeps every rating.
   publira.types.v1.SeriesAgeRating age_rating = 6;
+  // Keep only series under this label, by its primary key (Label.id). Empty
+  // keeps every series, those under no label included. An id that is not one
+  // of the tenant's labels keeps none.
+  string label_id = 7;
 }
 
 message ListSeriesResponse {

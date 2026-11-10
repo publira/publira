@@ -805,3 +805,81 @@ func TestDBListSeriesPaginatesWithTokens(t *testing.T) {
 		t.Fatalf("previous page = %v, want %v", seriesPublicIDs(back.Series), seriesPublicIDs(first.Series))
 	}
 }
+
+func TestDBListSeriesNarrowsToOneLabel(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant, other := seedTwoTenants(t, env)
+	labels := env.labelClient()
+	client := env.seriesClient()
+
+	createLabel := func(owner adminDBTenant, name string) string {
+		t.Helper()
+		resp, err := labels.CreateLabel(testutil.WithBearer(context.Background(), owner.token()), &publiraadminv1.CreateLabelRequest{
+			Tenant: owner.tenantContext(),
+			Name:   name,
+		})
+		if err != nil {
+			t.Fatalf("CreateLabel %s: %v", name, err)
+		}
+		return resp.Label.Id
+	}
+	createSeries := func(title, labelID string) string {
+		t.Helper()
+		resp, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
+			Tenant:  tenant.tenantContext(),
+			Title:   title,
+			LabelId: labelID,
+		})
+		if err != nil {
+			t.Fatalf("CreateSeries %s: %v", title, err)
+		}
+		return resp.Series.PublicId
+	}
+
+	labelID := createLabel(tenant, "Harbor Press")
+	otherLabelID := createLabel(tenant, "Lighthouse Books")
+	theirLabelID := createLabel(other, "Tenant B Label")
+
+	labelled := []string{
+		createSeries("First Under The Label", labelID),
+		createSeries("Second Under The Label", labelID),
+		createSeries("Third Under The Label", labelID),
+	}
+	createSeries("Under Another Label", otherLabelID)
+	createSeries("Under No Label", "")
+
+	list := func(label, token string) *publiraadminv1.ListSeriesResponse {
+		t.Helper()
+		resp, err := client.ListSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListSeriesRequest{
+			Tenant:  tenant.tenantContext(),
+			Limit:   2,
+			LabelId: label,
+			Token:   token,
+		})
+		if err != nil {
+			t.Fatalf("ListSeries label %q: %v", label, err)
+		}
+		return resp
+	}
+
+	first := list(labelID, "")
+	if len(first.Series) != 2 || first.NextToken == "" {
+		t.Fatalf("first page = %d series, next %q; want 2 and a next page", len(first.Series), first.NextToken)
+	}
+	second := list(labelID, first.NextToken)
+	if len(second.Series) != 1 || second.NextToken != "" {
+		t.Fatalf("second page = %d series, next %q; want 1 and no next page", len(second.Series), second.NextToken)
+	}
+	listed := append(seriesPublicIDs(first.Series), seriesPublicIDs(second.Series)...)
+	slices.Sort(listed)
+	slices.Sort(labelled)
+	if !slices.Equal(listed, labelled) {
+		t.Fatalf("series under the label = %v, want %v", listed, labelled)
+	}
+
+	if theirs := list(theirLabelID, ""); len(theirs.Series) != 0 {
+		t.Fatalf("another tenant's label = %v, want no series", seriesPublicIDs(theirs.Series))
+	}
+}

@@ -1101,6 +1101,7 @@ func (s *adminServer) seriesPage(
 			TenantID:        tenantID,
 			Status:          filters.status,
 			AgeRating:       filters.ageRating,
+			LabelID:         filters.labelID,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -1116,6 +1117,7 @@ func (s *adminServer) seriesPage(
 		TenantID:        tenantID,
 		Status:          filters.status,
 		AgeRating:       filters.ageRating,
+		LabelID:         filters.labelID,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -1132,6 +1134,7 @@ func (s *adminServer) seriesPage(
 // that column, unlike a series write where it means the column default.
 type seriesListFilters struct {
 	ageRating sql.NullString
+	labelID   uuid.NullUUID
 	status    sql.NullString
 }
 
@@ -1140,7 +1143,17 @@ type seriesListFilters struct {
 func (filters seriesListFilters) key() pagination.ListKey {
 	return pagination.NewListKey("created_at_desc").
 		Value("status", filters.status.String).
-		Value("age_rating", filters.ageRating.String)
+		Value("age_rating", filters.ageRating.String).
+		Value("label_id", filters.labelKey())
+}
+
+// labelKey is the label filter as the list key spells it, empty when the list
+// is not narrowed to one.
+func (filters seriesListFilters) labelKey() string {
+	if !filters.labelID.Valid {
+		return ""
+	}
+	return filters.labelID.UUID.String()
 }
 
 func resolveSeriesListFilters(req *publiraadminv1.ListSeriesRequest) (seriesListFilters, error) {
@@ -1158,6 +1171,13 @@ func resolveSeriesListFilters(req *publiraadminv1.ListSeriesRequest) (seriesList
 			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, "age_rating is not supported")
 		}
 		filters.ageRating = sql.NullString{String: ageRating, Valid: true}
+	}
+	labelID, err := recordIDArg(req.LabelId, "label_id")
+	if err != nil {
+		return seriesListFilters{}, err
+	}
+	if labelID != uuid.Nil {
+		filters.labelID = uuid.NullUUID{UUID: labelID, Valid: true}
 	}
 	return filters, nil
 }
