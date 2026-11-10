@@ -596,6 +596,12 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 // checkout started for a plan deleted before it completed — is logged and
 // acknowledged, since no delivery of the same notification would find one.
 //
+// A subscription the write takes from a status the provider bills to canceled
+// owes its reader the mail of its end in the same transaction, whoever ended
+// it; one whose first payment never went through was never billed, and one
+// whose reader's account is gone owes nobody one. A redelivered notification
+// finds the subscription already canceled, and queues nothing twice.
+//
 // record runs in the same transaction once the subscription is written, with
 // the row as it now stands, so whatever it writes commits or rolls back with
 // it; nil records nothing more.
@@ -683,6 +689,11 @@ func (s *apiServer) recordSubscription(
 	if err := tenantwebhooks.QueueSubscriptionChange(ctx, queries, tenantID, recorded.ID, wasBilled, paymentprovider.SubscriptionStatus(recorded.Status).Billed()); err != nil {
 		return s.internalError(ctx, "failed to queue the webhook events of a subscription", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", subscription.ID)
 	}
+	if wasBilled && subscription.Status == paymentprovider.SubscriptionCanceled && recorded.UserID.Valid {
+		if err := queueSubscriptionEndedEmail(ctx, queries, tenantID, recorded, subscription.EndedAt); err != nil {
+			return s.internalError(ctx, "failed to queue the mail of an ended subscription", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", subscription.ID)
+		}
+	}
 	// A subscription billed for nobody is one whose reader closed their
 	// account, before its checkout was paid or before the subscription was
 	// recorded. The deletion canceled what it found, and this is the rest.
@@ -706,6 +717,30 @@ func (s *apiServer) recordSubscription(
 		"subscription_plan_id", recorded.PlanID,
 		"status", recorded.Status,
 	)
+	return nil
+}
+
+// queueSubscriptionEndedEmail owes the reader of subscription the mail of its
+// end at endedAt. A canceled subscription the provider reports no end for is
+// taken to have ended when it is recorded canceled, which is now.
+func queueSubscriptionEndedEmail(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, subscription dbmodels.RecordSubscriptionFromStripeRow, endedAt time.Time) error {
+	if endedAt.IsZero() {
+		endedAt = time.Now()
+	}
+	endedAt = endedAt.UTC()
+	payload, err := json.Marshal(outbox.SubscriptionEndedPayload{
+		TenantID:       tenantID.String(),
+		SubscriptionID: subscription.ID.String(),
+		PlanID:         subscription.PlanID.String(),
+		EndedAt:        endedAt,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal %s event: %w", outbox.EventTypeSubscriptionEnded, err)
+	}
+	if err := insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeSubscriptionEnded, payload,
+		outbox.SubscriptionEndedIdempotencyKey(subscription.ID, endedAt)); err != nil {
+		return fmt.Errorf("enqueue %s: %w", outbox.EventTypeSubscriptionEnded, err)
+	}
 	return nil
 }
 

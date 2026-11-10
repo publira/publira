@@ -198,13 +198,13 @@ FROM subscriptions
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')::text;
 
--- name: GetSubscriptionPaymentFailedMailForTenant :one
--- What the mail of a failed attempt to collect a subscription's invoice says
--- beside what the attempt carried, read by the outbox worker, which connects
--- past RLS and therefore names the tenant itself: the plan the attempt was
--- recorded on, under the name it has when the mail is sent, and the reader's
--- address. The reader is joined within the tenant, so an account deleted since
--- answers no address rather than no row.
+-- name: GetSubscriptionMailForTenant :one
+-- What a mail about a subscription that carries its own facts says beside
+-- them, read by the outbox worker, which connects past RLS and therefore names
+-- the tenant itself: the plan the event was recorded on, under the name it has
+-- when the mail is sent, and the reader's address. The reader is joined within
+-- the tenant, so an account deleted since answers no address rather than no
+-- row.
 SELECT pl.name AS plan_name,
     u.email AS reader_email
 FROM subscriptions s

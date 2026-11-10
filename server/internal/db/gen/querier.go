@@ -1494,13 +1494,13 @@ type Querier interface {
 	// it again, so the change can be told: no row for one not recorded yet.
 	GetStripeSubscriptionStatusForTenant(ctx context.Context, arg GetStripeSubscriptionStatusForTenantParams) (GetStripeSubscriptionStatusForTenantRow, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
-	// What the mail of a failed attempt to collect a subscription's invoice says
-	// beside what the attempt carried, read by the outbox worker, which connects
-	// past RLS and therefore names the tenant itself: the plan the attempt was
-	// recorded on, under the name it has when the mail is sent, and the reader's
-	// address. The reader is joined within the tenant, so an account deleted since
-	// answers no address rather than no row.
-	GetSubscriptionPaymentFailedMailForTenant(ctx context.Context, arg GetSubscriptionPaymentFailedMailForTenantParams) (GetSubscriptionPaymentFailedMailForTenantRow, error)
+	// What a mail about a subscription that carries its own facts says beside
+	// them, read by the outbox worker, which connects past RLS and therefore names
+	// the tenant itself: the plan the event was recorded on, under the name it has
+	// when the mail is sent, and the reader's address. The reader is joined within
+	// the tenant, so an account deleted since answers no address rather than no
+	// row.
+	GetSubscriptionMailForTenant(ctx context.Context, arg GetSubscriptionMailForTenantParams) (GetSubscriptionMailForTenantRow, error)
 	// The subscription payment paid through a PaymentIntent. No row is a
 	// PaymentIntent no payment here was paid through, which is an open dispute
 	// the caller holds until the payment is recorded.

@@ -156,7 +156,10 @@ type Subscription struct {
 	Status            string
 	CurrentPeriodEnd  int64
 	CancelAtPeriodEnd bool
-	Metadata          map[string]string
+	// EndedAt is when a canceled subscription stopped, and zero for one that
+	// has not, which Stripe answers as null.
+	EndedAt  int64
+	Metadata map[string]string
 }
 
 // SubscriptionCancellation is one subscription the fake canceled.
@@ -912,6 +915,7 @@ func (a *API) cancelSubscription(w http.ResponseWriter, r *http.Request) {
 	if ok && !fail && !ended {
 		subscription.Status = "canceled"
 		subscription.CancelAtPeriodEnd = false
+		subscription.EndedAt = time.Now().Unix()
 		a.subscriptions[secretKey][id] = subscription
 		a.cancellations = append(a.cancellations, SubscriptionCancellation{SecretKey: secretKey, SubscriptionID: id})
 	}
@@ -933,11 +937,16 @@ func (a *API) cancelSubscription(w http.ResponseWriter, r *http.Request) {
 // SubscriptionObject is subscription in the shape Stripe answers it and puts
 // in a customer.subscription event.
 func SubscriptionObject(subscription Subscription) map[string]any {
+	var endedAt any
+	if subscription.EndedAt > 0 {
+		endedAt = subscription.EndedAt
+	}
 	return map[string]any{
 		"id":                   subscription.ID,
 		"object":               "subscription",
 		"cancel_at_period_end": subscription.CancelAtPeriodEnd,
 		"customer":             subscription.CustomerID,
+		"ended_at":             endedAt,
 		"metadata":             subscription.Metadata,
 		"status":               subscription.Status,
 		"items": map[string]any{
@@ -1152,10 +1161,14 @@ func (f *Fixture) SubscriptionUpdated(t testing.TB, credentials paymentprovider.
 }
 
 // SubscriptionDeleted answers Stripe's notification that subscription ended,
-// and puts it on the account of the credentials as canceled.
+// and puts it on the account of the credentials as canceled, ended now unless
+// subscription says when.
 func (f *Fixture) SubscriptionDeleted(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
 	t.Helper()
 	subscription.Status = string(stripego.SubscriptionStatusCanceled)
+	if subscription.EndedAt == 0 {
+		subscription.EndedAt = time.Now().Unix()
+	}
 	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
 	return recorded(t, credentials, "customer.subscription.deleted.json", SubscriptionObject(subscription))
 }

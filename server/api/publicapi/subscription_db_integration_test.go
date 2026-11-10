@@ -2,7 +2,9 @@ package publicapi
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"path"
 	"slices"
@@ -963,5 +965,133 @@ func TestDBASubscriptionOwesItsWebhookEndpointItsStartAndItsEnd(t *testing.T) {
 	}
 	if got := owed(); !slices.Equal(got, want) {
 		t.Fatalf("webhook deliveries = %v, want %v", got, want)
+	}
+}
+
+// subscriptionEndedMails answers the mails of ended subscriptions the webhook
+// has queued for the fixture's tenant, with the outbox key each was queued
+// under.
+func (f *subscriptionFixture) subscriptionEndedMails(t *testing.T) []outbox.SubscriptionEndedPayload {
+	t.Helper()
+	rows, err := f.pg.DB.QueryContext(context.Background(),
+		"SELECT payload FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 ORDER BY created_at, id",
+		f.tenant.ID, outbox.EventTypeSubscriptionEnded)
+	if err != nil {
+		t.Fatalf("read the mails queued: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var mails []outbox.SubscriptionEndedPayload
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatalf("scan a mail queued: %v", err)
+		}
+		var payload outbox.SubscriptionEndedPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatalf("decode a mail queued: %v", err)
+		}
+		mails = append(mails, payload)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the mails queued: %v", err)
+	}
+	return mails
+}
+
+// A subscription the reader cancels at once, one set to cancel at the end of
+// its period, and one Stripe gives up collecting each owe the reader one mail
+// of their end, however often the notification of the end is delivered,
+// carrying the instant Stripe ended it at.
+// A subscription whose first payment never went through was never billed, and
+// one whose reader's account is gone has nobody to tell; neither owes a mail.
+func TestDBProcessPaymentWebhookOwesTheReaderOneMailWhenTheSubscriptionEnds(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	periodEnd := time.Now().UTC().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	subscriptionOf := func(id, status string) stripetest.Subscription {
+		return stripetest.Subscription{
+			ID:               id,
+			CustomerID:       "cus_ending",
+			PriceID:          "price_monthly",
+			Status:           status,
+			CurrentPeriodEnd: periodEnd.Unix(),
+			Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+		}
+	}
+	deliver := func(t *testing.T, what string, payload []byte, headers http.Header, deliveries int) {
+		t.Helper()
+		for delivery := range deliveries {
+			if err := f.deliver(t, payload, headers); err != nil {
+				t.Fatalf("delivery %d of %s: %v", delivery+1, what, err)
+			}
+		}
+	}
+	end := func(t *testing.T, subscription stripetest.Subscription, endedAt time.Time) {
+		t.Helper()
+		payload, headers := f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+		deliver(t, "the update of "+subscription.ID, payload, headers, 1)
+		stale, staleHeaders := f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+		subscription.EndedAt = endedAt.Unix()
+		payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, subscription)
+		deliver(t, "the end of "+subscription.ID, payload, headers, 3)
+		// A notification Stripe sent before the end and delivered after it
+		// reads the subscription canceled, as it already is.
+		deliver(t, "a late update of "+subscription.ID, stale, staleHeaders, 1)
+	}
+	recordedID := func(t *testing.T, stripeID string) uuid.UUID {
+		t.Helper()
+		var id uuid.UUID
+		if err := f.pg.DB.QueryRowContext(context.Background(),
+			"SELECT id FROM subscriptions WHERE tenant_id = $1 AND stripe_subscription_id = $2", f.tenant.ID, stripeID,
+		).Scan(&id); err != nil {
+			t.Fatalf("read subscription %s: %v", stripeID, err)
+		}
+		return id
+	}
+
+	canceledAt := time.Now().UTC().Truncate(time.Second)
+	end(t, subscriptionOf("sub_canceled_at_once", "active"), canceledAt)
+	atPeriodEnd := subscriptionOf("sub_canceled_at_period_end", "active")
+	atPeriodEnd.CancelAtPeriodEnd = true
+	end(t, atPeriodEnd, periodEnd)
+	gaveUpAt := canceledAt.Add(time.Minute)
+	end(t, subscriptionOf("sub_given_up", "past_due"), gaveUpAt)
+
+	mails := f.subscriptionEndedMails(t)
+	if len(mails) != 3 {
+		t.Fatalf("ended subscription mails = %d, want one per subscription however often its end is delivered", len(mails))
+	}
+	for i, want := range []struct {
+		stripeID string
+		endedAt  time.Time
+	}{
+		{"sub_canceled_at_once", canceledAt},
+		{"sub_canceled_at_period_end", periodEnd},
+		{"sub_given_up", gaveUpAt},
+	} {
+		mail := mails[i]
+		if mail.TenantID != f.tenant.ID.String() || mail.SubscriptionID != recordedID(t, want.stripeID).String() ||
+			mail.PlanID != plan.ID.String() || !mail.EndedAt.Equal(want.endedAt) {
+			t.Errorf("mail %d = %+v, want %s of plan %s ended at %s", i, mail, want.stripeID, plan.ID, want.endedAt)
+		}
+	}
+
+	end(t, subscriptionOf("sub_never_paid", "incomplete"), canceledAt)
+	if got := len(f.subscriptionEndedMails(t)); got != 3 {
+		t.Fatalf("ended subscription mails after one that was never billed = %d, want none for it", got)
+	}
+
+	orphan := subscriptionOf("sub_orphaned", "active")
+	payload, headers := f.stripe.SubscriptionUpdated(t, f.credentials, orphan)
+	deliver(t, "the update of the orphaned subscription", payload, headers, 1)
+	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
+		t.Fatalf("DeleteMe: %v", err)
+	}
+	payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, orphan)
+	deliver(t, "the end of the orphaned subscription", payload, headers, 1)
+	if got := len(f.subscriptionEndedMails(t)); got != 3 {
+		t.Fatalf("ended subscription mails after the reader is gone = %d, want none for them", got)
 	}
 }

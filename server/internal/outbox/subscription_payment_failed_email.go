@@ -81,7 +81,7 @@ func NewSubscriptionPaymentFailedEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return err
 		}
-		mail, err := queries.GetSubscriptionPaymentFailedMailForTenant(ctx, dbmodels.GetSubscriptionPaymentFailedMailForTenantParams{
+		mail, err := queries.GetSubscriptionMailForTenant(ctx, dbmodels.GetSubscriptionMailForTenantParams{
 			TenantID: tenantID,
 			ID:       subscriptionID,
 			PlanID:   planID,
