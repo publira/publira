@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/legal_page_agreements.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -51,6 +52,8 @@ import 'package:publira/screens/series_detail_screen.dart';
 import 'package:publira/screens/sign_in_screen.dart';
 import 'package:publira/screens/sign_up_screen.dart';
 import 'package:publira/screens/tag_screen.dart';
+import 'package:publira/screens/two_step_sign_in_screen.dart';
+import 'package:publira/screens/two_step_verification_screen.dart';
 import 'package:publira/screens/verify_email_screen.dart';
 
 /// Route path helpers for type-safe navigation.
@@ -65,6 +68,10 @@ abstract final class AppRoutes {
   /// Where a first Apple or Google sign-in asks the consent the tenant
   /// requires before the account is created, handed the token as `extra`.
   static const continueSignUp = '/sign-up/continue';
+
+  /// Where a sign-in to an account that holds an authenticator asks for its
+  /// code, handed the challenge the sign-in answered as `extra`.
+  static const twoStepSignIn = '/sign-in/two-step';
 
   /// The path the site's confirmation mail links to, which this app claims
   /// as an App Link, so the token is spent here rather than in a browser.
@@ -105,6 +112,8 @@ abstract final class AppRoutes {
   static const accountLinkedAccounts = '$account/$linkedAccounts';
   static const passkeys = 'passkeys';
   static const accountPasskeys = '$account/$passkeys';
+  static const twoStepVerification = 'two-step-verification';
+  static const accountTwoStepVerification = '$account/$twoStepVerification';
   static const delete = 'delete';
   static const accountDelete = '$account/$delete';
   static const contact = 'contact';
@@ -200,6 +209,15 @@ abstract final class AppRoutes {
   static String signInPath({String? returnTo}) => returnTo == null
       ? signIn
       : Uri(path: signIn, queryParameters: {'return_to': returnTo}).toString();
+
+  /// [twoStepSignIn], landing on [returnTo] once the code has signed the
+  /// reader in.
+  static String twoStepSignInPath({String? returnTo}) => returnTo == null
+      ? twoStepSignIn
+      : Uri(
+          path: twoStepSignIn,
+          queryParameters: {'return_to': returnTo},
+        ).toString();
 
   /// [continueSignUp], landing on [returnTo] once the account is created.
   static String continueSignUpPath({String? returnTo}) => returnTo == null
@@ -308,6 +326,16 @@ List<RouteBase> _tabRoutes() => [
     builder: (context, state) => ContinueSignUpScreen(
       credential: switch (state.extra) {
         final ProviderCredential credential => credential,
+        _ => null,
+      },
+      returnTo: inAppLocation(state.uri.queryParameters['return_to']),
+    ),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.twoStepSignIn),
+    builder: (context, state) => TwoStepSignInScreen(
+      challenge: switch (state.extra) {
+        final MfaChallenge challenge => challenge,
         _ => null,
       },
       returnTo: inAppLocation(state.uri.queryParameters['return_to']),
@@ -476,6 +504,7 @@ bool isHeldByEveryTab(String location) =>
 /// | `/sign-in` | Sign-in form |
 /// | `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
 /// | `/sign-up/continue` | Asks the consent and birth date a first Apple or Google sign-in creates an account with |
+/// | `/sign-in/two-step` | Asks for the two-step verification code, or a recovery code, after the password or an Apple or Google sign-in (`AuthService/VerifyMfa`) |
 /// | `/resend-verification` | Asks for a fresh confirmation link |
 /// | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
 /// | `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
@@ -498,6 +527,7 @@ bool isHeldByEveryTab(String location) =>
 /// | `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
 /// | `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own, and a link for each provider the device offers that the account has none of (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`, `AuthService/LinkIdentity`) |
 /// | `/account/passkeys` | Account | The reader's passkeys, each renamed or removed on its own, and a way to add one where the device uses the site's (`AuthService/ListMyPasskeys`, `AuthService/RenamePasskey`, `AuthService/DeletePasskey`, `AuthService/BeginPasskeyRegistration`, `AuthService/FinishPasskeyRegistration`) |
+/// | `/account/two-step-verification` | Account | Turns two-step verification on with an authenticator and shows the recovery codes once, regenerates them, and turns it off with the password, or a fresh provider sign-in or a passkey for an account without one, and a code (`AuthService/GetMfaStatus`, `AuthService/StartMfaEnrollment`, `AuthService/ConfirmMfaEnrollment`, `AuthService/RegenerateMfaRecoveryCodes`, `AuthService/DisableMfa`) |
 /// | `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 /// | `/account/contact` | Account | A message to the tenant's staff |
 /// | `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
@@ -666,6 +696,11 @@ GoRouter createAppRouter({String? initialLocation}) {
                     path: AppRoutes.passkeys,
                     builder: (context, state) =>
                         const ReaderKeyed(child: PasskeysScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.twoStepVerification,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: TwoStepVerificationScreen()),
                   ),
                   GoRoute(
                     path: AppRoutes.delete,

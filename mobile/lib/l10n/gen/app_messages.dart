@@ -713,6 +713,11 @@ final class AppMessages {
     return _format('mobile.account.title');
   }
 
+  /// `mobile.account.two_step_verification`
+  String get accountTwoStepVerification {
+    return _format('mobile.account.two_step_verification');
+  }
+
   /// `mobile.announcements.banner_dismiss`
   String get announcementsBannerDismiss {
     return _format('mobile.announcements.banner_dismiss');
@@ -4293,6 +4298,280 @@ final class AppMessages {
     return _format('mobile.tip.thanks');
   }
 
+  /// `mobile.two_step.code_label`
+  String get twoStepCodeLabel {
+    return _format('mobile.two_step.code_label');
+  }
+
+  /// `mobile.two_step.code_required`
+  String get twoStepCodeRequired {
+    return _format('mobile.two_step.code_required');
+  }
+
+  /// `mobile.two_step.description`
+  String get twoStepDescription {
+    return _format('mobile.two_step.description');
+  }
+
+  /// `mobile.two_step.expired`
+  String get twoStepExpired {
+    return _format('mobile.two_step.expired');
+  }
+
+  /// `mobile.two_step.invalid_code`
+  String get twoStepInvalidCode {
+    return _format('mobile.two_step.invalid_code');
+  }
+
+  /// `mobile.two_step.invalid_code_or_recovery_code`
+  String get twoStepInvalidCodeOrRecoveryCode {
+    return _format('mobile.two_step.invalid_code_or_recovery_code');
+  }
+
+  /// `mobile.two_step.invalid_recovery_code`
+  String get twoStepInvalidRecoveryCode {
+    return _format('mobile.two_step.invalid_recovery_code');
+  }
+
+  /// `mobile.two_step.locked`
+  String get twoStepLocked {
+    return _format('mobile.two_step.locked');
+  }
+
+  /// `mobile.two_step.recovery_code_label`
+  String get twoStepRecoveryCodeLabel {
+    return _format('mobile.two_step.recovery_code_label');
+  }
+
+  /// `mobile.two_step.recovery_description`
+  String get twoStepRecoveryDescription {
+    return _format('mobile.two_step.recovery_description');
+  }
+
+  /// `mobile.two_step.submit`
+  String get twoStepSubmit {
+    return _format('mobile.two_step.submit');
+  }
+
+  /// `mobile.two_step.title`
+  String get twoStepTitle {
+    return _format('mobile.two_step.title');
+  }
+
+  /// `mobile.two_step.use_authenticator`
+  String get twoStepUseAuthenticator {
+    return _format('mobile.two_step.use_authenticator');
+  }
+
+  /// `mobile.two_step.use_recovery_code`
+  String get twoStepUseRecoveryCode {
+    return _format('mobile.two_step.use_recovery_code');
+  }
+
+  /// `mobile.two_step_verification.code_help`
+  String get twoStepVerificationCodeHelp {
+    return _format('mobile.two_step_verification.code_help');
+  }
+
+  /// `mobile.two_step_verification.code_or_recovery_help`
+  String get twoStepVerificationCodeOrRecoveryHelp {
+    return _format('mobile.two_step_verification.code_or_recovery_help');
+  }
+
+  /// `mobile.two_step_verification.confirm`
+  String get twoStepVerificationConfirm {
+    return _format('mobile.two_step_verification.confirm');
+  }
+
+  /// `mobile.two_step_verification.description`
+  String get twoStepVerificationDescription {
+    return _format('mobile.two_step_verification.description');
+  }
+
+  /// `mobile.two_step_verification.disable`
+  String get twoStepVerificationDisable {
+    return _format('mobile.two_step_verification.disable');
+  }
+
+  /// `mobile.two_step_verification.disable_description`
+  String get twoStepVerificationDisableDescription {
+    return _format('mobile.two_step_verification.disable_description');
+  }
+
+  /// `mobile.two_step_verification.disable_failed`
+  String get twoStepVerificationDisableFailed {
+    return _format('mobile.two_step_verification.disable_failed');
+  }
+
+  /// `mobile.two_step_verification.disable_heading`
+  String get twoStepVerificationDisableHeading {
+    return _format('mobile.two_step_verification.disable_heading');
+  }
+
+  /// `mobile.two_step_verification.disable_no_confirmation`
+  String get twoStepVerificationDisableNoConfirmation {
+    return _format('mobile.two_step_verification.disable_no_confirmation');
+  }
+
+  /// `mobile.two_step_verification.disable_unconfirmed`
+  String get twoStepVerificationDisableUnconfirmed {
+    return _format('mobile.two_step_verification.disable_unconfirmed');
+  }
+
+  /// `mobile.two_step_verification.disable_with_apple`
+  String get twoStepVerificationDisableWithApple {
+    return _format('mobile.two_step_verification.disable_with_apple');
+  }
+
+  /// `mobile.two_step_verification.disable_with_google`
+  String get twoStepVerificationDisableWithGoogle {
+    return _format('mobile.two_step_verification.disable_with_google');
+  }
+
+  /// `mobile.two_step_verification.disable_with_passkey`
+  String get twoStepVerificationDisableWithPasskey {
+    return _format('mobile.two_step_verification.disable_with_passkey');
+  }
+
+  /// `mobile.two_step_verification.disabled`
+  String get twoStepVerificationDisabled {
+    return _format('mobile.two_step_verification.disabled');
+  }
+
+  /// `mobile.two_step_verification.done`
+  String get twoStepVerificationDone {
+    return _format('mobile.two_step_verification.done');
+  }
+
+  /// `mobile.two_step_verification.enable`
+  String get twoStepVerificationEnable {
+    return _format('mobile.two_step_verification.enable');
+  }
+
+  /// `mobile.two_step_verification.enable_failed`
+  String get twoStepVerificationEnableFailed {
+    return _format('mobile.two_step_verification.enable_failed');
+  }
+
+  /// `mobile.two_step_verification.enabled`
+  String get twoStepVerificationEnabled {
+    return _format('mobile.two_step_verification.enabled');
+  }
+
+  /// `mobile.two_step_verification.load_failed`
+  String get twoStepVerificationLoadFailed {
+    return _format('mobile.two_step_verification.load_failed');
+  }
+
+  /// `mobile.two_step_verification.password_label`
+  String get twoStepVerificationPasswordLabel {
+    return _format('mobile.two_step_verification.password_label');
+  }
+
+  /// `mobile.two_step_verification.qr_label`
+  String get twoStepVerificationQrLabel {
+    return _format('mobile.two_step_verification.qr_label');
+  }
+
+  /// `mobile.two_step_verification.recovery_codes_copied`
+  String get twoStepVerificationRecoveryCodesCopied {
+    return _format('mobile.two_step_verification.recovery_codes_copied');
+  }
+
+  /// `mobile.two_step_verification.recovery_codes_copy`
+  String get twoStepVerificationRecoveryCodesCopy {
+    return _format('mobile.two_step_verification.recovery_codes_copy');
+  }
+
+  /// `mobile.two_step_verification.recovery_codes_description`
+  String get twoStepVerificationRecoveryCodesDescription {
+    return _format('mobile.two_step_verification.recovery_codes_description');
+  }
+
+  /// `mobile.two_step_verification.recovery_codes_share`
+  String get twoStepVerificationRecoveryCodesShare {
+    return _format('mobile.two_step_verification.recovery_codes_share');
+  }
+
+  /// `mobile.two_step_verification.recovery_codes_title`
+  String get twoStepVerificationRecoveryCodesTitle {
+    return _format('mobile.two_step_verification.recovery_codes_title');
+  }
+
+  /// `mobile.two_step_verification.regenerate`
+  String get twoStepVerificationRegenerate {
+    return _format('mobile.two_step_verification.regenerate');
+  }
+
+  /// `mobile.two_step_verification.regenerate_description`
+  String get twoStepVerificationRegenerateDescription {
+    return _format('mobile.two_step_verification.regenerate_description');
+  }
+
+  /// `mobile.two_step_verification.regenerate_failed`
+  String get twoStepVerificationRegenerateFailed {
+    return _format('mobile.two_step_verification.regenerate_failed');
+  }
+
+  /// `mobile.two_step_verification.regenerated`
+  String get twoStepVerificationRegenerated {
+    return _format('mobile.two_step_verification.regenerated');
+  }
+
+  /// `mobile.two_step_verification.remaining_recovery_codes`
+  String twoStepVerificationRemainingRecoveryCodes({required num count}) {
+    return _format('mobile.two_step_verification.remaining_recovery_codes', {
+      'count': count,
+    });
+  }
+
+  /// `mobile.two_step_verification.secret_copied`
+  String get twoStepVerificationSecretCopied {
+    return _format('mobile.two_step_verification.secret_copied');
+  }
+
+  /// `mobile.two_step_verification.secret_copy`
+  String get twoStepVerificationSecretCopy {
+    return _format('mobile.two_step_verification.secret_copy');
+  }
+
+  /// `mobile.two_step_verification.secret_label`
+  String get twoStepVerificationSecretLabel {
+    return _format('mobile.two_step_verification.secret_label');
+  }
+
+  /// `mobile.two_step_verification.set_up_in_console`
+  String get twoStepVerificationSetUpInConsole {
+    return _format('mobile.two_step_verification.set_up_in_console');
+  }
+
+  /// `mobile.two_step_verification.setup_description`
+  String get twoStepVerificationSetupDescription {
+    return _format('mobile.two_step_verification.setup_description');
+  }
+
+  /// `mobile.two_step_verification.status_disabled`
+  String get twoStepVerificationStatusDisabled {
+    return _format('mobile.two_step_verification.status_disabled');
+  }
+
+  /// `mobile.two_step_verification.status_enabled`
+  String twoStepVerificationStatusEnabled({required String date}) {
+    return _format('mobile.two_step_verification.status_enabled', {
+      'date': date,
+    });
+  }
+
+  /// `mobile.two_step_verification.title`
+  String get twoStepVerificationTitle {
+    return _format('mobile.two_step_verification.title');
+  }
+
+  /// `mobile.two_step_verification.wrong_password`
+  String get twoStepVerificationWrongPassword {
+    return _format('mobile.two_step_verification.wrong_password');
+  }
+
   /// `mobile.verify_email.expired`
   String get verifyEmailExpired {
     return _format('mobile.verify_email.expired');
@@ -4720,6 +4999,7 @@ const _jaSources = <String, String>{
   'mobile.account.sign_out': 'サインアウト',
   'mobile.account.signed_out': 'サインインしていません',
   'mobile.account.title': 'アカウント',
+  'mobile.account.two_step_verification': '2段階認証',
   'mobile.announcements.banner_dismiss': 'このお知らせを閉じる',
   'mobile.announcements.banner_link': 'お知らせを読む',
   'mobile.announcements.detail_failed': 'このお知らせを表示できませんでした。もう一度お試しください。',
@@ -5487,6 +5767,75 @@ const _jaSources = <String, String>{
   'mobile.tip.sheet_title': '著者にチップを贈る',
   'mobile.tip.start_failed': 'チップの手続きを開始できませんでした。時間をおいて再試行してください。',
   'mobile.tip.thanks': 'チップをありがとうございます。このエピソードの著者に届けます。',
+  'mobile.two_step.code_label': '確認コード',
+  'mobile.two_step.code_required': 'コードを入力してください。',
+  'mobile.two_step.description': '認証アプリに表示されている6桁のコードを入力して、ログインを完了してください。',
+  'mobile.two_step.expired': 'ログインの有効期限が切れました。もう一度ログインしてください。',
+  'mobile.two_step.invalid_code': 'コードが正しくありません。認証アプリを確認して、もう一度入力してください。',
+  'mobile.two_step.invalid_code_or_recovery_code':
+      'コードが正しくありません。認証アプリの現在のコードか、未使用のリカバリーコードを入力してください。',
+  'mobile.two_step.invalid_recovery_code': 'リカバリーコードが正しくないか、すでに使用されています。',
+  'mobile.two_step.locked': '認証の失敗が続いたため、一時的にロックされています。しばらく待ってから再試行してください。',
+  'mobile.two_step.recovery_code_label': 'リカバリーコード',
+  'mobile.two_step.recovery_description':
+      '2段階認証を有効にしたときに保存したリカバリーコードを1つ入力してください。',
+  'mobile.two_step.submit': '確認',
+  'mobile.two_step.title': '2段階認証',
+  'mobile.two_step.use_authenticator': '認証アプリを使う',
+  'mobile.two_step.use_recovery_code': 'リカバリーコードを使う',
+  'mobile.two_step_verification.code_help': '認証アプリの6桁のコードを入力します。',
+  'mobile.two_step_verification.code_or_recovery_help':
+      '認証アプリの6桁のコードか、リカバリーコードを1つ入力します。',
+  'mobile.two_step_verification.confirm': '2段階認証を有効にする',
+  'mobile.two_step_verification.description':
+      'パスワードでのログインや、AppleまたはGoogleでのログインのあとに、認証アプリのコードを求めます。パスキーでのログインではコードを求めません。',
+  'mobile.two_step_verification.disable': '無効にする',
+  'mobile.two_step_verification.disable_description':
+      'ログインでコードを求めなくなります。確認のため、認証アプリのコードかリカバリーコードを入力してください。',
+  'mobile.two_step_verification.disable_failed':
+      '2段階認証を無効にできませんでした。しばらくしてから再試行してください。',
+  'mobile.two_step_verification.disable_heading': '2段階認証を無効にする',
+  'mobile.two_step_verification.disable_no_confirmation':
+      '連携しているアカウントは、いまこのアプリでログインに使えません。2段階認証を無効にするには、先にパスワードを設定してください。',
+  'mobile.two_step_verification.disable_unconfirmed':
+      'ログインを確認できませんでした。もう一度お試しください。',
+  'mobile.two_step_verification.disable_with_apple': 'Appleで無効にする',
+  'mobile.two_step_verification.disable_with_google': 'Googleで無効にする',
+  'mobile.two_step_verification.disable_with_passkey': 'パスキーで無効にする',
+  'mobile.two_step_verification.disabled': '2段階認証を無効にしました。',
+  'mobile.two_step_verification.done': '完了',
+  'mobile.two_step_verification.enable': '有効にする',
+  'mobile.two_step_verification.enable_failed':
+      '2段階認証を有効にできませんでした。しばらくしてから再試行してください。',
+  'mobile.two_step_verification.enabled': '2段階認証を有効にしました。',
+  'mobile.two_step_verification.load_failed': '2段階認証の設定を表示できませんでした。',
+  'mobile.two_step_verification.password_label': '現在のパスワード',
+  'mobile.two_step_verification.qr_label': '2段階認証を設定するためのQRコード',
+  'mobile.two_step_verification.recovery_codes_copied': 'リカバリーコードをコピーしました。',
+  'mobile.two_step_verification.recovery_codes_copy': 'リカバリーコードをコピー',
+  'mobile.two_step_verification.recovery_codes_description':
+      '安全な場所に保管してください。認証アプリが手元にないとき、1つにつき1回ログインできます。表示されるのはこの一度だけです。',
+  'mobile.two_step_verification.recovery_codes_share': 'リカバリーコードを共有',
+  'mobile.two_step_verification.recovery_codes_title': 'リカバリーコード',
+  'mobile.two_step_verification.regenerate': 'リカバリーコードを再発行',
+  'mobile.two_step_verification.regenerate_description':
+      '使用済みかどうかにかかわらず、保持しているリカバリーコードをすべて置き換えます。認証アプリの現在のコードを入力してください。',
+  'mobile.two_step_verification.regenerate_failed':
+      'リカバリーコードを再発行できませんでした。しばらくしてから再試行してください。',
+  'mobile.two_step_verification.regenerated': '新しいリカバリーコードを発行しました。',
+  'mobile.two_step_verification.remaining_recovery_codes':
+      '残りのリカバリーコードは{\$count :integer}個です',
+  'mobile.two_step_verification.secret_copied': 'セットアップキーをコピーしました。',
+  'mobile.two_step_verification.secret_copy': 'セットアップキーをコピー',
+  'mobile.two_step_verification.secret_label': 'セットアップキー',
+  'mobile.two_step_verification.set_up_in_console':
+      'このアカウントはテナントのコンソールにパスキーでログインしているため、2段階認証はコンソールのアカウント設定から設定してください。',
+  'mobile.two_step_verification.setup_description':
+      '認証アプリにこのアカウントを追加し、表示された6桁のコードを入力してください。この端末の認証アプリにはセットアップキーをコピーして入力し、別の端末の認証アプリではQRコードを読み取ります。',
+  'mobile.two_step_verification.status_disabled': '2段階認証は無効です。',
+  'mobile.two_step_verification.status_enabled': '{\$date}から2段階認証が有効です。',
+  'mobile.two_step_verification.title': '2段階認証',
+  'mobile.two_step_verification.wrong_password': 'パスワードが正しくありません。',
   'mobile.verify_email.expired': 'この確認リンクは有効期限が切れています。',
   'mobile.verify_email.failed': 'メールアドレスを確認できませんでした。再試行してください。',
   'mobile.verify_email.invalid_token': 'この確認リンクは無効です。',
@@ -5731,6 +6080,7 @@ const _enSources = <String, String>{
   'mobile.account.sign_out': 'Sign out',
   'mobile.account.signed_out': 'You are not signed in.',
   'mobile.account.title': 'Account',
+  'mobile.account.two_step_verification': 'Two-step verification',
   'mobile.announcements.banner_dismiss': 'Close this announcement',
   'mobile.announcements.banner_link': 'Read the announcement',
   'mobile.announcements.detail_failed':
@@ -6636,6 +6986,89 @@ const _enSources = <String, String>{
   'mobile.tip.start_failed': 'Could not start the tip. Try again later.',
   'mobile.tip.thanks':
       'Thank you for your tip. It goes to the Authors of this episode.',
+  'mobile.two_step.code_label': 'Verification code',
+  'mobile.two_step.code_required': 'Enter the code.',
+  'mobile.two_step.description':
+      'Enter the 6-digit code from your authenticator app to finish signing in.',
+  'mobile.two_step.expired': 'This sign-in has expired. Sign in again.',
+  'mobile.two_step.invalid_code':
+      'The code is incorrect. Check your authenticator app and try again.',
+  'mobile.two_step.invalid_code_or_recovery_code':
+      'The code is incorrect. Enter the current code from your authenticator app or an unused recovery code.',
+  'mobile.two_step.invalid_recovery_code':
+      'The recovery code is incorrect or has already been used.',
+  'mobile.two_step.locked':
+      'Too many incorrect codes. Wait a while before trying again.',
+  'mobile.two_step.recovery_code_label': 'Recovery code',
+  'mobile.two_step.recovery_description':
+      'Enter one of the recovery codes you saved when you turned on two-step verification.',
+  'mobile.two_step.submit': 'Verify',
+  'mobile.two_step.title': 'Two-step verification',
+  'mobile.two_step.use_authenticator': 'Use your authenticator app',
+  'mobile.two_step.use_recovery_code': 'Use a recovery code',
+  'mobile.two_step_verification.code_help':
+      'Enter the 6-digit code from your authenticator app.',
+  'mobile.two_step_verification.code_or_recovery_help':
+      'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
+  'mobile.two_step_verification.confirm': 'Turn on two-step verification',
+  'mobile.two_step_verification.description':
+      'Ask for a code from an authenticator app after your password, or after you sign in with Apple or Google. Signing in with a passkey asks for no code.',
+  'mobile.two_step_verification.disable': 'Turn off',
+  'mobile.two_step_verification.disable_description':
+      'Signing in will no longer ask for a code. To confirm, enter a code from your authenticator app or one of your recovery codes.',
+  'mobile.two_step_verification.disable_failed':
+      'Could not turn off two-step verification. Please try again later.',
+  'mobile.two_step_verification.disable_heading':
+      'Turn off two-step verification',
+  'mobile.two_step_verification.disable_no_confirmation':
+      'None of the accounts linked to yours can sign in to this app right now. Set a password first to turn off two-step verification.',
+  'mobile.two_step_verification.disable_unconfirmed':
+      'Your sign-in could not be confirmed. Please try again.',
+  'mobile.two_step_verification.disable_with_apple': 'Turn off with Apple',
+  'mobile.two_step_verification.disable_with_google': 'Turn off with Google',
+  'mobile.two_step_verification.disable_with_passkey':
+      'Turn off with a passkey',
+  'mobile.two_step_verification.disabled': 'Two-step verification is now off.',
+  'mobile.two_step_verification.done': 'Done',
+  'mobile.two_step_verification.enable': 'Turn on',
+  'mobile.two_step_verification.enable_failed':
+      'Could not turn on two-step verification. Please try again later.',
+  'mobile.two_step_verification.enabled': 'Two-step verification is now on.',
+  'mobile.two_step_verification.load_failed':
+      'Could not show your two-step verification settings.',
+  'mobile.two_step_verification.password_label': 'Current password',
+  'mobile.two_step_verification.qr_label':
+      'QR code for setting up two-step verification',
+  'mobile.two_step_verification.recovery_codes_copied':
+      'Recovery codes copied.',
+  'mobile.two_step_verification.recovery_codes_copy': 'Copy the recovery codes',
+  'mobile.two_step_verification.recovery_codes_description':
+      'Store these somewhere safe. Each code signs you in once when your authenticator app is not at hand, and they are shown only now.',
+  'mobile.two_step_verification.recovery_codes_share':
+      'Share the recovery codes',
+  'mobile.two_step_verification.recovery_codes_title': 'Recovery codes',
+  'mobile.two_step_verification.regenerate': 'Regenerate recovery codes',
+  'mobile.two_step_verification.regenerate_description':
+      'Replaces every recovery code you hold, used or not. Enter the current code from your authenticator app.',
+  'mobile.two_step_verification.regenerate_failed':
+      'Could not regenerate the recovery codes. Please try again later.',
+  'mobile.two_step_verification.regenerated':
+      'New recovery codes have been issued.',
+  'mobile.two_step_verification.remaining_recovery_codes':
+      '.input {\$count :integer}\n.match \$count\none {{{\$count} recovery code left}}\n* {{{\$count} recovery codes left}}',
+  'mobile.two_step_verification.secret_copied': 'Setup key copied.',
+  'mobile.two_step_verification.secret_copy': 'Copy the setup key',
+  'mobile.two_step_verification.secret_label': 'Setup key',
+  'mobile.two_step_verification.set_up_in_console':
+      'This account signs in to the tenant\'s console with a passkey, so set up two-step verification from Account settings in the console.',
+  'mobile.two_step_verification.setup_description':
+      'Add this account to an authenticator app, then enter the 6-digit code it shows. For an app on this device, copy the setup key into it; for one on another device, scan the QR code.',
+  'mobile.two_step_verification.status_disabled':
+      'Two-step verification is off.',
+  'mobile.two_step_verification.status_enabled':
+      'Two-step verification has been on since {\$date}.',
+  'mobile.two_step_verification.title': 'Two-step verification',
+  'mobile.two_step_verification.wrong_password': 'The password is incorrect.',
   'mobile.verify_email.expired': 'This confirmation link has expired.',
   'mobile.verify_email.failed':
       'Could not confirm your email address. Try again.',
@@ -6855,6 +7288,7 @@ const _koSources = <String, String>{
   'mobile.account.sign_out': '로그아웃',
   'mobile.account.signed_out': '로그인되어 있지 않습니다',
   'mobile.account.title': '계정',
+  'mobile.account.two_step_verification': '2단계 인증',
   'mobile.announcements.banner_dismiss': '이 공지사항 닫기',
   'mobile.announcements.banner_link': '공지사항 읽기',
   'mobile.announcements.detail_failed': '이 공지사항을 표시할 수 없습니다. 다시 시도해 주세요.',
@@ -7641,6 +8075,74 @@ const _koSources = <String, String>{
   'mobile.tip.sheet_title': '작가에게 팁 보내기',
   'mobile.tip.start_failed': '팁 보내기를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.tip.thanks': '팁을 보내 주셔서 감사합니다. 이 에피소드의 작가에게 전달됩니다.',
+  'mobile.two_step.code_label': '확인 코드',
+  'mobile.two_step.code_required': '코드를 입력해 주세요.',
+  'mobile.two_step.description': '인증 앱에 표시된 6자리 코드를 입력해 로그인을 완료해 주세요.',
+  'mobile.two_step.expired': '이 로그인은 만료되었습니다. 다시 로그인해 주세요.',
+  'mobile.two_step.invalid_code': '코드가 올바르지 않습니다. 인증 앱을 확인한 뒤 다시 입력해 주세요.',
+  'mobile.two_step.invalid_code_or_recovery_code':
+      '코드가 올바르지 않습니다. 인증 앱의 현재 코드나 사용하지 않은 복구 코드를 입력해 주세요.',
+  'mobile.two_step.invalid_recovery_code': '복구 코드가 올바르지 않거나 이미 사용되었습니다.',
+  'mobile.two_step.locked': '인증 실패가 반복되어 일시적으로 잠겼습니다. 잠시 기다린 뒤 다시 시도해 주세요.',
+  'mobile.two_step.recovery_code_label': '복구 코드',
+  'mobile.two_step.recovery_description': '2단계 인증을 켤 때 저장한 복구 코드 하나를 입력해 주세요.',
+  'mobile.two_step.submit': '확인',
+  'mobile.two_step.title': '2단계 인증',
+  'mobile.two_step.use_authenticator': '인증 앱 사용',
+  'mobile.two_step.use_recovery_code': '복구 코드 사용',
+  'mobile.two_step_verification.code_help': '인증 앱의 6자리 코드를 입력합니다.',
+  'mobile.two_step_verification.code_or_recovery_help':
+      '인증 앱의 6자리 코드나 복구 코드 하나를 입력합니다.',
+  'mobile.two_step_verification.confirm': '2단계 인증 켜기',
+  'mobile.two_step_verification.description':
+      '비밀번호로 로그인하거나 Apple 또는 Google로 로그인한 뒤 인증 앱의 코드를 요구합니다. 패스키로 로그인할 때는 코드를 요구하지 않습니다.',
+  'mobile.two_step_verification.disable': '끄기',
+  'mobile.two_step_verification.disable_description':
+      '로그인할 때 더 이상 코드를 요구하지 않습니다. 확인을 위해 인증 앱의 코드나 복구 코드를 입력해 주세요.',
+  'mobile.two_step_verification.disable_failed':
+      '2단계 인증을 끄지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.two_step_verification.disable_heading': '2단계 인증 끄기',
+  'mobile.two_step_verification.disable_no_confirmation':
+      '연결된 계정 중 지금 이 앱에서 로그인할 수 있는 계정이 없습니다. 2단계 인증을 끄려면 먼저 비밀번호를 설정해 주세요.',
+  'mobile.two_step_verification.disable_unconfirmed':
+      '로그인을 확인하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.two_step_verification.disable_with_apple': 'Apple로 끄기',
+  'mobile.two_step_verification.disable_with_google': 'Google로 끄기',
+  'mobile.two_step_verification.disable_with_passkey': '패스키로 끄기',
+  'mobile.two_step_verification.disabled': '2단계 인증을 껐습니다.',
+  'mobile.two_step_verification.done': '완료',
+  'mobile.two_step_verification.enable': '켜기',
+  'mobile.two_step_verification.enable_failed':
+      '2단계 인증을 켜지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.two_step_verification.enabled': '2단계 인증을 켰습니다.',
+  'mobile.two_step_verification.load_failed': '2단계 인증 설정을 표시할 수 없습니다.',
+  'mobile.two_step_verification.password_label': '현재 비밀번호',
+  'mobile.two_step_verification.qr_label': '2단계 인증을 설정하기 위한 QR 코드',
+  'mobile.two_step_verification.recovery_codes_copied': '복구 코드를 복사했습니다.',
+  'mobile.two_step_verification.recovery_codes_copy': '복구 코드 복사',
+  'mobile.two_step_verification.recovery_codes_description':
+      '안전한 곳에 보관해 주세요. 인증 앱이 곁에 없을 때 코드 하나로 한 번 로그인할 수 있으며, 지금 이 순간에만 표시됩니다.',
+  'mobile.two_step_verification.recovery_codes_share': '복구 코드 공유',
+  'mobile.two_step_verification.recovery_codes_title': '복구 코드',
+  'mobile.two_step_verification.regenerate': '복구 코드 재발급',
+  'mobile.two_step_verification.regenerate_description':
+      '사용 여부와 관계없이 보유한 복구 코드를 모두 교체합니다. 인증 앱의 현재 코드를 입력해 주세요.',
+  'mobile.two_step_verification.regenerate_failed':
+      '복구 코드를 재발급하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.two_step_verification.regenerated': '새 복구 코드를 발급했습니다.',
+  'mobile.two_step_verification.remaining_recovery_codes':
+      '남은 복구 코드는 {\$count :integer}개입니다',
+  'mobile.two_step_verification.secret_copied': '설정 키를 복사했습니다.',
+  'mobile.two_step_verification.secret_copy': '설정 키 복사',
+  'mobile.two_step_verification.secret_label': '설정 키',
+  'mobile.two_step_verification.set_up_in_console':
+      '이 계정은 테넌트의 콘솔에 패스키로 로그인하므로, 2단계 인증은 콘솔의 계정 설정에서 설정해 주세요.',
+  'mobile.two_step_verification.setup_description':
+      '인증 앱에 이 계정을 추가한 뒤 표시된 6자리 코드를 입력해 주세요. 이 기기의 인증 앱에는 설정 키를 복사해 입력하고, 다른 기기의 인증 앱에서는 QR 코드를 스캔합니다.',
+  'mobile.two_step_verification.status_disabled': '2단계 인증이 꺼져 있습니다.',
+  'mobile.two_step_verification.status_enabled': '{\$date}부터 2단계 인증이 켜져 있습니다.',
+  'mobile.two_step_verification.title': '2단계 인증',
+  'mobile.two_step_verification.wrong_password': '비밀번호가 올바르지 않습니다.',
   'mobile.verify_email.expired': '이 확인 링크는 유효 기간이 지났습니다.',
   'mobile.verify_email.failed': '이메일 주소를 확인하지 못했습니다. 다시 시도해 주세요.',
   'mobile.verify_email.invalid_token': '이 확인 링크는 유효하지 않습니다.',
@@ -7834,6 +8336,7 @@ const _zhHansSources = <String, String>{
   'mobile.account.sign_out': '退出登录',
   'mobile.account.signed_out': '您尚未登录。',
   'mobile.account.title': '账户',
+  'mobile.account.two_step_verification': '两步验证',
   'mobile.announcements.banner_dismiss': '关闭该公告',
   'mobile.announcements.banner_link': '阅读公告',
   'mobile.announcements.detail_failed': '无法显示该公告。请重试。',
@@ -8543,6 +9046,70 @@ const _zhHansSources = <String, String>{
   'mobile.tip.sheet_title': '打赏作者',
   'mobile.tip.start_failed': '无法开始打赏。请稍后再试。',
   'mobile.tip.thanks': '感谢您的打赏。打赏将送达本章节的作者。',
+  'mobile.two_step.code_label': '验证码',
+  'mobile.two_step.code_required': '请输入验证码。',
+  'mobile.two_step.description': '请输入身份验证器应用中显示的6位验证码以完成登录。',
+  'mobile.two_step.expired': '本次登录已过期。请重新登录。',
+  'mobile.two_step.invalid_code': '验证码不正确。请检查身份验证器应用后重试。',
+  'mobile.two_step.invalid_code_or_recovery_code':
+      '验证码不正确。请输入身份验证器应用当前显示的验证码，或一个未使用的恢复码。',
+  'mobile.two_step.invalid_recovery_code': '恢复码不正确，或已被使用。',
+  'mobile.two_step.locked': '验证失败次数过多。请稍候再试。',
+  'mobile.two_step.recovery_code_label': '恢复码',
+  'mobile.two_step.recovery_description': '请输入开启两步验证时保存的某个恢复码。',
+  'mobile.two_step.submit': '验证',
+  'mobile.two_step.title': '两步验证',
+  'mobile.two_step.use_authenticator': '使用身份验证器应用',
+  'mobile.two_step.use_recovery_code': '使用恢复码',
+  'mobile.two_step_verification.code_help': '请输入身份验证器应用显示的6位验证码。',
+  'mobile.two_step_verification.code_or_recovery_help':
+      '请输入身份验证器应用显示的6位验证码，或您的某个恢复码。',
+  'mobile.two_step_verification.confirm': '开启两步验证',
+  'mobile.two_step_verification.description':
+      '使用密码登录，或通过Apple或Google登录之后，要求输入身份验证器应用中的验证码。使用通行密钥登录时不要求验证码。',
+  'mobile.two_step_verification.disable': '关闭',
+  'mobile.two_step_verification.disable_description':
+      '登录时将不再要求输入验证码。请输入身份验证器应用中的验证码或某个恢复码以确认。',
+  'mobile.two_step_verification.disable_failed': '无法关闭两步验证。请稍后再试。',
+  'mobile.two_step_verification.disable_heading': '关闭两步验证',
+  'mobile.two_step_verification.disable_no_confirmation':
+      '与您关联的账户目前都无法在本应用中登录。如需关闭两步验证，请先设置密码。',
+  'mobile.two_step_verification.disable_unconfirmed': '无法确认您的登录。请重试。',
+  'mobile.two_step_verification.disable_with_apple': '通过Apple关闭',
+  'mobile.two_step_verification.disable_with_google': '通过Google关闭',
+  'mobile.two_step_verification.disable_with_passkey': '使用通行密钥关闭',
+  'mobile.two_step_verification.disabled': '两步验证现已关闭。',
+  'mobile.two_step_verification.done': '完成',
+  'mobile.two_step_verification.enable': '开启',
+  'mobile.two_step_verification.enable_failed': '无法开启两步验证。请稍后再试。',
+  'mobile.two_step_verification.enabled': '两步验证现已开启。',
+  'mobile.two_step_verification.load_failed': '无法显示两步验证设置。',
+  'mobile.two_step_verification.password_label': '当前密码',
+  'mobile.two_step_verification.qr_label': '用于设置两步验证的二维码',
+  'mobile.two_step_verification.recovery_codes_copied': '已复制恢复码。',
+  'mobile.two_step_verification.recovery_codes_copy': '复制恢复码',
+  'mobile.two_step_verification.recovery_codes_description':
+      '请妥善保管这些恢复码。身份验证器应用不在手边时，每个恢复码可用于登录一次，且它们仅在此时显示。',
+  'mobile.two_step_verification.recovery_codes_share': '分享恢复码',
+  'mobile.two_step_verification.recovery_codes_title': '恢复码',
+  'mobile.two_step_verification.regenerate': '重新生成恢复码',
+  'mobile.two_step_verification.regenerate_description':
+      '无论是否使用过，您持有的所有恢复码都会被替换。请输入身份验证器应用当前显示的验证码。',
+  'mobile.two_step_verification.regenerate_failed': '无法重新生成恢复码。请稍后再试。',
+  'mobile.two_step_verification.regenerated': '新的恢复码已发放。',
+  'mobile.two_step_verification.remaining_recovery_codes':
+      '还剩{\$count :integer}个恢复码',
+  'mobile.two_step_verification.secret_copied': '已复制设置密钥。',
+  'mobile.two_step_verification.secret_copy': '复制设置密钥',
+  'mobile.two_step_verification.secret_label': '设置密钥',
+  'mobile.two_step_verification.set_up_in_console':
+      '此账户使用通行密钥登录租户的控制台，请在控制台的账户设置中设置两步验证。',
+  'mobile.two_step_verification.setup_description':
+      '请将此账户添加到身份验证器应用，然后输入它显示的6位验证码。本设备上的应用请复制设置密钥并输入，其他设备上的应用请扫描二维码。',
+  'mobile.two_step_verification.status_disabled': '两步验证已关闭。',
+  'mobile.two_step_verification.status_enabled': '两步验证已于{\$date}开启。',
+  'mobile.two_step_verification.title': '两步验证',
+  'mobile.two_step_verification.wrong_password': '密码不正确。',
   'mobile.verify_email.expired': '此确认链接已失效。',
   'mobile.verify_email.failed': '无法确认您的邮箱地址。请重试。',
   'mobile.verify_email.invalid_token': '此确认链接无效。',
@@ -8726,6 +9293,7 @@ const _zhHantSources = <String, String>{
   'mobile.account.sign_out': '登出',
   'mobile.account.signed_out': '您尚未登入。',
   'mobile.account.title': '帳戶',
+  'mobile.account.two_step_verification': '兩步驟驗證',
   'mobile.announcements.banner_dismiss': '關閉該公告',
   'mobile.announcements.banner_link': '閱讀公告',
   'mobile.announcements.detail_failed': '無法顯示該公告。請重試。',
@@ -9437,6 +10005,70 @@ const _zhHantSources = <String, String>{
   'mobile.tip.sheet_title': '打賞作者',
   'mobile.tip.start_failed': '無法開始打賞。請稍後再試。',
   'mobile.tip.thanks': '感謝您的打賞。打賞將送達本章節的作者。',
+  'mobile.two_step.code_label': '驗證碼',
+  'mobile.two_step.code_required': '請輸入驗證碼。',
+  'mobile.two_step.description': '請輸入驗證器應用程式中顯示的6位數驗證碼以完成登入。',
+  'mobile.two_step.expired': '本次登入已過期。請重新登入。',
+  'mobile.two_step.invalid_code': '驗證碼不正確。請檢查驗證器應用程式後重試。',
+  'mobile.two_step.invalid_code_or_recovery_code':
+      '驗證碼不正確。請輸入驗證器應用程式目前顯示的驗證碼，或一組未使用的復原碼。',
+  'mobile.two_step.invalid_recovery_code': '復原碼不正確，或已被使用。',
+  'mobile.two_step.locked': '驗證失敗次數過多。請稍候再試。',
+  'mobile.two_step.recovery_code_label': '復原碼',
+  'mobile.two_step.recovery_description': '請輸入開啟兩步驟驗證時儲存的其中一組復原碼。',
+  'mobile.two_step.submit': '驗證',
+  'mobile.two_step.title': '兩步驟驗證',
+  'mobile.two_step.use_authenticator': '使用驗證器應用程式',
+  'mobile.two_step.use_recovery_code': '使用復原碼',
+  'mobile.two_step_verification.code_help': '請輸入驗證器應用程式顯示的6位數驗證碼。',
+  'mobile.two_step_verification.code_or_recovery_help':
+      '請輸入驗證器應用程式顯示的6位數驗證碼，或您的其中一組復原碼。',
+  'mobile.two_step_verification.confirm': '開啟兩步驟驗證',
+  'mobile.two_step_verification.description':
+      '使用密碼登入，或透過Apple或Google登入之後，要求輸入驗證器應用程式中的驗證碼。使用通行金鑰登入時不要求驗證碼。',
+  'mobile.two_step_verification.disable': '關閉',
+  'mobile.two_step_verification.disable_description':
+      '登入時將不再要求輸入驗證碼。請輸入驗證器應用程式中的驗證碼或其中一組復原碼以確認。',
+  'mobile.two_step_verification.disable_failed': '無法關閉兩步驟驗證。請稍後再試。',
+  'mobile.two_step_verification.disable_heading': '關閉兩步驟驗證',
+  'mobile.two_step_verification.disable_no_confirmation':
+      '與您連結的帳戶目前都無法在本應用程式中登入。如需關閉兩步驟驗證，請先設定密碼。',
+  'mobile.two_step_verification.disable_unconfirmed': '無法確認您的登入。請重試。',
+  'mobile.two_step_verification.disable_with_apple': '透過Apple關閉',
+  'mobile.two_step_verification.disable_with_google': '透過Google關閉',
+  'mobile.two_step_verification.disable_with_passkey': '使用通行金鑰關閉',
+  'mobile.two_step_verification.disabled': '兩步驟驗證現已關閉。',
+  'mobile.two_step_verification.done': '完成',
+  'mobile.two_step_verification.enable': '開啟',
+  'mobile.two_step_verification.enable_failed': '無法開啟兩步驟驗證。請稍後再試。',
+  'mobile.two_step_verification.enabled': '兩步驟驗證現已開啟。',
+  'mobile.two_step_verification.load_failed': '無法顯示兩步驟驗證設定。',
+  'mobile.two_step_verification.password_label': '目前的密碼',
+  'mobile.two_step_verification.qr_label': '用於設定兩步驟驗證的QR碼',
+  'mobile.two_step_verification.recovery_codes_copied': '已複製復原碼。',
+  'mobile.two_step_verification.recovery_codes_copy': '複製復原碼',
+  'mobile.two_step_verification.recovery_codes_description':
+      '請妥善保管這些復原碼。驗證器應用程式不在手邊時，每組復原碼可用於登入一次，且它們僅在此時顯示。',
+  'mobile.two_step_verification.recovery_codes_share': '分享復原碼',
+  'mobile.two_step_verification.recovery_codes_title': '復原碼',
+  'mobile.two_step_verification.regenerate': '重新產生復原碼',
+  'mobile.two_step_verification.regenerate_description':
+      '無論是否使用過，您持有的所有復原碼都會被取代。請輸入驗證器應用程式目前顯示的驗證碼。',
+  'mobile.two_step_verification.regenerate_failed': '無法重新產生復原碼。請稍後再試。',
+  'mobile.two_step_verification.regenerated': '新的復原碼已發放。',
+  'mobile.two_step_verification.remaining_recovery_codes':
+      '還剩{\$count :integer}組復原碼',
+  'mobile.two_step_verification.secret_copied': '已複製設定金鑰。',
+  'mobile.two_step_verification.secret_copy': '複製設定金鑰',
+  'mobile.two_step_verification.secret_label': '設定金鑰',
+  'mobile.two_step_verification.set_up_in_console':
+      '此帳戶使用通行金鑰登入租戶的主控台，請在主控台的帳戶設定中設定兩步驟驗證。',
+  'mobile.two_step_verification.setup_description':
+      '請將此帳戶加入驗證器應用程式，然後輸入它顯示的6位數驗證碼。本裝置上的應用程式請複製設定金鑰並輸入，其他裝置上的應用程式請掃描QR碼。',
+  'mobile.two_step_verification.status_disabled': '兩步驟驗證已關閉。',
+  'mobile.two_step_verification.status_enabled': '兩步驟驗證已於{\$date}開啟。',
+  'mobile.two_step_verification.title': '兩步驟驗證',
+  'mobile.two_step_verification.wrong_password': '密碼不正確。',
   'mobile.verify_email.expired': '此確認連結已失效。',
   'mobile.verify_email.failed': '無法確認您的電子郵件地址。請重試。',
   'mobile.verify_email.invalid_token': '此確認連結無效。',

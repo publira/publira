@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/forms/sign_up_fields.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -110,6 +111,16 @@ class _ContinueSignUpScreenState extends State<ContinueSignUpScreen> {
           for (final page in current.legalPages) page.versionId,
         ],
       );
+    } on TwoStepVerificationRequired catch (required) {
+      // An account holding the token's address was made and given an
+      // authenticator while the consent was being asked for.
+      if (mounted) {
+        context.pushReplacementInTab(
+          AppRoutes.twoStepSignInPath(returnTo: widget.returnTo),
+          extra: required.challenge,
+        );
+      }
+      return;
     } on AuthFailure catch (error) {
       failure = error.kind;
     } on Exception {

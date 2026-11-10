@@ -15,6 +15,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/two_step_verification.dart';
 
 /// [SessionStore] that keeps the session in memory.
 ///
@@ -376,6 +377,51 @@ class FakeAuthRepository implements AuthRepository {
   /// The names [renamePasskey] was asked for, by passkey, in order.
   final passkeyRenames = <(String, String)>[];
 
+  /// Whether the account holds a confirmed authenticator, which makes
+  /// [signIn] and [signInWithProvider] answer [mfaChallenge] in place of a
+  /// session. [confirmMfaEnrollment] turns it on and the disables off.
+  var mfaEnabled = false;
+
+  /// When [mfaEnabled] was turned on, as [readMfaStatus] answers it.
+  DateTime? mfaEnabledAt;
+
+  /// The authenticator's current code, which every step that asks for one
+  /// takes.
+  static const mfaCode = '123456';
+
+  /// The recovery codes the account still holds, one of which [verifyMfa]
+  /// and the disables take once each.
+  List<String> mfaRecoveryCodes = const [];
+
+  /// What [signIn] and [signInWithProvider] answer an account with
+  /// [mfaEnabled], and the only challenge [verifyMfa] takes.
+  static final mfaChallenge = MfaChallenge(
+    token: 'fake-challenge',
+    expiresAt: DateTime.utc(2100),
+  );
+
+  /// The wrong codes [verifyMfa] takes before every code is
+  /// [AuthFailureKind.mfaLocked], as the API locks the account.
+  var mfaLockAfter = 5;
+  var mfaWrongCodes = 0;
+
+  /// Set once [verifyMfa] has bought a session with [mfaChallenge], or by a
+  /// test whose challenge has run out: [verifyMfa] then answers it as the
+  /// API answers one it no longer takes.
+  var mfaChallengeSpent = false;
+
+  /// The codes [verifyMfa] was sent, in order.
+  final mfaVerifications = <String>[];
+
+  /// Thrown by [readMfaStatus] and [startMfaEnrollment], standing in for an
+  /// API that cannot be reached or refuses.
+  AuthFailure? mfaStatusFailure;
+  AuthFailure? mfaStartFailure;
+
+  /// The confirmations the disables were sent: the password, or the
+  /// provider's or the passkey's credential, with the code.
+  final mfaDisables = <({Object confirmation, String code})>[];
+
   /// The options [beginPasskeySignIn] answers with.
   static const requestOptionsJson = '{"challenge":"sign-in"}';
 
@@ -396,7 +442,160 @@ class FakeAuthRepository implements AuthRepository {
     if (failure != null) {
       throw failure;
     }
+    if (mfaEnabled) {
+      throw TwoStepVerificationRequired(mfaChallenge);
+    }
     return session;
+  }
+
+  @override
+  Future<(AuthSession, MfaVerification)> verifyMfa(
+    MfaChallenge challenge,
+    String code,
+  ) async {
+    mfaVerifications.add(code);
+    if (mfaChallengeSpent || challenge.token != mfaChallenge.token) {
+      throw const AuthFailure(AuthFailureKind.sessionExpired);
+    }
+    _checkMfaCode(code, recovery: true);
+    final recovery = code != mfaCode;
+    mfaChallengeSpent = true;
+    return (
+      session,
+      MfaVerification(
+        recoveryCodeUsed: recovery,
+        remainingRecoveryCodes: mfaRecoveryCodes.length,
+      ),
+    );
+  }
+
+  /// Takes [code] as the API does: the authenticator's, or one of the
+  /// recovery codes where [recovery] allows it, which it spends.
+  void _checkMfaCode(String code, {required bool recovery}) {
+    if (mfaWrongCodes >= mfaLockAfter) {
+      throw const AuthFailure(AuthFailureKind.mfaLocked);
+    }
+    if (code == mfaCode) {
+      return;
+    }
+    if (recovery && mfaRecoveryCodes.contains(code)) {
+      mfaRecoveryCodes = [
+        for (final kept in mfaRecoveryCodes)
+          if (kept != code) kept,
+      ];
+      return;
+    }
+    mfaWrongCodes++;
+    throw const AuthFailure(AuthFailureKind.mfaInvalidCode);
+  }
+
+  /// Ten recovery codes, told apart by [batch] so a regenerated set differs
+  /// from the one it replaces.
+  static List<String> fakeRecoveryCodes(String batch) => [
+    for (var i = 0; i < 10; i++) '$batch-$i$i$i$i',
+  ];
+
+  var _recoveryBatches = 0;
+
+  @override
+  Future<MfaStatus> readMfaStatus(AuthSession session) async {
+    final failure = mfaStatusFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (!mfaEnabled) {
+      return MfaStatus.disabled;
+    }
+    return MfaStatus(
+      enabled: true,
+      enabledAt: mfaEnabledAt,
+      remainingRecoveryCodes: mfaRecoveryCodes.length,
+    );
+  }
+
+  /// The secret [startMfaEnrollment] answers.
+  static const mfaSecret = 'JBSWY3DPEHPK3PXP';
+
+  @override
+  Future<MfaEnrollment> startMfaEnrollment(AuthSession session) async {
+    final failure = mfaStartFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (mfaEnabled) {
+      throw const AuthFailure(AuthFailureKind.unexpected);
+    }
+    return const MfaEnrollment(
+      secret: mfaSecret,
+      otpauthUri:
+          'otpauth://totp/Seed%20Tenant:member@example.com?secret=$mfaSecret',
+    );
+  }
+
+  @override
+  Future<List<String>> confirmMfaEnrollment(
+    AuthSession session,
+    String code,
+  ) async {
+    _checkMfaCode(code, recovery: false);
+    mfaEnabled = true;
+    mfaEnabledAt = DateTime.utc(2026, 11, 10, 9);
+    return mfaRecoveryCodes = fakeRecoveryCodes('r${_recoveryBatches++}');
+  }
+
+  @override
+  Future<List<String>> regenerateMfaRecoveryCodes(
+    AuthSession session,
+    String code,
+  ) async {
+    if (!mfaEnabled) {
+      throw const AuthFailure(AuthFailureKind.unexpected);
+    }
+    _checkMfaCode(code, recovery: false);
+    return mfaRecoveryCodes = fakeRecoveryCodes('r${_recoveryBatches++}');
+  }
+
+  @override
+  Future<void> disableMfa(
+    AuthSession session, {
+    required String password,
+    required String code,
+  }) async {
+    mfaDisables.add((confirmation: password, code: code));
+    if (password != this.password) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+    _disableMfa(code);
+  }
+
+  @override
+  Future<void> disableMfaWithProvider(
+    AuthSession session, {
+    required ProviderCredential credential,
+    required String code,
+  }) async {
+    mfaDisables.add((confirmation: credential, code: code));
+    _disableMfa(code);
+  }
+
+  @override
+  Future<void> disableMfaWithPasskey(
+    AuthSession session, {
+    required String credentialJson,
+    required String code,
+  }) async {
+    mfaDisables.add((confirmation: credentialJson, code: code));
+    _disableMfa(code);
+  }
+
+  void _disableMfa(String code) {
+    if (!mfaEnabled) {
+      throw const AuthFailure(AuthFailureKind.unexpected);
+    }
+    _checkMfaCode(code, recovery: true);
+    mfaEnabled = false;
+    mfaEnabledAt = null;
+    mfaRecoveryCodes = const [];
   }
 
   @override
@@ -417,6 +616,9 @@ class FakeAuthRepository implements AuthRepository {
     );
     if (providerSignInFailures.isNotEmpty) {
       throw providerSignInFailures.removeAt(0);
+    }
+    if (mfaEnabled) {
+      throw TwoStepVerificationRequired(mfaChallenge);
     }
     return session;
   }

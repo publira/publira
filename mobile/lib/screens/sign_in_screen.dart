@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -13,6 +14,10 @@ import 'package:publira/screens/sign_in_panel.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
+///
+/// An account that holds an authenticator goes on to
+/// [AppRoutes.twoStepSignIn] for its code, which is handed the challenge the
+/// password earned.
 ///
 /// Creating an account and resetting a password are screens of their own,
 /// which this form leads to. `AuthService/Login` refuses an account whose
@@ -64,6 +69,18 @@ class _SignInScreenState extends State<SignInScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+    } on TwoStepVerificationRequired catch (required) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _submitting = false;
+      });
+      context.pushReplacementInTab(
+        AppRoutes.twoStepSignInPath(returnTo: widget.returnTo),
+        extra: required.challenge,
+      );
+      return;
     } on AuthFailure catch (failure) {
       if (!mounted) {
         return;
@@ -269,6 +286,9 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.storageNotConfigured ||
       AuthFailureKind.dataExportInProgress ||
       AuthFailureKind.dataExportGone ||
+      AuthFailureKind.mfaInvalidCode ||
+      AuthFailureKind.mfaLocked ||
+      AuthFailureKind.mfaSetUpInConsole ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
   }

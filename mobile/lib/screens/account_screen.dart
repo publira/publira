@@ -171,6 +171,16 @@ class AccountScreen extends StatelessWidget {
                       ),
                       const Divider(height: 1),
                     ],
+                    ListTile(
+                      key: const ValueKey('account-two-step-verification'),
+                      title: AutospacedText(
+                        messages.accountTwoStepVerification,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.push(AppRoutes.accountTwoStepVerification),
+                    ),
+                    const Divider(height: 1),
                     // Keyed by the reader as well, under a name of its own so
                     // it does not share a key with the birth date row.
                     _NotificationSettingsSection(

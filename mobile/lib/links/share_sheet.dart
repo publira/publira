@@ -13,6 +13,10 @@ abstract class ShareSheet {
     required String text,
   });
 
+  /// Hands [text] alone to the share sheet, for the reader to keep somewhere
+  /// of their choosing rather than send as a link.
+  Future<void> shareText({required String text, required String title});
+
   /// Hands [bytes] to the share sheet as one file called [name], of the media
   /// type [mimeType], for the reader to save or send on.
   Future<void> shareFile({
@@ -80,6 +84,10 @@ class PluginShareSheet implements ShareSheet {
       ShareParams(text: '$text\n$url', title: title, subject: title),
     );
   }
+
+  @override
+  Future<void> shareText({required String text, required String title}) =>
+      _present(ShareParams(text: text, title: title, subject: title));
 
   @override
   Future<void> shareFile({

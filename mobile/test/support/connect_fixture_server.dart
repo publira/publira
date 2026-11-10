@@ -162,6 +162,12 @@ class ConnectFixtureServer {
   static const memberName = 'Sample Member';
   static const memberPublicId = 'SeedMMBRAAA1';
 
+  /// The readers `db/seeds/scenarios/830_mobile_reader_mfa.sql` gives the
+  /// mobile E2E stack for two-step verification, both with [memberPassword]:
+  /// one the app turns it on for, and one the site's settings do.
+  static const mfaAppReaderEmail = 'reader-mfa-app@example.com';
+  static const mfaSiteReaderEmail = 'reader-mfa-site@example.com';
+
   /// The member's purchases of [paidEpisodeId] in the development seed
   /// (`db/seeds/dev/080_purchases.sql`): one that does not expire, and a
   /// rental that has run out.
@@ -1011,6 +1017,48 @@ class ConnectFixtureServer {
   /// Set once `DeleteMe` has gone through, after which the member can
   /// neither sign in nor use the token they held.
   var memberDeleted = false;
+
+  /// Whether the member holds a confirmed authenticator, which makes `Login`
+  /// and `LoginWithIdToken` answer [mfaChallengeToken] in place of a session.
+  /// `ConfirmMfaEnrollment` turns it on and `DisableMfa` off.
+  var memberMfaEnabled = false;
+
+  /// The authenticator's current code, which every step that asks for one
+  /// takes here.
+  static const mfaCode = '123456';
+
+  /// The secret `StartMfaEnrollment` answers.
+  static const mfaSecret = 'JBSWY3DPEHPK3PXP';
+
+  /// The challenge `Login` and `LoginWithIdToken` answer the member with
+  /// while [memberMfaEnabled]. Each sign-in issues it afresh.
+  static const mfaChallengeToken = 'fixture-mfa-challenge';
+
+  /// Whether the challenge issued last has bought a session already.
+  var mfaChallengeSpent = true;
+
+  /// Whether `StartMfaEnrollment` has set an authenticator up that
+  /// `ConfirmMfaEnrollment` can turn on.
+  var mfaEnrollmentStarted = false;
+
+  /// The recovery codes the member still holds, each of which `VerifyMfa`
+  /// and `DisableMfa` take once.
+  var memberRecoveryCodes = <String>[];
+
+  /// Whether every code is refused as too many wrong ones lock the account.
+  var mfaLocked = false;
+
+  /// Whether `StartMfaEnrollment` and `ConfirmMfaEnrollment` refuse the
+  /// member as staff who set it up in the tenant's console.
+  var mfaSetUpInConsole = false;
+
+  /// What every `VerifyMfa` was sent, in order.
+  final mfaVerifyRequests = <pb.VerifyMfaRequest>[];
+
+  /// What every `DisableMfa` was sent, in order.
+  final mfaDisableRequests = <pb.DisableMfaRequest>[];
+
+  var _recoveryBatches = 0;
 
   /// Whether the member is the tenant's last active tenant admin, whom
   /// `DeleteMe` refuses.
@@ -1898,6 +1946,128 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/DeleteMe')) {
       await _writeDeleteMe(request, recorded.decode(pb.DeleteMeRequest()));
+      return;
+    }
+
+    if (path.endsWith('/VerifyMfa')) {
+      await _writeVerifyMfa(request, recorded.decode(pb.VerifyMfaRequest()));
+      return;
+    }
+
+    if (path.endsWith('/GetMfaStatus')) {
+      recorded.decode(pb.GetMfaStatusRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        memberMfaEnabled
+            ? pb.GetMfaStatusResponse(
+                enabled: true,
+                enabledAt: '2026-11-10T09:00:00Z',
+                remainingRecoveryCodes: memberRecoveryCodes.length,
+              )
+            : pb.GetMfaStatusResponse(),
+      );
+      return;
+    }
+
+    if (path.endsWith('/StartMfaEnrollment')) {
+      recorded.decode(pb.StartMfaEnrollmentRequest());
+      if (!await _writeUnlessAuthorized(request) ||
+          !await _writeUnlessMfaSetUpInConsole(request)) {
+        return;
+      }
+      if (memberMfaEnabled) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'mfa is already enabled',
+        );
+        return;
+      }
+      mfaEnrollmentStarted = true;
+      await _writeMessage(
+        request,
+        pb.StartMfaEnrollmentResponse(
+          secret: mfaSecret,
+          otpauthUri:
+              'otpauth://totp/Seed%20Tenant:$memberEmail?secret=$mfaSecret'
+              '&issuer=Seed%20Tenant',
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/ConfirmMfaEnrollment')) {
+      final body = recorded.decode(pb.ConfirmMfaEnrollmentRequest());
+      if (!await _writeUnlessAuthorized(request) ||
+          !await _writeUnlessMfaSetUpInConsole(request)) {
+        return;
+      }
+      if (!mfaEnrollmentStarted ||
+          !await _writeUnlessMfaCodeRefused(
+            request,
+            body.code,
+            recovery: false,
+          )) {
+        return;
+      }
+      memberMfaEnabled = true;
+      mfaEnrollmentStarted = false;
+      await _writeMessage(
+        request,
+        pb.ConfirmMfaEnrollmentResponse(recoveryCodes: _newRecoveryCodes()),
+      );
+      return;
+    }
+
+    if (path.endsWith('/RegenerateMfaRecoveryCodes')) {
+      final body = recorded.decode(pb.RegenerateMfaRecoveryCodesRequest());
+      if (!await _writeUnlessAuthorized(request) ||
+          !await _writeUnlessMfaCodeRefused(
+            request,
+            body.code,
+            recovery: false,
+          )) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.RegenerateMfaRecoveryCodesResponse(
+          recoveryCodes: _newRecoveryCodes(),
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/DisableMfa')) {
+      final body = recorded.decode(pb.DisableMfaRequest());
+      mfaDisableRequests.add(body);
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (body.password != memberCurrentPassword) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'invalid_argument',
+          'invalid password',
+          details: [badRequestDetail('password')],
+        );
+        return;
+      }
+      if (!await _writeUnlessMfaCodeRefused(
+        request,
+        body.code,
+        recovery: true,
+      )) {
+        return;
+      }
+      memberMfaEnabled = false;
+      memberRecoveryCodes = [];
+      await _writeMessage(request, pb.DisableMfaResponse());
       return;
     }
 
@@ -3863,6 +4033,13 @@ class ConnectFixtureServer {
     if (!memberDeleted &&
         email == memberEmail &&
         password == memberCurrentPassword) {
+      if (memberMfaEnabled) {
+        await _writeMessage(
+          request,
+          pb.LoginResponse(mfaChallenge: _issueMfaChallenge()),
+        );
+        return;
+      }
       await _writeMessage(
         request,
         pb.LoginResponse(
@@ -3907,6 +4084,110 @@ class ConnectFixtureServer {
         accessToken: _accessToken(signedUpAccessToken),
       ),
     );
+  }
+
+  pb.MfaChallenge _issueMfaChallenge() {
+    mfaChallengeSpent = false;
+    return pb.MfaChallenge(
+      token: mfaChallengeToken,
+      expiresAt: '2100-01-01T00:00:00Z',
+    );
+  }
+
+  /// `VerifyMfa` as the API answers it: a challenge that is not the one
+  /// issued last, or has bought a session already, is `unauthenticated`
+  /// without a reason, and a wrong code is `unauthenticated` with
+  /// `MFA_INVALID_CODE`.
+  Future<void> _writeVerifyMfa(
+    HttpRequest request,
+    pb.VerifyMfaRequest body,
+  ) async {
+    mfaVerifyRequests.add(body);
+    if (mfaChallengeSpent || body.challengeToken != mfaChallengeToken) {
+      await _writeError(
+        request,
+        HttpStatus.unauthorized,
+        'unauthenticated',
+        'invalid challenge',
+      );
+      return;
+    }
+    final used = memberRecoveryCodes.contains(body.code.trim());
+    if (!await _writeUnlessMfaCodeRefused(request, body.code, recovery: true)) {
+      return;
+    }
+    mfaChallengeSpent = true;
+    await _writeMessage(
+      request,
+      pb.VerifyMfaResponse(
+        user: pb.User(
+          publicId: memberPublicId,
+          name: memberCurrentName,
+          role: 'member',
+        ),
+        accessToken: _accessToken(memberAccessToken),
+        recoveryCodeUsed: used,
+        remainingRecoveryCodes: memberRecoveryCodes.length,
+      ),
+    );
+  }
+
+  /// Answers [code] as the API refuses one, and reports whether it was
+  /// taken: the authenticator's, or one of the recovery codes where
+  /// [recovery] allows it, which it spends.
+  Future<bool> _writeUnlessMfaCodeRefused(
+    HttpRequest request,
+    String code, {
+    required bool recovery,
+  }) async {
+    if (mfaLocked) {
+      await _writeError(
+        request,
+        HttpStatus.tooManyRequests,
+        'resource_exhausted',
+        'too many failed attempts',
+        details: [errorInfoDetail('MFA_LOCKED')],
+      );
+      return false;
+    }
+    final trimmed = code.trim();
+    if (trimmed == mfaCode) {
+      return true;
+    }
+    if (recovery && memberRecoveryCodes.remove(trimmed)) {
+      return true;
+    }
+    await _writeError(
+      request,
+      HttpStatus.unauthorized,
+      'unauthenticated',
+      'invalid code',
+      details: [errorInfoDetail('MFA_INVALID_CODE')],
+    );
+    return false;
+  }
+
+  Future<bool> _writeUnlessMfaSetUpInConsole(HttpRequest request) async {
+    if (!mfaSetUpInConsole) {
+      return true;
+    }
+    await _writeError(
+      request,
+      HttpStatus.badRequest,
+      'failed_precondition',
+      'set up two-step verification in the console',
+      details: [errorInfoDetail('MFA_SET_UP_IN_CONSOLE')],
+    );
+    return false;
+  }
+
+  /// Ten recovery codes for the member, replacing whatever they held. A
+  /// batch is told apart from the one before it.
+  List<String> _newRecoveryCodes() {
+    final batch = _recoveryBatches++;
+    return memberRecoveryCodes = [
+      for (var i = 0; i < 10; i++) 'rc$batch$i-${'$i' * 4}',
+    ];
   }
 
   /// Whether the tenant signs readers in with [provider].
@@ -3956,6 +4237,13 @@ class ConnectFixtureServer {
     if (isMember) {
       memberIdentities[provider] = token;
       spentNonces.add(nonce);
+      if (memberMfaEnabled) {
+        await _writeMessage(
+          request,
+          pb.LoginWithIdTokenResponse(mfaChallenge: _issueMfaChallenge()),
+        );
+        return;
+      }
       await _writeMessage(
         request,
         pb.LoginWithIdTokenResponse(

@@ -22,6 +22,7 @@ import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/config.dart';
 
 /// [AuthRepository] backed by `publira.v1.AuthService` on the public API.
@@ -74,6 +75,9 @@ class HttpAuthRepository implements AuthRepository {
           password: password,
         ),
       );
+      if (body.hasMfaChallenge()) {
+        throw TwoStepVerificationRequired(_challenge(body.mfaChallenge));
+      }
       return _sessionFromLogin(
         _required(body.hasUser(), body.user, 'user'),
         _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
@@ -81,6 +85,55 @@ class HttpAuthRepository implements AuthRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<(AuthSession, MfaVerification)> verifyMfa(
+    MfaChallenge challenge,
+    String code,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.verifyMfa(
+        ConnectCallContext(tenantId: tenantId),
+        pb.VerifyMfaRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          challengeToken: challenge.token,
+          code: code,
+        ),
+      );
+      final session = _sessionFromLogin(
+        _required(body.hasUser(), body.user, 'user'),
+        _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
+      );
+      return (
+        session,
+        MfaVerification(
+          recoveryCodeUsed: body.recoveryCodeUsed,
+          remainingRecoveryCodes: body.remainingRecoveryCodes,
+        ),
+      );
+    } on ConnectException catch (error) {
+      // A challenge that has run out, been spent, or outlived a password
+      // change is `unauthenticated` without a reason, which reads as an ended
+      // session: only a fresh sign-in replaces it.
+      throw _toMfaCodeFailure(error) ?? _toAccountFailure(error);
+    }
+  }
+
+  /// [challenge] as the app holds it. One without a token, or without an
+  /// expiry that is an instant, is nothing the code step could be offered
+  /// for.
+  MfaChallenge _challenge(pb.MfaChallenge challenge) {
+    final token = challenge.token.trim();
+    final expiresAt = DateTime.tryParse(challenge.expiresAt.trim())?.toUtc();
+    if (token.isEmpty || expiresAt == null) {
+      throw const AuthFailure(
+        AuthFailureKind.unexpected,
+        message: 'the sign-in answered an unusable two-step challenge',
+      );
+    }
+    return MfaChallenge(token: token, expiresAt: expiresAt);
   }
 
   @override
@@ -146,6 +199,9 @@ class HttpAuthRepository implements AuthRepository {
           agreedPageVersionIds: agreedPageVersionIds,
         ),
       );
+      if (body.hasMfaChallenge()) {
+        throw TwoStepVerificationRequired(_challenge(body.mfaChallenge));
+      }
       return _sessionFromLogin(
         _required(body.hasUser(), body.user, 'user'),
         _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
@@ -425,6 +481,198 @@ class HttpAuthRepository implements AuthRepository {
       }
       throw _toAccountFailure(error);
     }
+  }
+
+  @override
+  Future<MfaStatus> readMfaStatus(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.getMfaStatus(
+        _sessionContext(tenantId, session),
+        pb.GetMfaStatusRequest(tenant: pb.TenantContext(tenantId: tenantId)),
+      );
+      if (!body.enabled) {
+        return MfaStatus.disabled;
+      }
+      return MfaStatus(
+        enabled: true,
+        enabledAt: DateTime.tryParse(body.enabledAt.trim())?.toUtc(),
+        remainingRecoveryCodes: body.remainingRecoveryCodes,
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<MfaEnrollment> startMfaEnrollment(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.startMfaEnrollment(
+        _sessionContext(tenantId, session),
+        pb.StartMfaEnrollmentRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return MfaEnrollment(
+        secret: _requiredText(body.secret, 'secret').trim(),
+        otpauthUri: _requiredText(body.otpauthUri, 'otpauthUri').trim(),
+      );
+    } on ConnectException catch (error) {
+      throw _toMfaSetUpInConsoleFailure(error) ?? _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<List<String>> confirmMfaEnrollment(
+    AuthSession session,
+    String code,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.confirmMfaEnrollment(
+        _sessionContext(tenantId, session),
+        pb.ConfirmMfaEnrollmentRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          code: code,
+        ),
+      );
+      return _recoveryCodes(body.recoveryCodes);
+    } on ConnectException catch (error) {
+      throw _toMfaSetUpInConsoleFailure(error) ??
+          _toMfaCodeFailure(error) ??
+          _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<List<String>> regenerateMfaRecoveryCodes(
+    AuthSession session,
+    String code,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.regenerateMfaRecoveryCodes(
+        _sessionContext(tenantId, session),
+        pb.RegenerateMfaRecoveryCodesRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          code: code,
+        ),
+      );
+      return _recoveryCodes(body.recoveryCodes);
+    } on ConnectException catch (error) {
+      throw _toMfaCodeFailure(error) ?? _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> disableMfa(
+    AuthSession session, {
+    required String password,
+    required String code,
+  }) async {
+    try {
+      await _disableMfa(
+        session,
+        (tenant) => pb.DisableMfaRequest(
+          tenant: tenant,
+          code: code,
+          password: password,
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toMfaCodeFailure(error) ?? _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> disableMfaWithProvider(
+    AuthSession session, {
+    required ProviderCredential credential,
+    required String code,
+  }) async {
+    try {
+      await _disableMfa(
+        session,
+        (tenant) => pb.DisableMfaRequest(
+          tenant: tenant,
+          code: code,
+          provider: credential.provider.wire,
+          idToken: credential.idToken,
+          nonce: credential.nonce,
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toMfaCodeFailure(error) ??
+          await _toConfirmationFailure(session, error);
+    }
+  }
+
+  @override
+  Future<void> disableMfaWithPasskey(
+    AuthSession session, {
+    required String credentialJson,
+    required String code,
+  }) async {
+    try {
+      await _disableMfa(
+        session,
+        (tenant) => pb.DisableMfaRequest(
+          tenant: tenant,
+          code: code,
+          passkeyCredentialJson: credentialJson,
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toMfaCodeFailure(error) ?? _toPasskeyConfirmationFailure(error);
+    }
+  }
+
+  Future<void> _disableMfa(
+    AuthSession session,
+    pb.DisableMfaRequest Function(pb.TenantContext tenant) request,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    await _auth.disableMfa(
+      _sessionContext(tenantId, session),
+      request(pb.TenantContext(tenantId: tenantId)),
+    );
+  }
+
+  /// The recovery codes an answer handed out, which a reader cannot do
+  /// without once the authenticator is on.
+  List<String> _recoveryCodes(List<String> codes) {
+    final trimmed = [
+      for (final code in codes)
+        if (code.trim().isNotEmpty) code.trim(),
+    ];
+    return _required(trimmed.isNotEmpty, trimmed, 'recoveryCodes');
+  }
+
+  /// The refusal of staff who set their authenticator up in the tenant's
+  /// console, `null` for any other.
+  AuthFailure? _toMfaSetUpInConsoleFailure(ConnectException error) =>
+      error.code == 'failed_precondition' &&
+          error.reasons.contains(mfaSetUpInConsoleReason)
+      ? AuthFailure(AuthFailureKind.mfaSetUpInConsole, message: error.message)
+      : null;
+
+  /// What a refused two-step verification code is, read from the reason
+  /// before anything reads the code alone: a wrong code is `unauthenticated`,
+  /// which would otherwise end the session or the sign-in it was sent for.
+  /// `null` for a refusal that is not about the code.
+  AuthFailure? _toMfaCodeFailure(ConnectException error) {
+    final reasons = error.reasons;
+    if (reasons.contains(mfaLockedReason)) {
+      return AuthFailure(AuthFailureKind.mfaLocked, message: error.message);
+    }
+    if (reasons.contains(mfaInvalidCodeReason)) {
+      return AuthFailure(
+        AuthFailureKind.mfaInvalidCode,
+        message: error.message,
+      );
+    }
+    return null;
   }
 
   ConnectCallContext _sessionContext(String tenantId, AuthSession session) =>

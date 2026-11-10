@@ -691,7 +691,12 @@
         "routes": ["[locale]/(auth)/login/two-step"],
         "rpcs": ["VerifyMfa"]
       },
-      "exception": "Not in the app yet: #5526."
+      "mobile": { "routes": ["/sign-in/two-step"], "rpcs": ["VerifyMfa"] },
+      "tests": [
+        "a reader turns on two-step verification and signs in with its code and a recovery code",
+        "a reader turns on two-step verification in the app and signs in with its code and a recovery code",
+        "a reader who turned on two-step verification on the site is asked for its code in the app"
+      ]
     },
     {
       "name": "Turning two-step verification on and off, and regenerating its recovery codes, from Settings › Security",
@@ -705,7 +710,20 @@
           "DisableMfa"
         ]
       },
-      "exception": "Not in the app yet: #5526."
+      "mobile": {
+        "routes": ["/account/two-step-verification"],
+        "rpcs": [
+          "GetMfaStatus",
+          "StartMfaEnrollment",
+          "ConfirmMfaEnrollment",
+          "RegenerateMfaRecoveryCodes",
+          "DisableMfa"
+        ]
+      },
+      "tests": [
+        "a reader turns on two-step verification and signs in with its code and a recovery code",
+        "a reader turns on two-step verification in the app and signs in with its code and a recovery code"
+      ]
     },
     {
       "name": "Signing in with a passkey",

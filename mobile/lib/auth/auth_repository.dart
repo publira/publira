@@ -10,14 +10,29 @@ import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/two_step_verification.dart';
 
 /// Sign-up, sign-in, password reset, session checks, and the signed-in
 /// reader's own account settings against the public API.
 abstract class AuthRepository {
   /// Signs [email] in with [password] and returns the session the API issued.
   ///
-  /// Throws [AuthFailure].
+  /// Throws [TwoStepVerificationRequired] for an account that holds an
+  /// authenticator, whose session [verifyMfa] issues, and [AuthFailure].
   Future<AuthSession> signIn({required String email, required String password});
+
+  /// Settles the second step of a sign-in [challenge] stands for with [code],
+  /// from the authenticator or one of the recovery codes, and returns the
+  /// session the API issued.
+  ///
+  /// Throws [AuthFailure]: [AuthFailureKind.mfaInvalidCode] for a code the
+  /// API turned away, [AuthFailureKind.mfaLocked] once too many have been,
+  /// and [AuthFailureKind.sessionExpired] for a challenge the API no longer
+  /// takes, which only a fresh sign-in replaces.
+  Future<(AuthSession, MfaVerification)> verifyMfa(
+    MfaChallenge challenge,
+    String code,
+  );
 
   /// The providers the tenant lets a reader sign in with, read without a
   /// session.
@@ -32,7 +47,9 @@ abstract class AuthRepository {
   /// [birthDate] and [agreedPageVersionIds] are read only when this creates
   /// the account, and mean what they mean for [signUp].
   ///
-  /// Throws [AuthFailure]; [AuthFailureKind.consentRequired] leaves the token
+  /// Throws [TwoStepVerificationRequired] as [signIn] does, the provider's
+  /// sign-in standing in for the password and not for the code, and
+  /// [AuthFailure]; [AuthFailureKind.consentRequired] leaves the token
   /// unspent, so it is sent again with the consent.
   Future<AuthSession> signInWithProvider(
     ProviderCredential credential, {
@@ -119,19 +136,89 @@ abstract class AuthRepository {
   /// last way an account without a password or a linked provider signs in.
   Future<void> deletePasskey(AuthSession session, String id);
 
-  /// Begins the assertion that confirms [requestEmailChangeWithPasskey] or
-  /// [deleteAccountWithPasskey] for the reader behind [session], and returns
+  /// Begins the assertion that confirms [requestEmailChangeWithPasskey],
+  /// [deleteAccountWithPasskey], or [disableMfaWithPasskey] for the reader
+  /// behind [session], and returns
   /// the `PublicKeyCredentialRequestOptionsJSON` the authenticator signs,
   /// which allows that reader's passkeys alone.
   ///
   /// `AuthService/BeginPasskeyConfirmation` answers the options, and the
   /// assertion made over them goes in `passkey_credential_json` of
-  /// `DeleteMeRequest` or `RequestEmailChangeRequest`.
+  /// `DeleteMeRequest`, `RequestEmailChangeRequest`, or `DisableMfaRequest`.
   ///
   /// Throws [AuthFailure]; [AuthFailureKind.passkeyNotFound] where the reader
   /// holds no passkey any more, removed from another device or the site since
   /// the screen read the account.
   Future<String> beginPasskeyConfirmation(AuthSession session);
+
+  /// Whether the account behind [session] holds an authenticator, wherever
+  /// it was set up.
+  ///
+  /// Throws [AuthFailure].
+  Future<MfaStatus> readMfaStatus(AuthSession session);
+
+  /// Sets an authenticator up for the account behind [session], replacing one
+  /// set up and never confirmed, and returns the secret it is set up with.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.mfaSetUpInConsole] for staff who
+  /// set it up in the tenant's console instead.
+  Future<MfaEnrollment> startMfaEnrollment(AuthSession session);
+
+  /// Turns on the authenticator [startMfaEnrollment] set up, once [code] from
+  /// it proves it is set up, and returns the ten recovery codes, which the
+  /// API answers this once.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.mfaInvalidCode] for a code that
+  /// is not the authenticator's.
+  Future<List<String>> confirmMfaEnrollment(AuthSession session, String code);
+
+  /// Replaces every recovery code of the account behind [session], used or
+  /// not, once [code] from the authenticator confirms it, and returns the new
+  /// ones. A recovery code does not confirm it.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.mfaInvalidCode] for a code the
+  /// API turned away.
+  Future<List<String>> regenerateMfaRecoveryCodes(
+    AuthSession session,
+    String code,
+  );
+
+  /// Takes the authenticator off the account behind [session], once its
+  /// [password] and [code], from the authenticator or a recovery code,
+  /// confirm it.
+  ///
+  /// Throws [AuthFailure]; a wrong [password] is
+  /// [AuthFailureKind.invalidInput] and a wrong [code]
+  /// [AuthFailureKind.mfaInvalidCode].
+  Future<void> disableMfa(
+    AuthSession session, {
+    required String password,
+    required String code,
+  });
+
+  /// [disableMfa] for an account without a password, confirmed by a fresh
+  /// sign-in with a provider linked to it. The API spends the sign-in before
+  /// it reads [code], so a wrong code asks for another sign-in.
+  ///
+  /// Throws [AuthFailure]; a token of another account is
+  /// [AuthFailureKind.invalidInput].
+  Future<void> disableMfaWithProvider(
+    AuthSession session, {
+    required ProviderCredential credential,
+    required String code,
+  });
+
+  /// [disableMfa] for an account without a password, confirmed by
+  /// [credentialJson], the assertion one of its passkeys made over the
+  /// challenge [beginPasskeyConfirmation] began.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.passkeyRefused] for an assertion
+  /// the API does not take.
+  Future<void> disableMfaWithPasskey(
+    AuthSession session, {
+    required String credentialJson,
+    required String code,
+  });
 
   /// Asks the API for an account on [email], which it answers by mailing that
   /// address a confirmation link.
