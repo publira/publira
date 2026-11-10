@@ -5,7 +5,7 @@ published: 2026-10-07
 updated: 2026-11-10
 ---
 
-A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
+A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status**, **Age rating**, and **Label** above the list narrow it.
 
 Each row opens the series with **Edit**, or **View** for an Auditor, and its episodes with **Episodes**. A row's **Status** is **Published** once the series' **Publication date and time** has passed, **Scheduled** while that time is still ahead, and **Draft** without one. A series not shown on both the site and the app carries **Web only** or **App only** beside its title.
 

@@ -16,12 +16,15 @@ import type {
 
 interface ParseSeriesFiltersInput {
   age_rating?: SearchParamValue;
+  label_id?: SearchParamValue;
   status?: SearchParamValue;
   token?: SearchParamValue;
 }
 
 export interface SeriesFilters {
   ageRating: SeriesAgeRatingValue | "";
+  /** The primary key of the label the list is narrowed to, empty for all. */
+  labelId: string;
   status: SeriesStatusValue | "";
   token: string;
 }
@@ -32,6 +35,9 @@ export interface SeriesFilters {
  */
 const seriesFiltersSchema = z.object({
   age_rating: searchParamEnum(SERIES_AGE_RATING_VALUES, { fallback: "" }),
+  label_id: searchParamString({ fallback: "" }).pipe(
+    z.union([z.literal(""), z.guid()]).catch("")
+  ),
   status: searchParamEnum(SERIES_STATUS_VALUES, { fallback: "" }),
   token: searchParamString({ fallback: "" }),
 });
@@ -43,6 +49,7 @@ export const parseSeriesFilters = (
 
   return {
     ageRating: parsed.age_rating,
+    labelId: parsed.label_id,
     status: parsed.status,
     token: parsed.token,
   };

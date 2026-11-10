@@ -1620,6 +1620,30 @@
         "tenant_missing": "Tenant ID is missing.",
         "id_missing": "The label ID to update is missing."
       },
+      "delete": {
+        "title": "Deleting this label",
+        "description": "Deletes this label for good. A label that a series is filed under, or that a subscription plan or a promotion code names, cannot be deleted.",
+        "action": "Delete this label",
+        "confirm_title": "Delete “{$name}”?",
+        "confirm_description": "Its cover image is deleted with it, and its page leaves the site and the app at once. This cannot be undone.",
+        "confirm_kept": "A label that a series is filed under, or that a subscription plan or a promotion code names, is not deleted, and the reason is shown here.",
+        "name_label": "Enter the label's name to confirm",
+        "confirm_action": "Delete label",
+        "pending": "Deleting...",
+        "deleted": "“{$name}” was deleted.",
+        "failed": "Could not delete the label. Please try again later.",
+        "not_found": "This label has already been deleted. Go back to the label list.",
+        "name_mismatch": "The name entered is not this label's name.",
+        "view_series": "View its series",
+        "view_subscription_plans": "View subscription plans",
+        "view_promotion_codes": "View promotion codes",
+        "refused": {
+          "has_series": "This label cannot be deleted while a series is filed under it. Move each of its series to another label first.",
+          "in_subscription_plan": "This label cannot be deleted: a subscription plan opens it. Take it out of what the plan opens first.",
+          "in_promotion_code": "This label cannot be deleted: a promotion code applies to it that has not been deleted, or that a reader redeemed. Delete the codes nobody redeemed first.",
+          "referenced": "This label cannot be deleted: a record that has to be kept refers to it."
+        }
+      },
       "created": "Label created.",
       "updated": "Label updated.",
       "eye_catch_updated": "Cover image updated.",
@@ -2053,6 +2077,8 @@
         "status_all": "All serialization states",
         "age_rating": "Age rating",
         "age_rating_all": "All age ratings",
+        "label": "Label",
+        "label_all": "All labels",
         "apply": "Apply",
         "reset": "Reset"
       },

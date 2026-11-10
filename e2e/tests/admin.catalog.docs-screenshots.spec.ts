@@ -899,6 +899,49 @@ for (const locale of DOCS_LOCALES) {
           subject: "edit",
         });
       });
+
+      // The dialog is left with the name typed and never submitted, so the
+      // seed label stays.
+      test("the dialog that deletes a label, with its name typed", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/labels/${SEED_CATALOG.labelPublicId}`
+        );
+        await page
+          .getByRole("button", { name: t("admin.labels.delete.action") })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+
+        const heading =
+          (await dialog.getByRole("heading").first().textContent()) ?? "";
+
+        // The heading quotes the name in the locale's own marks.
+        const name = heading.slice(
+          heading.search(/[“「]/u) + 1,
+          Math.max(heading.lastIndexOf("”"), heading.lastIndexOf("」"))
+        );
+
+        expect(name).not.toBe("");
+        await dialog.getByRole("textbox").fill(name);
+        await expect(
+          dialog.getByRole("button", {
+            name: t("admin.labels.delete.confirm_action"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "console/catalog/labels",
+          subject: "delete",
+        });
+      });
     });
 
     test.describe("Authors and Author roles", () => {

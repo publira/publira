@@ -12,6 +12,7 @@ import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
+import { listAllLabels } from "#lib/label";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
@@ -53,21 +54,25 @@ const SeriesManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseSeriesFilters(sp);
 
-  const [locale, listResult, timeZone, canEdit] = await Promise.all([
-    getLocale(tenantId),
-    listSeries({
-      ageRating: filters.ageRating || undefined,
-      status: filters.status || undefined,
-      token: filters.token,
-    }),
-    getTenantDisplayTimeZone(tenantId),
-    isSignedInTenantEditor(tenantId),
-  ]);
+  const [locale, listResult, labelsResult, timeZone, canEdit] =
+    await Promise.all([
+      getLocale(tenantId),
+      listSeries({
+        ageRating: filters.ageRating || undefined,
+        labelId: filters.labelId || undefined,
+        status: filters.status || undefined,
+        token: filters.token,
+      }),
+      listAllLabels(),
+      getTenantDisplayTimeZone(tenantId),
+      isSignedInTenantEditor(tenantId),
+    ]);
 
   const pageHref = (token: string): string | undefined =>
     token
       ? buildQueryString({
           age_rating: filters.ageRating,
+          label_id: filters.labelId,
           status: filters.status,
           token,
         })
@@ -77,6 +82,11 @@ const SeriesManagerData = async ({
     <SeriesManager
       canEdit={canEdit}
       filters={filters}
+      labels={
+        labelsResult.ok
+          ? labelsResult.labels.map(({ id, name }) => ({ id, name }))
+          : null
+      }
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}
       nextHref={pageHref(listResult.nextToken)}
