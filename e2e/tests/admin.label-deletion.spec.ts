@@ -116,7 +116,7 @@ test.describe("admin label deletion", () => {
     await dialog.getByRole("link", { name: "View its series" }).click();
     await page.waitForURL((url) => url.pathname === "/series");
     expect(new URL(page.url()).searchParams.get("label_id")).not.toBe("");
-    await expect(page.getByRole("link", { name: title })).toBeVisible();
+    await expect(page.getByRole("cell", { name: title })).toBeVisible();
     await expect(page.getByRole("row")).toHaveCount(2);
 
     // The label is still there.
