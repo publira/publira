@@ -1480,6 +1480,13 @@ type Querier interface {
 	// PaymentIntent no payment here was paid through, which is an open dispute
 	// the caller holds until the payment is recorded.
 	GetSubscriptionPaymentIDByPaymentIntent(ctx context.Context, arg GetSubscriptionPaymentIDByPaymentIntentParams) (uuid.UUID, error)
+	// What the mail of a paid invoice of a subscription, the one that started it
+	// or one that renewed it, says about the payment it was recorded as, read by
+	// the outbox worker, which connects past RLS and therefore names the tenant
+	// itself. The plan is the one the payment was recorded on, under
+	// the name it has when the mail is sent. The reader is joined within the
+	// tenant, so an account deleted since answers no address rather than no row.
+	GetSubscriptionPaymentMailForTenant(ctx context.Context, arg GetSubscriptionPaymentMailForTenantParams) (GetSubscriptionPaymentMailForTenantRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
 	// The plan a store product is sold as, published or not: a subscription the
 	// store has charged for is recorded on its plan even after staff unpublished
@@ -1493,12 +1500,6 @@ type Querier interface {
 	// reader changed it in the billing portal, it follows that Price to its plan;
 	// billed at a Price no plan names, it stays on the anchor's plan.
 	GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error)
-	// What the mail of a subscription's start says about the payment that started
-	// it, read by the outbox worker, which connects past RLS and therefore names
-	// the tenant itself. The plan is the one the payment was recorded on, under
-	// the name it has when the mail is sent. The reader is joined within the
-	// tenant, so an account deleted since answers no address rather than no row.
-	GetSubscriptionStartedMailForTenant(ctx context.Context, arg GetSubscriptionStartedMailForTenantParams) (GetSubscriptionStartedMailForTenantRow, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
 	// for the reason GetGenreIDByPublicIDForTenant gives.

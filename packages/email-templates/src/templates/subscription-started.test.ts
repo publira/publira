@@ -3,7 +3,7 @@ import type { z } from "zod";
 
 import { loadEmailMessages } from "../messages";
 import { renderEmail } from "../render";
-import { subscriptionStartedDataSchema } from "./subscription-started";
+import type { subscriptionPaymentDataSchema } from "./subscription-payment";
 
 // A ¥980 monthly plan whose first month runs from 2 March to 2 April.
 const data = {
@@ -19,7 +19,7 @@ const data = {
 
 const render = async (
   locale: "en" | "ja",
-  overrides: Partial<z.input<typeof subscriptionStartedDataSchema>> = {}
+  overrides: Partial<z.input<typeof subscriptionPaymentDataSchema>> = {}
 ) => {
   const result = await renderEmail({
     data: { ...data, ...overrides },
@@ -36,52 +36,7 @@ const render = async (
   return result.html;
 };
 
-describe("subscriptionStartedDataSchema", () => {
-  it("accepts the variables the sender fills in", () => {
-    expect(subscriptionStartedDataSchema.parse(data)).toEqual(data);
-  });
-
-  it("rejects a payment of nothing or of a fraction of the minor unit", () => {
-    expect(
-      subscriptionStartedDataSchema.safeParse({ ...data, amount: 0 }).success
-    ).toBe(false);
-    expect(
-      subscriptionStartedDataSchema.safeParse({ ...data, amount: 9.8 }).success
-    ).toBe(false);
-  });
-
-  it("rejects a currency that is not an ISO 4217 code", () => {
-    expect(
-      subscriptionStartedDataSchema.safeParse({ ...data, currency: "yen" })
-        .success
-    ).toBe(false);
-  });
-
-  it("rejects a period that ends before it starts", () => {
-    expect(
-      subscriptionStartedDataSchema.safeParse({
-        ...data,
-        period_end: data.period_start,
-        period_start: data.period_end,
-      }).success
-    ).toBe(false);
-  });
-
-  it("rejects a plan with no name and a link that is not http(s)", () => {
-    expect(
-      subscriptionStartedDataSchema.safeParse({ ...data, plan_name: " " })
-        .success
-    ).toBe(false);
-    expect(
-      subscriptionStartedDataSchema.safeParse({
-        ...data,
-        my_page_url: "ftp://aoto.example.com/my",
-      }).success
-    ).toBe(false);
-  });
-});
-
-describe("SubscriptionStartedEmail", () => {
+describe("subscription_started", () => {
   it("names the plan, the price paid, and the period it covers in the tenant's time zone", async () => {
     const html = await render("en");
 

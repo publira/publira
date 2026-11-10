@@ -182,6 +182,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
 	"staff_episode_review_returned":              staffEpisodeReviewReturnedCopy,
+	"subscription_renewed":                       subscriptionRenewedCopy,
 	"subscription_started":                       subscriptionStartedCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
 }
@@ -308,6 +309,30 @@ func subscriptionStartedCopy(c *emailComposer) {
 	c.line("email.subscription_started.manage", nil)
 	c.linkLine("email.subscription_started.action", nil, myPageURL)
 	c.linkLine("email.subscription_started.fallback_link", nil, myPageURL)
+}
+
+// subscriptionRenewedCopy words the mail that tells a reader a later payment
+// renewed their subscription for a new period. It states what the started mail
+// states, about the period this payment covers, whose end is when the plan
+// renews next unless the reader cancels it.
+func subscriptionRenewedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	myPageURL := c.value("my_page_url")
+	c.setSubject("email.subscription_renewed.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.subscription_renewed.heading", nil)
+	c.line("email.subscription_renewed.intro", map[string]any{"tenant_name": brand})
+	if c.flag("is_test") {
+		c.line("email.subscription_renewed.test_notice", nil)
+	}
+	periodEnd := c.instant("period_end")
+	c.line("email.subscription_renewed.plan", map[string]any{"plan_name": c.value("plan_name")})
+	c.line("email.subscription_renewed.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	c.line("email.subscription_renewed.period", map[string]any{"period_start": c.instant("period_start"), "period_end": periodEnd})
+	c.line("email.subscription_renewed.open_until", map[string]any{"period_end": periodEnd})
+	c.line("email.subscription_renewed.manage", nil)
+	c.linkLine("email.subscription_renewed.action", nil, myPageURL)
+	c.linkLine("email.subscription_renewed.fallback_link", nil, myPageURL)
 }
 
 // purchaseRefundNoticeCopy words the mail that tells a reader a refund was

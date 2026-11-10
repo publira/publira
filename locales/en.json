@@ -286,6 +286,20 @@
       "series": "Series: {$series_title}",
       "subject": "Returned for changes: {$episode_title}"
     },
+    "subscription_renewed": {
+      "action": "Open My Page",
+      "amount": "Price paid: {$amount} ({$currency})",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your subscription has been renewed",
+      "intro": "Thank you for staying subscribed on {$tenant_name}. Here is what your latest payment covers.",
+      "manage": "To update your card, read your invoices, or cancel, choose Manage billing on My Page.",
+      "open_until": "You can now read the episodes the plan covers until {$period_end}. The plan then renews again automatically unless you cancel it.",
+      "period": "Period paid for: {$period_start} to {$period_end}",
+      "plan": "Plan: {$plan_name}",
+      "preview": "Your subscription to {$plan_name} has been renewed.",
+      "subject": "{$tenant_name} subscription renewed",
+      "test_notice": "This subscription was renewed in the payment provider's test mode. No money was charged."
+    },
     "subscription_started": {
       "action": "Open My Page",
       "amount": "Price paid: {$amount} ({$currency})",
