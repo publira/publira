@@ -239,7 +239,7 @@ func (s *adminServer) GetReader(
 	if err != nil {
 		return nil, err
 	}
-	reader, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+	reader, err := adminReaderDetail(ctx, s.queriesFor(ctx), tenant.ID, row)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String())
 	}
@@ -417,7 +417,7 @@ func (s *adminServer) SuspendReader(
 		if err != nil {
 			return "", err
 		}
-		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
+		reader, err = adminReaderDetail(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -426,7 +426,7 @@ func (s *adminServer) SuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		unchanged, err := adminReaderDetail(ctx, s.queriesFor(ctx), tenant.ID, row)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
 		}
@@ -466,7 +466,7 @@ func (s *adminServer) UnsuspendReader(
 		if err != nil {
 			return "", err
 		}
-		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
+		reader, err = adminReaderDetail(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -475,7 +475,7 @@ func (s *adminServer) UnsuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		unchanged, err := adminReaderDetail(ctx, s.queriesFor(ctx), tenant.ID, row)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
 		}
@@ -533,7 +533,7 @@ func (s *adminServer) SetReaderBirthDate(
 		if err != nil {
 			return "", err
 		}
-		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
+		reader, err = adminReaderDetail(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -543,7 +543,7 @@ func (s *adminServer) SetReaderBirthDate(
 		if err != nil {
 			return nil, err
 		}
-		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		unchanged, err := adminReaderDetail(ctx, s.queriesFor(ctx), tenant.ID, row)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
 		}

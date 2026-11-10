@@ -146,3 +146,66 @@ func TestDBAdminResetReaderMfaLeavesOtherTenantsAlone(t *testing.T) {
 		t.Fatalf("authenticators of the other tenant's reader = %d, want it untouched", got)
 	}
 }
+
+// The reader page offers the reset only to an account that has something for
+// it to remove, so the single read reports the factors the reset takes and
+// nothing else: a confirmed authenticator or a console passkey, not an
+// enrollment left unconfirmed.
+func TestDBAdminReaderReportsTheFactorsTheResetRemoves(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RMRTENANT001", "reader-mfa-read.example.com", "Read", "RMRADMIN0001", "admin@reader-mfa-read.example.com")
+	enrolled := env.PG.SeedEndUser(t, admin.Tenant.ID, "RMRREADER001", "enrolled@reader-mfa-read.example.com", "Enrolled")
+	seedReaderAuthenticator(t, env, admin.Tenant.ID, enrolled)
+	unconfirmed := env.PG.SeedEndUser(t, admin.Tenant.ID, "RMRREADER002", "unconfirmed@reader-mfa-read.example.com", "Unconfirmed")
+	if _, err := dbmodels.New(env.PG.DB).UpsertUserMfaTotpSecret(ctx, dbmodels.UpsertUserMfaTotpSecretParams{UserID: unconfirmed.ID, TenantID: admin.Tenant.ID, SecretEncrypted: "sealed"}); err != nil {
+		t.Fatalf("start an enrollment: %v", err)
+	}
+	plain := env.PG.SeedEndUser(t, admin.Tenant.ID, "RMRREADER003", "plain@reader-mfa-read.example.com", "Plain")
+	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RMREDITOR001", "editor@reader-mfa-read.example.com", "Editor", auth.RoleTenantEditor)
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'RMRPASSKEY01', $1, $2, 'admin_console', 'admin.reader-mfa-read.example.com', '\x01', '\x01', 0, gen_random_uuid(), false, false)
+	`, admin.Tenant.ID, editor.ID); err != nil {
+		t.Fatalf("seed a console passkey: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name     string
+		publicID string
+		want     bool
+	}{
+		{"a confirmed authenticator", enrolled.PublicID, true},
+		{"a console passkey alone", editor.PublicID, true},
+		{"an unconfirmed enrollment", unconfirmed.PublicID, false},
+		{"no factor", plain.PublicID, false},
+	} {
+		if got := env.getReader(t, admin, tc.publicID).GetMfaEnabled(); got != tc.want {
+			t.Errorf("GetReader with %s: mfa_enabled = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+
+	reset, err := env.resetReaderMfa(admin, enrolled.ID.String())
+	if err != nil {
+		t.Fatalf("ResetReaderMfa: %v", err)
+	}
+	if reset.Reader.GetMfaEnabled() {
+		t.Fatal("ResetReaderMfa answers mfa_enabled, want the reader without the factor")
+	}
+	if env.getReader(t, admin, enrolled.PublicID).GetMfaEnabled() {
+		t.Fatal("GetReader after the reset: mfa_enabled = true, want false")
+	}
+
+	list, err := env.userClient().ListReaders(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.ListReadersRequest{Tenant: admin.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListReaders: %v", err)
+	}
+	for _, reader := range list.GetReaders() {
+		if reader.GetMfaEnabled() {
+			t.Fatalf("ListReaders reports mfa_enabled for %s, want it left to the single read", reader.GetPublicId())
+		}
+	}
+}
