@@ -1,6 +1,7 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -21,7 +22,10 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import {
+  TenantAdminOnly,
+  TenantEditorFieldset,
+} from "#components/tenant-role-gate";
 import { TranslationTabs } from "#components/translation-tabs";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import type { SeriesTranslationItem } from "#lib/catalog-translation";
@@ -51,6 +55,7 @@ import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
 import { SeriesTabNav } from "../_components/series-tab-nav";
 import {
+  deleteSeriesAction,
   deleteSeriesTranslationAction,
   updateSeriesAction,
   updateSeriesEyeCatchAction,
@@ -58,6 +63,7 @@ import {
   updateSeriesWaitFreeSettingsAction,
   uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
+import { SeriesDeleteDialog } from "./_components/series-delete-dialog";
 import { SeriesFreeAfterForm } from "./_components/series-free-after-form";
 import { SeriesTranslationDeleteButton } from "./_components/series-translation-delete-button";
 import { SeriesWaitFreeForm } from "./_components/series-wait-free-form";
@@ -271,6 +277,47 @@ const SeriesFreeAfterSection = async ({
     />
   );
 };
+
+/**
+ * Deleting the series, for a Tenant admin alone: the API refuses anyone else.
+ * The dialog asks for the title the console names the series by, the one in
+ * the site's default language.
+ */
+const SeriesDeleteSection = ({
+  seriesId,
+  seriesPublicId,
+  tenantId,
+  title,
+}: {
+  seriesId: string;
+  seriesPublicId: string;
+  tenantId: string;
+  title: string;
+}) => (
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
+          <Message message="admin.series.delete.title" />
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
+          <Message message="admin.series.delete.description" />
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+      <ConsoleSection.Actions>
+        <SeriesDeleteDialog
+          action={deleteSeriesAction}
+          // A rename remounts the dialog with the title it now has to match.
+          key={`${seriesPublicId}:delete:${title}`}
+          seriesId={seriesId}
+          seriesPublicId={seriesPublicId}
+          tenantId={tenantId}
+          title={title}
+        />
+      </ConsoleSection.Actions>
+    </ConsoleSection.Header>
+  </ConsoleSection.Root>
+);
 
 const SeriesEyeCatchTabData = async ({
   seriesId,
@@ -497,6 +544,16 @@ const EditSeriesFormData = async ({
           />
         </Suspense>
       </SectionErrorBoundary>
+      <Suspense fallback={null}>
+        <TenantAdminOnly>
+          <SeriesDeleteSection
+            seriesId={result.series.id}
+            seriesPublicId={result.series.publicId}
+            tenantId={tenantId}
+            title={result.series.title}
+          />
+        </TenantAdminOnly>
+      </Suspense>
     </div>
   );
 };

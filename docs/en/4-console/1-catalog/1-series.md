@@ -1,8 +1,8 @@
 ---
 title: Series
-description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes with links to where their printed books are sold.
+description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes with links to where their printed books are sold, and delete a series that holds nothing.
 published: 2026-10-07
-updated: 2026-11-06
+updated: 2026-11-10
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -43,7 +43,7 @@ The title and synopsis are written in the site's default language. A title and s
 - **A time that has passed**, or the current time: the series is public as soon as it is saved.
 - **A time in the future**: the series stays hidden until then. `publira worker` looks for series whose time has passed once a minute and refreshes the site's cached pages, so its lists and its top page include it within about a minute of that time.
 
-Clearing the field later takes a public series off the site again, with its episodes. This is the only way to withdraw a series, since a series cannot be deleted.
+Clearing the field later takes a public series off the site again, with its episodes. This is how a series is withdrawn while it has an episode or a volume, or while anything else refers to it: until then it cannot be deleted, as [Deleting a series](#deleting-a-series) describes.
 
 When a hidden series becomes public, for the first time or again, the episodes published while it was hidden are announced to the readers following them, the series, or an Author credited on them, and are dated from the moment the series became public. An episode announced while the series was public before keeps its date and is not announced again. [Episodes](./2-episodes.md#when-a-scheduled-episode-appears) describes who is told.
 
@@ -206,3 +206,18 @@ Under **Sale**, **Put on sale** offers the volume to readers, and **Take off sal
 A volume is sold only where every one of its episodes can be bought, since buying it buys each of them: if one of its episodes is sold on the site alone under **Sold on**, so is the volume. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) describes where episodes are sold.
 
 ![The Sale section of a volume on sale, with the On sale status and Take off sale.](./series-volume-sale.png)
+
+## Deleting a series
+
+A Tenant admin deletes a series with **Delete this series**, at the end of the **Basic information** tab of its edit screen; an Editor or an Auditor is not offered it. The dialog asks for the series' title, the one in the site's default language that the **Series** list shows, and **Delete series** stays unavailable until it is typed exactly. Choosing it deletes the series with its titles and synopses in every language, its credits, genres and tags, cover images, Free if you wait and Free after publication settings, and its readers' follows. It leaves the site, the app, and the search index at once, and the console returns to the **Series** list. A deletion cannot be undone, and **Audit logs** records it with the series' title.
+
+![The dialog that deletes a series: what is deleted with it, which series are kept and that the reason is shown, the series' title typed into the confirmation field, Cancel, and Delete series.](./series-delete.png)
+
+A series is deleted only once it holds nothing and nothing refers to it. While any of these does, the dialog says which instead of deleting it, with a link to where it is:
+
+- An episode, whatever its state. Delete each one first, as [Deleting an episode](./2-episodes.md#deleting-an-episode) describes. **View its episodes** opens the series' episode list.
+- A volume. A volume cannot be deleted, so a series that has one is kept. **View its volumes** opens the **Volumes** tab.
+- A subscription plan whose **Opens** includes the series. Take the series out of what the plan opens, as [Subscription plans](../5-subscription-plans.md#changing-unpublishing-and-deleting-a-plan) describes. **View subscription plans** opens **Subscription plans**.
+- A promotion code for the series that has not been deleted, or that a reader redeemed. Delete a code nobody redeemed, as [Selling episodes](../4-selling-episodes.md#watching-pausing-and-deleting-a-code) describes; a code that was redeemed keeps the series. **View promotion codes** opens **Promotion codes**.
+
+The dialog names the first of these, in this order, so a series held by more than one is refused again for the next once the first is gone. A series that cannot be deleted is taken off the site instead, by emptying its **Publication date and time**.

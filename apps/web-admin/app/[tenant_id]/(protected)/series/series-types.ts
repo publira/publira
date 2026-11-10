@@ -1,4 +1,5 @@
 import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+import type { SeriesDeletionReference } from "#lib/series";
 import type {
   SeriesAgeRatingValue,
   SeriesStatusValue,
@@ -50,4 +51,14 @@ export type SeriesActionState = {
   ok: boolean;
   message: string;
   mode: SeriesMutationMode;
+} | null;
+
+/**
+ * A deletion the API refused, with the screen that holds what refers to the
+ * series. A deletion that goes through leaves the screen instead of answering.
+ */
+export type SeriesDeleteActionState = {
+  ok: false;
+  message: string;
+  reference?: SeriesDeletionReference;
 } | null;
