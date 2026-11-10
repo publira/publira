@@ -123,6 +123,11 @@ import {
 } from "./templates/staff-episode-review-returned";
 import { subscriptionPaymentDataSchema } from "./templates/subscription-payment";
 import {
+  SubscriptionPaymentFailedEmail,
+  subscriptionPaymentFailedDataSchema,
+  subscriptionPaymentFailedPreview,
+} from "./templates/subscription-payment-failed";
+import {
   SubscriptionRenewedEmail,
   subscriptionRenewedPreview,
 } from "./templates/subscription-renewed";
@@ -159,6 +164,7 @@ export const TEMPLATE_IDS = [
   "purchase_refund_notice",
   "subscription_started",
   "subscription_renewed",
+  "subscription_payment_failed",
   "reader_episode_published",
   "reader_announcement_posted",
   "reader_comment_approved",
@@ -469,6 +475,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: staffEpisodeReviewReturnedPreview,
     schema: staffEpisodeReviewReturnedDataSchema,
+  }),
+  subscription_payment_failed: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(SubscriptionPaymentFailedEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: subscriptionPaymentFailedPreview,
+    schema: subscriptionPaymentFailedDataSchema,
   }),
   subscription_renewed: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

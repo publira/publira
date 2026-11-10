@@ -823,6 +823,53 @@ func queueSubscriptionPaymentEmail(ctx context.Context, queries *dbmodels.Querie
 	return nil
 }
 
+// recordSubscriptionPaymentFailure writes the subscription a failed attempt to
+// collect its invoice names as the provider holds it now, as any notification
+// about it does, and owes its reader the mail of the attempt in the same
+// transaction. The mail says until when the plan's episodes stay open, so it is
+// owed only while the subscription as written still opens them, which one the
+// provider ended on its last attempt, or one whose period is over, does not;
+// one whose reader's account is gone owes nobody one. A redelivered
+// notification is the same attempt, and queues nothing twice.
+func (s *apiServer) recordSubscriptionPaymentFailure(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	event paymentprovider.SubscriptionPaymentFailed,
+) error {
+	return s.recordSubscription(ctx, tenantID, provider, credentials, paymentprovider.SubscriptionChanged{ID: event.ID, SubscriptionID: event.SubscriptionID},
+		func(ctx context.Context, queries *dbmodels.Queries, subscription dbmodels.RecordSubscriptionFromStripeRow) error {
+			if !subscription.UserID.Valid || !paymentprovider.SubscriptionStatus(subscription.Status).Opens() ||
+				!subscription.CurrentPeriodEnd.Valid || !subscription.CurrentPeriodEnd.Time.After(time.Now()) {
+				return nil
+			}
+			payload := outbox.SubscriptionPaymentFailedPayload{
+				TenantID:       tenantID.String(),
+				SubscriptionID: subscription.ID.String(),
+				PlanID:         subscription.PlanID.String(),
+				Amount:         event.Amount,
+				Currency:       event.Currency,
+				PeriodEnd:      subscription.CurrentPeriodEnd.Time.UTC(),
+				IsTest:         event.Test,
+			}
+			if !event.NextAttempt.IsZero() {
+				nextAttempt := event.NextAttempt.UTC()
+				payload.NextAttempt = &nextAttempt
+			}
+			encoded, err := json.Marshal(payload)
+			if err != nil {
+				return s.internalError(ctx, "failed to encode the mail of a failed subscription payment", err, "tenant_id", tenantID.String(), "event_id", event.ID)
+			}
+			if err := insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeSubscriptionPaymentFailed, encoded,
+				outbox.SubscriptionPaymentFailedIdempotencyKey(tenantID, event.ID)); err != nil {
+				return s.internalError(ctx, "failed to queue the mail of a failed subscription payment", err,
+					"tenant_id", tenantID.String(), "event_id", event.ID, "invoice_id", event.InvoiceID, "subscription_id", subscription.ID.String())
+			}
+			return nil
+		})
+}
+
 // applyHeldRefundToSubscriptionPayment writes the refund held for paymentID
 // onto the subscription payment paid through it, and releases the hold.
 func (s *apiServer) applyHeldRefundToSubscriptionPayment(ctx context.Context, queries Querier, tenantID uuid.UUID, providerID, paymentID string) error {

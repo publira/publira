@@ -120,6 +120,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypePurchaseRefundNotice,
 		outbox.EventTypeSubscriptionStarted,
 		outbox.EventTypeSubscriptionRenewed,
+		outbox.EventTypeSubscriptionPaymentFailed,
 		outbox.EventTypeCommentAwaitingApprovalNotification,
 		outbox.EventTypeCommentReportedNotification,
 		outbox.EventTypeAnnouncementNotification,

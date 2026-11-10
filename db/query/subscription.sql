@@ -46,7 +46,8 @@ SET plan_id = EXCLUDED.plan_id,
 RETURNING id,
     user_id,
     plan_id,
-    status;
+    status,
+    current_period_end;
 
 -- name: GetMySubscription :one
 -- The reader's latest subscription that is not over, or failing that the
@@ -196,3 +197,22 @@ SELECT id,
 FROM subscriptions
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')::text;
+
+-- name: GetSubscriptionPaymentFailedMailForTenant :one
+-- What the mail of a failed attempt to collect a subscription's invoice says
+-- beside what the attempt carried, read by the outbox worker, which connects
+-- past RLS and therefore names the tenant itself: the plan the attempt was
+-- recorded on, under the name it has when the mail is sent, and the reader's
+-- address. The reader is joined within the tenant, so an account deleted since
+-- answers no address rather than no row.
+SELECT pl.name AS plan_name,
+    u.email AS reader_email
+FROM subscriptions s
+JOIN subscription_plans pl
+    ON pl.tenant_id = s.tenant_id
+    AND pl.id = sqlc.arg('plan_id')::uuid
+LEFT JOIN users u
+    ON u.tenant_id = s.tenant_id
+    AND u.id = s.user_id
+WHERE s.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND s.id = sqlc.arg('id')::uuid;

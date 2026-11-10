@@ -1528,3 +1528,82 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 		t.Error("emailCopy accepted a price in a currency it cannot write")
 	}
 }
+
+func subscriptionPaymentFailedData(overrides map[string]any) map[string]any {
+	data := map[string]any{
+		"amount":       int64(980),
+		"currency":     "JPY",
+		"is_test":      false,
+		"my_page_url":  "https://reader.example.test/my",
+		"next_attempt": "2026-04-05T03:00:00Z",
+		"period_end":   "2026-05-02T00:00:00Z",
+		"plan_name":    "All you can read",
+		"tenant_name":  "Aoto Press",
+	}
+	for name, value := range overrides {
+		data[name] = value
+	}
+	return data
+}
+
+// The mail of a failed attempt names the plan and what the invoice asks for,
+// when it is tried again where the provider said, and until when the plan's
+// episodes stay open at the latest, and sends the reader to My Page to change
+// the card. One attempted in the provider's test mode says no money is owed.
+func TestEmailCopyWritesASubscriptionPaymentFailed(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		locale    string
+		overrides map[string]any
+		wantText  string
+	}{
+		{
+			name:   "in English, tried again",
+			locale: "en",
+			wantText: "Aoto Press\n\nYour payment did not go through\n\n" +
+				"We could not collect the payment that renews your subscription on Aoto Press.\n\n" +
+				"Plan: All you can read\n\n" +
+				"Amount due: ¥980 (JPY)\n\n" +
+				"The payment will be tried again on Apr 5, 2026, 12:00 PM.\n\n" +
+				"Until a payment goes through, you can read the episodes the plan covers until May 2, 2026, 9:00 AM at the latest. They close sooner if the subscription ends before then.\n\n" +
+				"To keep reading, update your payment method under Manage billing on My Page.\n\n" +
+				"Open My Page https://reader.example.test/my\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:      "in Japanese in test mode, naming no next attempt",
+			locale:    "ja",
+			overrides: map[string]any{"is_test": true, "next_attempt": ""},
+			wantText: "Aoto Press\n\nお支払いが完了しませんでした\n\n" +
+				"Aoto Pressのプランを更新するためのお支払いを受け付けられませんでした。\n\n" +
+				"これは決済サービスのテストモードでのお支払いです。料金は請求されていません。\n\n" +
+				"プラン「All you can read」\n\n" +
+				"未払いの金額は￥980 (JPY) です。\n\n" +
+				"お支払いが完了するまでは、遅くとも2026/05/02 9:00まで、このプランの対象のエピソードを読めます。それより前にプランが終了した場合は、その時点で読めなくなります。\n\n" +
+				"引き続き読むには、マイページの「支払いの管理」から支払い方法を更新してください。\n\n" +
+				"マイページを開く https://reader.example.test/my\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(emailrenderer.Request{
+				Template: "subscription_payment_failed",
+				Locale:   testCase.locale,
+				Data:     subscriptionPaymentFailedData(testCase.overrides),
+				TimeZone: "Asia/Tokyo",
+			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+			wantSubject := map[string]string{"en": "Aoto Press subscription payment failed", "ja": "Aoto Pressプランのお支払いが未完了です"}[testCase.locale]
+			if email.Subject != wantSubject {
+				t.Errorf("subject = %q, want %q", email.Subject, wantSubject)
+			}
+		})
+	}
+}

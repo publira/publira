@@ -1160,14 +1160,31 @@ func (f *Fixture) SubscriptionDeleted(t testing.TB, credentials paymentprovider.
 	return recorded(t, credentials, "customer.subscription.deleted.json", SubscriptionObject(subscription))
 }
 
-// InvoicePaymentFailed answers Stripe's notification that a renewal invoice
-// of subscription could not be paid, and puts subscription on the account of
-// the credentials as it now stands, past due as Stripe leaves it.
-func (f *Fixture) InvoicePaymentFailed(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+// FailedInvoice is one attempt to collect a renewal invoice that did not go
+// through, as [Fixture.InvoicePaymentFailed] delivers it. Each field left
+// empty keeps what the recorded notification carries, but for NextAttempt,
+// whose zero is a notification that names no next attempt, and Test, whose
+// zero is a live-mode invoice.
+type FailedInvoice struct {
+	// EventID is the id of the notification, which is one attempt.
+	EventID     string
+	InvoiceID   string
+	Amount      int64
+	Currency    string
+	NextAttempt time.Time
+	Test        bool
+}
+
+// InvoicePaymentFailed answers Stripe's notification that an attempt at a
+// renewal invoice of subscription did not go through, and puts subscription on
+// the account of the credentials as it now stands, past due as Stripe leaves
+// it.
+func (f *Fixture) InvoicePaymentFailed(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription, invoice FailedInvoice) ([]byte, http.Header) {
 	t.Helper()
 	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
-	return recorded(t, credentials, "invoice.payment_failed.json", map[string]any{
+	fields := map[string]any{
 		"customer": subscription.CustomerID,
+		"livemode": !invoice.Test,
 		"parent": map[string]any{
 			"type": "subscription_details",
 			"subscription_details": map[string]any{
@@ -1175,7 +1192,22 @@ func (f *Fixture) InvoicePaymentFailed(t testing.TB, credentials paymentprovider
 				"subscription": subscription.ID,
 			},
 		},
-	})
+		"next_payment_attempt": nil,
+	}
+	if invoice.InvoiceID != "" {
+		fields["id"] = invoice.InvoiceID
+	}
+	if invoice.Amount > 0 {
+		fields["amount_due"] = invoice.Amount
+		fields["amount_remaining"] = invoice.Amount
+	}
+	if invoice.Currency != "" {
+		fields["currency"] = strings.ToLower(invoice.Currency)
+	}
+	if !invoice.NextAttempt.IsZero() {
+		fields["next_payment_attempt"] = invoice.NextAttempt.Unix()
+	}
+	return recordedEvent(t, credentials, "invoice.payment_failed.json", invoice.EventID, fields)
 }
 
 // SubscriptionPaid answers Stripe's notification that an invoice of a plan's
@@ -1244,6 +1276,13 @@ func (*Fixture) Unrelated(t testing.TB, credentials paymentprovider.Credentials)
 // object, signed with the credentials' webhook secret.
 func recorded(t testing.TB, credentials paymentprovider.Credentials, name string, fields map[string]any) ([]byte, http.Header) {
 	t.Helper()
+	return recordedEvent(t, credentials, name, "", fields)
+}
+
+// recordedEvent is [recorded] delivered as the notification eventID, or under
+// the recorded notification's own id when that is empty.
+func recordedEvent(t testing.TB, credentials paymentprovider.Credentials, name, eventID string, fields map[string]any) ([]byte, http.Header) {
+	t.Helper()
 	raw, err := events.ReadFile("testdata/" + name)
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
@@ -1261,6 +1300,9 @@ func recorded(t testing.TB, credentials paymentprovider.Credentials, name string
 	// An event is delivered in the mode of the object it is about.
 	if livemode, ok := fields["livemode"]; ok {
 		event["livemode"] = livemode
+	}
+	if eventID != "" {
+		event["id"] = eventID
 	}
 	// Stripe refuses an event from an API version other than the library's.
 	event["api_version"] = stripego.APIVersion
