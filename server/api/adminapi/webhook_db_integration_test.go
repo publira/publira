@@ -538,3 +538,140 @@ func TestDBEpisodeUnpublishedIsOwedOncePerWithdrawal(t *testing.T) {
 		t.Fatalf("deliveries after hiding the series a second time = %+v, want two more events of their own", got)
 	}
 }
+
+// A comment approved owes comment.posted to the endpoints that subscribed to
+// it, once: a refused second approval owes nothing, nor does restoring it after
+// staff hid it, and a comment hidden or withdrawn while it waited for approval
+// owes none at all. The event names the writer by their public id and display
+// name and carries no address. An endpoint that did not subscribe is owed none.
+func TestDBCommentPostedIsOwedOnceWhenACommentIsApproved(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "CWH", "comment-hooks.example.com")
+	admin := fixture.admin
+	ctx := testutil.WithBearer(context.Background(), admin.token())
+	for _, endpoint := range []struct {
+		url    string
+		events []publiraadminv1.WebhookEventType
+	}{
+		{url: "https://cms.example.com/publira", events: []publiraadminv1.WebhookEventType{publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED}},
+		{url: "https://crm.example.com/publira", events: purchaseEvents},
+	} {
+		if _, err := env.webhookClient().CreateWebhookEndpoint(ctx, &publiraadminv1.CreateWebhookEndpointRequest{
+			Tenant:     admin.tenantContext(),
+			Url:        endpoint.url,
+			EventTypes: endpoint.events,
+			Enabled:    true,
+		}); err != nil {
+			t.Fatalf("CreateWebhookEndpoint %s: %v", endpoint.url, err)
+		}
+	}
+
+	client := env.commentClient()
+	moderate := func(action string, commentID string) error {
+		t.Helper()
+		var err error
+		switch action {
+		case "approve":
+			_, err = client.ApproveComment(ctx, &publiraadminv1.ApproveCommentRequest{Tenant: admin.tenantContext(), CommentId: commentID})
+		case "hide":
+			_, err = client.HideComment(ctx, &publiraadminv1.HideCommentRequest{Tenant: admin.tenantContext(), CommentId: commentID})
+		case "restore":
+			_, err = client.RestoreComment(ctx, &publiraadminv1.RestoreCommentRequest{Tenant: admin.tenantContext(), CommentId: commentID})
+		}
+		return err
+	}
+	type delivered struct {
+		url  string
+		raw  string
+		data tenantwebhooks.Comment
+	}
+	deliveries := func() []delivered {
+		t.Helper()
+		rows, err := env.PG.DB.QueryContext(context.Background(), `
+			SELECT e.url, d.payload->'data'
+			FROM webhook_deliveries d
+				JOIN tenant_webhook_endpoints e ON e.id = d.endpoint_id
+			WHERE d.tenant_id = $1 AND d.event_type = 'comment.posted'
+			ORDER BY d.created_at, d.id
+		`, admin.Tenant.ID)
+		if err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		defer func() { _ = rows.Close() }()
+		var got []delivered
+		for rows.Next() {
+			var row delivered
+			var data []byte
+			if err := rows.Scan(&row.url, &data); err != nil {
+				t.Fatalf("scan a delivery: %v", err)
+			}
+			if err := json.Unmarshal(data, &row.data); err != nil {
+				t.Fatalf("decode a delivery's data %s: %v", data, err)
+			}
+			row.raw = string(data)
+			got = append(got, row)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		return got
+	}
+
+	approved := fixture.seedComment(t, "CWHAPPROVE1", "pending")
+	if err := moderate("approve", approved.ID.String()); err != nil {
+		t.Fatalf("ApproveComment: %v", err)
+	}
+	got := deliveries()
+	if len(got) != 1 || got[0].url != "https://cms.example.com/publira" {
+		t.Fatalf("deliveries after approving a comment = %+v, want one to the subscribed endpoint", got)
+	}
+	data := got[0].data
+	want := tenantwebhooks.Comment{
+		CommentPublicID: approved.PublicID,
+		EpisodePublicID: fixture.episode.PublicID,
+		SeriesPublicID:  fixture.series.PublicID,
+		Body:            approved.Body,
+		AuthorPublicID:  fixture.readerPublicID,
+		AuthorName:      "Reader CWH",
+		PublishedAt:     data.PublishedAt,
+	}
+	if data.PublishedAt == "" || data != want {
+		t.Fatalf("data of the approved comment = %+v, want %+v with its publication time", data, want)
+	}
+	if strings.Contains(got[0].raw, "comment-hooks.example.com") {
+		t.Fatalf("data of the approved comment = %s, want it without the writer's address", got[0].raw)
+	}
+
+	// A second approval is refused, and a comment hidden and restored becomes
+	// visible again without being posted again.
+	if err := moderate("approve", approved.ID.String()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
+	}
+	for _, action := range []string{"hide", "restore"} {
+		if err := moderate(action, approved.ID.String()); err != nil {
+			t.Fatalf("%s the approved comment: %v", action, err)
+		}
+	}
+	if got := deliveries(); len(got) != 1 {
+		t.Fatalf("deliveries after hiding and restoring the approved comment = %d, want 1", len(got))
+	}
+
+	// A comment hidden while it waited goes back to waiting when restored, and
+	// one its writer withdrew cannot be approved: neither became visible.
+	hidden := fixture.seedComment(t, "CWHHIDDEN01", "pending")
+	for _, action := range []string{"hide", "restore", "hide"} {
+		if err := moderate(action, hidden.ID.String()); err != nil {
+			t.Fatalf("%s the waiting comment: %v", action, err)
+		}
+	}
+	withdrawn := fixture.seedComment(t, "CWHWITHDRW1", "pending")
+	fixture.withdrawComment(t, withdrawn.ID)
+	if err := moderate("approve", withdrawn.ID.String()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("ApproveComment on a withdrawn comment error = %v, want failed_precondition", err)
+	}
+	if got := deliveries(); len(got) != 1 {
+		t.Fatalf("deliveries after hiding and withdrawing waiting comments = %+v, want the approved comment's alone", got)
+	}
+}

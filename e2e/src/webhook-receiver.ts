@@ -10,7 +10,13 @@ export interface WebhookReceiverDelivery {
    * that carries none of them, such as `webhook.test`, leaves them out.
    */
   body: {
-    data: { episode_public_id?: string; title?: string; withdrawn?: string };
+    data: {
+      author_name?: string;
+      comment_public_id?: string;
+      episode_public_id?: string;
+      title?: string;
+      withdrawn?: string;
+    };
     id: string;
     type: string;
   };

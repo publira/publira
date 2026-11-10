@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
+import { uniqueCommentBody } from "../src/comments";
 import { applyScenarioSql } from "../src/db";
 import {
   nudgeScheduledEpisodeReady,
@@ -12,8 +13,10 @@ import {
 import {
   WEBHOOKS_ADMIN,
   WEBHOOKS_EDITOR,
+  WEBHOOKS_READER,
   WEBHOOKS_SCENARIO,
 } from "../src/scenarios/webhooks";
+import { mintAccessToken } from "../src/session";
 import { PUBLIC_API_BASE_URL, WEB_ADMIN_WEBHOOKS_BASE_URL } from "../src/urls";
 import {
   setWebhookReceiverSecret,
@@ -29,7 +32,8 @@ import {
  * on the form, a test event that is given up can be resent, one sent to a
  * receiver arrives signed, an episode the key publishes, at once or once its
  * time passes, is announced to a receiver that subscribed to it, and so is an
- * episode the key takes off the site, by itself or by hiding its series.
+ * episode the key takes off the site, by itself or by hiding its series, and a
+ * reader's comment once it appears, at once or once it is approved.
  *
  * The worker the stack runs dials a public address and the receiver's alone,
  * `127.0.0.1`, so {@link ENDPOINT_URL} is on another loopback address: the
@@ -692,6 +696,167 @@ test.describe("API keys and webhooks", () => {
           2,
           { timeout: 3000 }
         );
+      }).toPass({ timeout: 60_000 });
+    });
+
+    test("announces a reader's comment posted at once and one approved to a receiver", async ({
+      page,
+    }) => {
+      const receiverName = randomUUID();
+      const receiverUrl = webhookReceiverEndpoint(receiverName);
+
+      await openPage(page);
+      const keys = section(page, "API keys");
+
+      await keys.getByLabel("Name").fill("Commenting system");
+      await keys
+        .getByRole("checkbox", { exact: true, name: "Catalog changes" })
+        .check();
+      await keys.getByRole("button", { name: "Create API key" }).click();
+      await expect(keys.getByText("Your new API key")).toBeVisible();
+
+      const key = await textOf(keys.getByText(KEY_PATTERN));
+      const form = addEndpointForm(page);
+
+      await form.getByLabel("URL").fill(receiverUrl);
+      await form.getByRole("checkbox", { name: "Comment posted" }).check();
+      await form.getByRole("button", { name: "Add the endpoint" }).click();
+      await expect(form.getByText("The endpoint was added.")).toBeVisible();
+      await setWebhookReceiverSecret(
+        receiverName,
+        await textOf(form.getByText(SECRET_PATTERN))
+      );
+
+      const commentedEpisode = async (
+        commentMode: string
+      ): Promise<CreatedEpisode> => {
+        const { series } = await adminApiJson<{ series: { id: string } }>(
+          key,
+          "AdminSeriesService/CreateSeries",
+          {
+            commentMode,
+            publishedAt: "2000-01-01T00:00:00Z",
+            title: `Commented series ${commentMode}`,
+          }
+        );
+
+        return adminApiJson<CreatedEpisode>(
+          key,
+          "AdminSeriesService/CreateEpisode",
+          {
+            scheduledAt: "2000-01-01T00:00:00Z",
+            seriesId: series.id,
+            title: "Commented episode",
+          }
+        );
+      };
+
+      const immediate = await commentedEpisode("COMMENT_MODE_IMMEDIATE");
+      const approved = await commentedEpisode("COMMENT_MODE_APPROVAL_REQUIRED");
+
+      const readerToken = await mintAccessToken({
+        audience: "public",
+        subject: WEBHOOKS_READER.publicId,
+        tenantId: TENANT_UUID,
+      });
+
+      const postComment = async (
+        episode: CreatedEpisode,
+        body: string
+      ): Promise<string> => {
+        const response = await fetch(
+          `${PUBLIC_API_BASE_URL}/publira.v1.CommentService/PostEpisodeComment`,
+          {
+            body: JSON.stringify({
+              body,
+              episodeId: episode.episode.id,
+              tenant: { tenantId: TENANT_UUID },
+            }),
+            headers: {
+              Authorization: `Bearer ${readerToken}`,
+              "content-type": "application/json",
+            },
+            method: "POST",
+          }
+        );
+
+        expect(response.status, await response.clone().text()).toBe(200);
+
+        // SAFETY: the Connect JSON body of PostEpisodeCommentResponse.
+        const { comment } = (await response.json()) as {
+          comment: { publicId: string };
+        };
+
+        return comment.publicId;
+      };
+
+      const immediateBody = uniqueCommentBody("Shown at once");
+      const approvedBody = uniqueCommentBody("Shown once approved");
+      const immediateComment = await postComment(immediate, immediateBody);
+      const approvedComment = await postComment(approved, approvedBody);
+
+      // The comment waiting for approval is owed nothing until a moderator
+      // approves it under Comments.
+      await page.goto(adminUrl("/comments"));
+      await page
+        .getByRole("row")
+        .filter({ hasText: approvedBody })
+        .getByRole("button", { exact: true, name: "Approve" })
+        .click();
+      await expect(page.getByText("The comment was published.")).toBeVisible();
+
+      await expect
+        .poll(
+          async () => {
+            const deliveries = await webhookReceiverDeliveries(receiverName);
+
+            return deliveries.length;
+          },
+          { timeout: 60_000 }
+        )
+        .toBe(2);
+      const received = await webhookReceiverDeliveries(receiverName);
+
+      expect(
+        received.map(({ body, event, verified }) => ({
+          author: body.data.author_name,
+          comment: body.data.comment_public_id,
+          episode: body.data.episode_public_id,
+          event,
+          verified,
+        }))
+      ).toEqual(
+        expect.arrayContaining([
+          {
+            author: WEBHOOKS_READER.name,
+            comment: immediateComment,
+            episode: immediate.episode.publicId,
+            event: "comment.posted",
+            verified: true,
+          },
+          {
+            author: WEBHOOKS_READER.name,
+            comment: approvedComment,
+            episode: approved.episode.publicId,
+            event: "comment.posted",
+            verified: true,
+          },
+        ])
+      );
+
+      await openPage(page);
+
+      const posted = section(page, "Deliveries")
+        .getByRole("row")
+        .filter({ hasText: "Comment posted" })
+        .filter({ hasText: receiverUrl });
+
+      await expect(async () => {
+        await page.reload();
+        await expect(posted).toHaveCount(2, { timeout: 3000 });
+        await expect(posted.filter({ hasText: "Delivered" })).toHaveCount(2, {
+          timeout: 3000,
+        });
       }).toPass({ timeout: 60_000 });
     });
   });

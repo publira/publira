@@ -14,6 +14,7 @@
 --   tenant WhokTNNTAAA1 (webhooks.localhost / admin.webhooks.localhost)
 --   admin  WhokADMNAAA1 (webhooks-admin@example.com)
 --   editor WhokEDTRAAA1 (webhooks-editor@example.com)
+--   reader WhokMMBRAAA1 (webhooks-reader@example.com)
 --
 -- ID band: 018f1ac0-000N-7000-8000-0000000000NN.
 
@@ -83,6 +84,12 @@ FROM (
             'WhokEDTRAAA1',
             'webhooks-editor@example.com',
             'Webhooks E2E Editor'
+        ),
+        (
+            '018f1ac0-0002-7000-8000-000000000003'::uuid,
+            'WhokMMBRAAA1',
+            'webhooks-reader@example.com',
+            'Webhooks E2E Reader'
         )
 ) AS seed (id, public_id, email, name)
 JOIN tenants t ON t.public_id = 'WhokTNNTAAA1'

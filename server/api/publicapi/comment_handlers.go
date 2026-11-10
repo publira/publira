@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -518,6 +519,9 @@ func (s *apiServer) storeComment(
 	}
 	if params.Status == commentStatusPublished {
 		if err := contentevents.ProjectComment(ctx, txq, params.TenantID, comment.ID); err != nil {
+			return dbmodels.EpisodeComment{}, err
+		}
+		if err := tenantwebhooks.QueueCommentPosted(ctx, txq, params.TenantID, comment.ID); err != nil {
 			return dbmodels.EpisodeComment{}, err
 		}
 	}

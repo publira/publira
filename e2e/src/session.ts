@@ -148,6 +148,16 @@ const signAccessToken = (
     .setExpirationTime(Math.floor(expiresAt.epochMilliseconds / 1000))
     .sign(resolveJwtSecret());
 
+/**
+ * An access token publira server accepts for the next hour, for a call the
+ * suite makes to the API itself rather than through a signed-in page.
+ */
+export const mintAccessToken = (claims: AccessTokenClaims): Promise<string> => {
+  const now = Temporal.Now.instant();
+
+  return signAccessToken(claims, now, now.add({ hours: 1 }));
+};
+
 export const mintExpiredAccessToken = (
   claims: AccessTokenClaims
 ): Promise<string> => {

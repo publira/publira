@@ -4083,6 +4083,8 @@
           "episode_published_description": "에피소드가 예약한 시각에, 또는 바로 공개될 때.",
           "episode_unpublished": "에피소드 공개 내림",
           "episode_unpublished_description": "공개된 에피소드가 임시저장으로 되돌려지거나 이후 시각으로 바뀌거나, 시리즈가 비공개가 될 때.",
+          "comment_posted": "댓글 공개",
+          "comment_posted_description": "독자의 댓글이 바로 또는 승인 후 에피소드에 공개될 때.",
           "test": "테스트 이벤트"
         },
         "enabled": "사용",

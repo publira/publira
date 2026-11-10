@@ -22,6 +22,16 @@ export const WEBHOOKS_ADMIN = {
   publicId: "WhokADMNAAA1",
 } as const;
 
+/**
+ * A reader of that tenant, holding no role, whose comments the suite posts
+ * with a token it mints for them.
+ */
+export const WEBHOOKS_READER = {
+  email: "webhooks-reader@example.com",
+  name: "Webhooks E2E Reader",
+  publicId: "WhokMMBRAAA1",
+} as const;
+
 /** Tenant editor of that tenant, who is not shown the page. */
 export const WEBHOOKS_EDITOR = {
   email: "webhooks-editor@example.com",

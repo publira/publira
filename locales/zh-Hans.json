@@ -4083,6 +4083,8 @@
           "episode_published_description": "章节按预定时间发布，或立即发布。",
           "episode_unpublished": "章节取消发布",
           "episode_unpublished_description": "已发布的章节被改回草稿或改为之后的时间，或其系列变为未发布。",
+          "comment_posted": "评论公开",
+          "comment_posted_description": "读者的评论立即或经审核后在章节中公开。",
           "test": "测试事件"
         },
         "enabled": "启用",

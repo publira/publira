@@ -62,6 +62,13 @@ enum WebhookEventType {
   // event of its own. `data` names the episode and its series, and says in
   // `withdrawn`, "episode" or "series", which of the two was taken off.
   WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED = 8;
+  // "comment.posted": a reader's comment becomes visible on an episode: at
+  // once when the series takes comments without approval, or when staff
+  // approve it. A comment is sent once, so one hidden and restored is not sent
+  // again, and one hidden or withdrawn before it was approved is never sent.
+  // `data` is the comment, with its writer's public id and display name and
+  // never their address.
+  WEBHOOK_EVENT_TYPE_COMMENT_POSTED = 9;
 }
 
 // How a delivery stands.

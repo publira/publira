@@ -134,6 +134,61 @@ func (q *Queries) GetTenantWebhookEndpointForUpdate(ctx context.Context, arg Get
 	return i, err
 }
 
+const GetWebhookComment = `-- name: GetWebhookComment :one
+SELECT c.public_id AS comment_public_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    c.body,
+    c.published_at::timestamptz AS published_at,
+    u.public_id AS author_public_id,
+    u.name AS author_name
+FROM episode_comments c
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+    AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN users u ON u.tenant_id = c.tenant_id
+    AND u.id = c.user_id
+WHERE c.tenant_id = $1
+    AND c.id = $2
+    AND c.status = 'published'
+    AND c.published_at IS NOT NULL
+`
+
+type GetWebhookCommentParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookCommentRow struct {
+	CommentPublicID string    `json:"comment_public_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	Body            string    `json:"body"`
+	PublishedAt     time.Time `json:"published_at"`
+	AuthorPublicID  string    `json:"author_public_id"`
+	AuthorName      string    `json:"author_name"`
+}
+
+// A comment as a comment.posted event carries it, read in the transaction that
+// makes it visible: its public id and those of its episode and series, the
+// body, the instant it became visible, and its writer's public id and display
+// name, never their address. A comment that is not published answers no row.
+func (q *Queries) GetWebhookComment(ctx context.Context, arg GetWebhookCommentParams) (GetWebhookCommentRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookComment, arg.TenantID, arg.ID)
+	var i GetWebhookCommentRow
+	err := row.Scan(
+		&i.CommentPublicID,
+		&i.EpisodePublicID,
+		&i.SeriesPublicID,
+		&i.Body,
+		&i.PublishedAt,
+		&i.AuthorPublicID,
+		&i.AuthorName,
+	)
+	return i, err
+}
+
 const GetWebhookDelivery = `-- name: GetWebhookDelivery :one
 SELECT d.id,
     d.endpoint_id,

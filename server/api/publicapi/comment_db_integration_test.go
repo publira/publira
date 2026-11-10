@@ -3,9 +3,11 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -939,5 +942,85 @@ func TestDBPostEpisodeCommentFilesAnEngagementEventOnlyOnceItIsPublic(t *testing
 	env.hideComment(t, tenant, staff, published.PublicId)
 	if got := env.countCommentEvents(t, tenant.ID); got != 1 {
 		t.Fatalf("comment events after the removal = %d, want the event to stand at 1", got)
+	}
+}
+
+// A comment posted where comments need no approval owes comment.posted to the
+// endpoint that subscribed to it at once, naming its writer by their public id
+// and display name and never their address. One that waits for approval owes
+// nothing on posting, and nothing when its writer withdraws it before staff
+// approve it.
+func TestDBPostEpisodeCommentOwesCommentPostedOnceItIsVisible(t *testing.T) {
+	t.Parallel()
+
+	fixture := newCommentFixture(t, "CWP")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['comment.posted'])
+	`, uuid.Must(uuid.NewV7()), tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+	deliveries := func() []string {
+		t.Helper()
+		rows, err := env.PG.DB.QueryContext(context.Background(), `
+			SELECT payload->'data' FROM webhook_deliveries
+			WHERE tenant_id = $1 AND event_type = 'comment.posted'
+			ORDER BY created_at, id
+		`, tenant.ID)
+		if err != nil {
+			t.Fatalf("read webhook deliveries: %v", err)
+		}
+		defer rows.Close() //nolint:errcheck
+		var got []string
+		for rows.Next() {
+			var data string
+			if err := rows.Scan(&data); err != nil {
+				t.Fatalf("scan webhook delivery: %v", err)
+			}
+			got = append(got, data)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("read webhook deliveries: %v", err)
+		}
+		return got
+	}
+
+	env.setCommentMode(t, tenant.ID, "immediate")
+	immediate := env.mustPostComment(t, tenant, member, episode.ID.String(), "Read this right away.")
+	got := deliveries()
+	if len(got) != 1 {
+		t.Fatalf("deliveries after an immediate comment = %v, want one", got)
+	}
+	var data tenantwebhooks.Comment
+	if err := json.Unmarshal([]byte(got[0]), &data); err != nil {
+		t.Fatalf("decode the delivery's data %s: %v", got[0], err)
+	}
+	want := tenantwebhooks.Comment{
+		CommentPublicID: immediate.PublicId,
+		EpisodePublicID: episode.PublicID,
+		SeriesPublicID:  fixture.series.PublicID,
+		Body:            "Read this right away.",
+		AuthorPublicID:  member.PublicID,
+		AuthorName:      member.Name,
+		PublishedAt:     data.PublishedAt,
+	}
+	if data.PublishedAt == "" || data != want {
+		t.Fatalf("data of the immediate comment = %+v, want %+v with its publication time", data, want)
+	}
+	if strings.Contains(got[0], member.Email) {
+		t.Fatalf("data of the immediate comment = %s, want it without the writer's address", got[0])
+	}
+
+	env.setCommentMode(t, tenant.ID, "approval_required")
+	awaiting := env.mustPostComment(t, tenant, member, episode.ID.String(), "Wait for a moderator.")
+	if _, err := env.commentClient().WithdrawEpisodeComment(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.WithdrawEpisodeCommentRequest{
+		Tenant:    tenantContext(tenant),
+		CommentId: awaiting.Id,
+	}); err != nil {
+		t.Fatalf("WithdrawEpisodeComment: %v", err)
+	}
+	if got := deliveries(); len(got) != 1 {
+		t.Fatalf("deliveries after a comment withdrawn while it waited = %v, want the immediate comment's alone", got)
 	}
 }

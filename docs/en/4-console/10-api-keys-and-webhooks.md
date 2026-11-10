@@ -1,11 +1,11 @@
 ---
 title: API keys and webhooks
-description: Give the tenant's own systems a key that reads the admin API or puts series and episodes in through it, send them signed events for sales, refunds, sign-ups, subscriptions, and episodes published or taken off the site, verify the signature, and resend a delivery that was given up.
+description: Give the tenant's own systems a key that reads the admin API or puts series and episodes in through it, send them signed events for sales, refunds, sign-ups, subscriptions, episodes published or taken off the site, and readers' comments, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
-**Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases, or puts series and episodes into the catalog, with an **API key**, and learns of a sale, a refund, a new reader, a subscription, or an episode published or taken off the site as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
+**Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases, or puts series and episodes into the catalog, with an **API key**, and learns of a sale, a refund, a new reader, a subscription, an episode published or taken off the site, or a reader's comment as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
 
 Only a Tenant admin sees **API keys and webhooks**, and every change on it is recorded in **Audit logs**: **API key created**, **API key revoked**, **Webhook endpoint created**, **Webhook endpoint updated**, **Webhook endpoint deleted**, **Webhook signing secret rotated**, and **Webhook delivery resent**.
 
@@ -69,7 +69,7 @@ To replace a key without a gap, create the new one, switch the system to it, and
 
 ## Webhook endpoints
 
-![A saved endpoint, headed by its URL with Enabled beside it, the Send test event and Delete buttons, its signing secret's hint and when it was last updated, Rotate secret, and its own form: the URL, the seven events with three of them chosen, the Enabled switch, and Save the endpoint.](./api-keys-and-webhooks-endpoint.png)
+![A saved endpoint, headed by its URL with Enabled beside it, the Send test event and Delete buttons, its signing secret's hint and when it was last updated, Rotate secret, and its own form: the URL, the eight events with three of them chosen, the Enabled switch, and Save the endpoint.](./api-keys-and-webhooks-endpoint.png)
 
 An endpoint is an https URL of the publisher's own that is sent a signed `POST` for each event it subscribes to. A tenant keeps up to five, and each one is a form of its own.
 
@@ -104,6 +104,7 @@ A delivery is not sent to a host that resolves to a private, loopback, link-loca
 | **Subscription ended** (`subscription.ended`) | A subscription stops being billed | The subscription |
 | **Episode published** (`episode.published`) | An episode is published: when its scheduled time passes, or at once when it is created, scheduled, or approved with a time that has already passed. It is sent whether or not its series is public yet. Each publication is an event of its own, so an episode taken back to a draft and published again is sent again | The episode |
 | **Episode unpublished** (`episode.unpublished`) | A published episode is taken off the site: its time under **Publishing settings** is emptied or moved to a time still ahead, which sends one event whether or not its series is public, or its series' **Publication date and time** is emptied or moved ahead, which sends one for each episode published in it. Each withdrawal is an event of its own, so an episode published again and taken off again is sent again | The withdrawn episode |
+| **Comment posted** (`comment.posted`) | A reader's comment appears on an episode: when it is posted where comments are set to **Publish straight away**, or when a moderator approves it under **Comments** where they are set to **Publish after approval**. Each comment is sent once, when it first appears, so one removed and restored is not sent again, and one removed or deleted by its commenter before it is approved is not sent | The comment |
 | **Test event** (`webhook.test`) | **Send test event** is chosen | Empty |
 
 ### The body
@@ -130,6 +131,7 @@ Every delivery is a JSON object:
 | The reader | `reader_public_id`, `email`, `name`, `email_verified`, false until the reader confirms the address, and `signed_up_at` |
 | The episode | `episode_public_id` and `series_public_id`; `title`, in the tenant's default language; and `published_at` |
 | The withdrawn episode | `episode_public_id` and `series_public_id`; and `withdrawn`: `episode` when the episode itself was taken off the site, `series` when its series was |
+| The comment | `comment_public_id`, `episode_public_id`, and `series_public_id`; `body`; `author_public_id` and `author_name`, the commenter's public ID and display name, never their address; and `published_at`, when it appeared |
 | The subscription | `plan_public_id` and `plan_name`; `reader_public_id` and `reader_email`, both empty once the reader has deleted their account; `provider`: `stripe`, `app_store`, or `google_play`; `status`; `current_period_end` and `cancel_at_period_end`; `started_at`; and `test` |
 
 Every delivery also carries these headers:

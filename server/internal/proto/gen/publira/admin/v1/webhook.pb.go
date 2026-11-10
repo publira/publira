@@ -80,6 +80,13 @@ const (
 	// event of its own. `data` names the episode and its series, and says in
 	// `withdrawn`, "episode" or "series", which of the two was taken off.
 	WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED WebhookEventType = 8
+	// "comment.posted": a reader's comment becomes visible on an episode: at
+	// once when the series takes comments without approval, or when staff
+	// approve it. A comment is sent once, so one hidden and restored is not sent
+	// again, and one hidden or withdrawn before it was approved is never sent.
+	// `data` is the comment, with its writer's public id and display name and
+	// never their address.
+	WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED WebhookEventType = 9
 )
 
 // Enum value maps for WebhookEventType.
@@ -94,6 +101,7 @@ var (
 		6: "WEBHOOK_EVENT_TYPE_TEST",
 		7: "WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED",
 		8: "WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED",
+		9: "WEBHOOK_EVENT_TYPE_COMMENT_POSTED",
 	}
 	WebhookEventType_value = map[string]int32{
 		"WEBHOOK_EVENT_TYPE_UNSPECIFIED":          0,
@@ -105,6 +113,7 @@ var (
 		"WEBHOOK_EVENT_TYPE_TEST":                 6,
 		"WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED":    7,
 		"WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED":  8,
+		"WEBHOOK_EVENT_TYPE_COMMENT_POSTED":       9,
 	}
 )
 
@@ -1391,7 +1400,7 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"\vdelivery_id\x18\x02 \x01(\tR\n" +
 	"deliveryId\"^\n" +
 	"\x1dResendWebhookDeliveryResponse\x12=\n" +
-	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xff\x02\n" +
+	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xa6\x03\n" +
 	"\x10WebhookEventType\x12\"\n" +
 	"\x1eWEBHOOK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED\x10\x01\x12(\n" +
@@ -1401,7 +1410,8 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"%WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED\x10\x05\x12\x1b\n" +
 	"\x17WEBHOOK_EVENT_TYPE_TEST\x10\x06\x12(\n" +
 	"$WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED\x10\a\x12*\n" +
-	"&WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED\x10\b*\xd2\x01\n" +
+	"&WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED\x10\b\x12%\n" +
+	"!WEBHOOK_EVENT_TYPE_COMMENT_POSTED\x10\t*\xd2\x01\n" +
 	"\x15WebhookDeliveryStatus\x12'\n" +
 	"#WEBHOOK_DELIVERY_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fWEBHOOK_DELIVERY_STATUS_PENDING\x10\x01\x12\"\n" +

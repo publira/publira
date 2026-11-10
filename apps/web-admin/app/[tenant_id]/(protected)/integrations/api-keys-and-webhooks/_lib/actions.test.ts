@@ -56,6 +56,7 @@ vi.mock("#lib/webhooks", () => ({
     "subscription.ended",
     "episode.published",
     "episode.unpublished",
+    "comment.posted",
   ],
   createWebhookEndpoint: mockCreateWebhookEndpoint,
   deleteWebhookEndpoint: mockDeleteWebhookEndpoint,

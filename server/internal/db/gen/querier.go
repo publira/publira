@@ -1693,6 +1693,11 @@ type Querier interface {
 	// claim below and the grants view compare against. No row means the reader
 	// has never used a ticket here, and one is ready.
 	GetWaitFreeTicketState(ctx context.Context, arg GetWaitFreeTicketStateParams) (GetWaitFreeTicketStateRow, error)
+	// A comment as a comment.posted event carries it, read in the transaction that
+	// makes it visible: its public id and those of its episode and series, the
+	// body, the instant it became visible, and its writer's public id and display
+	// name, never their address. A comment that is not published answers no row.
+	GetWebhookComment(ctx context.Context, arg GetWebhookCommentParams) (GetWebhookCommentRow, error)
 	// One delivery, shaped as ListWebhookDeliveriesDesc answers it.
 	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (GetWebhookDeliveryRow, error)
 	GetWebhookDeliveryForUpdate(ctx context.Context, arg GetWebhookDeliveryForUpdateParams) (WebhookDelivery, error)

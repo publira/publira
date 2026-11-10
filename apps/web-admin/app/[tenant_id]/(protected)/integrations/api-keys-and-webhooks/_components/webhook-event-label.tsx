@@ -54,6 +54,12 @@ export const WebhookEventLabel = ({
       );
     }
 
+    case "comment.posted": {
+      return (
+        <Message message="admin.settings.webhooks.events.comment_posted" />
+      );
+    }
+
     case "webhook.test": {
       return <Message message="admin.settings.webhooks.events.test" />;
     }
@@ -110,6 +116,12 @@ export const WebhookEventDescription = ({
     case "episode.unpublished": {
       return (
         <Message message="admin.settings.webhooks.events.episode_unpublished_description" />
+      );
+    }
+
+    case "comment.posted": {
+      return (
+        <Message message="admin.settings.webhooks.events.comment_posted_description" />
       );
     }
 

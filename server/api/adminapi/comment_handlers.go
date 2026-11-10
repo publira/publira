@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -734,6 +735,9 @@ func (s *adminServer) ApproveComment(
 	}
 	if err := contentevents.ProjectComment(ctx, qtx, tenant.ID, current.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to project the engagement event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	}
+	if err := tenantwebhooks.QueueCommentPosted(ctx, qtx, tenant.ID, current.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the webhook event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 	if err := outbox.QueueCommentApprovedNotification(ctx, qtx, commentApprovedNotification(current)); err != nil {
 		return nil, s.internalDBError(ctx, "failed to queue the notification of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
