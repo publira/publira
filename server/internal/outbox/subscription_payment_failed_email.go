@@ -17,8 +17,9 @@ import (
 
 // EventTypeSubscriptionPaymentFailed tells the reader that an attempt to
 // collect an invoice of their subscription did not go through: what it asked
-// for, when it is tried again, until when the plan's episodes stay open to
-// them at the latest, and that the card is changed from My Page.
+// for, when it is tried again where the provider said, until when the plan's
+// episodes stay open to them at the latest, and that the card is changed from
+// My Page.
 //
 // It is queued in the transaction that records the subscription as the
 // provider holds it after the attempt, once per attempt, and only while that
@@ -43,8 +44,9 @@ type SubscriptionPaymentFailedPayload struct {
 	// PeriodEnd is the end of the subscription's current period, the latest
 	// the plan's episodes stay open until while the payment is retried.
 	PeriodEnd time.Time `json:"period_end"`
-	// NextAttempt is when the provider tries again, and absent when it makes no
-	// further attempt.
+	// NextAttempt is when the provider tries again, and absent when the
+	// notification named no such time, which says nothing about whether one is
+	// scheduled.
 	NextAttempt *time.Time `json:"next_attempt,omitempty"`
 	IsTest      bool       `json:"is_test"`
 }
@@ -138,7 +140,7 @@ func subscriptionPaymentFailedEmailPayload(event dbmodels.OutboxEvent) (Subscrip
 // subscriptionPaymentFailedEmailRequest fills the mail in. The amount travels
 // in the minor unit with its currency, and the instants as RFC 3339, so the
 // HTML part and the plain-text part each write them in the tenant's locale and
-// zone. An attempt the provider follows with no other carries an empty
+// zone. An attempt whose notification named no next one carries an empty
 // next_attempt.
 func subscriptionPaymentFailedEmailRequest(
 	delivery tenantDelivery,

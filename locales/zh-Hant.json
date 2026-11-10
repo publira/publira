@@ -294,7 +294,6 @@
       "intro": "我們未能收取續訂您在{$tenant_name}的方案所需的款項。",
       "manage": "如需繼續閱讀，請在我的頁面的「管理付款」中更新付款方式。",
       "next_attempt": "我們將於{$next_attempt}再次嘗試收款。",
-      "no_next_attempt": "此後將不再自動嘗試收款。",
       "open_until": "在付款完成之前，您最晚可在{$period_end}之前閱讀此方案包含的章節。如果訂閱在此之前結束，章節將隨之無法閱讀。",
       "plan": "方案：{$plan_name}",
       "preview": "方案「{$plan_name}」的付款未能完成。",

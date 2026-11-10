@@ -1547,7 +1547,7 @@ func subscriptionPaymentFailedData(overrides map[string]any) map[string]any {
 }
 
 // The mail of a failed attempt names the plan and what the invoice asks for,
-// when it is tried again or that it is not, and until when the plan's
+// when it is tried again where the provider said, and until when the plan's
 // episodes stay open at the latest, and sends the reader to My Page to change
 // the card. One attempted in the provider's test mode says no money is owed.
 func TestEmailCopyWritesASubscriptionPaymentFailed(t *testing.T) {
@@ -1572,7 +1572,7 @@ func TestEmailCopyWritesASubscriptionPaymentFailed(t *testing.T) {
 				"This email was sent by Aoto Press.",
 		},
 		{
-			name:      "in Japanese in test mode, on the last attempt",
+			name:      "in Japanese in test mode, naming no next attempt",
 			locale:    "ja",
 			overrides: map[string]any{"is_test": true, "next_attempt": ""},
 			wantText: "Aoto Press\n\nお支払いが完了しませんでした\n\n" +
@@ -1580,7 +1580,6 @@ func TestEmailCopyWritesASubscriptionPaymentFailed(t *testing.T) {
 				"これは決済サービスのテストモードでのお支払いです。料金は請求されていません。\n\n" +
 				"プラン「All you can read」\n\n" +
 				"未払いの金額は￥980 (JPY) です。\n\n" +
-				"これ以降、お支払いを自動で試みることはありません。\n\n" +
 				"お支払いが完了するまでは、遅くとも2026/05/02 9:00まで、このプランの対象のエピソードを読めます。それより前にプランが終了した場合は、その時点で読めなくなります。\n\n" +
 				"引き続き読むには、マイページの「支払いの管理」から支払い方法を更新してください。\n\n" +
 				"マイページを開く https://reader.example.test/my\n\n" +

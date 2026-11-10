@@ -193,7 +193,7 @@ func TestParseNotificationReadsAFailedRenewal(t *testing.T) {
 				Amount: 980, Currency: "JPY", NextAttempt: nextAttempt,
 			},
 		},
-		"the last attempt of the test mode": {
+		"an attempt of the test mode that names no next one": {
 			invoice: stripetest.FailedInvoice{EventID: "evt_failed_last", InvoiceID: "in_failed", Amount: 1500, Currency: "USD", Test: true},
 			want: paymentprovider.SubscriptionPaymentFailed{
 				ID: "evt_failed_last", SubscriptionID: "sub_failed", InvoiceID: "in_failed",

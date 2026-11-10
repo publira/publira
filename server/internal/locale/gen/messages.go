@@ -1748,13 +1748,6 @@ var Messages = map[string]map[string]string{
 		"zh-Hans": "我们将于{$next_attempt}再次尝试收款。",
 		"zh-Hant": "我們將於{$next_attempt}再次嘗試收款。",
 	},
-	"email.subscription_payment_failed.no_next_attempt": {
-		"ja":      "これ以降、お支払いを自動で試みることはありません。",
-		"en":      "No further attempt will be made to collect the payment.",
-		"ko":      "앞으로 결제를 자동으로 다시 시도하지 않습니다.",
-		"zh-Hans": "此后将不再自动尝试收款。",
-		"zh-Hant": "此後將不再自動嘗試收款。",
-	},
 	"email.subscription_payment_failed.open_until": {
 		"ja":      "お支払いが完了するまでは、遅くとも{$period_end}まで、このプランの対象のエピソードを読めます。それより前にプランが終了した場合は、その時点で読めなくなります。",
 		"en":      "Until a payment goes through, you can read the episodes the plan covers until {$period_end} at the latest. They close sooner if the subscription ends before then.",

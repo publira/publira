@@ -57,7 +57,7 @@ In `purchase_refund_notice`, `amount` is what this refund returned, `refunded_to
 
 In `subscription_started` and `subscription_renewed`, `amount` is what the invoice paid, the first one or a later one, in the minor unit of `currency`, and `period_start` and `period_end` (RFC3339) bound the period it paid for; the mail says the plan's episodes are open until `period_end` and the plan renews then. `my_page_url` is My Page on the site, where **Manage billing** opens the payment provider's billing page.
 
-In `subscription_payment_failed`, `amount` is what the invoice asks for, in the minor unit of `currency`, `next_attempt` (RFC3339) when the payment provider tries again, or empty when it makes no further attempt, and `period_end` (RFC3339) the end of the subscription's current period; the mail says the plan's episodes stay open until `period_end` at the latest, and sends the reader to `my_page_url` to update their payment method.
+In `subscription_payment_failed`, `amount` is what the invoice asks for, in the minor unit of `currency`, `next_attempt` (RFC3339) when the payment provider tries again, or empty when its notification named no such time, in which case the mail says nothing of the retries, and `period_end` (RFC3339) the end of the subscription's current period; the mail says the plan's episodes stay open until `period_end` at the latest, and sends the reader to `my_page_url` to update their payment method.
 
 `settings_url` is the reader's notification settings on the site, where they choose which of these mails they receive. `sent_to_everyone` is `true` for an announcement the tenant sent to every reader whatever their settings; the mail then says so and takes no `settings_url`.
 

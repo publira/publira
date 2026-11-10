@@ -50,7 +50,7 @@ func (e purchaseReceiptEnv) subscriptionPaymentFailedEvent(t *testing.T, tenantI
 }
 
 // The mail of a failed attempt tells the reader what is owed, when it is tried
-// again or that it is not, and until when the plan's episodes stay open at the
+// again where Stripe said so, and until when the plan's episodes stay open at the
 // latest, in the tenant's language and time zone, and sends them to My Page,
 // where the card is changed; one attempted in Stripe's test mode says no money
 // is owed.
@@ -60,10 +60,9 @@ func TestSubscriptionPaymentFailedEmailTellsTheReaderUntilWhenTheyCanRead(t *tes
 	for name, testCase := range map[string]struct {
 		nextAttempt bool
 		test        bool
-		want        string
 	}{
-		"tried again":                    {nextAttempt: true, want: "The payment will be tried again on Apr 5, 2026, 12:00 PM."},
-		"the last attempt, in test mode": {test: true, want: "No further attempt will be made to collect the payment."},
+		"tried again":                         {nextAttempt: true},
+		"no next attempt named, in test mode": {test: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -92,7 +91,6 @@ func TestSubscriptionPaymentFailedEmailTellsTheReaderUntilWhenTheyCanRead(t *tes
 				"Your payment did not go through",
 				"Plan: All you can read",
 				"Amount due: ¥980 (JPY)",
-				testCase.want,
 				"until May 2, 2026, 9:00 AM at the latest",
 				"under Manage billing on My Page",
 				"://aoto.example.test/my",
@@ -100,6 +98,11 @@ func TestSubscriptionPaymentFailedEmailTellsTheReaderUntilWhenTheyCanRead(t *tes
 				if !strings.Contains(sent.Text, fragment) {
 					t.Errorf("the mail does not carry %q:\n%s", fragment, sent.Text)
 				}
+			}
+			// An attempt whose notification names no next one says nothing of
+			// the retries, since that is no sign they have ended.
+			if got := strings.Contains(sent.Text, "The payment will be tried again on Apr 5, 2026, 12:00 PM."); got != testCase.nextAttempt {
+				t.Errorf("the mail names the next attempt = %t, want %t:\n%s", got, testCase.nextAttempt, sent.Text)
 			}
 			if got := strings.Contains(sent.Text, "No money is owed."); got != testCase.test {
 				t.Errorf("the mail says no money is owed = %t, want %t:\n%s", got, testCase.test, sent.Text)

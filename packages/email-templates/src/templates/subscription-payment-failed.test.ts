@@ -53,18 +53,15 @@ describe("subscription_payment_failed", () => {
     expect(html).toContain(
       "you can read the episodes the plan covers until May 2, 2026, 9:00 AM at the latest."
     );
-    expect(html).not.toContain("No further attempt");
     expect(html).not.toContain("test mode");
     expect(html).not.toContain("Publira");
   });
 
-  it("says when the provider makes no further attempt", async () => {
+  it("says nothing of the retries when the provider named no next attempt", async () => {
     const html = await render("en", { next_attempt: "" });
 
-    expect(html).toContain(
-      "No further attempt will be made to collect the payment."
-    );
     expect(html).not.toContain("tried again");
+    expect(html).toContain("until May 2, 2026, 9:00 AM at the latest.");
   });
 
   it("sends the reader to My Page, where Manage billing changes the card", async () => {

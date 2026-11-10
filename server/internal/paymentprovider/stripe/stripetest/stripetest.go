@@ -1163,7 +1163,7 @@ func (f *Fixture) SubscriptionDeleted(t testing.TB, credentials paymentprovider.
 // FailedInvoice is one attempt to collect a renewal invoice that did not go
 // through, as [Fixture.InvoicePaymentFailed] delivers it. Each field left
 // empty keeps what the recorded notification carries, but for NextAttempt,
-// whose zero is an invoice Stripe makes no further attempt at, and Test, whose
+// whose zero is a notification that names no next attempt, and Test, whose
 // zero is a live-mode invoice.
 type FailedInvoice struct {
 	// EventID is the id of the notification, which is one attempt.

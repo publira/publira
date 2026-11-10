@@ -58,7 +58,10 @@ export const subscriptionPaymentFailedDataSchema: z.ZodObject<
   is_test: z.boolean({ error: "is_test must be a boolean" }),
   /** My Page on the site, where Manage billing opens the provider's billing page. */
   my_page_url: httpUrlField("my_page_url"),
-  /** When the provider tries again, and empty when it makes no further attempt. */
+  /**
+   * When the provider tries again, and empty when its notification named no
+   * such time, which is no sign that the retries have ended.
+   */
   next_attempt: z.union([z.literal(""), instantField("next_attempt")]),
   /**
    * The end of the subscription's current period: the latest the plan's
@@ -92,9 +95,9 @@ export const subscriptionPaymentFailedPreview = (
  * The mail a reader is sent when an attempt to collect the payment that renews
  * their subscription does not go through. It names the plan and what the
  * invoice asks for, with its currency by code beside the symbol, when the
- * payment is tried again or that it is not, and until when the plan's episodes
- * stay open at the latest: the end of the current period, which a subscription
- * the provider ends on its last attempt does not reach. The button opens My
+ * payment is tried again where the provider said, and until when the plan's
+ * episodes stay open at the latest: the end of the current period, which a
+ * subscription the provider ends on its last attempt does not reach. The button opens My
  * Page, where Manage billing changes the card. An attempt in the provider's
  * test mode says no money is owed.
  */
@@ -137,23 +140,20 @@ export const SubscriptionPaymentFailedEmail = ({
         currency: data.currency,
       })}
     </EmailDetail>
-    <EmailBody>
-      {data.next_attempt === ""
-        ? emailMessage(
-            messages,
-            "email.subscription_payment_failed.no_next_attempt"
-          )
-        : emailMessage(
-            messages,
-            "email.subscription_payment_failed.next_attempt",
-            {
-              next_attempt: formatDateTime(data.next_attempt, {
-                locale,
-                timeZone,
-              }),
-            }
-          )}
-    </EmailBody>
+    {data.next_attempt === "" ? null : (
+      <EmailBody>
+        {emailMessage(
+          messages,
+          "email.subscription_payment_failed.next_attempt",
+          {
+            next_attempt: formatDateTime(data.next_attempt, {
+              locale,
+              timeZone,
+            }),
+          }
+        )}
+      </EmailBody>
+    )}
     <EmailBody>
       {emailMessage(messages, "email.subscription_payment_failed.open_until", {
         period_end: formatDateTime(data.period_end, { locale, timeZone }),

@@ -338,10 +338,10 @@ func subscriptionRenewedCopy(c *emailComposer) {
 
 // subscriptionPaymentFailedCopy words the mail that tells a reader an attempt
 // to collect the payment renewing their subscription did not go through. It
-// names the plan and what the invoice asks for, when it is tried again or that
-// it is not, and until when the plan's episodes stay open at the latest: the
-// end of the current period, which a subscription the provider ends on its
-// last attempt does not reach. The card is changed from Manage billing on My
+// names the plan and what the invoice asks for, when it is tried again where
+// the provider said, and until when the plan's episodes stay open at the
+// latest: the end of the current period, which a subscription the provider
+// ends on its last attempt does not reach. The card is changed from Manage billing on My
 // Page, which the mail links to. An attempt in the provider's test mode says
 // no money is owed.
 func subscriptionPaymentFailedCopy(c *emailComposer) {
@@ -356,10 +356,10 @@ func subscriptionPaymentFailedCopy(c *emailComposer) {
 	}
 	c.line("email.subscription_payment_failed.plan", map[string]any{"plan_name": c.value("plan_name")})
 	c.line("email.subscription_payment_failed.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	// A missing next attempt is not the end of the retries, so it is not
+	// worded as one.
 	if c.value("next_attempt") != "" {
 		c.line("email.subscription_payment_failed.next_attempt", map[string]any{"next_attempt": c.instant("next_attempt")})
-	} else {
-		c.line("email.subscription_payment_failed.no_next_attempt", nil)
 	}
 	c.line("email.subscription_payment_failed.open_until", map[string]any{"period_end": c.instant("period_end")})
 	c.line("email.subscription_payment_failed.manage", nil)

@@ -280,7 +280,10 @@ type SubscriptionPaymentFailed struct {
 	// Currency is the ISO 4217 code of Amount, in capitals.
 	Currency string
 	// NextAttempt is when the provider tries to collect the invoice again, and
-	// zero when it makes no further attempt.
+	// zero when the notification names no such time. That is no promise that
+	// none is scheduled: Stripe names none after the last attempt, but none on
+	// any attempt either for an account whose retries run through Billing
+	// Automations, which names it on the invoice's later update instead.
 	NextAttempt time.Time
 	// Test reports an invoice of the provider's test mode, as
 	// [SubscriptionPaid.Test] does.
