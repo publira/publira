@@ -60,6 +60,12 @@ export const WebhookEventLabel = ({
       );
     }
 
+    case "contact_message.received": {
+      return (
+        <Message message="admin.settings.webhooks.events.contact_message_received" />
+      );
+    }
+
     case "webhook.test": {
       return <Message message="admin.settings.webhooks.events.test" />;
     }
@@ -122,6 +128,12 @@ export const WebhookEventDescription = ({
     case "comment.posted": {
       return (
         <Message message="admin.settings.webhooks.events.comment_posted_description" />
+      );
+    }
+
+    case "contact_message.received": {
+      return (
+        <Message message="admin.settings.webhooks.events.contact_message_received_description" />
       );
     }
 

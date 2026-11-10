@@ -87,33 +87,42 @@ const (
 	// `data` is the comment, with its writer's public id and display name and
 	// never their address.
 	WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED WebhookEventType = 9
+	// "contact_message.received": a reader writes to the tenant: they send a
+	// message through the contact form, or mail a reply to a staff answer. Each
+	// is sent once, and `reply` tells the two apart. `data` is the message's
+	// public id and subject, the body of what was written, and the public id and
+	// display name of the account that sent the message, both empty for a
+	// reader who was not signed in; never the address to answer at.
+	WebhookEventType_WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED WebhookEventType = 10
 )
 
 // Enum value maps for WebhookEventType.
 var (
 	WebhookEventType_name = map[int32]string{
-		0: "WEBHOOK_EVENT_TYPE_UNSPECIFIED",
-		1: "WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED",
-		2: "WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED",
-		3: "WEBHOOK_EVENT_TYPE_READER_SIGNED_UP",
-		4: "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED",
-		5: "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED",
-		6: "WEBHOOK_EVENT_TYPE_TEST",
-		7: "WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED",
-		8: "WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED",
-		9: "WEBHOOK_EVENT_TYPE_COMMENT_POSTED",
+		0:  "WEBHOOK_EVENT_TYPE_UNSPECIFIED",
+		1:  "WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED",
+		2:  "WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED",
+		3:  "WEBHOOK_EVENT_TYPE_READER_SIGNED_UP",
+		4:  "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED",
+		5:  "WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED",
+		6:  "WEBHOOK_EVENT_TYPE_TEST",
+		7:  "WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED",
+		8:  "WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED",
+		9:  "WEBHOOK_EVENT_TYPE_COMMENT_POSTED",
+		10: "WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED",
 	}
 	WebhookEventType_value = map[string]int32{
-		"WEBHOOK_EVENT_TYPE_UNSPECIFIED":          0,
-		"WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED":   1,
-		"WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED":    2,
-		"WEBHOOK_EVENT_TYPE_READER_SIGNED_UP":     3,
-		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED": 4,
-		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED":   5,
-		"WEBHOOK_EVENT_TYPE_TEST":                 6,
-		"WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED":    7,
-		"WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED":  8,
-		"WEBHOOK_EVENT_TYPE_COMMENT_POSTED":       9,
+		"WEBHOOK_EVENT_TYPE_UNSPECIFIED":              0,
+		"WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED":       1,
+		"WEBHOOK_EVENT_TYPE_PURCHASE_REFUNDED":        2,
+		"WEBHOOK_EVENT_TYPE_READER_SIGNED_UP":         3,
+		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_STARTED":     4,
+		"WEBHOOK_EVENT_TYPE_SUBSCRIPTION_ENDED":       5,
+		"WEBHOOK_EVENT_TYPE_TEST":                     6,
+		"WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED":        7,
+		"WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED":      8,
+		"WEBHOOK_EVENT_TYPE_COMMENT_POSTED":           9,
+		"WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED": 10,
 	}
 )
 
@@ -1400,7 +1409,7 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"\vdelivery_id\x18\x02 \x01(\tR\n" +
 	"deliveryId\"^\n" +
 	"\x1dResendWebhookDeliveryResponse\x12=\n" +
-	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xa6\x03\n" +
+	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xd7\x03\n" +
 	"\x10WebhookEventType\x12\"\n" +
 	"\x1eWEBHOOK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED\x10\x01\x12(\n" +
@@ -1411,7 +1420,9 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"\x17WEBHOOK_EVENT_TYPE_TEST\x10\x06\x12(\n" +
 	"$WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED\x10\a\x12*\n" +
 	"&WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED\x10\b\x12%\n" +
-	"!WEBHOOK_EVENT_TYPE_COMMENT_POSTED\x10\t*\xd2\x01\n" +
+	"!WEBHOOK_EVENT_TYPE_COMMENT_POSTED\x10\t\x12/\n" +
+	"+WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED\x10\n" +
+	"*\xd2\x01\n" +
 	"\x15WebhookDeliveryStatus\x12'\n" +
 	"#WEBHOOK_DELIVERY_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fWEBHOOK_DELIVERY_STATUS_PENDING\x10\x01\x12\"\n" +

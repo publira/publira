@@ -4086,6 +4086,8 @@
           "episode_unpublished_description": "已發布的章節被改回草稿或改為之後的時間，或其系列變為未發布。",
           "comment_posted": "留言公開",
           "comment_posted_description": "讀者的留言立即或經審核後在章節中公開。",
+          "contact_message_received": "收到諮詢",
+          "contact_message_received_description": "讀者透過諮詢表單傳送訊息，或對答覆回信時。",
           "test": "測試事件"
         },
         "enabled": "啟用",

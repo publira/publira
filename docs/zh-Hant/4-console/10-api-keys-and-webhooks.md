@@ -1,12 +1,12 @@
 ---
 title: API金鑰與Webhook
-description: 為租戶自有的系統提供讀取管理API或透過管理API新增系列與章節的金鑰、向它們傳送銷售、退款、註冊、訂閱、章節發布與取消發布，以及讀者留言的簽章事件、驗證簽章，以及重新傳送已被放棄的傳送。
+description: 為租戶自有的系統提供讀取管理API或透過管理API新增系列與章節的金鑰、向它們傳送銷售、退款、註冊、訂閱、章節發布與取消發布、讀者留言，以及諮詢的簽章事件、驗證簽章，以及重新傳送已被放棄的傳送。
 published: 2026-11-04
 updated: 2026-11-10
 source_updated: 2026-11-10
 ---
 
-**整合** › **API金鑰與Webhook**會將租戶與出版社自己運作的系統連接起來，例如CRM、資料倉儲或會計系統。系統以**API金鑰**讀取租戶的作品目錄與購買記錄，或在作品目錄中新增系列與章節，並透過**Webhook端點**在銷售、退款、新讀者、訂閱、章節發布或取消發布、讀者留言發生的當下得知。Webhook端點是系統自己的一個URL，每個事件都會傳送到那裡。**傳送記錄**會列出傳送給每個端點的內容，以及被放棄的內容。
+**整合** › **API金鑰與Webhook**會將租戶與出版社自己運作的系統連接起來，例如CRM、資料倉儲或會計系統。系統以**API金鑰**讀取租戶的作品目錄與購買記錄，或在作品目錄中新增系列與章節，並透過**Webhook端點**在銷售、退款、新讀者、訂閱、章節發布或取消發布、讀者留言、讀者諮詢發生的當下得知。Webhook端點是系統自己的一個URL，每個事件都會傳送到那裡。**傳送記錄**會列出傳送給每個端點的內容，以及被放棄的內容。
 
 只有租戶管理員看得到**API金鑰與Webhook**，其中的每項變更都會記錄在**稽核記錄**中：**建立了API金鑰**、**撤銷了API金鑰**、**建立了Webhook端點**、**更新了Webhook端點**、**刪除了Webhook端點**、**重新產生了Webhook簽章密鑰**與**重新傳送了Webhook**。
 
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhook端點
 
-![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的八個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
+![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的九個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
 
 端點是出版社自己的https URL，每發生一個它訂閱的事件，都會收到一個附簽章的`POST`請求。一個租戶最多可保留五個端點，每個端點都有自己的表單。
 
@@ -106,6 +106,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **章節發布**（`episode.published`） | 章節發布時：預定時間到達時，或以已經過去的時間建立、預約或核准而立即發布時。即使系列尚未公開也會傳送。每次發布都是一個獨立的事件，因此退回草稿後再次發布的章節會再次傳送 | 章節 |
 | **章節取消發布**（`episode.unpublished`） | 已發布的章節從網站下架時：清空**發布設定**中的時間或改為之後的時間時，無論系列是否公開都會傳送一個事件；清空系列的**發布日期與時間**或改為之後的時間時，會為該系列中每個已發布的章節各傳送一個事件。每次下架都是一個獨立的事件，因此再次發布後又下架的章節會再次傳送 | 下架的章節 |
 | **留言公開**（`comment.posted`） | 讀者的留言在章節中顯示時：留言的公開方式為**立即公開**時於發表時傳送，為**審核後公開**時於審核人員在**留言**中通過時傳送。每則留言只在首次顯示時傳送一次，因此移除後又恢復的留言不會再次傳送，在通過之前被移除或被留言者刪除的留言也不會傳送 | 留言 |
+| **收到諮詢**（`contact_message.received`） | 讀者聯絡租戶時：透過諮詢表單傳送訊息時，以及對答覆的回信記錄在**答覆與回信**下時傳送。只有在**收件**區塊變為**就緒**之後，回信才會被記錄（[讀者回信時](./2-readers/3-contact-messages.md#讀者回信時)）。每則訊息與每封回信各傳送一次 | 諮詢 |
 | **測試事件**（`webhook.test`） | 選擇了**傳送測試事件** | 空 |
 
 ### 請求本文
@@ -133,6 +134,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | 章節 | `episode_public_id`與`series_public_id`；租戶預設語言的`title`；以及`published_at` |
 | 下架的章節 | `episode_public_id`與`series_public_id`；以及`withdrawn`：章節本身被下架時為`episode`，其系列被下架時為`series` |
 | 留言 | `comment_public_id`、`episode_public_id`與`series_public_id`；`body`；`author_public_id`與`author_name`，即留言者的公開ID與顯示名稱，不含其電子郵件地址；以及`published_at`，即顯示的時間 |
+| 諮詢 | `message_public_id`；`subject`，讀者未填寫主旨時為空，回信時為其所回覆訊息的主旨；`body`，讀者所寫的內容；`reply`，透過表單傳送的訊息為false，回信為true；`reader_public_id`與`reader_name`，即傳送該訊息之帳戶的公開ID與顯示名稱，讀者未登入或之後刪除了帳戶時兩者皆為空；以及`received_at`。不含讀者希望接收答覆的地址 |
 | 訂閱 | `plan_public_id`與`plan_name`；`reader_public_id`與`reader_email`，讀者刪除帳戶後兩者皆為空；`provider`：`stripe`、`app_store`或`google_play`；`status`；`current_period_end`與`cancel_at_period_end`；`started_at`；以及`test` |
 
 每次傳送也都帶有以下標頭：

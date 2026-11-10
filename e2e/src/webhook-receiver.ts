@@ -14,6 +14,9 @@ export interface WebhookReceiverDelivery {
       author_name?: string;
       comment_public_id?: string;
       episode_public_id?: string;
+      reader_name?: string;
+      reply?: boolean;
+      subject?: string;
       title?: string;
       withdrawn?: string;
     };

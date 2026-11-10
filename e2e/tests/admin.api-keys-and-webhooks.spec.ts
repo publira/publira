@@ -32,8 +32,9 @@ import {
  * on the form, a test event that is given up can be resent, one sent to a
  * receiver arrives signed, an episode the key publishes, at once or once its
  * time passes, is announced to a receiver that subscribed to it, and so is an
- * episode the key takes off the site, by itself or by hiding its series, and a
- * reader's comment once it appears, at once or once it is approved.
+ * episode the key takes off the site, by itself or by hiding its series, a
+ * reader's comment once it appears, at once or once it is approved, and a
+ * message a reader sends through the contact form.
  *
  * The worker the stack runs dials a public address and the receiver's alone,
  * `127.0.0.1`, so {@link ENDPOINT_URL} is on another loopback address: the
@@ -855,6 +856,98 @@ test.describe("API keys and webhooks", () => {
         await page.reload();
         await expect(posted).toHaveCount(2, { timeout: 3000 });
         await expect(posted.filter({ hasText: "Delivered" })).toHaveCount(2, {
+          timeout: 3000,
+        });
+      }).toPass({ timeout: 60_000 });
+    });
+
+    test("announces a message a reader sends through the contact form to a receiver", async ({
+      page,
+    }) => {
+      const receiverName = randomUUID();
+      const receiverUrl = webhookReceiverEndpoint(receiverName);
+
+      await openPage(page);
+      const form = addEndpointForm(page);
+
+      await form.getByLabel("URL").fill(receiverUrl);
+      await form
+        .getByRole("checkbox", { name: "Contact message received" })
+        .check();
+      await form.getByRole("button", { name: "Add the endpoint" }).click();
+      await expect(form.getByText("The endpoint was added.")).toBeVisible();
+      await setWebhookReceiverSecret(
+        receiverName,
+        await textOf(form.getByText(SECRET_PATTERN))
+      );
+
+      const readerToken = await mintAccessToken({
+        audience: "public",
+        subject: WEBHOOKS_READER.publicId,
+        tenantId: TENANT_UUID,
+      });
+
+      const subject = `Webhook ${randomUUID()}`;
+
+      const response = await fetch(
+        `${PUBLIC_API_BASE_URL}/publira.v1.ContactService/SubmitContactMessage`,
+        {
+          body: JSON.stringify({
+            body: "Episode 3 is still locked after I bought it.",
+            replyToEmail: WEBHOOKS_READER.email,
+            subject,
+            tenant: { tenantId: TENANT_UUID },
+          }),
+          headers: {
+            Authorization: `Bearer ${readerToken}`,
+            "content-type": "application/json",
+          },
+          method: "POST",
+        }
+      );
+
+      expect(response.status, await response.clone().text()).toBe(200);
+
+      await expect
+        .poll(
+          async () => {
+            const deliveries = await webhookReceiverDeliveries(receiverName);
+
+            return deliveries.length;
+          },
+          { timeout: 60_000 }
+        )
+        .toBe(1);
+      const received = await webhookReceiverDeliveries(receiverName);
+
+      expect(
+        received.map(({ body, event, verified }) => ({
+          event,
+          reader: body.data.reader_name,
+          reply: body.data.reply,
+          subject: body.data.subject,
+          verified,
+        }))
+      ).toEqual([
+        {
+          event: "contact_message.received",
+          reader: WEBHOOKS_READER.name,
+          reply: false,
+          subject,
+          verified: true,
+        },
+      ]);
+
+      await openPage(page);
+
+      const sent = section(page, "Deliveries")
+        .getByRole("row")
+        .filter({ hasText: "Contact message received" })
+        .filter({ hasText: receiverUrl });
+
+      await expect(async () => {
+        await page.reload();
+        await expect(sent.filter({ hasText: "Delivered" })).toHaveCount(1, {
           timeout: 3000,
         });
       }).toPass({ timeout: 60_000 });

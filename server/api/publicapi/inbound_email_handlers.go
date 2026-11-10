@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/inboundprovider"
 	"github.com/publira/publira/server/internal/outbox"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -274,9 +275,10 @@ func inboundReplyBody(text string) (string, bool) {
 }
 
 // storeReaderEntry writes the entry, puts its message back among the waiting
-// ones, and queues the mail that tells staff, in one transaction, so a reply
-// staff are not told about cannot be stored and a message cannot reopen for a
-// reply that was not. It reports false, having written nothing, for a mail
+// ones, and queues the mail that tells staff and the webhook event the
+// tenant's endpoints are owed for it, in one transaction, so a reply staff are
+// not told about cannot be stored and a message cannot reopen for a reply that
+// was not. It reports false, having written nothing, for a mail
 // whose Message-ID or delivery key is already stored.
 func (s *apiServer) storeReaderEntry(ctx context.Context, params dbmodels.CreateReaderContactMessageEntryParams) (bool, error) {
 	id, err := uuid.NewV7()
@@ -318,6 +320,9 @@ func (s *apiServer) storeReaderEntry(ctx context.Context, params dbmodels.Create
 		ctx, txq, params.TenantID, outbox.EventTypeContactMessageStaffEmail, payload,
 		outbox.ContactMessageReplyStaffEmailIdempotencyKey(entry.ID),
 	); err != nil {
+		return false, err
+	}
+	if err := tenantwebhooks.QueueContactMessageReplyReceived(ctx, txq, params.TenantID, entry.ID); err != nil {
 		return false, err
 	}
 	if err := tx.Commit(); err != nil {

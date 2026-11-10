@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 const (
@@ -86,8 +87,9 @@ func contactFieldError(field string, err error) error {
 }
 
 // storeContactMessage writes the message and, in the same transaction, the
-// event that tells the tenant's staff it arrived. One transaction, so a message
-// nobody is told about cannot outlive the request that stored it, and no mail
+// event that tells the tenant's staff it arrived and the webhook event the
+// tenant's endpoints are owed for it. One transaction, so a message nobody is
+// told about cannot outlive the request that stored it, and no mail or webhook
 // can announce a message that was never written.
 //
 // Both IDs are generated here rather than by the caller. The public ID's
@@ -128,6 +130,9 @@ func (s *apiServer) storeContactMessage(
 		ctx, txq, params.TenantID, outbox.EventTypeContactMessageStaffEmail, payload,
 		outbox.ContactMessageStaffEmailIdempotencyKey(message.ID),
 	); err != nil {
+		return dbmodels.ContactMessage{}, err
+	}
+	if err := tenantwebhooks.QueueContactMessageReceived(ctx, txq, params.TenantID, message.ID); err != nil {
 		return dbmodels.ContactMessage{}, err
 	}
 	if err := tx.Commit(); err != nil {

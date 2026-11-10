@@ -4086,6 +4086,8 @@
           "episode_unpublished_description": "공개된 에피소드가 임시저장으로 되돌려지거나 이후 시각으로 바뀌거나, 시리즈가 비공개가 될 때.",
           "comment_posted": "댓글 공개",
           "comment_posted_description": "독자의 댓글이 바로 또는 승인 후 에피소드에 공개될 때.",
+          "contact_message_received": "문의 수신",
+          "contact_message_received_description": "독자가 문의 양식으로 메시지를 보내거나 답변에 회신할 때.",
           "test": "테스트 이벤트"
         },
         "enabled": "사용",
