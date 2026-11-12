@@ -1,19 +1,21 @@
 -- Scenario: readers the admin console's moderation E2E may suspend, delete,
--- or take an icon from
+-- take an icon from, or strip of two-step verification
 --
 -- `admin.readers.spec.ts` suspends one reader, lifts the suspension, deletes
--- another, and removes a third one's icon from the reader detail page. The dev
--- seed member cannot absorb any of that: other suites sign in with its
--- address, and a deleted account is gone for every suite that runs after.
+-- another, removes a third one's icon, and removes a fourth one's two-step
+-- verification from the reader detail page. The dev seed member cannot absorb
+-- any of that: other suites sign in with its address, and a deleted account is
+-- gone for every suite that runs after.
 --
--- Applying this file is also how the suite puts all three readers back, so
+-- Applying this file is also how the suite puts all four readers back, so
 -- each statement writes the starting value, including re-creating the deleted
--- account and electing the icon again. Password hash matches the dev seed
--- (`memberpass`).
+-- account, electing the icon again, and turning two-step verification back
+-- on. Password hash matches the dev seed (`memberpass`).
 -- public_id values are hard-coded in e2e/src/scenarios/reader-moderation.ts.
 --   member RmodMMBRAAA1 (reader-moderation-suspend@example.com)
 --   member RmodMMBRAAA2 (reader-moderation-delete@example.com)
 --   member RmodMMBRAAA3 (reader-moderation-icon@example.com)
+--   member RmodMMBRAAA4 (reader-moderation-mfa@example.com)
 
 WITH member_user_seed (id, public_id, email, name) AS (
     VALUES
@@ -34,6 +36,12 @@ WITH member_user_seed (id, public_id, email, name) AS (
             'RmodMMBRAAA3',
             'reader-moderation-icon@example.com',
             'Reader Moderation E2E Icon'
+        ),
+        (
+            '018f0f30-0004-7000-8000-000000000004'::uuid,
+            'RmodMMBRAAA4',
+            'reader-moderation-mfa@example.com',
+            'Reader Moderation E2E Two-step'
         )
 )
 INSERT INTO users (
@@ -125,3 +133,19 @@ SET tenant_id = EXCLUDED.tenant_id,
 UPDATE users
 SET icon_image_id = '018f0f31-0004-7000-8000-000000000003'::uuid
 WHERE public_id = 'RmodMMBRAAA3';
+
+-- The confirmed authenticator the suite removes. Its secret is never
+-- decrypted: the suite only sees the sign-in stop at the code step and then
+-- go through on the password alone, and enters no code.
+INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted, enabled_at)
+SELECT u.id, u.tenant_id, 'e2e-not-a-sealed-secret', NOW()
+FROM users u
+WHERE u.public_id = 'RmodMMBRAAA4'
+ON CONFLICT (user_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    secret_encrypted = EXCLUDED.secret_encrypted,
+    enabled_at = EXCLUDED.enabled_at,
+    last_verified_step = NULL;
+
+DELETE FROM user_mfa_lockouts
+WHERE user_id = (SELECT id FROM users WHERE public_id = 'RmodMMBRAAA4');

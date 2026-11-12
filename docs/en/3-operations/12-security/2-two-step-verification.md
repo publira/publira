@@ -2,7 +2,7 @@
 title: Two-step verification
 description: Require two-step verification of tenant staff and of Platform Console operators, know how readers turn it on for themselves, and recover an account that lost its second factor.
 published: 2026-10-21
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 This page is for the operator: how tenant staff, readers, and Platform Console operators protect their accounts with a second factor, how to require it of staff and operators, and what to do when one is lost.
@@ -25,7 +25,7 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 `--mfa-required-for-tenant-admin=false` stops requiring it. The requirement is checked when a Tenant admin signs in, so it applies from each one's next sign-in rather than to sessions already open; what it does, and whom it covers, is in [Platform defaults and policies](../9-platform-policies.md#two-step-verification-for-tenant-administrators).
 
-A member of staff who has lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in again, and the tenant's other administrators cannot remove two-step verification from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](../3-tenant-staff.md#lost-two-step-verification) describes.
+A member of staff who has lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in again until it is removed from their account. Another Tenant admin of the tenant can remove it from the console, as [Lost two-step verification](../../4-console/2-readers/1-accounts.md#lost-two-step-verification) describes, and so can you, with `publiractl tenant member reset-mfa`, as [A tenant's staff](../3-tenant-staff.md#lost-two-step-verification) describes, which is the way back for a tenant's only Tenant admin.
 
 Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](./1-rotating-secrets.md#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out. Passkeys are not: the install keeps only each passkey's public key, which proves nothing to anyone who reads it, so rotating or removing a key leaves them working.
 
@@ -36,6 +36,8 @@ Readers can protect their account on the site the same way, with an authenticato
 ![Two-step verification under Security on the site just after it was turned on: the message that it is now on, the ten recovery codes, covered over, with a button to copy them, the date it was turned on, covered over, how many recovery codes are left, Regenerate recovery codes with its Verification code field, and Turn off with the Current password and Verification code fields.](./two-step-verification-reader-settings.png)
 
 The tenant's app offers the same from **Two-step verification** on its **Account** screen, and signing in to the app asks for the code in the same way.
+
+A reader who has lost their authenticator and every recovery code asks the tenant: a Tenant admin removes it from the reader's page in the console, as [Lost two-step verification](../../4-console/2-readers/1-accounts.md#lost-two-step-verification) describes.
 
 It is never required of readers, and no setting on this page changes that: the requirements it describes cover Tenant admins and operators alone. An account has one second factor wherever it signs in, so a member of the staff who set one up in the console is asked for it on the site too, and a reader who becomes staff is asked in the console for the one they set up on the site.
 

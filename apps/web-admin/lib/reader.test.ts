@@ -11,6 +11,7 @@ const {
   mockGetReader,
   mockListReaders,
   mockRemoveReaderIcon,
+  mockResetReaderMfa,
   mockSetReaderBirthDate,
   mockSuspendReader,
   mockUnsuspendReader,
@@ -20,6 +21,7 @@ const {
   mockGetReader: vi.fn(),
   mockListReaders: vi.fn(),
   mockRemoveReaderIcon: vi.fn(),
+  mockResetReaderMfa: vi.fn(),
   mockSetReaderBirthDate: vi.fn(),
   mockSuspendReader: vi.fn(),
   mockUnsuspendReader: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock("./api", () => ({
       getReader: mockGetReader,
       listReaders: mockListReaders,
       removeReaderIcon: mockRemoveReaderIcon,
+      resetReaderMfa: mockResetReaderMfa,
       setReaderBirthDate: mockSetReaderBirthDate,
       suspendReader: mockSuspendReader,
       unsuspendReader: mockUnsuspendReader,
@@ -59,6 +62,7 @@ const adminReader = {
   email: "reader@example.com",
   emailVerifiedAt: "2026-06-01T00:05:00Z",
   id: READER_ID,
+  mfaEnabled: true,
   name: "Reader One",
   publicId: "READER00001",
   role: "",
@@ -234,6 +238,7 @@ describe("reader lib", () => {
         emailVerifiedAt: "2026-06-01T00:05:00Z",
         icon: null,
         id: READER_ID,
+        mfaEnabled: true,
         name: "Reader One",
         publicId: "READER00001",
         role: "",
@@ -512,5 +517,95 @@ describe("reader lib", () => {
 
     expect(result.ok).toBe(false);
     expect(mockRemoveReaderIcon).not.toHaveBeenCalled();
+  });
+
+  it("removes a reader's two-step verification", async () => {
+    mockResetReaderMfa.mockResolvedValue({});
+
+    const { resetReaderMfa } = await import("./reader");
+
+    const result = await resetReaderMfa(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockResetReaderMfa).toHaveBeenCalledWith(
+      { readerId: READER_ID, tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("words a removal refused on the caller's own account", async () => {
+    mockResetReaderMfa.mockRejectedValue(
+      reasonError(Code.FailedPrecondition, "OWN_ACCOUNT")
+    );
+
+    const { resetReaderMfa } = await import("./reader");
+
+    expect(
+      await resetReaderMfa({ readerId: READER_ID, tenantId: "TENANT001" }, "en")
+    ).toEqual({
+      message:
+        "This is the account you are signed in with, so its two-step verification cannot be removed here.",
+      ok: false,
+    });
+  });
+
+  it("words a removal refused because the account no longer has two-step verification", async () => {
+    mockResetReaderMfa.mockRejectedValue(
+      new ConnectError("not set up", Code.FailedPrecondition)
+    );
+
+    const { resetReaderMfa } = await import("./reader");
+
+    expect(
+      await resetReaderMfa({ readerId: READER_ID, tenantId: "TENANT001" }, "en")
+    ).toEqual({
+      message:
+        "This reader no longer has two-step verification. Reload the page to see the account as it is now.",
+      ok: false,
+    });
+  });
+
+  it("reports any other refused removal with its own fallback", async () => {
+    mockResetReaderMfa.mockRejectedValue(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    const { resetReaderMfa } = await import("./reader");
+
+    const result = await resetReaderMfa(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("rethrows a rejected session when removing two-step verification", async () => {
+    mockResetReaderMfa.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { resetReaderMfa } = await import("./reader");
+
+    await expect(
+      resetReaderMfa({ readerId: READER_ID, tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow();
+  });
+
+  it("does not remove two-step verification without a session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { resetReaderMfa } = await import("./reader");
+
+    const result = await resetReaderMfa(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+    expect(mockResetReaderMfa).not.toHaveBeenCalled();
   });
 });

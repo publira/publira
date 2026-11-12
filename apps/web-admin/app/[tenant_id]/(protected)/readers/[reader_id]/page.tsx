@@ -400,6 +400,10 @@ const ReaderDetailPage = ({ params, searchParams }: ReaderDetailPageProps) => (
             keyName="icon_removed"
             message="admin.readers.icon_removed"
           />
+          <FlashToast
+            keyName="mfa_removed"
+            message="admin.readers.mfa_removed"
+          />
           <ConsoleSection.Stack>
             <SectionErrorBoundary
               title={

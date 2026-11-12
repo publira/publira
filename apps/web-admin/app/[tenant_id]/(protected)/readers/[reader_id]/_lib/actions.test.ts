@@ -5,12 +5,14 @@ const {
   mockModerateReader,
   mockRedirect,
   mockRemoveReaderIcon,
+  mockResetReaderMfa,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockModerateReader: vi.fn(),
   mockRedirect: vi.fn(),
   mockRemoveReaderIcon: vi.fn(),
+  mockResetReaderMfa: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
@@ -31,6 +33,7 @@ vi.mock("#lib/auth-session", () => ({
 vi.mock("#lib/reader", () => ({
   moderateReader: mockModerateReader,
   removeReaderIcon: mockRemoveReaderIcon,
+  resetReaderMfa: mockResetReaderMfa,
   setReaderBirthDate: vi.fn(),
 }));
 
@@ -145,5 +148,50 @@ describe("removeReaderIconAction", () => {
 
     expect(result?.ok).toBe(false);
     expect(mockRemoveReaderIcon).not.toHaveBeenCalled();
+  });
+});
+
+describe("resetReaderMfaAction", () => {
+  it("removes two-step verification and returns to the reader's page with its toast", async () => {
+    mockResetReaderMfa.mockResolvedValueOnce({ ok: true });
+    const { resetReaderMfaAction } = await import("./actions");
+
+    await resetReaderMfaAction(null, readerForm());
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockResetReaderMfa).toHaveBeenCalledWith(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/readers/READER00001?mfa_removed=1"
+    );
+  });
+
+  it("shows the refusal beside the button and stays on the page", async () => {
+    mockResetReaderMfa.mockResolvedValueOnce({
+      message: "This reader no longer has two-step verification.",
+      ok: false,
+    });
+    const { resetReaderMfaAction } = await import("./actions");
+
+    const result = await resetReaderMfaAction(null, readerForm());
+
+    expect(result).toEqual({
+      message: "This reader no longer has two-step verification.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("calls nothing for a form that names no reader", async () => {
+    const data = readerForm();
+    data.delete("reader_id");
+    const { resetReaderMfaAction } = await import("./actions");
+
+    const result = await resetReaderMfaAction(null, data);
+
+    expect(result?.ok).toBe(false);
+    expect(mockResetReaderMfa).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, remove a two-step verification a member lost, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-11-03
+updated: 2026-11-12
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/6-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -112,7 +112,7 @@ The console reads a member's role on every request, so a change applies at once,
 
 ## Lost two-step verification
 
-A member of staff who turned on two-step verification and has since lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in to the console, and nobody on the tenant's staff can remove it from their account. You can:
+A member of staff who turned on two-step verification and has since lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in to the console. Another Tenant admin of the tenant can remove it from the member's page under **Readers**, as [Lost two-step verification](../4-console/2-readers/1-accounts.md#lost-two-step-verification) describes. When none can, because the member is the tenant's only Tenant admin or every other one is out of reach, you can:
 
 ```bash
 publiractl tenant member reset-mfa --tenant comics.example.com --email editor@comics.example.com

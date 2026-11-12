@@ -199,6 +199,9 @@ test.describe("tenant roles in the console", () => {
     ).toBeDisabled();
 
     await expectNotFound(page, "/audit-logs");
+    // Nor a reader's page, where an administrator suspends a reader or removes
+    // their two-step verification.
+    await expectNotFound(page, "/readers/SeedMMBRAAA1");
 
     // The download behind the audit log's button is refused as well, so a
     // link copied from an administrator's screen saves nothing either.

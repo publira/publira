@@ -1,8 +1,8 @@
 ---
 title: Reader accounts
-description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, and know how a reader's two-step verification works and what a reader's download of their data holds.
+description: Find a reader's account, correct their date of birth, remove their icon, suspend or delete the account, remove the two-step verification of a reader who lost it, and know how a reader's two-step verification works and what a reader's download of their data holds.
 published: 2026-10-21
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -21,7 +21,7 @@ Each row starts with the icon the reader chose for their account, or a plain out
 
 ## The reader page
 
-**Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**.
+**Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, their **Birth date**, and whether **Two-step verification** is **On** or **Off**.
 
 Below it, three sections list what the reader has, newest first, twenty to a page:
 
@@ -31,7 +31,7 @@ Below it, three sections list what the reader has, newest first, twenty to a pag
 | **Access tickets** | The tickets the staff issued to them, with the episode and the ticket's status. **Revoke** and **Issue a ticket** work as on [Access tickets](./4-access-tickets.md), without leaving the page |
 | **Comments** | Everything they have written, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](./2-comments.md) |
 
-![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./accounts-reader.png)
+![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, Birth date with Change, and Two-step verification, which is off.](./accounts-reader.png)
 
 ## Correcting a date of birth
 
@@ -66,6 +66,18 @@ An account has one second factor wherever it signs in. A member of the staff who
 The tenant's app offers the same from **Two-step verification** on its **Account** screen. **Turn on** there shows the setup key, with a button to copy it into an authenticator app on the same phone, and the QR code, for an app on another device; the ten recovery codes it then shows come with buttons to copy and to share them. Signing in to the app with a password, or with Apple or Google, stops at the code in the same way, whether two-step verification was turned on in the app or on the site.
 
 Two-step verification is never required of readers: the requirement the operator can set covers Tenant admins alone, as [Two-step verification](../../3-operations/12-security/2-two-step-verification.md) describes.
+
+### Lost two-step verification
+
+A reader who has lost their authenticator and every recovery code cannot get past the code when they sign in with their password, or with Apple or Google. A passkey they have for the site still signs them in, since it asks for no code. Otherwise a Tenant admin removes their two-step verification: choose **Remove** beside **Two-step verification** on the reader's page, and confirm with **Remove**.
+
+Removing it leaves the account behind its password alone, which is what someone holding a stolen password would ask for. Before you confirm, make sure the request comes from the reader, through a channel you already know is theirs rather than the one the request arrived on.
+
+The reader's authenticator and recovery codes are deleted, and their password, their passkeys for the site, and any role they hold stay as they were. Their next sign-in asks for the password alone, and they can turn two-step verification on again from **Account settings**. A member of the staff appears under **Readers** too, so their two-step verification is removed the same way: the passkeys they registered for the console are deleted with it, and if the operator requires two-step verification of their role, the console asks them to set it up again as they sign in.
+
+![The confirmation that removes a reader's two-step verification: its title names the reader, the text asks you to make sure the request comes from them and says what is deleted, and Cancel and Remove.](./accounts-two-step-remove.png)
+
+**Remove** is offered only while two-step verification is on, and never on the account you are signed in with, whose two-step verification you turn off from your own **Account settings**.
 
 ## A reader's download of their data
 
@@ -109,4 +121,4 @@ It leaves out what is the staff's rather than the reader's: the notes staff keep
 
 Suspend rather than delete when you may want to undo it.
 
-You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, changing or clearing a date of birth, and removing an icon are recorded in the [audit log](../3-setup/8-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, **Reader birth date cleared**, and **Reader icon removed**.
+You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, changing or clearing a date of birth, removing an icon, and removing two-step verification are recorded in the [audit log](../3-setup/8-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, **Reader birth date cleared**, **Reader icon removed**, and **Reader two-step verification removed**.

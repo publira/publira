@@ -21,6 +21,7 @@ import { DOCS_WEBHOOKS_SCENARIO } from "../src/scenarios/docs-webhooks";
 import { PROMOTION_CODES_SCENARIO } from "../src/scenarios/promotion-codes";
 import { ROYALTIES_SCENARIO } from "../src/scenarios/royalties";
 import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
+import { DOCS_CONSOLE_READER_MFA_SCENARIO } from "../src/scenarios/storefront-reader-mfa";
 import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-subscriptions";
 
 /**
@@ -34,10 +35,10 @@ import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-s
  * Platform Console's own tenants, operators, and records, campaign banners in
  * every standing, a Google tag saved in the gateway mode, subscription plans
  * in both states, one with a subscriber, a promotion code a reader redeemed,
- * a week of sign-ups followed for the cohorts, and API keys, a webhook
- * endpoint, and its deliveries. Applying every
- * file once, rather than from the specs that read them, is what lets those
- * specs run beside one another: a spec applying a file again deletes rows
+ * a week of sign-ups followed for the cohorts, API keys, a webhook
+ * endpoint, and its deliveries, and a reader with two-step verification on.
+ * Applying every file once, rather than from the specs that read them, is
+ * what lets those specs run beside one another: a spec applying a file again deletes rows
  * another spec may be photographing at that moment. Nothing is reverted
  * afterwards, since each suite that owns one of these tenants applies its file
  * again before it runs.
@@ -62,6 +63,7 @@ const SCENARIOS = [
   ADMIN_ANALYTICS_SCENARIO,
   PROMOTION_CODES_SCENARIO,
   DOCS_WEBHOOKS_SCENARIO,
+  DOCS_CONSOLE_READER_MFA_SCENARIO,
 ] as const;
 
 setup("the scenario tenants the documentation's screenshots show", async () => {

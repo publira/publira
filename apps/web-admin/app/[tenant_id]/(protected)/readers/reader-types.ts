@@ -51,6 +51,11 @@ export interface ReaderDetail extends ReaderItem {
   emailVerifiedAt: string;
   /** The recorded birth date as `YYYY-MM-DD`. Empty when none is recorded. */
   birthDate: string;
+  /**
+   * The account holds a second factor a Tenant admin can remove: a confirmed
+   * authenticator, or a passkey registered in the console.
+   */
+  mfaEnabled: boolean;
 }
 
 /**

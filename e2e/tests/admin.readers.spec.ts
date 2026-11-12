@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { selectOption, signInAsSeedAdmin } from "../src/admin";
@@ -6,9 +7,12 @@ import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import {
   READER_MODERATION_DELETE,
   READER_MODERATION_ICON,
+  READER_MODERATION_MFA,
   READER_MODERATION_SCENARIO,
   READER_MODERATION_SUSPEND,
 } from "../src/scenarios/reader-moderation";
+import { fillLoginForm } from "../src/session";
+import { storefrontPath, WEB_STOREFRONT_BASE_URL } from "../src/urls";
 
 const SEED_READER = {
   email: "member@example.com",
@@ -18,6 +22,18 @@ const SEED_READER = {
 
 /** The seed tenant administrator every test here signs in as. */
 const SEED_ADMIN_PUBLIC_ID = "SeedADMNAAA1";
+
+/**
+ * Sign the two-step reader in to the site with their password, from a page
+ * with no session of its own.
+ */
+const signInToSiteWithPassword = async (page: Page): Promise<void> => {
+  await page.context().clearCookies();
+  await page.goto(
+    `${WEB_STOREFRONT_BASE_URL}${storefrontPath("/login?returnTo=%2Fmy%2Flibrary")}`
+  );
+  await fillLoginForm(page, READER_MODERATION_MFA);
+};
 
 const OWN_ACCOUNT_REASON =
   "This is the account you are signed in with, so it cannot be suspended or deleted here.";
@@ -273,6 +289,43 @@ test.describe("web-admin readers", () => {
       await page.goto(listPath);
       await expect(row).toHaveCount(1);
       await expect(row.locator("img")).toHaveCount(0);
+    });
+
+    test("staff remove a reader's two-step verification, after which the password alone signs them in", async ({
+      page,
+    }) => {
+      // The seeded authenticator holds the sign-in at the code first.
+      await signInToSiteWithPassword(page);
+      await expect(page).toHaveURL(/\/login\/two-step$/u);
+
+      await page.context().clearCookies();
+      await signInAsSeedAdmin(
+        page,
+        `/readers/${READER_MODERATION_MFA.publicId}`
+      );
+      const status = page.locator("dt:has-text('Two-step verification') + dd");
+      await expect(status).toContainText("On");
+
+      await status.getByRole("button", { exact: true, name: "Remove" }).click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toContainText(
+        `Remove ${READER_MODERATION_MFA.name}'s two-step verification?`
+      );
+      await expect(dialog).toContainText(
+        "Make sure the request really comes from the reader"
+      );
+      await dialog.getByRole("button", { exact: true, name: "Remove" }).click();
+
+      await expect(
+        page.getByText("Two-step verification has been removed.")
+      ).toBeVisible();
+      await expect(status).toHaveText("Off");
+      await expect(
+        status.getByRole("button", { exact: true, name: "Remove" })
+      ).toHaveCount(0);
+
+      await signInToSiteWithPassword(page);
+      await expect(page).toHaveURL(/\/my\/library\/?$/u);
     });
 
     test("staff delete a reader after a confirmation that names them", async ({

@@ -2,7 +2,7 @@
 title: Your account
 description: Change the email address you sign in to the console with, and protect your account with two-step verification, a passkey, and recovery codes.
 published: 2026-10-07
-updated: 2026-10-17
+updated: 2026-11-12
 ---
 
 Every member of staff, whatever their role, manages their own console account from **Account settings**, in the account menu at the top of the console. It has two cards: **Change the email address** and **Two-step verification**.
@@ -91,6 +91,6 @@ Before you replace a device that holds a passkey, add a passkey on the new devic
 
 If you have lost a device, sign in with what you have left: another passkey, the authenticator app, or a recovery code. Then remove the lost device's passkey, or turn off the authenticator app it held, so that it no longer counts as yours, and add the new device. Someone who finds the device still needs your password to sign in, but removing it means they never get as far as the second step.
 
-If you have lost every second factor and every recovery code, you cannot sign in to the console any more, and neither your password nor anyone on the staff can remove two-step verification from your account. Ask the operator of the install: they can remove it, as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes, and you then sign in with your password and set it up again.
+If you have lost every second factor and every recovery code, you cannot sign in to the console any more, and your password alone cannot remove two-step verification from your account. Ask another Tenant admin of the tenant: they can remove it from your page under **Readers**, as [Lost two-step verification](../2-readers/1-accounts.md#lost-two-step-verification) describes. If there is none, ask the operator of the install, who can remove it as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes. Either way, you then sign in with your password and set it up again.
 
 Setting it up, registering, renaming, and removing a passkey, turning it off, regenerating recovery codes, and each sign-in with a code, a passkey, or a recovery code are recorded in the tenant's [audit log](./8-audit-log.md).
