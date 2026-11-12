@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
@@ -568,10 +568,10 @@ void main() {
 
       await tester.ensureVisible(termsLink);
       await tester.tap(termsLink);
-      await pumpUntilFound(tester, find.text('The terms you agree to.'));
+      await pumpUntilRouteSettled(tester, find.text('The terms you agree to.'));
 
       await tester.pageBack();
-      await pumpUntilFound(tester, sheet);
+      await pumpUntilRouteSettled(tester, sheet);
 
       await tester.ensureVisible(privacyLink);
       await tester.tap(privacyLink);
@@ -606,7 +606,7 @@ void main() {
       expect(sheet, findsOneWidget);
 
       gate.complete();
-      await pumpUntilFound(tester, pages);
+      await pumpUntilRouteSettled(tester, pages);
       expect(sheet, findsNothing);
     });
 

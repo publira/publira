@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';

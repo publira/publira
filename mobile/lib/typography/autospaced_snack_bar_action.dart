@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// [SnackBarAction] with its label set through [AutospacedText].

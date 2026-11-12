@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -73,7 +73,7 @@ void main() {
       find.byKey(ValueKey(row)),
       scrollable: accountList,
     );
-    await pumpUntilFound(tester, find.byKey(ValueKey(arrived)));
+    await pumpUntilRouteSettled(tester, find.byKey(ValueKey(arrived)));
   }
 
   group('display name', () {
@@ -140,7 +140,7 @@ void main() {
         userName: 'Other Reader',
       );
       await auth.signIn(email: 'other@example.com', password: 'other');
-      await pumpUntilFound(
+      await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('edit-name-name')),
       );

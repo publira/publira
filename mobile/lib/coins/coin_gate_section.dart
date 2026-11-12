@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/coins/buy_coin_pack_button.dart';
 import 'package:publira/coins/coin_disclosures_view.dart';
 import 'package:publira/coins/coin_failure.dart';

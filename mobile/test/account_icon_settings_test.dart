@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_controller.dart';

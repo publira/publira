@@ -1,7 +1,11 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+// flutter_markdown_plus still builds on this library, which reads a Theme of
+// its own; MaterialUiCompatibilityBridge below gives it the app's.
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' as legacy;
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// [MarkdownBody] with its text set through [AutospacedText] and selectable
@@ -17,13 +21,15 @@ class AutospacedMarkdownBody extends StatefulWidget {
   const AutospacedMarkdownBody({
     super.key,
     required this.data,
-    required this.styleSheet,
+    this.styleSheet,
     required this.onTapLink,
     required this.imageBuilder,
   });
 
   final String data;
-  final MarkdownStyleSheet styleSheet;
+
+  /// The styles laid over the ones the app's theme gives the body.
+  final MarkdownStyleSheet? styleSheet;
   final MarkdownTapLinkCallback onTapLink;
   final MarkdownImageBuilder imageBuilder;
 
@@ -37,25 +43,35 @@ class _AutospacedMarkdownBodyState extends State<AutospacedMarkdownBody> {
 
   @override
   Widget build(BuildContext context) {
-    _blocks
-      ..styleSheet = widget.styleSheet
-      ..onTapLink = widget.onTapLink
-      ..imageBuilder = widget.imageBuilder;
-    return SelectionArea(
-      child: MarkdownBody(
-        data: widget.data,
-        styleSheet: widget.styleSheet,
-        onTapLink: widget.onTapLink,
-        imageBuilder: widget.imageBuilder,
-        blockSyntaxes: const [
-          _ParagraphedUnorderedListSyntax(),
-          _ParagraphedOrderedListSyntax(),
-        ],
-        builders: {
-          for (final tag in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
-            tag: _TextBlockBuilder(_blocks),
-          'pre': _CodeBlockBuilder(_blocks),
-          'blockquote': _BlockquoteBuilder(_blocks),
+    // ignore: deprecated_member_use
+    return MaterialUiCompatibilityBridge(
+      child: Builder(
+        builder: (context) {
+          final styleSheet = MarkdownStyleSheet.fromTheme(
+            legacy.Theme.of(context),
+          ).merge(widget.styleSheet);
+          _blocks
+            ..styleSheet = styleSheet
+            ..onTapLink = widget.onTapLink
+            ..imageBuilder = widget.imageBuilder;
+          return SelectionArea(
+            child: MarkdownBody(
+              data: widget.data,
+              styleSheet: styleSheet,
+              onTapLink: widget.onTapLink,
+              imageBuilder: widget.imageBuilder,
+              blockSyntaxes: const [
+                _ParagraphedUnorderedListSyntax(),
+                _ParagraphedOrderedListSyntax(),
+              ],
+              builders: {
+                for (final tag in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                  tag: _TextBlockBuilder(_blocks),
+                'pre': _CodeBlockBuilder(_blocks),
+                'blockquote': _BlockquoteBuilder(_blocks),
+              },
+            ),
+          );
         },
       ),
     );

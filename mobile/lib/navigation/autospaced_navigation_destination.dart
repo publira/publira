@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/typography/autospaced_tooltip.dart';
 

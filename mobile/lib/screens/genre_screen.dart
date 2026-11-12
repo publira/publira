@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/classified_series_view.dart';
 import 'package:publira/catalog/creator_credits.dart';

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/l10n/formatting.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/catalog/creator_tile.dart';
 import 'package:publira/creator/creator_failure.dart';
 import 'package:publira/l10n/gen/app_messages.dart';

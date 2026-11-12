@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/tenant/tenant_brand.dart';
 
 /// The status colours Material's [ColorScheme] has no slot for.

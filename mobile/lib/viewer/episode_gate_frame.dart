@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/page_spreads.dart';

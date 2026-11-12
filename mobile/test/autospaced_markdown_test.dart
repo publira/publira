@@ -1,10 +1,8 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/typography/autospaced_markdown.dart';
 
 Future<void> _pump(WidgetTester tester, String markdown) async {
@@ -14,13 +12,10 @@ Future<void> _pump(WidgetTester tester, String markdown) async {
       supportedLocales: const [Locale('en'), Locale('ja')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: Scaffold(
-        body: Builder(
-          builder: (context) => AutospacedMarkdownBody(
-            data: markdown,
-            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
-            onTapLink: (text, href, title) {},
-            imageBuilder: (uri, title, alt) => const SizedBox.shrink(),
-          ),
+        body: AutospacedMarkdownBody(
+          data: markdown,
+          onTapLink: (text, href, title) {},
+          imageBuilder: (uri, title, alt) => const SizedBox.shrink(),
         ),
       ),
     ),

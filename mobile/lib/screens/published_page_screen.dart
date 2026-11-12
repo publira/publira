@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -176,7 +176,7 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
   /// says where the reader is in the structure, not how loud it is.
   MarkdownStyleSheet _styleSheet(ThemeData theme) {
     final heading = theme.textTheme.titleLarge;
-    return MarkdownStyleSheet.fromTheme(theme).copyWith(
+    return MarkdownStyleSheet(
       p: theme.textTheme.bodyLarge,
       h1: heading,
       h2: heading,

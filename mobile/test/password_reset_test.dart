@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -67,7 +67,7 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('sign-in-email')), email);
 
     await tester.tap(find.byKey(const ValueKey('sign-in-forgot-password')));
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('reset-password-submit')),
     );

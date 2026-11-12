@@ -107,9 +107,9 @@ extension AppMessagesFormatting on AppMessages {
   /// somewhere, and every other time on it reads in the zone its holder set,
   /// so the app follows the device instead.
   ///
-  /// The symbols come from `flutter_localizations`, whose delegates load them
-  /// for every locale it ships; the app installs those alongside its own
-  /// catalog (`lib/l10n/localizations.dart`).
+  /// The symbols ship in `flutter_localizations`, and `material_ui`'s
+  /// delegate loads them for every locale it ships; the app installs it
+  /// alongside its own catalog (`lib/l10n/localizations.dart`).
   String formatDateTime(DateTime value) =>
       DateFormat.yMMMd(intlLocale).add_jm().format(value.toLocal());
 

@@ -1,21 +1,21 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:integration_test/integration_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
-import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/image_cipher.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
@@ -48,6 +48,7 @@ import '../test/support/icon_images.dart';
 import '../test/support/live_api_precondition.dart';
 import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
+import '../test/support/tooltip.dart';
 import 'support/artifacts.dart';
 import 'support/test_app.dart';
 import 'support/two_step.dart';
@@ -168,17 +169,18 @@ Future<void> turnOnTwoStepAndSignInWithIt(
   );
 }
 
-/// Waits for the reader to draw the pages it built.
+/// Waits for the reader to come to rest on top and draw the pages it built.
 ///
 /// [pumpUntilFound] on the page view returns on the first frame the reader
-/// exists, which is while its pages are still being fetched.
+/// exists, which is while it still slides in and its pages are still being
+/// fetched.
 Future<void> pumpUntilPagesDrawn(
   WidgetTester tester, {
   // Longer than the waits that only cover a request: a page is fetched,
   // decrypted, and then decoded, and an emulator decodes in software.
   Duration timeout = const Duration(seconds: 30),
 }) async {
-  await pumpUntilFound(
+  await pumpUntilRouteSettled(
     tester,
     find.byKey(const ValueKey('episode-page-view')),
     timeout: timeout,
@@ -1185,8 +1187,11 @@ void main() {
         await tapVisible(tester, paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
+        // The series screen is laid out without the tab bar while the reader
+        // slides over it, and keeps the shorter offset that clamps it to, so
+        // the paid episode is scrolled to again.
         await tapBack(tester);
-        await settleOn(paidEpisode);
+        await settleOnPaidEpisode();
         await tapBack(tester);
         await settleOnCatalog();
 
@@ -3118,7 +3123,7 @@ void main() {
       ];
       await withFailureScreenshot(tester, 'fixture-notifications', () async {
         await pumpApp(tester, session: memberSession());
-        await pumpUntilFound(tester, find.byTooltip('Notifications, 1 unread'));
+        await pumpUntilFound(tester, findTooltip('Notifications, 1 unread'));
 
         await tapReachable(
           tester,

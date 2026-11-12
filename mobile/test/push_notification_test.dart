@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/app.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -271,11 +271,11 @@ void main() {
     await tester.ensureVisible(title);
     await tester.pumpAndSettle();
     await tester.tap(title);
-    await pumpUntilFound(tester, use);
+    await pumpUntilRouteSettled(tester, use);
     await tester.tap(use);
-    await pumpUntilFound(tester, pages);
+    await pumpUntilRouteSettled(tester, pages);
     await tester.pageBack();
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(ValueKey('episode-tile-$paidEpisodeId')),
     );
@@ -308,11 +308,11 @@ void main() {
     await tester.ensureVisible(title);
     await tester.pumpAndSettle();
     await tester.tap(title);
-    await pumpUntilFound(tester, use);
+    await pumpUntilRouteSettled(tester, use);
     await tester.tap(use);
-    await pumpUntilFound(tester, pages);
+    await pumpUntilRouteSettled(tester, pages);
     await tester.pageBack();
-    await pumpUntilFound(tester, title);
+    await pumpUntilRouteSettled(tester, title);
     await tester.pump(const Duration(milliseconds: 100));
 
     opening.complete();

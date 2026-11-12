@@ -1,16 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
-import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
+import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/episode_cover.dart';
 import 'package:publira/catalog/eye_catch.dart';

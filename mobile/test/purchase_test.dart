@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
@@ -245,7 +245,7 @@ void main() {
     ) async {
       incoming.initialUri = returnLink('cancelled');
       await pumpApp(tester, session: fakeSession);
-      await pumpUntilFound(tester, buy);
+      await pumpUntilRouteSettled(tester, buy);
 
       expect(
         find.text('The purchase was cancelled. You have not been charged.'),
@@ -361,7 +361,7 @@ void main() {
         pageCount: 8,
       );
       incoming.deliver(returnLink('success'));
-      await pumpUntilFound(tester, find.text('1 / 8'));
+      await pumpUntilRouteSettled(tester, find.text('1 / 8'));
 
       expect(locked, findsNothing);
       expect(status, findsOneWidget);
@@ -372,7 +372,7 @@ void main() {
     ) async {
       incoming.initialUri = returnLink('cancelled');
       await pumpApp(tester, session: fakeSession);
-      await pumpUntilFound(tester, buy);
+      await pumpUntilRouteSettled(tester, buy);
 
       expect(
         find.text('The purchase was cancelled. You have not been charged.'),

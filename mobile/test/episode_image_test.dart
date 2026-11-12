@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/api/image_cipher.dart';
 import 'package:publira/l10n/gen/app_messages.dart';

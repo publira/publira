@@ -1,16 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/api/error_details.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_failure.dart';
-import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -30,11 +30,11 @@ import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_comment_repository.dart';
 import 'support/fake_offline_library.dart';
+import 'support/fake_purchase.dart';
 import 'support/fake_screen_captures.dart';
 import 'support/fake_tenant_brand.dart';
 import 'support/pump_until.dart';
 import 'support/tap.dart';
-import 'support/fake_purchase.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -1024,7 +1024,7 @@ void main() {
       find.byKey(ValueKey('episode-tile-$episodeId')),
       scrollable: seriesBody,
     );
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('episode-page-view')),
     );
@@ -1032,7 +1032,7 @@ void main() {
     expect(router.state.uri.path, viewerPath);
 
     await tester.pageBack();
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('series-detail-body')),
     );
@@ -1213,7 +1213,7 @@ void main() {
     // The episode read before it was replaced rather than stacked, so the way
     // back is the series it was opened from.
     await tester.pageBack();
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('series-detail-body')),
     );
@@ -1813,7 +1813,7 @@ void main() {
     expect(catalog.readingPositions, isEmpty);
 
     await tester.pageBack();
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('series-detail-body')),
     );

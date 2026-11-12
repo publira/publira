@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/links/tenant_link.dart';

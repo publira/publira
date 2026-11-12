@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/localizations.dart';
+
+import 'support/tooltip.dart';
 
 void main() {
   const typed = 'correct horse';
@@ -68,14 +70,14 @@ void main() {
   ) async {
     await pumpField(tester);
 
-    expect(find.byTooltip('Show password'), findsOneWidget);
-    expect(find.byTooltip('Hide password'), findsNothing);
+    expect(findTooltip('Show password'), findsOneWidget);
+    expect(findTooltip('Hide password'), findsNothing);
 
     await tester.tap(toggle);
     await tester.pump();
 
-    expect(find.byTooltip('Hide password'), findsOneWidget);
-    expect(find.byTooltip('Show password'), findsNothing);
+    expect(findTooltip('Hide password'), findsOneWidget);
+    expect(findTooltip('Show password'), findsNothing);
   });
 
   testWidgets('a screen reader hears the state, and can switch it by name', (
@@ -110,13 +112,13 @@ void main() {
     await pumpField(tester, locale: const Locale('ja'));
 
     expect(tester.getSemantics(toggle).label, 'パスワードを表示');
-    expect(find.byTooltip('パスワードを表示'), findsOneWidget);
+    expect(findTooltip('パスワードを表示'), findsOneWidget);
 
     await tester.tap(toggle);
     await tester.pump();
 
     expect(tester.getSemantics(toggle).label, 'パスワードを隠す');
-    expect(find.byTooltip('パスワードを隠す'), findsOneWidget);
+    expect(findTooltip('パスワードを隠す'), findsOneWidget);
     semantics.dispose();
   });
 }

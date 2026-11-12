@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -310,10 +310,10 @@ void main() {
       );
       await tester.ensureVisible(link);
       await tester.tap(link);
-      await pumpUntilFound(tester, find.text('The terms you agree to.'));
+      await pumpUntilRouteSettled(tester, find.text('The terms you agree to.'));
 
       await tester.pageBack();
-      await pumpUntilFound(
+      await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('sign-up-consent')),
       );
@@ -539,7 +539,7 @@ void main() {
       find.byKey(const ValueKey('sign-in-resend-verification')),
     );
     await tester.tap(find.byKey(const ValueKey('sign-in-resend-verification')));
-    await pumpUntilFound(
+    await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('resend-verification-submit')),
     );
