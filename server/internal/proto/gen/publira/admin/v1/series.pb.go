@@ -1211,7 +1211,11 @@ type ListSeriesRequest struct {
 	// state.
 	Status v1.SeriesStatus `protobuf:"varint,5,opt,name=status,proto3,enum=publira.types.v1.SeriesStatus" json:"status,omitempty"`
 	// Keep only series for this age group. Unspecified keeps every rating.
-	AgeRating     v1.SeriesAgeRating `protobuf:"varint,6,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
+	AgeRating v1.SeriesAgeRating `protobuf:"varint,6,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
+	// Keep only series under this label, by its primary key (Label.id). Empty
+	// keeps every series, those under no label included. An id that is not one
+	// of the tenant's labels keeps none.
+	LabelId       string `protobuf:"bytes,7,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1279,6 +1283,13 @@ func (x *ListSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 		return x.AgeRating
 	}
 	return v1.SeriesAgeRating(0)
+}
+
+func (x *ListSeriesRequest) GetLabelId() string {
+	if x != nil {
+		return x.LabelId
+	}
+	return ""
 }
 
 type ListSeriesResponse struct {
@@ -9067,14 +9078,15 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x13DeleteSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tseries_id\x18\x02 \x01(\tR\bseriesId\"\x16\n" +
-	"\x14DeleteSeriesResponse\"\x80\x02\n" +
+	"\x14DeleteSeriesResponse\"\x9b\x02\n" +
 	"\x11ListSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x126\n" +
 	"\x06status\x18\x05 \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12@\n" +
 	"\n" +
-	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRatingJ\x04\b\x03\x10\x04R\x06offset\"\xb0\x01\n" +
+	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12\x19\n" +
+	"\blabel_id\x18\a \x01(\tR\alabelIdJ\x04\b\x03\x10\x04R\x06offset\"\xb0\x01\n" +
 	"\x12ListSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +

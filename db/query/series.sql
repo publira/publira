@@ -468,6 +468,10 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         OR sl.age_rating = sqlc.narg('age_rating')::text
     )
     AND (
+        sqlc.narg('label_id')::uuid IS NULL
+        OR s.label_id = sqlc.narg('label_id')::uuid
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -521,6 +525,10 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('age_rating')::text IS NULL
         OR sl.age_rating = sqlc.narg('age_rating')::text
+    )
+    AND (
+        sqlc.narg('label_id')::uuid IS NULL
+        OR s.label_id = sqlc.narg('label_id')::uuid
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

@@ -759,23 +759,28 @@ WHERE s.tenant_id = $1
     )
     AND (
         $4::uuid IS NULL
+        OR s.label_id = $4::uuid
+    )
+    AND (
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.created_at, s.id) >= ($6::timestamptz, $4::uuid)
+            $6::boolean
+            AND (s.created_at, s.id) >= ($7::timestamptz, $5::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (s.created_at, s.id) > ($6::timestamptz, $4::uuid)
+            NOT $6::boolean
+            AND (s.created_at, s.id) > ($7::timestamptz, $5::uuid)
         )
     )
 ORDER BY s.created_at ASC, s.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListSeriesByTenantAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Status          sql.NullString `json:"status"`
 	AgeRating       sql.NullString `json:"age_rating"`
+	LabelID         uuid.NullUUID  `json:"label_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
@@ -809,6 +814,7 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 		arg.TenantID,
 		arg.Status,
 		arg.AgeRating,
+		arg.LabelID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -898,23 +904,28 @@ WHERE s.tenant_id = $1
     )
     AND (
         $4::uuid IS NULL
+        OR s.label_id = $4::uuid
+    )
+    AND (
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.created_at, s.id) <= ($6::timestamptz, $4::uuid)
+            $6::boolean
+            AND (s.created_at, s.id) <= ($7::timestamptz, $5::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (s.created_at, s.id) < ($6::timestamptz, $4::uuid)
+            NOT $6::boolean
+            AND (s.created_at, s.id) < ($7::timestamptz, $5::uuid)
         )
     )
 ORDER BY s.created_at DESC, s.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListSeriesByTenantDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Status          sql.NullString `json:"status"`
 	AgeRating       sql.NullString `json:"age_rating"`
+	LabelID         uuid.NullUUID  `json:"label_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
@@ -956,6 +967,7 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 		arg.TenantID,
 		arg.Status,
 		arg.AgeRating,
+		arg.LabelID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,

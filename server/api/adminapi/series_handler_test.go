@@ -157,7 +157,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
 	expectSeriesRelationLookups(mock)
 
@@ -188,7 +188,7 @@ func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addSeriesRow(
 			addSeriesRow(
 				addSeriesRow(seriesColumns(), ids[0], "SERIES001", "First", now),
@@ -233,6 +233,7 @@ func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
 			tenantID,
 			sql.NullString{String: "completed", Valid: true},
 			sql.NullString{String: "r15", Valid: true},
+			uuid.NullUUID{},
 			uuid.NullUUID{},
 			false,
 			sql.NullTime{},
@@ -286,6 +287,92 @@ func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// A label narrows the list by its primary key, and a page token issued under
+// one label is refused under another.
+func TestListSeriesFiltersByLabelAndBindsTheCursor(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
+		WithArgs(
+			tenantID,
+			sql.NullString{},
+			sql.NullString{},
+			uuid.NullUUID{UUID: labelID, Valid: true},
+			uuid.NullUUID{},
+			false,
+			sql.NullTime{},
+			int32(2),
+		).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(seriesColumns(), ids[0], "SERIES001", "First", now),
+			ids[1], "SERIES002", "Second", now.Add(-time.Minute),
+		))
+	expectSeriesRelationLookups(mock)
+
+	req := newListSeriesRequest(tenantID)
+	req.LabelId = labelID.String()
+	req.Limit = 1
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Series), []string{"SERIES001"}) {
+		t.Fatalf("public_ids = %v, want the first row under the label", seriesPublicIDs(resp.Series))
+	}
+	cursor, err := pagination.Decode(resp.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{
+		"created_at_desc+label_id:" + labelID.String(),
+		now.Format(time.RFC3339Nano),
+		ids[0].String(),
+	}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	otherLabelReq := newListSeriesRequest(tenantID)
+	otherLabelReq.LabelId = uuid.Must(uuid.NewV7()).String()
+	otherLabelReq.Token = resp.NextToken
+	_, err = client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), otherLabelReq)
+	if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+		t.Fatalf("ListSeries other-label token error = %v", err)
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	unlabelledReq := newListSeriesRequest(tenantID)
+	unlabelledReq.Token = resp.NextToken
+	_, err = client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), unlabelledReq)
+	if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+		t.Fatalf("ListSeries unfiltered token error = %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesRefusesAMalformedLabelID(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	req := newListSeriesRequest(tenantID)
+	req.LabelId = "LABEL001"
+	_, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
 // The last page is reachable by following next_token, without an offset.
 func TestListSeriesFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
@@ -296,7 +383,7 @@ func TestListSeriesFollowsNextToken(t *testing.T) {
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
 	expectSeriesRelationLookups(mock)
 
@@ -328,7 +415,7 @@ func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantAsc)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addSeriesRow(
 			addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES002", "Older", now.Add(-2*time.Minute)),
 			uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(-time.Minute),
@@ -387,7 +474,7 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, now, int32(21)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, boundaryID, false, now, int32(21)).
 				WillReturnRows(seriesColumns())
 
 			req := newListSeriesRequest(tenantID)
@@ -416,7 +503,7 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryRows = addSeriesRow(recoveryRows, uuid.Must(uuid.NewV7()), "SERIES003", "Older", now.Add(-time.Minute))
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
-				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, true, now, int32(21)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, boundaryID, true, now, int32(21)).
 				WillReturnRows(recoveryRows)
 			expectSeriesRelationLookups(mock)
 
@@ -464,7 +551,7 @@ func TestListSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, true, now, int32(21)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, boundaryID, true, now, int32(21)).
 				WillReturnRows(seriesColumns())
 
 			req := newListSeriesRequest(tenantID)
