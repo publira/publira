@@ -46,15 +46,21 @@ func userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, userIDs []uui
 	return protomapper.UserIconsByUserID(protomapper.HostRelative, rows), nil
 }
 
-// adminReaderWithIcon projects one account with the icon it shows, read
-// through q so a reader action inside a transaction answers from what it has
-// just written.
-func adminReaderWithIcon(ctx context.Context, q Querier, tenantID uuid.UUID, row readerRow) (*publiraadminv1.AdminReader, error) {
+// adminReaderDetail projects one account with the icon it shows and whether
+// it holds a second factor, read through q so a reader action inside a
+// transaction answers from what it has just written.
+func adminReaderDetail(ctx context.Context, q Querier, tenantID uuid.UUID, row readerRow) (*publiraadminv1.AdminReader, error) {
 	icons, err := userIcons(ctx, q, tenantID, []uuid.UUID{row.ID})
 	if err != nil {
 		return nil, err
 	}
-	return adminReader(row, icons), nil
+	mfaEnabled, err := readerMfaEnabled(ctx, q, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	reader := adminReader(row, icons)
+	reader.MfaEnabled = mfaEnabled
+	return reader, nil
 }
 
 // recordReaderCommentListsRevalidation owes a drop of the storefront's comment
@@ -121,10 +127,8 @@ func (s *adminServer) RemoveReaderIcon(
 		if owed, err = s.recordReaderCommentListsRevalidation(ctx, queries, tenant.ID, readerID); err != nil {
 			return "", err
 		}
-		row.IconImageID = uuid.NullUUID{}
-		row.IconPresetID = uuid.NullUUID{}
-		reader = adminReader(readerRow(row), nil)
-		return row.PublicID, nil
+		reader, err = adminReaderDetail(ctx, queries, tenant.ID, readerRow(row))
+		return row.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one who shows no icon; the read tells which.
@@ -132,7 +136,7 @@ func (s *adminServer) RemoveReaderIcon(
 		if err != nil {
 			return nil, err
 		}
-		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		unchanged, err := adminReaderDetail(ctx, s.queriesFor(ctx), tenant.ID, row)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
 		}

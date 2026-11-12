@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
 // auditActionReaderMfaReset is what a Tenant admin removing a reader's
@@ -66,7 +68,7 @@ func (s *adminServer) ResetReaderMfa(
 			}
 			return "", err
 		}
-		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(row))
+		reader, err = adminReaderDetail(ctx, queries, tenant.ID, readerRow(row))
 		return row.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -77,4 +79,28 @@ func (s *adminServer) ResetReaderMfa(
 		return nil, err
 	}
 	return &publiraadminv1.ResetReaderMfaResponse{Reader: reader}, nil
+}
+
+// readerMfaEnabled reports whether the account holds a second factor that
+// ResetReaderMfa removes. It counts a console passkey of any RP ID, as the
+// reset deletes them all, and no passkey the account signs in to the site
+// with, which the reset leaves.
+func readerMfaEnabled(ctx context.Context, q Querier, userID uuid.UUID) (bool, error) {
+	totp, err := q.GetUserMfaTotpByUserID(ctx, userID)
+	switch {
+	case err == nil:
+		if totp.EnabledAt.Valid {
+			return true, nil
+		}
+	case !errors.Is(err, sql.ErrNoRows):
+		return false, fmt.Errorf("get mfa totp: %w", err)
+	}
+	passkeys, err := q.CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{
+		UserID:       userID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+	})
+	if err != nil {
+		return false, fmt.Errorf("count console passkeys: %w", err)
+	}
+	return passkeys > 0, nil
 }

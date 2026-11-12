@@ -52,6 +52,12 @@ message AdminReader {
   // The account's icon as it shows it now, the way the storefront renders it
   // next to the account's comments. Empty for an account that shows none.
   repeated publira.types.v1.UserIconVariant icon_image_variants = 11;
+  // The account holds a second factor that ResetReaderMfa removes: a confirmed
+  // authenticator, or a passkey registered in the console. An authenticator
+  // whose enrollment was started and never confirmed is none. Always false in
+  // ListReaders and in a creator's accounts: staff read it on one reader, to
+  // act on a reader who has lost it.
+  bool mfa_enabled = 12;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

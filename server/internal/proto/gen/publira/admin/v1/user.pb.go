@@ -235,8 +235,14 @@ type AdminReader struct {
 	// The account's icon as it shows it now, the way the storefront renders it
 	// next to the account's comments. Empty for an account that shows none.
 	IconImageVariants []*v1.UserIconVariant `protobuf:"bytes,11,rep,name=icon_image_variants,json=iconImageVariants,proto3" json:"icon_image_variants,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The account holds a second factor that ResetReaderMfa removes: a confirmed
+	// authenticator, or a passkey registered in the console. An authenticator
+	// whose enrollment was started and never confirmed is none. Always false in
+	// ListReaders and in a creator's accounts: staff read it on one reader, to
+	// act on a reader who has lost it.
+	MfaEnabled    bool `protobuf:"varint,12,opt,name=mfa_enabled,json=mfaEnabled,proto3" json:"mfa_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminReader) Reset() {
@@ -337,6 +343,13 @@ func (x *AdminReader) GetIconImageVariants() []*v1.UserIconVariant {
 		return x.IconImageVariants
 	}
 	return nil
+}
+
+func (x *AdminReader) GetMfaEnabled() bool {
+	if x != nil {
+		return x.MfaEnabled
+	}
+	return false
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1195,7 +1208,7 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2!.publira.admin.v1.AdminTenantUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xe3\x02\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x84\x03\n" +
 	"\vAdminReader\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1209,7 +1222,9 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x02id\x18\t \x01(\tR\x02id\x12\x12\n" +
 	"\x04role\x18\n" +
 	" \x01(\tR\x04role\x12Q\n" +
-	"\x13icon_image_variants\x18\v \x03(\v2!.publira.types.v1.UserIconVariantR\x11iconImageVariantsJ\x04\b\a\x10\bR\x0ehas_birth_date\"\xa7\x01\n" +
+	"\x13icon_image_variants\x18\v \x03(\v2!.publira.types.v1.UserIconVariantR\x11iconImageVariants\x12\x1f\n" +
+	"\vmfa_enabled\x18\f \x01(\bR\n" +
+	"mfaEnabledJ\x04\b\a\x10\bR\x0ehas_birth_date\"\xa7\x01\n" +
 	"\x12ListReadersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +
