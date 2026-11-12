@@ -2079,6 +2079,8 @@
         "age_rating_all": "所有年龄分级",
         "label": "书系",
         "label_all": "所有书系",
+        "labels_unavailable": "无法加载书系，暂时不能按书系筛选。请稍后再试。",
+        "labels_unavailable_narrowed": "无法加载书系。列表仍按打开时的书系筛选；要查看所有系列，请选择“重置”。",
         "apply": "应用",
         "reset": "重置"
       },

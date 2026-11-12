@@ -3,6 +3,7 @@ import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as Field from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -118,9 +119,9 @@ const SeriesAgeRatingFilter = async ({
 };
 
 /**
- * The label the list is narrowed to. When the labels cannot be read, a label
- * the URL already names is carried through the form rather than dropped by
- * the next Apply.
+ * The label the list is narrowed to. When the labels cannot be read, the field
+ * says so in place of its choices, and a label the URL already names is
+ * carried through the form rather than dropped by the next Apply.
  */
 const SeriesLabelFilter = async ({
   filters,
@@ -131,13 +132,27 @@ const SeriesLabelFilter = async ({
   labels: SeriesLabelOption[] | null;
   locale: Locale;
 }) => {
-  if (!labels) {
-    return filters.labelId ? (
-      <input name="label_id" type="hidden" value={filters.labelId} />
-    ) : null;
-  }
-
   const t = await getMessagesFor(locale);
+
+  if (!labels) {
+    return (
+      <Field.Root className="w-52">
+        <Field.Label>{t("admin.series.filter.label")}</Field.Label>
+        {filters.labelId ? (
+          <>
+            <input name="label_id" type="hidden" value={filters.labelId} />
+            <FormMessage variant="warning">
+              {t("admin.series.filter.labels_unavailable_narrowed")}
+            </FormMessage>
+          </>
+        ) : (
+          <FormMessage variant="warning">
+            {t("admin.series.filter.labels_unavailable")}
+          </FormMessage>
+        )}
+      </Field.Root>
+    );
+  }
 
   return (
     <Field.Root className="w-52">

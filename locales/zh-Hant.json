@@ -2079,6 +2079,8 @@
         "age_rating_all": "所有年齡分級",
         "label": "書系",
         "label_all": "所有書系",
+        "labels_unavailable": "無法載入書系，暫時不能依書系篩選。請稍後再試。",
+        "labels_unavailable_narrowed": "無法載入書系。列表仍依開啟時的書系篩選；要查看所有系列，請選擇「重設」。",
         "apply": "套用",
         "reset": "重設"
       },

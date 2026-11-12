@@ -2079,6 +2079,8 @@
         "age_rating_all": "All age ratings",
         "label": "Label",
         "label_all": "All labels",
+        "labels_unavailable": "Could not load the labels, so the list cannot be narrowed by one right now. Please try again later.",
+        "labels_unavailable_narrowed": "Could not load the labels. The list stays narrowed to the label it was opened with; choose Reset to see every series.",
         "apply": "Apply",
         "reset": "Reset"
       },

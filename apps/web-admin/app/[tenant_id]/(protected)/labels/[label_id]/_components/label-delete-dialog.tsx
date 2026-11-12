@@ -11,7 +11,6 @@ import { useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import type { LabelDeletionReference } from "#lib/label";
-import type { AdminClientMessageKey } from "#lib/messages";
 
 import type { LabelDeleteActionState } from "../../label-types";
 
@@ -27,26 +26,14 @@ interface LabelDeleteDialogProps {
   tenantId: string;
 }
 
-const REFERENCE_LINKS: Record<
+const REFERENCE_HREFS: Record<
   LabelDeletionReference,
-  {
-    href: (labelId: string) => string;
-    message: AdminClientMessageKey;
-  }
+  (labelId: string) => string
 > = {
-  promotion_codes: {
-    href: () => "/promotion-codes",
-    message: "admin.labels.delete.view_promotion_codes",
-  },
-  series: {
-    href: (labelId) =>
-      `/series?${new URLSearchParams({ label_id: labelId }).toString()}`,
-    message: "admin.labels.delete.view_series",
-  },
-  subscription_plans: {
-    href: () => "/subscription-plans",
-    message: "admin.labels.delete.view_subscription_plans",
-  },
+  promotion_codes: () => "/promotion-codes",
+  series: (labelId) =>
+    `/series?${new URLSearchParams({ label_id: labelId }).toString()}`,
+  subscription_plans: () => "/subscription-plans",
 };
 
 /** The screen a refusal points to, where what refers to the label is. */
@@ -56,18 +43,22 @@ const ReferenceLink = ({
 }: {
   labelId: string;
   reference: LabelDeletionReference;
-}) => {
-  const { href, message } = REFERENCE_LINKS[reference];
-
-  return (
-    <Link
-      className="font-medium underline underline-offset-4"
-      href={href(labelId)}
-    >
-      <ClientMessage message={message} />
-    </Link>
-  );
-};
+}) => (
+  <Link
+    className="font-medium underline underline-offset-4"
+    href={REFERENCE_HREFS[reference](labelId)}
+  >
+    {reference === "promotion_codes" ? (
+      <ClientMessage message="admin.labels.delete.view_promotion_codes" />
+    ) : null}
+    {reference === "series" ? (
+      <ClientMessage message="admin.labels.delete.view_series" />
+    ) : null}
+    {reference === "subscription_plans" ? (
+      <ClientMessage message="admin.labels.delete.view_subscription_plans" />
+    ) : null}
+  </Link>
+);
 
 /**
  * Deletes the label from a dialog that asks for its name. A refusal stays in
