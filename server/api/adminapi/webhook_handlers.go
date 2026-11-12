@@ -38,6 +38,7 @@ var webhookEventTypes = map[publiraadminv1.WebhookEventType]string{
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED:      tenantwebhooks.EventEpisodeUnpublished,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_COMMENT_POSTED:           tenantwebhooks.EventCommentPosted,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED: tenantwebhooks.EventContactMessageReceived,
+	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED:      tenantwebhooks.EventCoinPackPurchased,
 	publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_TEST:                     tenantwebhooks.EventTest,
 }
 

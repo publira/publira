@@ -319,6 +319,33 @@ FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.id = sqlc.arg('id');
 
+-- name: GetWebhookCoinPackPurchase :one
+-- A purchase of a coin pack as the coin_pack.purchased event of its recording
+-- carries it, read in the transaction that records it: the purchase's id, the
+-- pack's public id, the coins and bonus coins coin_pack_purchases recorded it
+-- granting, what the reader paid, and the reader's public id, empty once they
+-- have deleted their account.
+SELECT p.id,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.provider,
+    p.store,
+    p.is_test,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins,
+    cpp.bonus_coins,
+    u.public_id AS reader_public_id
+FROM purchases p
+    JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = sqlc.arg('id');
+
 -- name: GetWebhookReader :one
 SELECT u.public_id,
     u.email,

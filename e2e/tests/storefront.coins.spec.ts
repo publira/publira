@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
@@ -29,6 +31,11 @@ import {
   WEB_STOREFRONT_COINS_BASE_URL,
   WEB_STOREFRONT_COINS_OFF_BASE_URL,
 } from "../src/urls";
+import {
+  setWebhookReceiverSecret,
+  webhookReceiverDeliveries,
+  webhookReceiverEndpoint,
+} from "../src/webhook-receiver";
 
 /**
  * Readers paying for episodes with the tenant's coins, which the tenant calls
@@ -36,13 +43,53 @@ import {
  * Stripe: one reader pays with the Points they hold without leaving the
  * episode, another buys the pack that covers the price at the gate, comes back
  * to the episode, and pays with its Points, and both find their balance, the
- * packs, and the history under the tenant's word. A tenant whose coins are off
- * shows its gate and its account as they are without them.
+ * packs, and the history under the tenant's word. The pack bought is announced,
+ * signed, to the receiver the tenant subscribed to coin pack purchases. A
+ * tenant whose coins are off shows its gate and its account as they are
+ * without them.
  */
 
 const episodePath = `/series/${STOREFRONT_COINS_SERIES.publicId}/episodes/${STOREFRONT_COINS_EPISODE.publicId}`;
 const otherEpisodePath = `/series/${STOREFRONT_COINS_SERIES.publicId}/episodes/${STOREFRONT_COINS_OTHER_EPISODE.publicId}`;
 const offEpisodePath = `/series/${STOREFRONT_COINS_OFF_EPISODE.seriesPublicId}/episodes/${STOREFRONT_COINS_OFF_EPISODE.publicId}`;
+
+/** Apart for each run, since the receiver keeps what it was sent. */
+const RECEIVER_NAME = randomUUID();
+
+/**
+ * Saves a webhook endpoint that delivers the tenant's coin pack purchases to
+ * the receiver under {@link RECEIVER_NAME}, on the console `page` is signed in
+ * to as the tenant's admin, and hands the receiver its signing secret.
+ */
+const subscribeReceiverToCoinPackPurchases = async (
+  page: Page
+): Promise<void> => {
+  await page.goto(
+    new URL(
+      "/integrations/api-keys-and-webhooks",
+      WEB_ADMIN_COINS_BASE_URL
+    ).toString()
+  );
+
+  const form = page.locator("form").filter({
+    has: page.getByRole("heading", {
+      exact: true,
+      level: 3,
+      name: "Add an endpoint",
+    }),
+  });
+
+  await form.getByLabel("URL").fill(webhookReceiverEndpoint(RECEIVER_NAME));
+  await form.getByRole("checkbox", { name: "Coin pack purchased" }).check();
+  await form.getByRole("button", { name: "Add the endpoint" }).click();
+  await expect(form.getByText("The endpoint was added.")).toBeVisible();
+  const secret = form.getByText(/^whsec_[a-z2-7]+$/u);
+
+  await setWebhookReceiverSecret(
+    RECEIVER_NAME,
+    ((await secret.textContent()) ?? "").trim()
+  );
+};
 
 const storefrontUrl = (path: string, baseUrl = WEB_STOREFRONT_COINS_BASE_URL) =>
   new URL(path, baseUrl).toString();
@@ -125,6 +172,7 @@ test.describe("web-storefront coins", () => {
         STOREFRONT_COINS_ADMIN,
         WEB_ADMIN_COINS_BASE_URL
       );
+      await subscribeReceiverToCoinPackPurchases(page);
     } finally {
       await page.close();
     }
@@ -273,6 +321,36 @@ test.describe("web-storefront coins", () => {
     const history = page.getByRole("region", { name: "History" });
     await expect(history.getByText("+50 Points")).toBeVisible();
     await expect(history.getByText("−30 Points")).toBeVisible();
+
+    await expect
+      .poll(
+        async () => {
+          const deliveries = await webhookReceiverDeliveries(RECEIVER_NAME);
+
+          return deliveries.length;
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+    const received = await webhookReceiverDeliveries(RECEIVER_NAME);
+
+    expect(
+      received.map(({ body, event, verified }) => ({
+        bonusCoins: body.data.bonus_coins,
+        coins: body.data.coins,
+        event,
+        pack: body.data.coin_pack_public_id,
+        verified,
+      }))
+    ).toEqual([
+      {
+        bonusCoins: 0,
+        coins: STOREFRONT_COINS_COVERING_PACK.coins,
+        event: "coin_pack.purchased",
+        pack: STOREFRONT_COINS_COVERING_PACK.publicId,
+        verified: true,
+      },
+    ]);
   });
 
   test("a reader in Japanese sees the tenant's Japanese word for its coins", async ({

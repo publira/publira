@@ -36,6 +36,7 @@ const (
 	EventEpisodeUnpublished     = "episode.unpublished"
 	EventCommentPosted          = "comment.posted"
 	EventContactMessageReceived = "contact_message.received"
+	EventCoinPackPurchased      = "coin_pack.purchased"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -53,6 +54,7 @@ var EventTypes = []string{
 	EventEpisodeUnpublished,
 	EventCommentPosted,
 	EventContactMessageReceived,
+	EventCoinPackPurchased,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -76,6 +78,7 @@ type Queries interface {
 	GetWebhookComment(ctx context.Context, arg dbmodels.GetWebhookCommentParams) (dbmodels.GetWebhookCommentRow, error)
 	GetWebhookContactMessage(ctx context.Context, arg dbmodels.GetWebhookContactMessageParams) (dbmodels.GetWebhookContactMessageRow, error)
 	GetWebhookContactMessageReply(ctx context.Context, arg dbmodels.GetWebhookContactMessageReplyParams) (dbmodels.GetWebhookContactMessageReplyRow, error)
+	GetWebhookCoinPackPurchase(ctx context.Context, arg dbmodels.GetWebhookCoinPackPurchaseParams) (dbmodels.GetWebhookCoinPackPurchaseRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -237,6 +240,29 @@ type ContactMessage struct {
 	ReceivedAt     string `json:"received_at"`
 }
 
+// CoinPackPurchase is the data of [EventCoinPackPurchased]. PurchaseID is the
+// same purchase the [EventPurchaseCompleted] of the purchase names, and the
+// coins are what the purchase granted, as the reader was shown them when the
+// checkout or the store's payment sheet opened, however the pack has been
+// edited since.
+type CoinPackPurchase struct {
+	PurchaseID       string `json:"purchase_id"`
+	CoinPackPublicID string `json:"coin_pack_public_id"`
+	Coins            int32  `json:"coins"`
+	BonusCoins       int32  `json:"bonus_coins"`
+	// What the reader paid, in the minor unit of Currency.
+	Price    int32  `json:"price"`
+	Currency string `json:"currency"`
+	// The buyer; empty once the reader has deleted their account.
+	ReaderPublicID string `json:"reader_public_id"`
+	PurchasedAt    string `json:"purchased_at"`
+	// Provider is the payment provider; Store is "app_store" or
+	// "google_play". One of the two is set.
+	Provider string `json:"provider,omitempty"`
+	Store    string `json:"store,omitempty"`
+	Test     bool   `json:"test"`
+}
+
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
 // a purchase just recorded. A purchase is completed once, so the event is
 // owed once however often the writer runs.
@@ -263,6 +289,32 @@ func QueuePurchaseRefunded(ctx context.Context, q Queries, purchase dbmodels.Pur
 		data.RefundedAmount = purchase.RefundedAmount.Int32
 		data.RefundedAt = formatNullTime(purchase.RefundedAt)
 		return data, nil
+	})
+}
+
+// QueueCoinPackPurchased owes the event of a coin pack purchase just recorded,
+// called in the transaction that records it once the coins it grants are
+// recorded. A purchase is recorded once, so the event is owed once however
+// often the payment is confirmed.
+func QueueCoinPackPurchased(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) error {
+	return queue(ctx, q, tenantID, EventCoinPackPurchased, EventCoinPackPurchased+":"+purchaseID.String(), func() (any, error) {
+		row, err := q.GetWebhookCoinPackPurchase(ctx, dbmodels.GetWebhookCoinPackPurchaseParams{TenantID: tenantID, ID: purchaseID})
+		if err != nil {
+			return nil, fmt.Errorf("read the coin pack purchase of a webhook event: %w", err)
+		}
+		return CoinPackPurchase{
+			PurchaseID:       row.ID.String(),
+			CoinPackPublicID: row.CoinPackPublicID,
+			Coins:            row.Coins,
+			BonusCoins:       row.BonusCoins,
+			Price:            row.PriceAtPurchase,
+			Currency:         row.Currency,
+			ReaderPublicID:   row.ReaderPublicID.String,
+			PurchasedAt:      formatTime(row.PurchasedAt),
+			Provider:         row.Provider.String,
+			Store:            row.Store.String,
+			Test:             row.IsTest,
+		}, nil
 	})
 }
 

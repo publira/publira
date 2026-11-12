@@ -76,6 +76,12 @@ enum WebhookEventType {
   // display name of the account that sent the message, both empty for a
   // reader who was not signed in; never the address to answer at.
   WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED = 10;
+  // "coin_pack.purchased": a reader's purchase of a pack of the tenant's coins
+  // is recorded, through a payment provider or a store. It is sent once for
+  // each purchase, beside the "purchase.completed" every purchase sends.
+  // `data` is the purchase's id, the pack's public id, the coins and bonus
+  // coins the purchase granted, and what the reader paid.
+  WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED = 11;
 }
 
 // How a delivery stands.

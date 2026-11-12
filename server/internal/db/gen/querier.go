@@ -1718,6 +1718,12 @@ type Querier interface {
 	// claim below and the grants view compare against. No row means the reader
 	// has never used a ticket here, and one is ready.
 	GetWaitFreeTicketState(ctx context.Context, arg GetWaitFreeTicketStateParams) (GetWaitFreeTicketStateRow, error)
+	// A purchase of a coin pack as the coin_pack.purchased event of its recording
+	// carries it, read in the transaction that records it: the purchase's id, the
+	// pack's public id, the coins and bonus coins coin_pack_purchases recorded it
+	// granting, what the reader paid, and the reader's public id, empty once they
+	// have deleted their account.
+	GetWebhookCoinPackPurchase(ctx context.Context, arg GetWebhookCoinPackPurchaseParams) (GetWebhookCoinPackPurchaseRow, error)
 	// A comment as a comment.posted event carries it, read in the transaction that
 	// makes it visible: its public id and those of its episode and series, the
 	// body, the instant it became visible, and its writer's public id and display

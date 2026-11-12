@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storeproduct"
 	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // coinsPath is the storefront page a checkout of a pack returns the reader to
@@ -258,7 +259,8 @@ func (s *apiServer) startStoreCoinPackPurchase(ctx context.Context, tenantID, us
 // bought and grants its coins, in the transaction that recorded it: the pack
 // as the reader was shown it, the pack's first sale, which fixes its terms
 // from then on, and the grant, which expires terms.expiryDays after the
-// purchase.
+// purchase. It owes the tenant's webhook endpoints the coin_pack.purchased of
+// the purchase too, which carries the coins it records.
 func recordCoinPackSale(ctx context.Context, queries *dbmodels.Queries, purchase dbmodels.Purchase, terms coinPackTerms) error {
 	if err := queries.CreateCoinPackPurchase(ctx, dbmodels.CreateCoinPackPurchaseParams{
 		TenantID:   purchase.TenantID,
@@ -282,6 +284,9 @@ func recordCoinPackSale(ctx context.Context, queries *dbmodels.Queries, purchase
 		ExpiresAt:  coinledger.ExpiresAt(purchase.PurchasedAt, terms.expiryDays),
 	}); err != nil {
 		return fmt.Errorf("grant the coins of a pack purchase: %w", err)
+	}
+	if err := tenantwebhooks.QueueCoinPackPurchased(ctx, queries, purchase.TenantID, purchase.ID); err != nil {
+		return fmt.Errorf("queue the webhook events of a pack purchase: %w", err)
 	}
 	return nil
 }

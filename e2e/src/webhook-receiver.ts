@@ -12,6 +12,9 @@ export interface WebhookReceiverDelivery {
   body: {
     data: {
       author_name?: string;
+      bonus_coins?: number;
+      coin_pack_public_id?: string;
+      coins?: number;
       comment_public_id?: string;
       episode_public_id?: string;
       reader_name?: string;

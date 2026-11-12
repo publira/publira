@@ -66,6 +66,12 @@ export const WebhookEventLabel = ({
       );
     }
 
+    case "coin_pack.purchased": {
+      return (
+        <Message message="admin.settings.webhooks.events.coin_pack_purchased" />
+      );
+    }
+
     case "webhook.test": {
       return <Message message="admin.settings.webhooks.events.test" />;
     }
@@ -134,6 +140,12 @@ export const WebhookEventDescription = ({
     case "contact_message.received": {
       return (
         <Message message="admin.settings.webhooks.events.contact_message_received_description" />
+      );
+    }
+
+    case "coin_pack.purchased": {
+      return (
+        <Message message="admin.settings.webhooks.events.coin_pack_purchased_description" />
       );
     }
 

@@ -134,6 +134,72 @@ func (q *Queries) GetTenantWebhookEndpointForUpdate(ctx context.Context, arg Get
 	return i, err
 }
 
+const GetWebhookCoinPackPurchase = `-- name: GetWebhookCoinPackPurchase :one
+SELECT p.id,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.provider,
+    p.store,
+    p.is_test,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins,
+    cpp.bonus_coins,
+    u.public_id AS reader_public_id
+FROM purchases p
+    JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = $1
+    AND p.id = $2
+`
+
+type GetWebhookCoinPackPurchaseParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetWebhookCoinPackPurchaseRow struct {
+	ID               uuid.UUID      `json:"id"`
+	PriceAtPurchase  int32          `json:"price_at_purchase"`
+	Currency         string         `json:"currency"`
+	PurchasedAt      time.Time      `json:"purchased_at"`
+	Provider         sql.NullString `json:"provider"`
+	Store            sql.NullString `json:"store"`
+	IsTest           bool           `json:"is_test"`
+	CoinPackPublicID string         `json:"coin_pack_public_id"`
+	Coins            int32          `json:"coins"`
+	BonusCoins       int32          `json:"bonus_coins"`
+	ReaderPublicID   sql.NullString `json:"reader_public_id"`
+}
+
+// A purchase of a coin pack as the coin_pack.purchased event of its recording
+// carries it, read in the transaction that records it: the purchase's id, the
+// pack's public id, the coins and bonus coins coin_pack_purchases recorded it
+// granting, what the reader paid, and the reader's public id, empty once they
+// have deleted their account.
+func (q *Queries) GetWebhookCoinPackPurchase(ctx context.Context, arg GetWebhookCoinPackPurchaseParams) (GetWebhookCoinPackPurchaseRow, error) {
+	row := q.db.QueryRowContext(ctx, GetWebhookCoinPackPurchase, arg.TenantID, arg.ID)
+	var i GetWebhookCoinPackPurchaseRow
+	err := row.Scan(
+		&i.ID,
+		&i.PriceAtPurchase,
+		&i.Currency,
+		&i.PurchasedAt,
+		&i.Provider,
+		&i.Store,
+		&i.IsTest,
+		&i.CoinPackPublicID,
+		&i.Coins,
+		&i.BonusCoins,
+		&i.ReaderPublicID,
+	)
+	return i, err
+}
+
 const GetWebhookComment = `-- name: GetWebhookComment :one
 SELECT c.public_id AS comment_public_id,
     e.public_id AS episode_public_id,

@@ -4153,6 +4153,8 @@
           "comment_posted_description": "A reader's comment appears on an episode, at once or once it is approved.",
           "contact_message_received": "Contact message received",
           "contact_message_received_description": "A reader sends a message through the contact form, or writes back to an answer.",
+          "coin_pack_purchased": "Coin pack purchased",
+          "coin_pack_purchased_description": "A reader's purchase of a coin pack is recorded.",
           "test": "Test event"
         },
         "enabled": "Enabled",
