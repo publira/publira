@@ -422,6 +422,19 @@ FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     tax_amount bigint
 );
 
+-- name: LockRoyaltyStatementCreators :exec
+-- The Authors a close is about to write lines for, which DeleteCreator then
+-- waits for. A line names its Author by no foreign key, so without this a
+-- deletion that finds the Author's last credit removed after the close read
+-- it would succeed and leave the close's lines naming nobody. The close is
+-- serializable, so an Author deleted since its snapshot fails this lock and
+-- the close runs again without the credit.
+SELECT 1
+FROM creators
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = ANY(sqlc.arg('ids')::uuid[])
+FOR KEY SHARE;
+
 -- name: InsertRoyaltyStatementCreatorSubtotals :exec
 -- Writes every Author's subtotal of a statement in one statement, as
 -- InsertRoyaltyStatementLines writes its lines.

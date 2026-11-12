@@ -332,6 +332,12 @@ func closeStatementOnce(
 		return dbmodels.RoyaltyStatement{}, fmt.Errorf("insert statement: %w", err)
 	}
 
+	if err := queries.LockRoyaltyStatementCreators(ctx, dbmodels.LockRoyaltyStatementCreatorsParams{
+		TenantID: month.TenantID,
+		Ids:      subtotalCreatorIDs(computation.Subtotals),
+	}); err != nil {
+		return dbmodels.RoyaltyStatement{}, fmt.Errorf("lock the authors of the lines: %w", err)
+	}
 	if len(computation.Lines)+len(computation.SubscriptionLines)+len(computation.Adjustments) > 0 {
 		lines, err := statementLinesJSON(computation)
 		if err != nil {
@@ -567,6 +573,19 @@ func subtotalsOf(computation Computation) []CreatorSubtotal {
 		subtotals[i].Withholding = Withholding(computation.WithholdingRate, subtotals[i].Payout, subtotals[i].Tax)
 	}
 	return subtotals
+}
+
+// subtotalCreatorIDs answers the Authors the subtotals name, one per Author
+// any line of the statement names. The adjustments of lines closed before lines
+// kept their Author's ID name none and add nothing.
+func subtotalCreatorIDs(subtotals []CreatorSubtotal) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(subtotals))
+	for _, subtotal := range subtotals {
+		if subtotal.CreatorID.Valid {
+			ids = append(ids, subtotal.CreatorID.UUID)
+		}
+	}
+	return ids
 }
 
 // creatorSubtotal is one element of the JSON array

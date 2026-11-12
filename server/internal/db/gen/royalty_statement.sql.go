@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const GetRoyaltyAdjustmentTotalForPeriod = `-- name: GetRoyaltyAdjustmentTotalForPeriod :one
@@ -1491,4 +1492,28 @@ func (q *Queries) ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyalty
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockRoyaltyStatementCreators = `-- name: LockRoyaltyStatementCreators :exec
+SELECT 1
+FROM creators
+WHERE tenant_id = $1
+    AND id = ANY($2::uuid[])
+FOR KEY SHARE
+`
+
+type LockRoyaltyStatementCreatorsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+// The Authors a close is about to write lines for, which DeleteCreator then
+// waits for. A line names its Author by no foreign key, so without this a
+// deletion that finds the Author's last credit removed after the close read
+// it would succeed and leave the close's lines naming nobody. The close is
+// serializable, so an Author deleted since its snapshot fails this lock and
+// the close runs again without the credit.
+func (q *Queries) LockRoyaltyStatementCreators(ctx context.Context, arg LockRoyaltyStatementCreatorsParams) error {
+	_, err := q.db.ExecContext(ctx, LockRoyaltyStatementCreators, arg.TenantID, pq.Array(arg.Ids))
+	return err
 }

@@ -14,9 +14,9 @@
 -- is deleted: a series or an episode credit and an account link take a key
 -- share lock on the creator row through their foreign keys when they are
 -- written, which waits for this one and fails once it commits. A royalty
--- statement line names its creator by no foreign key, but a new one is only
--- ever written for a creator an episode credits, or copied from a line that
--- already names them, either of which refuses the deletion.
+-- statement line names its creator by no foreign key, so a close takes the
+-- same key share lock on the creators of the lines it is about to write
+-- (LockRoyaltyStatementCreators).
 SELECT id,
     public_id,
     name

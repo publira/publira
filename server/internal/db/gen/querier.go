@@ -3731,9 +3731,9 @@ type Querier interface {
 	// is deleted: a series or an episode credit and an account link take a key
 	// share lock on the creator row through their foreign keys when they are
 	// written, which waits for this one and fails once it commits. A royalty
-	// statement line names its creator by no foreign key, but a new one is only
-	// ever written for a creator an episode credits, or copied from a line that
-	// already names them, either of which refuses the deletion.
+	// statement line names its creator by no foreign key, so a close takes the
+	// same key share lock on the creators of the lines it is about to write
+	// (LockRoyaltyStatementCreators).
 	LockCreatorForDeletion(ctx context.Context, arg LockCreatorForDeletionParams) (LockCreatorForDeletionRow, error)
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
@@ -3905,6 +3905,13 @@ type Querier interface {
 	// volume free see what the other committed before they check what the reader
 	// holds. Taken before LockPromotionCodeRedemptions, always in that order.
 	LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error
+	// The Authors a close is about to write lines for, which DeleteCreator then
+	// waits for. A line names its Author by no foreign key, so without this a
+	// deletion that finds the Author's last credit removed after the close read
+	// it would succeed and leave the close's lines naming nobody. The close is
+	// serializable, so an Author deleted since its snapshot fails this lock and
+	// the close runs again without the credit.
+	LockRoyaltyStatementCreators(ctx context.Context, arg LockRoyaltyStatementCreatorsParams) error
 	// The bundle checkouts that name the episode, so none is paid for between the
 	// check and the deletion that takes the episode out of the unpaid ones. The
 	// purchase that records a bundle's payment refers to the bundle rather than to
