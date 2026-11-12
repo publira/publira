@@ -51,6 +51,12 @@ const (
 	// ReasonCoinsUnavailable refuses every coin RPC while the platform does
 	// not allow tenant coins or the tenant has not turned its coins on.
 	ReasonCoinsUnavailable = "COINS_UNAVAILABLE"
+	// The refusals of deleting a creator something refers to, one per kind of
+	// reference: a credit on a series or an episode, a line of a royalty
+	// statement, and a reader account linked to them.
+	ReasonCreatorCredited           = "CREATOR_CREDITED"
+	ReasonCreatorOnRoyaltyStatement = "CREATOR_ON_ROYALTY_STATEMENT"
+	ReasonCreatorHasLinkedAccount   = "CREATOR_HAS_LINKED_ACCOUNT"
 	// ReasonCreatorPagesDisabled refuses every CreatorService RPC while the
 	// tenant does not show its creators their pages.
 	ReasonCreatorPagesDisabled = "CREATOR_PAGES_DISABLED"

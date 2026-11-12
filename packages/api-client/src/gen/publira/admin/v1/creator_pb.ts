@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/creator.proto.
  */
 export const file_publira_admin_v1_creator: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEicgoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJvChRMaXN0Q3JlYXRvcnNSZXNwb25zZRIrCghjcmVhdG9ycxgBIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlcKEUdldENyZWF0b3JSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkidAoSR2V0Q3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3ISMgoIYWNjb3VudHMYAiADKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0b3JBY2NvdW50IlIKDkNyZWF0b3JBY2NvdW50Ei0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXISEQoJbGlua2VkX2F0GAIgASgJIt8BChRDcmVhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAQgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAUgASgJEjgKD2ljb25faW1hZ2VfY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdCJDChVDcmVhdGVDcmVhdG9yUmVzcG9uc2USKgoHY3JlYXRvchgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvciKeAgoUVXBkYXRlQ3JlYXRvclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhcKD2ljb25faW1hZ2VfZGF0YRgFIAEoDBIfChdpY29uX2ltYWdlX2NvbnRlbnRfdHlwZRgGIAEoCRIYChBjbGVhcl9pY29uX2ltYWdlGAcgASgIEjgKD2ljb25faW1hZ2VfY3JvcBgIIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBISCgpjcmVhdG9yX2lkGAkgASgJSgQIAhADUglwdWJsaWNfaWQiQwoVVXBkYXRlQ3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3IicwoZTGlua0NyZWF0b3JBY2NvdW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKY3JlYXRvcl9pZBgCIAEoCRIRCglyZWFkZXJfaWQYAyABKAkiUAoaTGlua0NyZWF0b3JBY2NvdW50UmVzcG9uc2USMgoIYWNjb3VudHMYASADKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0b3JBY2NvdW50InUKG1VubGlua0NyZWF0b3JBY2NvdW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKY3JlYXRvcl9pZBgCIAEoCRIRCglyZWFkZXJfaWQYAyABKAkiUgocVW5saW5rQ3JlYXRvckFjY291bnRSZXNwb25zZRIyCghhY2NvdW50cxgBIAMoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRvckFjY291bnQyhQUKE0FkbWluQ3JlYXRvclNlcnZpY2USXwoMTGlzdENyZWF0b3JzEiUucHVibGlyYS5hZG1pbi52MS5MaXN0Q3JlYXRvcnNSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5MaXN0Q3JlYXRvcnNSZXNwb25zZSIAElkKCkdldENyZWF0b3ISIy5wdWJsaXJhLmFkbWluLnYxLkdldENyZWF0b3JSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5HZXRDcmVhdG9yUmVzcG9uc2UiABJiCg1DcmVhdGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlc3BvbnNlIgASYgoNVXBkYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXNwb25zZSIAEnEKEkxpbmtDcmVhdG9yQWNjb3VudBIrLnB1YmxpcmEuYWRtaW4udjEuTGlua0NyZWF0b3JBY2NvdW50UmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuTGlua0NyZWF0b3JBY2NvdW50UmVzcG9uc2UiABJ3ChRVbmxpbmtDcmVhdG9yQWNjb3VudBItLnB1YmxpcmEuYWRtaW4udjEuVW5saW5rQ3JlYXRvckFjY291bnRSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5VbmxpbmtDcmVhdG9yQWNjb3VudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_admin_v1_user, file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEicgoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJvChRMaXN0Q3JlYXRvcnNSZXNwb25zZRIrCghjcmVhdG9ycxgBIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlcKEUdldENyZWF0b3JSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkidAoSR2V0Q3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3ISMgoIYWNjb3VudHMYAiADKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0b3JBY2NvdW50IlIKDkNyZWF0b3JBY2NvdW50Ei0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXISEQoJbGlua2VkX2F0GAIgASgJIt8BChRDcmVhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAQgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAUgASgJEjgKD2ljb25faW1hZ2VfY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdCJDChVDcmVhdGVDcmVhdG9yUmVzcG9uc2USKgoHY3JlYXRvchgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvciKeAgoUVXBkYXRlQ3JlYXRvclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhcKD2ljb25faW1hZ2VfZGF0YRgFIAEoDBIfChdpY29uX2ltYWdlX2NvbnRlbnRfdHlwZRgGIAEoCRIYChBjbGVhcl9pY29uX2ltYWdlGAcgASgIEjgKD2ljb25faW1hZ2VfY3JvcBgIIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBISCgpjcmVhdG9yX2lkGAkgASgJSgQIAhADUglwdWJsaWNfaWQiQwoVVXBkYXRlQ3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3IiWwoURGVsZXRlQ3JlYXRvclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmNyZWF0b3JfaWQYAiABKAkiFwoVRGVsZXRlQ3JlYXRvclJlc3BvbnNlInMKGUxpbmtDcmVhdG9yQWNjb3VudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmNyZWF0b3JfaWQYAiABKAkSEQoJcmVhZGVyX2lkGAMgASgJIlAKGkxpbmtDcmVhdG9yQWNjb3VudFJlc3BvbnNlEjIKCGFjY291bnRzGAEgAygLMiAucHVibGlyYS5hZG1pbi52MS5DcmVhdG9yQWNjb3VudCJ1ChtVbmxpbmtDcmVhdG9yQWNjb3VudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmNyZWF0b3JfaWQYAiABKAkSEQoJcmVhZGVyX2lkGAMgASgJIlIKHFVubGlua0NyZWF0b3JBY2NvdW50UmVzcG9uc2USMgoIYWNjb3VudHMYASADKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0b3JBY2NvdW50MukFChNBZG1pbkNyZWF0b3JTZXJ2aWNlEl8KDExpc3RDcmVhdG9ycxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVzcG9uc2UiABJZCgpHZXRDcmVhdG9yEiMucHVibGlyYS5hZG1pbi52MS5HZXRDcmVhdG9yUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuR2V0Q3JlYXRvclJlc3BvbnNlIgASYgoNQ3JlYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUNyZWF0b3JSZXNwb25zZSIAEmIKDVVwZGF0ZUNyZWF0b3ISJi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5VcGRhdGVDcmVhdG9yUmVzcG9uc2UiABJiCg1EZWxldGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5EZWxldGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlQ3JlYXRvclJlc3BvbnNlIgAScQoSTGlua0NyZWF0b3JBY2NvdW50EisucHVibGlyYS5hZG1pbi52MS5MaW5rQ3JlYXRvckFjY291bnRSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5MaW5rQ3JlYXRvckFjY291bnRSZXNwb25zZSIAEncKFFVubGlua0NyZWF0b3JBY2NvdW50Ei0ucHVibGlyYS5hZG1pbi52MS5VbmxpbmtDcmVhdG9yQWNjb3VudFJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlVubGlua0NyZWF0b3JBY2NvdW50UmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_admin_v1_user, file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -293,6 +293,65 @@ export const UpdateCreatorResponseSchema: GenMessage<UpdateCreatorResponse> = /*
   messageDesc(file_publira_admin_v1_creator, 8);
 
 /**
+ * Deletes a creator that nothing refers to: one entered with a typo, or one
+ * entered twice for the same person. Their icon goes with them, and so do the
+ * reader follows of them. They leave the creator list, their page, the
+ * sitemap, and the search index, and the objects of their icon are reclaimed
+ * by the orphan image sweep. The audit log keeps the creator's public id and
+ * name.
+ *
+ * A creator something refers to is failed_precondition with an ErrorInfo
+ * reason naming the first of these, in this order:
+ *
+ *   - CREATOR_CREDITED: a credit on a series or an episode, whatever its
+ *     state. Remove it with UpdateSeries, ReplaceEpisodeCredits, or
+ *     BulkEditEpisodeCredits first.
+ *   - CREATOR_ON_ROYALTY_STATEMENT: a line of a royalty statement, which is
+ *     kept as it was closed.
+ *   - CREATOR_HAS_LINKED_ACCOUNT: a reader account linked to them. Remove the
+ *     link with UnlinkCreatorAccount first.
+ *
+ * Nothing is deleted with the refusal.
+ * A creator that does not exist, a second request for one deleted already
+ * included, is not_found.
+ *
+ * @generated from message publira.admin.v1.DeleteCreatorRequest
+ */
+export type DeleteCreatorRequest = Message<"publira.admin.v1.DeleteCreatorRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The creator's primary key (Creator.id).
+   *
+   * @generated from field: string creator_id = 2;
+   */
+  creatorId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteCreatorRequest.
+ * Use `create(DeleteCreatorRequestSchema)` to create a new message.
+ */
+export const DeleteCreatorRequestSchema: GenMessage<DeleteCreatorRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_creator, 9);
+
+/**
+ * @generated from message publira.admin.v1.DeleteCreatorResponse
+ */
+export type DeleteCreatorResponse = Message<"publira.admin.v1.DeleteCreatorResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteCreatorResponse.
+ * Use `create(DeleteCreatorResponseSchema)` to create a new message.
+ */
+export const DeleteCreatorResponseSchema: GenMessage<DeleteCreatorResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_creator, 10);
+
+/**
  * @generated from message publira.admin.v1.LinkCreatorAccountRequest
  */
 export type LinkCreatorAccountRequest = Message<"publira.admin.v1.LinkCreatorAccountRequest"> & {
@@ -321,7 +380,7 @@ export type LinkCreatorAccountRequest = Message<"publira.admin.v1.LinkCreatorAcc
  * Use `create(LinkCreatorAccountRequestSchema)` to create a new message.
  */
 export const LinkCreatorAccountRequestSchema: GenMessage<LinkCreatorAccountRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 9);
+  messageDesc(file_publira_admin_v1_creator, 11);
 
 /**
  * @generated from message publira.admin.v1.LinkCreatorAccountResponse
@@ -340,7 +399,7 @@ export type LinkCreatorAccountResponse = Message<"publira.admin.v1.LinkCreatorAc
  * Use `create(LinkCreatorAccountResponseSchema)` to create a new message.
  */
 export const LinkCreatorAccountResponseSchema: GenMessage<LinkCreatorAccountResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 10);
+  messageDesc(file_publira_admin_v1_creator, 12);
 
 /**
  * @generated from message publira.admin.v1.UnlinkCreatorAccountRequest
@@ -371,7 +430,7 @@ export type UnlinkCreatorAccountRequest = Message<"publira.admin.v1.UnlinkCreato
  * Use `create(UnlinkCreatorAccountRequestSchema)` to create a new message.
  */
 export const UnlinkCreatorAccountRequestSchema: GenMessage<UnlinkCreatorAccountRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 11);
+  messageDesc(file_publira_admin_v1_creator, 13);
 
 /**
  * @generated from message publira.admin.v1.UnlinkCreatorAccountResponse
@@ -390,7 +449,7 @@ export type UnlinkCreatorAccountResponse = Message<"publira.admin.v1.UnlinkCreat
  * Use `create(UnlinkCreatorAccountResponseSchema)` to create a new message.
  */
 export const UnlinkCreatorAccountResponseSchema: GenMessage<UnlinkCreatorAccountResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 12);
+  messageDesc(file_publira_admin_v1_creator, 14);
 
 /**
  * @generated from service publira.admin.v1.AdminCreatorService
@@ -435,6 +494,16 @@ export const AdminCreatorService: GenService<{
     methodKind: "unary";
     input: typeof UpdateCreatorRequestSchema;
     output: typeof UpdateCreatorResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminCreatorService.DeleteCreator
+   */
+  deleteCreator: {
+    methodKind: "unary";
+    input: typeof DeleteCreatorRequestSchema;
+    output: typeof DeleteCreatorResponseSchema;
   },
   /**
    * Links a reader account to a creator. One account may be linked to several
