@@ -169,17 +169,18 @@ Future<void> turnOnTwoStepAndSignInWithIt(
   );
 }
 
-/// Waits for the reader to draw the pages it built.
+/// Waits for the reader to come to rest on top and draw the pages it built.
 ///
 /// [pumpUntilFound] on the page view returns on the first frame the reader
-/// exists, which is while its pages are still being fetched.
+/// exists, which is while it still slides in and its pages are still being
+/// fetched.
 Future<void> pumpUntilPagesDrawn(
   WidgetTester tester, {
   // Longer than the waits that only cover a request: a page is fetched,
   // decrypted, and then decoded, and an emulator decodes in software.
   Duration timeout = const Duration(seconds: 30),
 }) async {
-  await pumpUntilFound(
+  await pumpUntilRouteSettled(
     tester,
     find.byKey(const ValueKey('episode-page-view')),
     timeout: timeout,
@@ -1186,8 +1187,11 @@ void main() {
         await tapVisible(tester, paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
+        // The series screen is laid out without the tab bar while the reader
+        // slides over it, and keeps the shorter offset that clamps it to, so
+        // the paid episode is scrolled to again.
         await tapBack(tester);
-        await settleOn(paidEpisode);
+        await settleOnPaidEpisode();
         await tapBack(tester);
         await settleOnCatalog();
 
