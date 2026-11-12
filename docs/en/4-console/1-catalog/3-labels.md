@@ -2,7 +2,7 @@
 title: Labels
 description: The imprints a tenant's series are published under, the label pages readers browse them on, and deleting a label that nothing refers to.
 published: 2026-10-07
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 A label is an imprint: the name a publisher gives a line of its works, such as a magazine or a collection. Every series belongs to exactly one, which is why a series cannot be saved until a label exists. A publisher with a single imprint creates one label and files every series under it.

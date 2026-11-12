@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes with links to where their printed books are sold, and delete a series that holds nothing.
 published: 2026-10-07
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status**, **Age rating**, and **Label** above the list narrow it.
