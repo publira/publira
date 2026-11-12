@@ -4141,6 +4141,8 @@
           "comment_posted_description": "讀者的留言立即或經審核後在章節中公開。",
           "contact_message_received": "收到諮詢",
           "contact_message_received_description": "讀者透過諮詢表單傳送訊息，或對答覆回信時。",
+          "coin_pack_purchased": "代幣包購買",
+          "coin_pack_purchased_description": "記錄了讀者對代幣包的購買。",
           "test": "測試事件"
         },
         "enabled": "啟用",

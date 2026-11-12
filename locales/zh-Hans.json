@@ -4141,6 +4141,8 @@
           "comment_posted_description": "读者的评论立即或经审核后在章节中公开。",
           "contact_message_received": "收到咨询",
           "contact_message_received_description": "读者通过咨询表单发送消息，或对答复回信时。",
+          "coin_pack_purchased": "代币包购买",
+          "coin_pack_purchased_description": "记录了读者对代币包的购买。",
           "test": "测试事件"
         },
         "enabled": "启用",

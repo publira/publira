@@ -94,6 +94,12 @@ const (
 	// display name of the account that sent the message, both empty for a
 	// reader who was not signed in; never the address to answer at.
 	WebhookEventType_WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED WebhookEventType = 10
+	// "coin_pack.purchased": a reader's purchase of a pack of the tenant's coins
+	// is recorded, through a payment provider or a store. It is sent once for
+	// each purchase, beside the "purchase.completed" every purchase sends.
+	// `data` is the purchase's id, the pack's public id, the coins and bonus
+	// coins the purchase granted, and what the reader paid.
+	WebhookEventType_WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED WebhookEventType = 11
 )
 
 // Enum value maps for WebhookEventType.
@@ -110,6 +116,7 @@ var (
 		8:  "WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED",
 		9:  "WEBHOOK_EVENT_TYPE_COMMENT_POSTED",
 		10: "WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED",
+		11: "WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED",
 	}
 	WebhookEventType_value = map[string]int32{
 		"WEBHOOK_EVENT_TYPE_UNSPECIFIED":              0,
@@ -123,6 +130,7 @@ var (
 		"WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED":      8,
 		"WEBHOOK_EVENT_TYPE_COMMENT_POSTED":           9,
 		"WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED": 10,
+		"WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED":      11,
 	}
 )
 
@@ -1409,7 +1417,7 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"\vdelivery_id\x18\x02 \x01(\tR\n" +
 	"deliveryId\"^\n" +
 	"\x1dResendWebhookDeliveryResponse\x12=\n" +
-	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\xd7\x03\n" +
+	"\bdelivery\x18\x01 \x01(\v2!.publira.admin.v1.WebhookDeliveryR\bdelivery*\x83\x04\n" +
 	"\x10WebhookEventType\x12\"\n" +
 	"\x1eWEBHOOK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%WEBHOOK_EVENT_TYPE_PURCHASE_COMPLETED\x10\x01\x12(\n" +
@@ -1422,7 +1430,8 @@ const file_publira_admin_v1_webhook_proto_rawDesc = "" +
 	"&WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED\x10\b\x12%\n" +
 	"!WEBHOOK_EVENT_TYPE_COMMENT_POSTED\x10\t\x12/\n" +
 	"+WEBHOOK_EVENT_TYPE_CONTACT_MESSAGE_RECEIVED\x10\n" +
-	"*\xd2\x01\n" +
+	"\x12*\n" +
+	"&WEBHOOK_EVENT_TYPE_COIN_PACK_PURCHASED\x10\v*\xd2\x01\n" +
 	"\x15WebhookDeliveryStatus\x12'\n" +
 	"#WEBHOOK_DELIVERY_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fWEBHOOK_DELIVERY_STATUS_PENDING\x10\x01\x12\"\n" +
