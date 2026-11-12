@@ -13,7 +13,7 @@
 # which works while the host's glibc is no newer than this image's: the Dev
 # Container's Debian 13 and the `ubuntu-26.04` runners both qualify. Move the
 # base image to a newer release when the runners move to one.
-FROM ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c
+FROM ubuntu:26.04@sha256:065aa8626841f16057b78b027b464cd59c4fac36c204c72dcbf48d66f5fa8a96
 
 # The libraries come from the `resolute` release pocket alone. That pocket is
 # frozen at release: the index and the pool files it names never change
