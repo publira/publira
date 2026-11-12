@@ -32,9 +32,8 @@ import {
   WEB_STOREFRONT_COINS_OFF_BASE_URL,
 } from "../src/urls";
 import {
-  setWebhookReceiverSecret,
+  subscribeWebhookReceiver,
   webhookReceiverDeliveries,
-  webhookReceiverEndpoint,
 } from "../src/webhook-receiver";
 
 /**
@@ -55,41 +54,6 @@ const offEpisodePath = `/series/${STOREFRONT_COINS_OFF_EPISODE.seriesPublicId}/e
 
 /** Apart for each run, since the receiver keeps what it was sent. */
 const RECEIVER_NAME = randomUUID();
-
-/**
- * Saves a webhook endpoint that delivers the tenant's coin pack purchases to
- * the receiver under {@link RECEIVER_NAME}, on the console `page` is signed in
- * to as the tenant's admin, and hands the receiver its signing secret.
- */
-const subscribeReceiverToCoinPackPurchases = async (
-  page: Page
-): Promise<void> => {
-  await page.goto(
-    new URL(
-      "/integrations/api-keys-and-webhooks",
-      WEB_ADMIN_COINS_BASE_URL
-    ).toString()
-  );
-
-  const form = page.locator("form").filter({
-    has: page.getByRole("heading", {
-      exact: true,
-      level: 3,
-      name: "Add an endpoint",
-    }),
-  });
-
-  await form.getByLabel("URL").fill(webhookReceiverEndpoint(RECEIVER_NAME));
-  await form.getByRole("checkbox", { name: "Coin pack purchased" }).check();
-  await form.getByRole("button", { name: "Add the endpoint" }).click();
-  await expect(form.getByText("The endpoint was added.")).toBeVisible();
-  const secret = form.getByText(/^whsec_[a-z2-7]+$/u);
-
-  await setWebhookReceiverSecret(
-    RECEIVER_NAME,
-    ((await secret.textContent()) ?? "").trim()
-  );
-};
 
 const storefrontUrl = (path: string, baseUrl = WEB_STOREFRONT_COINS_BASE_URL) =>
   new URL(path, baseUrl).toString();
@@ -172,7 +136,12 @@ test.describe("web-storefront coins", () => {
         STOREFRONT_COINS_ADMIN,
         WEB_ADMIN_COINS_BASE_URL
       );
-      await subscribeReceiverToCoinPackPurchases(page);
+      await subscribeWebhookReceiver(
+        page,
+        WEB_ADMIN_COINS_BASE_URL,
+        RECEIVER_NAME,
+        "Coin pack purchased"
+      );
     } finally {
       await page.close();
     }

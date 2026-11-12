@@ -4155,6 +4155,8 @@
           "contact_message_received_description": "讀者透過諮詢表單傳送訊息，或對答覆回信時。",
           "coin_pack_purchased": "代幣包購買",
           "coin_pack_purchased_description": "記錄了讀者對代幣包的購買。",
+          "tip_received": "收到打賞",
+          "tip_received_description": "記錄了讀者對章節作者的打賞。",
           "test": "測試事件"
         },
         "enabled": "啟用",

@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhookエンドポイント
 
-![保存済みのエンドポイント。見出しにURLがあり、その横に「有効」と表示されています。「テストイベントを送信」と「削除」のボタン、署名シークレットのヒントと最終更新日時、「シークレットを再発行」が並び、その下にエンドポイント自身のフォームがあります。フォームには、URL、3つが選ばれた10個のイベント、「有効」のスイッチ、「エンドポイントを保存」があります。](./api-keys-and-webhooks-endpoint.png)
+![保存済みのエンドポイント。見出しにURLがあり、その横に「有効」と表示されています。「テストイベントを送信」と「削除」のボタン、署名シークレットのヒントと最終更新日時、「シークレットを再発行」が並び、その下にエンドポイント自身のフォームがあります。フォームには、URL、3つが選ばれた11個のイベント、「有効」のスイッチ、「エンドポイントを保存」があります。](./api-keys-and-webhooks-endpoint.png)
 
 エンドポイントは出版社自身のhttps URLで、購読しているイベントが起きるたびに、署名付きの`POST`が送られます。1つのテナントにつき5件まで登録でき、エンドポイントごとにフォームが分かれています。
 
@@ -108,6 +108,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **コメントの公開** (`comment.posted`) | 読者のコメントがエピソードに表示されたとき。コメントの公開方法が**すぐに公開する**の場合は投稿されたとき、**承認してから公開する**の場合はモデレーターが**コメント**で承認したときに送られます。コメントごとに最初に表示されたときに1回だけ送られるため、非表示にしてから元に戻したコメントについてはもう一度送られることはなく、承認される前に非表示にされたコメントや投稿者が削除したコメントについては送られません | コメント |
 | **お問い合わせの受信** (`contact_message.received`) | 読者がテナントに連絡したとき。お問い合わせフォームからメッセージを送ったときと、回答への返信が**回答と返信**に記録されたときに送られます。返信が記録されるのは、**受信メール**のセクションが**利用可能**になってからです ([読者から返信があったとき](./2-readers/3-contact-messages.md#読者から返信があったとき))。メッセージと返信は、それぞれ1回だけ送られます | お問い合わせ |
 | **コインパックの購入** (`coin_pack.purchased`) | 読者のコインパックの購入が記録されたとき。決済プロバイダとアプリストアのどちらで支払われた場合も送られます。購入ごとに1回だけ、すべての購入で送られる**購入完了**とは別に送られます | コインパックの購入 |
+| **チップの受け取り** (`tip.received`) | 読者がエピソードの著者に贈った[チップ](./4-selling-episodes.md#チップ)が記録されたとき。決済プロバイダとアプリストアのどちらで支払われた場合も送られます。チップごとに1回だけ、すべての購入で送られる**購入完了**とは別に送られます | チップ |
 | **テストイベント** (`webhook.test`) | **テストイベントを送信**を選んだとき | 空 |
 
 ### 本文
@@ -132,6 +133,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 購入 | `purchase_id`は`GetPurchase`に渡すIDです。`kind`は`purchase`、`rental`、`tip`のいずれかです。`item`は`episode`、`volume`、`series_bundle`、`coin_pack`のいずれかで、該当する場合は`series_public_id`、`episode_public_id`、`volume_public_id`が付きます。`reader_public_id`と`reader_email`は、読者がアカウントを削除するとどちらも空になります。`price`は読者が支払った金額、`list_price`はプロモーションコードで割り引く前の金額で、どちらも通貨の最小単位で表し、`currency`が付きます。ほかに`refunded_amount`、`purchased_at`、`expires_at`、`refunded_at`があります。`provider`は決済プロバイダか`coins`、`store`は`app_store`か`google_play`で、プロモーションコードで付与された購入ではどちらも空です。最後に`test`があります |
 | コインパックの購入 | `purchase_id`は**購入完了**が示すのと同じ購入のIDで、`GetPurchase`に渡します。ほかに`coin_pack_public_id`があります。`coins`と`bonus_coins`は購入で付与されたコインとボーナスコインで、読者が支払いを始めたときに表示されていた数です。その後パックが編集されても変わりません。`price`は読者が支払った金額で、通貨の最小単位で表し、`currency`が付きます。`reader_public_id`は、読者がアカウントを削除すると空になります。ほかに`purchased_at`があります。決済プロバイダで支払われた購入には`provider`が、アプリストアで支払われた購入には`app_store`か`google_play`の`store`が付きます。最後に`test`があります |
+| チップ | `purchase_id`は**購入完了**が示すのと同じ購入のIDで、`GetPurchase`に渡します。ほかに`episode_public_id`と`series_public_id`があります。`price`は読者が支払った金額で、通貨の最小単位で表し、`currency`が付きます。`creator_public_ids`は、チップが記録された時点でエピソードにクレジットされている著者の公開IDで、クレジットの順に1人1回ずつ並びます。誰もクレジットされていないエピソードでは空のリストです。`reader_public_id`は、読者がアカウントを削除すると空になります。ほかに`purchased_at`があります。決済プロバイダで支払われたチップには`provider`が、アプリストアで支払われたチップには`app_store`か`google_play`の`store`が付きます。最後に`test`があります |
 | 読者 | `reader_public_id`、`email`、`name`、`email_verified` (読者がメールアドレスを確認するまではfalse)、`signed_up_at` |
 | エピソード | `episode_public_id`と`series_public_id`、テナントの既定言語での`title`、`published_at` |
 | 取り下げられたエピソード | `episode_public_id`と`series_public_id`、`withdrawn`があります。`withdrawn`は、エピソード自体が取り下げられた場合は`episode`、シリーズが取り下げられた場合は`series`です |

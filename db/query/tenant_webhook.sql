@@ -346,6 +346,47 @@ FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.id = sqlc.arg('id');
 
+-- name: GetWebhookTip :one
+-- A tip as the tip.received event of its recording carries it, read in the
+-- transaction that records it: the purchase's id, the episode and its series
+-- by their public ids, what the reader paid, the reader's public id, empty
+-- once they have deleted their account, and the public ids of the Authors
+-- episode_creators credits the episode to as the tip is recorded. An Author
+-- credited in more than one role is named once, where their first credit
+-- stands.
+SELECT p.id,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.provider,
+    p.store,
+    p.is_test,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    u.public_id AS reader_public_id,
+    ARRAY(
+        SELECT c.public_id
+        FROM episode_creators ec
+            JOIN creators c ON c.tenant_id = ec.tenant_id
+            AND c.id = ec.creator_id
+        WHERE ec.tenant_id = p.tenant_id
+            AND ec.episode_id = p.episode_id
+        GROUP BY c.id,
+            c.public_id
+        ORDER BY min(ec.display_order),
+            c.id
+    )::text [] AS creator_public_ids
+FROM purchases p
+    JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = sqlc.arg('id')
+    AND p.kind = 'tip';
+
 -- name: GetWebhookReader :one
 SELECT u.public_id,
     u.email,

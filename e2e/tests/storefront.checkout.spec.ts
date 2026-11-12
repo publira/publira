@@ -29,6 +29,10 @@ import {
   WEB_STOREFRONT_RENTALS_BASE_URL,
 } from "../src/urls";
 import { turnToEndPage } from "../src/viewer";
+import {
+  subscribeWebhookReceiver,
+  webhookReceiverDeliveries,
+} from "../src/webhook-receiver";
 
 /**
  * Readers buying through Stripe Checkout, against the stack's stand-in for
@@ -38,7 +42,8 @@ import { turnToEndPage } from "../src/viewer";
  * at the discount the admin sets on the series form. Each pays on the
  * checkout page, returns to the page the sale was started from with what the
  * webhook opened, and finds the sale in the library. Another tips the Authors
- * from the end of an episode, the same way.
+ * from the end of an episode, the same way, and the tip is announced, signed,
+ * to the receiver the tenant subscribed to tips.
  *
  * Last, the admin issues a promotion code from the console: a sixth reader
  * applies it at episode 1's gate, pays the discounted price on a checkout page
@@ -210,6 +215,9 @@ const openMonthSales = async (admin: Page): Promise<number> => {
   return Number((text ?? "").replaceAll(/\D/gu, ""));
 };
 
+/** Apart for each run, since the receiver keeps what it was sent. */
+const RECEIVER_NAME = randomUUID();
+
 test.describe.configure({ mode: "serial" });
 
 test.describe("web-storefront checkout", () => {
@@ -228,6 +236,12 @@ test.describe("web-storefront checkout", () => {
 
     try {
       await takePaymentsThroughStripe(page);
+      await subscribeWebhookReceiver(
+        page,
+        WEB_ADMIN_RENTALS_BASE_URL,
+        RECEIVER_NAME,
+        "Tip received"
+      );
     } finally {
       await page.close();
     }
@@ -353,6 +367,36 @@ test.describe("web-storefront checkout", () => {
       card.getByRole("term").filter({ hasText: "Expires" })
     ).toHaveCount(0);
     await expect(card.getByText("Expired")).toHaveCount(0);
+
+    await expect
+      .poll(
+        async () => {
+          const deliveries = await webhookReceiverDeliveries(RECEIVER_NAME);
+
+          return deliveries.length;
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+    const received = await webhookReceiverDeliveries(RECEIVER_NAME);
+
+    expect(
+      received.map(({ body, event, verified }) => ({
+        creators: body.data.creator_public_ids,
+        episode: body.data.episode_public_id,
+        event,
+        price: body.data.price,
+        verified,
+      }))
+    ).toEqual([
+      {
+        creators: [EPISODE_RENTALS_CREATOR.publicId],
+        episode: EPISODE_RENTALS_EPISODE.publicId,
+        event: "tip.received",
+        price: 1000,
+        verified: true,
+      },
+    ]);
   });
 
   test("a reader sees an episode's campaign price and its end, buys it at that price, and finds what they paid in the library", async ({

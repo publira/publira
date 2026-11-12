@@ -37,6 +37,7 @@ const (
 	EventCommentPosted          = "comment.posted"
 	EventContactMessageReceived = "contact_message.received"
 	EventCoinPackPurchased      = "coin_pack.purchased"
+	EventTipReceived            = "tip.received"
 	// EventTest is what SendTestWebhook owes one endpoint. No endpoint
 	// subscribes to it.
 	EventTest = "webhook.test"
@@ -55,6 +56,7 @@ var EventTypes = []string{
 	EventCommentPosted,
 	EventContactMessageReceived,
 	EventCoinPackPurchased,
+	EventTipReceived,
 }
 
 // Subscribable reports whether an endpoint can subscribe to eventType.
@@ -79,6 +81,7 @@ type Queries interface {
 	GetWebhookContactMessage(ctx context.Context, arg dbmodels.GetWebhookContactMessageParams) (dbmodels.GetWebhookContactMessageRow, error)
 	GetWebhookContactMessageReply(ctx context.Context, arg dbmodels.GetWebhookContactMessageReplyParams) (dbmodels.GetWebhookContactMessageReplyRow, error)
 	GetWebhookCoinPackPurchase(ctx context.Context, arg dbmodels.GetWebhookCoinPackPurchaseParams) (dbmodels.GetWebhookCoinPackPurchaseRow, error)
+	GetWebhookTip(ctx context.Context, arg dbmodels.GetWebhookTipParams) (dbmodels.GetWebhookTipRow, error)
 }
 
 // OutboxEventType is the outbox event that sends one delivery.
@@ -263,6 +266,30 @@ type CoinPackPurchase struct {
 	Test     bool   `json:"test"`
 }
 
+// Tip is the data of [EventTipReceived]. PurchaseID is the same purchase the
+// [EventPurchaseCompleted] of the tip names, and CreatorPublicIDs are the
+// Authors the episode credited when the tip was recorded, each once and in the
+// order of their credits.
+type Tip struct {
+	PurchaseID      string `json:"purchase_id"`
+	EpisodePublicID string `json:"episode_public_id"`
+	SeriesPublicID  string `json:"series_public_id"`
+	// What the reader paid, in the minor unit of Currency.
+	Price    int32  `json:"price"`
+	Currency string `json:"currency"`
+	// CreatorPublicIDs is empty, never null, for an episode that credits no
+	// one.
+	CreatorPublicIDs []string `json:"creator_public_ids"`
+	// The reader who tipped; empty once they have deleted their account.
+	ReaderPublicID string `json:"reader_public_id"`
+	PurchasedAt    string `json:"purchased_at"`
+	// Provider is the payment provider; Store is "app_store" or
+	// "google_play". One of the two is set.
+	Provider string `json:"provider,omitempty"`
+	Store    string `json:"store,omitempty"`
+	Test     bool   `json:"test"`
+}
+
 // QueuePurchaseCompleted owes the endpoints that subscribed to it the event of
 // a purchase just recorded. A purchase is completed once, so the event is
 // owed once however often the writer runs.
@@ -309,6 +336,35 @@ func QueueCoinPackPurchased(ctx context.Context, q Queries, tenantID, purchaseID
 			BonusCoins:       row.BonusCoins,
 			Price:            row.PriceAtPurchase,
 			Currency:         row.Currency,
+			ReaderPublicID:   row.ReaderPublicID.String,
+			PurchasedAt:      formatTime(row.PurchasedAt),
+			Provider:         row.Provider.String,
+			Store:            row.Store.String,
+			Test:             row.IsTest,
+		}, nil
+	})
+}
+
+// QueueTipReceived owes the event of a tip just recorded, called in the
+// transaction that records it. A tip is recorded once, so the event is owed
+// once however often the payment is confirmed.
+func QueueTipReceived(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) error {
+	return queue(ctx, q, tenantID, EventTipReceived, EventTipReceived+":"+purchaseID.String(), func() (any, error) {
+		row, err := q.GetWebhookTip(ctx, dbmodels.GetWebhookTipParams{TenantID: tenantID, ID: purchaseID})
+		if err != nil {
+			return nil, fmt.Errorf("read the tip of a webhook event: %w", err)
+		}
+		creators := row.CreatorPublicIds
+		if creators == nil {
+			creators = []string{}
+		}
+		return Tip{
+			PurchaseID:       row.ID.String(),
+			EpisodePublicID:  row.EpisodePublicID,
+			SeriesPublicID:   row.SeriesPublicID,
+			Price:            row.PriceAtPurchase,
+			Currency:         row.Currency,
+			CreatorPublicIDs: creators,
 			ReaderPublicID:   row.ReaderPublicID.String,
 			PurchasedAt:      formatTime(row.PurchasedAt),
 			Provider:         row.Provider.String,

@@ -1756,6 +1756,14 @@ type Querier interface {
 	GetWebhookPurchase(ctx context.Context, arg GetWebhookPurchaseParams) (GetWebhookPurchaseRow, error)
 	GetWebhookReader(ctx context.Context, arg GetWebhookReaderParams) (GetWebhookReaderRow, error)
 	GetWebhookSubscription(ctx context.Context, arg GetWebhookSubscriptionParams) (GetWebhookSubscriptionRow, error)
+	// A tip as the tip.received event of its recording carries it, read in the
+	// transaction that records it: the purchase's id, the episode and its series
+	// by their public ids, what the reader paid, the reader's public id, empty
+	// once they have deleted their account, and the public ids of the Authors
+	// episode_creators credits the episode to as the tip is recorded. An Author
+	// credited in more than one role is named once, where their first credit
+	// stands.
+	GetWebhookTip(ctx context.Context, arg GetWebhookTipParams) (GetWebhookTipRow, error)
 	// An episode as an episode.unpublished event carries it when the episode itself
 	// is taken off the site, read in the transaction that takes it off: the ids the
 	// admin API answers the episode and its series by.

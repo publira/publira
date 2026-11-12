@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhook端點
 
-![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的十個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
+![一個已儲存的端點：以其URL為標題，旁邊顯示已啟用；傳送測試事件與刪除按鈕；簽章密鑰的提示與最後更新時間；重新產生密鑰；以及它自己的表單：URL、勾選了其中三個的十一個事件、啟用開關，以及儲存端點。](./api-keys-and-webhooks-endpoint.png)
 
 端點是出版社自己的https URL，每發生一個它訂閱的事件，都會收到一個附簽章的`POST`請求。一個租戶最多可保留五個端點，每個端點都有自己的表單。
 
@@ -108,6 +108,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **留言公開**（`comment.posted`） | 讀者的留言在章節中顯示時：留言的公開方式為**立即公開**時於發表時傳送，為**審核後公開**時於審核人員在**留言**中通過時傳送。每則留言只在首次顯示時傳送一次，因此移除後又恢復的留言不會再次傳送，在通過之前被移除或被留言者刪除的留言也不會傳送 | 留言 |
 | **收到諮詢**（`contact_message.received`） | 讀者聯絡租戶時：透過諮詢表單傳送訊息時，以及對答覆的回信記錄在**答覆與回信**下時傳送。只有在**收件**區塊變為**就緒**之後，回信才會被記錄（[讀者回信時](./2-readers/3-contact-messages.md#讀者回信時)）。每則訊息與每封回信各傳送一次 | 諮詢 |
 | **代幣包購買**（`coin_pack.purchased`） | 記錄了讀者對代幣包的購買，透過金流服務商或應用程式商店付款。每次購買只傳送一次，與每次購買都會傳送的**購買完成**分開傳送 | 代幣包購買 |
+| **收到打賞**（`tip.received`） | 記錄了讀者對章節作者的[打賞](./4-selling-episodes.md#打賞)，透過金流服務商或應用程式商店付款。每次打賞只傳送一次，與每次購買都會傳送的**購買完成**分開傳送 | 打賞 |
 | **測試事件**（`webhook.test`） | 選擇了**傳送測試事件** | 空 |
 
 ### 請求本文
@@ -132,6 +133,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 購買 | `purchase_id`，即`GetPurchase`所接受的ID；`kind`：`purchase`、`rental`或`tip`；`item`：`episode`、`volume`、`series_bundle`或`coin_pack`，並在適用時附帶`series_public_id`、`episode_public_id`與`volume_public_id`；`reader_public_id`與`reader_email`，讀者刪除帳戶後兩者皆為空；`price`為讀者支付的金額，`list_price`為扣除促銷代碼折扣前的價格，兩者皆以貨幣的最小單位表示，並附帶`currency`；`refunded_amount`；`purchased_at`、`expires_at`與`refunded_at`；`provider`為金流服務商或`coins`，`store`為`app_store`或`google_play`，對於促銷代碼贈與的購買，兩者皆為空；以及`test` |
 | 代幣包購買 | `purchase_id`，與**購買完成**所指的是同一筆購買，即`GetPurchase`所接受的ID；`coin_pack_public_id`；`coins`與`bonus_coins`，即該購買發放的代幣與贈送代幣，為讀者開始付款時所顯示的數量，之後即使編輯了代幣包也不會改變；`price`為讀者支付的金額，以貨幣的最小單位表示，並附帶`currency`；`reader_public_id`，讀者刪除帳戶後為空；`purchased_at`；`provider`為金流服務商，或`store`為`app_store`或`google_play`；以及`test` |
+| 打賞 | `purchase_id`，與**購買完成**所指的是同一筆購買，即`GetPurchase`所接受的ID；`episode_public_id`與`series_public_id`；`price`為讀者支付的金額，以貨幣的最小單位表示，並附帶`currency`；`creator_public_ids`，即記錄打賞時章節所署名的作者的公開ID，依署名順序每人各列一次，章節未署名任何人時為空列表；`reader_public_id`，讀者刪除帳戶後為空；`purchased_at`；`provider`為金流服務商，或`store`為`app_store`或`google_play`；以及`test` |
 | 讀者 | `reader_public_id`、`email`、`name`、`email_verified`（讀者確認地址之前為false），以及`signed_up_at` |
 | 章節 | `episode_public_id`與`series_public_id`；租戶預設語言的`title`；以及`published_at` |
 | 下架的章節 | `episode_public_id`與`series_public_id`；以及`withdrawn`：章節本身被下架時為`episode`，其系列被下架時為`series` |

@@ -69,7 +69,7 @@ To replace a key without a gap, create the new one, switch the system to it, and
 
 ## Webhook endpoints
 
-![A saved endpoint, headed by its URL with Enabled beside it, the Send test event and Delete buttons, its signing secret's hint and when it was last updated, Rotate secret, and its own form: the URL, the ten events with three of them chosen, the Enabled switch, and Save the endpoint.](./api-keys-and-webhooks-endpoint.png)
+![A saved endpoint, headed by its URL with Enabled beside it, the Send test event and Delete buttons, its signing secret's hint and when it was last updated, Rotate secret, and its own form: the URL, the eleven events with three of them chosen, the Enabled switch, and Save the endpoint.](./api-keys-and-webhooks-endpoint.png)
 
 An endpoint is an https URL of the publisher's own that is sent a signed `POST` for each event it subscribes to. A tenant keeps up to five, and each one is a form of its own.
 
@@ -107,6 +107,7 @@ A delivery is not sent to a host that resolves to a private, loopback, link-loca
 | **Comment posted** (`comment.posted`) | A reader's comment appears on an episode: when it is posted where comments are set to **Publish straight away**, or when a moderator approves it under **Comments** where they are set to **Publish after approval**. Each comment is sent once, when it first appears, so one removed and restored is not sent again, and one removed or deleted by its commenter before it is approved is not sent | The comment |
 | **Contact message received** (`contact_message.received`) | A reader writes to the tenant: they send a message through the contact form, or their reply to an answer is recorded under **Answers and replies**, which happens once the **Inbound email** section is **Ready** ([When the reader writes back](./2-readers/3-contact-messages.md#when-the-reader-writes-back)). Each message and each reply is sent once | The contact message |
 | **Coin pack purchased** (`coin_pack.purchased`) | A reader's purchase of a coin pack is recorded, paid through a payment provider or an app store. Each purchase is sent once, beside the **Purchase completed** that every purchase sends | The coin pack purchase |
+| **Tip received** (`tip.received`) | A reader's [tip](./4-selling-episodes.md#tips) to the Authors of an episode is recorded, paid through a payment provider or an app store. Each tip is sent once, beside the **Purchase completed** that every purchase sends | The tip |
 | **Test event** (`webhook.test`) | **Send test event** is chosen | Empty |
 
 ### The body
@@ -131,6 +132,7 @@ Every delivery is a JSON object:
 | --- | --- |
 | The purchase | `purchase_id`, which `GetPurchase` takes; `kind`: `purchase`, `rental`, or `tip`; `item`: `episode`, `volume`, `series_bundle`, or `coin_pack`, with `series_public_id`, `episode_public_id`, and `volume_public_id` where they apply; `reader_public_id` and `reader_email`, both empty once the reader has deleted their account; `price`, what the reader paid, and `list_price`, before a promotion code's discount, both in the currency's minor unit, with `currency`; `refunded_amount`; `purchased_at`, `expires_at`, and `refunded_at`; `provider`, the payment provider or `coins`, and `store`, `app_store` or `google_play`, both empty for a purchase a promotion code granted; and `test` |
 | The coin pack purchase | `purchase_id`, the same purchase **Purchase completed** names, which `GetPurchase` takes; `coin_pack_public_id`; `coins` and `bonus_coins`, what the purchase granted, as the reader was shown them when they started to pay, however the pack has been edited since; `price`, what the reader paid, in the currency's minor unit, with `currency`; `reader_public_id`, empty once the reader has deleted their account; `purchased_at`; `provider`, the payment provider, or `store`, `app_store` or `google_play`; and `test` |
+| The tip | `purchase_id`, the same purchase **Purchase completed** names, which `GetPurchase` takes; `episode_public_id` and `series_public_id`; `price`, what the reader paid, in the currency's minor unit, with `currency`; `creator_public_ids`, the public ids of the Authors the episode credits as the tip is recorded, each once and in the order of their credits, and an empty list for an episode that credits no one; `reader_public_id`, empty once the reader has deleted their account; `purchased_at`; `provider`, the payment provider, or `store`, `app_store` or `google_play`; and `test` |
 | The reader | `reader_public_id`, `email`, `name`, `email_verified`, false until the reader confirms the address, and `signed_up_at` |
 | The episode | `episode_public_id` and `series_public_id`; `title`, in the tenant's default language; and `published_at` |
 | The withdrawn episode | `episode_public_id` and `series_public_id`; and `withdrawn`: `episode` when the episode itself was taken off the site, `series` when its series was |

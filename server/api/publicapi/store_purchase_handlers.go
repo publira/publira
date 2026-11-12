@@ -580,6 +580,11 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	if err := tenantwebhooks.QueuePurchaseCompleted(ctx, txq, tenantID, purchase.ID); err != nil {
 		return nil, s.internalError(ctx, "failed to queue the webhook events of a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
 	}
+	if purchase.Kind == string(paymentprovider.KindTip) {
+		if err := tenantwebhooks.QueueTipReceived(ctx, txq, tenantID, purchase.ID); err != nil {
+			return nil, s.internalError(ctx, "failed to queue the webhook events of a store tip", err, "tenant_id", tenantID.String(), "purchase_id", purchase.ID.String())
+		}
+	}
 	refunded, err := storepurchase.ApplyHeldRefund(ctx, txq, tenantID, purchase.ID, transaction.store, transaction.transactionID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to apply a held store refund", err, "tenant_id", tenantID.String())
