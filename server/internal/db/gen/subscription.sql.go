@@ -187,7 +187,7 @@ func (q *Queries) GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSub
 	return i, err
 }
 
-const GetSubscriptionPaymentFailedMailForTenant = `-- name: GetSubscriptionPaymentFailedMailForTenant :one
+const GetSubscriptionMailForTenant = `-- name: GetSubscriptionMailForTenant :one
 SELECT pl.name AS plan_name,
     u.email AS reader_email
 FROM subscriptions s
@@ -201,26 +201,26 @@ WHERE s.tenant_id = $2::uuid
     AND s.id = $3::uuid
 `
 
-type GetSubscriptionPaymentFailedMailForTenantParams struct {
+type GetSubscriptionMailForTenantParams struct {
 	PlanID   uuid.UUID `json:"plan_id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	ID       uuid.UUID `json:"id"`
 }
 
-type GetSubscriptionPaymentFailedMailForTenantRow struct {
+type GetSubscriptionMailForTenantRow struct {
 	PlanName    string         `json:"plan_name"`
 	ReaderEmail sql.NullString `json:"reader_email"`
 }
 
-// What the mail of a failed attempt to collect a subscription's invoice says
-// beside what the attempt carried, read by the outbox worker, which connects
-// past RLS and therefore names the tenant itself: the plan the attempt was
-// recorded on, under the name it has when the mail is sent, and the reader's
-// address. The reader is joined within the tenant, so an account deleted since
-// answers no address rather than no row.
-func (q *Queries) GetSubscriptionPaymentFailedMailForTenant(ctx context.Context, arg GetSubscriptionPaymentFailedMailForTenantParams) (GetSubscriptionPaymentFailedMailForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetSubscriptionPaymentFailedMailForTenant, arg.PlanID, arg.TenantID, arg.ID)
-	var i GetSubscriptionPaymentFailedMailForTenantRow
+// What a mail about a subscription that carries its own facts says beside
+// them, read by the outbox worker, which connects past RLS and therefore names
+// the tenant itself: the plan the event was recorded on, under the name it has
+// when the mail is sent, and the reader's address. The reader is joined within
+// the tenant, so an account deleted since answers no address rather than no
+// row.
+func (q *Queries) GetSubscriptionMailForTenant(ctx context.Context, arg GetSubscriptionMailForTenantParams) (GetSubscriptionMailForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionMailForTenant, arg.PlanID, arg.TenantID, arg.ID)
+	var i GetSubscriptionMailForTenantRow
 	err := row.Scan(&i.PlanName, &i.ReaderEmail)
 	return i, err
 }

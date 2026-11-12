@@ -182,6 +182,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
 	"staff_episode_review_returned":              staffEpisodeReviewReturnedCopy,
+	"subscription_ended":                         subscriptionEndedCopy,
 	"subscription_payment_failed":                subscriptionPaymentFailedCopy,
 	"subscription_renewed":                       subscriptionRenewedCopy,
 	"subscription_started":                       subscriptionStartedCopy,
@@ -365,6 +366,23 @@ func subscriptionPaymentFailedCopy(c *emailComposer) {
 	c.line("email.subscription_payment_failed.manage", nil)
 	c.linkLine("email.subscription_payment_failed.action", nil, myPageURL)
 	c.linkLine("email.subscription_payment_failed.fallback_link", nil, myPageURL)
+}
+
+// subscriptionEndedCopy words the mail that tells a reader their subscription
+// is over: the plan, when it ended and with it the plan's episodes, and the
+// site's plans, which the mail links to for subscribing again.
+func subscriptionEndedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	plansURL := c.value("plans_url")
+	c.setSubject("email.subscription_ended.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.subscription_ended.heading", nil)
+	c.line("email.subscription_ended.intro", map[string]any{"tenant_name": brand})
+	c.line("email.subscription_ended.plan", map[string]any{"plan_name": c.value("plan_name")})
+	c.line("email.subscription_ended.ended", map[string]any{"ended_at": c.instant("ended_at")})
+	c.line("email.subscription_ended.resubscribe", nil)
+	c.linkLine("email.subscription_ended.action", nil, plansURL)
+	c.linkLine("email.subscription_ended.fallback_link", nil, plansURL)
 }
 
 // purchaseRefundNoticeCopy words the mail that tells a reader a refund was

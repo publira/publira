@@ -286,6 +286,17 @@
       "series": "Series: {$series_title}",
       "subject": "Returned for changes: {$episode_title}"
     },
+    "subscription_ended": {
+      "action": "See plans",
+      "ended": "The subscription ended on {$ended_at}, and the episodes the plan covers are no longer open to you.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your subscription has ended",
+      "intro": "Your subscription on {$tenant_name} is over, and you will not be charged for it again.",
+      "plan": "Plan: {$plan_name}",
+      "preview": "Your subscription to {$plan_name} has ended.",
+      "resubscribe": "To read them again, choose a plan on the subscription plans page.",
+      "subject": "{$tenant_name} subscription ended"
+    },
     "subscription_payment_failed": {
       "action": "Open My Page",
       "amount": "Amount due: {$amount} ({$currency})",

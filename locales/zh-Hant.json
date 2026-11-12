@@ -286,6 +286,17 @@
       "series": "系列：{$series_title}",
       "subject": "已退回：{$episode_title}"
     },
+    "subscription_ended": {
+      "action": "查看方案",
+      "ended": "方案已於{$ended_at}結束，此方案包含的章節已無法閱讀。",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您的方案已結束",
+      "intro": "您在{$tenant_name}的方案已結束，今後不會再為此方案扣款。",
+      "plan": "方案：{$plan_name}",
+      "preview": "您的方案「{$plan_name}」已結束。",
+      "resubscribe": "如需再次閱讀，請在訂閱方案頁面訂閱方案。",
+      "subject": "{$tenant_name}方案已結束"
+    },
     "subscription_payment_failed": {
       "action": "開啟我的頁面",
       "amount": "應付金額：{$amount}（{$currency}）",

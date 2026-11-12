@@ -286,6 +286,17 @@
       "series": "シリーズ「{$series_title}」",
       "subject": "差し戻し: {$episode_title}"
     },
+    "subscription_ended": {
+      "action": "プランを見る",
+      "ended": "ご利用は{$ended_at}に終了し、このプランの対象のエピソードは読めなくなりました。",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "プランのご利用が終了しました",
+      "intro": "{$tenant_name}のプランのご利用が終了しました。今後このプランの料金が請求されることはありません。",
+      "plan": "プラン「{$plan_name}」",
+      "preview": "{$plan_name}のご利用が終了しました。",
+      "resubscribe": "もう一度読むには、サブスクリプションプランのページからプランをお申し込みください。",
+      "subject": "{$tenant_name}プランのご利用終了"
+    },
     "subscription_payment_failed": {
       "action": "マイページを開く",
       "amount": "未払いの金額は{$amount} ({$currency}) です。",

@@ -490,6 +490,10 @@ func readSubscription(subscription *stripego.Subscription) (paymentprovider.Subs
 	if item.CurrentPeriodEnd > 0 {
 		currentPeriodEnd = time.Unix(item.CurrentPeriodEnd, 0).UTC()
 	}
+	var endedAt time.Time
+	if subscription.EndedAt > 0 {
+		endedAt = time.Unix(subscription.EndedAt, 0).UTC()
+	}
 	return paymentprovider.Subscription{
 		ID:                subscription.ID,
 		CustomerID:        subscription.Customer.ID,
@@ -501,5 +505,6 @@ func readSubscription(subscription *stripego.Subscription) (paymentprovider.Subs
 		Status:            status,
 		CurrentPeriodEnd:  currentPeriodEnd,
 		CancelAtPeriodEnd: subscription.CancelAtPeriodEnd,
+		EndedAt:           endedAt,
 	}, nil
 }

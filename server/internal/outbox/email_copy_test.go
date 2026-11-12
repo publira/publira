@@ -1607,3 +1607,60 @@ func TestEmailCopyWritesASubscriptionPaymentFailed(t *testing.T) {
 		})
 	}
 }
+
+// The mail of an ended subscription names the plan and when it ended, and sends the reader to the site's plans to subscribe again.
+func TestEmailCopyWritesASubscriptionEnded(t *testing.T) {
+	for _, testCase := range []struct {
+		locale      string
+		wantText    string
+		wantSubject string
+	}{
+		{
+			locale: "en",
+			wantText: "Aoto Press\n\nYour subscription has ended\n\n" +
+				"Your subscription on Aoto Press is over, and you will not be charged for it again.\n\n" +
+				"Plan: All you can read\n\n" +
+				"The subscription ended on May 2, 2026, 9:00 AM, and the episodes the plan covers are no longer open to you.\n\n" +
+				"To read them again, choose a plan on the subscription plans page.\n\n" +
+				"See plans https://reader.example.test/plans\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/plans\n\n" +
+				"This email was sent by Aoto Press.",
+			wantSubject: "Aoto Press subscription ended",
+		},
+		{
+			locale: "ja",
+			wantText: "Aoto Press\n\nプランのご利用が終了しました\n\n" +
+				"Aoto Pressのプランのご利用が終了しました。今後このプランの料金が請求されることはありません。\n\n" +
+				"プラン「All you can read」\n\n" +
+				"ご利用は2026/05/02 9:00に終了し、このプランの対象のエピソードは読めなくなりました。\n\n" +
+				"もう一度読むには、サブスクリプションプランのページからプランをお申し込みください。\n\n" +
+				"プランを見る https://reader.example.test/plans\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/plans\n\n" +
+				"このメールはAoto Pressから送信されています。",
+			wantSubject: "Aoto Pressプランのご利用終了",
+		},
+	} {
+		t.Run(testCase.locale, func(t *testing.T) {
+			email, err := emailCopy(emailrenderer.Request{
+				Template: "subscription_ended",
+				Locale:   testCase.locale,
+				Data: map[string]any{
+					"ended_at":    "2026-05-02T00:00:00Z",
+					"plan_name":   "All you can read",
+					"plans_url":   "https://reader.example.test/plans",
+					"tenant_name": "Aoto Press",
+				},
+				TimeZone: "Asia/Tokyo",
+			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+			if email.Subject != testCase.wantSubject {
+				t.Errorf("subject = %q, want %q", email.Subject, testCase.wantSubject)
+			}
+		})
+	}
+}

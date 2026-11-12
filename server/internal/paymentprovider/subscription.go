@@ -209,6 +209,10 @@ type Subscription struct {
 	// provider reports none.
 	CurrentPeriodEnd  time.Time
 	CancelAtPeriodEnd bool
+	// EndedAt is when the provider ended a subscription: the moment it was
+	// canceled at once, or the end of the period it was set to be canceled at.
+	// It is zero for one that has not ended.
+	EndedAt time.Time
 }
 
 // SubscriptionChanged reports that a subscription a plan's checkout started

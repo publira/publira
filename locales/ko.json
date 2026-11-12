@@ -286,6 +286,17 @@
       "series": "시리즈: {$series_title}",
       "subject": "반려: {$episode_title}"
     },
+    "subscription_ended": {
+      "action": "플랜 보기",
+      "ended": "이용은 {$ended_at}에 종료되었으며, 이 플랜에 포함된 에피소드는 더 이상 읽을 수 없습니다.",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "플랜 이용이 종료되었습니다",
+      "intro": "{$tenant_name}의 플랜 이용이 종료되었습니다. 앞으로 이 플랜의 요금은 청구되지 않습니다.",
+      "plan": "플랜: {$plan_name}",
+      "preview": "{$plan_name} 이용이 종료되었습니다.",
+      "resubscribe": "다시 읽으려면 구독 플랜 페이지에서 플랜을 구독해 주세요.",
+      "subject": "{$tenant_name} 플랜 이용 종료"
+    },
     "subscription_payment_failed": {
       "action": "마이페이지 열기",
       "amount": "미결제 금액: {$amount} ({$currency})",

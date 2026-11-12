@@ -38,6 +38,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `subscription_started` | to a reader, whatever their email cells say, when the first invoice of a subscription they took out on the site is paid | `tenant_name`, `plan_name`, `amount`, `currency`, `period_start`, `period_end`, `is_test`, `my_page_url` |
 | `subscription_renewed` | to a reader, whatever their email cells say, when an invoice of a subscription they took out on the site is paid for a new period after the first | `tenant_name`, `plan_name`, `amount`, `currency`, `period_start`, `period_end`, `is_test`, `my_page_url` |
 | `subscription_payment_failed` | to a reader, whatever their email cells say, when an attempt to collect an invoice of a subscription they took out on the site does not go through while the subscription still opens its plan's episodes | `tenant_name`, `plan_name`, `amount`, `currency`, `next_attempt`, `period_end`, `is_test`, `my_page_url` |
+| `subscription_ended` | to a reader, whatever their email cells say, when a subscription they took out on the site and were billed for ends, whoever ended it | `tenant_name`, `plan_name`, `ended_at`, `plans_url` |
 | `reader_episode_published` | to a reader whose email cell is on, for an episode of a series or by an author they follow | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
 | `reader_announcement_posted` | to a reader whose email cell is on, or to every reader, for an announcement the tenant posted | `tenant_name`, `announcement_title`, `announcements_url`, `sent_to_everyone`, `settings_url` |
 | `reader_comment_approved` | to a reader whose email cell is on, when staff approve their comment | `tenant_name`, `series_title`, `episode_title`, `episode_url`, `settings_url` |
@@ -58,6 +59,8 @@ In `purchase_refund_notice`, `amount` is what this refund returned, `refunded_to
 In `subscription_started` and `subscription_renewed`, `amount` is what the invoice paid, the first one or a later one, in the minor unit of `currency`, and `period_start` and `period_end` (RFC3339) bound the period it paid for; the mail says the plan's episodes are open until `period_end` and the plan renews then. `my_page_url` is My Page on the site, where **Manage billing** opens the payment provider's billing page.
 
 In `subscription_payment_failed`, `amount` is what the invoice asks for, in the minor unit of `currency`, `next_attempt` (RFC3339) when the payment provider tries again, or empty when its notification named no such time, in which case the mail says nothing of the retries, and `period_end` (RFC3339) the end of the subscription's current period; the mail says the plan's episodes stay open until `period_end` at the latest, and sends the reader to `my_page_url` to update their payment method.
+
+In `subscription_ended`, `ended_at` (RFC3339) is when the payment provider ended the subscription, which the mail gives as the day it ended and the plan's episodes with it, and `plans_url` is the site's subscription plans page, where the reader may subscribe again.
 
 `settings_url` is the reader's notification settings on the site, where they choose which of these mails they receive. `sent_to_everyone` is `true` for an announcement the tenant sent to every reader whatever their settings; the mail then says so and takes no `settings_url`.
 
