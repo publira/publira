@@ -9,7 +9,7 @@
 #
 # The version has to match `@playwright/test` in `e2e/package.json` exactly:
 # `browserType.connect()` refuses a server built from a different release.
-FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
 
 # The font stacks the apps ship end in the Noto CJK faces a Linux desktop
 # carries, and the base image has none of them, so text would fall through to
