@@ -2,8 +2,8 @@
 title: 租戶的工作人員
 description: 讓租戶的工作人員能存取其主控台、選擇他們的角色、移除成員已遺失的兩步驟驗證，以及讓失去最後一位管理員的租戶恢復運作。
 published: 2026-11-03
-updated: 2026-11-03
-source_updated: 2026-11-03
+updated: 2026-11-12
+source_updated: 2026-11-12
 ---
 
 租戶的工作人員是登入其主控台的人員。本頁從營運人員的角度說明他們如何取得存取權：邀請第一位管理員、工作人員擁有的角色，以及租戶沒有任何管理員時該怎麼做。租戶有了管理員之後，就由該管理員從租戶主控台的**成員**管理其餘的工作人員，詳見[成員](../4-console/3-setup/6-members.md)，營運人員只有在出問題時才需要再次介入。
@@ -113,7 +113,7 @@ publiractl tenant member remove --tenant comics.example.com --user <public ID>
 
 ## 遺失兩步驟驗證
 
-開啟了兩步驟驗證、之後又遺失所有第二要素（驗證器與通行金鑰）以及所有復原碼的工作人員，無法登入主控台，租戶的工作人員中也沒有任何人能從他們的帳戶移除兩步驟驗證。您可以：
+開啟了兩步驟驗證、之後又遺失所有第二要素（驗證器與通行金鑰）以及所有復原碼的工作人員，無法登入主控台。租戶的其他租戶管理員可以在**讀者**中該成員的頁面上移除它，如[遺失兩步驟驗證](../4-console/2-readers/1-accounts.md#遺失兩步驟驗證)所述。如果沒有人能這樣做，例如該成員是租戶唯一的租戶管理員，或其他租戶管理員都聯絡不上，您可以：
 
 ```bash
 publiractl tenant member reset-mfa --tenant comics.example.com --email editor@comics.example.com

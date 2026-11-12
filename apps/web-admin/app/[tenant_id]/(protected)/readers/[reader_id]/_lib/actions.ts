@@ -20,6 +20,7 @@ import { getMessagesFor } from "#lib/messages";
 import {
   moderateReader,
   removeReaderIcon,
+  resetReaderMfa,
   setReaderBirthDate,
 } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
@@ -200,6 +201,42 @@ export const removeReaderIconAction = async (
   }
 
   redirect(readerPage(publicId, "icon_removed"));
+};
+
+/**
+ * Removes the reader's two-step verification, for one who has lost their
+ * authenticator and every recovery code.
+ */
+export const resetReaderMfaAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await readerActionSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, readerActionFormFields)
+  );
+
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { publicId, readerId, tenantId } = parsed.data;
+
+  const result = await withAdminSessionReauth(() =>
+    resetReaderMfa({ readerId, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(readerPage(publicId, "mfa_removed"));
 };
 
 export const deleteReaderAction = async (

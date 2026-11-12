@@ -134,12 +134,13 @@ export const listReaders = async (
 
 /** The generated `AdminReader` fields {@link mapReaderDetail} reads. */
 type RawReaderDetail = RawReader &
-  Pick<AdminReader, "birthDate" | "emailVerifiedAt">;
+  Pick<AdminReader, "birthDate" | "emailVerifiedAt" | "mfaEnabled">;
 
 const mapReaderDetail = (item: RawReaderDetail): ReaderDetail => ({
   ...mapReader(item),
   birthDate: item.birthDate ?? "",
   emailVerifiedAt: item.emailVerifiedAt ?? "",
+  mfaEnabled: item.mfaEnabled ?? false,
 });
 
 /** One reader's account. */
@@ -371,6 +372,72 @@ export const removeReaderIcon = async (
     return {
       message: rpcErrorMessage(error, t("admin.readers.icon_remove_failed"), {
         locale,
+      }),
+      ok: false,
+    };
+  }
+};
+
+export interface ResetReaderMfaInput {
+  readerId: string;
+  tenantId: string;
+}
+
+/**
+ * The wording of a removal the API refused for a reason staff can do something
+ * about. The page offers the removal only on another account that has two-step
+ * verification on, so either refusal reaches here only from a page drawn
+ * before something changed: the reader turned it off, another administrator
+ * removed it first, or this browser has since signed in as that account.
+ */
+const resetReaderMfaRefusal = async (
+  cause: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.ownAccount)) {
+    return t("admin.readers.mfa_remove_own_account");
+  }
+
+  return t("admin.readers.mfa_remove_not_set_up");
+};
+
+/**
+ * Removes one reader's two-step verification, so their next sign-in asks for
+ * the password alone. A rejected session leaves as a throw so the Action can
+ * send the staff member to sign in again.
+ */
+export const resetReaderMfa = async (
+  input: ResetReaderMfaInput,
+  locale: Locale
+): Promise<ModerateReaderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.users.resetReaderMfa(
+      { readerId: input.readerId, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    return {
+      message: rpcErrorMessage(error, t("admin.readers.mfa_remove_failed"), {
+        locale,
+        overrides: {
+          precondition: await resetReaderMfaRefusal(error, locale),
+        },
       }),
       ok: false,
     };

@@ -13,6 +13,7 @@ import { ReaderAccount } from "./reader-account";
 vi.mock("../_lib/actions", () => ({
   deleteReaderAction: vi.fn(),
   removeReaderIconAction: vi.fn(),
+  resetReaderMfaAction: vi.fn(),
   setReaderBirthDateAction: vi.fn(),
   suspendReaderAction: vi.fn(),
   unsuspendReaderAction: vi.fn(),
@@ -43,6 +44,7 @@ const reader = (overrides: Partial<ReaderDetail> = {}): ReaderDetail => ({
   emailVerifiedAt: "",
   icon: null,
   id: "01920000-0000-7000-8000-000000000001",
+  mfaEnabled: false,
   name: "Avery Admin",
   publicId: "ADMIN000001",
   role: "tenant_admin",
@@ -131,5 +133,29 @@ describe("ReaderAccount", () => {
     expect(screen.queryByAltText("Avery Admin's icon")).toBeNull();
     expect(screen.getByText("No icon")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Remove icon" })).toBeNull();
+  });
+
+  it("says two-step verification is on and offers to remove it", async () => {
+    await renderAccount(reader({ mfaEnabled: true }));
+
+    const row = screen.getByText("Two-step verification").nextElementSibling;
+    expect(row?.textContent).toContain("On");
+    expect(screen.getByRole("button", { name: "Remove" })).toBeTruthy();
+  });
+
+  it("says two-step verification is off and offers nothing to remove", async () => {
+    await renderAccount(reader());
+
+    const row = screen.getByText("Two-step verification").nextElementSibling;
+    expect(row?.textContent).toBe("Off");
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+
+  it("withholds the removal on one's own account", async () => {
+    await renderAccount(reader({ mfaEnabled: true }), true);
+
+    const row = screen.getByText("Two-step verification").nextElementSibling;
+    expect(row?.textContent).toBe("On");
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
   });
 });

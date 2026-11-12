@@ -24,6 +24,7 @@ import type { ReaderDetail } from "../../reader-types";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 import { DeleteReaderButton } from "./delete-reader-button";
 import { RemoveReaderIconButton } from "./remove-reader-icon-button";
+import { RemoveReaderMfaButton } from "./remove-reader-mfa-button";
 import { SuspendReaderButton } from "./suspend-reader-button";
 import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 
@@ -31,7 +32,7 @@ interface ReaderAccountProps {
   locale: Locale;
   /**
    * The account the signed-in administrator is using, which the API refuses
-   * to suspend or delete.
+   * to suspend, delete, or strip of its two-step verification.
    */
   ownAccount: boolean;
   reader: ReaderDetail;
@@ -41,6 +42,45 @@ interface ReaderAccountProps {
 
 const labelClassName = cn("text-sm text-muted-foreground");
 const valueClassName = cn("min-w-0 text-sm");
+
+/**
+ * Whether the account has two-step verification on, with the removal beside
+ * it on an account other than the administrator's own, which they turn off
+ * from their own account settings.
+ */
+const ReaderMfa = ({
+  ownAccount,
+  reader,
+  tenantId,
+}: Pick<ReaderAccountProps, "ownAccount" | "reader" | "tenantId">) => {
+  if (!reader.mfaEnabled) {
+    return (
+      <span className="text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="admin.readers.mfa_off" />
+        </Suspense>
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <span>
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="admin.readers.mfa_on" />
+        </Suspense>
+      </span>
+      {ownAccount ? null : (
+        <RemoveReaderMfaButton
+          name={reader.name || reader.email}
+          publicId={reader.publicId}
+          readerId={reader.id}
+          tenantId={tenantId}
+        />
+      )}
+    </>
+  );
+};
 
 export const ReaderAccount = async ({
   locale,
@@ -235,6 +275,19 @@ export const ReaderAccount = async ({
             name={reader.name || reader.email}
             publicId={reader.publicId}
             readerId={reader.id}
+            tenantId={tenantId}
+          />
+        </dd>
+
+        <dt className={labelClassName}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.readers.mfa" />
+          </Suspense>
+        </dt>
+        <dd className={cn(valueClassName, "flex flex-wrap items-center gap-3")}>
+          <ReaderMfa
+            ownAccount={ownAccount}
+            reader={reader}
             tenantId={tenantId}
           />
         </dd>

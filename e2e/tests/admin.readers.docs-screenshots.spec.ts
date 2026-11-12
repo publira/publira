@@ -17,6 +17,7 @@ import {
   CONTACT_WORKFLOW_ADMIN,
   CONTACT_WORKFLOW_IN_PROGRESS,
 } from "../src/scenarios/contact-workflow";
+import { READER_MFA_CONSOLE_DOCS_READER } from "../src/scenarios/storefront-reader-mfa";
 import {
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
@@ -34,7 +35,10 @@ import {
  * them: the moderation tenant, given a comment in each state by
  * `db/seeds/scenarios/420_docs_comments.sql`, and the help desk tenant of
  * `390_contact_workflow.sql`, whose messages are assigned, annotated, and
- * handled. Nothing here acts on a reader, a comment, or a message.
+ * handled. The reader whose two-step verification is removed is the one
+ * `822_docs_console_reader_mfa.sql` keeps it on for, and the confirmation is
+ * photographed without being confirmed. Nothing here acts on a reader, a
+ * comment, or a message.
  */
 test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
@@ -106,6 +110,32 @@ for (const locale of DOCS_LOCALES) {
         locale,
         page: "console/readers/accounts",
         subject: "reader",
+      });
+    });
+
+    test("the confirmation that removes a reader's two-step verification", async ({
+      consoleSessions,
+      page,
+    }) => {
+      await openScreen(
+        page,
+        consoleSessions,
+        locale,
+        `/readers/${READER_MFA_CONSOLE_DOCS_READER.publicId}`
+      );
+
+      await page
+        .getByRole("button", {
+          exact: true,
+          name: t("admin.readers.mfa_remove"),
+        })
+        .click();
+
+      await expectDocsScreenshot(page, {
+        element: page.getByRole("alertdialog"),
+        locale,
+        page: "console/readers/accounts",
+        subject: "two-step-remove",
       });
     });
 
