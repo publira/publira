@@ -177,7 +177,9 @@ test.describe("admin publish flow", () => {
       "R15"
     );
     await page.getByRole("button", { name: "Apply" }).click();
-    await page.waitForURL(/\/series\?status=completed&age_rating=r15$/u);
+    await page.waitForURL(
+      /\/series\?status=completed&age_rating=r15&label_id=$/u
+    );
     await expect(page.locator("tr", { hasText: title })).toBeVisible();
 
     await page.getByRole("link", { name: "Reset" }).click();

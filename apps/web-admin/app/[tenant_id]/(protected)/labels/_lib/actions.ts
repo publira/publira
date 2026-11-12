@@ -10,7 +10,7 @@ import { z } from "zod";
 import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects";
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -23,15 +23,19 @@ import {
 } from "#lib/form-schemas";
 import {
   createLabel,
+  deleteLabel,
+  getLabelForTenant,
   updateLabel,
   uploadLabelEyeCatchAspectImage,
 } from "#lib/label";
 import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
+import { promotionCodesCacheTag } from "#lib/promotion-code";
 import { seriesListCacheTag } from "#lib/series";
 
 import type {
   LabelActionState,
+  LabelDeleteActionState,
   LabelListItem,
   LabelMutationMode,
 } from "../label-types";
@@ -256,6 +260,92 @@ export const updateLabelEyeCatchAction = async (
     mode: "update",
     ok: true,
   };
+};
+
+const deleteLabelSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    id: requiredRecordId(t("admin.labels.validation.id_missing")),
+    // Compared as it was typed, as the dialog compares it.
+    nameConfirmation: z.string().catch(""),
+    publicId: requiredTrimmedString(t("admin.labels.validation.id_missing")),
+    tenantId: requiredTrimmedString(
+      t("admin.labels.validation.tenant_missing")
+    ),
+  });
+};
+
+/**
+ * Deletes the label once the name typed into the dialog is the one it has,
+ * then leaves for the label list. The list names the label in its toast from
+ * the query string, since no label is left to read it from.
+ */
+export const deleteLabelAction = async (
+  _prevState: LabelDeleteActionState,
+  formData: FormData
+): Promise<LabelDeleteActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteLabelSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      id: { kind: "value", name: "label_id" },
+      nameConfirmation: { kind: "value", name: "name_confirmation" },
+      publicId: { kind: "value", name: "label_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { id, nameConfirmation, publicId, tenantId } = parsed.data;
+  await verifyAdminSession(tenantId);
+
+  const [t, target] = await Promise.all([
+    getMessagesFor(locale),
+    getLabelForTenant({ publicId, tenantId }, locale),
+  ]);
+
+  if (!target.ok) {
+    return {
+      message: target.notFound
+        ? t("admin.labels.delete.not_found")
+        : target.message,
+      ok: false,
+    };
+  }
+
+  if (target.label.id !== id) {
+    return { message: t("admin.labels.validation.id_missing"), ok: false };
+  }
+
+  const { name } = target.label;
+
+  if (nameConfirmation !== name) {
+    return { message: t("admin.labels.delete.name_mismatch"), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteLabel({ id, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false, reference: result.reference };
+  }
+
+  updateTag(`labels-${tenantId}`);
+  updateTag(`label-${tenantId}-${publicId}`);
+  // The promotion codes for the label that were deleted before anyone redeemed
+  // them went with it.
+  updateTag(promotionCodesCacheTag(tenantId));
+
+  redirect(
+    `/labels?${new URLSearchParams({ deleted: "1", deleted_name: name }).toString()}`
+  );
 };
 
 const eyeCatchAspectSchema = async (locale: Locale) => {

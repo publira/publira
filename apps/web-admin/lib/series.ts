@@ -168,6 +168,8 @@ export type ListSeriesResult = CursorPageTokens &
 
 export type ListSeriesOptions = CursorPageOptions & {
   ageRating?: SeriesAgeRatingValue;
+  /** The primary key of the label to narrow the list to. */
+  labelId?: string;
   status?: SeriesStatusValue;
 };
 
@@ -515,6 +517,10 @@ const listSeriesForTenant = async (
 
     if (options.status) {
       request.status = SERIES_STATUS_ENUM[options.status];
+    }
+
+    if (options.labelId) {
+      request.labelId = options.labelId;
     }
 
     const response = await apiClient.series.listSeries(

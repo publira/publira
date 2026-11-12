@@ -1620,6 +1620,30 @@
         "tenant_missing": "缺少租戶ID。",
         "id_missing": "缺少要更新的書系ID。"
       },
+      "delete": {
+        "title": "刪除書系",
+        "description": "永久刪除本書系。仍有系列歸屬的書系，或訂閱方案、促銷代碼指定的書系，無法刪除。",
+        "action": "刪除本書系",
+        "confirm_title": "要刪除「{$name}」嗎？",
+        "confirm_description": "其封面圖會一起刪除，書系頁面會立即從網站和應用程式中消失。此操作無法復原。",
+        "confirm_kept": "仍有系列歸屬的書系，或訂閱方案、促銷代碼指定的書系不會被刪除，原因會顯示在這裡。",
+        "name_label": "請輸入書系名稱以確認",
+        "confirm_action": "刪除書系",
+        "pending": "正在刪除...",
+        "deleted": "已刪除「{$name}」。",
+        "failed": "無法刪除書系。請稍後再試。",
+        "not_found": "此書系已被刪除。請返回書系列表。",
+        "name_mismatch": "輸入的名稱與本書系名稱不一致。",
+        "view_series": "查看本書系的系列",
+        "view_subscription_plans": "查看訂閱方案",
+        "view_promotion_codes": "查看促銷代碼",
+        "refused": {
+          "has_series": "仍有系列歸屬的書系無法刪除。請先將其全部系列移到其他書系。",
+          "in_subscription_plan": "訂閱方案的可閱讀範圍包含本書系，因此無法刪除。請先將其從方案的可閱讀範圍中移除。",
+          "in_promotion_code": "本書系有未刪除或已被讀者使用的促銷代碼，因此無法刪除。請先刪除無人使用的促銷代碼。",
+          "referenced": "有需要保留的記錄引用了本書系，因此無法刪除。"
+        }
+      },
       "created": "書系已建立。",
       "updated": "書系已更新。",
       "eye_catch_updated": "封面圖已更新。",
@@ -2053,6 +2077,10 @@
         "status_all": "所有連載狀態",
         "age_rating": "年齡分級",
         "age_rating_all": "所有年齡分級",
+        "label": "書系",
+        "label_all": "所有書系",
+        "labels_unavailable": "無法載入書系，暫時不能依書系篩選。請稍後再試。",
+        "labels_unavailable_narrowed": "無法載入書系。列表仍依開啟時的書系篩選；要查看所有系列，請選擇「重設」。",
         "apply": "套用",
         "reset": "重設"
       },

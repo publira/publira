@@ -2,8 +2,11 @@ import type { Label } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorReason } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -27,6 +30,7 @@ import {
   mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -63,6 +67,19 @@ export type CreateLabelResult =
 export type UpdateLabelResult =
   | { ok: true; label: LabelItem }
   | { ok: false; message: string };
+
+/**
+ * The console screen that holds what keeps a label from being deleted, for a
+ * refusal it can point to.
+ */
+export type LabelDeletionReference =
+  | "promotion_codes"
+  | "series"
+  | "subscription_plans";
+
+export type DeleteLabelResult =
+  | { ok: true }
+  | { ok: false; message: string; reference?: LabelDeletionReference };
 
 /**
  * `notFound: true` is the "there is nothing to show here" failure the edit
@@ -420,7 +437,15 @@ const getLabelInputSchema = z.object({
   tenantId: z.string().trim().min(1).max(255),
 });
 
-const getLabelForTenant = async (
+/**
+ * The cached body of {@link getLabel}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const getLabelForTenant = async (
   input: {
     tenantId: string;
     publicId: string;
@@ -567,6 +592,87 @@ export const uploadLabelEyeCatchAspectImage = async (
         t("admin.labels.save_failed"),
         locale
       ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * What `DeleteLabel` refuses a label for, in the order the API checks them,
+ * with the sentence each is worded in and the screen that holds it.
+ */
+const LABEL_DELETION_REFUSALS: readonly {
+  message: AdminMessageKey;
+  reason: RpcErrorReason;
+  reference: LabelDeletionReference;
+}[] = [
+  {
+    message: "admin.labels.delete.refused.has_series",
+    reason: RPC_ERROR_REASON.labelHasSeries,
+    reference: "series",
+  },
+  {
+    message: "admin.labels.delete.refused.in_subscription_plan",
+    reason: RPC_ERROR_REASON.labelInSubscriptionPlan,
+    reference: "subscription_plans",
+  },
+  {
+    message: "admin.labels.delete.refused.in_promotion_code",
+    reason: RPC_ERROR_REASON.labelInPromotionCode,
+    reference: "promotion_codes",
+  },
+];
+
+/**
+ * Deletes a label that nothing refers to. A refusal names what refers to it
+ * from the ErrorInfo reason rather than the server's English message, and one
+ * with no reason this console knows is still worded as a refusal rather than a
+ * failure.
+ */
+export const deleteLabel = async (
+  input: { tenantId: string; id: string },
+  locale: Locale
+): Promise<DeleteLabelResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.label.deleteLabel(
+      { labelId: input.id, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = LABEL_DELETION_REFUSALS.find(({ reason }) =>
+      rpcErrorHasReason(error, reason)
+    );
+
+    if (refusal) {
+      return {
+        message: t(refusal.message),
+        ok: false,
+        reference: refusal.reference,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(error, t("admin.labels.delete.failed"), {
+        locale,
+        overrides: {
+          "not-found": t("admin.labels.delete.not_found"),
+          precondition: t("admin.labels.delete.refused.referenced"),
+        },
+      }),
       ok: false,
     };
   }

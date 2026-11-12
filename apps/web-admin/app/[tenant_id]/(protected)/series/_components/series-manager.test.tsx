@@ -80,7 +80,8 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: true,
-        filters: { ageRating: "", status: "", token: "" },
+        filters: { ageRating: "", labelId: "", status: "", token: "" },
+        labels: [],
         locale: "en",
         now,
         pageSize: 20,
@@ -99,7 +100,8 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: true,
-        filters: { ageRating: "", status: "", token: "" },
+        filters: { ageRating: "", labelId: "", status: "", token: "" },
+        labels: [],
         locale: "en",
         now,
         pageSize: 20,
@@ -118,7 +120,8 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: true,
-        filters: { ageRating: "", status: "", token: "" },
+        filters: { ageRating: "", labelId: "", status: "", token: "" },
+        labels: [],
         listErrorMessage: "Could not load the series.",
         locale: "en",
         nextHref: "?token=next",
@@ -147,7 +150,13 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: true,
-        filters: { ageRating: "r15", status: "completed", token: "" },
+        filters: {
+          ageRating: "r15",
+          labelId: "",
+          status: "completed",
+          token: "",
+        },
+        labels: [],
         locale: "en",
         now,
         pageSize: 20,
@@ -169,7 +178,8 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: true,
-        filters: { ageRating: "", status: "", token: "" },
+        filters: { ageRating: "", labelId: "", status: "", token: "" },
+        labels: [],
         locale: "en",
         now,
         pageSize: 20,
@@ -188,7 +198,8 @@ describe("SeriesManager", () => {
     await renderServerComponent(
       await SeriesManager({
         canEdit: false,
-        filters: { ageRating: "", status: "", token: "" },
+        filters: { ageRating: "", labelId: "", status: "", token: "" },
+        labels: [],
         locale: "en",
         now,
         pageSize: 20,
@@ -205,6 +216,92 @@ describe("SeriesManager", () => {
 
   // The site hides a series until its publication time passes, so a time still
   // ahead must not read as live on the list.
+  it("narrows the list by the tenant's labels", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        canEdit: true,
+        filters: {
+          ageRating: "",
+          labelId: "LABEL002-ID",
+          status: "",
+          token: "",
+        },
+        labels: [
+          { id: "LABEL001-ID", name: "Harbor Press" },
+          { id: "LABEL002-ID", name: "Lighthouse Books" },
+        ],
+        locale: "en",
+        now,
+        pageSize: 20,
+        series: [],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.getByText("Label")).toBeDefined();
+    expect(
+      document.querySelector<HTMLInputElement>('input[name="label_id"]')?.value
+    ).toBe("LABEL002-ID");
+  });
+
+  it("says the list cannot be narrowed by label when the labels cannot be read", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        canEdit: true,
+        filters: {
+          ageRating: "",
+          labelId: "",
+          status: "",
+          token: "",
+        },
+        labels: null,
+        locale: "en",
+        now,
+        pageSize: 20,
+        series: [],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(
+      screen.getByText(
+        "Could not load the labels, so the list cannot be narrowed by one right now. Please try again later."
+      )
+    ).toBeDefined();
+    expect(document.querySelector('input[name="label_id"]')).toBeNull();
+  });
+
+  // Apply must not drop a label the URL names just because the labels could
+  // not be read for the picker.
+  it("carries the label the URL names when the labels cannot be read", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        canEdit: true,
+        filters: {
+          ageRating: "",
+          labelId: "LABEL002-ID",
+          status: "",
+          token: "",
+        },
+        labels: null,
+        locale: "en",
+        now,
+        pageSize: 20,
+        series: [],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(
+      screen.getByText(
+        "Could not load the labels. The list stays narrowed to the label it was opened with; choose Reset to see every series."
+      )
+    ).toBeDefined();
+    expect(
+      document.querySelector<HTMLInputElement>('input[name="label_id"]')?.value
+    ).toBe("LABEL002-ID");
+  });
+
   it.each([
     { expected: "Draft", isPublished: false, publishedAt: "" },
     {
@@ -223,7 +320,8 @@ describe("SeriesManager", () => {
       await renderServerComponent(
         await SeriesManager({
           canEdit: true,
-          filters: { ageRating: "", status: "", token: "" },
+          filters: { ageRating: "", labelId: "", status: "", token: "" },
+          labels: [],
           locale: "en",
           now,
           pageSize: 20,

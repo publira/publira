@@ -1,3 +1,8 @@
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
@@ -20,6 +25,7 @@ vi.mock("./auth-session", () => ({
 const {
   mockCacheLife,
   mockCacheTag,
+  mockDeleteLabel,
   mockGetAccessToken,
   mockGetLabel,
   mockListLabels,
@@ -27,6 +33,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeleteLabel: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetLabel: vi.fn(),
   mockListLabels: vi.fn(),
@@ -45,6 +52,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     label: {
+      deleteLabel: mockDeleteLabel,
       getLabel: mockGetLabel,
       listLabels: mockListLabels,
       uploadLabelEyeCatchAspectImage: mockUploadAspectImage,
@@ -134,7 +142,6 @@ describe("listLabels", () => {
   });
 
   it("returns a result with no token when the fetch fails", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListLabels.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -233,7 +240,6 @@ describe("getLabel", () => {
   // for one outside the tenant, so neither is distinguished here: both fall
   // through to notFound.
   it("returns notFound when the RPC answers not_found", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetLabel.mockRejectedValue(
       new ConnectError("label not found", Code.NotFound)
     );
@@ -246,7 +252,6 @@ describe("getLabel", () => {
   });
 
   it("returns a message for a failure other than not_found", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetLabel.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -378,7 +383,6 @@ describe("listAllLabels", () => {
   });
 
   it("returns no list when a page fails to load", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListLabels.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -520,4 +524,109 @@ describe("the operator check before a shared read", () => {
       expect(rpc).not.toHaveBeenCalled();
     }
   );
+});
+
+const labelReferencedError = (reason: string) =>
+  new ConnectError("label is referenced", Code.FailedPrecondition, undefined, [
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+  ]);
+
+describe("deleteLabel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("deletes the label with the operator's session", async () => {
+    mockDeleteLabel.mockResolvedValue({});
+
+    const { deleteLabel } = await import("./label");
+
+    const result = await deleteLabel(
+      { id: "LABEL001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteLabel).toHaveBeenCalledWith(
+      { labelId: "LABEL001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each([
+    {
+      message:
+        "This label cannot be deleted while a series is filed under it. Move each of its series to another label first.",
+      reason: "LABEL_HAS_SERIES",
+      reference: "series",
+    },
+    {
+      message:
+        "This label cannot be deleted: a subscription plan opens it. Take it out of what the plan opens first.",
+      reason: "LABEL_IN_SUBSCRIPTION_PLAN",
+      reference: "subscription_plans",
+    },
+    {
+      message:
+        "This label cannot be deleted: a promotion code applies to it that has not been deleted, or that a reader redeemed. Delete the codes nobody redeemed first.",
+      reason: "LABEL_IN_PROMOTION_CODE",
+      reference: "promotion_codes",
+    },
+  ])(
+    "words $reason as what refers to the label",
+    async ({ message, reason, reference }) => {
+      mockDeleteLabel.mockRejectedValue(labelReferencedError(reason));
+
+      const { deleteLabel } = await import("./label");
+
+      const result = await deleteLabel(
+        { id: "LABEL001-ID", tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(result).toEqual({ message, ok: false, reference });
+    }
+  );
+
+  // A server newer than this console may refuse for a reason it has no
+  // sentence for yet, which is still a refusal rather than a failure.
+  it("words a refusal for a reason it does not know as a refusal", async () => {
+    mockDeleteLabel.mockRejectedValue(
+      labelReferencedError("LABEL_SOMETHING_NEW")
+    );
+
+    const { deleteLabel } = await import("./label");
+
+    const result = await deleteLabel(
+      { id: "LABEL001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This label cannot be deleted: a record that has to be kept refers to it.",
+      ok: false,
+    });
+  });
+
+  it("says a label deleted already is gone", async () => {
+    mockDeleteLabel.mockRejectedValue(
+      new ConnectError("label not found", Code.NotFound)
+    );
+
+    const { deleteLabel } = await import("./label");
+
+    const result = await deleteLabel(
+      { id: "LABEL001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This label has already been deleted. Go back to the label list.",
+      ok: false,
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as Field from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -32,6 +33,11 @@ type SeriesManagerProps = CursorPageHrefs & {
    */
   canEdit: boolean;
   filters: SeriesFilters;
+  /**
+   * The tenant's labels the list can be narrowed to, sorted by name, or null
+   * when they could not be read.
+   */
+  labels: SeriesLabelOption[] | null;
   series: SeriesListItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -43,6 +49,11 @@ type SeriesManagerProps = CursorPageHrefs & {
   pageSize: number;
   timeZone: string;
 };
+
+export interface SeriesLabelOption {
+  id: string;
+  name: string;
+}
 
 const SeriesFilterFieldSkeleton = () => (
   <div className="grid gap-2">
@@ -107,11 +118,66 @@ const SeriesAgeRatingFilter = async ({
   );
 };
 
-const SeriesFiltersForm = ({
+/**
+ * The label the list is narrowed to. When the labels cannot be read, the field
+ * says so in place of its choices, and a label the URL already names is
+ * carried through the form rather than dropped by the next Apply.
+ */
+const SeriesLabelFilter = async ({
   filters,
+  labels,
   locale,
 }: {
   filters: SeriesFilters;
+  labels: SeriesLabelOption[] | null;
+  locale: Locale;
+}) => {
+  const t = await getMessagesFor(locale);
+
+  if (!labels) {
+    return (
+      <Field.Root className="w-52">
+        <Field.Label>{t("admin.series.filter.label")}</Field.Label>
+        {filters.labelId ? (
+          <>
+            <input name="label_id" type="hidden" value={filters.labelId} />
+            <FormMessage variant="warning">
+              {t("admin.series.filter.labels_unavailable_narrowed")}
+            </FormMessage>
+          </>
+        ) : (
+          <FormMessage variant="warning">
+            {t("admin.series.filter.labels_unavailable")}
+          </FormMessage>
+        )}
+      </Field.Root>
+    );
+  }
+
+  return (
+    <Field.Root className="w-52">
+      <Field.Label>{t("admin.series.filter.label")}</Field.Label>
+      <Field.Content>
+        <Select
+          defaultValue={filters.labelId}
+          items={[
+            { label: t("admin.series.filter.label_all"), value: "" },
+            ...labels.map((label) => ({ label: label.name, value: label.id })),
+          ]}
+          name="label_id"
+        />
+      </Field.Content>
+    </Field.Root>
+  );
+};
+
+const SeriesFiltersForm = ({
+  filters,
+  labels,
+  locale,
+}: {
+  filters: SeriesFilters;
+  labels: SeriesLabelOption[] | null;
   locale: Locale;
 }) => (
   <form className="flex flex-wrap items-end gap-4">
@@ -120,6 +186,9 @@ const SeriesFiltersForm = ({
     </Suspense>
     <Suspense fallback={<SeriesFilterFieldSkeleton />}>
       <SeriesAgeRatingFilter filters={filters} locale={locale} />
+    </Suspense>
+    <Suspense fallback={<SeriesFilterFieldSkeleton />}>
+      <SeriesLabelFilter filters={filters} labels={labels} locale={locale} />
     </Suspense>
     <div className="flex gap-2">
       <Button type="submit">
@@ -426,6 +495,7 @@ const SeriesListBody = ({
 export const SeriesManager = async ({
   canEdit,
   filters,
+  labels,
   series,
   listErrorMessage,
   nextHref,
@@ -445,7 +515,7 @@ export const SeriesManager = async ({
 
   return (
     <div className="grid gap-6">
-      <SeriesFiltersForm filters={filters} locale={locale} />
+      <SeriesFiltersForm filters={filters} labels={labels} locale={locale} />
       <SeriesListBody
         canEdit={canEdit}
         hasPageLinks={hasPageLinks}

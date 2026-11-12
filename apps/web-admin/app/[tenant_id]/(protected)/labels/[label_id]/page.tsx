@@ -1,4 +1,5 @@
 import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -17,7 +18,10 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import {
+  TenantAdminOnly,
+  TenantEditorFieldset,
+} from "#components/tenant-role-gate";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
 import { getLocale } from "#lib/locale";
@@ -28,10 +32,12 @@ import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
 import { LabelForm } from "../_components/label-form";
 import { LabelTabNav } from "../_components/label-tab-nav";
 import {
+  deleteLabelAction,
   updateLabelAction,
   updateLabelEyeCatchAction,
   uploadLabelEyeCatchAspectImageAction,
 } from "../_lib/actions";
+import { LabelDeleteDialog } from "./_components/label-delete-dialog";
 
 interface EditLabelPageProps {
   params: Promise<{
@@ -113,6 +119,43 @@ const EditLabelTabNav = async ({
   return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
 };
 
+/** Deleting the label, for a Tenant admin alone: the API refuses anyone else. */
+const LabelDeleteSection = ({
+  labelId,
+  labelPublicId,
+  name,
+  tenantId,
+}: {
+  labelId: string;
+  labelPublicId: string;
+  name: string;
+  tenantId: string;
+}) => (
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
+          <Message message="admin.labels.delete.title" />
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
+          <Message message="admin.labels.delete.description" />
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+      <ConsoleSection.Actions>
+        <LabelDeleteDialog
+          action={deleteLabelAction}
+          // A rename remounts the dialog with the name it now has to match.
+          key={`${labelPublicId}:delete:${name}`}
+          labelId={labelId}
+          labelPublicId={labelPublicId}
+          name={name}
+          tenantId={tenantId}
+        />
+      </ConsoleSection.Actions>
+    </ConsoleSection.Header>
+  </ConsoleSection.Root>
+);
+
 const EditLabelFormData = async ({
   params,
   searchParams,
@@ -180,13 +223,25 @@ const EditLabelFormData = async ({
   }
 
   return (
-    <LabelForm
-      action={updateLabelAction}
-      initialLabel={result.label}
-      key={result.label.publicId}
-      mode="update"
-      tenantId={tenantId}
-    />
+    <div className="grid gap-6">
+      <LabelForm
+        action={updateLabelAction}
+        initialLabel={result.label}
+        key={result.label.publicId}
+        mode="update"
+        tenantId={tenantId}
+      />
+      <Suspense fallback={null}>
+        <TenantAdminOnly>
+          <LabelDeleteSection
+            labelId={result.label.id}
+            labelPublicId={result.label.publicId}
+            name={result.label.name}
+            tenantId={tenantId}
+          />
+        </TenantAdminOnly>
+      </Suspense>
+    </div>
   );
 };
 
