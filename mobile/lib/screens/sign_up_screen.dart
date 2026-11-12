@@ -1,16 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/name_input.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/forms/sign_up_fields.dart';
-import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';

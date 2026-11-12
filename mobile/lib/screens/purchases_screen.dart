@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -12,8 +12,8 @@ import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/navigation/app_tabs.dart';
-import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/promotion_code.dart';
+import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_history_csv.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';

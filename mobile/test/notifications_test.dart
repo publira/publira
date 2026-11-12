@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -20,6 +20,7 @@ import 'support/fake_catalog_repository.dart';
 import 'support/fake_notification_repository.dart';
 import 'support/fake_push.dart';
 import 'support/pump_until.dart';
+import 'support/tooltip.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -121,7 +122,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byTooltip('Notifications, 2 unread'), findsOneWidget);
+      expect(findTooltip('Notifications, 2 unread'), findsOneWidget);
     });
 
     testWidgets('carries no badge for a guest', (tester) async {

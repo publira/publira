@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
+import 'package:publira/screens/episode_viewer_screen.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -196,6 +197,7 @@ void main() {
       detail.episodes.first.id,
     );
     await pumpUntilTrue(tester, () => router.state.uri.path == viewer);
+    await pumpUntilRouteSettled(tester, find.byType(EpisodeViewerScreen));
     await tester.pump();
     // What a reaction in the viewer makes of the reader's rating.
     catalog.mySeriesRatings = {series.internalId: 2};
@@ -216,6 +218,7 @@ void main() {
       detail.episodes.first.id,
     );
     await pumpUntilTrue(tester, () => router.state.uri.path == viewer);
+    await pumpUntilRouteSettled(tester, find.byType(EpisodeViewerScreen));
     await tester.pageBack();
     await pumpUntilRouteSettled(tester, publicRating);
     await pumpUntilAsked(tester, 2);

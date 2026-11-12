@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/creator/creator_failure.dart';
 import 'package:publira/creator/creator_statement_csv.dart';
@@ -467,7 +467,7 @@ void main() {
       await pumpUntilFound(tester, row);
       await tester.ensureVisible(row);
       await tester.tap(row);
-      await pumpUntilFound(
+      await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('creator-statement-line-7')),
       );

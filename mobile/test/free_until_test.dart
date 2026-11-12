@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -9,8 +9,8 @@ import 'package:publira/router.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_links.dart';
-import 'support/pump_until.dart';
 import 'support/fake_purchase.dart';
+import 'support/pump_until.dart';
 
 void main() {
   final series = fixtureSeries.first;

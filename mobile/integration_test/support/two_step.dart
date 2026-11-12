@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 import '../../test/support/pump_until.dart';

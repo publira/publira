@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 
 /// The narrowest room the sign-in screen sets its panel beside the form in

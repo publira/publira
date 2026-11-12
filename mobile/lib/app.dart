@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
@@ -29,11 +29,11 @@ import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/contact/http_contact_repository.dart';
-import 'package:publira/creator/creator_repository.dart';
-import 'package:publira/creator/http_creator_repository.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
+import 'package:publira/creator/creator_repository.dart';
+import 'package:publira/creator/http_creator_repository.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/follow/http_follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/app.dart';
 import 'package:publira/models/episode_detail.dart';

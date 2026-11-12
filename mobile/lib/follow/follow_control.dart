@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/follow_repository.dart';

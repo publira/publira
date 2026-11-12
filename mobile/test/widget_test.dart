@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
@@ -404,7 +404,7 @@ void main() {
     );
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
+    await pumpUntilRouteSettled(tester, find.text(fixtureTenantBrand.name));
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
     );
@@ -429,10 +429,13 @@ void main() {
     );
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
+    await pumpUntilRouteSettled(
+      tester,
+      find.text('Episodes', skipOffstage: false),
+    );
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
+    await pumpUntilRouteSettled(tester, find.text(fixtureTenantBrand.name));
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureR18Series.id}')),
     );
@@ -559,10 +562,13 @@ void main() {
         matching: find.text(first.title),
       ),
     );
-    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
+    await pumpUntilRouteSettled(
+      tester,
+      find.text('Episodes', skipOffstage: false),
+    );
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
+    await pumpUntilRouteSettled(tester, find.text(fixtureTenantBrand.name));
 
     expect(find.text(fixtureTenantBrand.name), findsOneWidget);
     expect(find.byKey(ValueKey('series-tile-${first.id}')), findsOneWidget);

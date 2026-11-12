@@ -1,4 +1,4 @@
-/// @docImport 'package:flutter/material.dart';
+/// @docImport 'package:material_ui/material_ui.dart';
 library;
 
 import 'package:flutter/scheduler.dart';

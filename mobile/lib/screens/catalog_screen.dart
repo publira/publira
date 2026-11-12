@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/pinned_announcement_banner.dart';
 import 'package:publira/auth/auth_scope.dart';
