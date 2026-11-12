@@ -491,6 +491,7 @@
         "episode_created": "创建了章节",
         "creator_created": "创建了作者",
         "creator_updated": "更新了作者",
+        "creator_deleted": "删除了作者",
         "creator_account_linked": "为作者关联了读者账户",
         "creator_account_unlinked": "解除了作者的读者账户关联",
         "label_created": "创建了书系",

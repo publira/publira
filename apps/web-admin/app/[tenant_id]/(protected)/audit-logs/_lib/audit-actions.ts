@@ -32,6 +32,7 @@ export const auditActions = [
   "volumes_reordered",
   "creator_created",
   "creator_updated",
+  "creator_deleted",
   "creator_account_linked",
   "creator_account_unlinked",
   "creator_role_created",

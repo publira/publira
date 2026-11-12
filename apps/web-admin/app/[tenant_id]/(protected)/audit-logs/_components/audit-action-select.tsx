@@ -155,6 +155,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "creator_updated",
             },
             {
+              label: t("admin.audit.actions.creator_deleted"),
+              value: "creator_deleted",
+            },
+            {
               label: t("admin.audit.actions.creator_account_linked"),
               value: "creator_account_linked",
             },

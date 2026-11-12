@@ -491,6 +491,7 @@
         "episode_created": "エピソード作成",
         "creator_created": "著者作成",
         "creator_updated": "著者更新",
+        "creator_deleted": "著者削除",
         "creator_account_linked": "著者への読者アカウント紐付け",
         "creator_account_unlinked": "著者の読者アカウント紐付け解除",
         "label_created": "レーベル作成",

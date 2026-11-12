@@ -36,6 +36,9 @@ const (
 	// AdminCreatorServiceUpdateCreatorProcedure is the procedure name of the AdminCreatorService's
 	// UpdateCreator RPC.
 	AdminCreatorServiceUpdateCreatorProcedure = "/publira.admin.v1.AdminCreatorService/UpdateCreator"
+	// AdminCreatorServiceDeleteCreatorProcedure is the procedure name of the AdminCreatorService's
+	// DeleteCreator RPC.
+	AdminCreatorServiceDeleteCreatorProcedure = "/publira.admin.v1.AdminCreatorService/DeleteCreator"
 	// AdminCreatorServiceLinkCreatorAccountProcedure is the procedure name of the AdminCreatorService's
 	// LinkCreatorAccount RPC.
 	AdminCreatorServiceLinkCreatorAccountProcedure = "/publira.admin.v1.AdminCreatorService/LinkCreatorAccount"
@@ -73,6 +76,13 @@ var (
 			Procedure:  AdminCreatorServiceUpdateCreatorProcedure,
 		}
 	})
+	adminCreatorServiceDeleteCreatorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("DeleteCreator"),
+			Procedure:  AdminCreatorServiceDeleteCreatorProcedure,
+		}
+	})
 	adminCreatorServiceLinkCreatorAccountSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -99,6 +109,8 @@ type AdminCreatorServiceClient interface {
 	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteCreator(context.Context, *v1.DeleteCreatorRequest) (*v1.DeleteCreatorResponse, error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
@@ -131,6 +143,8 @@ type AdminCreatorServiceHandler interface {
 	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteCreator(context.Context, *v1.DeleteCreatorRequest) (*v1.DeleteCreatorResponse, error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
@@ -155,6 +169,7 @@ func RegisterAdminCreatorServiceHandler(server *connect.Server, svc AdminCreator
 		connect.Method{Spec: adminCreatorServiceGetCreatorSpec(), Handler: adapter.getCreator},
 		connect.Method{Spec: adminCreatorServiceCreateCreatorSpec(), Handler: adapter.createCreator},
 		connect.Method{Spec: adminCreatorServiceUpdateCreatorSpec(), Handler: adapter.updateCreator},
+		connect.Method{Spec: adminCreatorServiceDeleteCreatorSpec(), Handler: adapter.deleteCreator},
 		connect.Method{Spec: adminCreatorServiceLinkCreatorAccountSpec(), Handler: adapter.linkCreatorAccount},
 		connect.Method{Spec: adminCreatorServiceUnlinkCreatorAccountSpec(), Handler: adapter.unlinkCreatorAccount},
 	)
@@ -177,6 +192,10 @@ func (UnimplementedAdminCreatorServiceHandler) CreateCreator(context.Context, *v
 
 func (UnimplementedAdminCreatorServiceHandler) UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.UpdateCreator is not implemented")
+}
+
+func (UnimplementedAdminCreatorServiceHandler) DeleteCreator(context.Context, *v1.DeleteCreatorRequest) (*v1.DeleteCreatorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.DeleteCreator is not implemented")
 }
 
 func (UnimplementedAdminCreatorServiceHandler) LinkCreatorAccount(context.Context, *v1.LinkCreatorAccountRequest) (*v1.LinkCreatorAccountResponse, error) {
@@ -218,6 +237,14 @@ func (c *adminCreatorServiceClient) CreateCreator(ctx context.Context, req *v1.C
 func (c *adminCreatorServiceClient) UpdateCreator(ctx context.Context, req *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error) {
 	var res v1.UpdateCreatorResponse
 	if err := c.client.CallUnary(ctx, adminCreatorServiceUpdateCreatorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) DeleteCreator(ctx context.Context, req *v1.DeleteCreatorRequest) (*v1.DeleteCreatorResponse, error) {
+	var res v1.DeleteCreatorResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceDeleteCreatorSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -283,6 +310,18 @@ func (h adminCreatorServiceHandler) updateCreator(ctx context.Context, _ connect
 		return err
 	}
 	res, err := h.svc.UpdateCreator(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) deleteCreator(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteCreatorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteCreator(ctx, &req)
 	if err != nil {
 		return err
 	}

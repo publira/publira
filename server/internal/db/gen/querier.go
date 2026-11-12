@@ -594,6 +594,11 @@ type Querier interface {
 	// A pair that is not linked is no rows. The account's public_id is what the
 	// audit entry names it by.
 	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
+	// The creator, and through the foreign keys that cascade from them their icon
+	// images and those images' variants, the reader follows of them, and their
+	// follower count. The objects of the images are left to the orphan image
+	// sweep. sitemap_entries is a view and drops the creator with the row.
+	DeleteCreatorByIDForTenant(ctx context.Context, arg DeleteCreatorByIDForTenantParams) error
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
 	// The episode, and through the foreign keys that cascade from it everything
@@ -944,6 +949,14 @@ type Querier interface {
 	GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error)
 	GetCreatorByIDForTenant(ctx context.Context, arg GetCreatorByIDForTenantParams) (GetCreatorByIDForTenantRow, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
+	// The first of the references that keep the creator from being deleted, in
+	// the order the refusal names them, or '' when there is none:
+	//
+	//   credit             a credit on a series or an episode, whatever its state
+	//   royalty_statement  a line of a royalty statement, which every subtotal
+	//                      naming the creator is a sum of
+	//   linked_account     a reader account linked to the creator
+	GetCreatorDeletionBlocker(ctx context.Context, arg GetCreatorDeletionBlockerParams) (string, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
 	// The tenant's tax and invoice settings: the tax rate its prices include, as
@@ -3704,6 +3717,24 @@ type Querier interface {
 	// reader, so a request sent twice and two payments of the same episode each
 	// see what the other committed before they check what the reader holds.
 	LockCoinSpendsOfUser(ctx context.Context, arg LockCoinSpendsOfUserParams) error
+	// Deleting a creator, which the console allows only while nothing that has to
+	// be kept refers to them: no credit on a series or an episode, no line of a
+	// royalty statement, and no reader account linked to them. What is the
+	// creator's alone goes with them, in the transaction that deletes them.
+	//
+	// The statements run in the order they appear here. The lock comes first and
+	// the check after it, in a statement of its own: READ COMMITTED freezes a
+	// statement's snapshot at its start, so a check made inside the statement that
+	// waited for the lock would still answer from before the wait.
+	// The creator, with the name the audit entry keeps once no row is left to
+	// join. The row lock is what keeps a reference from arriving while the creator
+	// is deleted: a series or an episode credit and an account link take a key
+	// share lock on the creator row through their foreign keys when they are
+	// written, which waits for this one and fails once it commits. A royalty
+	// statement line names its creator by no foreign key, so a close takes the
+	// same key share lock on the creators of the lines it is about to write
+	// (LockRoyaltyStatementCreators).
+	LockCreatorForDeletion(ctx context.Context, arg LockCreatorForDeletionParams) (LockCreatorForDeletionRow, error)
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -3874,6 +3905,13 @@ type Querier interface {
 	// volume free see what the other committed before they check what the reader
 	// holds. Taken before LockPromotionCodeRedemptions, always in that order.
 	LockReaderPromotionGrants(ctx context.Context, arg LockReaderPromotionGrantsParams) error
+	// The Authors a close is about to write lines for, which DeleteCreator then
+	// waits for. A line names its Author by no foreign key, so without this a
+	// deletion that finds the Author's last credit removed after the close read
+	// it would succeed and leave the close's lines naming nobody. The close is
+	// serializable, so an Author deleted since its snapshot fails this lock and
+	// the close runs again without the credit.
+	LockRoyaltyStatementCreators(ctx context.Context, arg LockRoyaltyStatementCreatorsParams) error
 	// The bundle checkouts that name the episode, so none is paid for between the
 	// check and the deletion that takes the episode out of the unpaid ones. The
 	// purchase that records a bundle's payment refers to the bundle rather than to

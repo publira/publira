@@ -208,6 +208,10 @@ const taxonomyActionName = (action: string) => {
       return <Message message="admin.audit.actions.creator_updated" />;
     }
 
+    case "creator_deleted": {
+      return <Message message="admin.audit.actions.creator_deleted" />;
+    }
+
     case "creator_account_linked": {
       return <Message message="admin.audit.actions.creator_account_linked" />;
     }

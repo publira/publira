@@ -491,6 +491,7 @@
         "episode_created": "Episode created",
         "creator_created": "Author created",
         "creator_updated": "Author updated",
+        "creator_deleted": "Author deleted",
         "creator_account_linked": "Reader account linked to author",
         "creator_account_unlinked": "Reader account unlinked from author",
         "label_created": "Label created",

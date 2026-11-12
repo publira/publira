@@ -84,6 +84,35 @@ message UpdateCreatorResponse {
   publira.types.v1.Creator creator = 1;
 }
 
+// Deletes a creator that nothing refers to: one entered with a typo, or one
+// entered twice for the same person. Their icon goes with them, and so do the
+// reader follows of them. They leave the creator list, their page, the
+// sitemap, and the search index, and the objects of their icon are reclaimed
+// by the orphan image sweep. The audit log keeps the creator's public id and
+// name.
+//
+// A creator something refers to is failed_precondition with an ErrorInfo
+// reason naming the first of these, in this order:
+//
+//   - CREATOR_CREDITED: a credit on a series or an episode, whatever its
+//     state. Remove it with UpdateSeries, ReplaceEpisodeCredits, or
+//     BulkEditEpisodeCredits first.
+//   - CREATOR_ON_ROYALTY_STATEMENT: a line of a royalty statement, which is
+//     kept as it was closed.
+//   - CREATOR_HAS_LINKED_ACCOUNT: a reader account linked to them. Remove the
+//     link with UnlinkCreatorAccount first.
+//
+// Nothing is deleted with the refusal.
+// A creator that does not exist, a second request for one deleted already
+// included, is not_found.
+message DeleteCreatorRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The creator's primary key (Creator.id).
+  string creator_id = 2;
+}
+
+message DeleteCreatorResponse {}
+
 message LinkCreatorAccountRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The creator's primary key (Creator.id).
@@ -119,6 +148,8 @@ service AdminCreatorService {
   rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateCreator(UpdateCreatorRequest) returns (UpdateCreatorResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteCreator(DeleteCreatorRequest) returns (DeleteCreatorResponse) {}
   // Links a reader account to a creator. One account may be linked to several
   // creators and one creator to several accounts. Linking a pair that is
   // already linked changes nothing and records nothing. not_found for a

@@ -335,3 +335,61 @@ func TestDBRefundCarriedByTwoClosesAtOnceIsTakenBackOnce(t *testing.T) {
 		t.Fatalf("April adjustment = %d and February adjustment = %d, want the refund in April alone", april.TotalAdjustment, february.TotalAdjustment)
 	}
 }
+
+// A close that read an Author's credit before the Author was deleted does not
+// write a line naming nobody. The deletion here takes the credit away and the
+// Author with it in one transaction, which is what the close sees when the
+// last credit is removed after it read them and the Author deleted before it
+// writes its lines: the close waits for the deletion, is rolled back, and runs
+// again without the credit.
+func TestDBCloseWaitsForAnAuthorBeingDeleted(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	f := seedRoyaltyTenant(t, pg, "ROYALGONE0", "UTC")
+	creator := pg.SeedCreator(t, f.id, testutil.CreatorSeed{PublicID: "ROYALGONE0CR", Name: "Author being deleted"})
+	pg.SeedEpisodeCreator(t, f.id, f.episode, creator.ID, "")
+	f.sell(t, utc(2026, time.March, 10, 0))
+
+	ctx := context.Background()
+	tx, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	for _, query := range []string{
+		"DELETE FROM episode_creators WHERE creator_id = $1",
+		"DELETE FROM creators WHERE id = $1",
+	} {
+		if _, err := tx.ExecContext(ctx, query, creator.ID); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+
+	closed := make(chan error, 1)
+	go func() {
+		_, err := CloseStatement(ctx, pg.DB, f.month("2026-03", "UTC"), uuid.NullUUID{}, utc(2026, time.April, 2, 0), nil)
+		closed <- err
+	}()
+
+	select {
+	case err := <-closed:
+		t.Fatalf("the close did not wait for the Author being deleted: %v", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	if err := <-closed; err != nil {
+		t.Fatalf("close March once the Author is gone: %v", err)
+	}
+	for _, table := range []string{"royalty_statement_lines", "royalty_statement_creator_subtotals"} {
+		var count int
+		if err := pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM "+table+" WHERE creator_id = $1", creator.ID).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 0 {
+			t.Errorf("rows of %s naming the deleted Author = %d, want 0", table, count)
+		}
+	}
+}
