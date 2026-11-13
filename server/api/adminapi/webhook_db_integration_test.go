@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -536,6 +539,80 @@ func TestDBEpisodePublishedIsOwedForEachEpisodeWhenItsSeriesIsMadePublic(t *test
 	}
 	if got := deliveries(tenantwebhooks.PublishedEpisode); len(got) != 2 {
 		t.Fatalf("deliveries of the episodes' own publication = %d, want them left at 2", len(got))
+	}
+}
+
+// A save that keeps public a series the apply-series-publications job had yet
+// to mark applied continues the job's publication, so it owes nothing the job
+// already owed for it: the job names the publication by its instant, and so
+// does the save, whatever instant it stores.
+func TestDBEpisodePublishedIsOwedOnceWhenASaveTakesOverTheJobsPublication(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "HOOKTENANT8", "hooks-takeover.example.com", "Hook Takeover Tenant", "HOOKADMIN08", "admin@hooks-takeover.example.com")
+	ctx := testutil.WithBearer(context.Background(), admin.token())
+	if _, err := env.webhookClient().CreateWebhookEndpoint(ctx, &publiraadminv1.CreateWebhookEndpointRequest{
+		Tenant:     admin.tenantContext(),
+		Url:        "https://cms.example.com/publira",
+		EventTypes: []publiraadminv1.WebhookEventType{publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED},
+		Enabled:    true,
+	}); err != nil {
+		t.Fatalf("CreateWebhookEndpoint: %v", err)
+	}
+
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, admin, "Taken Over Series")
+	seriesID := env.seriesID(t, seriesPublicID)
+	if _, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:      admin.tenantContext(),
+		SeriesId:    seriesID,
+		Title:       "Published",
+		ScheduledAt: "2000-01-01T00:00:00Z",
+	}); err != nil {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+
+	// The series' scheduled instant has passed, and the job owed the
+	// publication's webhooks under it, then stopped before marking it applied.
+	instant := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	var seriesRowID uuid.UUID
+	if err := env.PG.DB.QueryRowContext(context.Background(),
+		"UPDATE series SET is_published = true, published_at = $2, publication_revalidated_at = NULL WHERE public_id = $1 RETURNING id",
+		seriesPublicID, instant,
+	).Scan(&seriesRowID); err != nil {
+		t.Fatalf("publish the series: %v", err)
+	}
+	job, err := env.PG.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("begin the job's transaction: %v", err)
+	}
+	if err := tenantwebhooks.QueueSeriesPublished(context.Background(), dbmodels.New(job), admin.Tenant.ID, seriesRowID, instant); err != nil {
+		_ = job.Rollback()
+		t.Fatalf("QueueSeriesPublished: %v", err)
+	}
+	if err := job.Commit(); err != nil {
+		t.Fatalf("commit the job's transaction: %v", err)
+	}
+
+	if _, err := client.UpdateSeries(ctx, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:      admin.tenantContext(),
+		SeriesId:    seriesID,
+		Title:       "Taken Over Series",
+		PublishedAt: "2000-06-01T00:00:00Z",
+	}); err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+
+	var owed int
+	if err := env.PG.DB.QueryRowContext(context.Background(), `
+		SELECT count(*) FROM webhook_deliveries
+		WHERE tenant_id = $1 AND event_type = 'episode.published' AND payload->'data'->>'published' = 'series'
+	`, admin.Tenant.ID).Scan(&owed); err != nil {
+		t.Fatalf("count the deliveries: %v", err)
+	}
+	if owed != 1 {
+		t.Fatalf("deliveries of the series' publication = %d, want the one the job owed", owed)
 	}
 }
 

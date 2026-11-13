@@ -308,6 +308,95 @@ func TestRunOnceOwesNoWebhookForASeriesHiddenSinceTheListing(t *testing.T) {
 	}
 }
 
+// An episode taken back to a draft while the publication of its series waits
+// on its listing is left out of the publication's events: the save that takes
+// it off the site holds the listing, and owes its own episode.unpublished, so
+// an episode.published owed after it would tell a mirror to restore a draft.
+func TestRunOnceOwesNoWebhookForAnEpisodeWithdrawnWhileTheSeriesIsPublished(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenant := pg.SeedTenant(t, "TENANTHOOK03", "hooks-withdrawn.example.com", "Hook Withdrawn Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESHOOK03", Title: "Returning Series"})
+	kept := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEHOOK5", Title: "Kept", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-48 * time.Hour),
+	})
+	withdrawn := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEHOOK6", Title: "Withdrawn", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-24 * time.Hour),
+	})
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['episode.published'])
+	`, uuid.Must(uuid.NewV7()), tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = true, published_at = $2 WHERE id = $1", series.ID, now.Add(-time.Minute)); err != nil {
+		t.Fatalf("publish series: %v", err)
+	}
+
+	ticker := pg.OpenTickerDB(t)
+	queries := dbmodels.New(ticker)
+	due, err := queries.ListSeriesPublicationsDue(ctx)
+	if err != nil || len(due) != 1 {
+		t.Fatalf("ListSeriesPublicationsDue = %+v, %v, want the series", due, err)
+	}
+
+	// The save takes the episode back to a draft, as UpdateEpisodePublishSchedule
+	// does, and has not committed yet.
+	save, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the save: %v", err)
+	}
+	defer save.Rollback() //nolint:errcheck
+	saveQueries := dbmodels.New(save)
+	if err := saveQueries.LockEpisodeListingForScheduleSave(ctx, dbmodels.LockEpisodeListingForScheduleSaveParams{TenantID: tenant.ID, EpisodeID: withdrawn.ID}); err != nil {
+		t.Fatalf("LockEpisodeListingForScheduleSave: %v", err)
+	}
+	saved, err := saveQueries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: withdrawn.ID})
+	if err != nil || !saved.WithdrawsPublication {
+		t.Fatalf("UpdateEpisodePublishScheduleByIDForTenant = %+v, %v, want the publication taken back", saved, err)
+	}
+
+	passed := make(chan error, 1)
+	go func() {
+		passed <- New(ticker, queries, nil, nil).announceEpisodes(ctx, tenant.ID, due[0])
+	}()
+	// The pass waits on the listing the save holds before the save commits.
+	for {
+		var waiting int
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+		).Scan(&waiting); err != nil {
+			t.Fatalf("read the waiting backends: %v", err)
+		}
+		if waiting > 0 {
+			break
+		}
+		select {
+		case err := <-passed:
+			t.Fatalf("announceEpisodes returned %v without waiting on the listing the save holds", err)
+		case <-ctx.Done():
+			t.Fatal("the pass never waited on the listing the save holds")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	if err := save.Commit(); err != nil {
+		t.Fatalf("commit the save: %v", err)
+	}
+	if err := <-passed; err != nil {
+		t.Fatalf("announceEpisodes: %v", err)
+	}
+
+	got := episodePublishedDeliveries(t, ctx, pg, tenant.ID)
+	if len(got) != 1 || got[0].EpisodePublicID != kept.PublicID {
+		t.Fatalf("deliveries = %+v, want only %s, which is still published", got, kept.PublicID)
+	}
+}
+
 // episodePublishedDeliveries answers the data of every episode.published
 // delivery owed on the tenant, by episode, failing the test on one owed to an
 // endpoint other than the one that subscribed to it.

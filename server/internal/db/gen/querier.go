@@ -3699,11 +3699,9 @@ type Querier interface {
 	// The tenant's deliveries, newest first, narrowed to one status when one is
 	// named.
 	ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhookDeliveriesDescParams) ([]ListWebhookDeliveriesDescRow, error)
-	// The episodes an event is owed for when their series is hidden or made
-	// public, read in the write that does it: every episode of the series that is
-	// published, with the ids the admin API answers it and the series by, and, for
-	// an episode.published event, its title in the tenant's default language and
-	// the instant its publication recorded.
+	// The episodes an episode.unpublished event is owed for when their series is
+	// hidden, read in the transaction that hides it: every episode of the series
+	// that is published, with the ids the admin API answers it and the series by.
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg ListWebhookPublishedEpisodesOfSeriesParams) ([]ListWebhookPublishedEpisodesOfSeriesRow, error)
 	// Serializes the image writes on one banner; the caller re-reads image_id
 	// behind it.
@@ -4163,6 +4161,19 @@ type Querier interface {
 	// and the deletion that takes the episode out of the ones never on sale.
 	// Publishing a volume updates its row, which a share lock holds off.
 	LockVolumesHoldingEpisode(ctx context.Context, arg LockVolumesHoldingEpisodeParams) ([]uuid.UUID, error)
+	// The episodes an episode.published event is owed for when their series is
+	// made public, read in the transaction that makes it public: every episode of
+	// the series that is published, with the ids the admin API answers it and the
+	// series by, its title in the tenant's default language, and the instant its
+	// publication recorded.
+	//
+	// The listings are locked, because a save that takes an episode off the site
+	// updates its listing and owes its episode.unpublished in the same
+	// transaction. The two take turns: a withdrawal that commits first leaves the
+	// episode out, since a locking read that waited checks again that the listing
+	// it waited on is published, and one that comes second waits until these
+	// events have committed ahead of its own.
+	LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg LockWebhookPublishedEpisodesOfSeriesParams) ([]LockWebhookPublishedEpisodesOfSeriesRow, error)
 	// Inserts a read row for every announcement listed to the caller that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -5009,7 +5020,11 @@ type Querier interface {
 	//
 	// applied_publication_revalidated_at is the publication_revalidated_at this
 	// save stores, which names the publication it applies: it differs each time the
-	// series is made public, even with the same instant.
+	// series is made public, even with the same instant. continues_publication
+	// answers whether that publication is instead one the series was already
+	// public at, which the batch had yet to apply and may already have announced
+	// under its instant: the save then names it by that instant, which
+	// withdrawn_published_at carries, as the batch does.
 	//
 	// withdraws_publication answers whether this save takes a public series off
 	// the site, and the two withdrawn_ columns are the publication it ends: its

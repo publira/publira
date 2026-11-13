@@ -462,11 +462,36 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND e.id = sqlc.arg('id');
 
 -- name: ListWebhookPublishedEpisodesOfSeries :many
--- The episodes an event is owed for when their series is hidden or made
--- public, read in the write that does it: every episode of the series that is
--- published, with the ids the admin API answers it and the series by, and, for
--- an episode.published event, its title in the tenant's default language and
--- the instant its publication recorded.
+-- The episodes an episode.unpublished event is owed for when their series is
+-- hidden, read in the transaction that hides it: every episode of the series
+-- that is published, with the ids the admin API answers it and the series by.
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND el.status = 'published'
+ORDER BY e.order_index,
+    e.id;
+
+-- name: LockWebhookPublishedEpisodesOfSeries :many
+-- The episodes an episode.published event is owed for when their series is
+-- made public, read in the transaction that makes it public: every episode of
+-- the series that is published, with the ids the admin API answers it and the
+-- series by, its title in the tenant's default language, and the instant its
+-- publication recorded.
+--
+-- The listings are locked, because a save that takes an episode off the site
+-- updates its listing and owes its episode.unpublished in the same
+-- transaction. The two take turns: a withdrawal that commits first leaves the
+-- episode out, since a locking read that waited checks again that the listing
+-- it waited on is published, and one that comes second waits until these
+-- events have committed ahead of its own.
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
     s.public_id AS series_public_id,
@@ -482,7 +507,8 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND e.series_id = sqlc.arg('series_id')
     AND el.status = 'published'
 ORDER BY e.order_index,
-    e.id;
+    e.id
+FOR SHARE OF el;
 
 -- name: GetWebhookComment :one
 -- A comment as a comment.posted event carries it, read in the transaction that

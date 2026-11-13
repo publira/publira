@@ -510,7 +510,7 @@ func expectSeriesPublicationUpdate(mock sqlmock.Sqlmock, seriesID uuid.UUID, app
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"applies_publication", "withdraws_publication", "applied_publication_revalidated_at", "withdrawn_published_at", "withdrawn_publication_revalidated_at"}).AddRow(appliesPublication, false, applied, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"applies_publication", "withdraws_publication", "continues_publication", "applied_publication_revalidated_at", "withdrawn_published_at", "withdrawn_publication_revalidated_at"}).AddRow(appliesPublication, false, false, applied, nil, nil))
 }
 
 func expectPublicIDAttempt(mock sqlmock.Sqlmock) {

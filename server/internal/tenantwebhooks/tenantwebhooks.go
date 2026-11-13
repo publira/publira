@@ -77,6 +77,7 @@ type Queries interface {
 	GetWebhookEpisode(ctx context.Context, arg dbmodels.GetWebhookEpisodeParams) (dbmodels.GetWebhookEpisodeRow, error)
 	GetWebhookUnpublishedEpisode(ctx context.Context, arg dbmodels.GetWebhookUnpublishedEpisodeParams) (dbmodels.GetWebhookUnpublishedEpisodeRow, error)
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.ListWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.ListWebhookPublishedEpisodesOfSeriesRow, error)
+	LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.LockWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.LockWebhookPublishedEpisodesOfSeriesRow, error)
 	GetWebhookComment(ctx context.Context, arg dbmodels.GetWebhookCommentParams) (dbmodels.GetWebhookCommentRow, error)
 	GetWebhookContactMessage(ctx context.Context, arg dbmodels.GetWebhookContactMessageParams) (dbmodels.GetWebhookContactMessageRow, error)
 	GetWebhookContactMessageReply(ctx context.Context, arg dbmodels.GetWebhookContactMessageReplyParams) (dbmodels.GetWebhookContactMessageReplyRow, error)
@@ -538,10 +539,12 @@ func QueueSeriesUnpublished(ctx context.Context, q Queries, tenantID, seriesID u
 // publication is an instant naming the publication of the series it applies,
 // which keys each event beside its episode apart from the episode's own
 // publication, so a series hidden and made public again owes them again while
-// a job that repeats its pass owes them once.
+// a job that repeats its pass owes them once. The episodes' listings stay
+// locked until the transaction ends, so a withdrawal of one cannot owe its
+// episode.unpublished ahead of the episode.published owed here.
 func QueueSeriesPublished(ctx context.Context, q Queries, tenantID, seriesID uuid.UUID, publication time.Time) error {
 	return queueAll(ctx, q, tenantID, EventEpisodePublished, func() ([]keyedEvent, error) {
-		rows, err := q.ListWebhookPublishedEpisodesOfSeries(ctx, dbmodels.ListWebhookPublishedEpisodesOfSeriesParams{TenantID: tenantID, SeriesID: seriesID})
+		rows, err := q.LockWebhookPublishedEpisodesOfSeries(ctx, dbmodels.LockWebhookPublishedEpisodesOfSeriesParams{TenantID: tenantID, SeriesID: seriesID})
 		if err != nil {
 			return nil, fmt.Errorf("list the episodes of a webhook event: %w", err)
 		}

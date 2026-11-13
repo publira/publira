@@ -879,12 +879,19 @@ func (s *adminServer) UpdateSeries(
 	// once a scheduled instant passed: the save marks the publication applied,
 	// so the job no longer lists the series. The new dates ride this
 	// transaction, ahead of the cache drop it records and of the events, which
-	// carry them. The publication is named by when this save applied it.
+	// carry them. The publication is named by when this save applied it,
+	// unless the series was already public at an instant the job had yet to
+	// apply: the save continues that publication, which the job names by its
+	// instant and may have announced already before it failed to mark it.
 	if publication.AppliesPublication {
 		if _, err := outbox.QueueSeriesPublicationAnnouncements(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the announcements of the series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
-		if err := tenantwebhooks.QueueSeriesPublished(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID, publication.AppliedPublicationRevalidatedAt.Time); err != nil {
+		applied := publication.AppliedPublicationRevalidatedAt.Time
+		if publication.ContinuesPublication {
+			applied = publication.WithdrawnPublishedAt.Time
+		}
+		if err := tenantwebhooks.QueueSeriesPublished(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID, applied); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the episode.published webhooks of the published series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}

@@ -359,7 +359,11 @@ RETURNING *;
 --
 -- applied_publication_revalidated_at is the publication_revalidated_at this
 -- save stores, which names the publication it applies: it differs each time the
--- series is made public, even with the same instant.
+-- series is made public, even with the same instant. continues_publication
+-- answers whether that publication is instead one the series was already
+-- public at, which the batch had yet to apply and may already have announced
+-- under its instant: the save then names it by that instant, which
+-- withdrawn_published_at carries, as the batch does.
 --
 -- withdraws_publication answers whether this save takes a public series off
 -- the site, and the two withdrawn_ columns are the publication it ends: its
@@ -392,6 +396,11 @@ RETURNING (
             AND s.published_at <= NOW()
         )
     )::boolean AS withdraws_publication,
+    (
+        old.is_published
+        AND old.published_at IS NOT NULL
+        AND old.published_at <= NOW()
+    )::boolean AS continues_publication,
     s.publication_revalidated_at AS applied_publication_revalidated_at,
     old.published_at AS withdrawn_published_at,
     old.publication_revalidated_at AS withdrawn_publication_revalidated_at;
