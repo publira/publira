@@ -29,6 +29,8 @@ package seriespublications
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -48,10 +50,20 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/seriespubli
 // connection behind it must bypass RLS: the listing spans every tenant.
 type Queries interface {
 	outbox.SeriesPublicationQuerier
-	tenantwebhooks.Queries
 	ListSeriesPublicationsDue(ctx context.Context) ([]dbmodels.ListSeriesPublicationsDueRow, error)
 	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 }
+
+// WebhookQueries is what the transaction that owes a publication's webhooks
+// runs.
+type WebhookQueries interface {
+	tenantwebhooks.Queries
+	LockSeriesPublicationDue(ctx context.Context, arg dbmodels.LockSeriesPublicationDueParams) (uuid.UUID, error)
+}
+
+// inTx runs fn in a transaction of its own, over the querier of that
+// transaction, and commits it when fn succeeds.
+type inTx func(ctx context.Context, fn func(WebhookQueries) error) error
 
 // Revalidator records Next.js cache tags as owed. *revalidate.Requester
 // satisfies it, and a nil requester of that type is a no-op, so a deployment
@@ -64,16 +76,32 @@ type Revalidator interface {
 // Runner applies every series publication whose instant has passed.
 type Runner struct {
 	queries Queries
+	inTx    inTx
 	reval   Revalidator
 	logger  *slog.Logger
 }
 
-// New constructs a runner over queries. reval may be nil.
-func New(queries Queries, reval Revalidator, logger *slog.Logger) *Runner {
+// New constructs a runner over db, and over queries, the querier of db. reval
+// may be nil.
+func New(db *sql.DB, queries *dbmodels.Queries, reval Revalidator, logger *slog.Logger) *Runner {
+	return newRunner(queries, func(ctx context.Context, fn func(WebhookQueries) error) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("begin transaction: %w", err)
+		}
+		defer tx.Rollback() //nolint:errcheck
+		if err := fn(queries.WithTx(tx)); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}, reval, logger)
+}
+
+func newRunner(queries Queries, inTx inTx, reval Revalidator, logger *slog.Logger) *Runner {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Runner{queries: queries, reval: reval, logger: logger}
+	return &Runner{queries: queries, inTx: inTx, reval: reval, logger: logger}
 }
 
 // RevalidateTags names what a tenant's public site caches the answers a series
@@ -197,16 +225,27 @@ func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbm
 // nothing for its retry to date once the announcements have drained, and the
 // sync it owed would be lost with them.
 //
-// The webhooks name the publication by its instant, which a repeated pass
-// reads the same, so it owes nothing twice. The instant names it apart from
-// any other the job applies too: the job applies only an instant that was
-// still ahead when it was saved, and a series given the same instant again
-// once it has passed is made public by that save instead.
+// The webhooks are owed in a transaction that holds the series row and finds
+// the publication still due, so a save that hides or reschedules the series
+// after the listing read it is not followed by events announcing a return
+// that did not happen. They name the publication by its instant, which a
+// repeated pass reads the same, so it owes nothing twice. The instant names it
+// apart from any other the job applies too: the job applies only an instant
+// that was still ahead when it was saved, and a series given the same instant
+// again once it has passed is made public by that save instead.
 func (r *Runner) announceEpisodes(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListSeriesPublicationsDueRow) error {
 	if _, err := outbox.QueueSeriesPublicationAnnouncements(ctx, r.queries, tenantID, row.ID); err != nil {
 		return err
 	}
-	if err := tenantwebhooks.QueueSeriesPublished(ctx, r.queries, tenantID, row.ID, row.PublishedAt.Time); err != nil {
+	if err := r.inTx(ctx, func(q WebhookQueries) error {
+		if _, err := q.LockSeriesPublicationDue(ctx, dbmodels.LockSeriesPublicationDueParams{TenantID: tenantID, ID: row.ID, PublishedAt: row.PublishedAt.Time}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return fmt.Errorf("lock the series publication: %w", err)
+		}
+		return tenantwebhooks.QueueSeriesPublished(ctx, q, tenantID, row.ID, row.PublishedAt.Time)
+	}); err != nil {
 		return err
 	}
 	if err := catalogindex.Queue(ctx, r.queries, tenantID, catalogindex.SeriesRef(row.ID)); err != nil {

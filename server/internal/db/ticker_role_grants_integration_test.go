@@ -229,7 +229,7 @@ func TestTickerRoleRunsApplySeriesPublications(t *testing.T) {
 	})
 
 	ticker := pg.OpenTickerDB(t)
-	seriespublications.New(dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+	seriespublications.New(ticker, dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
 
 	var applied sql.NullTime
 	if err := pg.DB.QueryRowContext(ctx,

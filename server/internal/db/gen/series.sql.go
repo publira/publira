@@ -1104,6 +1104,39 @@ func (q *Queries) LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByI
 	return i, err
 }
 
+const LockSeriesPublicationDue = `-- name: LockSeriesPublicationDue :one
+SELECT id
+FROM series
+WHERE tenant_id = $1
+    AND id = $2
+    AND is_published
+    AND published_at = $3::timestamptz
+    AND published_at <= NOW()
+    AND publication_revalidated_at IS NULL
+FOR SHARE
+`
+
+type LockSeriesPublicationDueParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	ID          uuid.UUID `json:"id"`
+	PublishedAt time.Time `json:"published_at"`
+}
+
+// Holds the row of a series the apply-series-publications job is applying
+// while it owes the publication's webhooks, and answers it only while the
+// publication is still the one the job listed: public, at the instant the
+// listing read, passed, and not applied yet. A save that hides, reschedules,
+// or applies the series updates the same row, so the two take turns. A save
+// that commits first leaves no row to answer, since a locking read that waited
+// checks its conditions again against the row the save left; one that comes
+// second waits until the events have committed ahead of its own.
+func (q *Queries) LockSeriesPublicationDue(ctx context.Context, arg LockSeriesPublicationDueParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockSeriesPublicationDue, arg.TenantID, arg.ID, arg.PublishedAt)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const MarkSeriesPublicationRevalidated = `-- name: MarkSeriesPublicationRevalidated :exec
 UPDATE series
 SET publication_revalidated_at = NOW()

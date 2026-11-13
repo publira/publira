@@ -414,6 +414,25 @@ WHERE s.is_published
 ORDER BY s.published_at ASC,
     s.id ASC;
 
+-- name: LockSeriesPublicationDue :one
+-- Holds the row of a series the apply-series-publications job is applying
+-- while it owes the publication's webhooks, and answers it only while the
+-- publication is still the one the job listed: public, at the instant the
+-- listing read, passed, and not applied yet. A save that hides, reschedules,
+-- or applies the series updates the same row, so the two take turns. A save
+-- that commits first leaves no row to answer, since a locking read that waited
+-- checks its conditions again against the row the save left; one that comes
+-- second waits until the events have committed ahead of its own.
+SELECT id
+FROM series
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND is_published
+    AND published_at = sqlc.arg('published_at')::timestamptz
+    AND published_at <= NOW()
+    AND publication_revalidated_at IS NULL
+FOR SHARE;
+
 -- name: MarkSeriesPublicationRevalidated :exec
 -- The instant is compared again so that a series rescheduled into the future
 -- between the listing and this mark keeps its drop owed for the new instant.

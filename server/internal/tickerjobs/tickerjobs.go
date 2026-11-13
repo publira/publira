@@ -226,7 +226,7 @@ func New(cfg Config) (*Jobs, error) {
 			return tenantday.List(ctx, cfg.DB)
 		}, cfg.Revalidate, cfg.Logger),
 		pinned:    pinnedannouncements.New(queries, cfg.Revalidate, cfg.Logger),
-		series:    seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
+		series:    seriespublications.New(cfg.DB, queries, cfg.Revalidate, cfg.Logger),
 		banners:   campaignbanners.New(queries, cfg.Revalidate, cfg.Logger),
 		prices:    campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
 		coins:     coinexpiry.New(queries, cfg.Logger),

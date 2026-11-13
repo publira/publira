@@ -94,8 +94,9 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileTheSeriesWasPrivate(t *testing.T) 
 
 	// The job and the handler run as the logins they run as in production, so
 	// a statement either was never granted fails here.
-	ticker := dbmodels.New(pg.OpenTickerDB(t))
-	runner := New(ticker, nil, nil)
+	tickerDB := pg.OpenTickerDB(t)
+	ticker := dbmodels.New(tickerDB)
+	runner := New(tickerDB, ticker, nil, nil)
 	runner.RunOnce(ctx)
 
 	addedPublishedAt := listingPublishedAt(t, ctx, pg, added.ID)
@@ -214,8 +215,8 @@ func consolePublicationEvent(t *testing.T, tenantID, episodeID uuid.UUID) dbmode
 // the publication applied is repeated in full by the next, which owes nothing
 // twice.
 func TestRunOnceOwesTheWebhooksEveryEpisodePublishedInTheSeries(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -245,20 +246,80 @@ func TestRunOnceOwesTheWebhooksEveryEpisodePublishedInTheSeries(t *testing.T) {
 
 	// The job runs as the login it runs as in production, so a statement it
 	// was never granted fails here.
-	runner := New(dbmodels.New(pg.OpenTickerDB(t)), nil, nil)
+	ticker := pg.OpenTickerDB(t)
+	runner := New(ticker, dbmodels.New(ticker), nil, nil)
 	runner.RunOnce(ctx)
 	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET publication_revalidated_at = NULL WHERE id = $1", series.ID); err != nil {
 		t.Fatalf("leave the publication unapplied: %v", err)
 	}
 	runner.RunOnce(ctx)
 
+	got := episodePublishedDeliveries(t, ctx, pg, tenant.ID)
+	want := []tenantwebhooks.Episode{
+		{EpisodePublicID: first.PublicID, SeriesPublicID: series.PublicID, Title: "First", PublishedAt: listingPublishedAt(t, ctx, pg, first.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
+		{EpisodePublicID: second.PublicID, SeriesPublicID: series.PublicID, Title: "Second", PublishedAt: listingPublishedAt(t, ctx, pg, second.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("deliveries = %+v, want %+v", got, want)
+	}
+}
+
+// A series hidden after the listing read it, before the pass reached it, owes
+// no webhook: the hide took its episodes off the site, and an event saying
+// they came back would follow the hide's own.
+func TestRunOnceOwesNoWebhookForASeriesHiddenSinceTheListing(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenant := pg.SeedTenant(t, "TENANTHOOK02", "hooks-hidden.example.com", "Hook Hidden Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESHOOK02", Title: "Hidden Again"})
+	pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEHOOK4", Title: "Published", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-24 * time.Hour),
+	})
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $2, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['episode.published'])
+	`, uuid.Must(uuid.NewV7()), tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoint: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = true, published_at = $2 WHERE id = $1", series.ID, now.Add(-time.Minute)); err != nil {
+		t.Fatalf("publish series: %v", err)
+	}
+
+	ticker := pg.OpenTickerDB(t)
+	queries := dbmodels.New(ticker)
+	due, err := queries.ListSeriesPublicationsDue(ctx)
+	if err != nil || len(due) != 1 {
+		t.Fatalf("ListSeriesPublicationsDue = %+v, %v, want the series", due, err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = false, published_at = NULL WHERE id = $1", series.ID); err != nil {
+		t.Fatalf("hide series: %v", err)
+	}
+
+	if err := New(ticker, queries, nil, nil).announceEpisodes(ctx, tenant.ID, due[0]); err != nil {
+		t.Fatalf("announceEpisodes: %v", err)
+	}
+	if got := episodePublishedDeliveries(t, ctx, pg, tenant.ID); len(got) != 0 {
+		t.Fatalf("deliveries = %+v, want none for a series hidden since the listing", got)
+	}
+}
+
+// episodePublishedDeliveries answers the data of every episode.published
+// delivery owed on the tenant, by episode, failing the test on one owed to an
+// endpoint other than the one that subscribed to it.
+func episodePublishedDeliveries(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv, tenantID uuid.UUID) []tenantwebhooks.Episode {
+	t.Helper()
 	rows, err := pg.DB.QueryContext(ctx, `
 		SELECT e.url, d.payload->'data'
 		FROM webhook_deliveries d
 			JOIN tenant_webhook_endpoints e ON e.id = d.endpoint_id
 		WHERE d.tenant_id = $1 AND d.event_type = 'episode.published'
 		ORDER BY d.payload->'data'->>'episode_public_id'
-	`, tenant.ID)
+	`, tenantID)
 	if err != nil {
 		t.Fatalf("list the deliveries: %v", err)
 	}
@@ -284,11 +345,5 @@ func TestRunOnceOwesTheWebhooksEveryEpisodePublishedInTheSeries(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatalf("list the deliveries: %v", err)
 	}
-	want := []tenantwebhooks.Episode{
-		{EpisodePublicID: first.PublicID, SeriesPublicID: series.PublicID, Title: "First", PublishedAt: listingPublishedAt(t, ctx, pg, first.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
-		{EpisodePublicID: second.PublicID, SeriesPublicID: series.PublicID, Title: "Second", PublishedAt: listingPublishedAt(t, ctx, pg, second.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
-	}
-	if !slices.Equal(got, want) {
-		t.Fatalf("deliveries = %+v, want %+v", got, want)
-	}
+	return got
 }

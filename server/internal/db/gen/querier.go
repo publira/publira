@@ -3970,6 +3970,15 @@ type Querier interface {
 	// snapshot at its start, so a read that waited for the lock in this statement
 	// would still see the rule as it was before the wait.
 	LockSeriesForFreeAfterRule(ctx context.Context, arg LockSeriesForFreeAfterRuleParams) (uuid.UUID, error)
+	// Holds the row of a series the apply-series-publications job is applying
+	// while it owes the publication's webhooks, and answers it only while the
+	// publication is still the one the job listed: public, at the instant the
+	// listing read, passed, and not applied yet. A save that hides, reschedules,
+	// or applies the series updates the same row, so the two take turns. A save
+	// that commits first leaves no row to answer, since a locking read that waited
+	// checks its conditions again against the row the save left; one that comes
+	// second waits until the events have committed ahead of its own.
+	LockSeriesPublicationDue(ctx context.Context, arg LockSeriesPublicationDueParams) (uuid.UUID, error)
 	// Serialises the begins of the storefront sign-ins one origin makes on the
 	// tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
 	// an account's, so two begins arriving together cannot each count the same
