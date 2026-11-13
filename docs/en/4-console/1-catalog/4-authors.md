@@ -1,8 +1,8 @@
 ---
 title: Authors and Author roles
-description: Register the people credited on a work, choose what they are credited as, and link an Author to their own reader account.
+description: Register the people credited on a work, choose what they are credited as, link an Author to their own reader account, and delete an Author that nothing refers to.
 published: 2026-10-07
-updated: 2026-11-02
+updated: 2026-11-13
 ---
 
 An Author is a person credited on a work: the writer, the artist, the original author of an adaptation. A series and each of its episodes credit their Authors, each in an Author role, and those credits are what readers see beside a title and what royalties are paid on.
@@ -19,7 +19,7 @@ An Author is a person credited on a work: the writer, the artist, the original a
 
 ![The Create author form: Name, Profile, the optional Author icon image, and Create author.](./authors-create-form.png)
 
-Choose **Create author** to save. The same form, with **Update author**, changes the Author later. An Author cannot be deleted, and two Authors can share a name, so check the list first.
+Choose **Create author** to save. The same form, with **Update author**, changes the Author later. Two Authors can share a name, so check the list first. An Author created by mistake can be deleted once nothing refers to them, as [Deleting an Author](#deleting-an-author) describes.
 
 A person who publishes under two pen names is two Authors.
 
@@ -57,6 +57,20 @@ The reader opens these pages with **Your author pages** on **My Page** on the si
 The reader sees only the Authors they are linked to, and never another Author's figures or lines, even an Author credited beside theirs. A staff account sees none, even one linked before it became staff.
 
 **Unlink** removes the link, and leaves the reader's account as it was. Both are recorded in the audit log.
+
+### Deleting an Author
+
+A Tenant admin deletes an Author with **Delete this author**, at the end of the Author's page; an Editor or an Auditor is not offered it. The dialog asks for the Author's name, and **Delete author** stays unavailable until it is typed exactly. Choosing it deletes the Author with their Author icon image and the readers' follows of them. Their page leaves the site, the app, and the search index at once, and the console returns to the **Authors** list. A deletion cannot be undone, and **Audit logs** records it with the Author's name.
+
+![The dialog that deletes an Author: what is deleted with them, which Authors are kept and that the reason is shown, the Author's name typed into the confirmation field, Cancel, and Delete author.](./authors-delete.png)
+
+An Author is deleted only once nothing refers to them. While any of these does, the dialog says which instead of deleting them:
+
+- A credit on a series or an episode, whatever its state. Remove the Author from **Authors** on the form of each series and on the edit screen of each episode that credits them, as [Crediting Authors](#crediting-authors) describes. **View series** opens the **Series** list.
+- A line of a closed royalty statement. A statement is kept as it was closed, so an Author who has been on one is never deleted.
+- A reader account linked to the Author. **Unlink** each one under **Reader accounts** on the same page.
+
+The dialog names the first of these, in this order, so an Author held by more than one is refused again for the next once the first is gone.
 
 ## Author roles
 

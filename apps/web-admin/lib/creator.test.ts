@@ -1,3 +1,8 @@
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
@@ -20,6 +25,7 @@ vi.mock("./auth-session", () => ({
 const {
   mockCacheLife,
   mockCacheTag,
+  mockDeleteCreator,
   mockGetAccessToken,
   mockGetCreator,
   mockLinkCreatorAccount,
@@ -28,6 +34,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeleteCreator: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetCreator: vi.fn(),
   mockLinkCreatorAccount: vi.fn(),
@@ -47,6 +54,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     creator: {
+      deleteCreator: mockDeleteCreator,
       getCreator: mockGetCreator,
       linkCreatorAccount: mockLinkCreatorAccount,
       listCreators: mockListCreators,
@@ -144,7 +152,6 @@ describe("listCreators", () => {
   });
 
   it("returns a result with no token when the fetch fails", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListCreators.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -289,7 +296,6 @@ describe("getCreator", () => {
   // for one outside the tenant, so neither is distinguished here: both fall
   // through to notFound.
   it("returns notFound when the RPC answers not_found", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValue(
       new ConnectError("creator not found", Code.NotFound)
     );
@@ -310,7 +316,6 @@ describe("getCreator", () => {
   });
 
   it("returns a message for a failure other than not_found", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -337,7 +342,6 @@ describe("getCreator", () => {
   // The cache fill itself must not throw, or the request fails before any
   // boundary can render; the exported read throws once outside the scope.
   it("throws an error it cannot classify only outside the cache scope", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockGetCreator.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -470,7 +474,6 @@ describe("listAllCreators", () => {
   });
 
   it("returns no partial result and drops the cache entry when the fetch fails", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockListCreators.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -534,7 +537,6 @@ describe("linkCreatorAccount", () => {
   });
 
   it("says which readers can be linked when the API refuses an inactive one", async () => {
-    const { Code, ConnectError } = await import("@publira/api-client/errors");
     mockLinkCreatorAccount.mockRejectedValue(
       new ConnectError("reader is not active", Code.FailedPrecondition)
     );
@@ -629,4 +631,112 @@ describe("the operator check before a shared read", () => {
       expect(rpc).not.toHaveBeenCalled();
     }
   );
+});
+
+const creatorReferencedError = (reason: string) =>
+  new ConnectError(
+    "creator is referenced",
+    Code.FailedPrecondition,
+    undefined,
+    [{ desc: ErrorInfoSchema, value: { domain: "publira", reason } }]
+  );
+
+describe("deleteCreator", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("deletes the author with the operator's session", async () => {
+    mockDeleteCreator.mockResolvedValue({});
+
+    const { deleteCreator } = await import("./creator");
+
+    const result = await deleteCreator(
+      { id: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteCreator).toHaveBeenCalledWith(
+      { creatorId: "CREATOR001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each([
+    {
+      message:
+        "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode that credits them first.",
+      reason: "CREATOR_CREDITED",
+      reference: "series",
+    },
+    {
+      message:
+        "This author cannot be deleted: a closed royalty statement has a line for them, and a statement is kept as it was closed.",
+      reason: "CREATOR_ON_ROYALTY_STATEMENT",
+      reference: undefined,
+    },
+    {
+      message:
+        "This author cannot be deleted while a reader account is linked to them. Unlink each account under Reader accounts on this page first.",
+      reason: "CREATOR_HAS_LINKED_ACCOUNT",
+      reference: undefined,
+    },
+  ])(
+    "words $reason as what refers to the author",
+    async ({ message, reason, reference }) => {
+      mockDeleteCreator.mockRejectedValue(creatorReferencedError(reason));
+
+      const { deleteCreator } = await import("./creator");
+
+      const result = await deleteCreator(
+        { id: "CREATOR001-ID", tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(result).toEqual({ message, ok: false, reference });
+    }
+  );
+
+  // A server newer than this console may refuse for a reason it has no
+  // sentence for yet, which is still a refusal rather than a failure.
+  it("words a refusal for a reason it does not know as a refusal", async () => {
+    mockDeleteCreator.mockRejectedValue(
+      creatorReferencedError("CREATOR_SOMETHING_NEW")
+    );
+
+    const { deleteCreator } = await import("./creator");
+
+    const result = await deleteCreator(
+      { id: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This author cannot be deleted: a record that has to be kept refers to them.",
+      ok: false,
+    });
+  });
+
+  it("says an author deleted already is gone", async () => {
+    mockDeleteCreator.mockRejectedValue(
+      new ConnectError("creator not found", Code.NotFound)
+    );
+
+    const { deleteCreator } = await import("./creator");
+
+    const result = await deleteCreator(
+      { id: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This author has already been deleted. Go back to the author list.",
+      ok: false,
+    });
+  });
 });

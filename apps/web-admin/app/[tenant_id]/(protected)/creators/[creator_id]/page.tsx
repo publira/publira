@@ -17,7 +17,10 @@ import { z } from "zod";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import {
+  TenantAdminOnly,
+  TenantEditorFieldset,
+} from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
@@ -27,8 +30,9 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { CreatorForm } from "../_components/creator-form";
-import { updateCreatorAction } from "../_lib/actions";
+import { deleteCreatorAction, updateCreatorAction } from "../_lib/actions";
 import { CreatorAccounts } from "./_components/creator-accounts";
+import { CreatorDeleteDialog } from "./_components/creator-delete-dialog";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -179,6 +183,60 @@ const CreatorAccountsSection = async ({
   );
 };
 
+/**
+ * Deleting the Author, for a Tenant admin alone: the API refuses anyone else.
+ * An Author that could not be read is already reported by the form above.
+ */
+const CreatorDeleteSection = async ({
+  params,
+}: Pick<EditCreatorPageProps, "params">) => {
+  const parsedParams = parseRouteParams(editCreatorParamsSchema, await params);
+
+  if (!parsedParams) {
+    return null;
+  }
+
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const result = await getCreator(
+    { publicId: parsedParams.creator_id, tenantId },
+    locale
+  );
+
+  if (!result.ok) {
+    return null;
+  }
+
+  const { id, name, publicId } = result.creator;
+
+  return (
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
+            <Message message="admin.creators.delete.title" />
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
+            <Message message="admin.creators.delete.description" />
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
+          <CreatorDeleteDialog
+            action={deleteCreatorAction}
+            creatorId={id}
+            creatorPublicId={publicId}
+            // A rename remounts the dialog with the name it now has to match.
+            key={`${publicId}:delete:${name}`}
+            name={name}
+            tenantId={tenantId}
+          />
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
+    </ConsoleSection.Root>
+  );
+};
+
 const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
   <ConsolePage.Root>
     <ConsolePage.Header>
@@ -229,6 +287,11 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
             <CreatorAccountsSection params={params} />
           </Suspense>
         </SectionErrorBoundary>
+        <Suspense fallback={null}>
+          <TenantAdminOnly>
+            <CreatorDeleteSection params={params} />
+          </TenantAdminOnly>
+        </Suspense>
       </ConsoleSection.Stack>
     </ConsolePage.Content>
   </ConsolePage.Root>

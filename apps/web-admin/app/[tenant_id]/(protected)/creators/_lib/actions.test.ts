@@ -2,23 +2,34 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockDeleteCreator,
+  mockGetCreator,
   mockLinkCreatorAccount,
+  mockRedirect,
   mockUnlinkCreatorAccount,
   mockUpdateTag,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockDeleteCreator: vi.fn(),
+  mockGetCreator: vi.fn(),
   mockLinkCreatorAccount: vi.fn(),
+  mockRedirect: vi.fn(),
   mockUnlinkCreatorAccount: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
+
+vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/action-messages", () => ({
   getActionLocale: () => Promise.resolve("en"),
 }));
 
 vi.mock("#lib/auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
   withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
@@ -26,6 +37,8 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/creator", () => ({
   createCreator: vi.fn(),
+  deleteCreator: mockDeleteCreator,
+  getCreator: mockGetCreator,
   linkCreatorAccount: mockLinkCreatorAccount,
   unlinkCreatorAccount: mockUnlinkCreatorAccount,
   updateCreator: vi.fn(),
@@ -159,5 +172,102 @@ describe("unlinkCreatorAccountAction", () => {
       ok: false,
     });
     expect(mockUnlinkCreatorAccount).not.toHaveBeenCalled();
+  });
+});
+
+const deleteForm = (nameConfirmation: string): FormData =>
+  formData({ name_confirmation: nameConfirmation });
+
+describe("deleteCreatorAction", () => {
+  beforeEach(() => {
+    mockGetCreator.mockResolvedValue({
+      accounts: [],
+      creator: { id: creatorId, name: "Mina Sato", publicId: "CREATOR001" },
+      ok: true,
+    });
+  });
+
+  it("refuses a name that is not the author's without calling the API", async () => {
+    const { deleteCreatorAction } = await import("./actions");
+
+    const result = await deleteCreatorAction(null, deleteForm("Mina Sato "));
+
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(result).toEqual({
+      message: "The name entered is not this author's name.",
+      ok: false,
+    });
+    expect(mockDeleteCreator).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses an author the URL does not name", async () => {
+    mockGetCreator.mockResolvedValueOnce({
+      accounts: [],
+      creator: {
+        id: "018f0e6a-2000-7000-8000-000000000002",
+        name: "Mina Sato",
+        publicId: "CREATOR001",
+      },
+      ok: true,
+    });
+    const { deleteCreatorAction } = await import("./actions");
+
+    const result = await deleteCreatorAction(null, deleteForm("Mina Sato"));
+
+    expect(result).toEqual({
+      message: "The author ID to update is missing.",
+      ok: false,
+    });
+    expect(mockDeleteCreator).not.toHaveBeenCalled();
+  });
+
+  it("says an author deleted already is gone", async () => {
+    mockGetCreator.mockResolvedValueOnce({ notFound: true, ok: false });
+    const { deleteCreatorAction } = await import("./actions");
+
+    const result = await deleteCreatorAction(null, deleteForm("Mina Sato"));
+
+    expect(result).toEqual({
+      message:
+        "This author has already been deleted. Go back to the author list.",
+      ok: false,
+    });
+    expect(mockDeleteCreator).not.toHaveBeenCalled();
+  });
+
+  it("keeps a refusal and the screen it points to in the dialog", async () => {
+    const refusal = {
+      message:
+        "This author cannot be deleted while a series or an episode credits them.",
+      ok: false,
+      reference: "series",
+    };
+
+    mockDeleteCreator.mockResolvedValueOnce(refusal);
+    const { deleteCreatorAction } = await import("./actions");
+
+    const result = await deleteCreatorAction(null, deleteForm("Mina Sato"));
+
+    expect(result).toEqual(refusal);
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("deletes the author and names them to the author list", async () => {
+    mockDeleteCreator.mockResolvedValueOnce({ ok: true });
+    const { deleteCreatorAction } = await import("./actions");
+
+    await deleteCreatorAction(null, deleteForm("Mina Sato"));
+
+    expect(mockDeleteCreator).toHaveBeenCalledWith(
+      { id: creatorId, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("creators-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("creator-TENANT001-CREATOR001");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/creators?deleted=1&deleted_name=Mina+Sato"
+    );
   });
 });
