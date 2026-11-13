@@ -103,7 +103,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **독자 가입** (`reader.signed_up`) | 주소와 비밀번호로, 또는 Apple이나 Google로 로그인해 독자의 계정이 개설될 때 | 독자 |
 | **구독 시작** (`subscription.started`) | 구독 결제가 시작될 때 | 구독 |
 | **구독 종료** (`subscription.ended`) | 구독 결제가 멈출 때 | 구독 |
-| **에피소드 공개** (`episode.published`) | 에피소드가 공개될 때. 예약한 시각이 지나 공개될 때와, 이미 지난 시각으로 작성, 예약, 승인되어 바로 공개될 때가 모두 포함됩니다. 시리즈가 아직 공개되지 않았어도 보냅니다. 공개될 때마다 별도의 이벤트이므로, 임시저장으로 되돌렸다가 다시 공개한 에피소드는 다시 보냅니다 | 에피소드 |
+| **에피소드 공개** (`episode.published`) | 에피소드가 공개될 때. 예약한 시각이 지나 공개될 때와, 이미 지난 시각으로 작성, 예약, 승인되어 바로 공개될 때는 시리즈가 공개되어 있는지와 관계없이 한 건을 보내고, 시리즈가 공개될 때, 즉 시리즈의 **공개 일시**를 이미 지난 시각으로 저장하거나 이후 시각으로 저장한 뒤 그 시각이 되면 그 시리즈에서 공개된 에피소드마다 한 건씩 보냅니다. 공개될 때마다 별도의 이벤트이므로, 임시저장으로 되돌렸다가 다시 공개한 에피소드는 다시 보내고, 내렸다가 다시 공개한 시리즈의 에피소드도 다시 보냅니다 | 에피소드 |
 | **에피소드 공개 내림** (`episode.unpublished`) | 공개된 에피소드가 사이트에서 내려질 때. **공개 설정**의 시각을 비우거나 이후 시각으로 바꾸거나 [**이 에피소드 삭제**](./1-catalog/2-episodes.md#에피소드-삭제)로 삭제하면 시리즈가 공개되어 있는지와 관계없이 한 건을 보내고, 시리즈의 **공개 일시**를 비우거나 이후로 바꾸면 그 시리즈에서 공개된 에피소드마다 한 건씩 보냅니다. 임시저장이나 예약된 에피소드를 삭제하면 보내지 않습니다. 내릴 때마다 별도의 이벤트이므로, 다시 공개했다가 다시 내린 에피소드는 다시 보냅니다 | 내려진 에피소드 |
 | **댓글 공개** (`comment.posted`) | 독자의 댓글이 에피소드에 표시될 때. 댓글 공개 방식이 **바로 공개**이면 게시될 때, **승인 후 공개**이면 모더레이터가 **댓글**에서 승인할 때 보냅니다. 댓글마다 처음 표시될 때 한 번만 보내므로, 숨겼다가 복원한 댓글은 다시 보내지 않으며, 승인되기 전에 숨겨지거나 작성자가 삭제한 댓글은 보내지 않습니다 | 댓글 |
 | **문의 수신** (`contact_message.received`) | 독자가 테넌트에 연락할 때. 문의 양식으로 메시지를 보낼 때와, 답변에 대한 회신이 **답변과 회신**에 기록될 때 보냅니다. 회신은 **수신 메일** 섹션이 **사용 가능**이 된 뒤에만 기록됩니다([독자가 회신할 때](./2-readers/3-contact-messages.md#독자가-회신할-때)). 메시지와 회신은 각각 한 번만 보냅니다 | 문의 |
@@ -135,7 +135,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | 코인 팩 구매 | **구매 완료**가 가리키는 것과 같은 구매이며 `GetPurchase`가 받는 `purchase_id`, `coin_pack_public_id`, 구매로 부여된 코인과 보너스 코인인 `coins`와 `bonus_coins`(독자가 결제를 시작할 때 표시된 수이며, 그 뒤 팩을 수정해도 바뀌지 않음), 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 `currency`, 독자가 계정을 삭제하면 비는 `reader_public_id`, `purchased_at`, 결제 제공자인 `provider` 또는 `app_store`나 `google_play`인 `store`, 그리고 `test` |
 | 팁 | **구매 완료**가 가리키는 것과 같은 구매이며 `GetPurchase`가 받는 `purchase_id`, `episode_public_id`와 `series_public_id`, 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 `currency`, 팁이 기록될 때 에피소드에 크레디트된 작가의 공개 ID인 `creator_public_ids`(크레디트 순서대로 한 명당 한 번씩이며, 아무도 크레디트되지 않은 에피소드라면 빈 목록), 독자가 계정을 삭제하면 비는 `reader_public_id`, `purchased_at`, 결제 제공자인 `provider` 또는 `app_store`나 `google_play`인 `store`, 그리고 `test` |
 | 독자 | `reader_public_id`, `email`, `name`, 독자가 주소를 확인하기 전까지 false인 `email_verified`, `signed_up_at` |
-| 에피소드 | `episode_public_id`와 `series_public_id`, 테넌트의 기본 언어로 된 `title`, 그리고 `published_at` |
+| 에피소드 | `episode_public_id`와 `series_public_id`, 테넌트의 기본 언어로 된 `title`, `published_at`, 그리고 `published`: 에피소드 자체가 공개되었으면 `episode`, 시리즈가 공개되었으면 `series` |
 | 내려진 에피소드 | `episode_public_id`와 `series_public_id`, 그리고 `withdrawn`: 에피소드 자체가 내려졌으면 `episode`, 시리즈가 내려졌으면 `series`, 에피소드가 삭제되었으면 `deleted` |
 | 댓글 | `comment_public_id`, `episode_public_id`, `series_public_id`, `body`, 작성자의 공개 ID와 표시 이름인 `author_public_id`와 `author_name`(이메일 주소는 담지 않음), 그리고 표시된 시각인 `published_at` |
 | 문의 | `message_public_id`, 독자가 제목을 붙이지 않았으면 비어 있고 회신에서는 회신한 메시지의 제목이 담기는 `subject`, 독자가 쓴 본문인 `body`, 양식으로 보낸 메시지이면 false이고 회신이면 true인 `reply`, 메시지를 보낸 계정의 공개 ID와 표시 이름인 `reader_public_id`와 `reader_name`(독자가 로그인하지 않았거나 그 뒤 계정을 삭제했으면 둘 다 비어 있음), 그리고 `received_at`. 독자가 답변을 받겠다고 적은 주소는 담지 않습니다 |

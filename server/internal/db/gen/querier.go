@@ -3973,6 +3973,15 @@ type Querier interface {
 	// snapshot at its start, so a read that waited for the lock in this statement
 	// would still see the rule as it was before the wait.
 	LockSeriesForFreeAfterRule(ctx context.Context, arg LockSeriesForFreeAfterRuleParams) (uuid.UUID, error)
+	// Holds the row of a series the apply-series-publications job is applying
+	// while it owes the publication's webhooks, and answers it only while the
+	// publication is still the one the job listed: public, at the instant the
+	// listing read, passed, and not applied yet. A save that hides, reschedules,
+	// or applies the series updates the same row, so the two take turns. A save
+	// that commits first leaves no row to answer, since a locking read that waited
+	// checks its conditions again against the row the save left; one that comes
+	// second waits until the events have committed ahead of its own.
+	LockSeriesPublicationDue(ctx context.Context, arg LockSeriesPublicationDueParams) (uuid.UUID, error)
 	// Serialises the begins of the storefront sign-ins one origin makes on the
 	// tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
 	// an account's, so two begins arriving together cannot each count the same
@@ -4157,6 +4166,19 @@ type Querier interface {
 	// and the deletion that takes the episode out of the ones never on sale.
 	// Publishing a volume updates its row, which a share lock holds off.
 	LockVolumesHoldingEpisode(ctx context.Context, arg LockVolumesHoldingEpisodeParams) ([]uuid.UUID, error)
+	// The episodes an episode.published event is owed for when their series is
+	// made public, read in the transaction that makes it public: every episode of
+	// the series that is published, with the ids the admin API answers it and the
+	// series by, its title in the tenant's default language, and the instant its
+	// publication recorded.
+	//
+	// The listings are locked, because a save that takes an episode off the site
+	// updates its listing and owes its episode.unpublished in the same
+	// transaction. The two take turns: a withdrawal that commits first leaves the
+	// episode out, since a locking read that waited checks again that the listing
+	// it waited on is published, and one that comes second waits until these
+	// events have committed ahead of its own.
+	LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg LockWebhookPublishedEpisodesOfSeriesParams) ([]LockWebhookPublishedEpisodesOfSeriesRow, error)
 	// Inserts a read row for every announcement listed to the caller that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -5014,6 +5036,14 @@ type Querier interface {
 	// then does what the batch would have done, since the batch will not list the
 	// series any more. The old row is read through the self-join, which sees it as
 	// it was before this statement.
+	//
+	// applied_publication_revalidated_at is the publication_revalidated_at this
+	// save stores, which names the publication it applies: it differs each time the
+	// series is made public, even with the same instant. continues_publication
+	// answers whether that publication is instead one the series was already
+	// public at, which the batch had yet to apply and may already have announced
+	// under its instant: the save then names it by that instant, which
+	// withdrawn_published_at carries, as the batch does.
 	//
 	// withdraws_publication answers whether this save takes a public series off
 	// the site, and the two withdrawn_ columns are the publication it ends: its

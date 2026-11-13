@@ -103,7 +103,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **讀者註冊**（`reader.signed_up`） | 讀者開通了帳戶，使用地址與密碼，或以Apple或Google登入 | 讀者 |
 | **訂閱開始**（`subscription.started`） | 訂閱開始計費 | 訂閱 |
 | **訂閱結束**（`subscription.ended`） | 訂閱停止計費 | 訂閱 |
-| **章節發布**（`episode.published`） | 章節發布時：預定時間到達時，或以已經過去的時間建立、預約或核准而立即發布時。即使系列尚未公開也會傳送。每次發布都是一個獨立的事件，因此退回草稿後再次發布的章節會再次傳送 | 章節 |
+| **章節發布**（`episode.published`） | 章節發布時：預定時間到達時，或以已經過去的時間建立、預約或核准而立即發布時，無論系列是否公開都會傳送一個事件；系列公開時，即將系列的**發布日期與時間**儲存為已經過去的時間，或儲存為之後的時間且該時間到達時，會為該系列中每個已發布的章節各傳送一個事件。每次發布都是一個獨立的事件，因此退回草稿後再次發布的章節會再次傳送，下架後再次公開的系列中的章節也會再次傳送 | 章節 |
 | **章節取消發布**（`episode.unpublished`） | 已發布的章節從網站下架時：清空**發布設定**中的時間或改為之後的時間時，以及透過[**刪除本章**](./1-catalog/2-episodes.md#刪除章節)刪除時，無論系列是否公開都會傳送一個事件；清空系列的**發布日期與時間**或改為之後的時間時，會為該系列中每個已發布的章節各傳送一個事件。刪除草稿或已預約的章節時不會傳送。每次下架都是一個獨立的事件，因此再次發布後又下架的章節會再次傳送 | 下架的章節 |
 | **留言公開**（`comment.posted`） | 讀者的留言在章節中顯示時：留言的公開方式為**立即公開**時於發表時傳送，為**審核後公開**時於審核人員在**留言**中通過時傳送。每則留言只在首次顯示時傳送一次，因此移除後又恢復的留言不會再次傳送，在通過之前被移除或被留言者刪除的留言也不會傳送 | 留言 |
 | **收到諮詢**（`contact_message.received`） | 讀者聯絡租戶時：透過諮詢表單傳送訊息時，以及對答覆的回信記錄在**答覆與回信**下時傳送。只有在**收件**區塊變為**就緒**之後，回信才會被記錄（[讀者回信時](./2-readers/3-contact-messages.md#讀者回信時)）。每則訊息與每封回信各傳送一次 | 諮詢 |
@@ -135,7 +135,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | 代幣包購買 | `purchase_id`，與**購買完成**所指的是同一筆購買，即`GetPurchase`所接受的ID；`coin_pack_public_id`；`coins`與`bonus_coins`，即該購買發放的代幣與贈送代幣，為讀者開始付款時所顯示的數量，之後即使編輯了代幣包也不會改變；`price`為讀者支付的金額，以貨幣的最小單位表示，並附帶`currency`；`reader_public_id`，讀者刪除帳戶後為空；`purchased_at`；`provider`為金流服務商，或`store`為`app_store`或`google_play`；以及`test` |
 | 打賞 | `purchase_id`，與**購買完成**所指的是同一筆購買，即`GetPurchase`所接受的ID；`episode_public_id`與`series_public_id`；`price`為讀者支付的金額，以貨幣的最小單位表示，並附帶`currency`；`creator_public_ids`，即記錄打賞時章節所署名的作者的公開ID，依署名順序每人各列一次，章節未署名任何人時為空列表；`reader_public_id`，讀者刪除帳戶後為空；`purchased_at`；`provider`為金流服務商，或`store`為`app_store`或`google_play`；以及`test` |
 | 讀者 | `reader_public_id`、`email`、`name`、`email_verified`（讀者確認地址之前為false），以及`signed_up_at` |
-| 章節 | `episode_public_id`與`series_public_id`；租戶預設語言的`title`；以及`published_at` |
+| 章節 | `episode_public_id`與`series_public_id`；租戶預設語言的`title`；`published_at`；以及`published`：章節本身被發布時為`episode`，其系列被公開時為`series` |
 | 下架的章節 | `episode_public_id`與`series_public_id`；以及`withdrawn`：章節本身被下架時為`episode`，其系列被下架時為`series`，章節被刪除時為`deleted` |
 | 留言 | `comment_public_id`、`episode_public_id`與`series_public_id`；`body`；`author_public_id`與`author_name`，即留言者的公開ID與顯示名稱，不含其電子郵件地址；以及`published_at`，即顯示的時間 |
 | 諮詢 | `message_public_id`；`subject`，讀者未填寫主旨時為空，回信時為其所回覆訊息的主旨；`body`，讀者所寫的內容；`reply`，透過表單傳送的訊息為false，回信為true；`reader_public_id`與`reader_name`，即傳送該訊息之帳戶的公開ID與顯示名稱，讀者未登入或之後刪除了帳戶時兩者皆為空；以及`received_at`。不含讀者希望接收答覆的地址 |

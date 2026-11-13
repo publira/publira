@@ -357,6 +357,14 @@ RETURNING *;
 -- series any more. The old row is read through the self-join, which sees it as
 -- it was before this statement.
 --
+-- applied_publication_revalidated_at is the publication_revalidated_at this
+-- save stores, which names the publication it applies: it differs each time the
+-- series is made public, even with the same instant. continues_publication
+-- answers whether that publication is instead one the series was already
+-- public at, which the batch had yet to apply and may already have announced
+-- under its instant: the save then names it by that instant, which
+-- withdrawn_published_at carries, as the batch does.
+--
 -- withdraws_publication answers whether this save takes a public series off
 -- the site, and the two withdrawn_ columns are the publication it ends: its
 -- instant, and when the save or the batch applied it, null while nothing has.
@@ -388,6 +396,12 @@ RETURNING (
             AND s.published_at <= NOW()
         )
     )::boolean AS withdraws_publication,
+    (
+        old.is_published
+        AND old.published_at IS NOT NULL
+        AND old.published_at <= NOW()
+    )::boolean AS continues_publication,
+    s.publication_revalidated_at AS applied_publication_revalidated_at,
     old.published_at AS withdrawn_published_at,
     old.publication_revalidated_at AS withdrawn_publication_revalidated_at;
 
@@ -408,6 +422,25 @@ WHERE s.is_published
     AND s.published_at <= NOW()
 ORDER BY s.published_at ASC,
     s.id ASC;
+
+-- name: LockSeriesPublicationDue :one
+-- Holds the row of a series the apply-series-publications job is applying
+-- while it owes the publication's webhooks, and answers it only while the
+-- publication is still the one the job listed: public, at the instant the
+-- listing read, passed, and not applied yet. A save that hides, reschedules,
+-- or applies the series updates the same row, so the two take turns. A save
+-- that commits first leaves no row to answer, since a locking read that waited
+-- checks its conditions again against the row the save left; one that comes
+-- second waits until the events have committed ahead of its own.
+SELECT id
+FROM series
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND is_published
+    AND published_at = sqlc.arg('published_at')::timestamptz
+    AND published_at <= NOW()
+    AND publication_revalidated_at IS NULL
+FOR SHARE;
 
 -- name: MarkSeriesPublicationRevalidated :exec
 -- The instant is compared again so that a series rescheduled into the future

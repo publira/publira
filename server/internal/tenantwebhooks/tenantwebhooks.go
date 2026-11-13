@@ -77,6 +77,7 @@ type Queries interface {
 	GetWebhookEpisode(ctx context.Context, arg dbmodels.GetWebhookEpisodeParams) (dbmodels.GetWebhookEpisodeRow, error)
 	GetWebhookUnpublishedEpisode(ctx context.Context, arg dbmodels.GetWebhookUnpublishedEpisodeParams) (dbmodels.GetWebhookUnpublishedEpisodeRow, error)
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.ListWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.ListWebhookPublishedEpisodesOfSeriesRow, error)
+	LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg dbmodels.LockWebhookPublishedEpisodesOfSeriesParams) ([]dbmodels.LockWebhookPublishedEpisodesOfSeriesRow, error)
 	GetWebhookComment(ctx context.Context, arg dbmodels.GetWebhookCommentParams) (dbmodels.GetWebhookCommentRow, error)
 	GetWebhookContactMessage(ctx context.Context, arg dbmodels.GetWebhookContactMessageParams) (dbmodels.GetWebhookContactMessageRow, error)
 	GetWebhookContactMessageReply(ctx context.Context, arg dbmodels.GetWebhookContactMessageReplyParams) (dbmodels.GetWebhookContactMessageReplyRow, error)
@@ -177,6 +178,16 @@ type Subscription struct {
 	Test              bool   `json:"test"`
 }
 
+// What an [EventEpisodePublished] says was put on the site, as
+// [Episode.Published] names it.
+const (
+	// PublishedEpisode is the episode itself, published.
+	PublishedEpisode = "episode"
+	// PublishedSeries is the episode's series, made public with every episode
+	// published in it.
+	PublishedSeries = "series"
+)
+
 // Episode is the data of [EventEpisodePublished]. It names the episode and its
 // series by the public ids the admin API answers them by, and carries no
 // reader's data.
@@ -186,6 +197,8 @@ type Episode struct {
 	// Title is the episode's title in the tenant's default language.
 	Title       string `json:"title"`
 	PublishedAt string `json:"published_at"`
+	// Published is [PublishedEpisode] or [PublishedSeries].
+	Published string `json:"published"`
 }
 
 // What an [EventEpisodeUnpublished] says was taken off the site, as
@@ -449,6 +462,7 @@ func QueueEpisodePublished(ctx context.Context, q Queries, tenantID, episodeID u
 			SeriesPublicID:  row.SeriesPublicID,
 			Title:           row.Title,
 			PublishedAt:     formatTime(row.PublishedAt),
+			Published:       PublishedEpisode,
 		}, nil
 	})
 }
@@ -511,6 +525,39 @@ func QueueSeriesUnpublished(ctx context.Context, q Queries, tenantID, seriesID u
 					EpisodePublicID: row.EpisodePublicID,
 					SeriesPublicID:  row.SeriesPublicID,
 					Withdrawn:       WithdrawnSeries,
+				},
+			})
+		}
+		return events, nil
+	})
+}
+
+// QueueSeriesPublished owes the event of every episode published in a series
+// just made public, one each, called in the write that makes it public: the
+// save, or the apply-series-publications job once a scheduled instant passes,
+// after the episodes published while it was hidden are dated from it.
+// publication is an instant naming the publication of the series it applies,
+// which keys each event beside its episode apart from the episode's own
+// publication, so a series hidden and made public again owes them again while
+// a job that repeats its pass owes them once. The episodes' listings stay
+// locked until the transaction ends, so a withdrawal of one cannot owe its
+// episode.unpublished ahead of the episode.published owed here.
+func QueueSeriesPublished(ctx context.Context, q Queries, tenantID, seriesID uuid.UUID, publication time.Time) error {
+	return queueAll(ctx, q, tenantID, EventEpisodePublished, func() ([]keyedEvent, error) {
+		rows, err := q.LockWebhookPublishedEpisodesOfSeries(ctx, dbmodels.LockWebhookPublishedEpisodesOfSeriesParams{TenantID: tenantID, SeriesID: seriesID})
+		if err != nil {
+			return nil, fmt.Errorf("list the episodes of a webhook event: %w", err)
+		}
+		events := make([]keyedEvent, 0, len(rows))
+		for _, row := range rows {
+			events = append(events, keyedEvent{
+				key: EventEpisodePublished + ":" + row.EpisodeID.String() + ":series:" + publication.UTC().Format(time.RFC3339Nano),
+				data: Episode{
+					EpisodePublicID: row.EpisodePublicID,
+					SeriesPublicID:  row.SeriesPublicID,
+					Title:           row.Title,
+					PublishedAt:     formatNullTime(row.PublishedAt),
+					Published:       PublishedSeries,
 				},
 			})
 		}

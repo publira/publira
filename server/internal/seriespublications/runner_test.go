@@ -2,6 +2,7 @@ package seriespublications
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,9 +16,17 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 type stubQueries struct {
+	// The tenant has no webhook endpoint, so owing the webhooks reads nothing
+	// past the endpoints.
+	tenantwebhooks.Queries
+
+	// lockErr answers LockSeriesPublicationDue; sql.ErrNoRows is a series
+	// changed since the listing read it.
+	lockErr error
 	due     []dbmodels.ListSeriesPublicationsDueRow
 	dueErr  error
 	marked  []uuid.UUID
@@ -47,6 +56,16 @@ func (s *stubQueries) InsertOutboxEvent(_ context.Context, arg dbmodels.InsertOu
 	s.calls = append(s.calls, arg.EventType)
 	s.outbox = append(s.outbox, arg)
 	return dbmodels.OutboxEvent{}, nil
+}
+
+func (s *stubQueries) LockSeriesPublicationDue(_ context.Context, arg dbmodels.LockSeriesPublicationDueParams) (uuid.UUID, error) {
+	s.calls = append(s.calls, "lock")
+	return arg.ID, s.lockErr
+}
+
+func (s *stubQueries) ListTenantWebhookEndpointsForEvent(context.Context, dbmodels.ListTenantWebhookEndpointsForEventParams) ([]uuid.UUID, error) {
+	s.calls = append(s.calls, "webhooks")
+	return nil, nil
 }
 
 func (s *stubQueries) ListSeriesPublicationsDue(context.Context) ([]dbmodels.ListSeriesPublicationsDueRow, error) {
@@ -79,6 +98,20 @@ func (s *stubRevalidator) RevalidateTags(_ context.Context, tenantID uuid.UUID, 
 	return s.err
 }
 
+// newStubRunner is a runner over queries whose transactions run on queries
+// too, logged among its statements.
+func newStubRunner(queries *stubQueries, reval Revalidator) *Runner {
+	return newRunner(queries, func(_ context.Context, fn func(WebhookQueries) error) error {
+		queries.calls = append(queries.calls, "begin")
+		if err := fn(queries); err != nil {
+			queries.calls = append(queries.calls, "rollback")
+			return err
+		}
+		queries.calls = append(queries.calls, "commit")
+		return nil
+	}, reval, quietLogger())
+}
+
 func quietLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
@@ -97,7 +130,7 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEverySeries(t *testing.T) {
 	}}
 	reval := &stubRevalidator{}
 
-	New(queries, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(queries, reval).RunOnce(context.Background())
 
 	// The lists and the creator pages are cached per tenant, so the two series
 	// of tenant A are answered by one request that also names each of them.
@@ -133,8 +166,10 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEverySeries(t *testing.T) {
 
 // The episodes added while the series was hidden are dated and their
 // announcements queued before what they owed is cleared, and all of it before
-// the drop is recorded, so the drop carries the new dates; the series' search
-// sync is queued for them; and the publication is marked applied last.
+// the drop is recorded, so the drop carries the new dates; the webhooks, in a
+// transaction that holds the series, and the series' search sync are owed
+// after them, since both carry them; and the publication is marked applied
+// last.
 func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
@@ -149,9 +184,9 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) 
 	}
 	reval := &stubRevalidator{queries: queries}
 
-	New(queries, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(queries, reval).RunOnce(context.Background())
 
-	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, "clear", outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
+	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, "clear", "begin", "lock", "webhooks", "commit", outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
 	if !slices.Equal(queries.calls, wantCalls) {
 		t.Fatalf("statements = %v, want %v", queries.calls, wantCalls)
 	}
@@ -168,6 +203,43 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) 
 	}
 }
 
+// A series hidden or rescheduled since the listing read it owes no webhook,
+// since its episodes did not come back with the publication the job listed,
+// and the rest of the pass goes on as it would have.
+func TestRunOnceOwesNoWebhookForASeriesChangedSinceTheListing(t *testing.T) {
+	seriesID := uuid.Must(uuid.NewV7())
+	queries := &stubQueries{
+		due:     []dbmodels.ListSeriesPublicationsDueRow{{ID: seriesID, TenantID: uuid.Must(uuid.NewV7()), PublicID: "SERIESGONE01"}},
+		lockErr: sql.ErrNoRows,
+	}
+
+	newStubRunner(queries, &stubRevalidator{}).RunOnce(context.Background())
+
+	wantCalls := []string{"redate", "begin", "lock", "commit", outbox.EventTypeCatalogIndexSync, "mark"}
+	if !slices.Equal(queries.calls, wantCalls) {
+		t.Fatalf("statements = %v, want %v", queries.calls, wantCalls)
+	}
+}
+
+// A series whose webhooks could not be owed keeps its publication owed, so the
+// next pass owes them rather than marking it applied without them.
+func TestRunOnceLeavesSeriesUnmarkedWhenItsWebhooksCannotBeOwed(t *testing.T) {
+	queries := &stubQueries{
+		due:     []dbmodels.ListSeriesPublicationsDueRow{{ID: uuid.Must(uuid.NewV7()), TenantID: uuid.Must(uuid.NewV7()), PublicID: "SERIESFAIL03"}},
+		lockErr: errors.New("connection reset"),
+	}
+	reval := &stubRevalidator{}
+
+	newStubRunner(queries, reval).RunOnce(context.Background())
+
+	if len(queries.marked) != 0 {
+		t.Fatalf("series marked = %v, want none while its webhooks are owed", queries.marked)
+	}
+	if len(reval.calls) != 0 {
+		t.Fatalf("revalidations = %d, want none", len(reval.calls))
+	}
+}
+
 // A series whose episodes could not be dated keeps its publication owed, so the
 // next pass dates them and announces them rather than marking it applied
 // without either.
@@ -178,7 +250,7 @@ func TestRunOnceLeavesSeriesUnmarkedWhenItsEpisodesCannotBeAnnounced(t *testing.
 	}
 	reval := &stubRevalidator{}
 
-	New(queries, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(queries, reval).RunOnce(context.Background())
 
 	if len(queries.marked) != 0 {
 		t.Fatalf("marked %v after a failed announcement, want none", queries.marked)
@@ -196,7 +268,7 @@ func TestRunOnceLeavesSeriesUnmarkedWhenRevalidationFails(t *testing.T) {
 	}}
 	reval := &stubRevalidator{err: errors.New("connection reset")}
 
-	New(queries, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(queries, reval).RunOnce(context.Background())
 
 	if len(queries.marked) != 0 {
 		t.Fatalf("marked %v after a failed revalidation, want none", queries.marked)
@@ -211,7 +283,7 @@ func TestRunOnceMarksSeriesWithoutARevalidator(t *testing.T) {
 		{ID: seriesID, TenantID: uuid.Must(uuid.NewV7()), PublicID: "SERIESNONE01"},
 	}}
 
-	New(queries, nil, quietLogger()).RunOnce(context.Background())
+	newStubRunner(queries, nil).RunOnce(context.Background())
 
 	if want := []uuid.UUID{seriesID}; !slices.Equal(queries.marked, want) {
 		t.Fatalf("series marked = %v, want %v", queries.marked, want)
@@ -221,7 +293,7 @@ func TestRunOnceMarksSeriesWithoutARevalidator(t *testing.T) {
 func TestRunOnceDoesNothingWithoutDueSeries(t *testing.T) {
 	reval := &stubRevalidator{}
 
-	New(&stubQueries{}, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(&stubQueries{}, reval).RunOnce(context.Background())
 
 	if len(reval.calls) != 0 {
 		t.Fatalf("revalidations = %d, want none", len(reval.calls))
@@ -231,7 +303,7 @@ func TestRunOnceDoesNothingWithoutDueSeries(t *testing.T) {
 func TestRunOnceStopsOnAListingFailure(t *testing.T) {
 	reval := &stubRevalidator{}
 
-	New(&stubQueries{dueErr: errors.New("connection refused")}, reval, quietLogger()).RunOnce(context.Background())
+	newStubRunner(&stubQueries{dueErr: errors.New("connection refused")}, reval).RunOnce(context.Background())
 
 	if len(reval.calls) != 0 {
 		t.Fatalf("revalidations = %d, want none when the listing failed", len(reval.calls))

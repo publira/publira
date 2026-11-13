@@ -849,7 +849,8 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 }
 
 // The save that makes a series public dates the episodes published while it
-// was not and queues their announcements in its own transaction, which the
+// was not, queues their announcements, and then owes the webhooks of the
+// episodes it puts back on the site, all in its own transaction, which the
 // apply-series-publications job no longer does once the save marks the
 // publication applied.
 func TestUpdateSeriesPublishingTheSeriesQueuesTheAnnouncementsItOwes(t *testing.T) {
@@ -895,6 +896,7 @@ func TestUpdateSeriesPublishingTheSeriesQueuesTheAnnouncementsItOwes(t *testing.
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.ClearEpisodeAnnouncementsOwed)).
 		WithArgs(tenantID, pq.Array([]uuid.UUID{episodeID})).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectNoEpisodePublishedWebhooks(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnRows(sqlmock.NewRows([]string{"creator_id"}))

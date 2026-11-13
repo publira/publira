@@ -1334,6 +1334,80 @@ func (q *Queries) LockTenantWebhookEndpoints(ctx context.Context, tenantID uuid.
 	return err
 }
 
+const LockWebhookPublishedEpisodesOfSeries = `-- name: LockWebhookPublishedEpisodesOfSeries :many
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    s.public_id AS series_public_id,
+    et.title,
+    el.published_at
+FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+    AND el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.series_id = $2
+    AND el.status = 'published'
+ORDER BY e.order_index,
+    e.id
+FOR SHARE OF el
+`
+
+type LockWebhookPublishedEpisodesOfSeriesParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+type LockWebhookPublishedEpisodesOfSeriesRow struct {
+	EpisodeID       uuid.UUID    `json:"episode_id"`
+	EpisodePublicID string       `json:"episode_public_id"`
+	SeriesPublicID  string       `json:"series_public_id"`
+	Title           string       `json:"title"`
+	PublishedAt     sql.NullTime `json:"published_at"`
+}
+
+// The episodes an episode.published event is owed for when their series is
+// made public, read in the transaction that makes it public: every episode of
+// the series that is published, with the ids the admin API answers it and the
+// series by, its title in the tenant's default language, and the instant its
+// publication recorded.
+//
+// The listings are locked, because a save that takes an episode off the site
+// updates its listing and owes its episode.unpublished in the same
+// transaction. The two take turns: a withdrawal that commits first leaves the
+// episode out, since a locking read that waited checks again that the listing
+// it waited on is published, and one that comes second waits until these
+// events have committed ahead of its own.
+func (q *Queries) LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg LockWebhookPublishedEpisodesOfSeriesParams) ([]LockWebhookPublishedEpisodesOfSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, LockWebhookPublishedEpisodesOfSeries, arg.TenantID, arg.SeriesID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LockWebhookPublishedEpisodesOfSeriesRow
+	for rows.Next() {
+		var i LockWebhookPublishedEpisodesOfSeriesRow
+		if err := rows.Scan(
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.SeriesPublicID,
+			&i.Title,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const RecordWebhookDeliveryAttempt = `-- name: RecordWebhookDeliveryAttempt :exec
 UPDATE webhook_deliveries
 SET status = $1,
