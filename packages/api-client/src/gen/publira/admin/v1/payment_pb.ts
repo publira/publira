@@ -423,10 +423,10 @@ export type TenantPaymentProviderSettings = Message<"publira.admin.v1.TenantPaym
   fields: PaymentCredentialFieldState[];
 
   /**
-   * True for a provider the tenant removed while it still had payments a
-   * refund may reach, or subscriptions it bills. It starts no checkout, and
-   * keeps its credentials for what it already took. Saving it again with
-   * UpsertTenantPaymentProvider adds it back.
+   * True for a provider the tenant removed with RemoveTenantPaymentProvider
+   * and still holds. It starts no checkout, and keeps its credentials for what
+   * it already took, a checkout paid after it was removed included. Saving it
+   * again with UpsertTenantPaymentProvider adds it back.
    *
    * @generated from field: bool retired = 5;
    */
@@ -579,11 +579,13 @@ export const UpsertTenantPaymentProviderResponseSchema: GenMessage<UpsertTenantP
   messageDesc(file_publira_admin_v1_payment, 15);
 
 /**
- * Removes a provider the tenant holds. A provider that still has payments a
- * refund may reach, or subscriptions it bills, is retired rather than removed:
- * it starts no checkout, and keeps its credentials for what it already took.
- * One retired already is removed once it has none. A provider the tenant does
- * not hold is not_found.
+ * Removes a provider the tenant holds, in two steps. The first retires it: it
+ * starts no checkout, and keeps its credentials for what it already took,
+ * since a checkout started before it was removed can still be paid long
+ * after. Removing a retired provider again deletes it and its credentials,
+ * once 90 days have passed since it was retired and it has no payment a refund
+ * may reach and no subscription it bills; until then it stays retired. A
+ * provider the tenant does not hold is not_found.
  *
  * @generated from message publira.admin.v1.RemoveTenantPaymentProviderRequest
  */
@@ -628,7 +630,8 @@ export type RemoveTenantPaymentProviderResponse = Message<"publira.admin.v1.Remo
   currencyLocked: boolean;
 
   /**
-   * True when the provider was retired rather than removed.
+   * True when the tenant still holds the provider, retired, and false once it
+   * is deleted.
    *
    * @generated from field: bool retired = 4;
    */

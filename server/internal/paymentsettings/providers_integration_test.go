@@ -67,6 +67,18 @@ func equalIDs(got []string, want ...string) bool {
 	return true
 }
 
+// retireLongAgo moves the retirement of the tenant's provider back past
+// [paymentsettings.RetiredProviderGrace].
+func retireLongAgo(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, provider string) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `
+		UPDATE tenant_payment_providers SET retired_at = $3
+		WHERE tenant_id = $1 AND provider = $2 AND retired_at IS NOT NULL
+	`, tenantID, provider, time.Now().Add(-paymentsettings.RetiredProviderGrace-time.Hour)); err != nil {
+		t.Fatalf("retire %s long ago: %v", provider, err)
+	}
+}
+
 // configProvider answers what the previous release reads as the tenant's one
 // provider.
 func configProvider(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID) (string, bool, string) {
@@ -128,29 +140,47 @@ func TestStoreHoldsMoreThanOneProvider(t *testing.T) {
 			t.Fatalf("GetPublic = %+v, want the first provider, Stripe, ready", legacy)
 		}
 
+		// A checkout started before the removal may still be paid, so the
+		// first removal retires Stripe and keeps its credentials.
 		remaining, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{})
 		if err != nil {
 			t.Fatalf("RemoveProvider stripe: %v", err)
 		}
-		if retired || !equalIDs(heldIDs(remaining), payjp.ID) {
-			t.Fatalf("after removing stripe: retired %v, held %v; want it removed and payjp left", retired, heldIDs(remaining))
+		if !retired || !equalIDs(heldIDs(remaining), stripe.ID+" (retired)", payjp.ID) {
+			t.Fatalf("after removing stripe: retired %v, held %v; want it retired beside payjp", retired, heldIDs(remaining))
+		}
+		if _, credentials, err := store.LoadProvider(ctx, tenant.ID, stripe.ID); err != nil || credentials[stripe.FieldSecretKey] != integrationSecretKey {
+			t.Fatalf("LoadProvider of the retired provider = %v, want its credentials kept", err)
+		}
+		if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
+			t.Fatalf("removing it again at once: retired %v, %v; want it kept retired", retired, err)
+		}
+	})
+
+	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != payjp.ID || !enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+		t.Fatalf("the previous release reads %s enabled %v hint %q, want PAY.JP, the one that sells", provider, enabled, hint)
+	}
+
+	// Once the grace has passed, removing it again deletes it.
+	retireLongAgo(t, ctx, pg.DB, tenant.ID, stripe.ID)
+	withAdminTenant(t, pg, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		store := newIntegrationStore(t, conn, &bytes.Buffer{})
+		remaining, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{})
+		if err != nil || retired || !equalIDs(heldIDs(remaining), payjp.ID) {
+			t.Fatalf("removing it past the grace: retired %v, held %v, %v; want it deleted and payjp left", retired, heldIDs(remaining), err)
 		}
 		if _, _, err := store.LoadProvider(ctx, tenant.ID, stripe.ID); !errors.Is(err, paymentsettings.ErrProviderNotHeld) {
 			t.Fatalf("LoadProvider of the removed provider error = %v, want ErrProviderNotHeld", err)
 		}
 		if _, _, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); !errors.Is(err, paymentsettings.ErrProviderNotHeld) {
-			t.Fatalf("removing it again error = %v, want ErrProviderNotHeld", err)
+			t.Fatalf("removing it once more error = %v, want ErrProviderNotHeld", err)
 		}
 	})
-
-	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != payjp.ID || !enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
-		t.Fatalf("the previous release reads %s enabled %v hint %q, want PAY.JP, the one left", provider, enabled, hint)
-	}
 }
 
-// A provider that still has a payment a refund may reach is retired rather
-// than removed: it sells no more, and its credentials still serve what it
-// took. Saving it again adds it back.
+// A retired provider that still has a payment a refund may reach stays
+// retired past the grace: it sells no more, and its credentials still serve
+// what it took. Saving it again adds it back.
 func TestStoreRetiresAProviderThatStillHasPayments(t *testing.T) {
 	t.Parallel()
 	pg := testutil.StartIsolatedPostgres(t)
@@ -191,18 +221,28 @@ func TestStoreRetiresAProviderThatStillHasPayments(t *testing.T) {
 		t.Fatalf("the previous release reads %s, want PAY.JP, the first one that sells", provider)
 	}
 
-	// Once nothing is left for it to refund, removing it again removes it.
+	retireLongAgo(t, ctx, pg.DB, tenant.ID, stripe.ID)
+	if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
+		t.Fatalf("removing it past the grace with a payment left: retired %v, %v; want it kept retired", retired, err)
+	}
+
+	// Once nothing is left for it to refund, removing it again deletes it.
 	if _, err := pg.DB.ExecContext(ctx, `UPDATE purchases SET refunded_amount = 500, refunded_at = now(), revoked_at = now(), revocation_reason = 'refund' WHERE tenant_id = $1`, tenant.ID); err != nil {
 		t.Fatalf("refund the purchase: %v", err)
 	}
-	if _, err := store.UpsertProvider(ctx, tenant.ID, paymentsettings.ProviderInput{Provider: stripe.ID, Enabled: true}, paymentsettings.AuditMeta{}); err != nil {
-		t.Fatalf("UpsertProvider adding stripe back: %v", err)
-	}
-	if config, _, err := store.LoadProvider(ctx, tenant.ID, stripe.ID); err != nil || config.Retired {
-		t.Fatalf("stripe saved again = %+v, %v; want it selling", config, err)
-	}
 	if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || retired {
-		t.Fatalf("RemoveProvider once refunded: retired %v, %v; want it removed", retired, err)
+		t.Fatalf("RemoveProvider once refunded: retired %v, %v; want it deleted", retired, err)
+	}
+
+	// Saving a retired provider adds it back.
+	if _, _, err := store.RemoveProvider(ctx, tenant.ID, payjp.ID, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("RemoveProvider payjp: %v", err)
+	}
+	if _, err := store.UpsertProvider(ctx, tenant.ID, paymentsettings.ProviderInput{Provider: payjp.ID, Enabled: true}, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("UpsertProvider adding payjp back: %v", err)
+	}
+	if config, _, err := store.LoadProvider(ctx, tenant.ID, payjp.ID); err != nil || config.Retired || !config.Sells() {
+		t.Fatalf("payjp saved again = %+v, %v; want it selling", config, err)
 	}
 }
 

@@ -227,37 +227,67 @@ func (s *Store) UpsertProvider(ctx context.Context, tenantID uuid.UUID, input Pr
 	return s.Providers(ctx, tenantID)
 }
 
-// RemoveProvider removes provider from the ones tenantID holds, or retires it
-// while it still has payments a refund may reach or subscriptions it bills,
-// and reports which it did. A provider the tenant does not hold is
+// RetiredProviderGrace is how long a retired provider keeps its credentials
+// before removing it again deletes them. Nothing records the checkouts a
+// provider has started, and a checkout can be paid long after it started:
+// Stripe lets a konbini voucher run for up to 60 days and retries a
+// notification for 3 days more, and states no deadline for a bank transfer.
+// 90 days is how long Stripe holds a transfer it cannot match before it gives
+// the money up, the longest wait either provider documents.
+const RetiredProviderGrace = 90 * 24 * time.Hour
+
+// RemoveProvider retires provider, one of the ones tenantID holds, and reports
+// whether the tenant still holds it. A retired provider sells no more and
+// keeps its credentials for what it already took, which includes a checkout
+// started before it was removed and paid since. Removing a retired provider
+// again deletes it, once [RetiredProviderGrace] has passed since it was
+// retired and it has no payment a refund may reach and no subscription it
+// bills; until then it stays retired. A provider the tenant does not hold is
 // [ErrProviderNotHeld]. Run it in a transaction.
 func (s *Store) RemoveProvider(ctx context.Context, tenantID uuid.UUID, provider string, audit AuditMeta) (Providers, bool, error) {
 	provider = strings.TrimSpace(provider)
 	if err := s.queries.LockTenantCurrency(ctx, tenantID); err != nil {
 		return Providers{}, false, fmt.Errorf("hold the tenant currency: %w", err)
 	}
-	key := dbmodels.GetTenantPaymentProviderParams{TenantID: tenantID, Provider: provider}
-	if _, err := s.queries.GetTenantPaymentProvider(ctx, key); errors.Is(err, sql.ErrNoRows) {
+	row, err := s.queries.GetTenantPaymentProvider(ctx, dbmodels.GetTenantPaymentProviderParams{TenantID: tenantID, Provider: provider})
+	if errors.Is(err, sql.ErrNoRows) {
 		return Providers{}, false, ErrProviderNotHeld
-	} else if err != nil {
-		return Providers{}, false, err
 	}
-	open, err := s.queries.TenantPaymentProviderHasOpenPayments(ctx, dbmodels.TenantPaymentProviderHasOpenPaymentsParams{TenantID: tenantID, Provider: provider})
 	if err != nil {
 		return Providers{}, false, err
 	}
-	reason := "removed: " + provider
-	if open {
+	removed, err := s.removable(ctx, row)
+	if err != nil {
+		return Providers{}, false, err
+	}
+	switch {
+	case removed:
+		if _, err := s.queries.DeleteTenantPaymentProvider(ctx, dbmodels.DeleteTenantPaymentProviderParams{TenantID: tenantID, Provider: provider}); err != nil {
+			return Providers{}, false, err
+		}
+		s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, "removed: "+provider)
+	case !row.RetiredAt.Valid:
 		if _, err := s.queries.RetireTenantPaymentProvider(ctx, dbmodels.RetireTenantPaymentProviderParams{TenantID: tenantID, Provider: provider}); err != nil {
 			return Providers{}, false, err
 		}
-		reason = "retired: " + provider
-	} else if _, err := s.queries.DeleteTenantPaymentProvider(ctx, dbmodels.DeleteTenantPaymentProviderParams{TenantID: tenantID, Provider: provider}); err != nil {
-		return Providers{}, false, err
+		s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, "retired: "+provider)
 	}
-	s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, reason)
 	providers, err := s.Providers(ctx, tenantID)
-	return providers, open, err
+	return providers, !removed, err
+}
+
+// removable reports whether row, a provider the tenant holds, may be deleted:
+// retired for longer than [RetiredProviderGrace], with nothing of the
+// tenant's left for it to act on.
+func (s *Store) removable(ctx context.Context, row dbmodels.TenantPaymentProvider) (bool, error) {
+	if !row.RetiredAt.Valid || time.Since(row.RetiredAt.Time) < RetiredProviderGrace {
+		return false, nil
+	}
+	open, err := s.queries.TenantPaymentProviderHasOpenPayments(ctx, dbmodels.TenantPaymentProviderHasOpenPaymentsParams{TenantID: row.TenantID, Provider: row.Provider})
+	if err != nil {
+		return false, err
+	}
+	return !open, nil
 }
 
 // LoadProvider decrypts the credentials of the provider tenantID holds under

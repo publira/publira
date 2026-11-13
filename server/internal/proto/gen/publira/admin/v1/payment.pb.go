@@ -741,10 +741,10 @@ type TenantPaymentProviderSettings struct {
 	Ready bool `protobuf:"varint,3,opt,name=ready,proto3" json:"ready,omitempty"`
 	// One entry per field the provider declares, in its declared order.
 	Fields []*PaymentCredentialFieldState `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
-	// True for a provider the tenant removed while it still had payments a
-	// refund may reach, or subscriptions it bills. It starts no checkout, and
-	// keeps its credentials for what it already took. Saving it again with
-	// UpsertTenantPaymentProvider adds it back.
+	// True for a provider the tenant removed with RemoveTenantPaymentProvider
+	// and still holds. It starts no checkout, and keeps its credentials for what
+	// it already took, a checkout paid after it was removed included. Saving it
+	// again with UpsertTenantPaymentProvider adds it back.
 	Retired       bool `protobuf:"varint,5,opt,name=retired,proto3" json:"retired,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1076,11 +1076,13 @@ func (x *UpsertTenantPaymentProviderResponse) GetCurrencyLocked() bool {
 	return false
 }
 
-// Removes a provider the tenant holds. A provider that still has payments a
-// refund may reach, or subscriptions it bills, is retired rather than removed:
-// it starts no checkout, and keeps its credentials for what it already took.
-// One retired already is removed once it has none. A provider the tenant does
-// not hold is not_found.
+// Removes a provider the tenant holds, in two steps. The first retires it: it
+// starts no checkout, and keeps its credentials for what it already took,
+// since a checkout started before it was removed can still be paid long
+// after. Removing a retired provider again deletes it and its credentials,
+// once 90 days have passed since it was retired and it has no payment a refund
+// may reach and no subscription it bills; until then it stays retired. A
+// provider the tenant does not hold is not_found.
 type RemoveTenantPaymentProviderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1139,7 +1141,8 @@ type RemoveTenantPaymentProviderResponse struct {
 	Providers      []*TenantPaymentProviderSettings `protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
 	Currency       string                           `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
 	CurrencyLocked bool                             `protobuf:"varint,3,opt,name=currency_locked,json=currencyLocked,proto3" json:"currency_locked,omitempty"`
-	// True when the provider was retired rather than removed.
+	// True when the tenant still holds the provider, retired, and false once it
+	// is deleted.
 	Retired       bool `protobuf:"varint,4,opt,name=retired,proto3" json:"retired,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

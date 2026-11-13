@@ -27,11 +27,11 @@ CREATE TABLE tenant_payment_providers (
     -- decrypting it: the masked hint of a secret field, and the value itself of
     -- a field that is not secret.
     credential_hints jsonb DEFAULT '{}'::jsonb NOT NULL,
-    -- When the tenant removed a provider that still had payments a refund may
-    -- reach, or subscriptions it bills. A retired provider starts no checkout,
-    -- and keeps its credentials for the notifications, the refunds, and the
-    -- reconciliation of what it already took. NULL for a provider the tenant
-    -- sells through.
+    -- When the tenant removed the provider. A retired provider starts no
+    -- checkout, and keeps its credentials for the notifications, the refunds,
+    -- and the reconciliation of what it already took, a checkout paid after
+    -- the removal included, until the server deletes it. NULL for a provider
+    -- the tenant sells through.
     retired_at timestamp with time zone,
     -- The order the tenant added its providers in, the first of which the
     -- previous release reads as the tenant's one.
