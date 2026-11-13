@@ -50,6 +50,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "comment.posted",
   "contact_message.received",
   "coin_pack.purchased",
+  "tip.received",
 ] as const;
 
 export type WebhookEventTypeValue = (typeof WEBHOOK_EVENT_TYPES)[number];
@@ -81,6 +82,7 @@ const eventValues: Partial<
   [WebhookEventType.SUBSCRIPTION_ENDED]: "subscription.ended",
   [WebhookEventType.SUBSCRIPTION_STARTED]: "subscription.started",
   [WebhookEventType.TEST]: "webhook.test",
+  [WebhookEventType.TIP_RECEIVED]: "tip.received",
 };
 
 const rpcEventTypes: Record<WebhookEventTypeValue, WebhookEventType> = {
@@ -94,6 +96,7 @@ const rpcEventTypes: Record<WebhookEventTypeValue, WebhookEventType> = {
   "reader.signed_up": WebhookEventType.READER_SIGNED_UP,
   "subscription.ended": WebhookEventType.SUBSCRIPTION_ENDED,
   "subscription.started": WebhookEventType.SUBSCRIPTION_STARTED,
+  "tip.received": WebhookEventType.TIP_RECEIVED,
 };
 
 const statusValues: Partial<

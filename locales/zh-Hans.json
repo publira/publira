@@ -4156,6 +4156,8 @@
           "contact_message_received_description": "读者通过咨询表单发送消息，或对答复回信时。",
           "coin_pack_purchased": "代币包购买",
           "coin_pack_purchased_description": "记录了读者对代币包的购买。",
+          "tip_received": "收到打赏",
+          "tip_received_description": "记录了读者对章节作者的打赏。",
           "test": "测试事件"
         },
         "enabled": "启用",

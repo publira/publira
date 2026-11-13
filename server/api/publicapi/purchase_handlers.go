@@ -1492,6 +1492,11 @@ func (s *apiServer) createPurchase(
 		if err := enqueuePurchaseReceipt(ctx, queries, tenantID, created.ID); err != nil {
 			return err
 		}
+		if created.Kind == string(paymentprovider.KindTip) {
+			if err := tenantwebhooks.QueueTipReceived(ctx, queries, tenantID, created.ID); err != nil {
+				return err
+			}
+		}
 	}
 
 	if paymentID.Valid {

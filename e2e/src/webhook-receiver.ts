@@ -1,3 +1,6 @@
+import { expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
 import {
   WEBHOOK_RECEIVER_BASE_URL,
   WEBHOOK_RECEIVER_HTTPS_BASE_URL,
@@ -16,7 +19,9 @@ export interface WebhookReceiverDelivery {
       coin_pack_public_id?: string;
       coins?: number;
       comment_public_id?: string;
+      creator_public_ids?: string[];
       episode_public_id?: string;
+      price?: number;
       reader_name?: string;
       reply?: boolean;
       subject?: string;
@@ -72,4 +77,40 @@ export const webhookReceiverDeliveries = async (
   // SAFETY: the list of recorded deliveries e2e/scripts/webhook-receiver.ts
   // answers `GET /__e2e/deliveries/<name>` with.
   return (await response.json()) as WebhookReceiverDelivery[];
+};
+
+/**
+ * Saves a webhook endpoint that delivers the event the console labels `event`
+ * to the receiver under `name`, on the console at `adminBaseUrl` that `page`
+ * is signed in to as the tenant's admin, and hands the receiver its signing
+ * secret.
+ */
+export const subscribeWebhookReceiver = async (
+  page: Page,
+  adminBaseUrl: string,
+  name: string,
+  event: string
+): Promise<void> => {
+  await page.goto(
+    new URL("/integrations/api-keys-and-webhooks", adminBaseUrl).toString()
+  );
+
+  const form = page.locator("form").filter({
+    has: page.getByRole("heading", {
+      exact: true,
+      level: 3,
+      name: "Add an endpoint",
+    }),
+  });
+
+  await form.getByLabel("URL").fill(webhookReceiverEndpoint(name));
+  await form.getByRole("checkbox", { name: event }).check();
+  await form.getByRole("button", { name: "Add the endpoint" }).click();
+  await expect(form.getByText("The endpoint was added.")).toBeVisible();
+  const secret = form.getByText(/^whsec_[a-z2-7]+$/u);
+
+  await setWebhookReceiverSecret(
+    name,
+    ((await secret.textContent()) ?? "").trim()
+  );
 };

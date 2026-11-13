@@ -2,8 +2,8 @@
 title: API密钥与Webhook
 description: 为租户自己的系统提供读取管理API或通过管理API添加系列与章节的密钥，向它们发送关于销售、退款、注册、订阅章节发布和取消发布、读者评论以及咨询的签名事件，验证签名，以及重新发送已被放弃的发送。
 published: 2026-11-04
-updated: 2026-11-12
-source_updated: 2026-11-12
+updated: 2026-11-13
+source_updated: 2026-11-13
 ---
 
 **集成** › **API密钥与Webhook**将租户与出版社自己运行的系统连接起来，例如CRM、数据仓库或会计系统。系统使用**API密钥**读取租户的作品目录和购买记录，或向作品目录添加系列与章节，并通过**Webhook端点**在销售、退款、新读者、订阅、章节发布或取消发布、读者评论、读者咨询发生时立即获知。Webhook端点是系统自己的一个URL，每个事件都会发送到这里。**发送记录**列出发送给每个端点的内容以及被放弃的内容。
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## Webhook端点
 
-![一个已保存的端点：标题为其URL，旁边显示已启用；发送测试事件和删除按钮；签名密钥的提示和最后更新时间；重新生成密钥；以及它自己的表单：URL、选中了其中三个的十个事件、启用开关和保存端点。](./api-keys-and-webhooks-endpoint.png)
+![一个已保存的端点：标题为其URL，旁边显示已启用；发送测试事件和删除按钮；签名密钥的提示和最后更新时间；重新生成密钥；以及它自己的表单：URL、选中了其中三个的十一个事件、启用开关和保存端点。](./api-keys-and-webhooks-endpoint.png)
 
 端点是出版社自己的https URL，每发生一个它订阅的事件，都会收到一个带签名的`POST`请求。一个租户最多可保留五个端点，每个端点都有自己的表单。
 
@@ -108,6 +108,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **评论公开**（`comment.posted`） | 读者的评论在章节中显示时：评论的公开方式为**立即公开**时在发表时发送，为**审核后公开**时在审核员于**评论**中通过时发送。每条评论只在首次显示时发送一次，因此移除后又恢复的评论不会再次发送，在通过之前被移除或被评论者删除的评论也不会发送 | 评论 |
 | **收到咨询**（`contact_message.received`） | 读者联系租户时：通过咨询表单发送消息时，以及对答复的回信记录到**答复与回信**中时发送。只有在**收件**部分变为**就绪**之后，回信才会被记录（[读者回信时](./2-readers/3-contact-messages.md#读者回信时)）。每条消息和每封回信各发送一次 | 咨询 |
 | **代币包购买**（`coin_pack.purchased`） | 记录了读者对代币包的购买，通过支付服务商或应用商店支付。每次购买只发送一次，与每次购买都会发送的**购买完成**分开发送 | 代币包购买 |
+| **收到打赏**（`tip.received`） | 记录了读者对章节作者的[打赏](./4-selling-episodes.md#打赏)，通过支付服务商或应用商店支付。每次打赏只发送一次，与每次购买都会发送的**购买完成**分开发送 | 打赏 |
 | **测试事件**（`webhook.test`） | 选择了**发送测试事件** | 空 |
 
 ### 请求正文
@@ -132,6 +133,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 购买 | `purchase_id`，即`GetPurchase`所接收的ID；`kind`：`purchase`、`rental`或`tip`；`item`：`episode`、`volume`、`series_bundle`或`coin_pack`，并在适用时附带`series_public_id`、`episode_public_id`和`volume_public_id`；`reader_public_id`和`reader_email`，读者删除账户后两者都为空；`price`为读者支付的金额，`list_price`为扣除优惠码折扣之前的价格，两者都以货币的最小单位表示，并附带`currency`；`refunded_amount`；`purchased_at`、`expires_at`和`refunded_at`；`provider`为支付服务商或`coins`，`store`为`app_store`或`google_play`，对于优惠码赠予的购买，两者都为空；以及`test` |
 | 代币包购买 | `purchase_id`，与**购买完成**所指的是同一笔购买，即`GetPurchase`所接收的ID；`coin_pack_public_id`；`coins`和`bonus_coins`，即该购买发放的代币和赠送代币，为读者开始支付时所显示的数量，之后即使编辑了代币包也不会改变；`price`为读者支付的金额，以货币的最小单位表示，并附带`currency`；`reader_public_id`，读者删除账户后为空；`purchased_at`；`provider`为支付服务商，或`store`为`app_store`或`google_play`；以及`test` |
+| 打赏 | `purchase_id`，与**购买完成**所指的是同一笔购买，即`GetPurchase`所接收的ID；`episode_public_id`和`series_public_id`；`price`为读者支付的金额，以货币的最小单位表示，并附带`currency`；`creator_public_ids`，即记录打赏时章节所署名的作者的公开ID，按署名顺序每人各列一次，章节未署名任何人时为空列表；`reader_public_id`，读者删除账户后为空；`purchased_at`；`provider`为支付服务商，或`store`为`app_store`或`google_play`；以及`test` |
 | 读者 | `reader_public_id`、`email`、`name`、`email_verified`（读者确认地址之前为false），以及`signed_up_at` |
 | 章节 | `episode_public_id`和`series_public_id`；租户默认语言的`title`；以及`published_at` |
 | 下架的章节 | `episode_public_id`和`series_public_id`；以及`withdrawn`：章节本身被下架时为`episode`，其系列被下架时为`series` |

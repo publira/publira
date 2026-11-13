@@ -2,8 +2,8 @@
 title: API 키와 웹훅
 description: 테넌트 자체 시스템에 관리 API를 읽거나 관리 API로 시리즈와 에피소드를 등록하는 키를 주고, 판매·환불·가입·구독·에피소드 공개와 공개 내림·독자 댓글·문의에 대한 서명된 이벤트를 보내며, 서명을 검증하고, 포기된 전송을 다시 보냅니다.
 published: 2026-11-04
-updated: 2026-11-12
-source_updated: 2026-11-12
+updated: 2026-11-13
+source_updated: 2026-11-13
 ---
 
 **연동** › **API 키와 웹훅**은 CRM, 데이터 웨어하우스, 회계 시스템처럼 출판사가 직접 운영하는 시스템과 테넌트를 연결합니다. 시스템은 **API 키**로 테넌트의 카탈로그와 구매를 읽거나 카탈로그에 시리즈와 에피소드를 등록하고, 각 이벤트를 받을 시스템 자체의 URL인 **웹훅 엔드포인트**를 통해 판매, 환불, 새 독자, 구독, 에피소드 공개와 공개 내림, 독자 댓글, 독자의 문의를 일어나는 즉시 알게 됩니다. **전송 내역**에는 각 엔드포인트로 보낸 것과 포기한 것이 나열됩니다.
@@ -70,7 +70,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 
 ## 웹훅 엔드포인트
 
-![저장된 엔드포인트: 맨 위의 URL과 그 옆의 사용 중, 테스트 이벤트 보내기와 삭제 버튼, 서명 시크릿의 힌트와 마지막 수정 시각, 시크릿 재발급, 그리고 엔드포인트 자체의 양식인 URL, 셋을 선택한 열 가지 이벤트, 사용 스위치, 엔드포인트 저장.](./api-keys-and-webhooks-endpoint.png)
+![저장된 엔드포인트: 맨 위의 URL과 그 옆의 사용 중, 테스트 이벤트 보내기와 삭제 버튼, 서명 시크릿의 힌트와 마지막 수정 시각, 시크릿 재발급, 그리고 엔드포인트 자체의 양식인 URL, 셋을 선택한 열한 가지 이벤트, 사용 스위치, 엔드포인트 저장.](./api-keys-and-webhooks-endpoint.png)
 
 엔드포인트는 출판사가 직접 운영하는 https URL로, 구독한 이벤트마다 서명된 `POST`를 받습니다. 테넌트당 최대 다섯 개까지 둘 수 있으며, 엔드포인트마다 별도의 양식이 있습니다.
 
@@ -108,6 +108,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **댓글 공개** (`comment.posted`) | 독자의 댓글이 에피소드에 표시될 때. 댓글 공개 방식이 **바로 공개**이면 게시될 때, **승인 후 공개**이면 모더레이터가 **댓글**에서 승인할 때 보냅니다. 댓글마다 처음 표시될 때 한 번만 보내므로, 숨겼다가 복원한 댓글은 다시 보내지 않으며, 승인되기 전에 숨겨지거나 작성자가 삭제한 댓글은 보내지 않습니다 | 댓글 |
 | **문의 수신** (`contact_message.received`) | 독자가 테넌트에 연락할 때. 문의 양식으로 메시지를 보낼 때와, 답변에 대한 회신이 **답변과 회신**에 기록될 때 보냅니다. 회신은 **수신 메일** 섹션이 **사용 가능**이 된 뒤에만 기록됩니다([독자가 회신할 때](./2-readers/3-contact-messages.md#독자가-회신할-때)). 메시지와 회신은 각각 한 번만 보냅니다 | 문의 |
 | **코인 팩 구매** (`coin_pack.purchased`) | 결제 제공자나 앱 스토어로 결제한 독자의 코인 팩 구매가 기록될 때. 구매마다 한 번만, 모든 구매에서 보내는 **구매 완료**와 별도로 보냅니다 | 코인 팩 구매 |
+| **팁 수신** (`tip.received`) | 결제 제공자나 앱 스토어로 결제한, 독자가 에피소드 작가에게 보낸 [팁](./4-selling-episodes.md#팁)이 기록될 때. 팁마다 한 번만, 모든 구매에서 보내는 **구매 완료**와 별도로 보냅니다 | 팁 |
 | **테스트 이벤트** (`webhook.test`) | **테스트 이벤트 보내기**를 선택했을 때 | 비어 있음 |
 
 ### 본문
@@ -132,6 +133,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | --- | --- |
 | 구매 | `GetPurchase`가 받는 `purchase_id`, `purchase`, `rental`, `tip` 중 하나인 `kind`, `episode`, `volume`, `series_bundle`, `coin_pack` 중 하나인 `item`과 해당하는 경우의 `series_public_id`, `episode_public_id`, `volume_public_id`, 독자가 계정을 삭제하면 둘 다 비는 `reader_public_id`와 `reader_email`, 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 프로모션 코드 할인 전 금액 `list_price`, 그리고 `currency`, `refunded_amount`, `purchased_at`, `expires_at`, `refunded_at`, 결제 제공자 또는 `coins`인 `provider`와 `app_store` 또는 `google_play`인 `store`(프로모션 코드로 부여된 구매에서는 둘 다 비어 있음), 그리고 `test` |
 | 코인 팩 구매 | **구매 완료**가 가리키는 것과 같은 구매이며 `GetPurchase`가 받는 `purchase_id`, `coin_pack_public_id`, 구매로 부여된 코인과 보너스 코인인 `coins`와 `bonus_coins`(독자가 결제를 시작할 때 표시된 수이며, 그 뒤 팩을 수정해도 바뀌지 않음), 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 `currency`, 독자가 계정을 삭제하면 비는 `reader_public_id`, `purchased_at`, 결제 제공자인 `provider` 또는 `app_store`나 `google_play`인 `store`, 그리고 `test` |
+| 팁 | **구매 완료**가 가리키는 것과 같은 구매이며 `GetPurchase`가 받는 `purchase_id`, `episode_public_id`와 `series_public_id`, 통화의 최소 단위로 나타낸 독자가 지불한 금액 `price`와 `currency`, 팁이 기록될 때 에피소드에 크레디트된 작가의 공개 ID인 `creator_public_ids`(크레디트 순서대로 한 명당 한 번씩이며, 아무도 크레디트되지 않은 에피소드라면 빈 목록), 독자가 계정을 삭제하면 비는 `reader_public_id`, `purchased_at`, 결제 제공자인 `provider` 또는 `app_store`나 `google_play`인 `store`, 그리고 `test` |
 | 독자 | `reader_public_id`, `email`, `name`, 독자가 주소를 확인하기 전까지 false인 `email_verified`, `signed_up_at` |
 | 에피소드 | `episode_public_id`와 `series_public_id`, 테넌트의 기본 언어로 된 `title`, 그리고 `published_at` |
 | 내려진 에피소드 | `episode_public_id`와 `series_public_id`, 그리고 `withdrawn`: 에피소드 자체가 내려졌으면 `episode`, 시리즈가 내려졌으면 `series` |

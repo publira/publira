@@ -72,6 +72,10 @@ export const WebhookEventLabel = ({
       );
     }
 
+    case "tip.received": {
+      return <Message message="admin.settings.webhooks.events.tip_received" />;
+    }
+
     case "webhook.test": {
       return <Message message="admin.settings.webhooks.events.test" />;
     }
@@ -146,6 +150,12 @@ export const WebhookEventDescription = ({
     case "coin_pack.purchased": {
       return (
         <Message message="admin.settings.webhooks.events.coin_pack_purchased_description" />
+      );
+    }
+
+    case "tip.received": {
+      return (
+        <Message message="admin.settings.webhooks.events.tip_received_description" />
       );
     }
 

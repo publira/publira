@@ -4156,6 +4156,8 @@
           "contact_message_received_description": "読者がお問い合わせフォームからメッセージを送ったとき、または回答にメールで返信したとき。",
           "coin_pack_purchased": "コインパックの購入",
           "coin_pack_purchased_description": "読者のコインパックの購入が記録されたとき。",
+          "tip_received": "チップの受け取り",
+          "tip_received_description": "読者がエピソードの著者に贈ったチップが記録されたとき。",
           "test": "テストイベント"
         },
         "enabled": "有効",

@@ -4156,6 +4156,8 @@
           "contact_message_received_description": "A reader sends a message through the contact form, or writes back to an answer.",
           "coin_pack_purchased": "Coin pack purchased",
           "coin_pack_purchased_description": "A reader's purchase of a coin pack is recorded.",
+          "tip_received": "Tip received",
+          "tip_received_description": "A reader's tip to the Authors of an episode is recorded.",
           "test": "Test event"
         },
         "enabled": "Enabled",
