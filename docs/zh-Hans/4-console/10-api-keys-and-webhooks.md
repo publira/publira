@@ -104,7 +104,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | **订阅开始**（`subscription.started`） | 订阅开始计费 | 订阅 |
 | **订阅结束**（`subscription.ended`） | 订阅停止计费 | 订阅 |
 | **章节发布**（`episode.published`） | 章节发布时：预定时间到达时，或以已经过去的时间创建、预约或批准而立即发布时。即使系列尚未公开也会发送。每次发布都是一个单独的事件，因此退回草稿后再次发布的章节会再次发送 | 章节 |
-| **章节取消发布**（`episode.unpublished`） | 已发布的章节从站点下架时：清空**发布设置**中的时间或改为之后的时间时，无论系列是否公开都会发送一个事件；清空系列的**发布日期和时间**或改为之后的时间时，会为该系列中每个已发布的章节各发送一个事件。每次下架都是一个单独的事件，因此再次发布后又下架的章节会再次发送 | 下架的章节 |
+| **章节取消发布**（`episode.unpublished`） | 已发布的章节从站点下架时：清空**发布设置**中的时间或改为之后的时间时，以及通过[**删除本章**](./1-catalog/2-episodes.md#删除章节)删除时，无论系列是否公开都会发送一个事件；清空系列的**发布日期和时间**或改为之后的时间时，会为该系列中每个已发布的章节各发送一个事件。删除草稿或已预约的章节时不会发送。每次下架都是一个单独的事件，因此再次发布后又下架的章节会再次发送 | 下架的章节 |
 | **评论公开**（`comment.posted`） | 读者的评论在章节中显示时：评论的公开方式为**立即公开**时在发表时发送，为**审核后公开**时在审核员于**评论**中通过时发送。每条评论只在首次显示时发送一次，因此移除后又恢复的评论不会再次发送，在通过之前被移除或被评论者删除的评论也不会发送 | 评论 |
 | **收到咨询**（`contact_message.received`） | 读者联系租户时：通过咨询表单发送消息时，以及对答复的回信记录到**答复与回信**中时发送。只有在**收件**部分变为**就绪**之后，回信才会被记录（[读者回信时](./2-readers/3-contact-messages.md#读者回信时)）。每条消息和每封回信各发送一次 | 咨询 |
 | **代币包购买**（`coin_pack.purchased`） | 记录了读者对代币包的购买，通过支付服务商或应用商店支付。每次购买只发送一次，与每次购买都会发送的**购买完成**分开发送 | 代币包购买 |
@@ -136,7 +136,7 @@ curl <server>/rpc/publira.admin.v1.AdminSeriesService/ListSeries \
 | 打赏 | `purchase_id`，与**购买完成**所指的是同一笔购买，即`GetPurchase`所接收的ID；`episode_public_id`和`series_public_id`；`price`为读者支付的金额，以货币的最小单位表示，并附带`currency`；`creator_public_ids`，即记录打赏时章节所署名的作者的公开ID，按署名顺序每人各列一次，章节未署名任何人时为空列表；`reader_public_id`，读者删除账户后为空；`purchased_at`；`provider`为支付服务商，或`store`为`app_store`或`google_play`；以及`test` |
 | 读者 | `reader_public_id`、`email`、`name`、`email_verified`（读者确认地址之前为false），以及`signed_up_at` |
 | 章节 | `episode_public_id`和`series_public_id`；租户默认语言的`title`；以及`published_at` |
-| 下架的章节 | `episode_public_id`和`series_public_id`；以及`withdrawn`：章节本身被下架时为`episode`，其系列被下架时为`series` |
+| 下架的章节 | `episode_public_id`和`series_public_id`；以及`withdrawn`：章节本身被下架时为`episode`，其系列被下架时为`series`，章节被删除时为`deleted` |
 | 评论 | `comment_public_id`、`episode_public_id`和`series_public_id`；`body`；`author_public_id`和`author_name`，即评论者的公开ID和显示名称，不含其邮箱地址；以及`published_at`，即显示的时间 |
 | 咨询 | `message_public_id`；`subject`，读者未填写主题时为空，回信时为其所回复消息的主题；`body`，读者所写的内容；`reply`，通过表单发送的消息为false，回信为true；`reader_public_id`和`reader_name`，即发送该消息的账户的公开ID和显示名称，读者未登录或之后删除了账户时两者均为空；以及`received_at`。不含读者希望接收答复的地址 |
 | 订阅 | `plan_public_id`和`plan_name`；`reader_public_id`和`reader_email`，读者删除账户后两者都为空；`provider`：`stripe`、`app_store`或`google_play`；`status`；`current_period_end`和`cancel_at_period_end`；`started_at`；以及`test` |

@@ -16,6 +16,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // episodeDeletionBlockers maps what GetEpisodeDeletionBlocker answers to the
@@ -99,6 +100,10 @@ func (s *adminServer) deleteEpisode(txCtx context.Context, tenantID, episodeID u
 	if _, err := q.LockSeriesBundlesNamingEpisode(txCtx, dbmodels.LockSeriesBundlesNamingEpisodeParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
 		return episode, fail("failed to lock the bundle checkouts naming the episode", err)
 	}
+	published, err := q.LockEpisodeListingForDeletion(txCtx, dbmodels.LockEpisodeListingForDeletionParams{TenantID: tenantID, EpisodeID: episodeID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return episode, fail("failed to lock the episode's listing", err)
+	}
 
 	blocker, err := q.GetEpisodeDeletionBlocker(txCtx, dbmodels.GetEpisodeDeletionBlockerParams{TenantID: tenantID, EpisodeID: episodeID})
 	if err != nil {
@@ -116,6 +121,12 @@ func (s *adminServer) deleteEpisode(txCtx context.Context, tenantID, episodeID u
 		)
 	}
 
+	// The event is read from the episode's rows, so it is owed before they go.
+	if published {
+		if err := tenantwebhooks.QueueEpisodeDeleted(txCtx, q, tenantID, episodeID); err != nil {
+			return episode, fail("failed to queue the episode.unpublished webhook", err)
+		}
+	}
 	if err := q.DeleteEpisodeFromUnsoldVolumes(txCtx, dbmodels.DeleteEpisodeFromUnsoldVolumesParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
 		return episode, fail("failed to take the episode out of volumes never on sale", err)
 	}

@@ -197,6 +197,8 @@ const (
 	// WithdrawnSeries is the episode's series, hidden with every episode
 	// published in it.
 	WithdrawnSeries = "series"
+	// WithdrawnDeleted is the episode itself, deleted while it was published.
+	WithdrawnDeleted = "deleted"
 )
 
 // EpisodeWithdrawal is the data of [EventEpisodeUnpublished]. It names the
@@ -205,7 +207,7 @@ const (
 type EpisodeWithdrawal struct {
 	EpisodePublicID string `json:"episode_public_id"`
 	SeriesPublicID  string `json:"series_public_id"`
-	// Withdrawn is [WithdrawnEpisode] or [WithdrawnSeries].
+	// Withdrawn is [WithdrawnEpisode], [WithdrawnSeries], or [WithdrawnDeleted].
 	Withdrawn string `json:"withdrawn"`
 }
 
@@ -467,6 +469,25 @@ func QueueEpisodeUnpublished(ctx context.Context, q Queries, tenantID, episodeID
 			EpisodePublicID: row.EpisodePublicID,
 			SeriesPublicID:  row.SeriesPublicID,
 			Withdrawn:       WithdrawnEpisode,
+		}, nil
+	})
+}
+
+// QueueEpisodeDeleted owes the event of a published episode about to be
+// deleted, called in the transaction that deletes it and before its rows are
+// gone, since the event is read from them. An episode is deleted once, so the
+// key names the episode alone.
+func QueueEpisodeDeleted(ctx context.Context, q Queries, tenantID, episodeID uuid.UUID) error {
+	key := EventEpisodeUnpublished + ":" + episodeID.String() + ":deleted"
+	return queue(ctx, q, tenantID, EventEpisodeUnpublished, key, func() (any, error) {
+		row, err := q.GetWebhookUnpublishedEpisode(ctx, dbmodels.GetWebhookUnpublishedEpisodeParams{TenantID: tenantID, ID: episodeID})
+		if err != nil {
+			return nil, fmt.Errorf("read the episode of a webhook event: %w", err)
+		}
+		return EpisodeWithdrawal{
+			EpisodePublicID: row.EpisodePublicID,
+			SeriesPublicID:  row.SeriesPublicID,
+			Withdrawn:       WithdrawnDeleted,
 		}, nil
 	})
 }

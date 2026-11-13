@@ -53,6 +53,19 @@ WHERE b.tenant_id = sqlc.arg('tenant_id')
 ORDER BY b.id
 FOR UPDATE OF b;
 
+-- name: LockEpisodeListingForDeletion :one
+-- Whether the episode is published, so the deletion owes the episode.unpublished
+-- a published episode leaving the site owes. The listing is locked rather than
+-- filtered on its status: a publication the scheduled job has written but not
+-- committed holds the deletion here until it commits, and a locking read
+-- answers the row as that commit left it, where a filter would have passed
+-- over the row it started on, which was not published yet.
+SELECT (status = 'published')::boolean AS published
+FROM episode_listings
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id')
+FOR UPDATE;
+
 -- name: GetEpisodeDeletionBlocker :one
 -- The first of the references that keep the episode from being deleted, in the
 -- order the refusal names them, or '' when there is none:

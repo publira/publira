@@ -3775,6 +3775,13 @@ type Querier interface {
 	// a key share lock on it when it is written, which waits for this one, and
 	// fails once the episode is gone.
 	LockEpisodeForDeletion(ctx context.Context, arg LockEpisodeForDeletionParams) (LockEpisodeForDeletionRow, error)
+	// Whether the episode is published, so the deletion owes the episode.unpublished
+	// a published episode leaving the site owes. The listing is locked rather than
+	// filtered on its status: a publication the scheduled job has written but not
+	// committed holds the deletion here until it commits, and a locking read
+	// answers the row as that commit left it, where a filter would have passed
+	// over the row it started on, which was not published yet.
+	LockEpisodeListingForDeletion(ctx context.Context, arg LockEpisodeListingForDeletionParams) (bool, error)
 	// The listing a review step reads and writes, locked so a submission, a
 	// decision, and the publication job's promotion of the same episode happen one
 	// after another.

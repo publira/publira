@@ -4172,7 +4172,7 @@
           "episode_published": "エピソードの公開",
           "episode_published_description": "エピソードが予約した日時に、またはすぐに公開されたとき。",
           "episode_unpublished": "エピソードの公開取り下げ",
-          "episode_unpublished_description": "公開中のエピソードが下書きに戻されたか先の日時に変更されたとき、またはシリーズが非公開になったとき。",
+          "episode_unpublished_description": "公開中のエピソードが下書きに戻されたか、先の日時に変更されたか、削除されたとき、またはシリーズが非公開になったとき。",
           "comment_posted": "コメントの公開",
           "comment_posted_description": "読者のコメントが、すぐに、または承認されてエピソードに公開されたとき。",
           "contact_message_received": "お問い合わせの受信",

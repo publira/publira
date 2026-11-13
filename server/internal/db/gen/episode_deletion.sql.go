@@ -318,6 +318,32 @@ func (q *Queries) LockEpisodeForDeletion(ctx context.Context, arg LockEpisodeFor
 	return i, err
 }
 
+const LockEpisodeListingForDeletion = `-- name: LockEpisodeListingForDeletion :one
+SELECT (status = 'published')::boolean AS published
+FROM episode_listings
+WHERE tenant_id = $1
+    AND episode_id = $2
+FOR UPDATE
+`
+
+type LockEpisodeListingForDeletionParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Whether the episode is published, so the deletion owes the episode.unpublished
+// a published episode leaving the site owes. The listing is locked rather than
+// filtered on its status: a publication the scheduled job has written but not
+// committed holds the deletion here until it commits, and a locking read
+// answers the row as that commit left it, where a filter would have passed
+// over the row it started on, which was not published yet.
+func (q *Queries) LockEpisodeListingForDeletion(ctx context.Context, arg LockEpisodeListingForDeletionParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, LockEpisodeListingForDeletion, arg.TenantID, arg.EpisodeID)
+	var published bool
+	err := row.Scan(&published)
+	return published, err
+}
+
 const LockSeriesBundlesNamingEpisode = `-- name: LockSeriesBundlesNamingEpisode :many
 SELECT b.id
 FROM series_bundles b
