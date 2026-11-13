@@ -115,7 +115,7 @@ RUN if [ "${APP_NAME}" != "node" ]; then mv "apps/${APP_NAME}" apps/node; fi
 # major and the Debian release, and the digest is the only further identifier.
 # The Debian release matches the base stage: node_modules built there, and any
 # native addon a dependency brings with it, run against this image's glibc.
-FROM gcr.io/distroless/nodejs26-debian13:nonroot@sha256:767ffb7e2ffa9f4280f1af7b99f7f0a1cafb79d0dcc0e0d3aba43843748008a5 AS runner
+FROM gcr.io/distroless/nodejs26-debian13:nonroot@sha256:1d736cf8b5716c07a245301f92717143215d248fd55771ee1936ef4b3302e531 AS runner
 
 ARG PORT=8080
 
