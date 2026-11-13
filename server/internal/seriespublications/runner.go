@@ -15,8 +15,11 @@
 // told about it then. The runner dates it from the series' instant and queues
 // its announcement, the way the console does when it publishes a series at
 // once, before it asks for the drop that carries the new dates to the site.
-// Each publication is recorded as applied once both are done, so a run that
-// was down over one still catches up on its next pass.
+// It also owes the tenant's webhooks an episode.published for each episode
+// published in the series, which a receiver that took them down when the
+// series was hidden reads as their return. Each publication is recorded as
+// applied once all of it is done, so a run that was down over one still
+// catches up on its next pass.
 //
 // The search index needs no pass for the series: its document carries its
 // published_at, and the search filters on it at the moment it is asked. The
@@ -36,6 +39,7 @@ import (
 	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/seriespublications")
@@ -44,6 +48,7 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/seriespubli
 // connection behind it must bypass RLS: the listing spans every tenant.
 type Queries interface {
 	outbox.SeriesPublicationQuerier
+	tenantwebhooks.Queries
 	ListSeriesPublicationsDue(ctx context.Context) ([]dbmodels.ListSeriesPublicationsDueRow, error)
 	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 }
@@ -185,13 +190,23 @@ func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbm
 }
 
 // announceEpisodes dates the episodes published while the series was not
-// public from its instant and queues their announcements, then the sync of the
-// series' search document that reads the new dates. The sync is queued every
-// time rather than only when an episode was dated: a pass that fails between
-// the two leaves nothing for its retry to date once the announcements have
-// drained, and the sync it owed would be lost with them.
+// public from its instant and queues their announcements, then the webhooks of
+// every episode published in it and the sync of the series' search document,
+// both of which read the new dates. The sync is queued every time rather than
+// only when an episode was dated: a pass that fails between the two leaves
+// nothing for its retry to date once the announcements have drained, and the
+// sync it owed would be lost with them.
+//
+// The webhooks name the publication by its instant, which a repeated pass
+// reads the same, so it owes nothing twice. The instant names it apart from
+// any other the job applies too: the job applies only an instant that was
+// still ahead when it was saved, and a series given the same instant again
+// once it has passed is made public by that save instead.
 func (r *Runner) announceEpisodes(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListSeriesPublicationsDueRow) error {
 	if _, err := outbox.QueueSeriesPublicationAnnouncements(ctx, r.queries, tenantID, row.ID); err != nil {
+		return err
+	}
+	if err := tenantwebhooks.QueueSeriesPublished(ctx, r.queries, tenantID, row.ID, row.PublishedAt.Time); err != nil {
 		return err
 	}
 	if err := catalogindex.Queue(ctx, r.queries, tenantID, catalogindex.SeriesRef(row.ID)); err != nil {

@@ -357,6 +357,10 @@ RETURNING *;
 -- series any more. The old row is read through the self-join, which sees it as
 -- it was before this statement.
 --
+-- applied_publication_revalidated_at is the publication_revalidated_at this
+-- save stores, which names the publication it applies: it differs each time the
+-- series is made public, even with the same instant.
+--
 -- withdraws_publication answers whether this save takes a public series off
 -- the site, and the two withdrawn_ columns are the publication it ends: its
 -- instant, and when the save or the batch applied it, null while nothing has.
@@ -388,6 +392,7 @@ RETURNING (
             AND s.published_at <= NOW()
         )
     )::boolean AS withdraws_publication,
+    s.publication_revalidated_at AS applied_publication_revalidated_at,
     old.published_at AS withdrawn_published_at,
     old.publication_revalidated_at AS withdrawn_publication_revalidated_at;
 

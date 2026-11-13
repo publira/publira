@@ -1268,8 +1268,11 @@ func (q *Queries) ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhook
 const ListWebhookPublishedEpisodesOfSeries = `-- name: ListWebhookPublishedEpisodesOfSeries :many
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
-    s.public_id AS series_public_id
+    s.public_id AS series_public_id,
+    et.title,
+    el.published_at
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
     JOIN episode_listings el ON el.tenant_id = e.tenant_id
@@ -1287,14 +1290,18 @@ type ListWebhookPublishedEpisodesOfSeriesParams struct {
 }
 
 type ListWebhookPublishedEpisodesOfSeriesRow struct {
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
+	EpisodeID       uuid.UUID    `json:"episode_id"`
+	EpisodePublicID string       `json:"episode_public_id"`
+	SeriesPublicID  string       `json:"series_public_id"`
+	Title           string       `json:"title"`
+	PublishedAt     sql.NullTime `json:"published_at"`
 }
 
-// The episodes an episode.unpublished event is owed for when their series is
-// hidden, read in the transaction that hides it: every episode of the series
-// that is published, with the ids the admin API answers it and the series by.
+// The episodes an event is owed for when their series is hidden or made
+// public, read in the write that does it: every episode of the series that is
+// published, with the ids the admin API answers it and the series by, and, for
+// an episode.published event, its title in the tenant's default language and
+// the instant its publication recorded.
 func (q *Queries) ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg ListWebhookPublishedEpisodesOfSeriesParams) ([]ListWebhookPublishedEpisodesOfSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListWebhookPublishedEpisodesOfSeries, arg.TenantID, arg.SeriesID)
 	if err != nil {
@@ -1304,7 +1311,13 @@ func (q *Queries) ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg 
 	var items []ListWebhookPublishedEpisodesOfSeriesRow
 	for rows.Next() {
 		var i ListWebhookPublishedEpisodesOfSeriesRow
-		if err := rows.Scan(&i.EpisodeID, &i.EpisodePublicID, &i.SeriesPublicID); err != nil {
+		if err := rows.Scan(
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.SeriesPublicID,
+			&i.Title,
+			&i.PublishedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

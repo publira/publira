@@ -3699,9 +3699,11 @@ type Querier interface {
 	// The tenant's deliveries, newest first, narrowed to one status when one is
 	// named.
 	ListWebhookDeliveriesDesc(ctx context.Context, arg ListWebhookDeliveriesDescParams) ([]ListWebhookDeliveriesDescRow, error)
-	// The episodes an episode.unpublished event is owed for when their series is
-	// hidden, read in the transaction that hides it: every episode of the series
-	// that is published, with the ids the admin API answers it and the series by.
+	// The episodes an event is owed for when their series is hidden or made
+	// public, read in the write that does it: every episode of the series that is
+	// published, with the ids the admin API answers it and the series by, and, for
+	// an episode.published event, its title in the tenant's default language and
+	// the instant its publication recorded.
 	ListWebhookPublishedEpisodesOfSeries(ctx context.Context, arg ListWebhookPublishedEpisodesOfSeriesParams) ([]ListWebhookPublishedEpisodesOfSeriesRow, error)
 	// Serializes the image writes on one banner; the caller re-reads image_id
 	// behind it.
@@ -4995,6 +4997,10 @@ type Querier interface {
 	// then does what the batch would have done, since the batch will not list the
 	// series any more. The old row is read through the self-join, which sees it as
 	// it was before this statement.
+	//
+	// applied_publication_revalidated_at is the publication_revalidated_at this
+	// save stores, which names the publication it applies: it differs each time the
+	// series is made public, even with the same instant.
 	//
 	// withdraws_publication answers whether this save takes a public series off
 	// the site, and the two withdrawn_ columns are the publication it ends: its

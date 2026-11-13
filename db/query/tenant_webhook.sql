@@ -462,13 +462,18 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND e.id = sqlc.arg('id');
 
 -- name: ListWebhookPublishedEpisodesOfSeries :many
--- The episodes an episode.unpublished event is owed for when their series is
--- hidden, read in the transaction that hides it: every episode of the series
--- that is published, with the ids the admin API answers it and the series by.
+-- The episodes an event is owed for when their series is hidden or made
+-- public, read in the write that does it: every episode of the series that is
+-- published, with the ids the admin API answers it and the series by, and, for
+-- an episode.published event, its title in the tenant's default language and
+-- the instant its publication recorded.
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
-    s.public_id AS series_public_id
+    s.public_id AS series_public_id,
+    et.title,
+    el.published_at
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
     JOIN episode_listings el ON el.tenant_id = e.tenant_id

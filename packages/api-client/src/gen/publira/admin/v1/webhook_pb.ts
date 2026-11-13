@@ -635,10 +635,14 @@ export enum WebhookEventType {
   /**
    * "episode.published": an episode is published: by the scheduled
    * publication job once its time passes, or at once when it is created,
-   * scheduled, or approved with a time that has already passed. It is sent
-   * whether or not the episode's series is public yet. Each publication is an
-   * event of its own, so an episode taken back to a draft and published again
-   * is sent again. `data` is the episode.
+   * scheduled, or approved with a time that has already passed, each of which
+   * sends one event whether or not its series is public yet; or its series is
+   * made public, by a save or once its scheduled time passes, which sends one
+   * for each episode published in it. Each publication is an event of its own,
+   * so an episode taken back to a draft and published again is sent again, and
+   * so is every episode of a series hidden and made public again. `data` is
+   * the episode, and says in `published` how it came on: "episode" when the
+   * episode itself was published, "series" when its series was made public.
    *
    * @generated from enum value: WEBHOOK_EVENT_TYPE_EPISODE_PUBLISHED = 7;
    */

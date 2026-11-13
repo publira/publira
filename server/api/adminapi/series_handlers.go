@@ -874,13 +874,18 @@ func (s *adminServer) UpdateSeries(
 		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	// The save that makes the series public announces the episodes published
-	// while it was not, in place of the apply-series-publications job that
-	// would have once a scheduled instant passed: the save marks the
-	// publication applied, so the job no longer lists the series. The new
-	// dates ride this transaction, ahead of the cache drop it records.
+	// while it was not, and owes the webhooks every episode it puts back on
+	// the site, in place of the apply-series-publications job that would have
+	// once a scheduled instant passed: the save marks the publication applied,
+	// so the job no longer lists the series. The new dates ride this
+	// transaction, ahead of the cache drop it records and of the events, which
+	// carry them. The publication is named by when this save applied it.
 	if publication.AppliesPublication {
 		if _, err := outbox.QueueSeriesPublicationAnnouncements(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the announcements of the series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		}
+		if err := tenantwebhooks.QueueSeriesPublished(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID, publication.AppliedPublicationRevalidatedAt.Time); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the episode.published webhooks of the published series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
 	// The save that hides a public series takes every episode published in it

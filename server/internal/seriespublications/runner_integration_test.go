@@ -13,6 +13,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -203,5 +204,91 @@ func consolePublicationEvent(t *testing.T, tenantID, episodeID uuid.UUID) dbmode
 		EventType:      outbox.EventTypeEpisodePublishedNotification,
 		Payload:        payload,
 		IdempotencyKey: outbox.EpisodePublishedIdempotencyKey(episodeID),
+	}
+}
+
+// A series made public by its scheduled instant arriving owes episode.published
+// to the endpoints that subscribed to it, once for each episode published in
+// it, saying the series put it back on the site, and neither for a draft nor
+// to an endpoint that did not subscribe. A pass that stopped before marking
+// the publication applied is repeated in full by the next, which owes nothing
+// twice.
+func TestRunOnceOwesTheWebhooksEveryEpisodePublishedInTheSeries(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenant := pg.SeedTenant(t, "TENANTHOOK01", "hooks.example.com", "Hook Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESHOOK01", Title: "Returning Series"})
+	first := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEHOOK1", Title: "First", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-48 * time.Hour),
+	})
+	second := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEHOOK2", Title: "Second", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-24 * time.Hour),
+	})
+	pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEHOOK3", Title: "Draft"})
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_webhook_endpoints (id, tenant_id, url, secret_encrypted, secret_hint, event_types)
+		VALUES ($1, $3, 'https://cms.example.com/publira', 'sealed', 'whsec_••••', ARRAY['episode.published']),
+			($2, $3, 'https://crm.example.com/publira', 'sealed', 'whsec_••••', ARRAY['purchase.completed'])
+	`, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), tenant.ID); err != nil {
+		t.Fatalf("insert webhook endpoints: %v", err)
+	}
+
+	// The series' scheduled instant passes.
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = true, published_at = $2 WHERE id = $1", series.ID, now.Add(-time.Minute)); err != nil {
+		t.Fatalf("publish series: %v", err)
+	}
+
+	// The job runs as the login it runs as in production, so a statement it
+	// was never granted fails here.
+	runner := New(dbmodels.New(pg.OpenTickerDB(t)), nil, nil)
+	runner.RunOnce(ctx)
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET publication_revalidated_at = NULL WHERE id = $1", series.ID); err != nil {
+		t.Fatalf("leave the publication unapplied: %v", err)
+	}
+	runner.RunOnce(ctx)
+
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT e.url, d.payload->'data'
+		FROM webhook_deliveries d
+			JOIN tenant_webhook_endpoints e ON e.id = d.endpoint_id
+		WHERE d.tenant_id = $1 AND d.event_type = 'episode.published'
+		ORDER BY d.payload->'data'->>'episode_public_id'
+	`, tenant.ID)
+	if err != nil {
+		t.Fatalf("list the deliveries: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var got []tenantwebhooks.Episode
+	for rows.Next() {
+		var (
+			url  string
+			data []byte
+		)
+		if err := rows.Scan(&url, &data); err != nil {
+			t.Fatalf("scan a delivery: %v", err)
+		}
+		if url != "https://cms.example.com/publira" {
+			t.Errorf("delivery to %s, want only the subscribed endpoint", url)
+		}
+		var episode tenantwebhooks.Episode
+		if err := json.Unmarshal(data, &episode); err != nil {
+			t.Fatalf("decode a delivery's data %s: %v", data, err)
+		}
+		got = append(got, episode)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("list the deliveries: %v", err)
+	}
+	want := []tenantwebhooks.Episode{
+		{EpisodePublicID: first.PublicID, SeriesPublicID: series.PublicID, Title: "First", PublishedAt: listingPublishedAt(t, ctx, pg, first.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
+		{EpisodePublicID: second.PublicID, SeriesPublicID: series.PublicID, Title: "Second", PublishedAt: listingPublishedAt(t, ctx, pg, second.ID).UTC().Format(time.RFC3339), Published: tenantwebhooks.PublishedSeries},
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("deliveries = %+v, want %+v", got, want)
 	}
 }

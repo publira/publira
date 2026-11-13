@@ -15,9 +15,14 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 type stubQueries struct {
+	// The tenant has no webhook endpoint, so owing the webhooks reads nothing
+	// past the endpoints.
+	tenantwebhooks.Queries
+
 	due     []dbmodels.ListSeriesPublicationsDueRow
 	dueErr  error
 	marked  []uuid.UUID
@@ -47,6 +52,11 @@ func (s *stubQueries) InsertOutboxEvent(_ context.Context, arg dbmodels.InsertOu
 	s.calls = append(s.calls, arg.EventType)
 	s.outbox = append(s.outbox, arg)
 	return dbmodels.OutboxEvent{}, nil
+}
+
+func (s *stubQueries) ListTenantWebhookEndpointsForEvent(context.Context, dbmodels.ListTenantWebhookEndpointsForEventParams) ([]uuid.UUID, error) {
+	s.calls = append(s.calls, "webhooks")
+	return nil, nil
 }
 
 func (s *stubQueries) ListSeriesPublicationsDue(context.Context) ([]dbmodels.ListSeriesPublicationsDueRow, error) {
@@ -133,8 +143,9 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEverySeries(t *testing.T) {
 
 // The episodes added while the series was hidden are dated and their
 // announcements queued before what they owed is cleared, and all of it before
-// the drop is recorded, so the drop carries the new dates; the series' search
-// sync is queued for them; and the publication is marked applied last.
+// the drop is recorded, so the drop carries the new dates; the webhooks and the
+// series' search sync are owed after them, since both carry them; and the
+// publication is marked applied last.
 func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
@@ -151,7 +162,7 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) 
 
 	New(queries, reval, quietLogger()).RunOnce(context.Background())
 
-	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, "clear", outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
+	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, "clear", "webhooks", outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
 	if !slices.Equal(queries.calls, wantCalls) {
 		t.Fatalf("statements = %v, want %v", queries.calls, wantCalls)
 	}
