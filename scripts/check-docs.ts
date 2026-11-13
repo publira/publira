@@ -1671,23 +1671,30 @@ const checkQuotes = async (
 ): Promise<Finding[]> => {
   const blocks = new Map<string, Promise<Set<string> | null>>();
 
+  const readCodeBlocks = async (page: string): Promise<Set<string> | null> => {
+    let source: string;
+
+    try {
+      source = await readFile(path.join(repository, page), "utf-8");
+    } catch {
+      return null;
+    }
+
+    const values = new Set<string>();
+    visit(parseMarkdown(source), (node) => {
+      if (node.type === "code") {
+        values.add(node.value);
+      }
+    });
+
+    return values;
+  };
+
   const codeBlocks = (page: string): Promise<Set<string> | null> => {
     let found = blocks.get(page);
 
     if (!found) {
-      found = readFile(path.join(repository, page), "utf-8").then(
-        (source) => {
-          const values = new Set<string>();
-          visit(parseMarkdown(source), (node) => {
-            if (node.type === "code") {
-              values.add(node.value);
-            }
-          });
-
-          return values;
-        },
-        () => null
-      );
+      found = readCodeBlocks(page);
       blocks.set(page, found);
     }
 
