@@ -4149,7 +4149,7 @@
           "episode_published": "章節發布",
           "episode_published_description": "章節按預定時間發布，或立即發布。",
           "episode_unpublished": "章節取消發布",
-          "episode_unpublished_description": "已發布的章節被改回草稿或改為之後的時間，或其系列變為未發布。",
+          "episode_unpublished_description": "已發布的章節被改回草稿、改為之後的時間或被刪除，或其系列變為未發布。",
           "comment_posted": "留言公開",
           "comment_posted_description": "讀者的留言立即或經審核後在章節中公開。",
           "contact_message_received": "收到諮詢",

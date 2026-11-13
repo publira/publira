@@ -539,6 +539,111 @@ func TestDBEpisodeUnpublishedIsOwedOncePerWithdrawal(t *testing.T) {
 	}
 }
 
+// Deleting a published episode owes episode.unpublished to the endpoints that
+// subscribed to it, once, naming the episode as deleted, and it is read before
+// the episode's rows are gone. Deleting a draft or a scheduled episode owes
+// nothing, since neither was on the site. An endpoint that did not subscribe
+// to it is owed none.
+func TestDBEpisodeUnpublishedIsOwedWhenAPublishedEpisodeIsDeleted(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "HOOKTENANT6", "hooks-delete.example.com", "Hook Delete Tenant", "HOOKADMIN06", "admin@hooks-delete.example.com")
+	ctx := testutil.WithBearer(context.Background(), admin.token())
+	for _, endpoint := range []struct {
+		url    string
+		events []publiraadminv1.WebhookEventType
+	}{
+		{url: "https://cms.example.com/publira", events: []publiraadminv1.WebhookEventType{publiraadminv1.WebhookEventType_WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED}},
+		{url: "https://crm.example.com/publira", events: purchaseEvents},
+	} {
+		if _, err := env.webhookClient().CreateWebhookEndpoint(ctx, &publiraadminv1.CreateWebhookEndpointRequest{
+			Tenant:     admin.tenantContext(),
+			Url:        endpoint.url,
+			EventTypes: endpoint.events,
+			Enabled:    true,
+		}); err != nil {
+			t.Fatalf("CreateWebhookEndpoint %s: %v", endpoint.url, err)
+		}
+	}
+
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, admin, "Deleted Episodes Series")
+	seriesID := env.seriesID(t, seriesPublicID)
+	createEpisode := func(title, scheduledAt string) *publirattypesv1.Episode {
+		t.Helper()
+		res, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+			Tenant:      admin.tenantContext(),
+			SeriesId:    seriesID,
+			Title:       title,
+			ScheduledAt: scheduledAt,
+		})
+		if err != nil {
+			t.Fatalf("CreateEpisode %q: %v", title, err)
+		}
+		return res.Episode
+	}
+	deleteEpisode := func(episode *publirattypesv1.Episode) {
+		t.Helper()
+		if _, err := client.DeleteEpisode(ctx, &publiraadminv1.DeleteEpisodeRequest{
+			Tenant:    admin.tenantContext(),
+			EpisodeId: episode.Id,
+		}); err != nil {
+			t.Fatalf("DeleteEpisode %s: %v", episode.PublicId, err)
+		}
+	}
+	type delivered struct {
+		url  string
+		data tenantwebhooks.EpisodeWithdrawal
+	}
+	deliveries := func() []delivered {
+		t.Helper()
+		rows, err := env.PG.DB.QueryContext(context.Background(), `
+			SELECT e.url, d.payload->'data'
+			FROM webhook_deliveries d
+				JOIN tenant_webhook_endpoints e ON e.id = d.endpoint_id
+			WHERE d.tenant_id = $1 AND d.event_type = 'episode.unpublished'
+			ORDER BY d.created_at
+		`, admin.Tenant.ID)
+		if err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		defer func() { _ = rows.Close() }()
+		var got []delivered
+		for rows.Next() {
+			var row delivered
+			var data []byte
+			if err := rows.Scan(&row.url, &data); err != nil {
+				t.Fatalf("scan a delivery: %v", err)
+			}
+			if err := json.Unmarshal(data, &row.data); err != nil {
+				t.Fatalf("decode a delivery's data %s: %v", data, err)
+			}
+			got = append(got, row)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("list the deliveries: %v", err)
+		}
+		return got
+	}
+
+	deleteEpisode(createEpisode("Draft", ""))
+	deleteEpisode(createEpisode("Scheduled", "2999-01-01T00:00:00Z"))
+	if got := deliveries(); len(got) != 0 {
+		t.Fatalf("deliveries after deleting a draft and a scheduled episode = %+v, want none", got)
+	}
+
+	// The series is not public, which a published episode's deletion does not
+	// wait on, as clearing its schedule does not.
+	published := createEpisode("Published", "2000-01-01T00:00:00Z")
+	deleteEpisode(published)
+	got := deliveries()
+	want := tenantwebhooks.EpisodeWithdrawal{EpisodePublicID: published.PublicId, SeriesPublicID: seriesPublicID, Withdrawn: tenantwebhooks.WithdrawnDeleted}
+	if len(got) != 1 || got[0].url != "https://cms.example.com/publira" || got[0].data != want {
+		t.Fatalf("deliveries after deleting the published episode = %+v, want one %+v to the subscribed endpoint", got, want)
+	}
+}
+
 // A comment approved owes comment.posted to the endpoints that subscribed to
 // it, once: a refused second approval owes nothing, nor does restoring it after
 // staff hid it, and a comment hidden or withdrawn while it waited for approval

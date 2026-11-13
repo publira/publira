@@ -646,11 +646,14 @@ export enum WebhookEventType {
 
   /**
    * "episode.unpublished": a published episode is taken off the site: its
-   * publish schedule is cleared or moved to a time still ahead, which sends
-   * one event whether or not its series is public, or its series is hidden,
-   * which sends one for each episode published in it. Each withdrawal is an
-   * event of its own. `data` names the episode and its series, and says in
-   * `withdrawn`, "episode" or "series", which of the two was taken off.
+   * publish schedule is cleared or moved to a time still ahead, or it is
+   * deleted, each of which sends one event whether or not its series is
+   * public, or its series is hidden, which sends one for each episode
+   * published in it. A draft or a scheduled episode deleted sends none. Each
+   * withdrawal is an event of its own. `data` names the episode and its
+   * series, and says in `withdrawn` how it left: "episode" when the episode
+   * itself was taken off, "series" when its series was, and "deleted" when
+   * the episode was deleted.
    *
    * @generated from enum value: WEBHOOK_EVENT_TYPE_EPISODE_UNPUBLISHED = 8;
    */
