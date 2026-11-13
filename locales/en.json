@@ -1366,6 +1366,7 @@
       "delete": {
         "title": "Deleting this author",
         "description": "Deletes this author for good. An author credited on a series or an episode, on a royalty statement, or linked to a reader account cannot be deleted.",
+        "section_error": "Could not display the deletion of this author",
         "action": "Delete this author",
         "confirm_title": "Delete “{$name}”?",
         "confirm_description": "Their author icon image and the readers' follows of them are deleted with them, and their page leaves the site and the app at once. This cannot be undone.",

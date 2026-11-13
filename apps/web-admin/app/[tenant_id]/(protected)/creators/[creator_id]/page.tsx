@@ -287,11 +287,19 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
             <CreatorAccountsSection params={params} />
           </Suspense>
         </SectionErrorBoundary>
-        <Suspense fallback={null}>
-          <TenantAdminOnly>
-            <CreatorDeleteSection params={params} />
-          </TenantAdminOnly>
-        </Suspense>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.creators.delete.section_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={null}>
+            <TenantAdminOnly>
+              <CreatorDeleteSection params={params} />
+            </TenantAdminOnly>
+          </Suspense>
+        </SectionErrorBoundary>
       </ConsoleSection.Stack>
     </ConsolePage.Content>
   </ConsolePage.Root>
