@@ -51,6 +51,7 @@ export const auditActions = [
   "genre_eye_catch_aspect_image_uploaded",
   "page_created",
   "page_updated",
+  "page_deleted",
   "page_unpublished",
   "page_version_created",
   "page_version_published",

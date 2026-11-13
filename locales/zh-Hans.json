@@ -541,6 +541,7 @@
         "genre_eye_catch_aspect_image_uploaded": "上传了题材封面图",
         "page_created": "创建了页面",
         "page_updated": "更新了页面",
+        "page_deleted": "删除了页面",
         "page_unpublished": "取消发布了页面",
         "page_version_created": "创建了页面版本",
         "page_version_published": "发布了页面版本",

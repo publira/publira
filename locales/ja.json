@@ -541,6 +541,7 @@
         "genre_eye_catch_aspect_image_uploaded": "ジャンルのアイキャッチ画像アップロード",
         "page_created": "ページ作成",
         "page_updated": "ページ更新",
+        "page_deleted": "ページ削除",
         "page_unpublished": "ページの公開取り下げ",
         "page_version_created": "ページのバージョン作成",
         "page_version_published": "ページのバージョン公開",

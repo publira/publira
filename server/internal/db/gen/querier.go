@@ -675,6 +675,9 @@ type Querier interface {
 	// to the label by a foreign key, so it would otherwise stay behind naming
 	// nothing.
 	DeleteLabelPromotionCodes(ctx context.Context, arg DeleteLabelPromotionCodesParams) error
+	// The page, and through the foreign keys that cascade from it its
+	// translations and their versions.
+	DeletePageByIDForTenant(ctx context.Context, arg DeletePageByIDForTenantParams) error
 	// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
 	DeletePageTranslation(ctx context.Context, arg DeletePageTranslationParams) (PageTranslation, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -1221,6 +1224,13 @@ type Querier interface {
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	// The page with the translation page_translation_for picks for the locale.
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (GetPageByIDForTenantRow, error)
+	// The first of the reasons the page has to be kept, in the order the refusal
+	// names them, or '' when there is none:
+	//
+	//   published   a translation of it with a published version, in any locale
+	//   legal_page  the tenant names it as its terms of service or privacy policy
+	//   agreed_to   a reader's agreement to one of its versions
+	GetPageDeletionBlocker(ctx context.Context, arg GetPageDeletionBlockerParams) (string, error)
 	// Whether the storefront serves the page, which it does while any translation
 	// of it in a locale the tenant offers is published.
 	GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error)
@@ -3857,8 +3867,30 @@ type Querier interface {
 	// new promotion code makes of its label, all of which wait for this one and
 	// find the label gone once it commits.
 	LockLabelForDeletion(ctx context.Context, arg LockLabelForDeletionParams) (LockLabelForDeletionRow, error)
+	// Deleting a page, which the console allows only while no reader can reach it
+	// and none agreed to it: no translation of it published, no legal-page setting
+	// naming it, and no reader's agreement to one of its versions. Its
+	// translations and their versions go with it, in the transaction that deletes
+	// it.
+	//
+	// The statements run in the order they appear here. The locks come first and
+	// the check after them, in a statement of its own: READ COMMITTED freezes a
+	// statement's snapshot at its start, so a check made inside the statement that
+	// waited for a lock would still answer from before the wait.
+	// The page, with the slug and the title the audit entry keeps once no row is
+	// left to join, the title in the translation for the tenant's default locale.
+	// The row lock keeps a version or a translation from being added, and the page
+	// from being named as a legal page, while it is deleted: each of those writes
+	// takes a key share lock on the page row through its foreign key, which waits
+	// for this one and fails once it commits.
+	LockPageForDeletion(ctx context.Context, arg LockPageForDeletionParams) (LockPageForDeletionRow, error)
 	// Serializes the writers that must not leave a page without a translation.
 	LockPageForTenant(ctx context.Context, arg LockPageForTenantParams) (uuid.UUID, error)
+	// Every version of the page. A reader's agreement takes a key share lock on
+	// the version it names through its foreign key, and publishing a version
+	// updates its row, so either one in progress is waited for here and is seen by
+	// the check, and either one that arrives later waits and then fails.
+	LockPageVersionsForDeletion(ctx context.Context, arg LockPageVersionsForDeletionParams) error
 	// Reads the settings row for update. A save takes this lock first, so the
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.

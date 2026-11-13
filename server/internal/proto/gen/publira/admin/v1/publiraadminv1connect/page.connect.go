@@ -59,6 +59,9 @@ const (
 	// AdminPagesServiceDeletePageTranslationProcedure is the procedure name of the AdminPagesService's
 	// DeletePageTranslation RPC.
 	AdminPagesServiceDeletePageTranslationProcedure = "/publira.admin.v1.AdminPagesService/DeletePageTranslation"
+	// AdminPagesServiceDeletePageProcedure is the procedure name of the AdminPagesService's DeletePage
+	// RPC.
+	AdminPagesServiceDeletePageProcedure = "/publira.admin.v1.AdminPagesService/DeletePage"
 )
 
 var (
@@ -146,6 +149,13 @@ var (
 			Procedure:  AdminPagesServiceDeletePageTranslationProcedure,
 		}
 	})
+	adminPagesServiceDeletePageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("DeletePage"),
+			Procedure:  AdminPagesServiceDeletePageProcedure,
+		}
+	})
 )
 
 // AdminPagesServiceClient is a client for the publira.admin.v1.AdminPagesService service.
@@ -180,6 +190,8 @@ type AdminPagesServiceClient interface {
 	//
 	// Minimum role: tenant_editor.
 	DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error)
+	// Minimum role: tenant_admin.
+	DeletePage(context.Context, *v1.DeletePageRequest) (*v1.DeletePageResponse, error)
 }
 
 // NewAdminPagesServiceClient constructs a client for the publira.admin.v1.AdminPagesService
@@ -220,6 +232,8 @@ type AdminPagesServiceHandler interface {
 	//
 	// Minimum role: tenant_editor.
 	DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error)
+	// Minimum role: tenant_admin.
+	DeletePage(context.Context, *v1.DeletePageRequest) (*v1.DeletePageResponse, error)
 }
 
 // RegisterAdminPagesServiceHandler registers svc as the publira.admin.v1.AdminPagesService
@@ -239,6 +253,7 @@ func RegisterAdminPagesServiceHandler(server *connect.Server, svc AdminPagesServ
 		connect.Method{Spec: adminPagesServiceCreatePageTranslationSpec(), Handler: adapter.createPageTranslation},
 		connect.Method{Spec: adminPagesServiceListPageTranslationsSpec(), Handler: adapter.listPageTranslations},
 		connect.Method{Spec: adminPagesServiceDeletePageTranslationSpec(), Handler: adapter.deletePageTranslation},
+		connect.Method{Spec: adminPagesServiceDeletePageSpec(), Handler: adapter.deletePage},
 	)
 }
 
@@ -291,6 +306,10 @@ func (UnimplementedAdminPagesServiceHandler) ListPageTranslations(context.Contex
 
 func (UnimplementedAdminPagesServiceHandler) DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.DeletePageTranslation is not implemented")
+}
+
+func (UnimplementedAdminPagesServiceHandler) DeletePage(context.Context, *v1.DeletePageRequest) (*v1.DeletePageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.DeletePage is not implemented")
 }
 
 type adminPagesServiceClient struct {
@@ -388,6 +407,14 @@ func (c *adminPagesServiceClient) ListPageTranslations(ctx context.Context, req 
 func (c *adminPagesServiceClient) DeletePageTranslation(ctx context.Context, req *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error) {
 	var res v1.DeletePageTranslationResponse
 	if err := c.client.CallUnary(ctx, adminPagesServiceDeletePageTranslationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) DeletePage(ctx context.Context, req *v1.DeletePageRequest) (*v1.DeletePageResponse, error) {
+	var res v1.DeletePageResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceDeletePageSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -533,6 +560,18 @@ func (h adminPagesServiceHandler) deletePageTranslation(ctx context.Context, _ c
 		return err
 	}
 	res, err := h.svc.DeletePageTranslation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) deletePage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeletePageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeletePage(ctx, &req)
 	if err != nil {
 		return err
 	}

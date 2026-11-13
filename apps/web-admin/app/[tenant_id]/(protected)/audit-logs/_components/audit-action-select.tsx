@@ -235,6 +235,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "page_updated",
             },
             {
+              label: t("admin.audit.actions.page_deleted"),
+              value: "page_deleted",
+            },
+            {
               label: t("admin.audit.actions.page_unpublished"),
               value: "page_unpublished",
             },
