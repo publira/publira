@@ -1,3 +1,5 @@
+import type { CreatorDeletionReference } from "#lib/creator";
+
 export interface CreatorListItem {
   /** The primary key an edit addresses the creator by. */
   id: string;
@@ -25,3 +27,14 @@ export type CreatorActionState =
       creator: CreatorListItem;
     }
   | null;
+
+/**
+ * A deletion the API refused, with the screen to clear the reference from
+ * when there is one. A deletion that goes through leaves the screen instead of
+ * answering.
+ */
+export type CreatorDeleteActionState = {
+  ok: false;
+  message: string;
+  reference?: CreatorDeletionReference;
+} | null;

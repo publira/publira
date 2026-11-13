@@ -1362,6 +1362,29 @@
           "reader_required": "Select a reader account.",
           "creator_missing": "The author ID is missing."
         }
+      },
+      "delete": {
+        "title": "Deleting this author",
+        "description": "Deletes this author for good. An author credited on a series or an episode, on a royalty statement, or linked to a reader account cannot be deleted.",
+        "section_error": "Could not display the deletion of this author",
+        "action": "Delete this author",
+        "confirm_title": "Delete “{$name}”?",
+        "confirm_description": "Their author icon image and the readers' follows of them are deleted with them, and their page leaves the site and the app at once. This cannot be undone.",
+        "confirm_kept": "An author credited on a series or an episode, on a royalty statement, or linked to a reader account is not deleted, and the reason is shown here.",
+        "name_label": "Enter the author's name to confirm",
+        "confirm_action": "Delete author",
+        "pending": "Deleting...",
+        "deleted": "“{$name}” was deleted.",
+        "failed": "Could not delete the author. Please try again later.",
+        "not_found": "This author has already been deleted. Go back to the author list.",
+        "name_mismatch": "The name entered is not this author's name.",
+        "view_series": "View series",
+        "refused": {
+          "credited": "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode that credits them first.",
+          "on_royalty_statement": "This author cannot be deleted: a closed royalty statement has a line for them, and a statement is kept as it was closed.",
+          "has_linked_account": "This author cannot be deleted while a reader account is linked to them. Unlink each account under Reader accounts on this page first.",
+          "referenced": "This author cannot be deleted: a record that has to be kept refers to them."
+        }
       }
     },
     "creator_roles": {

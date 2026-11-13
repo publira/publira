@@ -9,9 +9,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import {
   createCreator,
+  deleteCreator,
+  getCreator,
   linkCreatorAccount,
   unlinkCreatorAccount,
   updateCreator,
@@ -28,7 +30,11 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
-import type { CreatorActionState, CreatorMutationMode } from "../creator-types";
+import type {
+  CreatorActionState,
+  CreatorDeleteActionState,
+  CreatorMutationMode,
+} from "../creator-types";
 
 const creatorCommonSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -188,6 +194,89 @@ export const updateCreatorAction = async (
     mode: "update",
     ok: true,
   };
+};
+
+const deleteCreatorSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    id: requiredRecordId(t("admin.creators.validation.id_missing")),
+    // Compared as it was typed, as the dialog compares it.
+    nameConfirmation: z.string().catch(""),
+    publicId: requiredTrimmedString(t("admin.creators.validation.id_missing")),
+    tenantId: requiredTrimmedString(
+      t("admin.creators.validation.tenant_missing")
+    ),
+  });
+};
+
+/**
+ * Deletes the Author once the name typed into the dialog is the one they
+ * have, then leaves for the Author list. The list names them in its toast from
+ * the query string, since no Author is left to read it from.
+ */
+export const deleteCreatorAction = async (
+  _prevState: CreatorDeleteActionState,
+  formData: FormData
+): Promise<CreatorDeleteActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteCreatorSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      id: { kind: "value", name: "creator_id" },
+      nameConfirmation: { kind: "value", name: "name_confirmation" },
+      publicId: { kind: "value", name: "creator_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { id, nameConfirmation, publicId, tenantId } = parsed.data;
+  await verifyAdminSession(tenantId);
+
+  const [t, target] = await Promise.all([
+    getMessagesFor(locale),
+    getCreator({ publicId, tenantId }, locale),
+  ]);
+
+  if (!target.ok) {
+    return {
+      message: target.notFound
+        ? t("admin.creators.delete.not_found")
+        : target.message,
+      ok: false,
+    };
+  }
+
+  if (target.creator.id !== id) {
+    return { message: t("admin.creators.validation.id_missing"), ok: false };
+  }
+
+  const { name } = target.creator;
+
+  if (nameConfirmation !== name) {
+    return { message: t("admin.creators.delete.name_mismatch"), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteCreator({ id, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false, reference: result.reference };
+  }
+
+  updateTag(`creators-${tenantId}`);
+  updateTag(`creator-${tenantId}-${publicId}`);
+
+  redirect(
+    `/creators?${new URLSearchParams({ deleted: "1", deleted_name: name }).toString()}`
+  );
 };
 
 const creatorAccountSchema = async (locale: Locale) => {

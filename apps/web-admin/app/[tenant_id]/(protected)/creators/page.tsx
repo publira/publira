@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
@@ -90,6 +91,11 @@ const CreatorPage = ({ searchParams }: CreatorPageProps) => (
       </Suspense>
     </ConsolePage.Header>
     <ConsolePage.Content>
+      <FlashToast
+        keyName="deleted"
+        message="admin.creators.delete.deleted"
+        valueParams={{ name: "deleted_name" }}
+      />
       <Suspense fallback={<Table.Skeleton />}>
         <CreatorManagerData searchParams={searchParams} />
       </Suspense>

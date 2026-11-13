@@ -2,9 +2,12 @@ import type { Creator, CreatorAccount } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorReason } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -29,6 +32,7 @@ import {
 } from "./cursor-page";
 import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import { mapReader } from "./reader";
 import { getAccessToken } from "./session";
 
@@ -66,6 +70,16 @@ export type CreateCreatorResult =
 export type UpdateCreatorResult =
   | { ok: true; creator: CreatorItem }
   | { ok: false; message: string };
+
+/**
+ * Where the console sends a staff member to clear what keeps an Author from
+ * being deleted, for a refusal it can point to.
+ */
+export type CreatorDeletionReference = "series";
+
+export type DeleteCreatorResult =
+  | { ok: true }
+  | { ok: false; message: string; reference?: CreatorDeletionReference };
 
 /**
  * `notFound: true` is the "there is nothing to show here" failure the edit
@@ -595,6 +609,89 @@ export const unlinkCreatorAccount = async (
         t("admin.creators.accounts.unlink_failed"),
         { locale }
       ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * What `DeleteCreator` refuses an Author for, in the order the API checks
+ * them, with the sentence each is worded in and, where there is one, the
+ * screen to clear it from. No list names an Author's credits, so a credit
+ * points to the series list; a linked account is cleared under **Reader
+ * accounts** on the Author's own screen, and a royalty statement line is never
+ * cleared.
+ */
+const CREATOR_DELETION_REFUSALS: readonly {
+  message: AdminMessageKey;
+  reason: RpcErrorReason;
+  reference?: CreatorDeletionReference;
+}[] = [
+  {
+    message: "admin.creators.delete.refused.credited",
+    reason: RPC_ERROR_REASON.creatorCredited,
+    reference: "series",
+  },
+  {
+    message: "admin.creators.delete.refused.on_royalty_statement",
+    reason: RPC_ERROR_REASON.creatorOnRoyaltyStatement,
+  },
+  {
+    message: "admin.creators.delete.refused.has_linked_account",
+    reason: RPC_ERROR_REASON.creatorHasLinkedAccount,
+  },
+];
+
+/**
+ * Deletes an Author that nothing refers to. Tenant admins only. A refusal
+ * names what refers to them from the ErrorInfo reason rather than the server's
+ * English message, and one with no reason this console knows is still worded
+ * as a refusal rather than a failure.
+ */
+export const deleteCreator = async (
+  input: { tenantId: string; id: string },
+  locale: Locale
+): Promise<DeleteCreatorResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.creator.deleteCreator(
+      { creatorId: input.id, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = CREATOR_DELETION_REFUSALS.find(({ reason }) =>
+      rpcErrorHasReason(error, reason)
+    );
+
+    if (refusal) {
+      return {
+        message: t(refusal.message),
+        ok: false,
+        reference: refusal.reference,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(error, t("admin.creators.delete.failed"), {
+        locale,
+        overrides: {
+          "not-found": t("admin.creators.delete.not_found"),
+          precondition: t("admin.creators.delete.refused.referenced"),
+        },
+      }),
       ok: false,
     };
   }

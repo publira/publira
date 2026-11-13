@@ -992,6 +992,39 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      // The dialog is left with the name typed and never submitted, so the
+      // seed Author stays.
+      test("the dialog that deletes an Author, with their name typed", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/creators/${SEED_CATALOG.creatorPublicId}`
+        );
+        await page
+          .getByRole("button", { name: t("admin.creators.delete.action") })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+
+        await dialog.getByRole("textbox").fill(SEED_CATALOG.creatorName);
+        await expect(
+          dialog.getByRole("button", {
+            name: t("admin.creators.delete.confirm_action"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "console/catalog/authors",
+          subject: "delete",
+        });
+      });
+
       test("the Author roles", async ({ consoleSessions, page }) => {
         await openScreen(page, consoleSessions, locale, "/creator-roles");
 
