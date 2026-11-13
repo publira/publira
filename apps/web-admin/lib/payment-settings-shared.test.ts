@@ -2,9 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   emptyTenantPaymentSettings,
+  paymentProviderCurrencies,
+  paymentProviderStatus,
   paymentSettingsStatus,
+  subscriptionPlanProvider,
 } from "./payment-settings-shared";
-import type { TenantPaymentSettings } from "./payment-settings-shared";
+import type {
+  PaymentProvider,
+  TenantPaymentProviderSettings,
+  TenantPaymentProviders,
+  TenantPaymentSettings,
+} from "./payment-settings-shared";
 
 const settings = (
   overrides: Partial<TenantPaymentSettings>
@@ -75,5 +83,134 @@ describe("paymentSettingsStatus", () => {
 
   it("reports it as unconfigured when there is nothing", () => {
     expect(paymentSettingsStatus(emptyTenantPaymentSettings)).toBe("unset");
+  });
+});
+
+const provider = (
+  id: string,
+  currencies: string[],
+  subscriptions: boolean
+): PaymentProvider => ({
+  currencies,
+  displayName: id,
+  fields: [],
+  id,
+  subscriptions,
+  webhookPath: `/api/v1/webhook/payment/${id}`,
+});
+
+const stripe = provider("stripe", ["JPY", "USD"], true);
+const payjp = provider("payjp", ["JPY"], false);
+const examplePay = provider("examplepay", ["USD", "JPY"], true);
+
+const held = (
+  id: string,
+  overrides: Partial<TenantPaymentProviderSettings> = {}
+): TenantPaymentProviderSettings => ({
+  enabled: true,
+  fields: [],
+  provider: id,
+  ready: true,
+  retired: false,
+  ...overrides,
+});
+
+const holding = (
+  providers: TenantPaymentProviderSettings[],
+  overrides: Partial<TenantPaymentProviders> = {}
+): TenantPaymentProviders => ({
+  currency: "JPY",
+  currencyLocked: false,
+  providers,
+  ...overrides,
+});
+
+describe("paymentProviderStatus", () => {
+  it("puts a removed provider before whatever else it is", () => {
+    expect(paymentProviderStatus(held("stripe", { retired: true }))).toBe(
+      "removed"
+    );
+  });
+
+  it("tells a ready, an incomplete, and a disabled provider apart", () => {
+    expect(paymentProviderStatus(held("stripe"))).toBe("ready");
+    expect(paymentProviderStatus(held("stripe", { ready: false }))).toBe(
+      "incomplete"
+    );
+    expect(
+      paymentProviderStatus(held("stripe", { enabled: false, ready: false }))
+    ).toBe("disabled");
+  });
+});
+
+describe("paymentProviderCurrencies", () => {
+  const registered = [stripe, payjp, examplePay];
+
+  it("offers what the provider charges in while it is the only one", () => {
+    expect(
+      paymentProviderCurrencies(stripe, holding([held("stripe")]), registered)
+    ).toEqual(["JPY", "USD"]);
+  });
+
+  it("offers only what every other provider the tenant sells through charges in", () => {
+    expect(
+      paymentProviderCurrencies(
+        stripe,
+        holding([held("stripe"), held("payjp", { ready: false })]),
+        registered
+      )
+    ).toEqual(["JPY"]);
+  });
+
+  it("holds a removed provider to no currency", () => {
+    expect(
+      paymentProviderCurrencies(
+        stripe,
+        holding([held("payjp", { retired: true })]),
+        registered
+      )
+    ).toEqual(["JPY", "USD"]);
+  });
+
+  it("offers the tenant's currency alone once it is locked", () => {
+    expect(
+      paymentProviderCurrencies(
+        examplePay,
+        holding([held("stripe")], { currency: "USD", currencyLocked: true }),
+        registered
+      )
+    ).toEqual(["USD"]);
+    expect(
+      paymentProviderCurrencies(
+        payjp,
+        holding([held("stripe")], { currency: "USD", currencyLocked: true }),
+        registered
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("subscriptionPlanProvider", () => {
+  const registered = [stripe, payjp, examplePay];
+
+  it("is the first ready provider that takes recurring payments", () => {
+    expect(
+      subscriptionPlanProvider(
+        holding([held("payjp"), held("examplepay"), held("stripe")]),
+        registered
+      )
+    ).toBe("examplepay");
+  });
+
+  it("passes over one that is not ready or was removed", () => {
+    expect(
+      subscriptionPlanProvider(
+        holding([
+          held("examplepay", { ready: false }),
+          held("stripe", { retired: true }),
+        ]),
+        registered
+      )
+    ).toBeUndefined();
   });
 });

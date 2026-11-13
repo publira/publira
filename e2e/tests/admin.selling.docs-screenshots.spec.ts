@@ -4,6 +4,7 @@ import { expect } from "@playwright/test";
 import { selectOption } from "../src/admin";
 import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
+import { applyScenarioSql } from "../src/db";
 import {
   DOCS_LOCALES,
   docsField,
@@ -23,6 +24,10 @@ import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
 import {
+  PAYMENT_SETTINGS_ADMIN,
+  PAYMENT_SETTINGS_SCENARIO,
+} from "../src/scenarios/payment-settings";
+import {
   PROMOTION_CODES,
   PROMOTION_CODES_ADMIN,
   PROMOTION_CODES_READER,
@@ -33,6 +38,7 @@ import {
   WEB_ADMIN_ANALYTICS_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
+  WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL,
   WEB_ADMIN_PROMOTION_CODES_BASE_URL,
   WEB_ADMIN_ROYALTIES_BASE_URL,
   WEB_ADMIN_SUBSCRIPTIONS_BASE_URL,
@@ -52,6 +58,8 @@ import {
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
+ * The providers a tenant holds are photographed on the tenant of
+ * `db/seeds/scenarios/330_payment_settings.sql`, which no other shot reads.
  * The subscription plans are photographed on the subscriptions tenant of
  * `db/seeds/scenarios/670_storefront_subscriptions.sql`, beside the two plans
  * `680_docs_subscription_plans.sql` adds to it. The cohorts are photographed
@@ -564,3 +572,120 @@ for (const locale of DOCS_LOCALES) {
     });
   });
 }
+
+/** A provider's credentials, as `addProvider` enters them. */
+interface ProviderCredentials {
+  /** The provider's own name, which no catalog translates. */
+  name: string;
+  /**
+   * The catalog key of the label of its secret key and of its webhook secret,
+   * each with the value entered.
+   */
+  fields: readonly [
+    readonly [key: string, value: string],
+    readonly [key: string, value: string],
+  ];
+}
+
+const STRIPE_CREDENTIALS: ProviderCredentials = {
+  fields: [
+    ["admin.settings.payment.fields.stripe.secret_key", "sk_test_docs1234"],
+    ["admin.settings.payment.fields.stripe.webhook_secret", "whsec_docs1234"],
+  ],
+  name: "Stripe",
+};
+
+const PAYJP_CREDENTIALS: ProviderCredentials = {
+  fields: [
+    ["admin.settings.payment.fields.payjp.secret_key", "sk_test_docs5678"],
+    ["admin.settings.payment.fields.payjp.webhook_token", "whook_docs5678"],
+  ],
+  name: "PAY.JP",
+};
+
+/**
+ * Adding a provider saves it on the tenant of
+ * `db/seeds/scenarios/330_payment_settings.sql`, so every locale's copy runs
+ * in order on one worker, and starts the tenant over with no provider.
+ */
+test.describe("web-admin payment providers documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    /** Adds `provider` through the form, turned on, with its credentials. */
+    const addProvider = async (
+      page: Page,
+      provider: ProviderCredentials
+    ): Promise<void> => {
+      const form = page.getByRole("region", {
+        exact: true,
+        name: t("admin.settings.payment.add_title"),
+      });
+
+      await selectOption(
+        page,
+        form.getByRole("combobox", {
+          name: t("admin.settings.payment.provider"),
+        }),
+        provider.name
+      );
+      await form
+        .getByRole("checkbox", { name: t("admin.settings.payment.enabled") })
+        .click();
+
+      // One after the other: a fill moves the focus the other one types into.
+      const [secretKey, webhookSecret] = provider.fields;
+      await form
+        .getByLabel(docsLabelPattern(locale, secretKey[0]))
+        .fill(secretKey[1]);
+      await form
+        .getByLabel(docsLabelPattern(locale, webhookSecret[0]))
+        .fill(webhookSecret[1]);
+
+      await form
+        .getByRole("button", {
+          exact: true,
+          name: t("admin.settings.payment.add_submit"),
+        })
+        .click();
+      await expect(
+        page.getByRole("region", { exact: true, name: provider.name })
+      ).toBeVisible();
+    };
+
+    test(`the providers a tenant holds, in ${locale}`, async ({
+      consoleSessions,
+      page,
+    }) => {
+      applyScenarioSql(PAYMENT_SETTINGS_SCENARIO);
+      await consoleSessions.signIn(
+        page,
+        PAYMENT_SETTINGS_ADMIN,
+        WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL
+      );
+      await setDocsLocale(page, WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL, locale);
+      await page.goto(
+        `${WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL}/integrations/payment`
+      );
+
+      await addProvider(page, STRIPE_CREDENTIALS);
+      await addProvider(page, PAYJP_CREDENTIALS);
+      // Again, without the toasts the two additions raised.
+      await page.reload();
+
+      const settings = docsSection(page, t("admin.settings.payment.title"));
+      await expect(
+        settings.getByRole("region", { exact: true, name: "PAY.JP" })
+      ).toBeVisible();
+
+      await expectDocsScreenshot(page, {
+        element: settings,
+        locale,
+        page: "console/selling-episodes",
+        subject: "providers",
+      });
+    });
+  }
+});

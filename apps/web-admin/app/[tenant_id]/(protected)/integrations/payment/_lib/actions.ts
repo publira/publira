@@ -11,6 +11,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   checkboxOnFormSchema,
+  flagOneFormSchema,
   isFormText,
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
@@ -19,9 +20,12 @@ import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
 import {
   getPaymentProvider,
+  removeTenantPaymentProvider,
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
+  upsertTenantPaymentProvider,
 } from "#lib/payment-settings";
+import type { UpdateTenantPaymentSettingsInput } from "#lib/payment-settings";
 import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
 import { getTenantCurrency, tenantSiteCacheTag } from "#lib/public-api";
 import {
@@ -48,6 +52,7 @@ import {
 import type { TipAmountsResult } from "#lib/tenant-tip-settings-shared";
 
 import type {
+  TenantPaymentProviderRemoveFormState,
   TenantPaymentSettingsFormState,
   TenantPurchaseSettingsFormState,
   TenantStorePaymentSettingsFormState,
@@ -76,9 +81,19 @@ const tenantPaymentSettingsSchema = async (locale: Locale) => {
   });
 };
 
-export const updateTenantPaymentSettingsAction = async (
-  _prevState: TenantPaymentSettingsFormState,
-  formData: FormData
+/**
+ * Reads a save of one provider's settings and checks it against the provider
+ * the server registers under the id it names, then hands it to `save`: the
+ * single-provider settings of the release before, or one of the providers the
+ * tenant holds.
+ */
+const saveProviderSettings = async (
+  formData: FormData,
+  save: (
+    input: UpdateTenantPaymentSettingsInput,
+    locale: Locale
+  ) => Promise<{ ok: true } | { ok: false; message: string }>,
+  saved: (t: AdminMessageAccessor, provider: string) => string
 ): Promise<TenantPaymentSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
@@ -143,7 +158,7 @@ export const updateTenantPaymentSettingsAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantPaymentSettings(
+    save(
       {
         currency,
         enabled: parsed.data.enabled,
@@ -168,7 +183,120 @@ export const updateTenantPaymentSettingsAction = async (
   updateTag(tenantSiteCacheTag(parsed.data.tenantId));
 
   return {
-    message: t("admin.settings.payment.saved"),
+    message: saved(t, declared.provider.displayName),
+    ok: true,
+  };
+};
+
+/** The single-provider form a server of the release before is answered with. */
+export const updateTenantPaymentSettingsAction = async (
+  _prevState: TenantPaymentSettingsFormState,
+  formData: FormData
+): Promise<TenantPaymentSettingsFormState> =>
+  await saveProviderSettings(formData, updateTenantPaymentSettings, (t) =>
+    t("admin.settings.payment.saved")
+  );
+
+/** Adds a provider beside the ones the tenant holds. */
+export const addTenantPaymentProviderAction = async (
+  _prevState: TenantPaymentSettingsFormState,
+  formData: FormData
+): Promise<TenantPaymentSettingsFormState> =>
+  await saveProviderSettings(
+    formData,
+    upsertTenantPaymentProvider,
+    (t, provider) => t("admin.settings.payment.provider_added", { provider })
+  );
+
+/** Saves one of the providers the tenant holds, leaving the others alone. */
+export const saveTenantPaymentProviderAction = async (
+  _prevState: TenantPaymentSettingsFormState,
+  formData: FormData
+): Promise<TenantPaymentSettingsFormState> =>
+  await saveProviderSettings(
+    formData,
+    upsertTenantPaymentProvider,
+    (t, provider) => t("admin.settings.payment.provider_saved", { provider })
+  );
+
+const removePaymentProviderSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    provider: requiredTrimmedString(
+      t("admin.settings.payment.validation.provider_invalid")
+    ),
+    // Whether the card asked to delete a provider removed before, which only
+    // decides which sentence describes a provider that stays removed.
+    retired: flagOneFormSchema,
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
+};
+
+/**
+ * Removes one of the providers the tenant holds, or deletes one it removed
+ * before once nothing it took can still be refunded.
+ */
+export const removeTenantPaymentProviderAction = async (
+  _prevState: TenantPaymentProviderRemoveFormState,
+  formData: FormData
+): Promise<TenantPaymentProviderRemoveFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    removePaymentProviderSchema(locale),
+  ]);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      provider: "value",
+      retired: "value",
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: t("errors.validation"), ok: false };
+  }
+
+  const { tenantId } = parsed.data;
+
+  const result = await withAdminSessionReauth(() =>
+    removeTenantPaymentProvider(
+      { provider: parsed.data.provider, tenantId },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(tenantPaymentSettingsCacheTag(tenantId));
+
+  // The name is only the message's: a provider this build no longer
+  // registers is still one the tenant can remove.
+  const declared = await withAdminSessionReauth(() =>
+    getPaymentProvider(tenantId, parsed.data.provider, locale)
+  );
+
+  const provider = declared.ok
+    ? declared.provider.displayName
+    : parsed.data.provider;
+
+  if (!result.retired) {
+    return {
+      message: t("admin.settings.payment.provider_deleted", { provider }),
+      ok: true,
+    };
+  }
+
+  return {
+    message: parsed.data.retired
+      ? t("admin.settings.payment.provider_kept", { provider })
+      : t("admin.settings.payment.provider_removed", { provider }),
     ok: true,
   };
 };

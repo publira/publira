@@ -21,7 +21,9 @@ import {
   emptyTenantPaymentSettings,
   getTenantPaymentSettings,
   listPaymentProviders,
+  listTenantPaymentProviders,
 } from "#lib/payment-settings";
+import type { PaymentProvider } from "#lib/payment-settings";
 import { getTenantCurrency } from "#lib/public-api";
 import {
   getTenantStorePaymentSettings,
@@ -33,6 +35,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 import { StoreProductList } from "./_components/store-product-list";
+import { TenantPaymentProviderList } from "./_components/tenant-payment-provider-list";
 import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
 import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
 import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payment-settings-form";
@@ -70,56 +73,115 @@ const SettingsPaymentFormSkeleton = () => (
   </div>
 );
 
-const SettingsPaymentForm = async () => {
+/**
+ * The single-provider form, for a server of the release before, which holds one
+ * provider per tenant.
+ */
+const SettingsPaymentSingleProviderForm = async ({
+  canEdit,
+  providers,
+  providersErrorMessage,
+  webhookOrigin,
+}: {
+  canEdit: boolean;
+  providers: PaymentProvider[];
+  providersErrorMessage?: string;
+  webhookOrigin?: string;
+}) => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const [
-    paymentSettingsResult,
-    providersResult,
-    currentUserResult,
-    tenantResult,
-  ] = await Promise.all([
-    getTenantPaymentSettings(tenantId, locale),
-    listPaymentProviders(tenantId, locale),
-    getAdminCurrentUser(tenantId),
-    getTenantForSession(tenantId),
-  ]);
-
-  await redirectToLoginIfSessionRejected(
-    paymentSettingsResult,
-    providersResult,
-    currentUserResult,
-    tenantResult
+  const paymentSettingsResult = await getTenantPaymentSettings(
+    tenantId,
+    locale
   );
 
-  let loadErrorMessage: string | undefined;
-
-  if (!paymentSettingsResult.ok) {
-    loadErrorMessage = paymentSettingsResult.message;
-  } else if (!providersResult.ok) {
-    loadErrorMessage = providersResult.message;
-  }
+  await redirectToLoginIfSessionRejected(paymentSettingsResult);
 
   return (
     <TenantPaymentSettingsForm
-      canEdit={isTenantAdminRole(
-        currentUserResult.ok ? currentUserResult.user.role : undefined
-      )}
+      canEdit={canEdit}
       initialSettings={
         paymentSettingsResult.ok
           ? paymentSettingsResult.settings
           : emptyTenantPaymentSettings
       }
+      loadErrorMessage={
+        paymentSettingsResult.ok
+          ? providersErrorMessage
+          : paymentSettingsResult.message
+      }
+      locale={locale}
+      providers={providers}
+      tenantId={tenantId}
+      webhookOrigin={webhookOrigin}
+    />
+  );
+};
+
+const SettingsPaymentForm = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [heldResult, providersResult, currentUserResult, tenantResult] =
+    await Promise.all([
+      listTenantPaymentProviders(tenantId, locale),
+      listPaymentProviders(tenantId, locale),
+      getAdminCurrentUser(tenantId),
+      getTenantForSession(tenantId),
+    ]);
+
+  await redirectToLoginIfSessionRejected(
+    heldResult,
+    providersResult,
+    currentUserResult,
+    tenantResult
+  );
+
+  const canEdit = isTenantAdminRole(
+    currentUserResult.ok ? currentUserResult.user.role : undefined
+  );
+
+  const providers = providersResult.ok ? providersResult.providers : [];
+
+  const webhookOrigin = tenantResult.ok
+    ? storefrontOrigin(tenantResult.tenant.domain)
+    : undefined;
+
+  if (!heldResult.ok && heldResult.unsupported) {
+    return (
+      <SettingsPaymentSingleProviderForm
+        canEdit={canEdit}
+        providers={providers}
+        providersErrorMessage={
+          providersResult.ok ? undefined : providersResult.message
+        }
+        webhookOrigin={webhookOrigin}
+      />
+    );
+  }
+
+  let loadErrorMessage: string | undefined;
+
+  if (!heldResult.ok) {
+    loadErrorMessage = heldResult.message;
+  } else if (!providersResult.ok) {
+    loadErrorMessage = providersResult.message;
+  }
+
+  return (
+    <TenantPaymentProviderList
+      canEdit={canEdit}
+      held={
+        heldResult.ok
+          ? heldResult.held
+          : { currency: "", currencyLocked: false, providers: [] }
+      }
       loadErrorMessage={loadErrorMessage}
       locale={locale}
-      providers={providersResult.ok ? providersResult.providers : []}
+      providers={providers}
       tenantId={tenantId}
-      webhookOrigin={
-        tenantResult.ok
-          ? storefrontOrigin(tenantResult.tenant.domain)
-          : undefined
-      }
+      webhookOrigin={webhookOrigin}
     />
   );
 };

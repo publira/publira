@@ -15,6 +15,11 @@ export type TenantPaymentSettingsFormState =
     }
   | null;
 
+export type TenantPaymentProviderRemoveFormState =
+  | { ok: true; message: string }
+  | { ok: false; message: string }
+  | null;
+
 export type TenantPurchaseSettingsFieldErrors = Partial<
   Record<"appStoreUrl" | "googlePlayUrl" | "purchaseAvailability", string>
 >;

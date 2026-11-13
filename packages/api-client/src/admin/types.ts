@@ -62,6 +62,7 @@ export type {
   PaymentProvider,
   TenantAppStorePaymentSettings,
   TenantGooglePlayPaymentSettings,
+  TenantPaymentProviderSettings,
   TenantPaymentSettings,
   TenantStorePaymentSettings,
   TenantStoreProduct,

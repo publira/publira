@@ -1,10 +1,14 @@
+import type { ListTenantPaymentProvidersResponse } from "@publira/api-client/admin/payment";
 import type {
   PaymentProvider as RpcPaymentProvider,
+  TenantPaymentProviderSettings as RpcTenantPaymentProviderSettings,
   TenantPaymentSettings as RpcTenantPaymentSettings,
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
   rethrowUnclassifiedRpcError,
+  rpcErrorCode,
   rpcErrorDisposition,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
@@ -22,6 +26,7 @@ import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type {
   PaymentProvider,
+  TenantPaymentProviders,
   TenantPaymentSettings,
 } from "./payment-settings-shared";
 import { getAccessToken } from "./session";
@@ -30,6 +35,8 @@ export type {
   PaymentCredentialField,
   PaymentCredentialFieldState,
   PaymentProvider,
+  TenantPaymentProviderSettings,
+  TenantPaymentProviders,
   TenantPaymentSettings,
 } from "./payment-settings-shared";
 
@@ -53,6 +60,37 @@ export interface UpdateTenantPaymentSettingsInput {
   /** The currency to sell in; empty keeps the stored one. */
   currency: string;
 }
+
+export interface UpsertTenantPaymentProviderInput {
+  tenantId: string;
+  provider: string;
+  enabled: boolean;
+  fields: PaymentCredentialFieldUpdate[];
+  /** The currency to sell in; empty keeps the stored one. */
+  currency: string;
+}
+
+export type TenantPaymentProvidersResult =
+  | { ok: true; held: TenantPaymentProviders }
+  | {
+      ok: false;
+      message: string;
+      requiresSignIn?: boolean;
+      /**
+       * The server is of the release before the one that holds more than one
+       * provider, which answers the single-provider settings alone.
+       */
+      unsupported?: boolean;
+    };
+
+export type RemoveTenantPaymentProviderResult =
+  | {
+      ok: true;
+      held: TenantPaymentProviders;
+      /** The tenant still holds the provider, removed, rather than deleted. */
+      retired: boolean;
+    }
+  | { ok: false; message: string };
 
 export type TenantPaymentSettingsResult =
   | { ok: true; settings: TenantPaymentSettings }
@@ -122,13 +160,39 @@ type RawFieldState = Pick<
 
 type RawPaymentProvider = Pick<
   RpcPaymentProvider,
-  "currencies" | "displayName" | "fields" | "id" | "webhookPath"
+  | "currencies"
+  | "displayName"
+  | "fields"
+  | "id"
+  | "subscriptions"
+  | "webhookPath"
 >;
+
+type RawTenantPaymentProviderSettings = Pick<
+  RpcTenantPaymentProviderSettings,
+  "enabled" | "fields" | "provider" | "ready" | "retired"
+>;
+
+/**
+ * What every read and write of the providers a tenant holds answers: the
+ * upsert and the removal answer the same fields as the list.
+ */
+type RawTenantPaymentProviders = Pick<
+  ListTenantPaymentProvidersResponse,
+  "currency" | "currencyLocked"
+> & { providers: RawTenantPaymentProviderSettings[] };
 
 type RawCredentialField = Pick<
   RpcPaymentProvider["fields"][number],
   "name" | "public" | "required" | "secret"
 >;
+
+const toFieldStates = (fields: readonly RawFieldState[] = []) =>
+  fields.map((field) => ({
+    configured: Boolean(field.configured),
+    hint: field.hint ?? "",
+    name: field.name,
+  }));
 
 const toTenantPaymentSettings = (
   settings?: RawTenantPaymentSettings
@@ -136,13 +200,23 @@ const toTenantPaymentSettings = (
   currency: settings?.currency?.trim() ?? "",
   currencyLocked: Boolean(settings?.currencyLocked),
   enabled: Boolean(settings?.enabled),
-  fields: (settings?.fields ?? []).map((field: RawFieldState) => ({
-    configured: Boolean(field.configured),
-    hint: field.hint ?? "",
-    name: field.name,
-  })),
+  fields: toFieldStates(settings?.fields),
   provider: settings?.provider?.trim() ?? "",
   ready: Boolean(settings?.ready),
+});
+
+const toTenantPaymentProviders = (
+  response: RawTenantPaymentProviders
+): TenantPaymentProviders => ({
+  currency: response.currency?.trim() ?? "",
+  currencyLocked: Boolean(response.currencyLocked),
+  providers: (response.providers ?? []).map((settings) => ({
+    enabled: Boolean(settings.enabled),
+    fields: toFieldStates(settings.fields),
+    provider: settings.provider?.trim() ?? "",
+    ready: Boolean(settings.ready),
+    retired: Boolean(settings.retired),
+  })),
 });
 
 const toPaymentProvider = (provider: RawPaymentProvider): PaymentProvider => ({
@@ -155,6 +229,7 @@ const toPaymentProvider = (provider: RawPaymentProvider): PaymentProvider => ({
     secret: Boolean(field.secret),
   })),
   id: provider.id,
+  subscriptions: Boolean(provider.subscriptions),
   webhookPath: provider.webhookPath ?? "",
 });
 
@@ -169,6 +244,77 @@ const requestPaymentProviders = async (
 
   return (response.providers ?? []).map(toPaymentProvider);
 };
+
+const listTenantPaymentProvidersForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<CachedRead<TenantPaymentProvidersResult>> => {
+  "use cache: private";
+  // As for the single-provider settings: the default currency and its lock
+  // change without this app.
+  cacheLife("minutes");
+
+  const t = await getMessagesFor(locale);
+  const normalizedTenantId = tenantId.trim();
+
+  if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
+
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
+  }
+
+  cacheTag(tenantPaymentSettingsCacheTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.paymentSettings.listTenantPaymentProviders(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { held: toTenantPaymentProviders(response), ok: true };
+  } catch (error) {
+    dropFailedCacheEntry();
+
+    // The previous release's server has no such RPC, and an install may run
+    // it beside this console while it upgrades.
+    if (rpcErrorCode(error) === Code.Unimplemented) {
+      return {
+        message: t("admin.settings.payment.load_failed"),
+        ok: false,
+        unsupported: true,
+      };
+    }
+
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.payment.load_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
+  }
+};
+
+/** Every payment provider the tenant holds, removed ones included. */
+export const listTenantPaymentProviders = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantPaymentProvidersResult> =>
+  settleCachedRead(
+    await listTenantPaymentProvidersForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 const getTenantPaymentSettingsForSession = async (
   tenantId: string,
@@ -384,6 +530,98 @@ export const updateTenantPaymentSettings = async (
       message: parseErrorMessage(
         error,
         t("admin.settings.payment.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** Adds `input.provider` beside the others, or saves the one the tenant holds. */
+export const upsertTenantPaymentProvider = async (
+  input: UpsertTenantPaymentProviderInput,
+  locale: Locale
+): Promise<TenantPaymentProvidersResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  const normalizedTenantId = input.tenantId.trim();
+
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response =
+      await apiClient.paymentSettings.upsertTenantPaymentProvider(
+        {
+          currency: input.currency,
+          enabled: input.enabled,
+          fields: input.fields,
+          provider: input.provider,
+          tenant: { tenantId: normalizedTenantId },
+        },
+        withSessionHeaders(sessionId)
+      );
+
+    return { held: toTenantPaymentProviders(response), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.payment.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Removes a provider the tenant holds: the first time it is kept, removed, for
+ * what it already took, and again it is deleted once nothing it took can still
+ * be refunded.
+ */
+export const removeTenantPaymentProvider = async (
+  input: { tenantId: string; provider: string },
+  locale: Locale
+): Promise<RemoveTenantPaymentProviderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  const normalizedTenantId = input.tenantId.trim();
+
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response =
+      await apiClient.paymentSettings.removeTenantPaymentProvider(
+        { provider: input.provider, tenant: { tenantId: normalizedTenantId } },
+        withSessionHeaders(sessionId)
+      );
+
+    return {
+      held: toTenantPaymentProviders(response),
+      ok: true,
+      retired: Boolean(response.retired),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.payment.remove_failed"),
         locale
       ),
       ok: false,

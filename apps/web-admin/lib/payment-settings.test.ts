@@ -12,14 +12,20 @@ const {
   mockGetAccessToken,
   mockGetTenantPaymentSettingsApi,
   mockListPaymentProvidersApi,
+  mockListTenantPaymentProvidersApi,
+  mockRemoveTenantPaymentProviderApi,
   mockUpdateTenantPaymentSettingsApi,
+  mockUpsertTenantPaymentProviderApi,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantPaymentSettingsApi: vi.fn(),
   mockListPaymentProvidersApi: vi.fn(),
+  mockListTenantPaymentProvidersApi: vi.fn(),
+  mockRemoveTenantPaymentProviderApi: vi.fn(),
   mockUpdateTenantPaymentSettingsApi: vi.fn(),
+  mockUpsertTenantPaymentProviderApi: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -36,7 +42,10 @@ vi.mock("./api", () => ({
     paymentSettings: {
       getTenantPaymentSettings: mockGetTenantPaymentSettingsApi,
       listPaymentProviders: mockListPaymentProvidersApi,
+      listTenantPaymentProviders: mockListTenantPaymentProvidersApi,
+      removeTenantPaymentProvider: mockRemoveTenantPaymentProviderApi,
       updateTenantPaymentSettings: mockUpdateTenantPaymentSettingsApi,
+      upsertTenantPaymentProvider: mockUpsertTenantPaymentProviderApi,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -88,6 +97,7 @@ const rpcProviders = [
       { name: "webhook_token", public: false, required: false, secret: true },
     ],
     id: "examplepay",
+    subscriptions: false,
     webhookPath: "/api/v1/webhook/payment/examplepay",
   },
   {
@@ -98,9 +108,62 @@ const rpcProviders = [
       { name: "webhook_secret", public: false, required: true, secret: true },
     ],
     id: "stripe",
+    subscriptions: true,
     webhookPath: "/api/v1/webhook/payment/stripe",
   },
 ];
+
+/** What the reads and writes of the providers a tenant holds answer. */
+const rpcHeld = {
+  currency: "JPY",
+  currencyLocked: false,
+  providers: [
+    {
+      enabled: true,
+      fields: rpcSettings.fields,
+      provider: "stripe",
+      ready: true,
+      retired: false,
+    },
+    {
+      enabled: false,
+      fields: [
+        {
+          configured: true,
+          hint: "sk_test_••••••••ABCD",
+          name: "secret_key",
+          publicValue: "",
+        },
+      ],
+      provider: "payjp",
+      ready: false,
+      retired: true,
+    },
+  ],
+};
+
+const publicHeld = {
+  currency: "JPY",
+  currencyLocked: false,
+  providers: [
+    {
+      enabled: true,
+      fields: publicSettings.fields,
+      provider: "stripe",
+      ready: true,
+      retired: false,
+    },
+    {
+      enabled: false,
+      fields: [
+        { configured: true, hint: "sk_test_••••••••ABCD", name: "secret_key" },
+      ],
+      provider: "payjp",
+      ready: false,
+      retired: true,
+    },
+  ],
+};
 
 const leakedSecretKey = "leak-secret-key-value";
 const leakedWebhookSecret = "leak-webhook-secret-value";
@@ -471,6 +534,137 @@ describe("payment-settings", () => {
       message: "Choose a payment provider.",
       ok: false,
     });
+  });
+
+  it("lists every provider the tenant holds, removed ones included, without their secrets", async () => {
+    mockListTenantPaymentProvidersApi.mockResolvedValueOnce(rpcHeld);
+
+    const { listTenantPaymentProviders } = await import("./payment-settings");
+
+    const result = await listTenantPaymentProviders("TENANT001", "en");
+
+    expect(result).toEqual({ held: publicHeld, ok: true });
+    expect(mockListTenantPaymentProvidersApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:payment-settings"
+    );
+  });
+
+  it("says a server of the release before cannot list the providers, rather than failing", async () => {
+    mockListTenantPaymentProvidersApi.mockRejectedValueOnce(
+      new ConnectError("not implemented", Code.Unimplemented)
+    );
+
+    const { listTenantPaymentProviders } = await import("./payment-settings");
+
+    const result = await listTenantPaymentProviders("TENANT001", "en");
+
+    expect(result).toEqual({
+      message: "Could not load the payment settings. Please try again later.",
+      ok: false,
+      unsupported: true,
+    });
+  });
+
+  it("saves one provider and answers every provider the tenant holds", async () => {
+    mockUpsertTenantPaymentProviderApi.mockResolvedValueOnce(rpcHeld);
+
+    const { upsertTenantPaymentProvider } = await import("./payment-settings");
+
+    const input = {
+      currency: "",
+      enabled: true,
+      fields: [
+        {
+          mode: SECRET_UPDATE_MODE_REPLACE,
+          name: "secret_key",
+          value: leakedSecretKey,
+        },
+      ],
+      provider: "stripe",
+      tenantId: "TENANT001",
+    };
+
+    const result = await upsertTenantPaymentProvider(input, "en");
+
+    expect(result).toEqual({ held: publicHeld, ok: true });
+    expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
+    expect(mockUpsertTenantPaymentProviderApi).toHaveBeenCalledWith(
+      {
+        currency: "",
+        enabled: true,
+        fields: input.fields,
+        provider: "stripe",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("passes the server's own reason through when it refuses a provider's currency", async () => {
+    mockUpsertTenantPaymentProviderApi.mockRejectedValueOnce(
+      new ConnectError(
+        'stripe, which the tenant also sells through, does not charge in "KRW"',
+        Code.InvalidArgument
+      )
+    );
+
+    const { upsertTenantPaymentProvider } = await import("./payment-settings");
+
+    const result = await upsertTenantPaymentProvider(
+      {
+        currency: "KRW",
+        enabled: true,
+        fields: [],
+        provider: "payjp",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        'stripe, which the tenant also sells through, does not charge in "KRW"',
+      ok: false,
+    });
+  });
+
+  it("removes a provider and says whether the tenant still holds it", async () => {
+    mockRemoveTenantPaymentProviderApi.mockResolvedValueOnce({
+      ...rpcHeld,
+      retired: true,
+    });
+
+    const { removeTenantPaymentProvider } = await import("./payment-settings");
+
+    const result = await removeTenantPaymentProvider(
+      { provider: "payjp", tenantId: " TENANT001 " },
+      "en"
+    );
+
+    expect(result).toEqual({ held: publicHeld, ok: true, retired: true });
+    expect(mockRemoveTenantPaymentProviderApi).toHaveBeenCalledWith(
+      { provider: "payjp", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("reports a removal of a provider the tenant does not hold as a message", async () => {
+    mockRemoveTenantPaymentProviderApi.mockRejectedValueOnce(
+      new ConnectError("payment provider not found", Code.NotFound)
+    );
+
+    const { removeTenantPaymentProvider } = await import("./payment-settings");
+
+    const result = await removeTenantPaymentProvider(
+      { provider: "payjp", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
   });
 
   it("tenantPaymentSettingsCacheTag normalizes the tenant id", async () => {

@@ -87,10 +87,8 @@ const takePaymentsThroughStripe = async (page: Page) => {
   );
 
   await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
-  await page.getByRole("button", { exact: true, name: "Save" }).click();
-  await expect(
-    page.getByText("The payment settings were saved.")
-  ).toBeVisible();
+  await page.getByRole("button", { exact: true, name: "Add provider" }).click();
+  await expect(page.getByText("Stripe was added.")).toBeVisible();
 };
 
 /**

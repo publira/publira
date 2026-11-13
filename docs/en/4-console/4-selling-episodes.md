@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-09
+updated: 2026-11-13
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -94,23 +94,29 @@ The app says the same beside the prices it names itself: an episode's price, the
 
 ## Choosing a payment provider
 
-A tenant takes payment on the site through one provider at a time, chosen under **Payment settings** on **Payments** › **Payment methods**:
+A tenant takes payment on the site through the providers it adds under **Payment settings** on **Payments** › **Payment methods**, one or more of:
 
 | Provider | What a reader can pay with |
 | --- | --- |
 | Stripe | The payment methods turned on for your account in the Stripe Dashboard, such as cards and konbini. An episode bought with a method that is paid later, such as konbini, opens once the payment arrives. |
 | PAY.JP | Cards, with 3-D Secure authentication on every payment. |
 
-Payments are taken in the tenant's currency, chosen under **Currency** in the same form: every price is entered and shown in it, on the site and in the app as in the console. **Currency** offers the currencies the chosen provider charges in — PAY.JP charges in yen only — and starts on the platform's default currency, which the install's operators set, until the settings are saved. Choose it before the first sale: once the tenant has a purchase, every price and every sale is an amount in that currency, so **Currency** can no longer be changed.
+**Add a provider** adds one the tenant does not hold yet, and leaves the others as they are. Each provider the tenant holds then has a card of its own under **Payment settings**, with its status, what it sells, its credentials, the **Webhook URL** to register with it, **Save**, and **Remove**.
 
-The status beside the form says where the setup stands:
+![Payment settings holding Stripe and PAY.JP: a card for each with the Ready status, what it sells, Remove, Currency, Enable payments, its credentials, its Webhook URL, and Save.](./selling-episodes-providers.png)
 
-- **Not set**: no provider has been chosen.
-- **Incomplete**: payments are on, but a credential the provider needs is missing, so nothing is charged.
-- **Disabled**: the credentials are stored, but **Enable payments** is off.
-- **Ready**: readers can buy.
+Every provider sells episodes, volumes, the rest of a series, coins, and tips. A subscription plan is sold through a provider that takes recurring payments, which Stripe does and PAY.JP does not, and through the first of them on the screen that is **Ready** when the tenant holds more than one; each card says which it sells.
 
-Until it is **Ready**, a paid episode shows its price with no way to buy it, and tells readers that the site cannot take purchases at the moment. Choosing another provider and saving deletes the credentials stored for the previous one.
+Payments are taken in the tenant's currency, chosen under **Currency** on any card: every price is entered and shown in it, on the site and in the app as in the console, and every provider the tenant holds charges in it. **Currency** offers the currencies the provider and every other one the tenant holds charge in — PAY.JP charges in yen only — and starts on the platform's default currency, which the install's operators set, until a provider is saved. A provider that cannot charge in a currency the others charge in cannot be added beside them, and its form says so. Choose the currency before the first sale: once the tenant has a purchase, every price and every sale is an amount in that currency, so **Currency** can no longer be changed.
+
+The status on each card says where that provider stands:
+
+- **Incomplete**: payments through it are on, but a credential it needs is missing, so nothing is charged through it.
+- **Disabled**: **Enable payments** is off.
+- **Ready**: readers can pay through it.
+- **Removed**: it starts no new checkout, as [Removing a provider](#removing-a-provider) describes.
+
+Until a provider is **Ready**, which **Not set** above **Add a provider** says of a tenant that has added none, a paid episode shows its price with no way to buy it, and tells readers that the site cannot take purchases at the moment.
 
 Do the setup below with the provider's test keys first, as [Testing before going live](#testing-before-going-live) describes, and replace them with live keys once a test purchase has gone through.
 
@@ -119,7 +125,7 @@ Do the setup below with the provider's test keys first, as [Testing before going
 In the Stripe Dashboard:
 
 1. Copy the **secret key** from the API keys page. A test key starts with `sk_test_`, a live key with `sk_live_`.
-2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these events, and the ones [Subscription plans](./5-subscription-plans.md#before-you-start) lists as well if the tenant sells subscription plans:
+2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen under **Add a provider**, or on Stripe's card once it is added, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these events, and the ones [Subscription plans](./5-subscription-plans.md#before-you-start) lists as well if the tenant sells subscription plans:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`
@@ -129,13 +135,15 @@ In the Stripe Dashboard:
    - `charge.dispute.closed`
 3. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
 
-Then in the console, under **Payment settings**:
+Then in the console, under **Add a provider**:
 
 1. Choose Stripe as the **Payment provider**.
 2. Enter the **Secret key** and the **Webhook signing secret**.
-3. Under **Enable payments**, check **Enable**, and choose **Save**.
+3. Under **Enable payments**, check **Enable**, and choose **Add provider**.
 
-![Payment settings with Stripe chosen and nothing saved yet: the Not set status, Payment provider, Enable payments, Secret key, Webhook signing secret, the Webhook URL to register with Stripe, and Save.](./selling-episodes-stripe-settings.png)
+![Payment settings with no provider added yet and Stripe chosen under Add a provider: the Not set status, Payment provider, Currency, Enable payments, Secret key, Webhook signing secret, the Webhook URL to register with Stripe, and Add provider.](./selling-episodes-stripe-settings.png)
+
+To change a key later, choose **Change** beside it on Stripe's card, enter the new value, and choose **Save**.
 
 Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own signing secret. When you move to live keys, add the endpoint again in live mode, and enter its signing secret together with the live secret key.
 
@@ -151,17 +159,23 @@ In the PAY.JP dashboard:
 
 1. Copy the **secret key** from the API settings page. A test key starts with `sk_test_`, a live key with `sk_live_`, and a test key takes test payments only.
 2. Copy the **webhook token**, which starts with `whook_`, from the account settings.
-3. Register the **Webhook URL** the console shows under **Payment settings** once PAY.JP is chosen, `https://<tenant-domain>/api/v1/webhook/payment/payjp`, as the URL PAY.JP sends its notifications to. Register it for live mode as well before going live.
+3. Register the **Webhook URL** the console shows under **Payment settings** once PAY.JP is chosen under **Add a provider**, or on PAY.JP's card once it is added, `https://<tenant-domain>/api/v1/webhook/payment/payjp`, as the URL PAY.JP sends its notifications to. Register it for live mode as well before going live.
 
-Then in the console, under **Payment settings**:
+Then in the console, under **Add a provider**:
 
 1. Choose PAY.JP as the **Payment provider**.
 2. Enter the **Secret key** and the **Webhook token**.
-3. Under **Enable payments**, check **Enable**, and choose **Save**.
+3. Under **Enable payments**, check **Enable**, and choose **Add provider**.
 
-![Payment settings with PAY.JP chosen and nothing saved yet: the Not set status, Payment provider, Enable payments, Secret key, Webhook token, the Webhook URL to register with PAY.JP, and Save.](./selling-episodes-payjp-settings.png)
+![Payment settings with no provider added yet and PAY.JP chosen under Add a provider: the Not set status, Payment provider, Currency, Enable payments, Secret key, Webhook token, the Webhook URL to register with PAY.JP, and Add provider.](./selling-episodes-payjp-settings.png)
 
 PAY.JP signs nothing: the install trusts a notification because it carries the webhook token, and refuses one that does not, so keep the token as secret as the secret key.
+
+### Removing a provider
+
+**Remove** on a provider's card, once confirmed, stops new checkouts through it at once and leaves the other providers as they are. The provider stays on the screen as **Removed**, with its credentials: a checkout a reader started before the removal can still be paid, and the provider's notifications, the refunds from **Purchases**, and the reconciliation of what it took go on working, as do the subscriptions it bills. **Add back** on its card sells through it again.
+
+**Delete** on a removed provider's card deletes it and its credentials, once 90 days have passed since it was removed, nothing it took can still be refunded, and it bills no subscription. Until then it stays **Removed**, and **Delete** says so. 90 days is the longest Stripe documents waiting for a bank transfer it cannot match to a payment.
 
 ### When a payment does not open the episode
 
@@ -172,7 +186,7 @@ The provider's dashboard lists each delivery to the webhook with the status the 
 | 2xx | Accepted. Not every accepted notification opens an episode: Stripe sends `checkout.session.completed` for a konbini payment before the reader pays, and the episode opens only with the `checkout.session.async_payment_succeeded` that follows the payment | Check the event type and the payment's status in the dashboard. If the payment is complete and the episode is still locked, the reader may have bought it on another account. |
 | 400 | The signing secret or webhook token in the console does not match the provider's | Enter the value from the endpoint the provider is sending from. |
 | 404 | The path does not name a provider | Register the URL exactly as the console shows it. |
-| 503 | Payments are not **Ready**, or the URL names a provider other than the one chosen | Finish the setup above. The provider retries the delivery. |
+| 503 | The provider the URL names is not **Ready**, or the tenant has not added it | Finish the setup above. The provider retries the delivery. |
 | No delivery | The webhook is not registered, or is registered for the other mode | Register it in the mode the keys belong to. |
 
 Both providers retry a failed delivery for some time, and their dashboards can resend one. Once the setup is fixed, a payment whose notification arrives opens the episode it paid for.
@@ -418,7 +432,7 @@ Test the whole setup with the provider's test keys before readers can pay: the w
 
 A purchase made in the provider's test mode opens the episode but is recorded as a test, and left out of royalty statements and the content statistics. The reader still gets a receipt by mail, which says that the purchase was made in test mode and that no money was charged. An episode with a purchase cannot be deleted, a test purchase included, so keep the test in a series of its own, which you hide afterwards.
 
-1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that **Payment settings** shows **Ready**.
+1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that its card under **Payment settings** shows **Ready**. A tenant that holds more than one provider tests each in turn: turn **Enable payments** off on the others' cards and save them, so that the site sends the test checkout to the one under test, and turn them back on once every provider has passed.
 2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, and sold on the web.
 3. On the site, sign in with a reader account that holds no console role, open the episode, and choose **Buy this episode**.
 4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with both providers. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome.

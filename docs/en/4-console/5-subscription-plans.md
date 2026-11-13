@@ -2,18 +2,18 @@
 title: Subscription plans
 description: Sell readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, and see what a subscriber does on the site.
 published: 2026-10-25
-updated: 2026-11-10
+updated: 2026-11-13
 ---
 
 A subscription plan lets a reader pay every period, through Stripe, and read every episode the plan covers without buying each one. Selling one takes three things that have to agree, the same three a sale of an episode takes: a recurring Price in the tenant's Stripe account, a plan in the tenant console that names it, and the webhook through which Stripe tells the install that a reader subscribed, paid, renewed, fell behind, or canceled. Stripe bills the reader, but only the webhook opens the plan's episodes to them and closes them again, so a setup with any of the three wrong takes the reader's money and leaves the episodes locked, or leaves them open to a reader who has stopped paying. This page walks through all three in that order, and ends with a test subscription that proves they agree.
 
-Every plan is sold through Stripe on the site, and a tenant that takes payments through PAY.JP cannot create one. A plan can also name the subscription the tenant's app sells it as in the App Store and in Google Play, as [Creating a plan](#creating-a-plan) describes. The tenant's app sends a reader who wants a plan to the site's plan page when it sells through **Web checkout**, as [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app) describes.
+Every plan is sold through Stripe on the site, so a tenant needs Stripe among its payment providers to create one; PAY.JP beside it sells everything but the plans. A plan can also name the subscription the tenant's app sells it as in the App Store and in Google Play, as [Creating a plan](#creating-a-plan) describes. The tenant's app sends a reader who wants a plan to the site's plan page when it sells through **Web checkout**, as [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app) describes.
 
 **Payments** › **Subscription plans** is for a **Tenant admin**; an Editor or an Auditor does not see that screen.
 
 ## Before you start
 
-The tenant takes payments through Stripe, with **Payment settings** on **Payments** › **Payment methods** showing **Ready**, as [Selling episodes](./4-selling-episodes.md#stripe) describes. The console reads every plan's Price from the Stripe account of the secret key saved there, so a plan cannot be saved until it is.
+The tenant takes payments through Stripe, with Stripe's card under **Payment settings** on **Payments** › **Payment methods** showing **Ready**, as [Selling episodes](./4-selling-episodes.md#stripe) describes. The console reads every plan's Price from the Stripe account of the secret key saved there, so a plan cannot be saved until it is.
 
 Stripe's webhook endpoint needs these events beside the ones a sale of an episode needs:
 
@@ -113,7 +113,7 @@ Stripe mails its own receipt, and its own notice of a failed payment, as well on
 
 From then on **My Page** opens with **Your plan**: the plan's name and, depending on where the subscription stands, when it renews, when it ends after a cancellation, a payment to fix, or that it has ended. **Manage billing** opens Stripe's customer portal, where the reader updates their card, reads their invoices, or cancels, and what they change there reaches the site through the webhook. A reader who subscribed in the app sees which store bills the plan, and **Manage in the App Store** or **Manage in Google Play** in place of **Manage billing**. A payment that did not go through, and a plan that is on hold, tell that reader to update the payment method in the store rather than under **Manage billing**. A plan that has ended offers **See plans**, as one Stripe billed does. A reader whose store subscription has ended can subscribe on the site: the plan page lists the plans the site sells and offers **Subscribe**.
 
-While **Payment settings** is not **Ready**, the plan page says the site cannot take subscriptions at the moment, and no locked episode offers a plan. Choosing PAY.JP as the payment provider deletes the Stripe credentials: the site then stops selling plans, Stripe's notifications about the subscriptions already sold are refused, and Stripe goes on billing those readers, so cancel them in the Stripe Dashboard before switching.
+While Stripe is not **Ready** under **Payment settings**, the plan page says the site cannot take subscriptions at the moment, and no locked episode offers a plan. Removing Stripe there stops the site selling plans, and leaves the subscriptions already sold as they are: Stripe goes on billing those readers, and the install goes on taking Stripe's notifications about them, so cancel them in the Stripe Dashboard if the tenant is to stop billing them. Stripe cannot be deleted while it bills a subscription, as [Removing a provider](./4-selling-episodes.md#removing-a-provider) describes.
 
 Deleting a reader's account cancels their subscription in Stripe at once, without refunding the period they paid for, as [Reader accounts](./2-readers/1-accounts.md#deleting-a-reader) describes.
 
@@ -131,7 +131,7 @@ The deliveries listed for the webhook endpoint in the Stripe Dashboard show the 
 
 Test the whole setup in Stripe's test mode before readers can subscribe. Only a subscription shows that the webhook works, and only a cancellation shows that it follows Stripe afterwards.
 
-1. Set up Stripe with its **test** secret key, as above, and add to the test-mode endpoint every event a sale of an episode needs and every one this page lists. Check that **Payment settings** shows **Ready**.
+1. Set up Stripe with its **test** secret key, as above, and add to the test-mode endpoint every event a sale of an episode needs and every one this page lists. Check that Stripe's card under **Payment settings** shows **Ready**.
 2. In test mode, create the recurring Price, and save the customer portal's settings.
 3. Create a series for the test, shown on **Web and app** or **Web only** and published now, with a paid episode in it, published now and sold on the web, as [Testing before going live](./4-selling-episodes.md#testing-before-going-live) describes for a sale.
 4. Create a plan with the test Price that opens that series, with **Publish** checked.

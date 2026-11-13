@@ -3872,6 +3872,7 @@
         "enabled": "Enable payments",
         "enabled_checkbox": "Enable",
         "enabled_description": "Left off, Checkout and the webhook for paid episodes do not run for this tenant.",
+        "enabled_provider_description": "Left off, readers cannot pay through this provider, and its notifications, refunds, and reconciliation do not run.",
         "fields": {
           "stripe": {
             "secret_key": "Secret key",
@@ -3903,7 +3904,8 @@
           "ready": "Ready",
           "ready_description": "Checkout and the webhook for paid episodes use this tenant's settings.",
           "unset": "Not set",
-          "unset_description": "Choose a provider and register its credentials to start charging for paid episodes."
+          "unset_description": "Choose a provider and register its credentials to start charging for paid episodes.",
+          "removed": "Removed"
         },
         "validation": {
           "field_required": "Enter this value to turn payments on.",
@@ -3912,7 +3914,40 @@
         },
         "currency": "Currency",
         "currency_description": "Readers are charged in this currency, and every price is entered and shown in it. Only the currencies the chosen provider charges in are offered.",
-        "currency_locked": "The currency cannot change now that this tenant has a purchase, since every price and sale is an amount in it."
+        "currency_locked": "The currency cannot change now that this tenant has a purchase, since every price and sale is an amount in it.",
+        "providers_description": "The providers readers pay through on the site. Each keeps its own credentials, and a secret is write-only: coming back, you see its state and a mask, never the value.",
+        "providers_unset": "No payment provider has been added yet, so readers cannot buy paid episodes.",
+        "add_title": "Add a provider",
+        "add_description": "Readers can pay through every provider that is ready. Adding one leaves the others as they are.",
+        "add_submit": "Add provider",
+        "adding": "Adding…",
+        "currency_shared_description": "Readers are charged in this currency through every provider, and every price is entered and shown in it. Only the currencies this provider and every other one here charge in are offered.",
+        "currency_unavailable": "{$provider} charges in none of the currencies the other providers here charge in, so it cannot sell beside them.",
+        "currency_unavailable_locked": "{$provider} does not charge in {$currency}, which this tenant sells in, so it cannot sell beside the others.",
+        "provider_status": {
+          "ready_description": "Readers can pay through {$provider}.",
+          "incomplete_description": "Payments through {$provider} are on, but a required credential is missing, so nothing is charged through it.",
+          "disabled_description": "Payments through {$provider} are off.",
+          "removed_description": "{$provider} starts no new checkout. Its credentials are kept for the notifications and refunds of what it took. Choose Add back to sell through it again."
+        },
+        "sells": {
+          "with_plans": "Sells episodes, volumes, subscription plans, coins, and tips.",
+          "without_plans": "Sells episodes, volumes, coins, and tips. It takes no recurring payments, so it sells no subscription plans.",
+          "plans_elsewhere": "Sells episodes, volumes, coins, and tips. Subscription plans are sold through {$provider}, the first ready provider that takes recurring payments."
+        },
+        "restore": "Add back",
+        "remove": "Remove",
+        "remove_title": "Remove {$provider}?",
+        "remove_description": "{$provider} starts no new checkout from now on. Its credentials are kept for the notifications, refunds, and reconciliation of what it already took, including a checkout started before now and paid later.",
+        "delete": "Delete",
+        "delete_title": "Delete {$provider}?",
+        "delete_description": "{$provider} and its credentials are deleted once 90 days have passed since it was removed, nothing it took can still be refunded, and it bills no subscription. Until then it stays removed.",
+        "provider_added": "{$provider} was added.",
+        "provider_saved": "The {$provider} settings were saved.",
+        "provider_removed": "{$provider} was removed. Its credentials are kept for what it already took.",
+        "provider_kept": "{$provider} stays removed: it was removed less than 90 days ago, something it took can still be refunded, or it bills a subscription.",
+        "provider_deleted": "{$provider} and its credentials were deleted.",
+        "remove_failed": "Could not remove the payment provider. Please try again later."
       },
       "purchase": {
         "title": "Where episodes are sold",

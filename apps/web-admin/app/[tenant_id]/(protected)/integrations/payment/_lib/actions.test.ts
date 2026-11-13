@@ -5,21 +5,25 @@ const {
   mockGetAccessToken,
   mockGetPaymentProvider,
   mockGetTenantCurrency,
+  mockRemoveTenantPaymentProvider,
   mockUpdateTag,
   mockUpdateTenantPaymentSettings,
   mockUpdateTenantPurchaseSettings,
   mockUpdateTenantStorePaymentSettings,
   mockUpdateTenantTipSettings,
+  mockUpsertTenantPaymentProvider,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetPaymentProvider: vi.fn(),
   mockGetTenantCurrency: vi.fn(),
+  mockRemoveTenantPaymentProvider: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
   mockUpdateTenantPurchaseSettings: vi.fn(),
   mockUpdateTenantStorePaymentSettings: vi.fn(),
   mockUpdateTenantTipSettings: vi.fn(),
+  mockUpsertTenantPaymentProvider: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -45,9 +49,11 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/payment-settings", () => ({
   getPaymentProvider: mockGetPaymentProvider,
+  removeTenantPaymentProvider: mockRemoveTenantPaymentProvider,
   tenantPaymentSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:payment-settings`,
   updateTenantPaymentSettings: mockUpdateTenantPaymentSettings,
+  upsertTenantPaymentProvider: mockUpsertTenantPaymentProvider,
 }));
 
 vi.mock("#lib/tenant-purchase-settings", () => ({
@@ -96,6 +102,7 @@ const stripe = {
     { name: "webhook_secret", public: false, required: true, secret: true },
   ],
   id: "stripe",
+  subscriptions: true,
   webhookPath: "/api/v1/webhook/payment/stripe",
 };
 
@@ -108,7 +115,26 @@ const examplePay = {
     { name: "webhook_token", public: false, required: false, secret: true },
   ],
   id: "examplepay",
+  subscriptions: false,
   webhookPath: "/api/v1/webhook/payment/examplepay",
+};
+
+const heldProviders = {
+  currency: "JPY",
+  currencyLocked: false,
+  providers: [{ ...storedPaymentSettings, retired: false }],
+};
+
+const findProvider = (_tenantId: string, providerId: string) => {
+  const provider = [stripe, examplePay].find(
+    (candidate) => candidate.id === providerId
+  );
+
+  return Promise.resolve(
+    provider
+      ? { ok: true, provider }
+      : { message: "Choose a payment provider.", ok: false }
+  );
 };
 
 // Evaluating the Actions' module graph for the first time takes far longer than
@@ -416,6 +442,235 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(result).toEqual({
       message:
         "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("addTenantPaymentProviderAction and saveTenantPaymentProviderAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetPaymentProvider.mockImplementation(findProvider);
+  });
+
+  it("adds a provider beside the others and says so by its name", async () => {
+    mockUpsertTenantPaymentProvider.mockResolvedValueOnce({
+      held: heldProviders,
+      ok: true,
+    });
+
+    const { addTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await addTenantPaymentProviderAction(
+      null,
+      textFormData({
+        credential_secret_key: "sk_test_51NEW",
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret: "whsec_NEW",
+        credential_webhook_secret_mode: "replace",
+        currency: "JPY",
+        enabled: "on",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({ message: "Stripe was added.", ok: true });
+    expect(mockUpsertTenantPaymentProvider).toHaveBeenCalledWith(
+      {
+        currency: "JPY",
+        enabled: true,
+        fields: [
+          { mode: 2, name: "secret_key", value: "sk_test_51NEW" },
+          { mode: 2, name: "webhook_secret", value: "whsec_NEW" },
+        ],
+        provider: "stripe",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:payment-settings"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+  });
+
+  it("saves one provider the tenant holds and says which", async () => {
+    mockUpsertTenantPaymentProvider.mockResolvedValueOnce({
+      held: heldProviders,
+      ok: true,
+    });
+
+    const { saveTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await saveTenantPaymentProviderAction(
+      null,
+      textFormData({
+        credential_secret_key_mode: "keep",
+        credential_webhook_secret_mode: "keep",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The Stripe settings were saved.",
+      ok: true,
+    });
+    expect(mockUpsertTenantPaymentProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false, provider: "stripe" }),
+      "en"
+    );
+  });
+
+  it("asks for the required credentials before turning a new provider on", async () => {
+    const { addTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await addTenantPaymentProviderAction(
+      null,
+      textFormData({
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret_mode: "replace",
+        enabled: "on",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toMatchObject({
+      fieldErrors: {
+        credential_secret_key: "Enter this value to turn payments on.",
+        credential_webhook_secret: "Enter this value to turn payments on.",
+      },
+      ok: false,
+    });
+    expect(mockUpsertTenantPaymentProvider).not.toHaveBeenCalled();
+  });
+
+  it("returns the server's refusal and leaves the cache tag alone", async () => {
+    mockUpsertTenantPaymentProvider.mockResolvedValueOnce({
+      message:
+        'stripe, which the tenant also sells through, does not charge in "KRW"',
+      ok: false,
+    });
+
+    const { addTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await addTenantPaymentProviderAction(
+      null,
+      textFormData({
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret_mode: "replace",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        'stripe, which the tenant also sells through, does not charge in "KRW"',
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeTenantPaymentProviderAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetPaymentProvider.mockImplementation(findProvider);
+  });
+
+  it("removes a provider, keeping it for what it took, and revalidates the cache tag", async () => {
+    mockRemoveTenantPaymentProvider.mockResolvedValueOnce({
+      held: heldProviders,
+      ok: true,
+      retired: true,
+    });
+
+    const { removeTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await removeTenantPaymentProviderAction(
+      null,
+      textFormData({ provider: "stripe", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Stripe was removed. Its credentials are kept for what it already took.",
+      ok: true,
+    });
+    expect(mockRemoveTenantPaymentProvider).toHaveBeenCalledWith(
+      { provider: "stripe", tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:payment-settings"
+    );
+  });
+
+  it("says a removed provider asked to be deleted is kept while it is still needed", async () => {
+    mockRemoveTenantPaymentProvider.mockResolvedValueOnce({
+      held: heldProviders,
+      ok: true,
+      retired: true,
+    });
+
+    const { removeTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await removeTenantPaymentProviderAction(
+      null,
+      textFormData({ provider: "stripe", retired: "1", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Stripe stays removed: it was removed less than 90 days ago, something it took can still be refunded, or it bills a subscription.",
+      ok: true,
+    });
+  });
+
+  it("says the provider was deleted, naming one this build no longer registers by its id", async () => {
+    mockRemoveTenantPaymentProvider.mockResolvedValueOnce({
+      held: heldProviders,
+      ok: true,
+      retired: false,
+    });
+
+    const { removeTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await removeTenantPaymentProviderAction(
+      null,
+      textFormData({ provider: "oldpay", retired: "1", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "oldpay and its credentials were deleted.",
+      ok: true,
+    });
+  });
+
+  it("returns the message and leaves the cache tag alone when the removal fails", async () => {
+    mockRemoveTenantPaymentProvider.mockResolvedValueOnce({
+      message: "Could not remove the payment provider. Please try again later.",
+      ok: false,
+    });
+
+    const { removeTenantPaymentProviderAction } = await import("./actions");
+
+    const result = await removeTenantPaymentProviderAction(
+      null,
+      textFormData({ provider: "stripe", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "Could not remove the payment provider. Please try again later.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

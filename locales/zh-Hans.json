@@ -3872,6 +3872,7 @@
         "enabled": "启用支付",
         "enabled_checkbox": "启用",
         "enabled_description": "关闭时，该租户的付费章节将不会运行Checkout和webhook。",
+        "enabled_provider_description": "关闭时，读者无法通过此服务商付款，它的通知、退款和对账也不会运行。",
         "fields": {
           "stripe": {
             "secret_key": "密钥",
@@ -3903,7 +3904,8 @@
           "ready": "就绪",
           "ready_description": "付费章节的Checkout和webhook将使用该租户的设置。",
           "unset": "未设置",
-          "unset_description": "请选择服务商并登记其凭据，以开始对付费章节收款。"
+          "unset_description": "请选择服务商并登记其凭据，以开始对付费章节收款。",
+          "removed": "已移除"
         },
         "validation": {
           "field_required": "要启用支付，请输入此值。",
@@ -3912,7 +3914,40 @@
         },
         "currency": "货币",
         "currency_description": "向读者以此货币收费，所有价格均以此货币输入和显示。只能选择所选服务商支持收费的货币。",
-        "currency_locked": "此租户已有购买记录，因此无法更改货币。所有价格和销售额均以此货币计。"
+        "currency_locked": "此租户已有购买记录，因此无法更改货币。所有价格和销售额均以此货币计。",
+        "providers_description": "读者在网站上付款所用的支付服务商。每个服务商各自保存凭据。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
+        "providers_unset": "尚未添加任何支付服务商，因此读者无法购买付费章节。",
+        "add_title": "添加服务商",
+        "add_description": "读者可以通过任何一个就绪的服务商付款。添加一个服务商不会改变其他服务商。",
+        "add_submit": "添加服务商",
+        "adding": "正在添加…",
+        "currency_shared_description": "无论通过哪个服务商，都以此货币向读者收费，所有价格均以此货币输入和显示。只能选择此服务商以及这里其他所有服务商都支持收费的货币。",
+        "currency_unavailable": "{$provider}不支持这里其他服务商所支持的任何货币，因此无法与它们同时使用。",
+        "currency_unavailable_locked": "{$provider}不支持以此租户销售所用的{$currency}收费，因此无法与其他服务商同时使用。",
+        "provider_status": {
+          "ready_description": "读者可以通过{$provider}付款。",
+          "incomplete_description": "{$provider}的支付已开启，但缺少必需的凭据，因此不会通过它收费。",
+          "disabled_description": "{$provider}的支付已关闭。",
+          "removed_description": "{$provider}不会再发起新的Checkout。为处理已收款项的通知和退款，其凭据仍会保留。选择“恢复”即可重新通过它销售。"
+        },
+        "sells": {
+          "with_plans": "销售章节、卷、订阅方案、代币和打赏。",
+          "without_plans": "销售章节、卷、代币和打赏。它不支持定期扣款，因此不销售订阅方案。",
+          "plans_elsewhere": "销售章节、卷、代币和打赏。订阅方案通过{$provider}销售，它是第一个支持定期扣款的就绪服务商。"
+        },
+        "restore": "恢复",
+        "remove": "移除",
+        "remove_title": "移除{$provider}？",
+        "remove_description": "从现在起，{$provider}不会再发起新的Checkout。为处理已收款项的通知、退款和对账，其凭据仍会保留，包括在移除前发起、之后才付款的Checkout。",
+        "delete": "彻底删除",
+        "delete_title": "彻底删除{$provider}？",
+        "delete_description": "在移除满90天、已收款项均无法再退款且没有正在计费的订阅后，{$provider}及其凭据将被删除。在此之前，它会保持已移除状态。",
+        "provider_added": "已添加{$provider}。",
+        "provider_saved": "{$provider}的设置已保存。",
+        "provider_removed": "已移除{$provider}。为处理已收款项，其凭据仍会保留。",
+        "provider_kept": "{$provider}保持已移除状态：移除未满90天，或仍有可退款的款项或正在计费的订阅。",
+        "provider_deleted": "已删除{$provider}及其凭据。",
+        "remove_failed": "无法移除支付服务商。请稍后再试。"
       },
       "purchase": {
         "title": "销售位置",

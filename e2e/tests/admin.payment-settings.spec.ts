@@ -11,20 +11,13 @@ import {
 import { WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL } from "../src/urls";
 
 /**
- * A tenant administrator setting up PAY.JP from the console copy alone:
- * choosing it, storing its two credentials, and turning payments off again;
- * and choosing the amounts readers may tip the Authors of an episode in.
+ * A tenant administrator adding PAY.JP beside Stripe from the console copy
+ * alone, removing it, adding it back, and turning it off, with Stripe left as
+ * it is throughout; and choosing the amounts readers may tip the Authors of an
+ * episode in.
  */
 
 const PAYMENT_PATH = "/integrations/payment";
-
-const SAVED = "The payment settings were saved.";
-
-const READY =
-  "Checkout and the webhook for paid episodes use this tenant's settings.";
-
-const DISABLED =
-  "The credentials are stored, but payments are off. Checkout and the webhook do not run.";
 
 const SECRET_KEY_SOURCE =
   "The secret key (sk_live_… or sk_test_…) on the API settings page of the PAY.JP dashboard. A test key takes test payments only.";
@@ -35,20 +28,32 @@ const WEBHOOK_TOKEN_SOURCE =
 const WEBHOOK_NOTE =
   "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused.";
 
-const SECRET_KEY = "sk_test_placeholder";
-const WEBHOOK_TOKEN = "whook_example";
-
-const storedSettings = (): string =>
+/**
+ * The providers the tenant holds, in the order it added them, each as
+ * `provider|enabled|active` or `provider|enabled|retired`.
+ */
+const storedProviders = (): string =>
   querySql(`
     SELECT COALESCE((
-      SELECT provider || '|' || enabled::text
-      FROM tenant_payment_config
+      SELECT string_agg(
+        provider || '|' || enabled::text || '|' ||
+          CASE WHEN retired_at IS NULL THEN 'active' ELSE 'retired' END,
+        ',' ORDER BY created_at, id
+      )
+      FROM tenant_payment_providers
       WHERE tenant_id = (
         SELECT id FROM tenants
         WHERE public_id = '${PAYMENT_SETTINGS_TENANT.publicId}'
       )
     ), 'none');
   `);
+
+/** The card of a provider the tenant holds. */
+const providerCard = (page: Page, name: string) =>
+  page.getByRole("region", { exact: true, name });
+
+const addForm = (page: Page) =>
+  page.getByRole("region", { exact: true, name: "Add a provider" });
 
 /** The stored tips, as `enabled|amounts`. */
 const storedTips = (): string =>
@@ -105,9 +110,6 @@ const pasteTipAmounts = (page: Page, amounts: readonly string[]) =>
     );
   }, amounts.join("\n"));
 
-const paymentsCheckbox = (page: Page) =>
-  page.getByRole("checkbox", { name: "Enable payments" });
-
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
@@ -118,8 +120,8 @@ test.afterAll(() => {
   applyScenarioSql(PAYMENT_SETTINGS_SCENARIO);
 });
 
-test.describe("PAY.JP payment settings", () => {
-  test("stores PAY.JP's credentials, is ready, and turns off again", async ({
+test.describe("payment providers", () => {
+  test("adds PAY.JP beside Stripe, removes it, adds it back, and turns it off", async ({
     page,
   }) => {
     await signInAsAdmin(
@@ -131,30 +133,116 @@ test.describe("PAY.JP payment settings", () => {
     await expect(
       page.getByRole("heading", { exact: true, name: "Payment settings" })
     ).toBeVisible();
+    await expect(
+      page.getByText(
+        "No payment provider has been added yet, so readers cannot buy paid episodes."
+      )
+    ).toBeVisible();
 
-    const provider = page.getByRole("combobox", { name: "Payment provider" });
+    const provider = addForm(page).getByRole("combobox", {
+      name: "Payment provider",
+    });
+
     await provider.click();
-    await page.getByRole("option", { name: "PAY.JP" }).click();
+    await page.getByRole("option", { name: "Stripe" }).click();
+    await expect(provider).toContainText("Stripe");
+    await addForm(page)
+      .getByRole("checkbox", { name: "Enable payments" })
+      .click();
+    await addForm(page)
+      .getByLabel(/^Secret key/u)
+      .fill("sk_test_placeholder");
+    await addForm(page)
+      .getByLabel(/^Webhook signing secret/u)
+      .fill("whsec_placeholder");
+    await addForm(page)
+      .getByRole("button", { exact: true, name: "Add provider" })
+      .click();
+
+    await expect(page.getByText("Stripe was added.")).toBeVisible();
+    await expect(providerCard(page, "Stripe")).toContainText(
+      "Readers can pay through Stripe."
+    );
+    expect(storedProviders()).toBe("stripe|true|active");
+
+    // What is left to add is PAY.JP, and adding it deletes nothing.
     await expect(provider).toContainText("PAY.JP");
+    await expect(addForm(page).getByText(SECRET_KEY_SOURCE)).toBeVisible();
+    await expect(addForm(page).getByText(WEBHOOK_TOKEN_SOURCE)).toBeVisible();
+    await expect(addForm(page).getByText(WEBHOOK_NOTE)).toBeVisible();
+    await expect(page.getByText(/deletes the credentials/u)).toBeHidden();
 
-    await expect(page.getByText(SECRET_KEY_SOURCE)).toBeVisible();
-    await expect(page.getByText(WEBHOOK_TOKEN_SOURCE)).toBeVisible();
-    await expect(page.getByText(WEBHOOK_NOTE)).toBeVisible();
+    await addForm(page)
+      .getByRole("checkbox", { name: "Enable payments" })
+      .click();
+    await addForm(page)
+      .getByLabel(/^Secret key/u)
+      .fill("sk_test_payjp");
+    await addForm(page)
+      .getByLabel(/^Webhook token/u)
+      .fill("whook_example");
+    await addForm(page)
+      .getByRole("button", { exact: true, name: "Add provider" })
+      .click();
 
-    await paymentsCheckbox(page).click();
-    await page.getByLabel(/^Secret key/u).fill(SECRET_KEY);
-    await page.getByLabel(/^Webhook token/u).fill(WEBHOOK_TOKEN);
-    await page.getByRole("button", { exact: true, name: "Save" }).click();
+    await expect(page.getByText("PAY.JP was added.")).toBeVisible();
+    await expect(addForm(page)).toBeHidden();
+    await expect(providerCard(page, "PAY.JP")).toContainText(
+      "Readers can pay through PAY.JP."
+    );
+    await expect(providerCard(page, "Stripe")).toContainText(
+      "Readers can pay through Stripe."
+    );
+    expect(storedProviders()).toBe("stripe|true|active,payjp|true|active");
 
-    await expect(page.getByText(SAVED)).toBeVisible();
-    await expect(page.getByText(READY)).toBeVisible();
-    expect(storedSettings()).toBe("payjp|true");
+    // Each card says what its provider sells.
+    await expect(providerCard(page, "Stripe")).toContainText(
+      "Sells episodes, volumes, subscription plans, coins, and tips."
+    );
+    await expect(providerCard(page, "PAY.JP")).toContainText(
+      "It takes no recurring payments, so it sells no subscription plans."
+    );
 
-    await paymentsCheckbox(page).click();
-    await page.getByRole("button", { exact: true, name: "Save" }).click();
+    await providerCard(page, "PAY.JP")
+      .getByRole("button", { exact: true, name: "Remove" })
+      .click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toContainText("Remove PAY.JP?");
+    await dialog.getByRole("button", { exact: true, name: "Remove" }).click();
 
-    await expect(page.getByText(DISABLED)).toBeVisible();
-    expect(storedSettings()).toBe("payjp|false");
+    await expect(
+      page.getByText(
+        "PAY.JP was removed. Its credentials are kept for what it already took."
+      )
+    ).toBeVisible();
+    await expect(providerCard(page, "PAY.JP")).toContainText(
+      "PAY.JP starts no new checkout."
+    );
+    expect(storedProviders()).toBe("stripe|true|active,payjp|true|retired");
+
+    await providerCard(page, "PAY.JP")
+      .getByRole("button", { exact: true, name: "Add back" })
+      .click();
+
+    await expect(
+      providerCard(page, "PAY.JP").getByText("The PAY.JP settings were saved.")
+    ).toBeVisible();
+    await expect(providerCard(page, "PAY.JP")).toContainText(
+      "Readers can pay through PAY.JP."
+    );
+    expect(storedProviders()).toBe("stripe|true|active,payjp|true|active");
+
+    await providerCard(page, "PAY.JP")
+      .getByRole("checkbox", { name: "Enable payments" })
+      .click();
+    await providerCard(page, "PAY.JP")
+      .getByRole("button", { exact: true, name: "Save" })
+      .click();
+
+    await expect(providerCard(page, "PAY.JP")).toContainText(
+      "Payments through PAY.JP are off."
+    );
+    expect(storedProviders()).toBe("stripe|true|active,payjp|false|active");
   });
 });
 
