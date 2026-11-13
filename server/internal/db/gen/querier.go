@@ -1760,9 +1760,10 @@ type Querier interface {
 	// transaction that records it: the purchase's id, the episode and its series
 	// by their public ids, what the reader paid, the reader's public id, empty
 	// once they have deleted their account, and the public ids of the Authors
-	// episode_creators credits the episode to as the tip is recorded. An Author
-	// credited in more than one role is named once, where their first credit
-	// stands.
+	// episode_creators credits the episode to as the tip is recorded. They come in
+	// the order the episode's credits are shown, role priority first, then
+	// display_order, then the name, and an Author credited in more than one role is
+	// named once, where their first credit stands.
 	GetWebhookTip(ctx context.Context, arg GetWebhookTipParams) (GetWebhookTipRow, error)
 	// An episode as an episode.unpublished event carries it when the episode itself
 	// is taken off the site, read in the transaction that takes it off: the ids the

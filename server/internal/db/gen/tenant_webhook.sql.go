@@ -753,16 +753,27 @@ SELECT p.id,
     s.public_id AS series_public_id,
     u.public_id AS reader_public_id,
     ARRAY(
-        SELECT c.public_id
-        FROM episode_creators ec
-            JOIN creators c ON c.tenant_id = ec.tenant_id
-            AND c.id = ec.creator_id
-        WHERE ec.tenant_id = p.tenant_id
-            AND ec.episode_id = p.episode_id
-        GROUP BY c.id,
-            c.public_id
-        ORDER BY min(ec.display_order),
-            c.id
+        SELECT credit.public_id
+        FROM (
+                SELECT c.id,
+                    c.public_id,
+                    row_number() OVER (
+                        ORDER BY cr.display_priority ASC NULLS LAST,
+                            ec.display_order ASC,
+                            c.name ASC,
+                            c.id ASC
+                    ) AS position
+                FROM episode_creators ec
+                    JOIN creators c ON c.tenant_id = ec.tenant_id
+                    AND c.id = ec.creator_id
+                    LEFT JOIN creator_roles cr ON cr.tenant_id = ec.tenant_id
+                    AND cr.id = ec.role_id
+                WHERE ec.tenant_id = p.tenant_id
+                    AND ec.episode_id = p.episode_id
+            ) credit
+        GROUP BY credit.id,
+            credit.public_id
+        ORDER BY min(credit.position)
     )::text [] AS creator_public_ids
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
@@ -799,9 +810,10 @@ type GetWebhookTipRow struct {
 // transaction that records it: the purchase's id, the episode and its series
 // by their public ids, what the reader paid, the reader's public id, empty
 // once they have deleted their account, and the public ids of the Authors
-// episode_creators credits the episode to as the tip is recorded. An Author
-// credited in more than one role is named once, where their first credit
-// stands.
+// episode_creators credits the episode to as the tip is recorded. They come in
+// the order the episode's credits are shown, role priority first, then
+// display_order, then the name, and an Author credited in more than one role is
+// named once, where their first credit stands.
 func (q *Queries) GetWebhookTip(ctx context.Context, arg GetWebhookTipParams) (GetWebhookTipRow, error) {
 	row := q.db.QueryRowContext(ctx, GetWebhookTip, arg.TenantID, arg.ID)
 	var i GetWebhookTipRow

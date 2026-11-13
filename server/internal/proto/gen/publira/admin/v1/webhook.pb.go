@@ -105,7 +105,8 @@ const (
 	// beside the "purchase.completed" every purchase sends. `data` is the
 	// purchase's id, the episode and its series, what the reader paid, the
 	// reader's public id, and the public ids of the Authors the episode credits
-	// as the tip is recorded, each once and in the order of their credits.
+	// as the tip is recorded, each once and in the order the episode shows its
+	// credits.
 	WebhookEventType_WEBHOOK_EVENT_TYPE_TIP_RECEIVED WebhookEventType = 12
 )
 

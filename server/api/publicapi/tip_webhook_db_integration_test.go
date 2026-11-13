@@ -83,7 +83,7 @@ func tipMatches(got, want tenantwebhooks.Tip) bool {
 
 // A tip paid on the site owes tip.received once however often the provider
 // reports the payment, naming each Author the episode credits once and in the
-// order of their credits, and still owes purchase.completed beside it. A
+// order its credits are shown, and still owes purchase.completed beside it. A
 // purchase of the same episode is no tip and owes only its
 // purchase.completed.
 func TestDBATipPaidOnTheSiteOwesTipReceived(t *testing.T) {
@@ -91,14 +91,19 @@ func TestDBATipPaidOnTheSiteOwesTipReceived(t *testing.T) {
 
 	env := newTipEnv(t, "TIPWH")
 	subscribeToTips(t, env.pg.DB, env.tenant.ID)
-	// The Artist is credited twice and after the Writer, so the event names the
-	// Writer first and the Artist once.
+	// The Artist role outranks the Writer role though its credit is ordered
+	// after theirs, so the Artist leads, and their Supervisor credit, which
+	// ranks last, does not name them a second time. The two Writers share a
+	// role and a display_order, so the name puts the one seeded second first.
 	artist := env.pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{Name: "Artist"})
-	writer := env.pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{Name: "Writer"})
+	writerB := env.pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{Name: "Writer B"})
+	writerA := env.pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{Name: "Writer A"})
 	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, artist.ID, "Artist")
-	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, writer.ID, "Writer")
-	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, artist.ID, "Original Author")
-	if _, err := env.pg.DB.ExecContext(context.Background(), `UPDATE episode_creators SET display_order = 1 WHERE tenant_id = $1 AND creator_id = $2`, env.tenant.ID, artist.ID); err != nil {
+	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, artist.ID, "Supervisor")
+	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, writerB.ID, "Writer")
+	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, writerA.ID, "Writer")
+	artistRole := env.pg.CreatorRoleByName(t, env.tenant.ID, "Artist")
+	if _, err := env.pg.DB.ExecContext(context.Background(), `UPDATE episode_creators SET display_order = 1 WHERE tenant_id = $1 AND creator_id = $2 AND role_id = $3`, env.tenant.ID, artist.ID, artistRole.ID); err != nil {
 		t.Fatalf("order the credits: %v", err)
 	}
 	ctx := testutil.WithBearer(context.Background(), env.token)
@@ -123,7 +128,7 @@ func TestDBATipPaidOnTheSiteOwesTipReceived(t *testing.T) {
 		SeriesPublicID:   env.series.PublicID,
 		Price:            300,
 		Currency:         env.checkout.input.Purchase.Currency,
-		CreatorPublicIDs: []string{writer.PublicID, artist.PublicID},
+		CreatorPublicIDs: []string{artist.PublicID, writerA.PublicID, writerB.PublicID},
 		ReaderPublicID:   env.reader.PublicID,
 		Provider:         "stripe",
 	}

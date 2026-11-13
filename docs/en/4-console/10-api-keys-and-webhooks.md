@@ -2,7 +2,7 @@
 title: API keys and webhooks
 description: Give the tenant's own systems a key that reads the admin API or puts series and episodes in through it, send them signed events for sales, refunds, sign-ups, subscriptions, episodes published or taken off the site, readers' comments, and contact messages, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 **Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases, or puts series and episodes into the catalog, with an **API key**, and learns of a sale, a refund, a new reader, a subscription, an episode published or taken off the site, a reader's comment, or a reader's contact message as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.

@@ -269,7 +269,7 @@ type CoinPackPurchase struct {
 // Tip is the data of [EventTipReceived]. PurchaseID is the same purchase the
 // [EventPurchaseCompleted] of the tip names, and CreatorPublicIDs are the
 // Authors the episode credited when the tip was recorded, each once and in the
-// order of their credits.
+// order the episode shows its credits.
 type Tip struct {
 	PurchaseID      string `json:"purchase_id"`
 	EpisodePublicID string `json:"episode_public_id"`
