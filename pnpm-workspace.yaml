@@ -19,8 +19,8 @@ allowBuilds:
 catalog:
   "@base-ui/react": 1.9.0
   "@buf/googleapis_googleapis.bufbuild_es": 2.13.0-20261015202054-8ac61b9e5023.1
-  "@next/playwright": 16.4.5
-  "@next/third-parties": 16.4.5
+  "@next/playwright": 16.4.6
+  "@next/third-parties": 16.4.6
   "@opentelemetry/api": 1.10.0
   "@opentelemetry/semantic-conventions": 1.45.0
   "@publira/comic-viewer": 1.0.0
@@ -36,7 +36,7 @@ catalog:
   jose: 6.2.17
   jsdom: 31.0.0
   lru-cache: 11.5.3
-  next: 16.4.5
+  next: 16.4.6
   oxlint: 1.92.0
   react: 19.3.1
   react-dom: 19.3.1
