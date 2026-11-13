@@ -2,12 +2,11 @@
 --
 -- `admin.payment-settings.spec.ts` adds Stripe and PAY.JP from
 -- `/integrations/payment`, removes PAY.JP and adds it back, and sets the tip
--- amounts the tenant offers, and `admin.selling.docs-screenshots.spec.ts` adds
--- both providers to photograph them. The settings decide whether the
--- tenant's storefront can charge a reader at all, so no tenant another suite
--- reads can absorb them.
+-- amounts the tenant offers. The settings decide whether the tenant's
+-- storefront can charge a reader at all, so no tenant another suite reads can
+-- absorb them.
 --
--- Applying it is also how the suites put the tenant back: the stored
+-- Applying it is also how the suite puts the tenant back: the stored
 -- providers and settings are deleted, which leaves the tenant with no
 -- provider, and the tips are turned off with no amounts.
 -- public_id values are hard-coded in e2e/src/scenarios/payment-settings.ts.

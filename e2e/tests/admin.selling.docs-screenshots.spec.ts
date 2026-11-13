@@ -4,7 +4,7 @@ import { expect } from "@playwright/test";
 import { selectOption } from "../src/admin";
 import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
-import { applyScenarioSql } from "../src/db";
+import { runSql } from "../src/db";
 import {
   DOCS_LOCALES,
   docsField,
@@ -18,15 +18,12 @@ import {
 } from "../src/docs-screenshots";
 import {
   ANALYTICS_ADMIN,
+  ANALYTICS_TENANT,
   ANALYTICS_WEEK,
 } from "../src/scenarios/admin-analytics";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
-import {
-  PAYMENT_SETTINGS_ADMIN,
-  PAYMENT_SETTINGS_SCENARIO,
-} from "../src/scenarios/payment-settings";
 import {
   PROMOTION_CODES,
   PROMOTION_CODES_ADMIN,
@@ -38,7 +35,6 @@ import {
   WEB_ADMIN_ANALYTICS_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
-  WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL,
   WEB_ADMIN_PROMOTION_CODES_BASE_URL,
   WEB_ADMIN_ROYALTIES_BASE_URL,
   WEB_ADMIN_SUBSCRIPTIONS_BASE_URL,
@@ -58,8 +54,9 @@ import {
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
- * The providers a tenant holds are photographed on the tenant of
- * `db/seeds/scenarios/330_payment_settings.sql`, which no other shot reads.
+ * The providers a tenant holds are photographed on the analytics tenant of
+ * `db/seeds/scenarios/690_admin_analytics.sql`, whose payment settings no
+ * other shot reads.
  * The subscription plans are photographed on the subscriptions tenant of
  * `db/seeds/scenarios/670_storefront_subscriptions.sql`, beside the two plans
  * `680_docs_subscription_plans.sql` adds to it. The cohorts are photographed
@@ -604,9 +601,11 @@ const PAYJP_CREDENTIALS: ProviderCredentials = {
 };
 
 /**
- * Adding a provider saves it on the tenant of
- * `db/seeds/scenarios/330_payment_settings.sql`, so every locale's copy runs
- * in order on one worker, and starts the tenant over with no provider.
+ * Adding a provider saves it on the analytics tenant, so every locale's copy
+ * runs in order on one worker and starts by deleting the providers the one
+ * before it added. The tenant itself is left alone rather than applied again:
+ * it is counted on the Platform Console's dashboard, which another shot takes
+ * meanwhile, and its file is applied again before its own suite runs.
  */
 test.describe("web-admin payment providers documentation screenshots", () => {
   test.describe.configure({ mode: "default" });
@@ -659,16 +658,23 @@ test.describe("web-admin payment providers documentation screenshots", () => {
       consoleSessions,
       page,
     }) => {
-      applyScenarioSql(PAYMENT_SETTINGS_SCENARIO);
+      runSql(`
+        DELETE FROM tenant_payment_providers
+        WHERE tenant_id IN (
+          SELECT id FROM tenants WHERE public_id = '${ANALYTICS_TENANT.publicId}'
+        );
+        DELETE FROM tenant_payment_config
+        WHERE tenant_id IN (
+          SELECT id FROM tenants WHERE public_id = '${ANALYTICS_TENANT.publicId}'
+        );
+      `);
       await consoleSessions.signIn(
         page,
-        PAYMENT_SETTINGS_ADMIN,
-        WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL
+        ANALYTICS_ADMIN,
+        WEB_ADMIN_ANALYTICS_BASE_URL
       );
-      await setDocsLocale(page, WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL, locale);
-      await page.goto(
-        `${WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL}/integrations/payment`
-      );
+      await setDocsLocale(page, WEB_ADMIN_ANALYTICS_BASE_URL, locale);
+      await page.goto(`${WEB_ADMIN_ANALYTICS_BASE_URL}/integrations/payment`);
 
       await addProvider(page, STRIPE_CREDENTIALS);
       await addProvider(page, PAYJP_CREDENTIALS);
