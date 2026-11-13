@@ -7419,6 +7419,12 @@ type StartEpisodeCheckoutRequest struct {
 	// One of the tenant's promotion codes, matched without regard to case.
 	// Empty is no code.
 	PromotionCode string `protobuf:"bytes,7,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
+	// The payment provider to pay through (Tenant.payment_providers). Empty is
+	// the one provider the tenant can sell this through, and invalid_argument
+	// while it can through more than one. A provider the tenant does not hold,
+	// or has retired, is invalid_argument, and one it holds that is not ready is
+	// failed_precondition.
+	Provider      string `protobuf:"bytes,8,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7491,6 +7497,13 @@ func (x *StartEpisodeCheckoutRequest) GetKind() v1.PurchaseKind {
 func (x *StartEpisodeCheckoutRequest) GetPromotionCode() string {
 	if x != nil {
 		return x.PromotionCode
+	}
+	return ""
+}
+
+func (x *StartEpisodeCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -7569,6 +7582,12 @@ type StartVolumeCheckoutRequest struct {
 	// One of the tenant's promotion codes, matched without regard to case.
 	// Empty is no code.
 	PromotionCode string `protobuf:"bytes,4,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
+	// The payment provider to pay through (Tenant.payment_providers). Empty is
+	// the one provider the tenant can sell this through, and invalid_argument
+	// while it can through more than one. A provider the tenant does not hold,
+	// or has retired, is invalid_argument, and one it holds that is not ready is
+	// failed_precondition.
+	Provider      string `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7627,6 +7646,13 @@ func (x *StartVolumeCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Cli
 func (x *StartVolumeCheckoutRequest) GetPromotionCode() string {
 	if x != nil {
 		return x.PromotionCode
+	}
+	return ""
+}
+
+func (x *StartVolumeCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -7707,7 +7733,13 @@ type StartSeriesRemainderCheckoutRequest struct {
 	// The reader's locale. Every episode title on the checkout page is that of
 	// the translation in this locale, else the tenant's default locale's, else
 	// the oldest one. Empty means the tenant's default locale.
-	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	Locale string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	// The payment provider to pay through (Tenant.payment_providers). Empty is
+	// the one provider the tenant can sell this through, and invalid_argument
+	// while it can through more than one. A provider the tenant does not hold,
+	// or has retired, is invalid_argument, and one it holds that is not ready is
+	// failed_precondition.
+	Provider      string `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7766,6 +7798,13 @@ func (x *StartSeriesRemainderCheckoutRequest) GetClient() StartEpisodeCheckoutRe
 func (x *StartSeriesRemainderCheckoutRequest) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -8871,7 +8910,13 @@ type StartTipCheckoutRequest struct {
 	// The reader's locale. The episode title on the checkout page is that of the
 	// translation in this locale, else the tenant's default locale's, else the
 	// oldest one. Empty means the tenant's default locale.
-	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	Locale string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	// The payment provider to pay through (Tenant.payment_providers). Empty is
+	// the one provider the tenant can sell this through, and invalid_argument
+	// while it can through more than one. A provider the tenant does not hold,
+	// or has retired, is invalid_argument, and one it holds that is not ready is
+	// failed_precondition.
+	Provider      string `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8937,6 +8982,13 @@ func (x *StartTipCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Client
 func (x *StartTipCheckoutRequest) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *StartTipCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -10260,7 +10312,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1b\n" +
-	"\x19RecordContentViewResponse\"\x8e\x03\n" +
+	"\x19RecordContentViewResponse\"\xaa\x03\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x1d\n" +
@@ -10268,26 +10320,29 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"episode_id\x18\x04 \x01(\tR\tepisodeId\x12\x16\n" +
 	"\x06locale\x18\x05 \x01(\tR\x06locale\x122\n" +
 	"\x04kind\x18\x06 \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x12%\n" +
-	"\x0epromotion_code\x18\a \x01(\tR\rpromotionCode\"C\n" +
+	"\x0epromotion_code\x18\a \x01(\tR\rpromotionCode\x12\x1a\n" +
+	"\bprovider\x18\b \x01(\tR\bprovider\"C\n" +
 	"\x06Client\x12\x16\n" +
 	"\x12CLIENT_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"CLIENT_WEB\x10\x01\x12\x11\n" +
 	"\rCLIENT_MOBILE\x10\x02J\x04\b\x02\x10\x03R\x11episode_public_id\"A\n" +
 	"\x1cStartEpisodeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xe1\x01\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xfd\x01\n" +
 	"\x1aStartVolumeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tvolume_id\x18\x02 \x01(\tR\bvolumeId\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12%\n" +
-	"\x0epromotion_code\x18\x04 \x01(\tR\rpromotionCode\"@\n" +
+	"\x0epromotion_code\x18\x04 \x01(\tR\rpromotionCode\x12\x1a\n" +
+	"\bprovider\x18\x05 \x01(\tR\bprovider\"@\n" +
 	"\x1bStartVolumeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xdb\x01\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xf7\x01\n" +
 	"#StartSeriesRemainderCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tseries_id\x18\x02 \x01(\tR\bseriesId\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12\x1a\n" +
+	"\bprovider\x18\x05 \x01(\tR\bprovider\"I\n" +
 	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\x85\a\n" +
 	"\n" +
@@ -10383,14 +10438,15 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x18REFUSAL_NO_STORE_PRODUCT\x10\x02\x12\x14\n" +
 	"\x10REFUSAL_NOT_SOLD\x10\x03\x12\x10\n" +
 	"\fREFUSAL_HELD\x10\x04\x12\x1b\n" +
-	"\x17REFUSAL_READER_CREDITED\x10\x05\"\xe9\x01\n" +
+	"\x17REFUSAL_READER_CREDITED\x10\x05\"\x85\x02\n" +
 	"\x17StartTipCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
 	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12\x16\n" +
 	"\x06amount\x18\x03 \x01(\x05R\x06amount\x12F\n" +
 	"\x06client\x18\x04 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
-	"\x06locale\x18\x05 \x01(\tR\x06locale\"=\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\x12\x1a\n" +
+	"\bprovider\x18\x06 \x01(\tR\bprovider\"=\n" +
 	"\x18StartTipCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xbc\x01\n" +
 	"\x14StartStoreTipRequest\x127\n" +

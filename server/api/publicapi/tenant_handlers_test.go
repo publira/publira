@@ -201,9 +201,9 @@ func expectNoTaxRate(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 // expectPaymentsUnavailable answers the payment settings of a tenant that has
 // saved none, and so sells in JPY.
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantPaymentProviders)).
 		WithArgs(tenantID).
-		WillReturnError(sql.ErrNoRows)
+		WillReturnRows(sqlmock.NewRows(publicPaymentProviderColumns()))
 	expectTenantCurrency(mock, tenantID, "")
 }
 
@@ -927,7 +927,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectNoSiteCopy(env.mock, tenantID)
 	expectNoTaxRate(env.mock, tenantID)
-	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectHeldPaymentProvider(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectTenantCurrency(env.mock, tenantID, "JPY")
 	expectNoPromotionCodes(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -965,9 +965,12 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectNoSiteCopy(env.mock, tenantID)
 	expectNoTaxRate(env.mock, tenantID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantPaymentProviders)).
 		WithArgs(tenantID).
-		WillReturnRows(stripePaymentConfigRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
+		WillReturnRows(stripeProviderRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentProvider)).
+		WithArgs(tenantID, stripe.ID).
+		WillReturnRows(stripeProviderRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
 	expectTenantCurrency(env.mock, tenantID, "JPY")
 	expectNoPromotionCodes(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).

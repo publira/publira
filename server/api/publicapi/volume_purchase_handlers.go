@@ -55,7 +55,7 @@ func (s *apiServer) StartVolumeCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, checkoutCurrency, credentials, err := s.loadCheckoutProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *apiServer) StartVolumeCheckout(
 			volumeID:  volume.ID,
 			kind:      paymentprovider.KindPurchase,
 			listPrice: volume.Price,
-			currency:  config.Currency,
+			currency:  checkoutCurrency,
 		}); err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func (s *apiServer) StartVolumeCheckout(
 			VolumeID: volume.ID,
 			Kind:     paymentprovider.KindPurchase,
 			Price:    volume.Price,
-			Currency: config.Currency,
+			Currency: checkoutCurrency,
 		},
 		LineItemName: volume.Title,
 		SuccessURL:   successURL,

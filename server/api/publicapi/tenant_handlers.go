@@ -112,7 +112,7 @@ func (s *apiServer) GetTenant(
 		return nil, s.internalDBError(ctx, "failed to read the tenant tax rate", err, "tenant_id", tenant.ID.String())
 	}
 
-	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
+	paymentProviders := s.tenantPaymentProviders(ctx, tenant.ID)
 	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
 	if err != nil {
 		return nil, err
@@ -208,7 +208,8 @@ func (s *apiServer) GetTenant(
 		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:             defaultLocale,
 		SupportedLocales:          supportedLocales,
-		AcceptsPayments:           acceptsPayments,
+		AcceptsPayments:           len(paymentProviders) > 0,
+		PaymentProviders:          paymentProviders,
 		AcceptsPromotionCodes:     acceptsPromotionCodes,
 		Currency:                  currency,
 		AgeVerification:           ageVerification,
@@ -284,23 +285,47 @@ func tenantLegalPagesFromRow(row dbmodels.GetTenantLegalPagesRow) (terms, privac
 	return terms, privacy
 }
 
-// tenantAcceptsPayments deliberately fails closed. The public response only
-// exposes whether Checkout can be offered; plaintext credentials remain inside
-// paymentsettings while it verifies that the enabled settings can be decrypted.
-func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUID) bool {
-	if _, _, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID); err != nil {
-		if !paymentsettings.IsUnavailable(err) {
-			s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
-		}
-		return false
+// tenantPaymentProviders answers the providers a reader can pay the tenant
+// through, and deliberately fails closed: a provider counts only once its
+// credentials open, and none does when they cannot be read. The public
+// response only exposes which checkouts can be offered; plaintext credentials
+// remain inside paymentsettings while it verifies that they can be decrypted.
+func (s *apiServer) tenantPaymentProviders(ctx context.Context, tenantID uuid.UUID) []*publirav1.TenantPaymentProvider {
+	store := s.paymentStore(ctx)
+	held, err := store.Held(ctx, tenantID)
+	if err != nil {
+		s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
+		return nil
 	}
-	return true
+	plans, _, sellsPlans := store.PlanProvider(held, false)
+	var providers []*publirav1.TenantPaymentProvider
+	for _, config := range held {
+		if !config.Sells() {
+			continue
+		}
+		registered, ok := s.paymentProviders.Lookup(config.Provider)
+		if !ok {
+			continue
+		}
+		if _, _, err := store.LoadProvider(ctx, tenantID, config.Provider); err != nil {
+			if !paymentsettings.IsUnavailable(err) {
+				s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "provider", config.Provider, "error", err)
+			}
+			continue
+		}
+		providers = append(providers, &publirav1.TenantPaymentProvider{
+			Id:            config.Provider,
+			DisplayName:   registered.Declaration().DisplayName,
+			Subscriptions: sellsPlans && plans.Provider == config.Provider,
+		})
+	}
+	return providers
 }
 
 // tenantAcceptsStorePayments answers which stores the tenant's app can charge
 // through, for a tenant on the store route. A store counts only once its key
 // decrypts, since ConfirmStorePurchase cannot verify a charge without it, so
-// this fails closed like tenantAcceptsPayments.
+// this fails closed like tenantPaymentProviders.
 func (s *apiServer) tenantAcceptsStorePayments(ctx context.Context, tenantID uuid.UUID) (appStore, googlePlay bool) {
 	stores := s.appStores(ctx)
 	_, appStoreErr := stores.LoadAppStoreCredentials(ctx, tenantID)

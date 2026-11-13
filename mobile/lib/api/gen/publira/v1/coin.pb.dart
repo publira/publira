@@ -1433,12 +1433,14 @@ class StartCoinPackCheckoutRequest extends $pb.GeneratedMessage {
     $core.String? coinPackId,
     $core.String? returnEpisodeId,
     $core.String? locale,
+    $core.String? provider,
   }) {
     final result = StartCoinPackCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (coinPackId != null) result.coinPackId = coinPackId;
     if (returnEpisodeId != null) result.returnEpisodeId = returnEpisodeId;
     if (locale != null) result.locale = locale;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -1460,6 +1462,7 @@ class StartCoinPackCheckoutRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'coinPackId')
     ..aOS(3, _omitFieldNames ? '' : 'returnEpisodeId')
     ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..aOS(5, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1536,6 +1539,20 @@ class StartCoinPackCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(3);
   @$pb.TagNumber(4)
   void clearLocale() => $_clearField(4);
+
+  /// The payment provider to pay through (Tenant.payment_providers). Empty is
+  /// the one provider the tenant can sell this through, and invalid_argument
+  /// while it can through more than one. A provider the tenant does not hold,
+  /// or has retired, is invalid_argument, and one it holds that is not ready is
+  /// failed_precondition.
+  @$pb.TagNumber(5)
+  $core.String get provider => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set provider($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProvider() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProvider() => $_clearField(5);
 }
 
 class StartCoinPackCheckoutResponse extends $pb.GeneratedMessage {

@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/payment.proto.
  */
 export const file_publira_admin_v1_payment: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3BheW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiWAoWUGF5bWVudENyZWRlbnRpYWxGaWVsZBIMCgRuYW1lGAEgASgJEg4KBnNlY3JldBgCIAEoCBIOCgZwdWJsaWMYAyABKAgSEAoIcmVxdWlyZWQYBCABKAgilwEKD1BheW1lbnRQcm92aWRlchIKCgJpZBgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSOAoGZmllbGRzGAMgAygLMigucHVibGlyYS5hZG1pbi52MS5QYXltZW50Q3JlZGVudGlhbEZpZWxkEhQKDHdlYmhvb2tfcGF0aBgEIAEoCRISCgpjdXJyZW5jaWVzGAUgAygJIk4KG0xpc3RQYXltZW50UHJvdmlkZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiVAocTGlzdFBheW1lbnRQcm92aWRlcnNSZXNwb25zZRI0Cglwcm92aWRlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLlBheW1lbnRQcm92aWRlciJjChtQYXltZW50Q3JlZGVudGlhbEZpZWxkU3RhdGUSDAoEbmFtZRgBIAEoCRISCgpjb25maWd1cmVkGAIgASgIEgwKBGhpbnQYAyABKAkSFAoMcHVibGljX3ZhbHVlGAQgASgJIqMCChVUZW5hbnRQYXltZW50U2V0dGluZ3MSEAoIcHJvdmlkZXIYASABKAkSDwoHZW5hYmxlZBgCIAEoCBINCgVyZWFkeRgHIAEoCBI9CgZmaWVsZHMYCCADKAsyLS5wdWJsaXJhLmFkbWluLnYxLlBheW1lbnRDcmVkZW50aWFsRmllbGRTdGF0ZRIQCghjdXJyZW5jeRgJIAEoCRIXCg9jdXJyZW5jeV9sb2NrZWQYCiABKAhKBAgDEARKBAgEEAVKBAgFEAZKBAgGEAdSFXNlY3JldF9rZXlfY29uZmlndXJlZFIZd2ViaG9va19zZWNyZXRfY29uZmlndXJlZFIPc2VjcmV0X2tleV9oaW50UhN3ZWJob29rX3NlY3JldF9oaW50IlIKH0dldFRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Il0KIEdldFRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjkKCHNldHRpbmdzGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRQYXltZW50U2V0dGluZ3MibQocUGF5bWVudENyZWRlbnRpYWxGaWVsZFVwZGF0ZRIMCgRuYW1lGAEgASgJEjAKBG1vZGUYAiABKA4yIi5wdWJsaXJhLmFkbWluLnYxLlNlY3JldFVwZGF0ZU1vZGUSDQoFdmFsdWUYAyABKAkisgIKIlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCHByb3ZpZGVyGAIgASgJEg8KB2VuYWJsZWQYAyABKAgSPgoGZmllbGRzGAggAygLMi4ucHVibGlyYS5hZG1pbi52MS5QYXltZW50Q3JlZGVudGlhbEZpZWxkVXBkYXRlEhAKCGN1cnJlbmN5GAkgASgJSgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAIUhZzZWNyZXRfa2V5X3VwZGF0ZV9tb2RlUgpzZWNyZXRfa2V5Uhp3ZWJob29rX3NlY3JldF91cGRhdGVfbW9kZVIOd2ViaG9va19zZWNyZXQiYAojVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVzcG9uc2USOQoIc2V0dGluZ3MYASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFBheW1lbnRTZXR0aW5ncyK3AQodVGVuYW50QXBwU3RvcmVQYXltZW50U2V0dGluZ3MSDwoHZW5hYmxlZBgBIAEoCBIRCglpc3N1ZXJfaWQYAiABKAkSDgoGa2V5X2lkGAMgASgJEh4KFnByaXZhdGVfa2V5X2NvbmZpZ3VyZWQYBCABKAgSGAoQcHJpdmF0ZV9rZXlfaGludBgFIAEoCRIZChFidW5kbGVfaWRlbnRpZmllchgGIAEoCRINCgVyZWFkeRgHIAEoCCLAAQofVGVuYW50R29vZ2xlUGxheVBheW1lbnRTZXR0aW5ncxIPCgdlbmFibGVkGAEgASgIEh0KFXNlcnZpY2VfYWNjb3VudF9lbWFpbBgCIAEoCRImCh5zZXJ2aWNlX2FjY291bnRfa2V5X2NvbmZpZ3VyZWQYAyABKAgSIAoYc2VydmljZV9hY2NvdW50X2tleV9oaW50GAQgASgJEhQKDHBhY2thZ2VfbmFtZRgFIAEoCRINCgVyZWFkeRgGIAEoCCLoAQoaVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MSPgoSYXBwX3B1cmNoYXNlX3JvdXRlGAEgASgOMiIucHVibGlyYS50eXBlcy52MS5BcHBQdXJjaGFzZVJvdXRlEkIKCWFwcF9zdG9yZRgCIAEoCzIvLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QXBwU3RvcmVQYXltZW50U2V0dGluZ3MSRgoLZ29vZ2xlX3BsYXkYAyABKAsyMS5wdWJsaXJhLmFkbWluLnYxLlRlbmFudEdvb2dsZVBsYXlQYXltZW50U2V0dGluZ3MiVwokR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJnCiVHZXRUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEj4KCHNldHRpbmdzGAEgASgLMiwucHVibGlyYS5hZG1pbi52MS5UZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5ncyKtAQodQXBwU3RvcmVQYXltZW50U2V0dGluZ3NVcGRhdGUSDwoHZW5hYmxlZBgBIAEoCBIRCglpc3N1ZXJfaWQYAiABKAkSDgoGa2V5X2lkGAMgASgJEkMKF3ByaXZhdGVfa2V5X3VwZGF0ZV9tb2RlGAQgASgOMiIucHVibGlyYS5hZG1pbi52MS5TZWNyZXRVcGRhdGVNb2RlEhMKC3ByaXZhdGVfa2V5GAUgASgJIpwBCh9Hb29nbGVQbGF5UGF5bWVudFNldHRpbmdzVXBkYXRlEg8KB2VuYWJsZWQYASABKAgSSwofc2VydmljZV9hY2NvdW50X2tleV91cGRhdGVfbW9kZRgCIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuU2VjcmV0VXBkYXRlTW9kZRIbChNzZXJ2aWNlX2FjY291bnRfa2V5GAMgASgJIqYCCidVcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ej4KEmFwcF9wdXJjaGFzZV9yb3V0ZRgCIAEoDjIiLnB1YmxpcmEudHlwZXMudjEuQXBwUHVyY2hhc2VSb3V0ZRJCCglhcHBfc3RvcmUYAyABKAsyLy5wdWJsaXJhLmFkbWluLnYxLkFwcFN0b3JlUGF5bWVudFNldHRpbmdzVXBkYXRlEkYKC2dvb2dsZV9wbGF5GAQgASgLMjEucHVibGlyYS5hZG1pbi52MS5Hb29nbGVQbGF5UGF5bWVudFNldHRpbmdzVXBkYXRlImoKKFVwZGF0ZVRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVzcG9uc2USPgoIc2V0dGluZ3MYASABKAsyLC5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzIpwBChJUZW5hbnRTdG9yZVByb2R1Y3QSEgoKcHJvZHVjdF9pZBgBIAEoCRINCgVwcmljZRgCIAEoBRIVCg1lcGlzb2RlX2NvdW50GAMgASgFEhAKCGN1cnJlbmN5GAQgASgJEi0KCWNvaW5fcGFjaxgFIAEoCzIaLnB1YmxpcmEuYWRtaW4udjEuQ29pblBhY2sSCwoDdGlwGAYgASgIIlEKHkxpc3RUZW5hbnRTdG9yZVByb2R1Y3RzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQingEKH0xpc3RUZW5hbnRTdG9yZVByb2R1Y3RzUmVzcG9uc2USNgoIcHJvZHVjdHMYASADKAsyJC5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFN0b3JlUHJvZHVjdBJDChJzdWJzY3JpcHRpb25fcGxhbnMYAiADKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbjLhBgobQWRtaW5QYXltZW50U2V0dGluZ3NTZXJ2aWNlEncKFExpc3RQYXltZW50UHJvdmlkZXJzEi0ucHVibGlyYS5hZG1pbi52MS5MaXN0UGF5bWVudFByb3ZpZGVyc1JlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQYXltZW50UHJvdmlkZXJzUmVzcG9uc2UiABKDAQoYR2V0VGVuYW50UGF5bWVudFNldHRpbmdzEjEucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRQYXltZW50U2V0dGluZ3NSZXF1ZXN0GjIucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRQYXltZW50U2V0dGluZ3NSZXNwb25zZSIAEowBChtVcGRhdGVUZW5hbnRQYXltZW50U2V0dGluZ3MSNC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASkgEKHUdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzEjYucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1JlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVzcG9uc2UiABKbAQogVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MSOS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVxdWVzdBo6LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXNwb25zZSIAEoABChdMaXN0VGVuYW50U3RvcmVQcm9kdWN0cxIwLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFN0b3JlUHJvZHVjdHNSZXF1ZXN0GjEucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50U3RvcmVQcm9kdWN0c1Jlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_admin_v1_coin, file_publira_admin_v1_email, file_publira_admin_v1_subscription_plan, file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3BheW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiWAoWUGF5bWVudENyZWRlbnRpYWxGaWVsZBIMCgRuYW1lGAEgASgJEg4KBnNlY3JldBgCIAEoCBIOCgZwdWJsaWMYAyABKAgSEAoIcmVxdWlyZWQYBCABKAgirgEKD1BheW1lbnRQcm92aWRlchIKCgJpZBgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSOAoGZmllbGRzGAMgAygLMigucHVibGlyYS5hZG1pbi52MS5QYXltZW50Q3JlZGVudGlhbEZpZWxkEhQKDHdlYmhvb2tfcGF0aBgEIAEoCRISCgpjdXJyZW5jaWVzGAUgAygJEhUKDXN1YnNjcmlwdGlvbnMYBiABKAgiTgobTGlzdFBheW1lbnRQcm92aWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJUChxMaXN0UGF5bWVudFByb3ZpZGVyc1Jlc3BvbnNlEjQKCXByb3ZpZGVycxgBIAMoCzIhLnB1YmxpcmEuYWRtaW4udjEuUGF5bWVudFByb3ZpZGVyImMKG1BheW1lbnRDcmVkZW50aWFsRmllbGRTdGF0ZRIMCgRuYW1lGAEgASgJEhIKCmNvbmZpZ3VyZWQYAiABKAgSDAoEaGludBgDIAEoCRIUCgxwdWJsaWNfdmFsdWUYBCABKAkiowIKFVRlbmFudFBheW1lbnRTZXR0aW5ncxIQCghwcm92aWRlchgBIAEoCRIPCgdlbmFibGVkGAIgASgIEg0KBXJlYWR5GAcgASgIEj0KBmZpZWxkcxgIIAMoCzItLnB1YmxpcmEuYWRtaW4udjEuUGF5bWVudENyZWRlbnRpYWxGaWVsZFN0YXRlEhAKCGN1cnJlbmN5GAkgASgJEhcKD2N1cnJlbmN5X2xvY2tlZBgKIAEoCEoECAMQBEoECAQQBUoECAUQBkoECAYQB1IVc2VjcmV0X2tleV9jb25maWd1cmVkUhl3ZWJob29rX3NlY3JldF9jb25maWd1cmVkUg9zZWNyZXRfa2V5X2hpbnRSE3dlYmhvb2tfc2VjcmV0X2hpbnQiUgofR2V0VGVuYW50UGF5bWVudFNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiXQogR2V0VGVuYW50UGF5bWVudFNldHRpbmdzUmVzcG9uc2USOQoIc2V0dGluZ3MYASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFBheW1lbnRTZXR0aW5ncyJtChxQYXltZW50Q3JlZGVudGlhbEZpZWxkVXBkYXRlEgwKBG5hbWUYASABKAkSMAoEbW9kZRgCIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuU2VjcmV0VXBkYXRlTW9kZRINCgV2YWx1ZRgDIAEoCSKyAgoiVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIcHJvdmlkZXIYAiABKAkSDwoHZW5hYmxlZBgDIAEoCBI+CgZmaWVsZHMYCCADKAsyLi5wdWJsaXJhLmFkbWluLnYxLlBheW1lbnRDcmVkZW50aWFsRmllbGRVcGRhdGUSEAoIY3VycmVuY3kYCSABKAlKBAgEEAVKBAgFEAZKBAgGEAdKBAgHEAhSFnNlY3JldF9rZXlfdXBkYXRlX21vZGVSCnNlY3JldF9rZXlSGndlYmhvb2tfc2VjcmV0X3VwZGF0ZV9tb2RlUg53ZWJob29rX3NlY3JldCJgCiNVcGRhdGVUZW5hbnRQYXltZW50U2V0dGluZ3NSZXNwb25zZRI5CghzZXR0aW5ncxgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50UGF5bWVudFNldHRpbmdzIqEBCh1UZW5hbnRQYXltZW50UHJvdmlkZXJTZXR0aW5ncxIQCghwcm92aWRlchgBIAEoCRIPCgdlbmFibGVkGAIgASgIEg0KBXJlYWR5GAMgASgIEj0KBmZpZWxkcxgEIAMoCzItLnB1YmxpcmEuYWRtaW4udjEuUGF5bWVudENyZWRlbnRpYWxGaWVsZFN0YXRlEg8KB3JldGlyZWQYBSABKAgiVAohTGlzdFRlbmFudFBheW1lbnRQcm92aWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCKTAQoiTGlzdFRlbmFudFBheW1lbnRQcm92aWRlcnNSZXNwb25zZRJCCglwcm92aWRlcnMYASADKAsyLy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFBheW1lbnRQcm92aWRlclNldHRpbmdzEhAKCGN1cnJlbmN5GAIgASgJEhcKD2N1cnJlbmN5X2xvY2tlZBgDIAEoCCLKAQoiVXBzZXJ0VGVuYW50UGF5bWVudFByb3ZpZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIcHJvdmlkZXIYAiABKAkSDwoHZW5hYmxlZBgDIAEoCBI+CgZmaWVsZHMYBCADKAsyLi5wdWJsaXJhLmFkbWluLnYxLlBheW1lbnRDcmVkZW50aWFsRmllbGRVcGRhdGUSEAoIY3VycmVuY3kYBSABKAkilAEKI1Vwc2VydFRlbmFudFBheW1lbnRQcm92aWRlclJlc3BvbnNlEkIKCXByb3ZpZGVycxgBIAMoCzIvLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50UGF5bWVudFByb3ZpZGVyU2V0dGluZ3MSEAoIY3VycmVuY3kYAiABKAkSFwoPY3VycmVuY3lfbG9ja2VkGAMgASgIImcKIlJlbW92ZVRlbmFudFBheW1lbnRQcm92aWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCHByb3ZpZGVyGAIgASgJIqUBCiNSZW1vdmVUZW5hbnRQYXltZW50UHJvdmlkZXJSZXNwb25zZRJCCglwcm92aWRlcnMYASADKAsyLy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFBheW1lbnRQcm92aWRlclNldHRpbmdzEhAKCGN1cnJlbmN5GAIgASgJEhcKD2N1cnJlbmN5X2xvY2tlZBgDIAEoCBIPCgdyZXRpcmVkGAQgASgIIrcBCh1UZW5hbnRBcHBTdG9yZVBheW1lbnRTZXR0aW5ncxIPCgdlbmFibGVkGAEgASgIEhEKCWlzc3Vlcl9pZBgCIAEoCRIOCgZrZXlfaWQYAyABKAkSHgoWcHJpdmF0ZV9rZXlfY29uZmlndXJlZBgEIAEoCBIYChBwcml2YXRlX2tleV9oaW50GAUgASgJEhkKEWJ1bmRsZV9pZGVudGlmaWVyGAYgASgJEg0KBXJlYWR5GAcgASgIIsABCh9UZW5hbnRHb29nbGVQbGF5UGF5bWVudFNldHRpbmdzEg8KB2VuYWJsZWQYASABKAgSHQoVc2VydmljZV9hY2NvdW50X2VtYWlsGAIgASgJEiYKHnNlcnZpY2VfYWNjb3VudF9rZXlfY29uZmlndXJlZBgDIAEoCBIgChhzZXJ2aWNlX2FjY291bnRfa2V5X2hpbnQYBCABKAkSFAoMcGFja2FnZV9uYW1lGAUgASgJEg0KBXJlYWR5GAYgASgIIugBChpUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5ncxI+ChJhcHBfcHVyY2hhc2Vfcm91dGUYASABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLkFwcFB1cmNoYXNlUm91dGUSQgoJYXBwX3N0b3JlGAIgASgLMi8ucHVibGlyYS5hZG1pbi52MS5UZW5hbnRBcHBTdG9yZVBheW1lbnRTZXR0aW5ncxJGCgtnb29nbGVfcGxheRgDIAEoCzIxLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50R29vZ2xlUGxheVBheW1lbnRTZXR0aW5ncyJXCiRHZXRUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0ImcKJUdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVzcG9uc2USPgoIc2V0dGluZ3MYASABKAsyLC5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzIq0BCh1BcHBTdG9yZVBheW1lbnRTZXR0aW5nc1VwZGF0ZRIPCgdlbmFibGVkGAEgASgIEhEKCWlzc3Vlcl9pZBgCIAEoCRIOCgZrZXlfaWQYAyABKAkSQwoXcHJpdmF0ZV9rZXlfdXBkYXRlX21vZGUYBCABKA4yIi5wdWJsaXJhLmFkbWluLnYxLlNlY3JldFVwZGF0ZU1vZGUSEwoLcHJpdmF0ZV9rZXkYBSABKAkinAEKH0dvb2dsZVBsYXlQYXltZW50U2V0dGluZ3NVcGRhdGUSDwoHZW5hYmxlZBgBIAEoCBJLCh9zZXJ2aWNlX2FjY291bnRfa2V5X3VwZGF0ZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5TZWNyZXRVcGRhdGVNb2RlEhsKE3NlcnZpY2VfYWNjb3VudF9rZXkYAyABKAkipgIKJ1VwZGF0ZVRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSPgoSYXBwX3B1cmNoYXNlX3JvdXRlGAIgASgOMiIucHVibGlyYS50eXBlcy52MS5BcHBQdXJjaGFzZVJvdXRlEkIKCWFwcF9zdG9yZRgDIAEoCzIvLnB1YmxpcmEuYWRtaW4udjEuQXBwU3RvcmVQYXltZW50U2V0dGluZ3NVcGRhdGUSRgoLZ29vZ2xlX3BsYXkYBCABKAsyMS5wdWJsaXJhLmFkbWluLnYxLkdvb2dsZVBsYXlQYXltZW50U2V0dGluZ3NVcGRhdGUiagooVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXNwb25zZRI+CghzZXR0aW5ncxgBIAEoCzIsLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MinAEKElRlbmFudFN0b3JlUHJvZHVjdBISCgpwcm9kdWN0X2lkGAEgASgJEg0KBXByaWNlGAIgASgFEhUKDWVwaXNvZGVfY291bnQYAyABKAUSEAoIY3VycmVuY3kYBCABKAkSLQoJY29pbl9wYWNrGAUgASgLMhoucHVibGlyYS5hZG1pbi52MS5Db2luUGFjaxILCgN0aXAYBiABKAgiUQoeTGlzdFRlbmFudFN0b3JlUHJvZHVjdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCKeAQofTGlzdFRlbmFudFN0b3JlUHJvZHVjdHNSZXNwb25zZRI2Cghwcm9kdWN0cxgBIAMoCzIkLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50U3RvcmVQcm9kdWN0EkMKEnN1YnNjcmlwdGlvbl9wbGFucxgCIAMoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuMpEKChtBZG1pblBheW1lbnRTZXR0aW5nc1NlcnZpY2USdwoUTGlzdFBheW1lbnRQcm92aWRlcnMSLS5wdWJsaXJhLmFkbWluLnYxLkxpc3RQYXltZW50UHJvdmlkZXJzUmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuTGlzdFBheW1lbnRQcm92aWRlcnNSZXNwb25zZSIAEoYBChhHZXRUZW5hbnRQYXltZW50U2V0dGluZ3MSMS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QaMi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgOIAgESjwEKG1VwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5ncxI0LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVzcG9uc2UiA4gCARKJAQoaTGlzdFRlbmFudFBheW1lbnRQcm92aWRlcnMSMy5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRQYXltZW50UHJvdmlkZXJzUmVxdWVzdBo0LnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFBheW1lbnRQcm92aWRlcnNSZXNwb25zZSIAEowBChtVcHNlcnRUZW5hbnRQYXltZW50UHJvdmlkZXISNC5wdWJsaXJhLmFkbWluLnYxLlVwc2VydFRlbmFudFBheW1lbnRQcm92aWRlclJlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwc2VydFRlbmFudFBheW1lbnRQcm92aWRlclJlc3BvbnNlIgASjAEKG1JlbW92ZVRlbmFudFBheW1lbnRQcm92aWRlchI0LnB1YmxpcmEuYWRtaW4udjEuUmVtb3ZlVGVuYW50UGF5bWVudFByb3ZpZGVyUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuUmVtb3ZlVGVuYW50UGF5bWVudFByb3ZpZGVyUmVzcG9uc2UiABKSAQodR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MSNi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXNwb25zZSIAEpsBCiBVcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5ncxI5LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXF1ZXN0GjoucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASgAEKF0xpc3RUZW5hbnRTdG9yZVByb2R1Y3RzEjAucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50U3RvcmVQcm9kdWN0c1JlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRTdG9yZVByb2R1Y3RzUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_admin_v1_coin, file_publira_admin_v1_email, file_publira_admin_v1_subscription_plan, file_publira_types_v1_types]);
 
 /**
  * One credential a payment provider declares.
@@ -102,6 +102,15 @@ export type PaymentProvider = Message<"publira.admin.v1.PaymentProvider"> & {
    * @generated from field: repeated string currencies = 5;
    */
   currencies: string[];
+
+  /**
+   * True for a provider that takes recurring payments, which is the one kind
+   * a subscription plan is sold through. Every provider sells episodes,
+   * volumes, the rest of a series, coins, and tips.
+   *
+   * @generated from field: bool subscriptions = 6;
+   */
+  subscriptions: boolean;
 };
 
 /**
@@ -190,7 +199,10 @@ export const PaymentCredentialFieldStateSchema: GenMessage<PaymentCredentialFiel
   messageDesc(file_publira_admin_v1_payment, 4);
 
 /**
- * Non-secret view of a tenant's payment-provider settings.
+ * Non-secret view of a tenant's payment-provider settings, which describes the
+ * first provider the tenant holds that is not retired
+ * (TenantPaymentProviderSettings), the one a tenant that holds a single
+ * provider sells through.
  *
  * @generated from message publira.admin.v1.TenantPaymentSettings
  */
@@ -376,6 +388,264 @@ export const UpdateTenantPaymentSettingsResponseSchema: GenMessage<UpdateTenantP
   messageDesc(file_publira_admin_v1_payment, 10);
 
 /**
+ * Non-secret view of one payment provider a tenant holds.
+ *
+ * @generated from message publira.admin.v1.TenantPaymentProviderSettings
+ */
+export type TenantPaymentProviderSettings = Message<"publira.admin.v1.TenantPaymentProviderSettings"> & {
+  /**
+   * The id of the provider (PaymentProvider.id).
+   *
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * True when enabled and every field the provider requires is stored. A
+   * checkout is sent only to a provider that is ready and not retired, and the
+   * notifications, the refunds, and the reconciliation of a provider run only
+   * while it is ready.
+   *
+   * @generated from field: bool ready = 3;
+   */
+  ready: boolean;
+
+  /**
+   * One entry per field the provider declares, in its declared order.
+   *
+   * @generated from field: repeated publira.admin.v1.PaymentCredentialFieldState fields = 4;
+   */
+  fields: PaymentCredentialFieldState[];
+
+  /**
+   * True for a provider the tenant removed with RemoveTenantPaymentProvider
+   * and still holds. It starts no checkout, and keeps its credentials for what
+   * it already took, a checkout paid after it was removed included. Saving it
+   * again with UpsertTenantPaymentProvider adds it back.
+   *
+   * @generated from field: bool retired = 5;
+   */
+  retired: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.TenantPaymentProviderSettings.
+ * Use `create(TenantPaymentProviderSettingsSchema)` to create a new message.
+ */
+export const TenantPaymentProviderSettingsSchema: GenMessage<TenantPaymentProviderSettings> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 11);
+
+/**
+ * @generated from message publira.admin.v1.ListTenantPaymentProvidersRequest
+ */
+export type ListTenantPaymentProvidersRequest = Message<"publira.admin.v1.ListTenantPaymentProvidersRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListTenantPaymentProvidersRequest.
+ * Use `create(ListTenantPaymentProvidersRequestSchema)` to create a new message.
+ */
+export const ListTenantPaymentProvidersRequestSchema: GenMessage<ListTenantPaymentProvidersRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 12);
+
+/**
+ * @generated from message publira.admin.v1.ListTenantPaymentProvidersResponse
+ */
+export type ListTenantPaymentProvidersResponse = Message<"publira.admin.v1.ListTenantPaymentProvidersResponse"> & {
+  /**
+   * Every provider the tenant holds, retired ones included, in the order it
+   * added them. The first that is not retired is the one
+   * GetTenantPaymentSettings describes.
+   *
+   * @generated from field: repeated publira.admin.v1.TenantPaymentProviderSettings providers = 1;
+   */
+  providers: TenantPaymentProviderSettings[];
+
+  /**
+   * The ISO 4217 code, in capitals, of the currency the tenant sells in, which
+   * every provider it holds and has not retired charges in. The platform's
+   * default currency before any is saved.
+   *
+   * @generated from field: string currency = 2;
+   */
+  currency: string;
+
+  /**
+   * True once the tenant has a purchase, so that UpsertTenantPaymentProvider
+   * refuses to change currency.
+   *
+   * @generated from field: bool currency_locked = 3;
+   */
+  currencyLocked: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListTenantPaymentProvidersResponse.
+ * Use `create(ListTenantPaymentProvidersResponseSchema)` to create a new message.
+ */
+export const ListTenantPaymentProvidersResponseSchema: GenMessage<ListTenantPaymentProvidersResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 13);
+
+/**
+ * Adds a provider beside the ones the tenant holds, or changes one it holds,
+ * and leaves every other provider as it is.
+ *
+ * @generated from message publira.admin.v1.UpsertTenantPaymentProviderRequest
+ */
+export type UpsertTenantPaymentProviderRequest = Message<"publira.admin.v1.UpsertTenantPaymentProviderRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * A registered provider id; any other is invalid_argument.
+   *
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * Turning a provider on with a required field missing is invalid_argument.
+   *
+   * @generated from field: bool enabled = 3;
+   */
+  enabled: boolean;
+
+  /**
+   * A field the request leaves out is left as it is. A field the provider
+   * does not declare is invalid_argument.
+   *
+   * @generated from field: repeated publira.admin.v1.PaymentCredentialFieldUpdate fields = 4;
+   */
+  fields: PaymentCredentialFieldUpdate[];
+
+  /**
+   * The ISO 4217 code of the currency to sell in. Empty keeps the stored
+   * currency. The currency, named here or kept, has to be one this provider
+   * and every other provider the tenant holds and has not retired charge in;
+   * anything else is invalid_argument. A change is failed_precondition once
+   * currency_locked is true.
+   *
+   * @generated from field: string currency = 5;
+   */
+  currency: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpsertTenantPaymentProviderRequest.
+ * Use `create(UpsertTenantPaymentProviderRequestSchema)` to create a new message.
+ */
+export const UpsertTenantPaymentProviderRequestSchema: GenMessage<UpsertTenantPaymentProviderRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 14);
+
+/**
+ * @generated from message publira.admin.v1.UpsertTenantPaymentProviderResponse
+ */
+export type UpsertTenantPaymentProviderResponse = Message<"publira.admin.v1.UpsertTenantPaymentProviderResponse"> & {
+  /**
+   * Every provider the tenant holds once the request is applied, as
+   * ListTenantPaymentProviders answers them.
+   *
+   * @generated from field: repeated publira.admin.v1.TenantPaymentProviderSettings providers = 1;
+   */
+  providers: TenantPaymentProviderSettings[];
+
+  /**
+   * @generated from field: string currency = 2;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: bool currency_locked = 3;
+   */
+  currencyLocked: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpsertTenantPaymentProviderResponse.
+ * Use `create(UpsertTenantPaymentProviderResponseSchema)` to create a new message.
+ */
+export const UpsertTenantPaymentProviderResponseSchema: GenMessage<UpsertTenantPaymentProviderResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 15);
+
+/**
+ * Removes a provider the tenant holds, in two steps. The first retires it: it
+ * starts no checkout, and keeps its credentials for what it already took,
+ * since a checkout started before it was removed can still be paid long
+ * after. Removing a retired provider again deletes it and its credentials,
+ * once 90 days have passed since it was retired and it has no payment a refund
+ * may reach and no subscription it bills; until then it stays retired. A
+ * provider the tenant does not hold is not_found.
+ *
+ * @generated from message publira.admin.v1.RemoveTenantPaymentProviderRequest
+ */
+export type RemoveTenantPaymentProviderRequest = Message<"publira.admin.v1.RemoveTenantPaymentProviderRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.RemoveTenantPaymentProviderRequest.
+ * Use `create(RemoveTenantPaymentProviderRequestSchema)` to create a new message.
+ */
+export const RemoveTenantPaymentProviderRequestSchema: GenMessage<RemoveTenantPaymentProviderRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 16);
+
+/**
+ * @generated from message publira.admin.v1.RemoveTenantPaymentProviderResponse
+ */
+export type RemoveTenantPaymentProviderResponse = Message<"publira.admin.v1.RemoveTenantPaymentProviderResponse"> & {
+  /**
+   * Every provider the tenant holds once the request is applied.
+   *
+   * @generated from field: repeated publira.admin.v1.TenantPaymentProviderSettings providers = 1;
+   */
+  providers: TenantPaymentProviderSettings[];
+
+  /**
+   * @generated from field: string currency = 2;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: bool currency_locked = 3;
+   */
+  currencyLocked: boolean;
+
+  /**
+   * True when the tenant still holds the provider, retired, and false once it
+   * is deleted.
+   *
+   * @generated from field: bool retired = 4;
+   */
+  retired: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.RemoveTenantPaymentProviderResponse.
+ * Use `create(RemoveTenantPaymentProviderResponseSchema)` to create a new message.
+ */
+export const RemoveTenantPaymentProviderResponseSchema: GenMessage<RemoveTenantPaymentProviderResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 17);
+
+/**
  * Non-secret view of the App Store Connect API key the server talks to the App
  * Store with. The .p8 private key never appears here.
  *
@@ -432,7 +702,7 @@ export type TenantAppStorePaymentSettings = Message<"publira.admin.v1.TenantAppS
  * Use `create(TenantAppStorePaymentSettingsSchema)` to create a new message.
  */
 export const TenantAppStorePaymentSettingsSchema: GenMessage<TenantAppStorePaymentSettings> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 11);
+  messageDesc(file_publira_admin_v1_payment, 18);
 
 /**
  * Non-secret view of the service account the server talks to Google Play as.
@@ -487,7 +757,7 @@ export type TenantGooglePlayPaymentSettings = Message<"publira.admin.v1.TenantGo
  * Use `create(TenantGooglePlayPaymentSettingsSchema)` to create a new message.
  */
 export const TenantGooglePlayPaymentSettingsSchema: GenMessage<TenantGooglePlayPaymentSettings> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 12);
+  messageDesc(file_publira_admin_v1_payment, 19);
 
 /**
  * @generated from message publira.admin.v1.TenantStorePaymentSettings
@@ -516,7 +786,7 @@ export type TenantStorePaymentSettings = Message<"publira.admin.v1.TenantStorePa
  * Use `create(TenantStorePaymentSettingsSchema)` to create a new message.
  */
 export const TenantStorePaymentSettingsSchema: GenMessage<TenantStorePaymentSettings> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 13);
+  messageDesc(file_publira_admin_v1_payment, 20);
 
 /**
  * @generated from message publira.admin.v1.GetTenantStorePaymentSettingsRequest
@@ -533,7 +803,7 @@ export type GetTenantStorePaymentSettingsRequest = Message<"publira.admin.v1.Get
  * Use `create(GetTenantStorePaymentSettingsRequestSchema)` to create a new message.
  */
 export const GetTenantStorePaymentSettingsRequestSchema: GenMessage<GetTenantStorePaymentSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 14);
+  messageDesc(file_publira_admin_v1_payment, 21);
 
 /**
  * @generated from message publira.admin.v1.GetTenantStorePaymentSettingsResponse
@@ -550,7 +820,7 @@ export type GetTenantStorePaymentSettingsResponse = Message<"publira.admin.v1.Ge
  * Use `create(GetTenantStorePaymentSettingsResponseSchema)` to create a new message.
  */
 export const GetTenantStorePaymentSettingsResponseSchema: GenMessage<GetTenantStorePaymentSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 15);
+  messageDesc(file_publira_admin_v1_payment, 22);
 
 /**
  * @generated from message publira.admin.v1.AppStorePaymentSettingsUpdate
@@ -593,7 +863,7 @@ export type AppStorePaymentSettingsUpdate = Message<"publira.admin.v1.AppStorePa
  * Use `create(AppStorePaymentSettingsUpdateSchema)` to create a new message.
  */
 export const AppStorePaymentSettingsUpdateSchema: GenMessage<AppStorePaymentSettingsUpdate> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 16);
+  messageDesc(file_publira_admin_v1_payment, 23);
 
 /**
  * @generated from message publira.admin.v1.GooglePlayPaymentSettingsUpdate
@@ -623,7 +893,7 @@ export type GooglePlayPaymentSettingsUpdate = Message<"publira.admin.v1.GooglePl
  * Use `create(GooglePlayPaymentSettingsUpdateSchema)` to create a new message.
  */
 export const GooglePlayPaymentSettingsUpdateSchema: GenMessage<GooglePlayPaymentSettingsUpdate> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 17);
+  messageDesc(file_publira_admin_v1_payment, 24);
 
 /**
  * @generated from message publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
@@ -660,7 +930,7 @@ export type UpdateTenantStorePaymentSettingsRequest = Message<"publira.admin.v1.
  * Use `create(UpdateTenantStorePaymentSettingsRequestSchema)` to create a new message.
  */
 export const UpdateTenantStorePaymentSettingsRequestSchema: GenMessage<UpdateTenantStorePaymentSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 18);
+  messageDesc(file_publira_admin_v1_payment, 25);
 
 /**
  * @generated from message publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
@@ -677,7 +947,7 @@ export type UpdateTenantStorePaymentSettingsResponse = Message<"publira.admin.v1
  * Use `create(UpdateTenantStorePaymentSettingsResponseSchema)` to create a new message.
  */
 export const UpdateTenantStorePaymentSettingsResponseSchema: GenMessage<UpdateTenantStorePaymentSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 19);
+  messageDesc(file_publira_admin_v1_payment, 26);
 
 /**
  * A consumable product the tenant creates in App Store Connect and the Play
@@ -742,7 +1012,7 @@ export type TenantStoreProduct = Message<"publira.admin.v1.TenantStoreProduct"> 
  * Use `create(TenantStoreProductSchema)` to create a new message.
  */
 export const TenantStoreProductSchema: GenMessage<TenantStoreProduct> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 20);
+  messageDesc(file_publira_admin_v1_payment, 27);
 
 /**
  * @generated from message publira.admin.v1.ListTenantStoreProductsRequest
@@ -759,7 +1029,7 @@ export type ListTenantStoreProductsRequest = Message<"publira.admin.v1.ListTenan
  * Use `create(ListTenantStoreProductsRequestSchema)` to create a new message.
  */
 export const ListTenantStoreProductsRequestSchema: GenMessage<ListTenantStoreProductsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 21);
+  messageDesc(file_publira_admin_v1_payment, 28);
 
 /**
  * @generated from message publira.admin.v1.ListTenantStoreProductsResponse
@@ -794,7 +1064,7 @@ export type ListTenantStoreProductsResponse = Message<"publira.admin.v1.ListTena
  * Use `create(ListTenantStoreProductsResponseSchema)` to create a new message.
  */
 export const ListTenantStoreProductsResponseSchema: GenMessage<ListTenantStoreProductsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_payment, 22);
+  messageDesc(file_publira_admin_v1_payment, 29);
 
 /**
  * @generated from service publira.admin.v1.AdminPaymentSettingsService
@@ -811,9 +1081,13 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof ListPaymentProvidersResponseSchema;
   },
   /**
+   * The first provider the tenant holds that is not retired, replaced by
+   * ListTenantPaymentProviders.
+   *
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings
+   * @deprecated
    */
   getTenantPaymentSettings: {
     methodKind: "unary";
@@ -821,14 +1095,50 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof GetTenantPaymentSettingsResponseSchema;
   },
   /**
+   * Saves the first provider the tenant holds that is not retired, replaced
+   * by UpsertTenantPaymentProvider. Naming another provider puts it in the
+   * first one's place and deletes the first one's credentials, and leaves the
+   * tenant's other providers as they are.
+   *
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings
+   * @deprecated
    */
   updateTenantPaymentSettings: {
     methodKind: "unary";
     input: typeof UpdateTenantPaymentSettingsRequestSchema;
     output: typeof UpdateTenantPaymentSettingsResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.ListTenantPaymentProviders
+   */
+  listTenantPaymentProviders: {
+    methodKind: "unary";
+    input: typeof ListTenantPaymentProvidersRequestSchema;
+    output: typeof ListTenantPaymentProvidersResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpsertTenantPaymentProvider
+   */
+  upsertTenantPaymentProvider: {
+    methodKind: "unary";
+    input: typeof UpsertTenantPaymentProviderRequestSchema;
+    output: typeof UpsertTenantPaymentProviderResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.RemoveTenantPaymentProvider
+   */
+  removeTenantPaymentProvider: {
+    methodKind: "unary";
+    input: typeof RemoveTenantPaymentProviderRequestSchema;
+    output: typeof RemoveTenantPaymentProviderResponseSchema;
   },
   /**
    * Minimum role: tenant_admin.

@@ -34,6 +34,15 @@ const (
 	// AdminPaymentSettingsServiceUpdateTenantPaymentSettingsProcedure is the procedure name of the
 	// AdminPaymentSettingsService's UpdateTenantPaymentSettings RPC.
 	AdminPaymentSettingsServiceUpdateTenantPaymentSettingsProcedure = "/publira.admin.v1.AdminPaymentSettingsService/UpdateTenantPaymentSettings"
+	// AdminPaymentSettingsServiceListTenantPaymentProvidersProcedure is the procedure name of the
+	// AdminPaymentSettingsService's ListTenantPaymentProviders RPC.
+	AdminPaymentSettingsServiceListTenantPaymentProvidersProcedure = "/publira.admin.v1.AdminPaymentSettingsService/ListTenantPaymentProviders"
+	// AdminPaymentSettingsServiceUpsertTenantPaymentProviderProcedure is the procedure name of the
+	// AdminPaymentSettingsService's UpsertTenantPaymentProvider RPC.
+	AdminPaymentSettingsServiceUpsertTenantPaymentProviderProcedure = "/publira.admin.v1.AdminPaymentSettingsService/UpsertTenantPaymentProvider"
+	// AdminPaymentSettingsServiceRemoveTenantPaymentProviderProcedure is the procedure name of the
+	// AdminPaymentSettingsService's RemoveTenantPaymentProvider RPC.
+	AdminPaymentSettingsServiceRemoveTenantPaymentProviderProcedure = "/publira.admin.v1.AdminPaymentSettingsService/RemoveTenantPaymentProvider"
 	// AdminPaymentSettingsServiceGetTenantStorePaymentSettingsProcedure is the procedure name of the
 	// AdminPaymentSettingsService's GetTenantStorePaymentSettings RPC.
 	AdminPaymentSettingsServiceGetTenantStorePaymentSettingsProcedure = "/publira.admin.v1.AdminPaymentSettingsService/GetTenantStorePaymentSettings"
@@ -67,6 +76,27 @@ var (
 			Procedure:  AdminPaymentSettingsServiceUpdateTenantPaymentSettingsProcedure,
 		}
 	})
+	adminPaymentSettingsServiceListTenantPaymentProvidersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_payment_proto.Services().ByName("AdminPaymentSettingsService").Methods().ByName("ListTenantPaymentProviders"),
+			Procedure:  AdminPaymentSettingsServiceListTenantPaymentProvidersProcedure,
+		}
+	})
+	adminPaymentSettingsServiceUpsertTenantPaymentProviderSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_payment_proto.Services().ByName("AdminPaymentSettingsService").Methods().ByName("UpsertTenantPaymentProvider"),
+			Procedure:  AdminPaymentSettingsServiceUpsertTenantPaymentProviderProcedure,
+		}
+	})
+	adminPaymentSettingsServiceRemoveTenantPaymentProviderSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_payment_proto.Services().ByName("AdminPaymentSettingsService").Methods().ByName("RemoveTenantPaymentProvider"),
+			Procedure:  AdminPaymentSettingsServiceRemoveTenantPaymentProviderProcedure,
+		}
+	})
 	adminPaymentSettingsServiceGetTenantStorePaymentSettingsSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -95,10 +125,28 @@ var (
 type AdminPaymentSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *v1.ListPaymentProvidersRequest) (*v1.ListPaymentProvidersResponse, error)
+	// The first provider the tenant holds that is not retired, replaced by
+	// ListTenantPaymentProviders.
+	//
 	// Minimum role: tenant_admin.
+	//
+	// Deprecated: do not use.
 	GetTenantPaymentSettings(context.Context, *v1.GetTenantPaymentSettingsRequest) (*v1.GetTenantPaymentSettingsResponse, error)
+	// Saves the first provider the tenant holds that is not retired, replaced
+	// by UpsertTenantPaymentProvider. Naming another provider puts it in the
+	// first one's place and deletes the first one's credentials, and leaves the
+	// tenant's other providers as they are.
+	//
 	// Minimum role: tenant_admin.
+	//
+	// Deprecated: do not use.
 	UpdateTenantPaymentSettings(context.Context, *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	ListTenantPaymentProviders(context.Context, *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error)
+	// Minimum role: tenant_admin.
+	UpsertTenantPaymentProvider(context.Context, *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error)
+	// Minimum role: tenant_admin.
+	RemoveTenantPaymentProvider(context.Context, *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *v1.GetTenantStorePaymentSettingsRequest) (*v1.GetTenantStorePaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.
@@ -119,10 +167,28 @@ func NewAdminPaymentSettingsServiceClient(client *connect.Client) AdminPaymentSe
 type AdminPaymentSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *v1.ListPaymentProvidersRequest) (*v1.ListPaymentProvidersResponse, error)
+	// The first provider the tenant holds that is not retired, replaced by
+	// ListTenantPaymentProviders.
+	//
 	// Minimum role: tenant_admin.
+	//
+	// Deprecated: do not use.
 	GetTenantPaymentSettings(context.Context, *v1.GetTenantPaymentSettingsRequest) (*v1.GetTenantPaymentSettingsResponse, error)
+	// Saves the first provider the tenant holds that is not retired, replaced
+	// by UpsertTenantPaymentProvider. Naming another provider puts it in the
+	// first one's place and deletes the first one's credentials, and leaves the
+	// tenant's other providers as they are.
+	//
 	// Minimum role: tenant_admin.
+	//
+	// Deprecated: do not use.
 	UpdateTenantPaymentSettings(context.Context, *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	ListTenantPaymentProviders(context.Context, *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error)
+	// Minimum role: tenant_admin.
+	UpsertTenantPaymentProvider(context.Context, *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error)
+	// Minimum role: tenant_admin.
+	RemoveTenantPaymentProvider(context.Context, *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *v1.GetTenantStorePaymentSettingsRequest) (*v1.GetTenantStorePaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.
@@ -139,6 +205,9 @@ func RegisterAdminPaymentSettingsServiceHandler(server *connect.Server, svc Admi
 		connect.Method{Spec: adminPaymentSettingsServiceListPaymentProvidersSpec(), Handler: adapter.listPaymentProviders},
 		connect.Method{Spec: adminPaymentSettingsServiceGetTenantPaymentSettingsSpec(), Handler: adapter.getTenantPaymentSettings},
 		connect.Method{Spec: adminPaymentSettingsServiceUpdateTenantPaymentSettingsSpec(), Handler: adapter.updateTenantPaymentSettings},
+		connect.Method{Spec: adminPaymentSettingsServiceListTenantPaymentProvidersSpec(), Handler: adapter.listTenantPaymentProviders},
+		connect.Method{Spec: adminPaymentSettingsServiceUpsertTenantPaymentProviderSpec(), Handler: adapter.upsertTenantPaymentProvider},
+		connect.Method{Spec: adminPaymentSettingsServiceRemoveTenantPaymentProviderSpec(), Handler: adapter.removeTenantPaymentProvider},
 		connect.Method{Spec: adminPaymentSettingsServiceGetTenantStorePaymentSettingsSpec(), Handler: adapter.getTenantStorePaymentSettings},
 		connect.Method{Spec: adminPaymentSettingsServiceUpdateTenantStorePaymentSettingsSpec(), Handler: adapter.updateTenantStorePaymentSettings},
 		connect.Method{Spec: adminPaymentSettingsServiceListTenantStoreProductsSpec(), Handler: adapter.listTenantStoreProducts},
@@ -158,6 +227,18 @@ func (UnimplementedAdminPaymentSettingsServiceHandler) GetTenantPaymentSettings(
 
 func (UnimplementedAdminPaymentSettingsServiceHandler) UpdateTenantPaymentSettings(context.Context, *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings is not implemented")
+}
+
+func (UnimplementedAdminPaymentSettingsServiceHandler) ListTenantPaymentProviders(context.Context, *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPaymentSettingsService.ListTenantPaymentProviders is not implemented")
+}
+
+func (UnimplementedAdminPaymentSettingsServiceHandler) UpsertTenantPaymentProvider(context.Context, *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPaymentSettingsService.UpsertTenantPaymentProvider is not implemented")
+}
+
+func (UnimplementedAdminPaymentSettingsServiceHandler) RemoveTenantPaymentProvider(context.Context, *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPaymentSettingsService.RemoveTenantPaymentProvider is not implemented")
 }
 
 func (UnimplementedAdminPaymentSettingsServiceHandler) GetTenantStorePaymentSettings(context.Context, *v1.GetTenantStorePaymentSettingsRequest) (*v1.GetTenantStorePaymentSettingsResponse, error) {
@@ -195,6 +276,30 @@ func (c *adminPaymentSettingsServiceClient) GetTenantPaymentSettings(ctx context
 func (c *adminPaymentSettingsServiceClient) UpdateTenantPaymentSettings(ctx context.Context, req *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error) {
 	var res v1.UpdateTenantPaymentSettingsResponse
 	if err := c.client.CallUnary(ctx, adminPaymentSettingsServiceUpdateTenantPaymentSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPaymentSettingsServiceClient) ListTenantPaymentProviders(ctx context.Context, req *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error) {
+	var res v1.ListTenantPaymentProvidersResponse
+	if err := c.client.CallUnary(ctx, adminPaymentSettingsServiceListTenantPaymentProvidersSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPaymentSettingsServiceClient) UpsertTenantPaymentProvider(ctx context.Context, req *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error) {
+	var res v1.UpsertTenantPaymentProviderResponse
+	if err := c.client.CallUnary(ctx, adminPaymentSettingsServiceUpsertTenantPaymentProviderSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPaymentSettingsServiceClient) RemoveTenantPaymentProvider(ctx context.Context, req *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error) {
+	var res v1.RemoveTenantPaymentProviderResponse
+	if err := c.client.CallUnary(ctx, adminPaymentSettingsServiceRemoveTenantPaymentProviderSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -258,6 +363,42 @@ func (h adminPaymentSettingsServiceHandler) updateTenantPaymentSettings(ctx cont
 		return err
 	}
 	res, err := h.svc.UpdateTenantPaymentSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPaymentSettingsServiceHandler) listTenantPaymentProviders(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantPaymentProvidersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenantPaymentProviders(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPaymentSettingsServiceHandler) upsertTenantPaymentProvider(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpsertTenantPaymentProviderRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpsertTenantPaymentProvider(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPaymentSettingsServiceHandler) removeTenantPaymentProvider(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RemoveTenantPaymentProviderRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RemoveTenantPaymentProvider(ctx, &req)
 	if err != nil {
 		return err
 	}

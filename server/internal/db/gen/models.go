@@ -1882,6 +1882,18 @@ type TenantPaymentConfig struct {
 	Currency             string          `json:"currency"`
 }
 
+type TenantPaymentProvider struct {
+	ID                   uuid.UUID       `json:"id"`
+	TenantID             uuid.UUID       `json:"tenant_id"`
+	Provider             string          `json:"provider"`
+	Enabled              bool            `json:"enabled"`
+	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
+	CredentialHints      json.RawMessage `json:"credential_hints"`
+	RetiredAt            sql.NullTime    `json:"retired_at"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+}
+
 type TenantRatingTotal struct {
 	TenantID       uuid.UUID `json:"tenant_id"`
 	Points         int64     `json:"points"`

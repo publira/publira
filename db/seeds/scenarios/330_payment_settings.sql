@@ -88,6 +88,9 @@ FROM users u
 WHERE u.public_id = 'PaymADMNAAA1'
 ON CONFLICT (user_id, role) DO NOTHING;
 
+DELETE FROM tenant_payment_providers
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'PaymTNNTAAA1');
+
 DELETE FROM tenant_payment_config
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'PaymTNNTAAA1');
 

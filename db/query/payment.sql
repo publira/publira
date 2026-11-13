@@ -4,13 +4,6 @@ FROM tenant_payment_config
 WHERE tenant_id = $1
 LIMIT 1;
 
--- name: GetEnabledTenantPaymentConfigByTenantID :one
-SELECT *
-FROM tenant_payment_config
-WHERE tenant_id = $1
-    AND enabled = TRUE
-LIMIT 1;
-
 -- name: UpsertTenantPaymentConfig :one
 INSERT INTO tenant_payment_config (
         tenant_id,
@@ -30,6 +23,30 @@ SET provider = EXCLUDED.provider,
     currency = EXCLUDED.currency,
     updated_at = NOW()
 RETURNING *;
+
+-- name: SaveTenantCurrency :exec
+-- Stores the currency the tenant sells in, and creates the tenant's settings
+-- row with it when there is none yet, which names the provider being added
+-- and leaves payments off until that provider is saved. Changing the currency
+-- alone leaves the provider columns, which the previous release reads, as
+-- they are.
+INSERT INTO tenant_payment_config (
+        tenant_id,
+        provider,
+        enabled,
+        currency,
+        updated_at
+    )
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('provider'),
+        FALSE,
+        sqlc.arg('currency'),
+        NOW()
+    ) ON CONFLICT (tenant_id) DO
+UPDATE
+SET currency = EXCLUDED.currency,
+    updated_at = NOW();
 
 -- name: LockTenantCurrency :exec
 -- Serializes, for the rest of the caller's transaction, a change of the

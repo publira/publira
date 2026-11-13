@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect/v2"
@@ -18,8 +20,10 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storesubscription"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -154,7 +158,7 @@ func (s *apiServer) StartSubscriptionCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	subscriptions, credentials, err := s.loadSubscriptionProvider(ctx, tenant.ID)
+	subscriptions, providerID, credentials, err := s.loadSubscriptionProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +207,15 @@ func (s *apiServer) StartSubscriptionCheckout(
 			return &publirav1.StartSubscriptionCheckoutResponse{CheckoutUrl: reused}, nil
 		}
 	}
-	customerID, err := queries.GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{TenantID: tenant.ID, UserID: reader})
+	customer, err := queries.GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{TenantID: tenant.ID, UserID: reader})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's Stripe customer", err, "tenant_id", tenant.ID.String())
+	}
+	// A customer is an account's own, so one of another provider's is not
+	// named to this one.
+	var customerID string
+	if customer.Provider == providerID {
+		customerID = customer.StripeCustomerID
 	}
 
 	request := paymentprovider.SubscriptionCheckoutRequest{
@@ -434,11 +444,7 @@ func (s *apiServer) CreateBillingPortalSession(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	subscriptions, credentials, err := s.loadSubscriptionProvider(ctx, tenant.ID)
-	if err != nil {
-		return nil, err
-	}
-	customerID, err := s.queriesFor(ctx).GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{
+	customer, err := s.queriesFor(ctx).GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{
 		TenantID: tenant.ID,
 		UserID:   uuid.NullUUID{UUID: user.ID, Valid: true},
 	})
@@ -448,10 +454,20 @@ func (s *apiServer) CreateBillingPortalSession(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the reader's Stripe customer", err, "tenant_id", tenant.ID.String())
 	}
+	// The portal is the provider's that bills the customer, which the tenant
+	// may have retired since and which still bills what it sold.
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID, customer.Provider)
+	if err != nil {
+		return nil, err
+	}
+	subscriptions, ok := provider.(paymentprovider.Subscriptions)
+	if !ok {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment provider sells no subscriptions")
+	}
 	returnURL := *origin
 	returnURL.Path = "/my"
 	portalURL, err := subscriptions.StartBillingPortal(ctx, credentials, paymentprovider.BillingPortalRequest{
-		CustomerID: customerID,
+		CustomerID: customer.StripeCustomerID,
 		ReturnURL:  returnURL.String(),
 	})
 	if err != nil {
@@ -461,17 +477,54 @@ func (s *apiServer) CreateBillingPortalSession(
 	return &publirav1.CreateBillingPortalSessionResponse{Url: portalURL}, nil
 }
 
-// loadSubscriptionProvider answers the tenant's enabled payment provider as
-// one that sells subscriptions, or failed_precondition when it takes no
-// payments or sells none.
-func (s *apiServer) loadSubscriptionProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Subscriptions, paymentprovider.Credentials, error) {
-	provider, _, credentials, err := s.loadPaymentProvider(ctx, tenantID)
+// loadSubscriptionProvider answers the provider the tenant's plans are sold
+// through, with its id and credentials. A request naming another provider is
+// invalid_argument, and a tenant that sells through no provider taking
+// recurring payments is failed_precondition.
+func (s *apiServer) loadSubscriptionProvider(ctx context.Context, tenantID uuid.UUID, requested string) (paymentprovider.Subscriptions, string, paymentprovider.Credentials, error) {
+	store := s.paymentStore(ctx)
+	held, err := store.Held(ctx, tenantID)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", nil, s.internalDBError(ctx, "failed to list the tenant payment providers", err, "tenant_id", tenantID.String())
+	}
+	plans, _, ok := store.PlanProvider(held, false)
+	if !ok {
+		if slices.ContainsFunc(held, paymentsettings.ProviderConfig.Sells) {
+			return nil, "", nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment providers sell no subscriptions")
+		}
+		return nil, "", nil, paymentsNotConfiguredError()
+	}
+	if requested = strings.TrimSpace(requested); requested != "" && requested != plans.Provider {
+		return nil, "", nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the tenant sells its plans through another provider"), "provider")
+	}
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenantID, plans.Provider)
+	if err != nil {
+		return nil, "", nil, err
 	}
 	subscriptions, ok := provider.(paymentprovider.Subscriptions)
 	if !ok {
-		return nil, nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment provider sells no subscriptions")
+		return nil, "", nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment provider sells no subscriptions")
+	}
+	return subscriptions, plans.Provider, credentials, nil
+}
+
+// loadBillingProvider answers the provider that bills the subscriptions the
+// tenant's plans sold: the one they are sold through, or the one they were
+// sold through until the tenant retired it. A tenant that holds none is
+// failed_precondition.
+func (s *apiServer) loadBillingProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Subscriptions, paymentprovider.Credentials, error) {
+	store := s.paymentStore(ctx)
+	held, err := store.Held(ctx, tenantID)
+	if err != nil {
+		return nil, nil, s.internalDBError(ctx, "failed to list the tenant payment providers", err, "tenant_id", tenantID.String())
+	}
+	plans, subscriptions, ok := store.PlanProvider(held, true)
+	if !ok {
+		return nil, nil, paymentsNotConfiguredError()
+	}
+	_, credentials, err := s.loadPaymentProvider(ctx, tenantID, plans.Provider)
+	if err != nil {
+		return nil, nil, err
 	}
 	return subscriptions, credentials, nil
 }

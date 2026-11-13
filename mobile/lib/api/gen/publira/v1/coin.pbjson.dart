@@ -416,6 +416,7 @@ const StartCoinPackCheckoutRequest$json = {
     {'1': 'coin_pack_id', '3': 2, '4': 1, '5': 9, '10': 'coinPackId'},
     {'1': 'return_episode_id', '3': 3, '4': 1, '5': 9, '10': 'returnEpisodeId'},
     {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'provider', '3': 5, '4': 1, '5': 9, '10': 'provider'},
   ],
 };
 
@@ -424,7 +425,7 @@ final $typed_data.Uint8List startCoinPackCheckoutRequestDescriptor = $convert.ba
     'ChxTdGFydENvaW5QYWNrQ2hlY2tvdXRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
     'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EiAKDGNvaW5fcGFja19pZBgCIAEoCVIK'
     'Y29pblBhY2tJZBIqChFyZXR1cm5fZXBpc29kZV9pZBgDIAEoCVIPcmV0dXJuRXBpc29kZUlkEh'
-    'YKBmxvY2FsZRgEIAEoCVIGbG9jYWxl');
+    'YKBmxvY2FsZRgEIAEoCVIGbG9jYWxlEhoKCHByb3ZpZGVyGAUgASgJUghwcm92aWRlcg==');
 
 @$core.Deprecated('Use startCoinPackCheckoutResponseDescriptor instead')
 const StartCoinPackCheckoutResponse$json = {

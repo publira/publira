@@ -55,7 +55,7 @@ func storedMaps(t *testing.T, queries *memoryPaymentQueries, tenantID uuid.UUID)
 	if err != nil {
 		t.Fatalf("GetTenantPaymentConfigByTenantID: %v", err)
 	}
-	stored, err := decodeStoredFields(row)
+	stored, err := decodeStoredFields(row.CredentialsEncrypted, row.CredentialHints)
 	if err != nil {
 		t.Fatalf("decodeStoredFields: %v", err)
 	}
@@ -440,8 +440,11 @@ func TestStoreSwitchingProviderClearsThePreviousFields(t *testing.T) {
 	if len(encrypted) != 0 || len(hints) != 0 {
 		t.Fatalf("stored fields after the switch = %v / %v, want none", encrypted, hints)
 	}
-	if _, _, err := store.LoadEnabledSecrets(context.Background(), tenantID); !errors.Is(err, ErrNotEnabled) {
-		t.Fatalf("LoadEnabledSecrets after the switch: error = %v, want ErrNotEnabled", err)
+	if _, _, err := store.LoadProvider(context.Background(), tenantID, cardProviderID); !errors.Is(err, ErrNotEnabled) {
+		t.Fatalf("LoadProvider after the switch: error = %v, want ErrNotEnabled", err)
+	}
+	if _, _, err := store.LoadProvider(context.Background(), tenantID, stripe.ID); !errors.Is(err, ErrProviderNotHeld) {
+		t.Fatalf("LoadProvider of the provider switched from: error = %v, want ErrProviderNotHeld", err)
 	}
 
 	ready, err := store.Upsert(context.Background(), tenantID, cardInput(true), meta)
@@ -458,7 +461,7 @@ func TestStoreSwitchingProviderClearsThePreviousFields(t *testing.T) {
 	}
 }
 
-func TestStoreLoadEnabledSecretsDecrypts(t *testing.T) {
+func TestStoreLoadProviderDecrypts(t *testing.T) {
 	store := newTestStore(t, newMemoryPaymentQueries(), &memoryAuditQueries{}, &bytes.Buffer{})
 	tenantID := uuid.Must(uuid.NewV7())
 
@@ -466,9 +469,9 @@ func TestStoreLoadEnabledSecretsDecrypts(t *testing.T) {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	cfg, credentials, err := store.LoadEnabledSecrets(context.Background(), tenantID)
+	cfg, credentials, err := store.LoadProvider(context.Background(), tenantID, cardProviderID)
 	if err != nil {
-		t.Fatalf("LoadEnabledSecrets: %v", err)
+		t.Fatalf("LoadProvider: %v", err)
 	}
 	if credentials[cardSecretKey] != testCardSecretKey || credentials[cardPublishableKey] != testPublishableKey || credentials[cardShopID] != testShopID {
 		t.Fatal("decrypted credentials do not match what was stored")
@@ -476,8 +479,8 @@ func TestStoreLoadEnabledSecretsDecrypts(t *testing.T) {
 	if cfg.Provider != cardProviderID || !cfg.Ready {
 		t.Fatalf("loaded config = %+v, want ready card", cfg)
 	}
-	if containsAny(mustField(t, cfg, cardSecretKey).Hint, testCardSecretKey) {
-		t.Fatal("public config from LoadEnabledSecrets leaked plaintext")
+	if containsAny(cfg.Fields[0].Hint, testCardSecretKey) {
+		t.Fatal("public config from LoadProvider leaked plaintext")
 	}
 }
 
@@ -515,14 +518,14 @@ func putRow(t *testing.T, queries *memoryPaymentQueries, tenantID uuid.UUID, pro
 	}
 }
 
-func TestStoreLoadEnabledSecretsMissingRequiredFieldIsUnavailable(t *testing.T) {
+func TestStoreLoadProviderMissingRequiredFieldIsUnavailable(t *testing.T) {
 	queries := newMemoryPaymentQueries()
 	var logs bytes.Buffer
 	store := newTestStore(t, queries, &memoryAuditQueries{}, &logs)
 	tenantID := uuid.Must(uuid.NewV7())
 	putRow(t, queries, tenantID, cardProviderID, map[string]string{cardSecretKey: testCardSecretKey})
 
-	_, credentials, err := store.LoadEnabledSecrets(context.Background(), tenantID)
+	_, credentials, err := store.LoadProvider(context.Background(), tenantID, cardProviderID)
 	if !errors.Is(err, ErrSecretMissing) || !IsUnavailable(err) {
 		t.Fatalf("error = %v, want an unavailable ErrSecretMissing", err)
 	}
@@ -542,13 +545,13 @@ func TestStoreLoadEnabledSecretsMissingRequiredFieldIsUnavailable(t *testing.T) 
 	}
 }
 
-func TestStoreLoadEnabledSecretsUnregisteredProviderIsUnavailable(t *testing.T) {
+func TestStoreLoadProviderUnregisteredProviderIsUnavailable(t *testing.T) {
 	queries := newMemoryPaymentQueries()
 	store := newTestStore(t, queries, &memoryAuditQueries{}, &bytes.Buffer{})
 	tenantID := uuid.Must(uuid.NewV7())
 	putRow(t, queries, tenantID, "retired", map[string]string{"api_key": "retired_key_0001"})
 
-	if _, _, err := store.LoadEnabledSecrets(context.Background(), tenantID); !errors.Is(err, ErrProviderUnavailable) || !IsUnavailable(err) {
+	if _, _, err := store.LoadProvider(context.Background(), tenantID, "retired"); !errors.Is(err, ErrProviderUnavailable) || !IsUnavailable(err) {
 		t.Fatalf("error = %v, want an unavailable ErrProviderUnavailable", err)
 	}
 	cfg, err := store.GetPublic(context.Background(), tenantID)
@@ -560,10 +563,21 @@ func TestStoreLoadEnabledSecretsUnregisteredProviderIsUnavailable(t *testing.T) 
 	}
 }
 
-func TestStoreLoadEnabledSecretsMissing(t *testing.T) {
+func TestStoreLoadProviderTheTenantDoesNotHold(t *testing.T) {
 	store := newTestStore(t, newMemoryPaymentQueries(), &memoryAuditQueries{}, &bytes.Buffer{})
-	_, _, err := store.LoadEnabledSecrets(context.Background(), uuid.Must(uuid.NewV7()))
-	if !errors.Is(err, ErrNotEnabled) {
+	_, _, err := store.LoadProvider(context.Background(), uuid.Must(uuid.NewV7()), stripe.ID)
+	if !errors.Is(err, ErrProviderNotHeld) || !IsUnavailable(err) {
+		t.Fatalf("error = %v, want an unavailable ErrProviderNotHeld", err)
+	}
+}
+
+func TestStoreLoadProviderDisabled(t *testing.T) {
+	store := newTestStore(t, newMemoryPaymentQueries(), &memoryAuditQueries{}, &bytes.Buffer{})
+	tenantID := uuid.Must(uuid.NewV7())
+	if _, err := store.Upsert(context.Background(), tenantID, stripeInput(false), AuditMeta{}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if _, _, err := store.LoadProvider(context.Background(), tenantID, stripe.ID); !errors.Is(err, ErrNotEnabled) {
 		t.Fatalf("error = %v, want ErrNotEnabled", err)
 	}
 }
@@ -586,9 +600,9 @@ func TestStoreTenantIsolationOnQueries(t *testing.T) {
 		t.Fatalf("tenant B saw tenant A config: %+v", cfgB)
 	}
 
-	_, _, err = store.LoadEnabledSecrets(context.Background(), tenantB)
-	if !errors.Is(err, ErrNotEnabled) {
-		t.Fatalf("LoadEnabledSecrets B error = %v, want ErrNotEnabled", err)
+	_, _, err = store.LoadProvider(context.Background(), tenantB, stripe.ID)
+	if !errors.Is(err, ErrProviderNotHeld) {
+		t.Fatalf("LoadProvider B error = %v, want ErrProviderNotHeld", err)
 	}
 }
 
@@ -611,7 +625,7 @@ func TestStoreDecryptFailureDoesNotLeakCiphertextOrPlaintext(t *testing.T) {
 	}
 	store.encryptor = other
 
-	_, credentials, err := store.LoadEnabledSecrets(context.Background(), tenantID)
+	_, credentials, err := store.LoadProvider(context.Background(), tenantID, stripe.ID)
 	if !errors.Is(err, ErrDecryptFailed) {
 		t.Fatalf("error = %v, want ErrDecryptFailed", err)
 	}

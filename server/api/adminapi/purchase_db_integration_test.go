@@ -54,7 +54,7 @@ func newPurchaseFixture(t *testing.T) *purchaseFixture {
 	f.alice = env.PG.SeedEndUser(t, admin.Tenant.ID, "READERALICE", "alice@example.com", "Alice")
 	f.bob = env.PG.SeedEndUser(t, admin.Tenant.ID, "READERBOB01", "bob@example.com", "Bob")
 
-	if _, err := env.paymentClient().UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	if _, err := env.paymentClient().UpsertTenantPaymentProvider(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UpsertTenantPaymentProviderRequest{
 		Tenant:   admin.tenantContext(),
 		Provider: stripe.ID,
 		Enabled:  true,
@@ -572,7 +572,7 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 
 	t.Run("a tenant whose payments are off", func(t *testing.T) {
 		purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.bob, episode: f.episodeC, purchasedAt: purchasedAt, paymentID: "pi_disabled"})
-		if _, err := f.env.paymentClient().UpdateTenantPaymentSettings(f.ctx(), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+		if _, err := f.env.paymentClient().UpsertTenantPaymentProvider(f.ctx(), &publiraadminv1.UpsertTenantPaymentProviderRequest{
 			Tenant:   f.admin.tenantContext(),
 			Provider: stripe.ID,
 			Enabled:  false,

@@ -228,6 +228,25 @@ func countByKey(values map[string]string) map[string]int {
 	return counts
 }
 
+// mirroredCredentials counts the sealed values tenant_payment_providers holds
+// as the copy of tenant_payment_config's that a trigger keeps for the previous
+// release. A run reseals tenant_payment_config first, and the trigger carries
+// the resealed values across before the run reaches the copy, which it then
+// finds current.
+func mirroredCredentials(t *testing.T, db *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRowContext(context.Background(), `
+		SELECT count(*)
+		FROM tenant_payment_providers p
+			JOIN tenant_payment_config c ON c.tenant_id = p.tenant_id AND c.provider = p.provider,
+			jsonb_each_text(p.credentials_encrypted)
+	`).Scan(&n); err != nil {
+		t.Fatalf("count the mirrored payment credentials: %v", err)
+	}
+	return n
+}
+
 // After a run with the old key and the new, every value opens with the new
 // key alone, to the plaintext it held before, and nothing names the old key.
 func TestRunResealsEveryStoredSecretWithThePrimaryKey(t *testing.T) {
@@ -263,7 +282,8 @@ func TestRunResealsEveryStoredSecretWithThePrimaryKey(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 	k1 := countByKey(before)["k1"]
-	want := map[string]secretreseal.Counts{"k1": {Resealed: k1}, "k2": {Current: 1}}
+	mirrored := mirroredCredentials(t, pg.DB)
+	want := map[string]secretreseal.Counts{"k1": {Resealed: k1 - mirrored}, "k2": {Current: 1 + mirrored}}
 	if !maps.Equal(report.Keys, want) {
 		t.Fatalf("report = %+v, want %+v", report.Keys, want)
 	}
@@ -344,15 +364,19 @@ func TestRunLeavesWhatNoKeyOpens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
+	// The tampered value is in the mirrored copy too, where it is unreadable
+	// a second time, and the copy's other values arrive resealed.
+	mirrored := mirroredCredentials(t, pg.DB)
 	want := map[string]secretreseal.Counts{
 		"k0": {Unreadable: 1},
-		"k1": {Resealed: len(before) - 2, Unreadable: 1},
+		"k1": {Resealed: len(before) - 2 - mirrored, Unreadable: 2},
+		"k2": {Current: mirrored - 1},
 	}
 	if !maps.Equal(report.Keys, want) {
 		t.Fatalf("report = %+v, want %+v", report.Keys, want)
 	}
-	if report.Unreadable() != 2 {
-		t.Fatalf("Unreadable = %d, want 2", report.Unreadable())
+	if report.Unreadable() != 3 {
+		t.Fatalf("Unreadable = %d, want 3", report.Unreadable())
 	}
 
 	after := snapshot(t, pg.DB)
@@ -412,7 +436,8 @@ func TestRunDoesNotOverwriteASaveItWaitedFor(t *testing.T) {
 	if r.err != nil {
 		t.Fatalf("Run: %v", r.err)
 	}
-	want := map[string]secretreseal.Counts{"k1": {Resealed: total - 1}, "k2": {Current: 1}}
+	mirrored := mirroredCredentials(t, pg.DB)
+	want := map[string]secretreseal.Counts{"k1": {Resealed: total - 1 - mirrored}, "k2": {Current: 1 + mirrored}}
 	if !maps.Equal(r.report.Keys, want) {
 		t.Fatalf("report = %+v, want %+v", r.report.Keys, want)
 	}

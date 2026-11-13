@@ -441,9 +441,13 @@ func (x *ListSubscriptionPlansResponse) GetPlans() []*SubscriptionPlan {
 // The reader returns to `/my` on the tenant's site with `subscription=success`
 // in the query, or to `/plans` with `subscription=cancelled`.
 type StartSubscriptionCheckoutRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PlanId string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	// The payment provider to subscribe through, which has to be the one the
+	// tenant's plans are sold through (TenantPaymentProvider.subscriptions);
+	// any other is invalid_argument. Empty is that one.
+	Provider      string `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -488,6 +492,13 @@ func (x *StartSubscriptionCheckoutRequest) GetTenant() *v1.TenantContext {
 func (x *StartSubscriptionCheckoutRequest) GetPlanId() string {
 	if x != nil {
 		return x.PlanId
+	}
+	return ""
+}
+
+func (x *StartSubscriptionCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -1033,10 +1044,11 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
 	"\x06locale\x18\x03 \x01(\tR\x06locale\"S\n" +
 	"\x1dListSubscriptionPlansResponse\x122\n" +
-	"\x05plans\x18\x01 \x03(\v2\x1c.publira.v1.SubscriptionPlanR\x05plans\"t\n" +
+	"\x05plans\x18\x01 \x03(\v2\x1c.publira.v1.SubscriptionPlanR\x05plans\"\x90\x01\n" +
 	" StartSubscriptionCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
-	"\aplan_id\x18\x02 \x01(\tR\x06planId\"F\n" +
+	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x1a\n" +
+	"\bprovider\x18\x03 \x01(\tR\bprovider\"F\n" +
 	"!StartSubscriptionCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"S\n" +
 	"\x18GetMySubscriptionRequest\x127\n" +

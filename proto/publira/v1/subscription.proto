@@ -114,6 +114,10 @@ message ListSubscriptionPlansResponse {
 message StartSubscriptionCheckoutRequest {
   publira.types.v1.TenantContext tenant = 1;
   string plan_id = 2;
+  // The payment provider to subscribe through, which has to be the one the
+  // tenant's plans are sold through (TenantPaymentProvider.subscriptions);
+  // any other is invalid_argument. Empty is that one.
+  string provider = 3;
 }
 
 message StartSubscriptionCheckoutResponse {

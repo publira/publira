@@ -579,10 +579,12 @@ class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
   factory StartSubscriptionCheckoutRequest({
     $1.TenantContext? tenant,
     $core.String? planId,
+    $core.String? provider,
   }) {
     final result = StartSubscriptionCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (planId != null) result.planId = planId;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -603,6 +605,7 @@ class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
     ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $1.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'planId')
+    ..aOS(3, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -652,6 +655,18 @@ class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasPlanId() => $_has(1);
   @$pb.TagNumber(2)
   void clearPlanId() => $_clearField(2);
+
+  /// The payment provider to subscribe through, which has to be the one the
+  /// tenant's plans are sold through (TenantPaymentProvider.subscriptions);
+  /// any other is invalid_argument. Empty is that one.
+  @$pb.TagNumber(3)
+  $core.String get provider => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set provider($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasProvider() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearProvider() => $_clearField(3);
 }
 
 class StartSubscriptionCheckoutResponse extends $pb.GeneratedMessage {

@@ -104,7 +104,18 @@ func NewSubscriptionCancelHandler(cfg SubscriptionCancelHandlerConfig) Handler {
 			return Permanent(errors.New("subscription cancel payload names no subscription"))
 		}
 
-		config, credentials, err := paymentsettings.New(dbmodels.New(cfg.DB), cfg.Encryptor, cfg.Providers, nil, cfg.Logger).LoadEnabledSecrets(ctx, tenantID)
+		// The subscription is billed by the provider the tenant's plans are
+		// sold through, or were until the tenant retired it.
+		store := paymentsettings.New(dbmodels.New(cfg.DB), cfg.Encryptor, cfg.Providers, nil, cfg.Logger)
+		held, err := store.Held(ctx, tenantID)
+		if err != nil {
+			return fmt.Errorf("list the payment providers: %w", err)
+		}
+		plans, _, ok := store.PlanProvider(held, true)
+		if !ok {
+			return Blocked(errors.New("the tenant holds no ready provider that takes recurring payments"))
+		}
+		config, credentials, err := store.LoadProvider(ctx, tenantID, plans.Provider)
 		if paymentsettings.IsUnavailable(err) {
 			return Blocked(fmt.Errorf("load the payment settings: %w", err))
 		}

@@ -107,9 +107,9 @@ func TestStorePersistsEncryptedSecretsAndAudit(t *testing.T) {
 		t.Fatalf("audit reason = %q, want %q", reason, want)
 	}
 
-	_, credentials, err := store.LoadEnabledSecrets(ctx, tenant.ID)
+	_, credentials, err := store.LoadProvider(ctx, tenant.ID, stripe.ID)
 	if err != nil {
-		t.Fatalf("LoadEnabledSecrets: %v", err)
+		t.Fatalf("LoadProvider: %v", err)
 	}
 	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
 		t.Fatalf("decrypted credentials do not match input")
@@ -159,9 +159,9 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 			t.Fatalf("tenant A saw tenant B config: %+v", cfg)
 		}
 
-		_, _, err = store.LoadEnabledSecrets(ctx, tenantB.ID)
-		if !errors.Is(err, paymentsettings.ErrNotEnabled) {
-			t.Fatalf("LoadEnabledSecrets other tenant error = %v, want ErrNotEnabled", err)
+		_, _, err = store.LoadProvider(ctx, tenantB.ID, stripe.ID)
+		if !errors.Is(err, paymentsettings.ErrProviderNotHeld) {
+			t.Fatalf("LoadProvider other tenant error = %v, want ErrProviderNotHeld", err)
 		}
 
 		_, err = store.Upsert(ctx, tenantB.ID, stripeUpdate("sk_test_51PlantedByTenantA", "whsec_PlantedByTenantAXXXX"), paymentsettings.AuditMeta{
@@ -274,15 +274,19 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 	pg.MigrateUp(t)
 
 	store := newIntegrationStore(t, pg.DB, &bytes.Buffer{})
-	cfg, credentials, err := store.LoadEnabledSecrets(ctx, ready.ID)
+	cfg, credentials, err := store.LoadProvider(ctx, ready.ID, stripe.ID)
 	if err != nil {
-		t.Fatalf("LoadEnabledSecrets: %v", err)
+		t.Fatalf("LoadProvider: %v", err)
 	}
 	if !cfg.Ready || cfg.Provider != stripe.ID {
 		t.Fatalf("migrated config = %+v, want ready stripe", cfg)
 	}
-	if cfg.Currency != "JPY" {
-		t.Fatalf("migrated currency = %q, want JPY, which every tenant sold in before", cfg.Currency)
+	currency, err := store.Currency(ctx, ready.ID)
+	if err != nil {
+		t.Fatalf("Currency: %v", err)
+	}
+	if currency != "JPY" {
+		t.Fatalf("migrated currency = %q, want JPY, which every tenant sold in before", currency)
 	}
 	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
 		t.Fatal("migrated credentials do not decrypt to what was stored")

@@ -56,6 +56,14 @@ func expectPlatformDefaultCurrency(mock sqlmock.Sqlmock, currency string) {
 		WillReturnRows(sqlmock.NewRows([]string{"default_currency"}).AddRow(currency))
 }
 
+// expectNoPaymentProviders answers that the tenant holds no payment provider
+// yet.
+func expectNoPaymentProviders(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantPaymentProviders)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "provider", "enabled", "credentials_encrypted", "credential_hints", "retired_at", "created_at", "updated_at"}))
+}
+
 // expectTenantHasPurchases answers whether the tenant has a purchase, which
 // locks its currency.
 func expectTenantHasPurchases(mock sqlmock.Sqlmock, tenantID uuid.UUID, has bool) {
@@ -216,7 +224,7 @@ func TestGetTenantPaymentSettingsRejectsEditorRole(t *testing.T) {
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	_, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	_, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetTenantPaymentSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -241,7 +249,7 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if err != nil {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
@@ -285,7 +293,7 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if err != nil {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
@@ -322,7 +330,7 @@ func TestUpdateTenantPaymentSettingsRejectsEditorRole(t *testing.T) {
 	req := &publiraadminv1.UpdateTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -344,6 +352,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectPlatformDefaultCurrency(mock, "JPY")
 	expectTenantHasPurchases(mock, tenantID, false)
+	expectNoPaymentProviders(mock, tenantID)
 	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -352,7 +361,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 		Enabled:  true,
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -381,7 +390,7 @@ func TestUpdateTenantPaymentSettingsRejectsUnknownProvider(t *testing.T) {
 		Provider: "paypal",
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -406,6 +415,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectPlatformDefaultCurrency(mock, "JPY")
 	expectTenantHasPurchases(mock, tenantID, false)
+	expectNoPaymentProviders(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantPaymentConfig)).
 		WithArgs(
 			tenantID,
@@ -439,7 +449,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 		},
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}
-	resp, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
+	resp, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req) //nolint:staticcheck // the deprecated RPC is what this test exercises
 	if err != nil {
 		t.Fatalf("UpdateTenantPaymentSettings: %v", err)
 	}
@@ -479,7 +489,7 @@ func TestUpdateTenantPaymentSettingsRefusesACurrencyChangeOnceTheTenantHasAPurch
 	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
-	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{ //nolint:staticcheck // the deprecated RPC is what this test exercises
 		Provider: stripe.ID,
 		Enabled:  true,
 		Currency: "USD",
@@ -509,7 +519,7 @@ func TestUpdateTenantPaymentSettingsRefusesACurrencyTheProviderDoesNotDeclare(t 
 	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
-	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{ //nolint:staticcheck // the deprecated RPC is what this test exercises
 		Provider: payjp.ID,
 		Currency: "USD",
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},

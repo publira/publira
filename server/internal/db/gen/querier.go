@@ -741,6 +741,7 @@ type Querier interface {
 	// Deletes the tenant row once the worker has erased everything else it held.
 	// A tenant that is not marked is left alone.
 	DeleteTenantMarkedForDeletion(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteTenantPaymentProvider(ctx context.Context, arg DeleteTenantPaymentProviderParams) (int64, error)
 	// Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
 	// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
@@ -971,7 +972,6 @@ type Querier interface {
 	// made after it is still being built does not take it away.
 	GetDownloadableUserDataExport(ctx context.Context, arg GetDownloadableUserDataExportParams) (UserDataExport, error)
 	GetEnabledTenantInboundEmailConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantInboundEmailConfig, error)
-	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
@@ -1135,11 +1135,12 @@ type Querier interface {
 	// files its snapshots beside the old ones rather than replacing them, and wins
 	// here because it was computed later.
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
-	// The Stripe customer the reader last subscribed as, which a later checkout
-	// and the billing portal name, so the reader's invoices stay on one customer.
+	// The Stripe customer the reader last subscribed as, and the provider that
+	// bills it, which a later checkout and the billing portal name, so the
+	// reader's invoices stay on one customer.
 	// A subscription billed by another provider names no Stripe customer, so it is
 	// passed over rather than answered as the latest.
-	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error)
+	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (GetLatestStripeCustomerIDForUserRow, error)
 	// The reader's latest request that has not expired, which is the one their
 	// account shows.
 	GetLatestUserDataExport(ctx context.Context, arg GetLatestUserDataExportParams) (UserDataExport, error)
@@ -1635,6 +1636,7 @@ type Querier interface {
 	// config.
 	GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPagesParams) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
+	GetTenantPaymentProvider(ctx context.Context, arg GetTenantPaymentProviderParams) (TenantPaymentProvider, error)
 	// GetTenantReaderByPublicID keyed by the primary key. An account of another
 	// tenant is no rows.
 	GetTenantReaderByID(ctx context.Context, arg GetTenantReaderByIDParams) (GetTenantReaderByIDRow, error)
@@ -3577,6 +3579,9 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
+	// Every provider the tenant holds, retired ones included, in the order it
+	// added them.
+	ListTenantPaymentProviders(ctx context.Context, tenantID uuid.UUID) ([]TenantPaymentProvider, error)
 	ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error)
 	// Admin ListReaders lists every account of the tenant, staff included: a staff
 	// member reads the storefront with the same account. role is the highest
@@ -4685,6 +4690,9 @@ type Querier interface {
 	// failures, and an event large enough to need many runs is not failing.
 	ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	RetireCoinPack(ctx context.Context, arg RetireCoinPackParams) error
+	// Keeps a removed provider for what it already took, and stops it selling. A
+	// provider retired already keeps the instant it was retired at.
+	RetireTenantPaymentProvider(ctx context.Context, arg RetireTenantPaymentProviderParams) (TenantPaymentProvider, error)
 	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
 	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
@@ -4719,6 +4727,12 @@ type Querier interface {
 	// writes the current page on a timer would otherwise reorder the reader's
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
+	// Stores the currency the tenant sells in, and creates the tenant's settings
+	// row with it when there is none yet, which names the provider being added
+	// and leaves payments off until that provider is saved. Changing the currency
+	// alone leaves the provider columns, which the previous release reads, as
+	// they are.
+	SaveTenantCurrency(ctx context.Context, arg SaveTenantCurrencyParams) error
 	// Moves the search onto the saved configuration once the indices it names
 	// have been built, one for each of locales, with the version of the default
 	// analysis the build had, provided it is still the one built: no rows when a
@@ -4866,6 +4880,11 @@ type Querier interface {
 	// Whether the tenant has any purchase, from a provider's checkout or a store,
 	// test ones included, which keeps the tenant currency from changing.
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Whether the provider still has something of the tenant's to act on: a
+	// payment of a purchase that is neither refunded in full nor lost to a
+	// dispute, which a refund may still reach, or a subscription it goes on
+	// billing.
+	TenantPaymentProviderHasOpenPayments(ctx context.Context, arg TenantPaymentProviderHasOpenPaymentsParams) (bool, error)
 	// Records that the image changed after one of its ratios was replaced.
 	TouchCampaignBannerImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -5121,6 +5140,9 @@ type Querier interface {
 	// unconfigured platform is written as NULL and an empty list.
 	UpsertTenantMobileAppAssociation(ctx context.Context, arg UpsertTenantMobileAppAssociationParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
+	// Saves one provider of the tenant's. Saving a retired one is adding it back,
+	// so it sells again.
+	UpsertTenantPaymentProvider(ctx context.Context, arg UpsertTenantPaymentProviderParams) (TenantPaymentProvider, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. The default and
 	// the store listings are written together because the console offers them as
 	// one card, and the listings are where an app-only purchase sends a reader.

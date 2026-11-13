@@ -277,11 +277,11 @@ func (s *adminServer) requireCoinsCanBeTurnedOn(txCtx context.Context, tenantID 
 	if !policy.TenantCoinsAllowed {
 		return connect.NewError(connect.CodeFailedPrecondition, errCoinsNotAllowed.Error()).WithCause(errCoinsNotAllowed)
 	}
-	payments, err := s.paymentStore(txCtx).GetPublic(txCtx, tenantID)
+	held, err := s.paymentStore(txCtx).Held(txCtx, tenantID)
 	if err != nil {
 		return s.internalDBError(txCtx, "failed to read payment settings for coins", err, "tenant_id", tenantID.String())
 	}
-	if payments.Ready {
+	if slices.ContainsFunc(held, paymentsettings.ProviderConfig.Sells) {
 		return nil
 	}
 	stores, err := paymentsettings.NewAppStores(queries, s.encryptor).Get(txCtx, tenantID)

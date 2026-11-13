@@ -384,30 +384,6 @@ func (q *Queries) GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActi
 	return i, err
 }
 
-const GetEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
-SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints, currency
-FROM tenant_payment_config
-WHERE tenant_id = $1
-    AND enabled = TRUE
-LIMIT 1
-`
-
-func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error) {
-	row := q.db.QueryRowContext(ctx, GetEnabledTenantPaymentConfigByTenantID, tenantID)
-	var i TenantPaymentConfig
-	err := row.Scan(
-		&i.TenantID,
-		&i.Provider,
-		&i.Enabled,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.CredentialsEncrypted,
-		&i.CredentialHints,
-		&i.Currency,
-	)
-	return i, err
-}
-
 const GetExpiredCheckoutID = `-- name: GetExpiredCheckoutID :one
 SELECT provider_checkout_id
 FROM expired_checkouts
@@ -2351,6 +2327,42 @@ func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchase
 	var staff_refund_attempt int32
 	err := row.Scan(&staff_refund_attempt)
 	return staff_refund_attempt, err
+}
+
+const SaveTenantCurrency = `-- name: SaveTenantCurrency :exec
+INSERT INTO tenant_payment_config (
+        tenant_id,
+        provider,
+        enabled,
+        currency,
+        updated_at
+    )
+VALUES (
+        $1,
+        $2,
+        FALSE,
+        $3,
+        NOW()
+    ) ON CONFLICT (tenant_id) DO
+UPDATE
+SET currency = EXCLUDED.currency,
+    updated_at = NOW()
+`
+
+type SaveTenantCurrencyParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Provider string    `json:"provider"`
+	Currency string    `json:"currency"`
+}
+
+// Stores the currency the tenant sells in, and creates the tenant's settings
+// row with it when there is none yet, which names the provider being added
+// and leaves payments off until that provider is saved. Changing the currency
+// alone leaves the provider columns, which the previous release reads, as
+// they are.
+func (q *Queries) SaveTenantCurrency(ctx context.Context, arg SaveTenantCurrencyParams) error {
+	_, err := q.db.ExecContext(ctx, SaveTenantCurrency, arg.TenantID, arg.Provider, arg.Currency)
+	return err
 }
 
 const SettleStaffRefundInPart = `-- name: SettleStaffRefundInPart :one

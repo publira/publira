@@ -213,23 +213,28 @@ func readSubscriptionPlanTargetIDs(raw []string, field string) ([]uuid.UUID, err
 	return ids, nil
 }
 
-// describeSubscriptionPrice asks the tenant's Stripe account for the Price a
-// plan is saved with, which has to be an active one billed every period.
+// describeSubscriptionPrice asks the account of the provider the tenant's
+// plans are sold through, its Stripe account, for the Price a plan is saved
+// with, which has to be an active one billed every period.
 func (s *adminServer) describeSubscriptionPrice(ctx context.Context, tenantID uuid.UUID, priceID string) (paymentprovider.Price, error) {
-	payments, credentials, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+	store := s.paymentStore(ctx)
+	held, err := store.Held(ctx, tenantID)
+	if err != nil {
+		return paymentprovider.Price{}, s.internalDBError(ctx, "failed to list the payment providers for a subscription plan", err, "tenant_id", tenantID.String())
+	}
+	plans, subscriptions, ok := store.PlanProvider(held, false)
+	if !ok {
+		if slices.ContainsFunc(held, paymentsettings.ProviderConfig.Sells) {
+			return paymentprovider.Price{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment providers sell no subscriptions")
+		}
+		return paymentprovider.Price{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment settings are not enabled")
+	}
+	_, credentials, err := store.LoadProvider(ctx, tenantID, plans.Provider)
 	if paymentsettings.IsUnavailable(err) {
 		return paymentprovider.Price{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment settings are not enabled")
 	}
 	if err != nil {
 		return paymentprovider.Price{}, s.internalDBError(ctx, "failed to load payment settings for a subscription plan", err, "tenant_id", tenantID.String())
-	}
-	provider, ok := s.paymentProviders.Lookup(payments.Provider)
-	if !ok {
-		return paymentprovider.Price{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment provider is not registered on this server")
-	}
-	subscriptions, ok := provider.(paymentprovider.Subscriptions)
-	if !ok {
-		return paymentprovider.Price{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment provider sells no subscriptions")
 	}
 	price, err := subscriptions.DescribePrice(ctx, credentials, priceID)
 	if errors.Is(err, paymentprovider.ErrPriceNotFound) {

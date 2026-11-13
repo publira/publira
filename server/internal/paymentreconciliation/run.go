@@ -214,17 +214,14 @@ func sourceFor(ctx context.Context, deps Deps, queries *dbmodels.Queries, run db
 		if deps.Payments == nil {
 			return nil, false, errors.New("paymentreconciliation: no payment providers")
 		}
-		config, credentials, err := paymentsettings.New(queries, deps.Secrets, deps.Payments, nil, deps.logger()).LoadEnabledSecrets(ctx, run.TenantID)
+		// The run reads the provider it names, which the tenant may have
+		// retired since and which still answers for what it took.
+		_, credentials, err := paymentsettings.New(queries, deps.Secrets, deps.Payments, nil, deps.logger()).LoadProvider(ctx, run.TenantID, run.Provider.String)
 		if paymentsettings.IsUnavailable(err) {
 			return nil, false, fmt.Errorf("%w: %v", ErrCredentials, err)
 		}
 		if err != nil {
 			return nil, false, fmt.Errorf("load payment credentials: %w", err)
-		}
-		// The tenant moved to another provider since, whose credentials
-		// cannot read this one's payments.
-		if config.Provider != run.Provider.String {
-			return nil, false, fmt.Errorf("%w: the tenant takes payments through %s now", ErrCredentials, config.Provider)
 		}
 		provider, ok := deps.Payments.Lookup(run.Provider.String)
 		if !ok {

@@ -35,6 +35,10 @@ message PaymentProvider {
   // The ISO 4217 codes, in capitals, of the currencies the provider can charge
   // in, in its declared order. A tenant may sell only in one of them.
   repeated string currencies = 5;
+  // True for a provider that takes recurring payments, which is the one kind
+  // a subscription plan is sold through. Every provider sells episodes,
+  // volumes, the rest of a series, coins, and tips.
+  bool subscriptions = 6;
 }
 
 message ListPaymentProvidersRequest {
@@ -60,7 +64,10 @@ message PaymentCredentialFieldState {
   string public_value = 4;
 }
 
-// Non-secret view of a tenant's payment-provider settings.
+// Non-secret view of a tenant's payment-provider settings, which describes the
+// first provider the tenant holds that is not retired
+// (TenantPaymentProviderSettings), the one a tenant that holds a single
+// provider sells through.
 message TenantPaymentSettings {
   reserved 3, 4, 5, 6;
   reserved "secret_key_configured", "webhook_secret_configured", "secret_key_hint", "webhook_secret_hint";
@@ -118,6 +125,92 @@ message UpdateTenantPaymentSettingsRequest {
 
 message UpdateTenantPaymentSettingsResponse {
   TenantPaymentSettings settings = 1;
+}
+
+// Non-secret view of one payment provider a tenant holds.
+message TenantPaymentProviderSettings {
+  // The id of the provider (PaymentProvider.id).
+  string provider = 1;
+  bool enabled = 2;
+  // True when enabled and every field the provider requires is stored. A
+  // checkout is sent only to a provider that is ready and not retired, and the
+  // notifications, the refunds, and the reconciliation of a provider run only
+  // while it is ready.
+  bool ready = 3;
+  // One entry per field the provider declares, in its declared order.
+  repeated PaymentCredentialFieldState fields = 4;
+  // True for a provider the tenant removed with RemoveTenantPaymentProvider
+  // and still holds. It starts no checkout, and keeps its credentials for what
+  // it already took, a checkout paid after it was removed included. Saving it
+  // again with UpsertTenantPaymentProvider adds it back.
+  bool retired = 5;
+}
+
+message ListTenantPaymentProvidersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListTenantPaymentProvidersResponse {
+  // Every provider the tenant holds, retired ones included, in the order it
+  // added them. The first that is not retired is the one
+  // GetTenantPaymentSettings describes.
+  repeated TenantPaymentProviderSettings providers = 1;
+  // The ISO 4217 code, in capitals, of the currency the tenant sells in, which
+  // every provider it holds and has not retired charges in. The platform's
+  // default currency before any is saved.
+  string currency = 2;
+  // True once the tenant has a purchase, so that UpsertTenantPaymentProvider
+  // refuses to change currency.
+  bool currency_locked = 3;
+}
+
+// Adds a provider beside the ones the tenant holds, or changes one it holds,
+// and leaves every other provider as it is.
+message UpsertTenantPaymentProviderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A registered provider id; any other is invalid_argument.
+  string provider = 2;
+  // Turning a provider on with a required field missing is invalid_argument.
+  bool enabled = 3;
+  // A field the request leaves out is left as it is. A field the provider
+  // does not declare is invalid_argument.
+  repeated PaymentCredentialFieldUpdate fields = 4;
+  // The ISO 4217 code of the currency to sell in. Empty keeps the stored
+  // currency. The currency, named here or kept, has to be one this provider
+  // and every other provider the tenant holds and has not retired charge in;
+  // anything else is invalid_argument. A change is failed_precondition once
+  // currency_locked is true.
+  string currency = 5;
+}
+
+message UpsertTenantPaymentProviderResponse {
+  // Every provider the tenant holds once the request is applied, as
+  // ListTenantPaymentProviders answers them.
+  repeated TenantPaymentProviderSettings providers = 1;
+  string currency = 2;
+  bool currency_locked = 3;
+}
+
+// Removes a provider the tenant holds, in two steps. The first retires it: it
+// starts no checkout, and keeps its credentials for what it already took,
+// since a checkout started before it was removed can still be paid long
+// after. Removing a retired provider again deletes it and its credentials,
+// once 90 days have passed since it was retired and it has no payment a refund
+// may reach and no subscription it bills; until then it stays retired. A
+// provider the tenant does not hold is not_found.
+message RemoveTenantPaymentProviderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string provider = 2;
+}
+
+message RemoveTenantPaymentProviderResponse {
+  // Every provider the tenant holds once the request is applied.
+  repeated TenantPaymentProviderSettings providers = 1;
+  string currency = 2;
+  bool currency_locked = 3;
+  // True when the tenant still holds the provider, retired, and false once it
+  // is deleted.
+  bool retired = 4;
 }
 
 // Non-secret view of the App Store Connect API key the server talks to the App
@@ -252,10 +345,28 @@ message ListTenantStoreProductsResponse {
 service AdminPaymentSettingsService {
   // Minimum role: tenant_admin.
   rpc ListPaymentProviders(ListPaymentProvidersRequest) returns (ListPaymentProvidersResponse) {}
+  // The first provider the tenant holds that is not retired, replaced by
+  // ListTenantPaymentProviders.
+  //
   // Minimum role: tenant_admin.
-  rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
+  rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {
+    option deprecated = true;
+  }
+  // Saves the first provider the tenant holds that is not retired, replaced
+  // by UpsertTenantPaymentProvider. Naming another provider puts it in the
+  // first one's place and deletes the first one's credentials, and leaves the
+  // tenant's other providers as they are.
+  //
   // Minimum role: tenant_admin.
-  rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
+  rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {
+    option deprecated = true;
+  }
+  // Minimum role: tenant_admin.
+  rpc ListTenantPaymentProviders(ListTenantPaymentProvidersRequest) returns (ListTenantPaymentProvidersResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpsertTenantPaymentProvider(UpsertTenantPaymentProviderRequest) returns (UpsertTenantPaymentProviderResponse) {}
+  // Minimum role: tenant_admin.
+  rpc RemoveTenantPaymentProvider(RemoveTenantPaymentProviderRequest) returns (RemoveTenantPaymentProviderResponse) {}
   // Minimum role: tenant_admin.
   rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
   // Minimum role: tenant_admin.

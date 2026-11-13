@@ -53,7 +53,7 @@ func newSubscriptionPlanFixture(t *testing.T) *subscriptionPlanFixture {
 	api.SetPrice(subscriptionPlanTestSecretKey, stripetest.Price{ID: "price_monthly", Active: true, Amount: 980, Currency: "JPY", Type: "recurring", Interval: "month", IntervalCount: 1})
 	api.SetPrice(subscriptionPlanTestSecretKey, stripetest.Price{ID: "price_yearly", Active: true, Amount: 9800, Currency: "JPY", Type: "recurring", Interval: "year", IntervalCount: 1})
 
-	if _, err := env.paymentClient().UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	if _, err := env.paymentClient().UpsertTenantPaymentProvider(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UpsertTenantPaymentProviderRequest{
 		Tenant:   admin.tenantContext(),
 		Provider: stripe.ID,
 		Enabled:  true,

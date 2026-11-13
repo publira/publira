@@ -1,12 +1,13 @@
-// Package paymentsettings stores a tenant's web payment provider and the
-// credential fields that provider declares.
+// Package paymentsettings stores the web payment providers a tenant holds and
+// the credential fields each of them declares.
 //
-// Encrypted material never leaves this package except through [Store.LoadEnabledSecrets],
-// which is the server-internal read boundary for Checkout and Webhook processing.
-// Public reads return [PublicConfig] only: provider, enabled flag, and per field
-// whether it is stored, its masked hint, and the value of a public field.
-// Callers must not log, persist, or attach the credentials LoadEnabledSecrets
-// answers to RPC responses or audit records.
+// Encrypted material never leaves this package except through
+// [Store.LoadProvider], which is the server-internal read boundary for the
+// checkouts, the webhooks, the refunds, and the reconciliation. Public reads
+// return [PublicConfig] and [ProviderConfig] only: provider, enabled flag, and
+// per field whether it is stored, its masked hint, and the value of a public
+// field. Callers must not log, persist, or attach the credentials
+// LoadProvider answers to RPC responses or audit records.
 package paymentsettings
 
 import (
@@ -50,12 +51,13 @@ var (
 )
 
 // IsUnavailable reports errors that mean Checkout and Webhook must not run:
-// missing or disabled settings, a provider this build does not register, a
-// missing required field, or a decrypt failure. Other errors (for example a
+// a provider the tenant does not hold or holds disabled, one this build does
+// not register, a missing required field, or a decrypt failure. Other errors (for example a
 // database outage) are not unavailable in this sense and should surface as
 // internal failures.
 func IsUnavailable(err error) bool {
 	return errors.Is(err, ErrNotEnabled) ||
+		errors.Is(err, ErrProviderNotHeld) ||
 		errors.Is(err, ErrProviderUnavailable) ||
 		errors.Is(err, ErrDecryptFailed) ||
 		errors.Is(err, ErrInvalidCiphertext) ||
