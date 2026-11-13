@@ -38,12 +38,12 @@ func TestStripeSubscriptionReadsPassOverAnotherProvidersSubscription(t *testing.
 	queries := dbmodels.New(db)
 	user := uuid.NullUUID{UUID: reader.ID, Valid: true}
 
-	customerID, err := queries.GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{TenantID: tenant.ID, UserID: user})
+	customer, err := queries.GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{TenantID: tenant.ID, UserID: user})
 	if err != nil {
 		t.Fatalf("GetLatestStripeCustomerIDForUser: %v", err)
 	}
-	if customerID != "cus_web" {
-		t.Fatalf("GetLatestStripeCustomerIDForUser = %q, want cus_web", customerID)
+	if customer.StripeCustomerID != "cus_web" || customer.Provider != "stripe" {
+		t.Fatalf("GetLatestStripeCustomerIDForUser = %+v, want cus_web billed by stripe", customer)
 	}
 
 	subscriptionIDs, err := queries.ListBilledStripeSubscriptionIDsForUser(ctx, dbmodels.ListBilledStripeSubscriptionIDsForUserParams{TenantID: tenant.ID, UserID: user})

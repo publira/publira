@@ -393,6 +393,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $core.bool? creatorPagesEnabled,
     TenantInvoiceDetails? invoice,
     $core.bool? acceptsPromotionCodes,
+    $core.Iterable<TenantPaymentProvider>? paymentProviders,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -431,6 +432,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (invoice != null) result.invoice = invoice;
     if (acceptsPromotionCodes != null)
       result.acceptsPromotionCodes = acceptsPromotionCodes;
+    if (paymentProviders != null)
+      result.paymentProviders.addAll(paymentProviders);
     return result;
   }
 
@@ -485,6 +488,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     ..aOM<TenantInvoiceDetails>(30, _omitFieldNames ? '' : 'invoice',
         subBuilder: TenantInvoiceDetails.$_createMessage)
     ..aOB(31, _omitFieldNames ? '' : 'acceptsPromotionCodes')
+    ..pPM<TenantPaymentProvider>(32, _omitFieldNames ? '' : 'paymentProviders',
+        subBuilder: TenantPaymentProvider.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -838,6 +843,102 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   $core.bool hasAcceptsPromotionCodes() => $_has(28);
   @$pb.TagNumber(31)
   void clearAcceptsPromotionCodes() => $_clearField(31);
+
+  /// The web payment providers a reader can pay the tenant through now, in the
+  /// order the tenant added them: each one ready, whose credentials the server
+  /// can open. Empty exactly when accepts_payments is false. A checkout names
+  /// one of them in its `provider` field, which it may leave empty while there
+  /// is only one that can sell what it is for.
+  @$pb.TagNumber(32)
+  $pb.PbList<TenantPaymentProvider> get paymentProviders => $_getList(29);
+}
+
+/// A web payment provider a reader can pay a tenant through.
+class TenantPaymentProvider extends $pb.GeneratedMessage {
+  factory TenantPaymentProvider({
+    $core.String? id,
+    $core.String? displayName,
+    $core.bool? subscriptions,
+  }) {
+    final result = TenantPaymentProvider._();
+    if (id != null) result.id = id;
+    if (displayName != null) result.displayName = displayName;
+    if (subscriptions != null) result.subscriptions = subscriptions;
+    return result;
+  }
+
+  TenantPaymentProvider._();
+
+  factory TenantPaymentProvider.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantPaymentProvider()..mergeFromBuffer(data, registry);
+  factory TenantPaymentProvider.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantPaymentProvider()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantPaymentProvider',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: TenantPaymentProvider.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'displayName')
+    ..aOB(3, _omitFieldNames ? '' : 'subscriptions')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantPaymentProvider clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantPaymentProvider copyWith(
+          void Function(TenantPaymentProvider) updates) =>
+      super.copyWith((message) => updates(message as TenantPaymentProvider))
+          as TenantPaymentProvider;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TenantPaymentProvider() / TenantPaymentProvider.new instead')
+  static TenantPaymentProvider create() => TenantPaymentProvider._();
+  static $pb.GeneratedMessage $_createMessage() => TenantPaymentProvider._();
+  @$core.override
+  TenantPaymentProvider createEmptyInstance() => TenantPaymentProvider._();
+  @$core.pragma('dart2js:noInline')
+  static TenantPaymentProvider getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TenantPaymentProvider>(
+          TenantPaymentProvider.$_createMessage);
+  static TenantPaymentProvider? _defaultInstance;
+
+  /// The id a checkout names it by, such as `stripe`.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get displayName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set displayName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDisplayName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDisplayName() => $_clearField(2);
+
+  /// True for the provider the tenant's subscription plans are sold through,
+  /// which StartSubscriptionCheckout takes: the first of payment_providers that
+  /// takes recurring payments. At most one provider is.
+  @$pb.TagNumber(3)
+  $core.bool get subscriptions => $_getBF(2);
+  @$pb.TagNumber(3)
+  set subscriptions($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSubscriptions() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSubscriptions() => $_clearField(3);
 }
 
 /// The tax a tenant's prices include and the details its invoices carry.

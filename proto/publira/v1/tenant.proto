@@ -153,6 +153,23 @@ message GetTenantResponse {
   // counts, so the input is offered no later than the code starts working;
   // PurchaseService refuses such a code when it is entered.
   bool accepts_promotion_codes = 31;
+  // The web payment providers a reader can pay the tenant through now, in the
+  // order the tenant added them: each one ready, whose credentials the server
+  // can open. Empty exactly when accepts_payments is false. A checkout names
+  // one of them in its `provider` field, which it may leave empty while there
+  // is only one that can sell what it is for.
+  repeated TenantPaymentProvider payment_providers = 32;
+}
+
+// A web payment provider a reader can pay a tenant through.
+message TenantPaymentProvider {
+  // The id a checkout names it by, such as `stripe`.
+  string id = 1;
+  string display_name = 2;
+  // True for the provider the tenant's subscription plans are sold through,
+  // which StartSubscriptionCheckout takes: the first of payment_providers that
+  // takes recurring payments. At most one provider is.
+  bool subscriptions = 3;
 }
 
 // The tax a tenant's prices include and the details its invoices carry.

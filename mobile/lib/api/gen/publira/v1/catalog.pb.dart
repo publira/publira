@@ -9251,6 +9251,7 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     $core.String? locale,
     $0.PurchaseKind? kind,
     $core.String? promotionCode,
+    $core.String? provider,
   }) {
     final result = StartEpisodeCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -9259,6 +9260,7 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     if (locale != null) result.locale = locale;
     if (kind != null) result.kind = kind;
     if (promotionCode != null) result.promotionCode = promotionCode;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -9284,6 +9286,7 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     ..aE<$0.PurchaseKind>(6, _omitFieldNames ? '' : 'kind',
         enumValues: $0.PurchaseKind.values)
     ..aOS(7, _omitFieldNames ? '' : 'promotionCode')
+    ..aOS(8, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9381,6 +9384,20 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasPromotionCode() => $_has(5);
   @$pb.TagNumber(7)
   void clearPromotionCode() => $_clearField(7);
+
+  /// The payment provider to pay through (Tenant.payment_providers). Empty is
+  /// the one provider the tenant can sell this through, and invalid_argument
+  /// while it can through more than one. A provider the tenant does not hold,
+  /// or has retired, is invalid_argument, and one it holds that is not ready is
+  /// failed_precondition.
+  @$pb.TagNumber(8)
+  $core.String get provider => $_getSZ(6);
+  @$pb.TagNumber(8)
+  set provider($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(8)
+  $core.bool hasProvider() => $_has(6);
+  @$pb.TagNumber(8)
+  void clearProvider() => $_clearField(8);
 }
 
 class StartEpisodeCheckoutResponse extends $pb.GeneratedMessage {
@@ -9474,12 +9491,14 @@ class StartVolumeCheckoutRequest extends $pb.GeneratedMessage {
     $core.String? volumeId,
     StartEpisodeCheckoutRequest_Client? client,
     $core.String? promotionCode,
+    $core.String? provider,
   }) {
     final result = StartVolumeCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (volumeId != null) result.volumeId = volumeId;
     if (client != null) result.client = client;
     if (promotionCode != null) result.promotionCode = promotionCode;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -9502,6 +9521,7 @@ class StartVolumeCheckoutRequest extends $pb.GeneratedMessage {
     ..aE<StartEpisodeCheckoutRequest_Client>(3, _omitFieldNames ? '' : 'client',
         enumValues: StartEpisodeCheckoutRequest_Client.values)
     ..aOS(4, _omitFieldNames ? '' : 'promotionCode')
+    ..aOS(5, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9570,6 +9590,20 @@ class StartVolumeCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasPromotionCode() => $_has(3);
   @$pb.TagNumber(4)
   void clearPromotionCode() => $_clearField(4);
+
+  /// The payment provider to pay through (Tenant.payment_providers). Empty is
+  /// the one provider the tenant can sell this through, and invalid_argument
+  /// while it can through more than one. A provider the tenant does not hold,
+  /// or has retired, is invalid_argument, and one it holds that is not ready is
+  /// failed_precondition.
+  @$pb.TagNumber(5)
+  $core.String get provider => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set provider($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProvider() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProvider() => $_clearField(5);
 }
 
 class StartVolumeCheckoutResponse extends $pb.GeneratedMessage {
@@ -9665,12 +9699,14 @@ class StartSeriesRemainderCheckoutRequest extends $pb.GeneratedMessage {
     $core.String? seriesId,
     StartEpisodeCheckoutRequest_Client? client,
     $core.String? locale,
+    $core.String? provider,
   }) {
     final result = StartSeriesRemainderCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (seriesId != null) result.seriesId = seriesId;
     if (client != null) result.client = client;
     if (locale != null) result.locale = locale;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -9694,6 +9730,7 @@ class StartSeriesRemainderCheckoutRequest extends $pb.GeneratedMessage {
     ..aE<StartEpisodeCheckoutRequest_Client>(3, _omitFieldNames ? '' : 'client',
         enumValues: StartEpisodeCheckoutRequest_Client.values)
     ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..aOS(5, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9765,6 +9802,20 @@ class StartSeriesRemainderCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(3);
   @$pb.TagNumber(4)
   void clearLocale() => $_clearField(4);
+
+  /// The payment provider to pay through (Tenant.payment_providers). Empty is
+  /// the one provider the tenant can sell this through, and invalid_argument
+  /// while it can through more than one. A provider the tenant does not hold,
+  /// or has retired, is invalid_argument, and one it holds that is not ready is
+  /// failed_precondition.
+  @$pb.TagNumber(5)
+  $core.String get provider => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set provider($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasProvider() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearProvider() => $_clearField(5);
 }
 
 class StartSeriesRemainderCheckoutResponse extends $pb.GeneratedMessage {
@@ -11258,6 +11309,7 @@ class StartTipCheckoutRequest extends $pb.GeneratedMessage {
     $core.int? amount,
     StartEpisodeCheckoutRequest_Client? client,
     $core.String? locale,
+    $core.String? provider,
   }) {
     final result = StartTipCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -11265,6 +11317,7 @@ class StartTipCheckoutRequest extends $pb.GeneratedMessage {
     if (amount != null) result.amount = amount;
     if (client != null) result.client = client;
     if (locale != null) result.locale = locale;
+    if (provider != null) result.provider = provider;
     return result;
   }
 
@@ -11288,6 +11341,7 @@ class StartTipCheckoutRequest extends $pb.GeneratedMessage {
     ..aE<StartEpisodeCheckoutRequest_Client>(4, _omitFieldNames ? '' : 'client',
         enumValues: StartEpisodeCheckoutRequest_Client.values)
     ..aOS(5, _omitFieldNames ? '' : 'locale')
+    ..aOS(6, _omitFieldNames ? '' : 'provider')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -11366,6 +11420,20 @@ class StartTipCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(4);
   @$pb.TagNumber(5)
   void clearLocale() => $_clearField(5);
+
+  /// The payment provider to pay through (Tenant.payment_providers). Empty is
+  /// the one provider the tenant can sell this through, and invalid_argument
+  /// while it can through more than one. A provider the tenant does not hold,
+  /// or has retired, is invalid_argument, and one it holds that is not ready is
+  /// failed_precondition.
+  @$pb.TagNumber(6)
+  $core.String get provider => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set provider($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasProvider() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearProvider() => $_clearField(6);
 }
 
 class StartTipCheckoutResponse extends $pb.GeneratedMessage {

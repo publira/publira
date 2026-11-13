@@ -1120,7 +1120,13 @@ type StartCoinPackCheckoutRequest struct {
 	ReturnEpisodeId string `protobuf:"bytes,3,opt,name=return_episode_id,json=returnEpisodeId,proto3" json:"return_episode_id,omitempty"`
 	// The reader's locale, which the checkout page names the pack and the
 	// tenant's coin in. Empty means the tenant's default locale.
-	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	Locale string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	// The payment provider to pay through (Tenant.payment_providers). Empty is
+	// the one provider the tenant can sell this through, and invalid_argument
+	// while it can through more than one. A provider the tenant does not hold,
+	// or has retired, is invalid_argument, and one it holds that is not ready is
+	// failed_precondition.
+	Provider      string `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1179,6 +1185,13 @@ func (x *StartCoinPackCheckoutRequest) GetReturnEpisodeId() string {
 func (x *StartCoinPackCheckoutRequest) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *StartCoinPackCheckoutRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -1307,13 +1320,14 @@ const file_publira_v1_coin_proto_rawDesc = "" +
 	"\x06locale\x18\a \x01(\tR\x06locale\"\x84\x01\n" +
 	"\x1bPayEpisodeWithCoinsResponse\x122\n" +
 	"\bpurchase\x18\x01 \x01(\v2\x16.publira.v1.MyPurchaseR\bpurchase\x121\n" +
-	"\abalance\x18\x02 \x01(\v2\x17.publira.v1.CoinBalanceR\abalance\"\xbd\x01\n" +
+	"\abalance\x18\x02 \x01(\v2\x17.publira.v1.CoinBalanceR\abalance\"\xd9\x01\n" +
 	"\x1cStartCoinPackCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12 \n" +
 	"\fcoin_pack_id\x18\x02 \x01(\tR\n" +
 	"coinPackId\x12*\n" +
 	"\x11return_episode_id\x18\x03 \x01(\tR\x0freturnEpisodeId\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"B\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12\x1a\n" +
+	"\bprovider\x18\x05 \x01(\tR\bprovider\"B\n" +
 	"\x1dStartCoinPackCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl*\x9b\x02\n" +
 	"\x13CoinTransactionKind\x12%\n" +

@@ -245,6 +245,14 @@ const GetTenantResponse$json = {
       '5': 8,
       '10': 'acceptsPromotionCodes'
     },
+    {
+      '1': 'payment_providers',
+      '3': 32,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.TenantPaymentProvider',
+      '10': 'paymentProviders'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -282,7 +290,25 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'MgoVY3JlYXRvcl9wYWdlc19lbmFibGVkGB0gASgIUhNjcmVhdG9yUGFnZXNFbmFibGVkEjoKB2'
     'ludm9pY2UYHiABKAsyIC5wdWJsaXJhLnYxLlRlbmFudEludm9pY2VEZXRhaWxzUgdpbnZvaWNl'
     'EjYKF2FjY2VwdHNfcHJvbW90aW9uX2NvZGVzGB8gASgIUhVhY2NlcHRzUHJvbW90aW9uQ29kZX'
-    'NKBAgQEBFKBAgREBJSCnRlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
+    'MSTgoRcGF5bWVudF9wcm92aWRlcnMYICADKAsyIS5wdWJsaXJhLnYxLlRlbmFudFBheW1lbnRQ'
+    'cm92aWRlclIQcGF5bWVudFByb3ZpZGVyc0oECBAQEUoECBEQElIKdGVybXNfcGFnZVIMcHJpdm'
+    'FjeV9wYWdl');
+
+@$core.Deprecated('Use tenantPaymentProviderDescriptor instead')
+const TenantPaymentProvider$json = {
+  '1': 'TenantPaymentProvider',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'display_name', '3': 2, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'subscriptions', '3': 3, '4': 1, '5': 8, '10': 'subscriptions'},
+  ],
+};
+
+/// Descriptor for `TenantPaymentProvider`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantPaymentProviderDescriptor = $convert.base64Decode(
+    'ChVUZW5hbnRQYXltZW50UHJvdmlkZXISDgoCaWQYASABKAlSAmlkEiEKDGRpc3BsYXlfbmFtZR'
+    'gCIAEoCVILZGlzcGxheU5hbWUSJAoNc3Vic2NyaXB0aW9ucxgDIAEoCFINc3Vic2NyaXB0aW9u'
+    'cw==');
 
 @$core.Deprecated('Use tenantInvoiceDetailsDescriptor instead')
 const TenantInvoiceDetails$json = {
@@ -708,6 +734,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.TenantBrandMark': $0.TenantBrandMark$json,
   '.publira.types.v1.TenantThemePalette': $0.TenantThemePalette$json,
   '.publira.v1.TenantInvoiceDetails': TenantInvoiceDetails$json,
+  '.publira.v1.TenantPaymentProvider': TenantPaymentProvider$json,
   '.publira.v1.GetTenantLegalPagesRequest': GetTenantLegalPagesRequest$json,
   '.publira.v1.GetTenantLegalPagesResponse': GetTenantLegalPagesResponse$json,
   '.publira.v1.TenantLegalPage': TenantLegalPage$json,

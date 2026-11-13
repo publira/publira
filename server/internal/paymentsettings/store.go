@@ -24,11 +24,17 @@ import (
 // call these queries directly: they return ciphertext.
 type PaymentQuerier interface {
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, error)
-	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg dbmodels.UpsertTenantPaymentConfigParams) (dbmodels.TenantPaymentConfig, error)
+	SaveTenantCurrency(ctx context.Context, arg dbmodels.SaveTenantCurrencyParams) error
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	GetPlatformDefaultCurrency(ctx context.Context) (string, error)
 	LockTenantCurrency(ctx context.Context, tenantID uuid.UUID) error
+	ListTenantPaymentProviders(ctx context.Context, tenantID uuid.UUID) ([]dbmodels.TenantPaymentProvider, error)
+	GetTenantPaymentProvider(ctx context.Context, arg dbmodels.GetTenantPaymentProviderParams) (dbmodels.TenantPaymentProvider, error)
+	UpsertTenantPaymentProvider(ctx context.Context, arg dbmodels.UpsertTenantPaymentProviderParams) (dbmodels.TenantPaymentProvider, error)
+	RetireTenantPaymentProvider(ctx context.Context, arg dbmodels.RetireTenantPaymentProviderParams) (dbmodels.TenantPaymentProvider, error)
+	DeleteTenantPaymentProvider(ctx context.Context, arg dbmodels.DeleteTenantPaymentProviderParams) (int64, error)
+	TenantPaymentProviderHasOpenPayments(ctx context.Context, arg dbmodels.TenantPaymentProviderHasOpenPaymentsParams) (bool, error)
 }
 
 // CurrencyQuerier is what [TenantCurrency] reads.
@@ -110,8 +116,9 @@ type storedFields struct {
 	hints     map[string]string
 }
 
-// GetPublic returns the non-secret configuration for tenantID. A missing row
-// is an empty disabled config with no provider, in the platform's default
+// GetPublic returns the non-secret configuration of the first provider
+// tenantID holds that is not retired, which [Store.Upsert] saves. A missing
+// row is an empty disabled config with no provider, in the platform's default
 // currency, not an error.
 func (s *Store) GetPublic(ctx context.Context, tenantID uuid.UUID) (PublicConfig, error) {
 	row, ok, err := s.loadRow(ctx, tenantID)
@@ -129,7 +136,7 @@ func (s *Store) GetPublic(ctx context.Context, tenantID uuid.UUID) (PublicConfig
 		}
 		return PublicConfig{TenantID: tenantID, Currency: currency, CurrencyLocked: locked}, nil
 	}
-	stored, err := decodeStoredFields(row)
+	stored, err := decodeStoredFields(row.CredentialsEncrypted, row.CredentialHints)
 	if err != nil {
 		return PublicConfig{}, err
 	}
@@ -143,9 +150,12 @@ func (s *Store) Currency(ctx context.Context, tenantID uuid.UUID) (string, error
 	return TenantCurrency(ctx, s.queries, tenantID)
 }
 
-// Upsert encrypts replaced fields, persists the row, and records a tenant
-// audit event naming the fields it touched. The returned view never includes
-// ciphertext or a secret value.
+// Upsert saves the first provider tenantID holds that is not retired:
+// it encrypts replaced fields, persists the row, and records a tenant audit
+// event naming the fields it touched. Naming another provider puts it in the
+// first one's place and clears the first one's fields, which the database
+// carries over to the tenant's providers, leaving the others as they are. The
+// returned view never includes ciphertext or a secret value.
 func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInput, audit AuditMeta) (PublicConfig, error) {
 	provider, ok := s.providers.Lookup(strings.TrimSpace(input.Provider))
 	if !ok {
@@ -170,15 +180,22 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	if !declaration.Charges(currency) {
 		return PublicConfig{}, fmt.Errorf("%w: %s does not charge in %q", ErrUnsupportedCurrency, declaration.ID, currency)
 	}
+	held, err := s.queries.ListTenantPaymentProviders(ctx, tenantID)
+	if err != nil {
+		return PublicConfig{}, err
+	}
+	if err := s.othersCharge(held, currency, declaration.ID, existing.Provider); err != nil {
+		return PublicConfig{}, err
+	}
 
 	stored := storedFields{encrypted: map[string]string{}, hints: map[string]string{}}
 	var touched []string
 	if found && existing.Provider == declaration.ID {
-		if stored, err = decodeStoredFields(existing); err != nil {
+		if stored, err = decodeStoredFields(existing.CredentialsEncrypted, existing.CredentialHints); err != nil {
 			return PublicConfig{}, err
 		}
 	} else if found {
-		previous, err := decodeStoredFields(existing)
+		previous, err := decodeStoredFields(existing.CredentialsEncrypted, existing.CredentialHints)
 		if err != nil {
 			return PublicConfig{}, err
 		}
@@ -187,36 +204,11 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 		}
 	}
 
-	seen := make(map[string]bool, len(input.Fields))
-	for _, update := range input.Fields {
-		field, ok := declaration.Field(update.Name)
-		if !ok {
-			return PublicConfig{}, fmt.Errorf("%w: %q", ErrUnknownField, update.Name)
-		}
-		if seen[field.Name] {
-			return PublicConfig{}, fmt.Errorf("%w: %q", ErrDuplicateField, field.Name)
-		}
-		seen[field.Name] = true
-		mode, err := secretupdate.Resolve(update.Mode, update.Value, ErrSecretRequired)
-		if err != nil {
-			return PublicConfig{}, fmt.Errorf("%s: %w", field.Name, err)
-		}
-		switch mode {
-		case secretupdate.Replace:
-			value := strings.TrimSpace(update.Value)
-			encrypted, err := encryptValue(value, s.encryptor)
-			if err != nil {
-				return PublicConfig{}, err
-			}
-			stored.encrypted[field.Name] = encrypted
-			stored.hints[field.Name] = hintFor(field, value)
-			touched = append(touched, declaration.ID+"."+field.Name)
-		case secretupdate.Clear:
-			delete(stored.encrypted, field.Name)
-			delete(stored.hints, field.Name)
-			touched = append(touched, declaration.ID+"."+field.Name)
-		}
+	updated, err := s.applyFieldUpdates(declaration, stored, input.Fields)
+	if err != nil {
+		return PublicConfig{}, err
 	}
+	touched = append(touched, updated...)
 
 	if input.Enabled {
 		if missing := missingRequired(declaration, stored); len(missing) > 0 {
@@ -224,11 +216,7 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 		}
 	}
 
-	encrypted, err := json.Marshal(stored.encrypted)
-	if err != nil {
-		return PublicConfig{}, err
-	}
-	hints, err := json.Marshal(stored.hints)
+	encrypted, hints, err := stored.marshal()
 	if err != nil {
 		return PublicConfig{}, err
 	}
@@ -255,6 +243,43 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	config := s.publicConfig(row, stored)
 	config.CurrencyLocked = locked
 	return config, nil
+}
+
+// applyFieldUpdates applies updates to stored, the fields of declaration's
+// provider, and answers the fields it replaced or cleared as provider.field.
+func (s *Store) applyFieldUpdates(declaration paymentprovider.Declaration, stored storedFields, updates []FieldUpdate) ([]string, error) {
+	var touched []string
+	seen := make(map[string]bool, len(updates))
+	for _, update := range updates {
+		field, ok := declaration.Field(update.Name)
+		if !ok {
+			return nil, fmt.Errorf("%w: %q", ErrUnknownField, update.Name)
+		}
+		if seen[field.Name] {
+			return nil, fmt.Errorf("%w: %q", ErrDuplicateField, field.Name)
+		}
+		seen[field.Name] = true
+		mode, err := secretupdate.Resolve(update.Mode, update.Value, ErrSecretRequired)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", field.Name, err)
+		}
+		switch mode {
+		case secretupdate.Replace:
+			value := strings.TrimSpace(update.Value)
+			encrypted, err := encryptValue(value, s.encryptor)
+			if err != nil {
+				return nil, err
+			}
+			stored.encrypted[field.Name] = encrypted
+			stored.hints[field.Name] = hintFor(field, value)
+			touched = append(touched, declaration.ID+"."+field.Name)
+		case secretupdate.Clear:
+			delete(stored.encrypted, field.Name)
+			delete(stored.hints, field.Name)
+			touched = append(touched, declaration.ID+"."+field.Name)
+		}
+	}
+	return touched, nil
 }
 
 // resolveCurrency answers the currency an update stores, whether that changes
@@ -295,46 +320,20 @@ func (s *Store) currencyLocked(ctx context.Context, tenantID uuid.UUID) (bool, e
 	return locked, nil
 }
 
-// LoadEnabledSecrets decrypts the tenant's enabled credentials, keyed by the
-// field names the stored provider declares. This is the only method that
-// returns plaintext. Missing, disabled, incomplete, or undecryptable
-// configuration yields a sentinel error with no secret material.
-func (s *Store) LoadEnabledSecrets(ctx context.Context, tenantID uuid.UUID) (PublicConfig, paymentprovider.Credentials, error) {
-	row, err := s.queries.GetEnabledTenantPaymentConfigByTenantID(ctx, tenantID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return PublicConfig{}, nil, ErrNotEnabled
-		}
-		s.logger.ErrorContext(ctx, "failed to load enabled tenant payment settings",
-			"tenant_id", tenantID,
-			"error", err,
-		)
-		return PublicConfig{}, nil, err
-	}
-	provider, ok := s.providers.Lookup(row.Provider)
-	if !ok {
-		s.logger.ErrorContext(ctx, "tenant payment provider is not registered",
-			"tenant_id", tenantID,
-			"provider", row.Provider,
-		)
-		return PublicConfig{}, nil, ErrProviderUnavailable
-	}
-	stored, err := decodeStoredFields(row)
-	if err != nil {
-		return PublicConfig{}, nil, err
-	}
-
+// decryptCredentials decrypts stored, the fields of declaration's provider,
+// keyed by field name, and fails on a required field it does not hold.
+func (s *Store) decryptCredentials(ctx context.Context, tenantID uuid.UUID, declaration paymentprovider.Declaration, stored storedFields) (paymentprovider.Credentials, error) {
 	credentials := paymentprovider.Credentials{}
-	for _, field := range provider.Declaration().Fields {
+	for _, field := range declaration.Fields {
 		encrypted, ok := stored.encrypted[field.Name]
 		if !ok {
 			if field.Required {
 				s.logger.ErrorContext(ctx, "tenant payment credential is not configured",
 					"tenant_id", tenantID,
-					"provider", row.Provider,
+					"provider", declaration.ID,
 					"field", field.Name,
 				)
-				return PublicConfig{}, nil, ErrSecretMissing
+				return nil, ErrSecretMissing
 			}
 			continue
 		}
@@ -342,16 +341,15 @@ func (s *Store) LoadEnabledSecrets(ctx context.Context, tenantID uuid.UUID) (Pub
 		if err != nil {
 			s.logger.ErrorContext(ctx, "failed to decrypt tenant payment credential",
 				"tenant_id", tenantID,
-				"provider", row.Provider,
+				"provider", declaration.ID,
 				"field", field.Name,
 				"error", err,
 			)
-			return PublicConfig{}, nil, err
+			return nil, err
 		}
 		credentials[field.Name] = value
 	}
-
-	return s.publicConfig(row, stored), credentials, nil
+	return credentials, nil
 }
 
 func (s *Store) loadRow(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, bool, error) {
@@ -406,22 +404,31 @@ func touchedReason(touched []string) string {
 	return "fields: " + strings.Join(touched, ", ")
 }
 
-// publicConfig describes row by the fields its provider declares. A provider
-// this build does not register has no fields and is never ready.
+// publicConfig describes row by the fields its provider declares.
 func (s *Store) publicConfig(row dbmodels.TenantPaymentConfig, stored storedFields) PublicConfig {
-	config := PublicConfig{
+	fields, ready := s.describe(row.Provider, row.Enabled, stored)
+	return PublicConfig{
 		TenantID:  row.TenantID,
 		Provider:  row.Provider,
 		Enabled:   row.Enabled,
 		Currency:  row.Currency,
+		Fields:    fields,
+		Ready:     ready,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 	}
-	provider, ok := s.providers.Lookup(row.Provider)
+}
+
+// describe answers the state of every field providerID declares, and whether
+// the provider is ready: enabled, with every required field stored. A
+// provider this build does not register has no fields and is never ready.
+func (s *Store) describe(providerID string, enabled bool, stored storedFields) ([]FieldState, bool) {
+	provider, ok := s.providers.Lookup(providerID)
 	if !ok {
-		return config
+		return nil, false
 	}
 	declaration := provider.Declaration()
+	var fields []FieldState
 	for _, field := range declaration.Fields {
 		_, configured := stored.encrypted[field.Name]
 		state := FieldState{Name: field.Name, Configured: configured}
@@ -431,10 +438,9 @@ func (s *Store) publicConfig(row dbmodels.TenantPaymentConfig, stored storedFiel
 				state.PublicValue = stored.hints[field.Name]
 			}
 		}
-		config.Fields = append(config.Fields, state)
+		fields = append(fields, state)
 	}
-	config.Ready = row.Enabled && len(missingRequired(declaration, stored)) == 0
-	return config
+	return fields, enabled && len(missingRequired(declaration, stored)) == 0
 }
 
 // missingRequired names the required fields of declaration that stored does
@@ -443,15 +449,15 @@ func missingRequired(declaration paymentprovider.Declaration, stored storedField
 	return declaration.Missing(paymentprovider.Credentials(stored.encrypted))
 }
 
-func decodeStoredFields(row dbmodels.TenantPaymentConfig) (storedFields, error) {
+func decodeStoredFields(encrypted, hints json.RawMessage) (storedFields, error) {
 	stored := storedFields{encrypted: map[string]string{}, hints: map[string]string{}}
-	if len(row.CredentialsEncrypted) > 0 {
-		if err := json.Unmarshal(row.CredentialsEncrypted, &stored.encrypted); err != nil {
+	if len(encrypted) > 0 {
+		if err := json.Unmarshal(encrypted, &stored.encrypted); err != nil {
 			return storedFields{}, fmt.Errorf("decode stored payment credentials: %w", err)
 		}
 	}
-	if len(row.CredentialHints) > 0 {
-		if err := json.Unmarshal(row.CredentialHints, &stored.hints); err != nil {
+	if len(hints) > 0 {
+		if err := json.Unmarshal(hints, &stored.hints); err != nil {
 			return storedFields{}, fmt.Errorf("decode stored payment credential hints: %w", err)
 		}
 	}

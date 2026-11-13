@@ -13,6 +13,8 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/payjp"
+	"github.com/publira/publira/server/internal/paymentprovider/payjp/payjptest"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
@@ -232,5 +234,65 @@ func TestDBReconciliationRecordsCredentialsTheProviderRefuses(t *testing.T) {
 	run := s.run(t, runID)
 	if !run.FinishedAt.Valid || run.Failure != (sql.NullString{String: paymentreconciliation.FailureCredentials, Valid: true}) || run.RecordCount.Valid {
 		t.Fatalf("run = %+v, want it failed on its credentials with no counts", run)
+	}
+}
+
+// A tenant holding two providers reconciles each against its own records: a
+// run reads the provider it names, and matches only the purchases paid
+// through it.
+func TestDBReconciliationReadsEachProviderTheTenantHolds(t *testing.T) {
+	t.Parallel()
+	s := newStripeTenant(t)
+	payjpFixture := payjptest.NewFixture(t)
+	s.deps.Payments = paymentprovider.NewRegistry(s.stripe.Provider(), payjpFixture.Provider())
+	credentials := payjpFixture.Credentials()
+	if _, err := paymentsettings.New(dbmodels.New(s.pg.DB), s.deps.Secrets, s.deps.Payments, nil, slog.Default()).UpsertProvider(context.Background(), s.tenantID, paymentsettings.ProviderInput{
+		Provider: payjp.ID,
+		Enabled:  true,
+		Fields: []paymentsettings.FieldUpdate{
+			{Name: payjp.FieldSecretKey, Mode: secretupdate.Replace, Value: credentials[payjp.FieldSecretKey]},
+			{Name: payjp.FieldWebhookToken, Mode: secretupdate.Replace, Value: credentials[payjp.FieldWebhookToken]},
+		},
+	}, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("hold PAY.JP: %v", err)
+	}
+	march := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+
+	s.paid(t, "pi_stripe", 500, false, march.Add(9*24*time.Hour))
+	s.bought(t, "pi_stripe", 500, false, march.Add(9*24*time.Hour+time.Minute))
+	payjpFixture.PaymentTaken(t, credentials, paymentprovidertest.Checkout{
+		PaymentID: "pfw_payjp",
+		Purchase:  paymentprovider.Purchase{Price: 300, Currency: "JPY"},
+	}, march.Add(10*24*time.Hour))
+	if _, err := s.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency, purchased_at,
+			provider, provider_checkout_id, provider_payment_id)
+		VALUES ($1, $2, $3, $4, 300, 'JPY', $5, 'payjp', 'cs_payjp', 'pfw_payjp')
+	`, uuid.New(), s.tenantID, s.readerID, s.episode, march.Add(10*24*time.Hour+time.Minute)); err != nil {
+		t.Fatalf("insert the PAY.JP purchase: %v", err)
+	}
+
+	stripeRun := s.start(t, march)
+	payjpRun := uuid.Must(uuid.NewV7())
+	if _, err := s.pg.DB.ExecContext(context.Background(), `
+		INSERT INTO payment_reconciliations (id, tenant_id, provider, start_date, end_date, time_zone, starts_at, ends_at)
+		VALUES ($1, $2, 'payjp', $3, $4, 'UTC', $5, $6)
+	`, payjpRun, s.tenantID, march, march.AddDate(0, 1, -1), march, march.AddDate(0, 1, 0)); err != nil {
+		t.Fatalf("insert the PAY.JP reconciliation: %v", err)
+	}
+	summary, err := paymentreconciliation.RunPending(context.Background(), s.deps)
+	if err != nil {
+		t.Fatalf("RunPending: %v", err)
+	}
+	if summary.Succeeded != 2 || summary.Failed != 0 {
+		t.Fatalf("summary = %+v, want both runs to succeed", summary)
+	}
+	for _, runID := range []uuid.UUID{stripeRun, payjpRun} {
+		if got := s.findings(t, runID); len(got) != 0 {
+			t.Fatalf("findings of %s = %+v, want none", runID, got)
+		}
+		if run := s.run(t, runID); run.RecordCount.Int32 != 1 || run.PurchaseCount.Int32 != 1 || run.MatchedCount.Int32 != 1 {
+			t.Fatalf("run %s = %+v, want its provider's one payment matched to its one purchase", run.Provider.String, run)
+		}
 	}
 }

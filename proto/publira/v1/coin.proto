@@ -247,6 +247,12 @@ message StartCoinPackCheckoutRequest {
   // The reader's locale, which the checkout page names the pack and the
   // tenant's coin in. Empty means the tenant's default locale.
   string locale = 4;
+  // The payment provider to pay through (Tenant.payment_providers). Empty is
+  // the one provider the tenant can sell this through, and invalid_argument
+  // while it can through more than one. A provider the tenant does not hold,
+  // or has retired, is invalid_argument, and one it holds that is not ready is
+  // failed_precondition.
+  string provider = 5;
 }
 
 message StartCoinPackCheckoutResponse {

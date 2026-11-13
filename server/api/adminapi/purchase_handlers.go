@@ -52,12 +52,13 @@ func purchaseRevocationReasonToProto(reason sql.NullString) publiraadminv1.Purch
 }
 
 // purchaseRefundable reports whether RefundPurchase would ask a provider to
-// refund row under the tenant's payment settings payments.
-func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) bool {
-	return payments.Enabled &&
-		payments.Ready &&
+// refund row, given held, the providers the tenant holds: the one it was paid
+// through has to be one of them, and ready, whether or not it is retired.
+func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, held paymentsettings.Providers) bool {
+	provider, ok := held.Lookup(row.Provider.String)
+	return ok &&
+		provider.Ready &&
 		row.Provider.Valid &&
-		row.Provider.String == payments.Provider &&
 		row.ProviderPaymentID.Valid &&
 		!row.RefundedAt.Valid &&
 		!row.RevokedAt.Valid
@@ -66,7 +67,7 @@ func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, payments pa
 // mapPurchase maps one purchase as the console shows it. A purchases.kind this
 // build does not know is an error rather than a sale, as it is in the
 // reader's library.
-func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) (*publiraadminv1.AdminPurchase, error) {
+func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.Providers) (*publiraadminv1.AdminPurchase, error) {
 	kind, err := protomapper.PurchaseKindFromStored(row.Kind)
 	if err != nil {
 		return nil, err
@@ -415,7 +416,7 @@ func (s *adminServer) listPurchasePage(
 	if err != nil {
 		return purchaseListPage{}, s.internalDBError(ctx, "failed to load listed purchases", err, "tenant_id", filter.tenantID.String())
 	}
-	payments, err := s.paymentStore(ctx).GetPublic(ctx, filter.tenantID)
+	payments, err := s.heldPaymentProviders(ctx, filter.tenantID)
 	if err != nil {
 		return purchaseListPage{}, s.internalDBError(ctx, "failed to get payment settings for list purchases", err, "tenant_id", filter.tenantID.String())
 	}
@@ -470,7 +471,7 @@ func (s *adminServer) GetPurchase(
 	if err != nil {
 		return nil, err
 	}
-	payments, err := s.paymentStore(ctx).GetPublic(ctx, tenant.ID)
+	payments, err := s.heldPaymentProviders(ctx, tenant.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get payment settings for get purchase", err, "tenant_id", tenant.ID.String())
 	}
@@ -593,7 +594,7 @@ func (s *adminServer) refundPurchase(
 	// twice: the provider answers with the refund that key made, or makes it
 	// now when the earlier request never reached the provider.
 	if row.RefundedAt.Valid {
-		payments, err := store.GetPublic(ctx, tenantID)
+		payments, err := s.heldPaymentProviders(ctx, tenantID)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to get payment settings for refund purchase", err, "tenant_id", tenantID.String())
 		}
@@ -616,15 +617,16 @@ func (s *adminServer) refundPurchase(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
 	}
 
-	payments, credentials, err := store.LoadEnabledSecrets(ctx, tenantID)
+	// A provider the tenant retired still refunds what it took.
+	_, credentials, err := store.LoadProvider(ctx, tenantID, row.Provider.String)
+	if errors.Is(err, paymentsettings.ErrProviderNotHeld) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was paid through a payment provider the tenant no longer uses")
+	}
 	if paymentsettings.IsUnavailable(err) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment settings are not enabled")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to load payment settings for refund purchase", err, "tenant_id", tenantID.String())
-	}
-	if payments.Provider != row.Provider.String {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was paid through a payment provider the tenant no longer uses")
 	}
 	provider, ok := s.paymentProviders.Lookup(row.Provider.String)
 	if !ok {
@@ -657,12 +659,23 @@ func (s *adminServer) refundPurchase(
 	if err != nil {
 		return nil, err
 	}
+	payments, err := s.heldPaymentProviders(ctx, tenantID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get payment settings for refund purchase", err, "tenant_id", tenantID.String())
+	}
 	return s.mappedPurchase(ctx, tenantID, refunded, payments)
+}
+
+// heldPaymentProviders answers the providers the tenant holds, which a
+// purchase is refundable through.
+func (s *adminServer) heldPaymentProviders(ctx context.Context, tenantID uuid.UUID) (paymentsettings.Providers, error) {
+	held, err := s.paymentStore(ctx).Held(ctx, tenantID)
+	return paymentsettings.Providers{TenantID: tenantID, List: held}, err
 }
 
 // mappedPurchase is mapPurchase for a handler, which answers a kind this
 // build does not know as an internal error.
-func (s *adminServer) mappedPurchase(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) (*publiraadminv1.AdminPurchase, error) {
+func (s *adminServer) mappedPurchase(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.Providers) (*publiraadminv1.AdminPurchase, error) {
 	purchase, err := mapPurchase(row, payments)
 	if err != nil {
 		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", row.ID.String())

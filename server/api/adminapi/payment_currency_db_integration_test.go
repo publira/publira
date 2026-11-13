@@ -18,7 +18,7 @@ import (
 )
 
 func updateDBPaymentCurrency(env *adminDBEnv, tenant adminDBTenant, provider, currency string) (*publiraadminv1.TenantPaymentSettings, error) {
-	resp, err := env.paymentClient().UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	resp, err := env.paymentClient().UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantPaymentSettingsRequest{ //nolint:staticcheck // the deprecated RPC is what this test exercises
 		Tenant:   tenant.tenantContext(),
 		Provider: provider,
 		Currency: currency,

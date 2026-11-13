@@ -144,6 +144,79 @@ func stripePaymentConfigRow(t *testing.T, tenantID uuid.UUID, secretEnc, webhook
 	)
 }
 
+func publicPaymentProviderColumns() []string {
+	return []string{
+		"id", "tenant_id", "provider", "enabled",
+		"credentials_encrypted", "credential_hints",
+		"retired_at", "created_at", "updated_at",
+	}
+}
+
+// stripeProviderRow is an enabled Stripe provider of the tenant's holding the
+// given ciphertexts and hints for its secret key and webhook secret.
+func stripeProviderRow(t *testing.T, tenantID uuid.UUID, secretEnc, webhookEnc, secretHint, webhookHint string, now time.Time) *sqlmock.Rows {
+	t.Helper()
+	fields := func(secretKey, webhookSecret string) []byte {
+		encoded, err := json.Marshal(map[string]string{
+			stripe.FieldSecretKey:     secretKey,
+			stripe.FieldWebhookSecret: webhookSecret,
+		})
+		if err != nil {
+			t.Fatalf("json.Marshal: %v", err)
+		}
+		return encoded
+	}
+	return sqlmock.NewRows(publicPaymentProviderColumns()).AddRow(
+		uuid.Must(uuid.NewV7()),
+		tenantID,
+		stripe.ID,
+		true,
+		fields(secretEnc, webhookEnc),
+		fields(secretHint, webhookHint),
+		nil,
+		now,
+		now,
+	)
+}
+
+// expectHeldPaymentProvider answers the tenant's one provider, Stripe,
+// holding secretKey and webhookSecret, to the list of the providers it holds
+// and then to the read of it a caller decrypts.
+func expectHeldPaymentProvider(t *testing.T, mock sqlmock.Sqlmock, tenantID uuid.UUID, encryptor *secretcrypto.Manager, secretKey, webhookSecret string, now time.Time) {
+	t.Helper()
+	rows := func() *sqlmock.Rows {
+		return encryptedStripeProviderRow(t, tenantID, encryptor, secretKey, webhookSecret, now)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantPaymentProviders)).
+		WithArgs(tenantID).
+		WillReturnRows(rows())
+	expectWebhookPaymentProvider(t, mock, tenantID, encryptor, secretKey, webhookSecret, now)
+}
+
+// expectWebhookPaymentProvider answers the read of the tenant's Stripe
+// provider, holding secretKey and webhookSecret, that a notification of it
+// decrypts.
+func expectWebhookPaymentProvider(t *testing.T, mock sqlmock.Sqlmock, tenantID uuid.UUID, encryptor *secretcrypto.Manager, secretKey, webhookSecret string, now time.Time) {
+	t.Helper()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentProvider)).
+		WithArgs(tenantID, stripe.ID).
+		WillReturnRows(encryptedStripeProviderRow(t, tenantID, encryptor, secretKey, webhookSecret, now))
+}
+
+func encryptedStripeProviderRow(t *testing.T, tenantID uuid.UUID, encryptor *secretcrypto.Manager, secretKey, webhookSecret string, now time.Time) *sqlmock.Rows {
+	t.Helper()
+	secretEnc, err := encryptor.EncryptString(secretKey)
+	if err != nil {
+		t.Fatalf("EncryptString secret: %v", err)
+	}
+	webhookEnc, err := encryptor.EncryptString(webhookSecret)
+	if err != nil {
+		t.Fatalf("EncryptString webhook: %v", err)
+	}
+	return stripeProviderRow(t, tenantID, secretEnc, webhookEnc,
+		paymentsettings.MaskSecret(secretKey), paymentsettings.MaskSecret(webhookSecret), now)
+}
+
 type publicPaymentServer struct {
 	ts       *httptest.Server
 	mock     sqlmock.Sqlmock
@@ -175,20 +248,15 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 	return publicPaymentServer{ts: ts, mock: mock, logs: &logs, checkout: checkout}
 }
 
+// expectEnabledPaymentConfig answers what a checkout reads of the tenant's
+// payments: its one provider, Stripe, holding secretKey and webhookSecret,
+// and the settings row its currency, JPY, is read from.
 func expectEnabledPaymentConfig(t *testing.T, mock sqlmock.Sqlmock, tenantID uuid.UUID, encryptor *secretcrypto.Manager, secretKey, webhookSecret string, now time.Time) {
 	t.Helper()
-	secretEnc, err := encryptor.EncryptString(secretKey)
-	if err != nil {
-		t.Fatalf("EncryptString secret: %v", err)
-	}
-	webhookEnc, err := encryptor.EncryptString(webhookSecret)
-	if err != nil {
-		t.Fatalf("EncryptString webhook: %v", err)
-	}
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
+	expectHeldPaymentProvider(t, mock, tenantID, encryptor, secretKey, webhookSecret, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
-		WillReturnRows(stripePaymentConfigRow(t, tenantID, secretEnc, webhookEnc,
-			paymentsettings.MaskSecret(secretKey), paymentsettings.MaskSecret(webhookSecret), now))
+		WillReturnRows(stripePaymentConfigRow(t, tenantID, "", "", "", "", now))
 }
 
 func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
@@ -200,9 +268,9 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
 	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantPaymentProviders)).
 		WithArgs(tenantID).
-		WillReturnError(sql.ErrNoRows)
+		WillReturnRows(sqlmock.NewRows(publicPaymentProviderColumns()))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -821,8 +889,8 @@ func TestProcessPaymentWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
-		WithArgs(tenantID).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentProvider)).
+		WithArgs(tenantID, stripe.ID).
 		WillReturnError(sql.ErrNoRows)
 
 	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
@@ -842,7 +910,7 @@ func TestProcessPaymentWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectWebhookPaymentProvider(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"id": "cs_other"})
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
@@ -864,7 +932,7 @@ func TestProcessPaymentWebhookAcceptsTenantSigningSecret(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectWebhookPaymentProvider(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_ok"})
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
@@ -896,7 +964,7 @@ func TestProcessPaymentWebhookReadsTheSignatureHeaderWhateverItsCase(t *testing.
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectWebhookPaymentProvider(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_case"})
 	req := stripeWebhookRequest(tenantID.String(), payload, nil)
@@ -913,9 +981,9 @@ func TestProcessPaymentWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
-		WithArgs(tenantID).
-		WillReturnRows(stripePaymentConfigRow(t, tenantID,
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentProvider)).
+		WithArgs(tenantID, stripe.ID).
+		WillReturnRows(stripeProviderRow(t, tenantID,
 			"enc:v1:other:dGVzdA:dGVzdA", "enc:v1:other:dGVzdA:dGVzdA",
 			"sk_test_••••••••XXXX", "whsec_••••••••YYYY", now))
 
@@ -943,7 +1011,7 @@ func TestProcessPaymentWebhookRejectsCheckoutTenantMismatch(t *testing.T) {
 	pathTenantID := uuid.Must(uuid.NewV7())
 	metadataTenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, pathTenantID, "TENANT", now)
-	expectEnabledPaymentConfig(t, env.mock, pathTenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectWebhookPaymentProvider(t, env.mock, pathTenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_mismatch",

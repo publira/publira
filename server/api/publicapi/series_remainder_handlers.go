@@ -171,7 +171,7 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, checkoutCurrency, credentials, err := s.loadCheckoutProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 			ReaderID: user.ID,
 			Kind:     paymentprovider.KindPurchase,
 			Price:    sale.price,
-			Currency: config.Currency,
+			Currency: checkoutCurrency,
 		},
 		LineItems:  make([]paymentprovider.LineItem, len(sale.episodes)),
 		SuccessURL: successURL,

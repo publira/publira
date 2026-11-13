@@ -115,7 +115,7 @@ func (s *apiServer) StartCoinPackCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, checkoutCurrency, credentials, err := s.loadCheckoutProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *apiServer) StartCoinPackCheckout(
 			CoinExpiryDays: offer.settings.ExpiryDays.Int32,
 			Kind:           paymentprovider.KindPurchase,
 			Price:          pack.Price,
-			Currency:       config.Currency,
+			Currency:       checkoutCurrency,
 		},
 		LineItemName: lineItemName,
 		SuccessURL:   coinPackReturnURL(origin, returnPath, pack.PublicID, "success"),

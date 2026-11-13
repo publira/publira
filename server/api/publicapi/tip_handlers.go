@@ -113,7 +113,7 @@ func (s *apiServer) StartTipCheckout(
 	if err != nil {
 		return nil, err
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, checkoutCurrency, credentials, err := s.loadCheckoutProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (s *apiServer) StartTipCheckout(
 			EpisodeID: episode.ID,
 			Kind:      paymentprovider.KindTip,
 			Price:     req.Amount,
-			Currency:  config.Currency,
+			Currency:  checkoutCurrency,
 		},
 		LineItemName: lineItemName,
 		SuccessURL:   successURL,

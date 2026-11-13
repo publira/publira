@@ -31,19 +31,10 @@ func (s *adminServer) paymentStore(ctx context.Context) *paymentsettings.Store {
 }
 
 func tenantPaymentSettingsToProto(cfg paymentsettings.PublicConfig) *publiraadminv1.TenantPaymentSettings {
-	fields := make([]*publiraadminv1.PaymentCredentialFieldState, 0, len(cfg.Fields))
-	for _, field := range cfg.Fields {
-		fields = append(fields, &publiraadminv1.PaymentCredentialFieldState{
-			Name:        field.Name,
-			Configured:  field.Configured,
-			Hint:        field.Hint,
-			PublicValue: field.PublicValue,
-		})
-	}
 	return &publiraadminv1.TenantPaymentSettings{
 		Provider:       cfg.Provider,
 		Enabled:        cfg.Enabled,
-		Fields:         fields,
+		Fields:         credentialFieldStatesToProto(cfg.Fields),
 		Ready:          cfg.Ready,
 		Currency:       cfg.Currency,
 		CurrencyLocked: cfg.CurrencyLocked,
@@ -61,13 +52,42 @@ func paymentProviderToProto(provider paymentprovider.Provider) *publiraadminv1.P
 			Required: field.Required,
 		})
 	}
+	_, subscriptions := provider.(paymentprovider.Subscriptions)
 	return &publiraadminv1.PaymentProvider{
-		Id:          declaration.ID,
-		DisplayName: declaration.DisplayName,
-		Fields:      fields,
-		WebhookPath: paymentprovider.WebhookPath(declaration.ID),
-		Currencies:  declaration.Currencies,
+		Id:            declaration.ID,
+		DisplayName:   declaration.DisplayName,
+		Fields:        fields,
+		WebhookPath:   paymentprovider.WebhookPath(declaration.ID),
+		Currencies:    declaration.Currencies,
+		Subscriptions: subscriptions,
 	}
+}
+
+func credentialFieldStatesToProto(states []paymentsettings.FieldState) []*publiraadminv1.PaymentCredentialFieldState {
+	fields := make([]*publiraadminv1.PaymentCredentialFieldState, 0, len(states))
+	for _, field := range states {
+		fields = append(fields, &publiraadminv1.PaymentCredentialFieldState{
+			Name:        field.Name,
+			Configured:  field.Configured,
+			Hint:        field.Hint,
+			PublicValue: field.PublicValue,
+		})
+	}
+	return fields
+}
+
+func tenantPaymentProvidersToProto(providers paymentsettings.Providers) []*publiraadminv1.TenantPaymentProviderSettings {
+	settings := make([]*publiraadminv1.TenantPaymentProviderSettings, 0, len(providers.List))
+	for _, config := range providers.List {
+		settings = append(settings, &publiraadminv1.TenantPaymentProviderSettings{
+			Provider: config.Provider,
+			Enabled:  config.Enabled,
+			Ready:    config.Ready,
+			Fields:   credentialFieldStatesToProto(config.Fields),
+			Retired:  config.Retired,
+		})
+	}
+	return settings
 }
 
 func mapPaymentSettingsUpdateError(err error) error {
@@ -82,6 +102,8 @@ func mapPaymentSettingsUpdateError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, paymentsettings.ErrCurrencyLocked):
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
+	case errors.Is(err, paymentsettings.ErrProviderNotHeld):
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	case errors.Is(err, paymentsettings.ErrSecretManagerUnavailable):
 		return connect.NewError(connect.CodeFailedPrecondition, "payment secret encryption is not configured")
 	default:
@@ -183,6 +205,130 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 
 	return &publiraadminv1.UpdateTenantPaymentSettingsResponse{
 		Settings: tenantPaymentSettingsToProto(cfg),
+	}, nil
+}
+
+func (s *adminServer) ListTenantPaymentProviders(
+	ctx context.Context,
+	req *publiraadminv1.ListTenantPaymentProvidersRequest,
+) (*publiraadminv1.ListTenantPaymentProvidersResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	providers, err := s.paymentStore(ctx).Providers(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list tenant payment providers", err, "tenant_id", tenant.ID.String())
+	}
+	return &publiraadminv1.ListTenantPaymentProvidersResponse{
+		Providers:      tenantPaymentProvidersToProto(providers),
+		Currency:       providers.Currency,
+		CurrencyLocked: providers.CurrencyLocked,
+	}, nil
+}
+
+func (s *adminServer) UpsertTenantPaymentProvider(
+	ctx context.Context,
+	req *publiraadminv1.UpsertTenantPaymentProviderRequest,
+) (*publiraadminv1.UpsertTenantPaymentProviderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	fields := make([]paymentsettings.FieldUpdate, 0, len(req.Fields))
+	for _, field := range req.Fields {
+		fields = append(fields, paymentsettings.FieldUpdate{
+			Name:  field.Name,
+			Mode:  secretupdate.Mode(field.Mode),
+			Value: field.Value,
+		})
+	}
+	var providers paymentsettings.Providers
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		txQueries := s.queriesFor(txCtx)
+		store := paymentsettings.New(txQueries, s.encryptor, s.paymentProviders, auditlog.New(txQueries, s.logger), s.logger)
+		saved, err := store.UpsertProvider(txCtx, tenant.ID, paymentsettings.ProviderInput{
+			Provider: req.Provider,
+			Enabled:  req.Enabled,
+			Currency: req.Currency,
+			Fields:   fields,
+		}, paymentsettings.AuditMeta{
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			ClientIP:    clientip.FromContext(txCtx),
+			TargetID:    tenant.PublicID,
+		})
+		if err != nil {
+			if mapped := mapPaymentSettingsUpdateError(err); mapped != nil {
+				return nil, mapped
+			}
+			return nil, s.internalDBError(ctx, "failed to upsert a tenant payment provider", err, "tenant_id", tenant.ID.String())
+		}
+		providers = saved
+		return tenantPaymentRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return &publiraadminv1.UpsertTenantPaymentProviderResponse{
+		Providers:      tenantPaymentProvidersToProto(providers),
+		Currency:       providers.Currency,
+		CurrencyLocked: providers.CurrencyLocked,
+	}, nil
+}
+
+func (s *adminServer) RemoveTenantPaymentProvider(
+	ctx context.Context,
+	req *publiraadminv1.RemoveTenantPaymentProviderRequest,
+) (*publiraadminv1.RemoveTenantPaymentProviderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		providers paymentsettings.Providers
+		retired   bool
+	)
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		txQueries := s.queriesFor(txCtx)
+		store := paymentsettings.New(txQueries, s.encryptor, s.paymentProviders, auditlog.New(txQueries, s.logger), s.logger)
+		remaining, kept, err := store.RemoveProvider(txCtx, tenant.ID, req.Provider, paymentsettings.AuditMeta{
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			ClientIP:    clientip.FromContext(txCtx),
+			TargetID:    tenant.PublicID,
+		})
+		if err != nil {
+			if mapped := mapPaymentSettingsUpdateError(err); mapped != nil {
+				return nil, mapped
+			}
+			return nil, s.internalDBError(ctx, "failed to remove a tenant payment provider", err, "tenant_id", tenant.ID.String())
+		}
+		providers, retired = remaining, kept
+		return tenantPaymentRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return &publiraadminv1.RemoveTenantPaymentProviderResponse{
+		Providers:      tenantPaymentProvidersToProto(providers),
+		Currency:       providers.Currency,
+		CurrencyLocked: providers.CurrencyLocked,
+		Retired:        retired,
 	}, nil
 }
 

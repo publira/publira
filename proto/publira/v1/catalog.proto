@@ -1750,6 +1750,12 @@ message StartEpisodeCheckoutRequest {
   // One of the tenant's promotion codes, matched without regard to case.
   // Empty is no code.
   string promotion_code = 7;
+  // The payment provider to pay through (Tenant.payment_providers). Empty is
+  // the one provider the tenant can sell this through, and invalid_argument
+  // while it can through more than one. A provider the tenant does not hold,
+  // or has retired, is invalid_argument, and one it holds that is not ready is
+  // failed_precondition.
+  string provider = 8;
 }
 
 message StartEpisodeCheckoutResponse {
@@ -1785,6 +1791,12 @@ message StartVolumeCheckoutRequest {
   // One of the tenant's promotion codes, matched without regard to case.
   // Empty is no code.
   string promotion_code = 4;
+  // The payment provider to pay through (Tenant.payment_providers). Empty is
+  // the one provider the tenant can sell this through, and invalid_argument
+  // while it can through more than one. A provider the tenant does not hold,
+  // or has retired, is invalid_argument, and one it holds that is not ready is
+  // failed_precondition.
+  string provider = 5;
 }
 
 message StartVolumeCheckoutResponse {
@@ -1823,6 +1835,12 @@ message StartSeriesRemainderCheckoutRequest {
   // the translation in this locale, else the tenant's default locale's, else
   // the oldest one. Empty means the tenant's default locale.
   string locale = 4;
+  // The payment provider to pay through (Tenant.payment_providers). Empty is
+  // the one provider the tenant can sell this through, and invalid_argument
+  // while it can through more than one. A provider the tenant does not hold,
+  // or has retired, is invalid_argument, and one it holds that is not ready is
+  // failed_precondition.
+  string provider = 5;
 }
 
 message StartSeriesRemainderCheckoutResponse {
@@ -2164,6 +2182,12 @@ message StartTipCheckoutRequest {
   // translation in this locale, else the tenant's default locale's, else the
   // oldest one. Empty means the tenant's default locale.
   string locale = 5;
+  // The payment provider to pay through (Tenant.payment_providers). Empty is
+  // the one provider the tenant can sell this through, and invalid_argument
+  // while it can through more than one. A provider the tenant does not hold,
+  // or has retired, is invalid_argument, and one it holds that is not ready is
+  // failed_precondition.
+  string provider = 6;
 }
 
 message StartTipCheckoutResponse {

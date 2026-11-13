@@ -120,7 +120,7 @@ func (s *apiServer) settleSubscriptionCheckoutBeforeStore(
 	tenantID uuid.UUID,
 	previous dbmodels.GetSubscriptionCheckoutForUserRow,
 ) error {
-	subscriptions, credentials, err := s.loadSubscriptionProvider(ctx, tenantID)
+	subscriptions, credentials, err := s.loadBillingProvider(ctx, tenantID)
 	if connect.CodeOf(err) == connect.CodeFailedPrecondition {
 		return nil
 	}

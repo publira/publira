@@ -65,7 +65,7 @@ func (f *coinFixture) allowCoins(t *testing.T, allowed bool) {
 func (f *coinFixture) takePayments(t *testing.T) {
 	t.Helper()
 
-	if _, err := f.env.paymentClient().UpdateTenantPaymentSettings(f.ctx(), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	if _, err := f.env.paymentClient().UpsertTenantPaymentProvider(f.ctx(), &publiraadminv1.UpsertTenantPaymentProviderRequest{
 		Tenant:   f.admin.tenantContext(),
 		Provider: stripe.ID,
 		Enabled:  true,

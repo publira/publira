@@ -3022,6 +3022,7 @@ const StartEpisodeCheckoutRequest$json = {
       '10': 'kind'
     },
     {'1': 'promotion_code', '3': 7, '4': 1, '5': 9, '10': 'promotionCode'},
+    {'1': 'provider', '3': 8, '4': 1, '5': 9, '10': 'provider'},
   ],
   '4': [StartEpisodeCheckoutRequest_Client$json],
   '9': [
@@ -3047,9 +3048,9 @@ final $typed_data.Uint8List startEpisodeCheckoutRequestDescriptor = $convert.bas
     'YS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSHQoKZXBpc2'
     '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlEjIKBGtpbmQY'
     'BiABKA4yHi5wdWJsaXJhLnR5cGVzLnYxLlB1cmNoYXNlS2luZFIEa2luZBIlCg5wcm9tb3Rpb2'
-    '5fY29kZRgHIAEoCVINcHJvbW90aW9uQ29kZSJDCgZDbGllbnQSFgoSQ0xJRU5UX1VOU1BFQ0lG'
-    'SUVEEAASDgoKQ0xJRU5UX1dFQhABEhEKDUNMSUVOVF9NT0JJTEUQAkoECAIQA1IRZXBpc29kZV'
-    '9wdWJsaWNfaWQ=');
+    '5fY29kZRgHIAEoCVINcHJvbW90aW9uQ29kZRIaCghwcm92aWRlchgIIAEoCVIIcHJvdmlkZXIi'
+    'QwoGQ2xpZW50EhYKEkNMSUVOVF9VTlNQRUNJRklFRBAAEg4KCkNMSUVOVF9XRUIQARIRCg1DTE'
+    'lFTlRfTU9CSUxFEAJKBAgCEANSEWVwaXNvZGVfcHVibGljX2lk');
 
 @$core.Deprecated('Use startEpisodeCheckoutResponseDescriptor instead')
 const StartEpisodeCheckoutResponse$json = {
@@ -3087,6 +3088,7 @@ const StartVolumeCheckoutRequest$json = {
       '10': 'client'
     },
     {'1': 'promotion_code', '3': 4, '4': 1, '5': 9, '10': 'promotionCode'},
+    {'1': 'provider', '3': 5, '4': 1, '5': 9, '10': 'provider'},
   ],
 };
 
@@ -3096,7 +3098,7 @@ final $typed_data.Uint8List startVolumeCheckoutRequestDescriptor = $convert.base
     'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCgl2b2x1bWVfaWQYAiABKAlSCHZvbHVt'
     'ZUlkEkYKBmNsaWVudBgDIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZX'
     'F1ZXN0LkNsaWVudFIGY2xpZW50EiUKDnByb21vdGlvbl9jb2RlGAQgASgJUg1wcm9tb3Rpb25D'
-    'b2Rl');
+    'b2RlEhoKCHByb3ZpZGVyGAUgASgJUghwcm92aWRlcg==');
 
 @$core.Deprecated('Use startVolumeCheckoutResponseDescriptor instead')
 const StartVolumeCheckoutResponse$json = {
@@ -3134,6 +3136,7 @@ const StartSeriesRemainderCheckoutRequest$json = {
       '10': 'client'
     },
     {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'provider', '3': 5, '4': 1, '5': 9, '10': 'provider'},
   ],
 };
 
@@ -3143,7 +3146,8 @@ final $typed_data.Uint8List startSeriesRemainderCheckoutRequestDescriptor =
         'CiNTdGFydFNlcmllc1JlbWFpbmRlckNoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy'
         '5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCglzZXJpZXNfaWQYAiAB'
         'KAlSCHNlcmllc0lkEkYKBmNsaWVudBgDIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2'
-        'hlY2tvdXRSZXF1ZXN0LkNsaWVudFIGY2xpZW50EhYKBmxvY2FsZRgEIAEoCVIGbG9jYWxl');
+        'hlY2tvdXRSZXF1ZXN0LkNsaWVudFIGY2xpZW50EhYKBmxvY2FsZRgEIAEoCVIGbG9jYWxlEhoK'
+        'CHByb3ZpZGVyGAUgASgJUghwcm92aWRlcg==');
 
 @$core.Deprecated('Use startSeriesRemainderCheckoutResponseDescriptor instead')
 const StartSeriesRemainderCheckoutResponse$json = {
@@ -3594,6 +3598,7 @@ const StartTipCheckoutRequest$json = {
       '10': 'client'
     },
     {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'provider', '3': 6, '4': 1, '5': 9, '10': 'provider'},
   ],
 };
 
@@ -3603,7 +3608,7 @@ final $typed_data.Uint8List startTipCheckoutRequestDescriptor = $convert.base64D
     'VzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIdCgplcGlzb2RlX2lkGAIgASgJUgllcGlzb2Rl'
     'SWQSFgoGYW1vdW50GAMgASgFUgZhbW91bnQSRgoGY2xpZW50GAQgASgOMi4ucHVibGlyYS52MS'
     '5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSFgoGbG9jYWxlGAUg'
-    'ASgJUgZsb2NhbGU=');
+    'ASgJUgZsb2NhbGUSGgoIcHJvdmlkZXIYBiABKAlSCHByb3ZpZGVy');
 
 @$core.Deprecated('Use startTipCheckoutResponseDescriptor instead')
 const StartTipCheckoutResponse$json = {

@@ -143,15 +143,18 @@ func (s *adminServer) StartPaymentReconciliation(
 }
 
 // reconciliationSources answers the sources the tenant has ready, in the order
-// provider, App Store, Google Play.
+// its providers in the order it added them, App Store, Google Play. A provider
+// the tenant retired still has what it took to reconcile.
 func (s *adminServer) reconciliationSources(ctx context.Context, tenantID uuid.UUID) ([]reconciliationSource, error) {
 	var sources []reconciliationSource
-	payment, err := s.paymentStore(ctx).GetPublic(ctx, tenantID)
+	held, err := s.paymentStore(ctx).Held(ctx, tenantID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to read the payment settings", err, "tenant_id", tenantID.String())
 	}
-	if payment.Enabled && payment.Ready && payment.Provider != "" {
-		sources = append(sources, reconciliationSource{provider: payment.Provider})
+	for _, payment := range held {
+		if payment.Ready {
+			sources = append(sources, reconciliationSource{provider: payment.Provider})
+		}
 	}
 	stores, err := paymentsettings.NewAppStores(s.queriesFor(ctx), s.encryptor).Get(ctx, tenantID)
 	if err != nil {

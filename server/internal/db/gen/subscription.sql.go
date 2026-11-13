@@ -14,7 +14,8 @@ import (
 )
 
 const GetLatestStripeCustomerIDForUser = `-- name: GetLatestStripeCustomerIDForUser :one
-SELECT stripe_customer_id::text
+SELECT stripe_customer_id::text,
+    provider
 FROM subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
@@ -29,15 +30,21 @@ type GetLatestStripeCustomerIDForUserParams struct {
 	UserID   uuid.NullUUID `json:"user_id"`
 }
 
-// The Stripe customer the reader last subscribed as, which a later checkout
-// and the billing portal name, so the reader's invoices stay on one customer.
+type GetLatestStripeCustomerIDForUserRow struct {
+	StripeCustomerID string `json:"stripe_customer_id"`
+	Provider         string `json:"provider"`
+}
+
+// The Stripe customer the reader last subscribed as, and the provider that
+// bills it, which a later checkout and the billing portal name, so the
+// reader's invoices stay on one customer.
 // A subscription billed by another provider names no Stripe customer, so it is
 // passed over rather than answered as the latest.
-func (q *Queries) GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error) {
+func (q *Queries) GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (GetLatestStripeCustomerIDForUserRow, error) {
 	row := q.db.QueryRowContext(ctx, GetLatestStripeCustomerIDForUser, arg.TenantID, arg.UserID)
-	var stripe_customer_id string
-	err := row.Scan(&stripe_customer_id)
-	return stripe_customer_id, err
+	var i GetLatestStripeCustomerIDForUserRow
+	err := row.Scan(&i.StripeCustomerID, &i.Provider)
+	return i, err
 }
 
 const GetMySubscription = `-- name: GetMySubscription :one

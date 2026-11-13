@@ -95,7 +95,7 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, checkoutCurrency, credentials, err := s.loadCheckoutProvider(ctx, tenant.ID, req.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (s *apiServer) StartEpisodeCheckout(
 			kind:               kind,
 			listPrice:          price,
 			readingPeriodHours: readingPeriodHours,
-			currency:           config.Currency,
+			currency:           checkoutCurrency,
 		}); err != nil {
 			return nil, err
 		}
@@ -161,7 +161,7 @@ func (s *apiServer) StartEpisodeCheckout(
 			EpisodeID:          episode.ID,
 			Kind:               kind,
 			Price:              price,
-			Currency:           config.Currency,
+			Currency:           checkoutCurrency,
 			ReadingPeriodHours: readingPeriodHours,
 		},
 		LineItemName: lineItemName,
@@ -682,17 +682,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 	if err != nil {
 		return nil, err
 	}
-	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	// A provider the tenant retired still reports on what it already took.
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID, providerID)
 	if err != nil {
 		return nil, err
-	}
-	if provider.Declaration().ID != providerID {
-		s.logger.WarnContext(ctx, "payment webhook names a provider the tenant does not use",
-			"tenant_id", tenant.ID,
-			"provider", providerID,
-			"tenant_provider", provider.Declaration().ID,
-		)
-		return nil, paymentsNotConfiguredError()
 	}
 	if len(req.Payload) == 0 || len(req.Payload) > maxPaymentWebhookPayload {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook payload")
@@ -745,13 +738,17 @@ func (s *apiServer) ProcessPaymentWebhook(
 		// in the one it was started in. The reader has paid, so the purchase is
 		// recorded in that currency rather than refused, and is no sale on a
 		// royalty statement in the new one.
-		if event.Purchase.Currency != config.Currency {
+		currency, err := s.tenantCurrency(ctx, s.queriesFor(ctx), tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if event.Purchase.Currency != currency {
 			s.logger.WarnContext(ctx, "a completed checkout was paid in a currency other than the tenant's",
 				"tenant_id", tenant.ID,
 				"event_id", event.ID,
 				"checkout_id", event.CheckoutID,
 				"checkout_currency", event.Purchase.Currency,
-				"tenant_currency", config.Currency,
+				"tenant_currency", currency,
 			)
 		}
 		if err := s.createPurchase(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
@@ -1753,23 +1750,74 @@ func (s *apiServer) tenantCurrency(ctx context.Context, queries Querier, tenantI
 	return currency, nil
 }
 
-// loadPaymentProvider answers the tenant's enabled payment provider with its
-// settings and credentials, or failed_precondition when the tenant cannot take
-// payments.
-func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Provider, paymentsettings.PublicConfig, paymentprovider.Credentials, error) {
-	config, credentials, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+// loadCheckoutProvider answers the provider a checkout is sent to, with its
+// credentials and the tenant currency it charges in: the one requested names,
+// or, when the request names none, the one provider the tenant sells through.
+// A provider the tenant does not sell through, and an empty request while it
+// sells through more than one, are invalid_argument; a tenant that sells
+// through none, or a provider whose credentials do not open, is
+// failed_precondition.
+func (s *apiServer) loadCheckoutProvider(ctx context.Context, tenantID uuid.UUID, requested string) (paymentprovider.Provider, string, paymentprovider.Credentials, error) {
+	store := s.paymentStore(ctx)
+	held, err := store.Held(ctx, tenantID)
+	if err != nil {
+		return nil, "", nil, s.internalDBError(ctx, "failed to list the tenant payment providers", err, "tenant_id", tenantID.String())
+	}
+	var selling, named []string
+	for _, config := range held {
+		if _, ok := s.paymentProviders.Lookup(config.Provider); !ok || config.Retired {
+			continue
+		}
+		named = append(named, config.Provider)
+		if config.Sells() {
+			selling = append(selling, config.Provider)
+		}
+	}
+	chosen := strings.TrimSpace(requested)
+	switch {
+	case chosen == "" && len(selling) == 1:
+		chosen = selling[0]
+	case chosen == "" && len(selling) == 0:
+		s.logger.WarnContext(ctx, "tenant payment settings are unavailable", "tenant_id", tenantID)
+		return nil, "", nil, paymentsNotConfiguredError()
+	case chosen == "":
+		return nil, "", nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the tenant takes payments through more than one provider, so a checkout names one"), "provider")
+	case !slices.Contains(named, chosen):
+		return nil, "", nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the tenant takes no payments through the provider"), "provider")
+	case !slices.Contains(selling, chosen):
+		s.logger.WarnContext(ctx, "tenant payment settings are unavailable", "tenant_id", tenantID, "provider", chosen)
+		return nil, "", nil, paymentsNotConfiguredError()
+	}
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenantID, chosen)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	currency, err := store.Currency(ctx, tenantID)
+	if err != nil {
+		return nil, "", nil, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenantID.String())
+	}
+	return provider, currency, credentials, nil
+}
+
+// loadPaymentProvider answers the provider the tenant holds under providerID,
+// retired or not, with its credentials, or failed_precondition when the
+// tenant does not hold it or it cannot take payments.
+func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID, providerID string) (paymentprovider.Provider, paymentprovider.Credentials, error) {
+	config, credentials, err := s.paymentStore(ctx).LoadProvider(ctx, tenantID, providerID)
 	if err != nil {
 		if paymentsettings.IsUnavailable(err) {
 			s.logger.WarnContext(ctx, "tenant payment settings are unavailable",
 				"tenant_id", tenantID,
+				"provider", providerID,
+				"error", err,
 			)
-			return nil, paymentsettings.PublicConfig{}, nil, paymentsNotConfiguredError()
+			return nil, nil, paymentsNotConfiguredError()
 		}
-		return nil, paymentsettings.PublicConfig{}, nil, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
+		return nil, nil, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
 	}
 	provider, ok := s.paymentProviders.Lookup(config.Provider)
 	if !ok {
-		return nil, paymentsettings.PublicConfig{}, nil, paymentsNotConfiguredError()
+		return nil, nil, paymentsNotConfiguredError()
 	}
-	return provider, config, credentials, nil
+	return provider, credentials, nil
 }

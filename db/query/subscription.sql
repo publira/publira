@@ -93,11 +93,13 @@ SELECT EXISTS (
     ) AS holds;
 
 -- name: GetLatestStripeCustomerIDForUser :one
--- The Stripe customer the reader last subscribed as, which a later checkout
--- and the billing portal name, so the reader's invoices stay on one customer.
+-- The Stripe customer the reader last subscribed as, and the provider that
+-- bills it, which a later checkout and the billing portal name, so the
+-- reader's invoices stay on one customer.
 -- A subscription billed by another provider names no Stripe customer, so it is
 -- passed over rather than answered as the latest.
-SELECT stripe_customer_id::text
+SELECT stripe_customer_id::text,
+    provider
 FROM subscriptions
 WHERE tenant_id = $1
     AND user_id = $2

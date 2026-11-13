@@ -216,6 +216,7 @@ const StartSubscriptionCheckoutRequest$json = {
       '10': 'tenant'
     },
     {'1': 'plan_id', '3': 2, '4': 1, '5': 9, '10': 'planId'},
+    {'1': 'provider', '3': 3, '4': 1, '5': 9, '10': 'provider'},
   ],
 };
 
@@ -224,7 +225,7 @@ final $typed_data.Uint8List startSubscriptionCheckoutRequestDescriptor =
     $convert.base64Decode(
         'CiBTdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdW'
         'JsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIXCgdwbGFuX2lkGAIgASgJUgZw'
-        'bGFuSWQ=');
+        'bGFuSWQSGgoIcHJvdmlkZXIYAyABKAlSCHByb3ZpZGVy');
 
 @$core.Deprecated('Use startSubscriptionCheckoutResponseDescriptor instead')
 const StartSubscriptionCheckoutResponse$json = {
