@@ -57,13 +57,14 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	}
 	// No registered provider carries nothing on its payments, signs nothing,
 	// and notifies no refund yet, nor names its payments by their checkouts,
-	// so the fakes of one hold the purchase flow to those shapes.
-	for id, newFixture := range map[string]func(testing.TB) *readbacktest.Fixture{
-		readbacktest.ID:           readbacktest.NewFixture,
-		readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+	// nor takes its test-mode payments under credentials of their own, so the
+	// fakes of one hold the purchase flow to those shapes.
+	for _, fixture := range []paymentprovidertest.Fixture{
+		readbacktest.NewFixture(t),
+		readbacktest.NewFixtureByCheckout(t),
+		readbacktest.NewFixtureByCredentials(t),
 	} {
-		t.Run(id, func(t *testing.T) {
-			fixture := newFixture(t)
+		t.Run(fixture.Provider().Declaration().ID, func(t *testing.T) {
 			server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
 			harness.registry = server.paymentProviders
 			paymentprovidertest.Run(t, harness, fixture)
@@ -87,11 +88,11 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 	t.Helper()
 	h.tenants++
 	n := h.tenants
-	tenant := h.pg.SeedTenant(t, fmt.Sprintf("CONTRACT%02d", n), fmt.Sprintf("contract-%d.example.com", n), "Contract tenant")
-	reader := h.pg.SeedEndUser(t, tenant.ID, fmt.Sprintf("CONTRACTUS%02d", n), fmt.Sprintf("contract-%d@example.com", n), "Contract reader")
-	series := h.pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: fmt.Sprintf("CONTRACTSR%02d", n), Published: true})
+	tenant := h.pg.SeedTenant(t, fmt.Sprintf("CONTRACT%04d", n), fmt.Sprintf("contract-%d.example.com", n), "Contract tenant")
+	reader := h.pg.SeedEndUser(t, tenant.ID, fmt.Sprintf("CONTRUS%05d", n), fmt.Sprintf("contract-%d@example.com", n), "Contract reader")
+	series := h.pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: fmt.Sprintf("CONTRSR%05d", n), Published: true})
 	episode := h.pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
-		PublicID:    fmt.Sprintf("CONTRACTEP%02d", n),
+		PublicID:    fmt.Sprintf("CONTREP%05d", n),
 		Price:       500,
 		Status:      testutil.EpisodeStatusPublished,
 		PublishedAt: time.Now().Add(-time.Hour),

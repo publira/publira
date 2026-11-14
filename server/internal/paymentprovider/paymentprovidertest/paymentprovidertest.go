@@ -2,7 +2,9 @@
 // A provider supplies a [Fixture] of its notifications and of its API;
 // [RunParse] checks the provider reads the notifications and refunds through
 // the API, and [Run] checks the purchase flow does the right thing with the
-// notifications against a real database.
+// notifications against a real database. A provider whose test mode follows
+// its credentials supplies a [TestCredentialsFixture], and both take each of
+// its test-mode payments under the fixture's test credentials.
 package paymentprovidertest
 
 import (
@@ -26,7 +28,8 @@ type Checkout struct {
 	PaymentID string
 	Purchase  paymentprovider.Purchase
 	// Test makes it a checkout paid in the provider's test mode, and its
-	// absence one paid in live mode.
+	// absence one paid in live mode. A [TestCredentialsFixture] is handed it
+	// with its test credentials, and with no others.
 	Test bool
 }
 
@@ -66,7 +69,8 @@ type SubscriptionPayment struct {
 	// second.
 	PeriodStart time.Time
 	PeriodEnd   time.Time
-	// Test makes it a payment made in the provider's test mode.
+	// Test makes it a payment made in the provider's test mode, handed to a
+	// [TestCredentialsFixture] with its test credentials.
 	Test bool
 	// Started makes it the invoice the subscription was created with, and
 	// otherwise one that renewed it.
@@ -122,6 +126,28 @@ type Fixture interface {
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
 
+// TestCredentialsFixture is the fixture of a provider whose test mode follows
+// its credentials, a [paymentprovider.TestModeByCredentials], which takes its
+// test-mode payments under credentials of their own.
+type TestCredentialsFixture interface {
+	Fixture
+	// TestCredentials answers a tenant's credentials for the provider's test
+	// mode, under which the provider reads every payment as a test. The
+	// suite hands the fixture every [Checkout] with Test set under these, and
+	// every one without it under other credentials.
+	TestCredentials() paymentprovider.Credentials
+}
+
+// testCredentials answers the credentials the suite takes the fixture's
+// test-mode payments under: its [TestCredentialsFixture.TestCredentials], or
+// else the credentials it takes every other payment under.
+func testCredentials(fixture Fixture) paymentprovider.Credentials {
+	if test, ok := fixture.(TestCredentialsFixture); ok {
+		return test.TestCredentials()
+	}
+	return fixture.Credentials()
+}
+
 // names answers the ids the contract gives the checkout it calls name and the
 // payment of that checkout: one of each, or the checkout's for both for a
 // provider that declares [paymentprovider.Declaration.PaymentsByCheckout].
@@ -162,6 +188,27 @@ func RunParse(t *testing.T, fixture Fixture) {
 			t.Fatalf("fixture credentials miss required fields %v", missing)
 		}
 	})
+	t.Run("the provider's test mode follows its credentials exactly when the fixture names credentials for it", func(t *testing.T) {
+		modes, byCredentials := fixture.Provider().(paymentprovider.TestModeByCredentials)
+		test, named := fixture.(TestCredentialsFixture)
+		switch {
+		case byCredentials && !named:
+			t.Fatal("the provider's test mode follows its credentials, and the fixture names none for it")
+		case named && !byCredentials:
+			t.Fatal("the fixture names credentials for the provider's test mode, and its test mode does not follow them")
+		case !byCredentials:
+			return
+		}
+		if missing := fixture.Provider().Declaration().Missing(test.TestCredentials()); len(missing) > 0 {
+			t.Fatalf("fixture test credentials miss required fields %v", missing)
+		}
+		if !modes.TestMode(test.TestCredentials()) {
+			t.Fatal("the fixture's test credentials are not the provider's test mode's")
+		}
+		if modes.TestMode(fixture.Credentials()) || modes.TestMode(fixture.OtherCredentials()) {
+			t.Fatal("the fixture's live credentials are the provider's test mode's")
+		}
+	})
 	for _, currency := range Currencies(fixture.Provider().Declaration()) {
 		t.Run(currency, func(t *testing.T) {
 			runParse(t, fixture, currency)
@@ -172,10 +219,13 @@ func RunParse(t *testing.T, fixture Fixture) {
 
 // runListTransactions checks that the provider lists the payments of a period
 // from its API, oldest first, with the refunds made on them, and none of
-// another account's.
+// another account's. The test-mode payment is taken under the fixture's test
+// credentials, and for a provider whose test mode follows them is listed
+// under those alone.
 func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
+	_, byCredentials := fixture.(TestCredentialsFixture)
 	// Real instants around now, since a provider's refunds are dated when
 	// they are made.
 	to := time.Now().Add(time.Hour).Truncate(time.Second)
@@ -184,6 +234,10 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	// the server started through it, each of which it reads the payment of.
 	var checkoutIDs []string
 	taken := func(name string, price int32, test bool, at time.Time) Checkout {
+		credentials := credentials
+		if test {
+			credentials = testCredentials(fixture)
+		}
 		checkout := Checkout{
 			Purchase: paymentprovider.Purchase{
 				TenantID:  uuid.New(),
@@ -208,7 +262,10 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	taken("list_after_"+currency, 900, false, to.Add(time.Hour))
 	_, _ = fixture.Refunded(t, credentials, Refund{PaymentID: live.PaymentID, Currency: currency, AmountRefunded: 200})
 
-	t.Run("the payments of the period are listed oldest first with their refunds", func(t *testing.T) {
+	liveListed := paymentprovider.Transaction{PaymentID: live.PaymentID, Amount: 500, AmountRefunded: 200, Currency: currency, Test: false, Created: from.Add(time.Hour).UTC()}
+	testListed := paymentprovider.Transaction{PaymentID: test.PaymentID, Amount: 300, Currency: currency, Test: true, Created: from.Add(2 * time.Hour).UTC()}
+	list := func(t *testing.T, credentials paymentprovider.Credentials, want ...paymentprovider.Transaction) {
+		t.Helper()
 		listed, err := provider.ListTransactions(t.Context(), credentials, from, to, checkoutIDs)
 		if err != nil {
 			t.Fatalf("ListTransactions: %v", err)
@@ -220,10 +277,6 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 				transactions = append(transactions, transaction)
 			}
 		}
-		want := []paymentprovider.Transaction{
-			{PaymentID: live.PaymentID, Amount: 500, AmountRefunded: 200, Currency: currency, Test: false, Created: from.Add(time.Hour).UTC()},
-			{PaymentID: test.PaymentID, Amount: 300, Currency: currency, Test: true, Created: from.Add(2 * time.Hour).UTC()},
-		}
 		if len(transactions) != len(want) {
 			t.Fatalf("transactions = %+v, want %+v", transactions, want)
 		}
@@ -232,7 +285,20 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 				t.Fatalf("transaction %d = %+v, want %+v", i, transactions[i], want[i])
 			}
 		}
-	})
+	}
+
+	if byCredentials {
+		t.Run("the live payments of the period are listed oldest first with their refunds", func(t *testing.T) {
+			list(t, credentials, liveListed)
+		})
+		t.Run("the test-mode payments of the period are listed under the test credentials", func(t *testing.T) {
+			list(t, testCredentials(fixture), testListed)
+		})
+	} else {
+		t.Run("the payments of the period are listed oldest first with their refunds", func(t *testing.T) {
+			list(t, credentials, liveListed, testListed)
+		})
+	}
 
 	t.Run("another account's payments are not listed", func(t *testing.T) {
 		transactions, err := provider.ListTransactions(t.Context(), fixture.OtherCredentials(), from, to, checkoutIDs)
@@ -600,8 +666,8 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	t.Run("a test-mode checkout is reported as a test", func(t *testing.T) {
 		testCheckout := checkout
 		testCheckout.Test = true
-		payload, headers := fixture.CheckoutCompleted(t, credentials, testCheckout)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		payload, headers := fixture.CheckoutCompleted(t, testCredentials(fixture), testCheckout)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, testCredentials(fixture))
 		if err != nil {
 			t.Fatalf("ParseNotification: %v", err)
 		}
@@ -974,8 +1040,8 @@ func runParseSubscriptionPayments(t *testing.T, fixture SubscriptionFixture, cur
 		test.InvoiceID += "_test"
 		test.PaymentID += "_test"
 		test.Test = true
-		payload, headers := fixture.SubscriptionPaid(t, credentials, test)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		payload, headers := fixture.SubscriptionPaid(t, testCredentials(fixture), test)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, testCredentials(fixture))
 		if err != nil {
 			t.Fatalf("ParseNotification: %v", err)
 		}
@@ -1159,8 +1225,10 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	})
 
 	t.Run("a test-mode checkout opens the episode and is no sale", func(t *testing.T) {
-		tenant := newTenant(t, credentials)
-		payload, headers := completed(t, tenant, credentials, Checkout{
+		// A provider whose test mode follows its credentials takes the
+		// checkout for a tenant that saved its test credentials.
+		tenant := newTenant(t, testCredentials(fixture))
+		payload, headers := completed(t, tenant, testCredentials(fixture), Checkout{
 			CheckoutID: checkoutNamed("test_mode"),
 			PaymentID:  paymentNamed("test_mode"),
 			Purchase:   tenant.Purchase(),

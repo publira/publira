@@ -169,6 +169,9 @@ func reconcile(ctx context.Context, deps Deps, run dbmodels.PaymentReconciliatio
 	for _, row := range widened {
 		purchases = append(purchases, purchaseOf(row.ID, row.ProviderPaymentID, row.StoreTransactionID, row.PriceAtPurchase, row.RefundedAmount, row.Currency, row.IsTest, row.PurchasedAt, row.CoinPackID))
 	}
+	if provider, ok := src.(providerSource); ok {
+		purchases = provider.readable(purchases)
+	}
 
 	records, err := src.records(ctx, widenedFrom, widenedTo, purchases)
 	if err != nil {

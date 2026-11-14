@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strconv"
 	"time"
 
@@ -84,6 +85,21 @@ func (s providerSource) records(ctx context.Context, from, to time.Time, _ []Pur
 		})
 	}
 	return records, nil
+}
+
+// readable answers the purchases of purchases whose payments the provider
+// lists under the source's credentials: every one of them, or, for a provider
+// whose test mode follows its credentials, those of the mode the credentials
+// name. That provider holds the payments of the other mode under credentials
+// the tenant no longer saves, as a tenant that moved from its sandbox to its
+// live account leaves its test purchases, so no record could meet them.
+func (s providerSource) readable(purchases []Purchase) []Purchase {
+	modes, ok := s.provider.(paymentprovider.TestModeByCredentials)
+	if !ok {
+		return purchases
+	}
+	test := modes.TestMode(s.credentials)
+	return slices.DeleteFunc(purchases, func(p Purchase) bool { return p.Test != test })
 }
 
 // excludeInvoicePayments adds to excluded every payment of records that no

@@ -11,20 +11,29 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
 )
 
-// fixtures are the two shapes of the fake: one that names a payment by an id
-// of its own, and one that names it by its checkout's.
-var fixtures = map[string]func(testing.TB) *readbacktest.Fixture{
-	readbacktest.ID:           readbacktest.NewFixture,
-	readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+// fixture is a fixture of the fake, of whichever shape.
+type fixture interface {
+	paymentprovidertest.Fixture
+	API() *readbacktest.API
+}
+
+// fixtures answers the three shapes of the fake: one that names a payment by
+// an id of its own, one that names it by its checkout's, and one whose test
+// mode follows its credentials.
+func fixtures(t testing.TB) []fixture {
+	return []fixture{
+		readbacktest.NewFixture(t),
+		readbacktest.NewFixtureByCheckout(t),
+		readbacktest.NewFixtureByCredentials(t),
+	}
 }
 
 func TestReadBackProviderReadsItsNotifications(t *testing.T) {
 	t.Parallel()
 
-	for id, newFixture := range fixtures {
-		t.Run(id, func(t *testing.T) {
+	for _, fixture := range fixtures(t) {
+		t.Run(fixture.Provider().Declaration().ID, func(t *testing.T) {
 			t.Parallel()
-			fixture := newFixture(t)
 			// The registry's rules hold for the fake as for a registered
 			// provider.
 			paymentprovider.NewRegistry(fixture.Provider())
@@ -36,10 +45,9 @@ func TestReadBackProviderReadsItsNotifications(t *testing.T) {
 func TestReadBackProviderReportsARefundItHasNotSettled(t *testing.T) {
 	t.Parallel()
 
-	for id, newFixture := range fixtures {
-		t.Run(id, func(t *testing.T) {
+	for _, fixture := range fixtures(t) {
+		t.Run(fixture.Provider().Declaration().ID, func(t *testing.T) {
 			t.Parallel()
-			fixture := newFixture(t)
 			provider := fixture.Provider()
 			follower := provider.(paymentprovider.RefundFollower)
 			credentials := fixture.Credentials()
