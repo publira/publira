@@ -58,6 +58,7 @@ const stripe: PaymentProvider = {
     { name: "webhook_secret", public: false, required: true, secret: true },
   ],
   id: "stripe",
+  subscriptions: true,
   webhookPath: "/api/v1/webhook/payment/stripe",
 };
 
@@ -69,6 +70,7 @@ const payjp: PaymentProvider = {
     { name: "webhook_token", public: false, required: true, secret: true },
   ],
   id: "payjp",
+  subscriptions: false,
   webhookPath: "/api/v1/webhook/payment/payjp",
 };
 
@@ -82,6 +84,7 @@ const examplePay: PaymentProvider = {
     { name: "webhook_token", public: false, required: false, secret: true },
   ],
   id: "examplepay",
+  subscriptions: false,
   webhookPath: "/api/v1/webhook/payment/examplepay",
 };
 

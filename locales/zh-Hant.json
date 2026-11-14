@@ -3873,6 +3873,7 @@
         "enabled": "啟用付款",
         "enabled_checkbox": "啟用",
         "enabled_description": "關閉時，該租戶付費章節的Checkout與webhook都不會執行。",
+        "enabled_provider_description": "關閉時，讀者無法透過此服務商付款，它的通知、退款與對帳也不會執行。",
         "fields": {
           "stripe": {
             "secret_key": "密鑰",
@@ -3904,7 +3905,8 @@
           "ready": "就緒",
           "ready_description": "付費章節的Checkout與webhook將使用該租戶的設定。",
           "unset": "未設定",
-          "unset_description": "請選擇服務商並設定其憑證，以開始對付費章節收款。"
+          "unset_description": "請選擇服務商並設定其憑證，以開始對付費章節收款。",
+          "removed": "已移除"
         },
         "validation": {
           "field_required": "若要啟用付款，請輸入此值。",
@@ -3913,7 +3915,40 @@
         },
         "currency": "貨幣",
         "currency_description": "向讀者以此貨幣收費，所有價格皆以此貨幣輸入與顯示。只能選擇所選服務商支援收費的貨幣。",
-        "currency_locked": "此租戶已有購買紀錄，因此無法變更貨幣。所有價格與銷售額皆以此貨幣計。"
+        "currency_locked": "此租戶已有購買紀錄，因此無法變更貨幣。所有價格與銷售額皆以此貨幣計。",
+        "providers_description": "讀者在網站上付款所用的付款服務商。每個服務商各自儲存憑證。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
+        "providers_unset": "尚未新增任何付款服務商，因此讀者無法購買付費章節。",
+        "add_title": "新增服務商",
+        "add_description": "讀者可以透過任何一個就緒的服務商付款。新增一個服務商不會變更其他服務商。",
+        "add_submit": "新增服務商",
+        "adding": "正在新增…",
+        "currency_shared_description": "無論透過哪個服務商，都以此貨幣向讀者收費，所有價格皆以此貨幣輸入與顯示。只能選擇此服務商以及這裡其他所有服務商都支援收費的貨幣。",
+        "currency_unavailable": "{$provider}不支援這裡其他服務商所支援的任何貨幣，因此無法與它們同時使用。",
+        "currency_unavailable_locked": "{$provider}不支援以此租戶銷售所用的{$currency}收費，因此無法與其他服務商同時使用。",
+        "provider_status": {
+          "ready_description": "讀者可以透過{$provider}付款。",
+          "incomplete_description": "{$provider}的付款已開啟，但缺少必要的憑證，因此不會透過它收費。",
+          "disabled_description": "{$provider}的付款已關閉。",
+          "removed_description": "{$provider}不會再發起新的Checkout。為處理已收款項的通知與退款，其憑證仍會保留。選擇「恢復」即可重新透過它銷售。"
+        },
+        "sells": {
+          "with_plans": "銷售章節、卷、訂閱方案、代幣與打賞。",
+          "without_plans": "銷售章節、卷、代幣與打賞。它不支援定期扣款，因此不銷售訂閱方案。",
+          "plans_elsewhere": "銷售章節、卷、代幣與打賞。訂閱方案透過{$provider}銷售，它是第一個支援定期扣款的就緒服務商。"
+        },
+        "restore": "恢復",
+        "remove": "移除",
+        "remove_title": "要移除{$provider}嗎？",
+        "remove_description": "從現在起，{$provider}不會再發起新的Checkout。為處理已收款項的通知、退款與對帳，其憑證仍會保留，包括在移除前發起、之後才付款的Checkout。",
+        "delete": "徹底刪除",
+        "delete_title": "要徹底刪除{$provider}嗎？",
+        "delete_description": "在移除滿90天、已收款項皆無法再退款且沒有正在計費的訂閱後，{$provider}及其憑證將被刪除。在此之前，它會維持已移除狀態。",
+        "provider_added": "已新增{$provider}。",
+        "provider_saved": "{$provider}的設定已儲存。",
+        "provider_removed": "已移除{$provider}。為處理已收款項，其憑證仍會保留。",
+        "provider_kept": "{$provider}維持已移除狀態：移除未滿90天，或仍有可退款的款項或正在計費的訂閱。",
+        "provider_deleted": "已刪除{$provider}及其憑證。",
+        "remove_failed": "無法移除付款服務商。請稍後再試。"
       },
       "purchase": {
         "title": "販售位置",

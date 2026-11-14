@@ -58,10 +58,8 @@ const takePaymentsThroughStripe = async (page: Page): Promise<string> => {
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   await page.getByLabel(/^Secret key/u).fill(secretKey);
   await page.getByLabel(/^Webhook signing secret/u).fill("whsec_placeholder");
-  await page.getByRole("button", { exact: true, name: "Save" }).click();
-  await expect(
-    page.getByText("The payment settings were saved.")
-  ).toBeVisible();
+  await page.getByRole("button", { exact: true, name: "Add provider" }).click();
+  await expect(page.getByText("Stripe was added.")).toBeVisible();
 
   return secretKey;
 };

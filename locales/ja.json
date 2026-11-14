@@ -3873,6 +3873,7 @@
         "enabled": "決済を有効にする",
         "enabled_checkbox": "有効化",
         "enabled_description": "OFFの場合、有料エピソードのCheckoutとWebhookはこのテナントでは動きません。",
+        "enabled_provider_description": "OFFの場合、読者はこのプロバイダで支払えず、このプロバイダの通知、返金、照合も動きません。",
         "fields": {
           "stripe": {
             "secret_key": "シークレットキー",
@@ -3904,7 +3905,8 @@
           "ready": "利用可能",
           "ready_description": "有料エピソードのCheckoutとWebhookにこのテナントの設定が使われます。",
           "unset": "未設定",
-          "unset_description": "プロバイダを選んで認証情報を登録すると、有料エピソードの決済を開始できます。"
+          "unset_description": "プロバイダを選んで認証情報を登録すると、有料エピソードの決済を開始できます。",
+          "removed": "削除済み"
         },
         "validation": {
           "field_required": "決済を有効にするには、この値を入力してください。",
@@ -3913,7 +3915,40 @@
         },
         "currency": "通貨",
         "currency_description": "読者にはこの通貨で請求し、すべての価格をこの通貨で入力して表示します。選んだプロバイダが請求できる通貨だけを選べます。",
-        "currency_locked": "このテナントには購入があるため、通貨は変更できません。価格と売上はすべてこの通貨の金額です。"
+        "currency_locked": "このテナントには購入があるため、通貨は変更できません。価格と売上はすべてこの通貨の金額です。",
+        "providers_description": "読者がサイトで支払いに使う決済プロバイダです。認証情報はプロバイダごとに保存されます。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
+        "providers_unset": "決済プロバイダがまだ追加されていないため、読者は有料エピソードを購入できません。",
+        "add_title": "プロバイダを追加",
+        "add_description": "読者は利用可能なすべてのプロバイダで支払えます。追加しても、ほかのプロバイダはそのまま残ります。",
+        "add_submit": "プロバイダを追加",
+        "adding": "追加中…",
+        "currency_shared_description": "読者にはどのプロバイダでもこの通貨で請求し、すべての価格をこの通貨で入力して表示します。このプロバイダと、ここにあるほかのすべてのプロバイダが請求できる通貨だけを選べます。",
+        "currency_unavailable": "{$provider}は、ここにあるほかのプロバイダが請求できる通貨のどれでも請求できないため、併用できません。",
+        "currency_unavailable_locked": "{$provider}は、このテナントが販売に使う{$currency}で請求できないため、ほかのプロバイダと併用できません。",
+        "provider_status": {
+          "ready_description": "読者は{$provider}で支払えます。",
+          "incomplete_description": "{$provider}の決済は有効ですが、必須の認証情報が揃っていないため、このプロバイダでは請求されません。",
+          "disabled_description": "{$provider}の決済は無効です。",
+          "removed_description": "{$provider}では新しいCheckoutを開始しません。すでに受けた支払いの通知と返金のために、認証情報は残してあります。「元に戻す」で再びこのプロバイダで販売します。"
+        },
+        "sells": {
+          "with_plans": "エピソード、巻、サブスクリプションプラン、コイン、チップを販売します。",
+          "without_plans": "エピソード、巻、コイン、チップを販売します。継続課金に対応していないため、サブスクリプションプランは販売しません。",
+          "plans_elsewhere": "エピソード、巻、コイン、チップを販売します。サブスクリプションプランは、継続課金に対応した最初の利用可能なプロバイダである{$provider}で販売します。"
+        },
+        "restore": "元に戻す",
+        "remove": "削除",
+        "remove_title": "{$provider}を削除しますか？",
+        "remove_description": "{$provider}では今後、新しいCheckoutを開始しません。すでに受けた支払いの通知、返金、照合のために、認証情報は残します。削除する前に開始され、後から支払われたCheckoutも含みます。",
+        "delete": "完全に削除",
+        "delete_title": "{$provider}を完全に削除しますか？",
+        "delete_description": "削除から90日が過ぎ、受けた支払いに返金できるものがなく、請求中のサブスクリプションもなければ、{$provider}とその認証情報を削除します。それまでは削除済みのまま残ります。",
+        "provider_added": "{$provider}を追加しました。",
+        "provider_saved": "{$provider}の設定を保存しました。",
+        "provider_removed": "{$provider}を削除しました。すでに受けた支払いのために、認証情報は残してあります。",
+        "provider_kept": "{$provider}は削除済みのまま残ります。削除から90日が過ぎていないか、返金できる支払いか請求中のサブスクリプションがあります。",
+        "provider_deleted": "{$provider}とその認証情報を削除しました。",
+        "remove_failed": "決済プロバイダの削除に失敗しました。時間をおいて再試行してください。"
       },
       "purchase": {
         "title": "販売先",

@@ -1,13 +1,14 @@
 -- Scenario: a tenant whose payment provider credentials the E2E may store and clear
 --
--- `admin.payment-settings.spec.ts` chooses PAY.JP from `/integrations/payment`,
--- stores its credentials, and removes one again, and sets the tip amounts the
--- tenant offers. The settings decide whether the tenant's storefront can
--- charge a reader at all, so no tenant another suite reads can absorb them.
+-- `admin.payment-settings.spec.ts` adds Stripe and PAY.JP from
+-- `/integrations/payment`, removes PAY.JP and adds it back, and sets the tip
+-- amounts the tenant offers. The settings decide whether the tenant's
+-- storefront can charge a reader at all, so no tenant another suite reads can
+-- absorb them.
 --
 -- Applying it is also how the suite puts the tenant back: the stored
--- settings are deleted, which leaves the tenant with no provider, and the
--- tips are turned off with no amounts.
+-- providers and settings are deleted, which leaves the tenant with no
+-- provider, and the tips are turned off with no amounts.
 -- public_id values are hard-coded in e2e/src/scenarios/payment-settings.ts.
 --   tenant PaymTNNTAAA1 (payment.localhost / admin.payment.localhost)
 --   admin  PaymADMNAAA1 (payment-admin@example.com)

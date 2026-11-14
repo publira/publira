@@ -4,6 +4,7 @@ import { expect } from "@playwright/test";
 import { selectOption } from "../src/admin";
 import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
+import { runSql } from "../src/db";
 import {
   DOCS_LOCALES,
   docsField,
@@ -17,6 +18,7 @@ import {
 } from "../src/docs-screenshots";
 import {
   ANALYTICS_ADMIN,
+  ANALYTICS_TENANT,
   ANALYTICS_WEEK,
 } from "../src/scenarios/admin-analytics";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
@@ -52,6 +54,9 @@ import {
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
+ * The providers a tenant holds are photographed on the analytics tenant of
+ * `db/seeds/scenarios/690_admin_analytics.sql`, whose payment settings no
+ * other shot reads.
  * The subscription plans are photographed on the subscriptions tenant of
  * `db/seeds/scenarios/670_storefront_subscriptions.sql`, beside the two plans
  * `680_docs_subscription_plans.sql` adds to it. The cohorts are photographed
@@ -564,3 +569,129 @@ for (const locale of DOCS_LOCALES) {
     });
   });
 }
+
+/** A provider's credentials, as `addProvider` enters them. */
+interface ProviderCredentials {
+  /** The provider's own name, which no catalog translates. */
+  name: string;
+  /**
+   * The catalog key of the label of its secret key and of its webhook secret,
+   * each with the value entered.
+   */
+  fields: readonly [
+    readonly [key: string, value: string],
+    readonly [key: string, value: string],
+  ];
+}
+
+const STRIPE_CREDENTIALS: ProviderCredentials = {
+  fields: [
+    ["admin.settings.payment.fields.stripe.secret_key", "sk_test_docs1234"],
+    ["admin.settings.payment.fields.stripe.webhook_secret", "whsec_docs1234"],
+  ],
+  name: "Stripe",
+};
+
+const PAYJP_CREDENTIALS: ProviderCredentials = {
+  fields: [
+    ["admin.settings.payment.fields.payjp.secret_key", "sk_test_docs5678"],
+    ["admin.settings.payment.fields.payjp.webhook_token", "whook_docs5678"],
+  ],
+  name: "PAY.JP",
+};
+
+/**
+ * Adding a provider saves it on the analytics tenant, so every locale's copy
+ * runs in order on one worker and starts by deleting the providers the one
+ * before it added. The tenant itself is left alone rather than applied again:
+ * it is counted on the Platform Console's dashboard, which another shot takes
+ * meanwhile, and its file is applied again before its own suite runs.
+ */
+test.describe("web-admin payment providers documentation screenshots", () => {
+  test.describe.configure({ mode: "default" });
+
+  for (const locale of DOCS_LOCALES) {
+    const t = (key: string): string => docsText(locale, key);
+
+    /** Adds `provider` through the form, turned on, with its credentials. */
+    const addProvider = async (
+      page: Page,
+      provider: ProviderCredentials
+    ): Promise<void> => {
+      const form = page.getByRole("region", {
+        exact: true,
+        name: t("admin.settings.payment.add_title"),
+      });
+
+      await selectOption(
+        page,
+        form.getByRole("combobox", {
+          name: t("admin.settings.payment.provider"),
+        }),
+        provider.name
+      );
+      await form
+        .getByRole("checkbox", { name: t("admin.settings.payment.enabled") })
+        .click();
+
+      // One after the other: a fill moves the focus the other one types into.
+      const [secretKey, webhookSecret] = provider.fields;
+      await form
+        .getByLabel(docsLabelPattern(locale, secretKey[0]))
+        .fill(secretKey[1]);
+      await form
+        .getByLabel(docsLabelPattern(locale, webhookSecret[0]))
+        .fill(webhookSecret[1]);
+
+      await form
+        .getByRole("button", {
+          exact: true,
+          name: t("admin.settings.payment.add_submit"),
+        })
+        .click();
+      await expect(
+        page.getByRole("region", { exact: true, name: provider.name })
+      ).toBeVisible();
+    };
+
+    test(`the providers a tenant holds, in ${locale}`, async ({
+      consoleSessions,
+      page,
+    }) => {
+      runSql(`
+        DELETE FROM tenant_payment_providers
+        WHERE tenant_id IN (
+          SELECT id FROM tenants WHERE public_id = '${ANALYTICS_TENANT.publicId}'
+        );
+        DELETE FROM tenant_payment_config
+        WHERE tenant_id IN (
+          SELECT id FROM tenants WHERE public_id = '${ANALYTICS_TENANT.publicId}'
+        );
+      `);
+      await consoleSessions.signIn(
+        page,
+        ANALYTICS_ADMIN,
+        WEB_ADMIN_ANALYTICS_BASE_URL
+      );
+      await setDocsLocale(page, WEB_ADMIN_ANALYTICS_BASE_URL, locale);
+      await page.goto(`${WEB_ADMIN_ANALYTICS_BASE_URL}/integrations/payment`);
+
+      await addProvider(page, STRIPE_CREDENTIALS);
+      await addProvider(page, PAYJP_CREDENTIALS);
+      // Again, without the toasts the two additions raised.
+      await page.reload();
+
+      const settings = docsSection(page, t("admin.settings.payment.title"));
+      await expect(
+        settings.getByRole("region", { exact: true, name: "PAY.JP" })
+      ).toBeVisible();
+
+      await expectDocsScreenshot(page, {
+        element: settings,
+        locale,
+        page: "console/selling-episodes",
+        subject: "providers",
+      });
+    });
+  }
+});

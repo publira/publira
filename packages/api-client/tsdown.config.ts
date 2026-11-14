@@ -27,6 +27,7 @@ export default defineConfig({
     "src/admin/api-key.ts",
     "src/admin/coin.ts",
     "src/admin/engagement.ts",
+    "src/admin/payment.ts",
     "src/admin/payment-reconciliation.ts",
     "src/admin/promotion-code.ts",
     "src/admin/purchase.ts",
