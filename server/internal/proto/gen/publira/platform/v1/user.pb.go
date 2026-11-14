@@ -139,7 +139,12 @@ type ListEndUsersRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
 	// Restricts the list to these users, by primary key (EndUser.id).
-	UserIds       []string `protobuf:"bytes,9,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	UserIds []string `protobuf:"bytes,9,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// Restricts the list to the accounts that hold this inbox, on every tenant.
+	// Addresses are compared lowercased and without the +tag of the local part,
+	// so john+news@Example.com finds john@example.com. Empty means every
+	// address.
+	Email         string `protobuf:"bytes,10,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,6 +226,13 @@ func (x *ListEndUsersRequest) GetUserIds() []string {
 		return x.UserIds
 	}
 	return nil
+}
+
+func (x *ListEndUsersRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
 }
 
 type ListEndUsersResponse struct {
@@ -656,7 +668,7 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\x12\x1f\n" +
 	"\vtenant_name\x18\a \x01(\tR\n" +
 	"tenantName\x12\x0e\n" +
-	"\x02id\x18\b \x01(\tR\x02id\"\x8a\x02\n" +
+	"\x02id\x18\b \x01(\tR\x02id\"\xa0\x02\n" +
 	"\x13ListEndUsersRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12#\n" +
 	"\rcreated_after\x18\x03 \x01(\tR\fcreatedAfter\x12\x16\n" +
@@ -664,7 +676,9 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\x12(\n" +
 	"\x10tenant_public_id\x18\a \x01(\tR\x0etenantPublicId\x12\x14\n" +
 	"\x05token\x18\b \x01(\tR\x05token\x12\x19\n" +
-	"\buser_ids\x18\t \x03(\tR\auserIdsJ\x04\b\x02\x10\x03J\x04\b\x06\x10\aR\x06offsetR\n" +
+	"\buser_ids\x18\t \x03(\tR\auserIds\x12\x14\n" +
+	"\x05email\x18\n" +
+	" \x01(\tR\x05emailJ\x04\b\x02\x10\x03J\x04\b\x06\x10\aR\x06offsetR\n" +
 	"public_ids\"\x90\x01\n" +
 	"\x14ListEndUsersResponse\x122\n" +
 	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\x12%\n" +

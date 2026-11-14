@@ -72,6 +72,54 @@ func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
 	}
 }
 
+// A request names an address as the person wrote it, and the person may hold
+// an account on more than one tenant under spellings that reach one inbox: the
+// filter has to find every one of them, and nothing else.
+func TestDBListEndUsersFiltersByEmailAcrossTenants(t *testing.T) {
+	t.Parallel()
+
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	readersID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	writersID := seedTenant(t, pg, "TENANT000002", "writers.example.com", "Writers")
+	onReaders := seedEndUser(t, pg, readersID, "ENDUSER00001", "Reader@Example.com", "Reader on Readers")
+	onWriters := seedEndUser(t, pg, writersID, "ENDUSER00002", "reader+news@example.com", "Reader on Writers")
+	_ = seedEndUser(t, pg, readersID, "ENDUSER00003", "another@example.com", "Another Reader")
+	_ = seedEndUser(t, pg, writersID, "ENDUSER00004", "reader@example.org", "Reader on Another Domain")
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	list := func(t *testing.T, req *publirasplatformv1.ListEndUsersRequest) []string {
+		t.Helper()
+		resp, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), req)
+		if err != nil {
+			t.Fatalf("ListEndUsers: %v", err)
+		}
+		got := endUserPublicIDs(resp.Users)
+		slices.Sort(got)
+		return got
+	}
+
+	t.Run("matches every tenant's account under any spelling of the inbox", func(t *testing.T) {
+		got := list(t, &publirasplatformv1.ListEndUsersRequest{Email: " READER+legal@example.COM "})
+		if want := []string{onReaders.PublicID, onWriters.PublicID}; !slices.Equal(got, want) {
+			t.Fatalf("email filter public IDs = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("combines with the tenant filter", func(t *testing.T) {
+		got := list(t, &publirasplatformv1.ListEndUsersRequest{Email: "reader@example.com", TenantPublicId: "TENANT000002"})
+		if want := []string{onWriters.PublicID}; !slices.Equal(got, want) {
+			t.Fatalf("email and tenant filter public IDs = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("returns nothing for an address no account holds", func(t *testing.T) {
+		if got := list(t, &publirasplatformv1.ListEndUsersRequest{Email: "nobody@example.com"}); len(got) != 0 {
+			t.Fatalf("email filter public IDs = %v, want none", got)
+		}
+	})
+}
+
 func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
 	t.Parallel()
 

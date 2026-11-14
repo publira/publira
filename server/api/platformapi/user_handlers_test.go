@@ -383,7 +383,7 @@ func TestListEndUsersFirstPageReportsNextToken(t *testing.T) {
 			olderID, "EUSER00002", "Older", olderAt),
 		extraID, "EUSER00003", "Extra", now.Add(-3*time.Minute))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
 	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{Limit: 2})
@@ -422,7 +422,7 @@ func TestListEndUsersFollowsPreviousTokenBackwards(t *testing.T) {
 		addEndUserRow(sqlmock.NewRows(listEndUsersResultColumns()), olderID, "EUSER00002", "Older", olderAt),
 		newerID, "EUSER00001", "Newer", now.Add(-time.Minute))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersAsc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
 	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{
@@ -458,7 +458,7 @@ func TestListEndUsersEmptyPageKeepsAWayBack(t *testing.T) {
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()))
 
 	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{
