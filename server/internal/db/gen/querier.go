@@ -2046,6 +2046,10 @@ type Querier interface {
 	// deletion has its documents deleted by the erasure, and one already deleted
 	// has none left to write.
 	IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Whether lifetime_seconds have passed since the checkout was last started,
+	// after which the provider takes no payment of it: a retry may be what made
+	// the provider's checkout, so its last start bounds when it can be paid.
+	IsPaymentCheckoutClosed(ctx context.Context, arg IsPaymentCheckoutClosedParams) (bool, error)
 	// Whether lifetime_seconds have passed since the checkout was first started,
 	// the earliest the provider could have made it, after which the provider may
 	// answer its id with a checkout that can no longer be paid.

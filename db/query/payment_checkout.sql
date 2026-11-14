@@ -44,3 +44,13 @@ FROM payment_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')
     AND checkout_id = sqlc.arg('checkout_id');
+
+-- name: IsPaymentCheckoutClosed :one
+-- Whether lifetime_seconds have passed since the checkout was last started,
+-- after which the provider takes no payment of it: a retry may be what made
+-- the provider's checkout, so its last start bounds when it can be paid.
+SELECT (last_started_at <= now() - make_interval(secs => sqlc.arg('lifetime_seconds')::double precision))::boolean AS closed
+FROM payment_checkouts
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')
+    AND checkout_id = sqlc.arg('checkout_id');

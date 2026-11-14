@@ -16,10 +16,10 @@ import (
 	"github.com/publira/publira/server/internal/tenantconn"
 )
 
-// PaymentRefundFollowConfig is what the worker resolves once at startup for
-// [NewPaymentRefundFollowHandler]. The tenant's credentials are read per
-// event.
-type PaymentRefundFollowConfig struct {
+// PaymentFollowConfig is what the worker resolves once at startup for
+// [NewPaymentRefundFollowHandler] and [NewPaymentCheckoutFollowHandler]. The
+// tenant's credentials are read per event.
+type PaymentFollowConfig struct {
 	DB        *sql.DB
 	Encryptor paymentsettings.SecretManager
 	Providers *paymentprovider.Registry
@@ -36,7 +36,7 @@ type PaymentRefundFollowConfig struct {
 // the tenant can put right, are [outbox.Blocked]: the event waits, without
 // spending an attempt, for the provider to settle the refund or the tenant to
 // save credentials that work, since a refund staff asked for waits on it.
-func NewPaymentRefundFollowHandler(cfg PaymentRefundFollowConfig) outbox.Handler {
+func NewPaymentRefundFollowHandler(cfg PaymentFollowConfig) outbox.Handler {
 	logger := cfg.Logger
 	if logger == nil {
 		logger = slog.Default()

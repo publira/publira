@@ -578,6 +578,28 @@ type RefundFollower interface {
 	RefundNotification(paymentID string) []byte
 }
 
+// CheckoutFollower is implemented, beside [Provider], by a provider that
+// declares [Declaration.StoredCheckouts] and may notify a checkout's payment
+// once and never again, so that a notification the server could not take
+// loses the payment. The server reads the payment of each checkout it starts
+// through such a provider back itself, by handing
+// [Provider.ParseNotification] the notification CheckoutNotification answers,
+// until the checkout is paid or [Declaration.CheckoutLifetime] has passed
+// since it was last started. The provider's notifications carry no
+// signature, as its own one could not, so its [Declaration.SignatureHeader]
+// is empty.
+type CheckoutFollower interface {
+	// CheckoutNotification answers a notification about the payment of the
+	// checkout started under the [CheckoutRequest.CheckoutID] checkoutID,
+	// which ParseNotification reads from the provider's API as it reads every
+	// notification of the provider: as [PurchaseCompleted] once the checkout
+	// is paid, as [CheckoutExpired] once it has closed unpaid, and as
+	// [Ignored] while it can still be paid. A checkout the API does not hold
+	// under the credentials, as one the provider never made does not, is
+	// [ErrInvalidSignature], as it is for every notification.
+	CheckoutNotification(checkoutID string) []byte
+}
+
 // TestModeByCredentials is implemented, beside [Provider], by a provider whose
 // test mode is a property of the credentials rather than of each payment, as
 // one whose sandbox is a host of its own with keys of its own is, and whose

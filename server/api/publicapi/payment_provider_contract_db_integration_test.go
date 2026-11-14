@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
@@ -40,6 +41,7 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	harness := &contractHarness{
 		pg:        pg,
 		encryptor: encryptor,
+		outboxDB:  pg.OpenOutboxDB(t),
 		client:    publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 	for _, provider := range providers.Registry().Providers() {
@@ -56,7 +58,7 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 		})
 	}
 	// No registered provider carries nothing on its payments, signs nothing,
-	// and notifies no refund yet, nor names its payments by their checkouts,
+	// and notifies no refund or a checkout's payment only once yet, nor names its payments by their checkouts,
 	// nor takes its test-mode payments under credentials of their own, so the
 	// fakes of one hold the purchase flow to those shapes.
 	for _, fixture := range []paymentprovidertest.Fixture{
@@ -77,7 +79,9 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 type contractHarness struct {
 	pg        *testutil.PostgresEnv
 	encryptor paymentsettings.SecretManager
-	client    publirav1connect.PurchaseServiceClient
+	// outboxDB is the pool the worker reads a checkout back on.
+	outboxDB *sql.DB
+	client   publirav1connect.PurchaseServiceClient
 	// registry holds the provider of the run, whose settings each tenant
 	// saves.
 	registry *paymentprovider.Registry
@@ -303,4 +307,45 @@ func (c *contractTenant) HeldRefunds(t *testing.T) int {
 		t.Fatalf("count held refunds: %v", err)
 	}
 	return count
+}
+
+func (c *contractTenant) FollowCheckout(t *testing.T, checkoutID string) bool {
+	t.Helper()
+	ctx := context.Background()
+	if err := outbox.QueuePaymentCheckoutFollow(ctx, dbmodels.New(c.harness.pg.DB), c.purchase.TenantID, c.provider, checkoutID); err != nil {
+		t.Fatalf("QueuePaymentCheckoutFollow: %v", err)
+	}
+	var eventID uuid.UUID
+	if err := c.harness.pg.DB.QueryRowContext(ctx,
+		`SELECT id FROM outbox_events WHERE idempotency_key = $1`, outbox.PaymentCheckoutFollowKey(c.purchase.TenantID, c.provider, checkoutID),
+	).Scan(&eventID); err != nil {
+		t.Fatalf("find the reading back of the checkout: %v", err)
+	}
+	event, err := dbmodels.New(c.harness.pg.DB).GetOutboxEvent(ctx, eventID)
+	if err != nil {
+		t.Fatalf("read the reading back of the checkout: %v", err)
+	}
+	err = NewPaymentCheckoutFollowHandler(PaymentFollowConfig{
+		DB:        c.harness.outboxDB,
+		Encryptor: c.harness.encryptor,
+		Providers: c.harness.registry,
+		Logger:    slog.Default(),
+	})(ctx, event)
+	if err != nil && !outbox.IsBlocked(err) {
+		t.Fatalf("read the checkout back: %v", err)
+	}
+	return outbox.IsBlocked(err)
+}
+
+func (c *contractTenant) LapseCheckout(t *testing.T, checkoutID string) {
+	t.Helper()
+	provider, _ := c.harness.registry.Lookup(c.provider)
+	ago := provider.Declaration().CheckoutLifetime + time.Minute
+	if _, err := c.harness.pg.DB.ExecContext(context.Background(), `
+		UPDATE payment_checkouts
+		SET created_at = now() - make_interval(secs => $4), last_started_at = now() - make_interval(secs => $4)
+		WHERE tenant_id = $1 AND provider = $2 AND checkout_id = $3
+	`, c.purchase.TenantID, c.provider, checkoutID, ago.Seconds()); err != nil {
+		t.Fatalf("move the starts of %s: %v", checkoutID, err)
+	}
 }
