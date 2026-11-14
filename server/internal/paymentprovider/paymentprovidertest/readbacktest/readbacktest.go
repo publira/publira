@@ -4,8 +4,9 @@
 // its notifications carry no signature and name no more than which payment
 // they are about; it sends no notification of a refund, so it follows its own;
 // it notifies a checkout's payment no more than once, so it follows its
-// checkouts too; and its API lists no payments, so it reads the payment of
-// each checkout it is handed. No provider this build registers has that shape yet, and this one
+// checkouts too; its checkouts run out with no notification of it, so it
+// answers one that has as expired when it is started again; and its API lists
+// no payments, so it reads the payment of each checkout it is handed. No provider this build registers has that shape yet, and this one
 // holds the contract and the purchase flow to it.
 //
 // [NewFixtureByCheckout] answers the same fake with an API that reads a
@@ -128,7 +129,9 @@ func sandbox(credentials paymentprovider.Credentials) bool {
 // StartCheckout records the checkout in the fake's API, as one the account
 // holds open until it is paid, and answers a URL that names it. A checkout
 // started without the id the server gives it is refused, since nothing could
-// then find its purchase again.
+// then find its purchase again, and one the account holds as expired is
+// [paymentprovider.ErrCheckoutExpired], as the fake's checkouts run out with
+// no notification sent unless the fake is asked for one.
 func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
 	if credentials[FieldAPIKey] == "" {
 		return "", errors.New("readbacktest: no api key")
@@ -140,7 +143,11 @@ func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.
 	defer p.api.mu.Unlock()
 	p.api.started = append(p.api.started, req)
 	acct := p.api.account(credentials)
-	if acct.byCheckout(req.CheckoutID) == nil {
+	held := acct.byCheckout(req.CheckoutID)
+	if held != nil && held.status == paymentExpired {
+		return "", paymentprovider.ErrCheckoutExpired
+	}
+	if held == nil {
 		paymentID := "open_" + req.CheckoutID
 		acct.payments[paymentID] = &payment{id: paymentID, checkoutID: req.CheckoutID, currency: req.Purchase.Currency, status: paymentOpen}
 		acct.checkouts[req.CheckoutID] = paymentID
@@ -596,7 +603,10 @@ type Fixture struct {
 	fake *Provider
 }
 
-var _ paymentprovidertest.Fixture = (*Fixture)(nil)
+var (
+	_ paymentprovidertest.Fixture                 = (*Fixture)(nil)
+	_ paymentprovidertest.ExpiringCheckoutFixture = (*Fixture)(nil)
+)
 
 // NewFixture answers a fixture over a fake API of its own.
 func NewFixture(testing.TB) *Fixture {
@@ -677,6 +687,12 @@ func (f *Fixture) checkMode(t testing.TB, credentials paymentprovider.Credential
 func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
 	f.checkMode(t, credentials, checkout)
 	return f.api.Pay(credentials, checkout.CheckoutID, f.ownID(checkout.CheckoutID, checkout.PaymentID), int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, time.Time{}), http.Header{}
+}
+
+// CheckoutRanOut makes the account hold the checkout as one that closed
+// unpaid, sending no notification of it.
+func (f *Fixture) CheckoutRanOut(_ testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) {
+	f.api.Expire(credentials, checkout.CheckoutID, checkout.Purchase.Currency)
 }
 
 func (f *Fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {

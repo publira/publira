@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -218,6 +220,64 @@ func TestDBAStoredCheckoutThatExpiredIsStartedAfresh(t *testing.T) {
 	}
 }
 
+// storedCheckoutStart starts the reader's checkout of one thing a tenant
+// sells.
+type storedCheckoutStart struct {
+	name  string
+	start func() error
+}
+
+// startsOfEveryKind seeds one of everything the tenant sells besides the
+// episode, and answers a start of the reader's checkout of each kind.
+func (e storedCheckoutEnv) startsOfEveryKind(t *testing.T) []storedCheckoutStart {
+	t.Helper()
+	series := e.pg.SeedSeries(t, e.tenant.ID, testutil.SeriesSeed{PublicID: "STOREDSERIE2", Published: true})
+	seed := func(publicID string, price int32) testutil.Episode {
+		return e.pg.SeedEpisode(t, e.tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID:    publicID,
+			Price:       price,
+			Status:      testutil.EpisodeStatusPublished,
+			PublishedAt: time.Now().Add(-time.Hour),
+		})
+	}
+	first, second := seed("STOREDEPISO2", 300), seed("STOREDEPISO3", 200)
+	volume := e.pg.SeedVolume(t, e.tenant.ID, series.ID, testutil.VolumeSeed{
+		PublicID:   "STOREDVOLUM1",
+		Title:      "Volume One",
+		Price:      400,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{first.ID, second.ID},
+	})
+	takeTips(t, e.pg, e.tenant.ID, 100)
+	e.pg.SeedCoinSettings(t, e.tenant.ID, testutil.CoinSettingsSeed{Names: map[string]string{"en": "Points"}})
+	pack := e.pg.SeedCoinPack(t, e.tenant.ID, testutil.CoinPackSeed{PublicID: "STOREDPACK01", Coins: 100, Price: 1000})
+
+	ctx := testutil.WithBearer(t.Context(), e.token)
+	tenant := tenantContext(e.tenant)
+	return []storedCheckoutStart{
+		{"episode", func() error {
+			_, err := e.purchases.StartEpisodeCheckout(ctx, &publirav1.StartEpisodeCheckoutRequest{Tenant: tenant, EpisodeId: e.episode.ID.String()})
+			return err
+		}},
+		{"tip", func() error {
+			_, err := e.purchases.StartTipCheckout(ctx, &publirav1.StartTipCheckoutRequest{Tenant: tenant, EpisodeId: e.episode.ID.String(), Amount: 100, Locale: "en"})
+			return err
+		}},
+		{"volume", func() error {
+			_, err := e.purchases.StartVolumeCheckout(ctx, &publirav1.StartVolumeCheckoutRequest{Tenant: tenant, VolumeId: volume.ID.String()})
+			return err
+		}},
+		{"series remainder", func() error {
+			_, err := e.purchases.StartSeriesRemainderCheckout(ctx, &publirav1.StartSeriesRemainderCheckoutRequest{Tenant: tenant, SeriesId: series.ID.String()})
+			return err
+		}},
+		{"coin pack", func() error {
+			_, err := e.coins.StartCoinPackCheckout(ctx, &publirav1.StartCoinPackCheckoutRequest{Tenant: tenant, CoinPackId: pack.ID.String(), Locale: "en"})
+			return err
+		}},
+	}
+}
+
 // A provider that reports no expiry answers a checkout id it has seen with the
 // checkout it made for it, so once the provider's lifetime of a checkout has
 // passed since it was first started, the reader's next request of whatever
@@ -227,54 +287,7 @@ func TestDBAStoredCheckoutPastItsLifetimeIsStartedAfresh(t *testing.T) {
 	t.Parallel()
 
 	env := newStoredCheckoutEnv(t)
-	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "STOREDSERIE2", Published: true})
-	seed := func(publicID string, price int32) testutil.Episode {
-		return env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{
-			PublicID:    publicID,
-			Price:       price,
-			Status:      testutil.EpisodeStatusPublished,
-			PublishedAt: time.Now().Add(-time.Hour),
-		})
-	}
-	first, second := seed("STOREDEPISO2", 300), seed("STOREDEPISO3", 200)
-	volume := env.pg.SeedVolume(t, env.tenant.ID, series.ID, testutil.VolumeSeed{
-		PublicID:   "STOREDVOLUM1",
-		Title:      "Volume One",
-		Price:      400,
-		Published:  true,
-		EpisodeIDs: []uuid.UUID{first.ID, second.ID},
-	})
-	takeTips(t, env.pg, env.tenant.ID, 100)
-	env.pg.SeedCoinSettings(t, env.tenant.ID, testutil.CoinSettingsSeed{Names: map[string]string{"en": "Points"}})
-	pack := env.pg.SeedCoinPack(t, env.tenant.ID, testutil.CoinPackSeed{PublicID: "STOREDPACK01", Coins: 100, Price: 1000})
-
-	ctx := testutil.WithBearer(t.Context(), env.token)
-	tenant := tenantContext(env.tenant)
-	starts := []struct {
-		name  string
-		start func() error
-	}{
-		{"episode", func() error {
-			_, err := env.purchases.StartEpisodeCheckout(ctx, &publirav1.StartEpisodeCheckoutRequest{Tenant: tenant, EpisodeId: env.episode.ID.String()})
-			return err
-		}},
-		{"tip", func() error {
-			_, err := env.purchases.StartTipCheckout(ctx, &publirav1.StartTipCheckoutRequest{Tenant: tenant, EpisodeId: env.episode.ID.String(), Amount: 100, Locale: "en"})
-			return err
-		}},
-		{"volume", func() error {
-			_, err := env.purchases.StartVolumeCheckout(ctx, &publirav1.StartVolumeCheckoutRequest{Tenant: tenant, VolumeId: volume.ID.String()})
-			return err
-		}},
-		{"series remainder", func() error {
-			_, err := env.purchases.StartSeriesRemainderCheckout(ctx, &publirav1.StartSeriesRemainderCheckoutRequest{Tenant: tenant, SeriesId: series.ID.String()})
-			return err
-		}},
-		{"coin pack", func() error {
-			_, err := env.coins.StartCoinPackCheckout(ctx, &publirav1.StartCoinPackCheckoutRequest{Tenant: tenant, CoinPackId: pack.ID.String(), Locale: "en"})
-			return err
-		}},
-	}
+	starts := env.startsOfEveryKind(t)
 	// The cases share the fake, which answers the checkout last started, so
 	// they run one after another.
 	for _, tc := range starts {
@@ -324,6 +337,87 @@ func TestDBAStoredCheckoutPastItsLifetimeIsStartedAfresh(t *testing.T) {
 				t.Fatalf("the checkout after a second lifetime was started as %q, one of the lapsed %q and %q", third, lapsed, fresh)
 			}
 		})
+	}
+}
+
+// A provider whose checkouts run out on a clock of its own answers one that
+// has as expired when it is handed it again, however long before the
+// provider's lifetime of a checkout that is, and the reader is sent to a new
+// checkout of whatever they buy in the same request, which a retry reuses in
+// turn.
+func TestDBAStoredCheckoutTheProviderAnswersAsExpiredIsStartedAfresh(t *testing.T) {
+	t.Parallel()
+
+	env := newStoredCheckoutEnv(t)
+	// The cases share the fake, which answers the checkout last started, so
+	// they run one after another.
+	for _, tc := range env.startsOfEveryKind(t) {
+		t.Run(tc.name, func(t *testing.T) {
+			// start answers the ids the provider was handed for one request.
+			start := func() []string {
+				t.Helper()
+				before := len(env.fixture.API().Started())
+				if err := tc.start(); err != nil {
+					t.Fatalf("start the checkout: %v", err)
+				}
+				var ids []string
+				for _, started := range env.fixture.API().Started()[before:] {
+					ids = append(ids, started.CheckoutID)
+				}
+				return ids
+			}
+
+			ranOut := start()
+			if again := start(); !slices.Equal(again, ranOut) || len(ranOut) != 1 {
+				t.Fatalf("a retry was started as %q, want %q once", again, ranOut)
+			}
+			env.fixture.CheckoutRanOut(t, env.credentials, paymentprovidertest.Checkout{CheckoutID: ranOut[0], Purchase: paymentprovider.Purchase{Currency: "JPY"}})
+			restarted := start()
+			if len(restarted) != 2 || restarted[0] != ranOut[0] || restarted[1] == ranOut[0] {
+				t.Fatalf("the request after the checkout ran out started %q, want %q and then a new one", restarted, ranOut[0])
+			}
+			if again := start(); !slices.Equal(again, restarted[1:]) {
+				t.Fatalf("a retry of the new checkout was started as %q, want %q once", again, restarted[1])
+			}
+		})
+	}
+}
+
+// A provider that answers the checkout started once more as expired too is
+// answering one started before as well, so the request is answered as
+// unavailable rather than walking on, and the reader's next attempt moves on
+// from both.
+func TestDBAStoredCheckoutAnsweredAsExpiredTwiceInARequestMovesOnNextTime(t *testing.T) {
+	t.Parallel()
+
+	env := newStoredCheckoutEnv(t)
+	ranOut := paymentprovidertest.Checkout{CheckoutID: env.start(t), Purchase: paymentprovider.Purchase{Currency: "JPY"}}
+	env.fixture.CheckoutRanOut(t, env.credentials, ranOut)
+	next := paymentprovidertest.Checkout{CheckoutID: env.start(t), Purchase: paymentprovider.Purchase{Currency: "JPY"}}
+	env.fixture.CheckoutRanOut(t, env.credentials, next)
+	// The first's expiry is forgotten, so the next request is handed it
+	// again as a checkout the server never heard had run out.
+	if _, err := env.pg.DB.ExecContext(t.Context(), `DELETE FROM expired_checkouts WHERE tenant_id = $1`, env.tenant.ID); err != nil {
+		t.Fatalf("forget the expiry: %v", err)
+	}
+
+	before := len(env.fixture.API().Started())
+	_, err := env.purchases.StartEpisodeCheckout(testutil.WithBearer(t.Context(), env.token), &publirav1.StartEpisodeCheckoutRequest{
+		EpisodeId: env.episode.ID.String(),
+		Tenant:    tenantContext(env.tenant),
+	})
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("StartEpisodeCheckout error = %v, want Unavailable", err)
+	}
+	var handed []string
+	for _, started := range env.fixture.API().Started()[before:] {
+		handed = append(handed, started.CheckoutID)
+	}
+	if want := []string{ranOut.CheckoutID, next.CheckoutID}; !slices.Equal(handed, want) {
+		t.Fatalf("the request handed the provider %q, want %q", handed, want)
+	}
+	if fresh := env.start(t); fresh == ranOut.CheckoutID || fresh == next.CheckoutID {
+		t.Fatalf("the next attempt was started as %q, one of the expired %q and %q", fresh, ranOut.CheckoutID, next.CheckoutID)
 	}
 }
 
