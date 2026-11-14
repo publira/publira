@@ -34,3 +34,13 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND last_started_at >= sqlc.arg('started_from')
     AND created_at < sqlc.arg('started_to')
 ORDER BY created_at, checkout_id;
+
+-- name: IsPaymentCheckoutLapsed :one
+-- Whether lifetime_seconds have passed since the checkout was first started,
+-- the earliest the provider could have made it, after which the provider may
+-- answer its id with a checkout that can no longer be paid.
+SELECT (created_at <= now() - make_interval(secs => sqlc.arg('lifetime_seconds')::double precision))::boolean AS lapsed
+FROM payment_checkouts
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')
+    AND checkout_id = sqlc.arg('checkout_id');

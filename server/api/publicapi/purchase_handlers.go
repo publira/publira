@@ -185,9 +185,11 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	}, "episode_id", episode.ID.String())
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		return nil, err
 	}
 	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "episode_id", episode.ID.String())
 	if err != nil {
@@ -232,6 +234,11 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 // names paidCheckoutID as well, the checkout of the reader's latest purchase
 // of the episode, so each payment moves the next attempt onto a new checkout.
 // Empty is a reader who has paid for none.
+//
+// A provider that declares [paymentprovider.Declaration.StoredCheckouts] need
+// report no expiry, so the key of its checkout is the one
+// [apiServer.nextCheckoutKey] arrives at from this one, which takes a checkout
+// past its lifetime for one that expired.
 func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) (string, error) {
 	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID, nil)
 	if err != nil {
@@ -265,6 +272,62 @@ func checkoutRequestDigest(req paymentprovider.CheckoutRequest, expiredCheckoutI
 	}
 	sum := sha256.Sum256(encoded)
 	return sum[:16], nil
+}
+
+// nextCheckoutKey answers the idempotency key of the reader's next checkout
+// through provider, which key builds from the reader's last checkout that can
+// no longer be paid, starting from expiredCheckoutID, the last one the
+// provider reported expired, or the error the RPC answers, logged with
+// keyvals.
+//
+// A provider that declares [paymentprovider.Declaration.StoredCheckouts] may
+// report no expiry, and answers a checkout id it has seen with the checkout it
+// made for it, expired or not, so the key would keep naming a checkout the
+// reader can no longer pay. Such a checkout is taken for expired once
+// [paymentprovider.Declaration.CheckoutLifetime] has passed since it was
+// first started, the earliest the provider could have made it. A retry may be
+// what made it, so it may still be payable for a while, but bounding it by
+// its last start instead would let a reader who keeps retrying a checkout
+// that ran out be sent back to it every time. The key is then built again
+// from that checkout, and from the next one in turn, until it names one not
+// yet started or still within its lifetime. A provider's report of the expiry
+// leads to the same key, so a report arriving after the reader has moved on
+// sends them nowhere else. Every other provider reports its expiries, and its
+// key is the one key builds first.
+func (s *apiServer) nextCheckoutKey(
+	ctx context.Context,
+	provider paymentprovider.Provider,
+	tenantID uuid.UUID,
+	expiredCheckoutID string,
+	key func(expiredCheckoutID string) (string, error),
+	keyvals ...any,
+) (string, error) {
+	declaration := provider.Declaration()
+	for {
+		idempotencyKey, err := key(expiredCheckoutID)
+		if err != nil {
+			args := append([]any{"tenant_id", tenantID.String()}, keyvals...)
+			return "", s.internalError(ctx, "failed to build the checkout idempotency key", err, args...)
+		}
+		if !declaration.StoredCheckouts {
+			return idempotencyKey, nil
+		}
+		checkoutID := paymentprovider.StoredCheckoutID(idempotencyKey)
+		lapsed, err := s.queriesFor(ctx).IsPaymentCheckoutLapsed(ctx, dbmodels.IsPaymentCheckoutLapsedParams{
+			LifetimeSeconds: declaration.CheckoutLifetime.Seconds(),
+			TenantID:        tenantID,
+			Provider:        declaration.ID,
+			CheckoutID:      checkoutID,
+		})
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && !lapsed) {
+			return idempotencyKey, nil
+		}
+		if err != nil {
+			args := append([]any{"tenant_id", tenantID.String(), "provider", declaration.ID, "checkout_id", checkoutID}, keyvals...)
+			return "", s.internalDBError(ctx, "failed to read whether a checkout has lapsed", err, args...)
+		}
+		expiredCheckoutID = checkoutID
+	}
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose

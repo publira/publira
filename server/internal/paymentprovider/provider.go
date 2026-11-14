@@ -84,8 +84,11 @@ type Declaration struct {
 	PaymentsByCheckout bool
 	// CheckoutLifetime is how long after it starts a checkout of a provider
 	// that declares StoredCheckouts can still be paid, which bounds the
-	// checkouts [Provider.ListTransactions] is handed. It is zero for every
-	// other provider.
+	// checkouts [Provider.ListTransactions] is handed. Once it has passed
+	// since a checkout was first started, the reader's next checkout of the
+	// same sale is started under a new [CheckoutRequest.CheckoutID], so a
+	// provider that reports no [CheckoutExpired] never answers the reader with
+	// a checkout that ran out. It is zero for every other provider.
 	CheckoutLifetime time.Duration
 	// Currencies are the ISO 4217 codes, in capitals, of the currencies the
 	// provider can charge in, each in the unit ISO 4217 gives as its minor

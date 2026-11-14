@@ -170,9 +170,11 @@ func (s *apiServer) StartTipCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	}, "episode_id", episode.ID.String())
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		return nil, err
 	}
 	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a tip checkout with the payment provider", "episode_id", episode.ID.String())
 	if err != nil {

@@ -2046,6 +2046,10 @@ type Querier interface {
 	// deletion has its documents deleted by the erasure, and one already deleted
 	// has none left to write.
 	IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Whether lifetime_seconds have passed since the checkout was first started,
+	// the earliest the provider could have made it, after which the provider may
+	// answer its id with a checkout that can no longer be paid.
+	IsPaymentCheckoutLapsed(ctx context.Context, arg IsPaymentCheckoutLapsedParams) (bool, error)
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
