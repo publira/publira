@@ -160,6 +160,7 @@ const props: Parameters<typeof EpisodeBody>[0] = {
   episode,
   images: [],
   labelPublicId: "",
+  paymentProviders: [],
   previewImages: [page("blurred_1", 1)],
   previewPages: [],
   promotionCode: "",

@@ -20,6 +20,8 @@ import type {
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getCoinSettings, getMyCoinBalance } from "#lib/coins";
 import { getLocale } from "#lib/locale";
+import { sellsSubscriptions } from "#lib/payment-providers";
+import type { PaymentProviderOption } from "#lib/payment-providers";
 import type { TenantImageVariant } from "#lib/tenant";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
@@ -96,6 +98,7 @@ export const EpisodeBody = async ({
   labelPublicId,
   nextEpisode,
   nextFreeEpisode,
+  paymentProviders,
   previewImages,
   previewPages,
   previousEpisode,
@@ -140,6 +143,8 @@ export const EpisodeBody = async ({
   nextEpisode?: EpisodeNeighborItem;
   /** What the gate offers instead of a locked body, when there is one. */
   nextFreeEpisode?: EpisodeNeighborItem;
+  /** The providers the site's checkout pays through. */
+  paymentProviders: readonly PaymentProviderOption[];
   /** The blurred opening pages the gate is drawn over. */
   previewImages: EpisodeImageItem[];
   /**
@@ -168,6 +173,7 @@ export const EpisodeBody = async ({
           acceptsPayments,
           appPayments,
           currency,
+          paymentProviders,
           taxIncluded,
         })}
         commentMode={commentMode}
@@ -189,8 +195,8 @@ export const EpisodeBody = async ({
   ]);
 
   const subscription = {
-    acceptsPayments,
     labelPublicId,
+    sellsPlans: sellsSubscriptions({ acceptsPayments, paymentProviders }),
     seriesPublicId: series.publicId,
   };
 
@@ -217,6 +223,7 @@ export const EpisodeBody = async ({
           googlePlayUrl={googlePlayUrl}
           locale={locale}
           nextFreeEpisode={nextFreeEpisode}
+          paymentProviders={paymentProviders}
           previewEnded={previewPages.length > 0}
           price={episode.price}
           purchaseSurface={episode.purchaseSurface}
@@ -286,6 +293,7 @@ export const EpisodeBody = async ({
           acceptsPayments,
           appPayments,
           currency,
+          paymentProviders,
           taxIncluded,
         })}
         commentMode={commentMode}
@@ -373,6 +381,7 @@ export const EpisodeBody = async ({
         googlePlayUrl={googlePlayUrl}
         locale={locale}
         nextFreeEpisode={nextFreeEpisode}
+        paymentProviders={paymentProviders}
         previewEnded={viewer.value.previewPages.length > 0}
         price={episode.price}
         promotionCode={promotionCodeOffer}

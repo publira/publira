@@ -17,6 +17,7 @@ import { coinsPagePath, episodeCoinsPath } from "./coins-path";
 import type { CoinPackCheckoutOutcome } from "./coins-path";
 import { assertSameOrigin } from "./csrf";
 import { localeFormSchema } from "./locale-form";
+import { paymentProviderFormSchema } from "./payment-providers";
 import { recordIdSchema } from "./record-id";
 import { tenantLocalePath } from "./tenant-locale-path";
 
@@ -32,6 +33,7 @@ const coinPackCheckoutFormSchema = z.union([
     episodeId: recordIdSchema,
     episodePublicId: publicIDFormSchema,
     locale: localeFormSchema,
+    provider: paymentProviderFormSchema,
     seriesPublicId: publicIDFormSchema,
     tenantId: tenantIdSchema,
   }),
@@ -39,6 +41,7 @@ const coinPackCheckoutFormSchema = z.union([
     coinPackId: recordIdSchema,
     episodeId: z.undefined(),
     locale: localeFormSchema,
+    provider: paymentProviderFormSchema,
     tenantId: tenantIdSchema,
   }),
 ]);
@@ -63,6 +66,7 @@ export const startCoinPackCheckoutAction = async (
       episodeId: "value",
       episodePublicId: "value",
       locale: "value",
+      provider: "value",
       seriesPublicId: "value",
       tenantId: "value",
     })
@@ -72,7 +76,7 @@ export const startCoinPackCheckoutAction = async (
     redirect("/");
   }
 
-  const { coinPackId, locale, tenantId } = parsed.data;
+  const { coinPackId, locale, provider, tenantId } = parsed.data;
 
   // Locale-less, the shape `sanitizeRedirectPath` stores; only the
   // `redirect()` targets below take a prefix.
@@ -100,6 +104,7 @@ export const startCoinPackCheckoutAction = async (
       {
         coinPackId,
         locale,
+        provider,
         returnEpisodeId: parsed.data.episodeId ?? "",
         tenant: { tenantId },
       },

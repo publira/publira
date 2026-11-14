@@ -27,6 +27,7 @@ import { episodeCoinsPath } from "#lib/coins-path";
 import type { EpisodeCoinsOutcome } from "#lib/coins-path";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { paymentProviderFormSchema } from "#lib/payment-providers";
 import type { EpisodeSaleKind, PromotionCodeState } from "#lib/promotion-code";
 import {
   promotionCodeFormSchema,
@@ -57,6 +58,7 @@ const checkoutFormSchema = episodeFormSchema.extend({
 
 const episodeCheckoutFormSchema = checkoutFormSchema.extend({
   promotionCode: promotionCodeFormSchema,
+  provider: paymentProviderFormSchema,
 });
 
 const purchaseKinds = {
@@ -84,6 +86,7 @@ export const startEpisodeCheckoutAction = async (
       kind: "value",
       locale: "value",
       promotionCode: "value",
+      provider: "value",
       seriesPublicId: "value",
       tenantId: "value",
     })
@@ -99,6 +102,7 @@ export const startEpisodeCheckoutAction = async (
     kind,
     locale,
     promotionCode,
+    provider,
     seriesPublicId,
     tenantId,
   } = parsed.data;
@@ -129,6 +133,7 @@ export const startEpisodeCheckoutAction = async (
         kind: purchaseKinds[kind],
         locale,
         promotionCode,
+        provider,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -269,6 +274,7 @@ export const applyEpisodePromotionCodeAction = async (
 /** The form of the tip dialog: the amount is the button the reader pressed. */
 const tipFormSchema = episodeFormSchema.extend({
   amount: z.coerce.number().int().positive(),
+  provider: paymentProviderFormSchema,
 });
 
 /**
@@ -290,6 +296,7 @@ export const startTipCheckoutAction = async (
       episodeId: "value",
       episodePublicId: "value",
       locale: "value",
+      provider: "value",
       seriesPublicId: "value",
       tenantId: "value",
     })
@@ -304,6 +311,7 @@ export const startTipCheckoutAction = async (
     episodeId,
     episodePublicId,
     locale,
+    provider,
     seriesPublicId,
     tenantId,
   } = parsed.data;
@@ -326,6 +334,7 @@ export const startTipCheckoutAction = async (
         client: StartEpisodeCheckoutRequest_Client.WEB,
         episodeId,
         locale,
+        provider,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)

@@ -172,6 +172,7 @@ const CoinsContent = async ({
         <CoinPacks
           acceptsPayments={tenant?.acceptsPayments ?? false}
           locale={locale}
+          paymentProviders={tenant?.paymentProviders ?? []}
           settings={settings}
           tenantId={tenantId}
         />

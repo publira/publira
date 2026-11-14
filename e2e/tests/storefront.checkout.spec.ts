@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import { seriesFormFields, signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
+import { takePaymentsThroughPayjpFirst } from "../src/payment-providers";
 import {
   EPISODE_RENTALS_ADMIN,
   EPISODE_RENTALS_CAMPAIGN,
@@ -15,6 +16,7 @@ import {
   EPISODE_RENTALS_READERS,
   EPISODE_RENTALS_SCENARIO,
   EPISODE_RENTALS_SERIES,
+  EPISODE_RENTALS_TENANT,
   EPISODE_RENTALS_TIP,
   EPISODE_RENTALS_VOLUME,
   episodeRentalPath,
@@ -50,6 +52,9 @@ import {
  * that offers no code of its own, and finds what they paid in the library,
  * while the open month's royalties credit the sale at the price before the
  * code; a seventh enters a code the tenant does not hold and is told so.
+ *
+ * Then the admin adds PAY.JP beside Stripe, and one more reader chooses
+ * Stripe at an episode's gate and is sent to its checkout page.
  */
 
 /**
@@ -722,6 +727,55 @@ test.describe("web-storefront checkout", () => {
         page.getByRole("button", { name: "Rent for 48 hours (¥100)" })
       ).toBeVisible();
       await expect(page).not.toHaveURL(/[?&]promotion_code=/u);
+    });
+  });
+
+  test.describe("with a second provider", () => {
+    test.beforeAll(async ({ browser }) => {
+      const admin = await browser.newPage();
+
+      try {
+        await takePaymentsThroughPayjpFirst(
+          admin,
+          EPISODE_RENTALS_ADMIN,
+          WEB_ADMIN_RENTALS_BASE_URL,
+          EPISODE_RENTALS_TENANT
+        );
+      } finally {
+        await admin.close();
+      }
+    });
+
+    test("a reader chooses Stripe over PAY.JP at the gate, pays through Stripe, and the next gate starts on Stripe", async ({
+      page,
+    }) => {
+      const [episode, next] = EPISODE_RENTALS_LATER_EPISODES;
+
+      await signInAsMember(
+        page,
+        EPISODE_RENTALS_READERS.providerChooser,
+        `${episodeRentalsSeriesPath}/episodes/${episode.publicId}`,
+        WEB_STOREFRONT_RENTALS_BASE_URL
+      );
+
+      await expect(page.getByText("Pay with")).toBeVisible();
+      await expect(page.getByRole("radio", { name: "PAY.JP" })).toBeChecked();
+      await page.getByRole("radio", { name: "Stripe" }).click();
+      await expect(page.getByRole("radio", { name: "Stripe" })).toBeChecked();
+      await page.getByRole("button", { name: "Buy this episode" }).click();
+
+      await pay(
+        page,
+        episode.title,
+        "¥200",
+        `${episodeRentalsSeriesPath}/episodes/${episode.publicId}`
+      );
+      await expectEpisodeOpen(page, episode.title);
+
+      await page.goto(
+        `${WEB_STOREFRONT_RENTALS_BASE_URL}${episodeRentalsSeriesPath}/episodes/${next.publicId}`
+      );
+      await expect(page.getByRole("radio", { name: "Stripe" })).toBeChecked();
     });
   });
 });

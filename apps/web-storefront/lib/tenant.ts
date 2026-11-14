@@ -30,6 +30,8 @@ import type { TenantAppPayments, TenantSales } from "./app-payments";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
+import { toPaymentProviderOptions } from "./payment-providers";
+import type { PaymentProviderOption } from "./payment-providers";
 import type { SignInProvider } from "./sign-in-provider";
 import { toSupportedLocales } from "./supported-locales";
 
@@ -252,6 +254,12 @@ export interface TenantSiteInfo {
   logoImageUpdatedAt?: string;
   logoImageVariants?: TenantImageVariant[];
   name: string;
+  /**
+   * The web payment providers a reader can pay through, in the order the
+   * tenant added them. Empty while the site takes no payments, and from a
+   * server of the previous release, which lists none.
+   */
+  paymentProviders: PaymentProviderOption[];
   publicId: string;
   /**
    * The image beside the sign-in and sign-up forms. Absent while the tenant
@@ -473,6 +481,9 @@ export const getTenantSiteInfo = async (
         response.theme?.logoImageVariants
       ),
       name,
+      paymentProviders: toPaymentProviderOptions(
+        response.paymentProviders ?? []
+      ),
       publicId,
       signInImageVariants: toTenantImageVariants(
         response.theme?.signInImageVariants
@@ -685,7 +696,13 @@ export const tenantSales = (tenant: TenantSiteInfo | null): TenantSales =>
         ...tenant,
         taxIncluded: tenant.invoice.taxRateBps !== null,
       })
-    : { app: false, currency: null, taxIncluded: false, web: false };
+    : {
+        app: false,
+        currency: null,
+        paymentProviders: [],
+        taxIncluded: false,
+        web: false,
+      };
 
 /**
  * Where the tenant can sell an episode right now, for a page that says what

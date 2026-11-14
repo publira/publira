@@ -12,6 +12,7 @@ import { Message } from "#components/message";
 import * as SeriesShelf from "#components/series-shelf";
 import { resolveAccessToken } from "#lib/api-client";
 import { getLocale } from "#lib/locale";
+import { sellsSubscriptions } from "#lib/payment-providers";
 import {
   getMySubscription,
   holdsSubscription,
@@ -232,7 +233,9 @@ export const PlanList = async () => {
       ? mine.subscription
       : null;
 
-  const sells = tenant?.acceptsPayments === true;
+  // Plans are sold through the one provider the tenant's plans are on, which
+  // takes recurring payments, so the plans offer no choice of provider.
+  const sells = tenant !== null && sellsSubscriptions(tenant);
   // A plan's payments record tax at the tenant's rate, as a purchase does.
   const taxIncluded = tenant !== null && tenant.invoice.taxRateBps !== null;
 

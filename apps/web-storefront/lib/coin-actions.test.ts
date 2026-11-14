@@ -82,6 +82,7 @@ describe("startCoinPackCheckoutAction", () => {
       {
         coinPackId,
         locale: "en",
+        provider: "",
         returnEpisodeId: "",
         tenant: { tenantId },
       },
@@ -92,6 +93,23 @@ describe("startCoinPackCheckoutAction", () => {
       "/my/coins",
       tenantId
     );
+  });
+
+  it("Send the pack's checkout to the provider the reader chose", async () => {
+    mockStartCoinPackCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://pay.jp.test/pack",
+    });
+    const form = packForm();
+    form.set("provider", "payjp");
+
+    const { startCoinPackCheckoutAction } = await import("./coin-actions");
+
+    await expect(startCoinPackCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://pay.jp.test/pack"
+    );
+    expect(mockStartCoinPackCheckout.mock.calls[0]?.[0]).toMatchObject({
+      provider: "payjp",
+    });
   });
 
   it("Have the checkout send a reader from an episode's gate back to it", async () => {

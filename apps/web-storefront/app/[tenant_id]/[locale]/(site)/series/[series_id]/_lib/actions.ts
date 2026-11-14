@@ -17,6 +17,7 @@ import { isUnauthenticatedError } from "#lib/auth-shared";
 import { tenantPurchasesTag, tenantReaderAccessTag } from "#lib/cache-tags";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { paymentProviderFormSchema } from "#lib/payment-providers";
 import { PROMOTION_CODE_MAX_SALES } from "#lib/promotion-code";
 import type { PromotionCodeState } from "#lib/promotion-code";
 import {
@@ -36,6 +37,7 @@ const seriesFormSchema = z.object({
 
 const volumeCheckoutFormSchema = seriesFormSchema.extend({
   promotionCode: promotionCodeFormSchema,
+  provider: paymentProviderFormSchema,
   volumeId: recordIdSchema,
 });
 
@@ -49,6 +51,7 @@ const volumePromotionCodeFormSchema = seriesFormSchema.extend({
 });
 
 const remainderCheckoutFormSchema = seriesFormSchema.extend({
+  provider: paymentProviderFormSchema,
   seriesId: recordIdSchema,
 });
 
@@ -150,6 +153,7 @@ export const startVolumeCheckoutAction = async (
     toFormDataInput(formData, {
       locale: "value",
       promotionCode: "value",
+      provider: "value",
       seriesPublicId: "value",
       tenantId: "value",
       volumeId: "value",
@@ -160,10 +164,10 @@ export const startVolumeCheckoutAction = async (
     redirect("/");
   }
 
-  const { promotionCode, tenantId, volumeId } = parsed.data;
+  const { promotionCode, provider, tenantId, volumeId } = parsed.data;
   await startCheckout(parsed.data, (sessionId) =>
     apiClient.purchase.startVolumeCheckout(
-      { promotionCode, tenant: { tenantId }, volumeId },
+      { promotionCode, provider, tenant: { tenantId }, volumeId },
       buildSessionHeaders(sessionId)
     )
   );
@@ -231,6 +235,7 @@ export const startSeriesRemainderCheckoutAction = async (
   const parsed = remainderCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
+      provider: "value",
       seriesId: "value",
       seriesPublicId: "value",
       tenantId: "value",
@@ -241,10 +246,10 @@ export const startSeriesRemainderCheckoutAction = async (
     redirect("/");
   }
 
-  const { locale, seriesId, tenantId } = parsed.data;
+  const { locale, provider, seriesId, tenantId } = parsed.data;
   await startCheckout(parsed.data, (sessionId) =>
     apiClient.purchase.startSeriesRemainderCheckout(
-      { locale, seriesId, tenant: { tenantId } },
+      { locale, provider, seriesId, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     )
   );

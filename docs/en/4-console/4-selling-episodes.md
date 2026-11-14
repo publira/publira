@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -38,6 +38,10 @@ All five can be changed later under **Price and reading period** on the episode'
 ### Buying and reading
 
 On a paid episode the site shows the price and **Buy this episode**. On a rented one it offers both sales instead, each with what it costs: **Buy for** the price, and **Rent for** the rental period at the rental price. A reader who is signed in and chooses one is sent to the payment provider's checkout page, pays there, and comes back to the episode, which tells them their payment is being confirmed. The episode opens when the provider's notification of the payment reaches the install, usually within seconds. Coming back from the checkout page opens nothing by itself.
+
+A tenant with more than one provider **Ready** lets the reader choose which one to pay through. Above the buttons, **Pay with** lists those providers in the order of their cards under **Payment settings**, each by its name and what it takes: **Cards** for PAY.JP, and **Cards and more** for Stripe, whose methods are the ones turned on for your account. The first is chosen until the reader chooses another, and the checkout goes to the provider chosen. The site remembers the choice in the reader's browser, so their next purchase on the site starts on the same provider. The same choice stands above a volume, the rest of a series, a pack of coins, and the tip amounts. A tenant with one provider shows no choice, and each button goes straight to that provider. A subscription plan offers no choice either: it is sold through one provider, as [Choosing a payment provider](#choosing-a-payment-provider) describes.
+
+![The gate of a paid episode on a tenant that takes payments through PAY.JP and Stripe: Pay with, with PAY.JP and Cards chosen and Stripe and Cards and more under it, above Buy this episode and Open the series.](./selling-episodes-provider-choice.png)
 
 On a paid episode with [preview pages](./1-catalog/2-episodes.md#preview-pages), a reader who cannot open it yet, signed in or not, reads those pages first, on the site and in the app alike, in the same reader as the rest of the episode: in its reading direction, and paired into spreads as its layout pairs them. The page counter and the progress slider count the preview pages alone, such as `Page 3 of 3` on the site and `3 / 3` in the app. Turning past the last of them brings up **The preview ends here**, with the purchase and the other ways in the episode offers. A paid episode without preview pages shows the same offers in place of its pages, over a blurred view of its opening pages. Neither how far the reader got in a preview nor reaching its end is recorded, so once bought, the episode opens on its first page.
 
@@ -262,7 +266,7 @@ A tip is paid the way the episode would be bought:
 - **On the site**, through the payment provider, so the site takes tips only while one is **Ready**, as [Choosing a payment provider](#choosing-a-payment-provider) describes.
 - **In the app**, through the same provider in the phone's browser with **Web checkout**, and through the store with **In-app purchase**, as the product of its amount that **Store products** lists. The app tells a reader that an amount whose product the store does not have cannot be given in the app, so create each product in App Store Connect and in Play Console when you add its amount.
 
-On the site, a reader who has turned past the last page of an episode finds **Tip the Authors** beside the reaction button. It opens a dialog naming the episode's Authors, with each of the tenant's amounts as a button, and pressing one takes the reader to the payment provider's checkout page. A reader who is not signed in is sent to sign in and back to the episode. Coming back from the checkout page, the episode thanks them, and the tip is recorded when the provider's notification reaches the install. A reader can tip the same episode again, whatever they hold of it. A reader the episode credits is offered no tip, and one they try to give is refused.
+On the site, a reader who has turned past the last page of an episode finds **Tip the Authors** beside the reaction button. It opens a dialog naming the episode's Authors, with each of the tenant's amounts as a button, and pressing one takes the reader to the payment provider's checkout page, the one chosen under **Pay with** above the amounts where the tenant has more than one **Ready**. A reader who is not signed in is sent to sign in and back to the episode. Coming back from the checkout page, the episode thanks them, and the tip is recorded when the provider's notification reaches the install. A reader can tip the same episode again, whatever they hold of it. A reader the episode credits is offered no tip, and one they try to give is refused.
 
 ![The page after an episode's last page: the reaction button with Tip the Authors beside it, above the offer of the next episode.](./selling-episodes-tip-control.png)
 
@@ -432,7 +436,7 @@ Test the whole setup with the provider's test keys before readers can pay: the w
 
 A purchase made in the provider's test mode opens the episode but is recorded as a test, and left out of royalty statements and the content statistics. The reader still gets a receipt by mail, which says that the purchase was made in test mode and that no money was charged. An episode with a purchase cannot be deleted, a test purchase included, so keep the test in a series of its own, which you hide afterwards.
 
-1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that its card under **Payment settings** shows **Ready**. A tenant that holds more than one provider tests each in turn: turn **Enable payments** off on the others' cards and save them, so that the site sends the test checkout to the one under test, and turn them back on once every provider has passed.
+1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that its card under **Payment settings** shows **Ready**. A tenant that holds more than one provider tests each in turn, choosing it under **Pay with** on the episode in step 3.
 2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, and sold on the web.
 3. On the site, sign in with a reader account that holds no console role, open the episode, and choose **Buy this episode**.
 4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with both providers. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome.

@@ -6927,6 +6927,13 @@
       "not_applicable_volumes": "This code can't be used on these volumes.",
       "rate_limited": "Too many codes entered. Wait a moment and try again.",
       "error": "The code could not be checked. Try again."
+    },
+    "payment_provider": {
+      "label": "Pay with",
+      "methods": {
+        "payjp": "Cards",
+        "stripe": "Cards and more"
+      }
     }
   },
   "mobile": {

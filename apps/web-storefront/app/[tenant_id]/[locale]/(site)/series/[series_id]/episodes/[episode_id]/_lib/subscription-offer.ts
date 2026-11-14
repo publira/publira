@@ -6,20 +6,20 @@ import {
 } from "#lib/subscriptions";
 
 /**
- * Whether the gate offers a plan: the site takes payments and one of the plans
- * it sells opens the work. A plan read that failed offers none, which leaves
+ * Whether the gate offers a plan: the site can sell plans, through a provider
+ * that takes recurring payments, and one of the plans it sells opens the work. A plan read that failed offers none, which leaves
  * the gate as it was before the site sold plans.
  */
 export const offersSubscription = async (
   tenantId: string,
   locale: Locale,
   {
-    acceptsPayments,
     labelPublicId,
+    sellsPlans,
     seriesPublicId,
-  }: { acceptsPayments: boolean; labelPublicId: string; seriesPublicId: string }
+  }: { labelPublicId: string; sellsPlans: boolean; seriesPublicId: string }
 ): Promise<boolean> => {
-  if (!acceptsPayments) {
+  if (!sellsPlans) {
     return false;
   }
 

@@ -68,6 +68,7 @@ const episode = {
 const sales: TenantSales = {
   app: false,
   currency: "JPY",
+  paymentProviders: [],
   taxIncluded: false,
   web: true,
 };

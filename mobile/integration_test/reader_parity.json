@@ -534,6 +534,18 @@
       }
     },
     {
+      "name": "Choosing the payment provider to pay through, where the tenant holds more than one",
+      "web": {
+        "routes": [
+          "[locale]/(site)/series/[series_id]/episodes/[episode_id]",
+          "[locale]/(site)/series/[series_id]",
+          "[locale]/(site)/my/coins"
+        ],
+        "rpcs": ["GetTenant"]
+      },
+      "exception": "Not in the app yet: #5663."
+    },
+    {
       "name": "The plan a reader holds on My Page, and the billing portal",
       "web": {
         "rpcs": ["GetMySubscription", "CreateBillingPortalSession"]

@@ -17,6 +17,7 @@ import { CoinPackCheckoutForm } from "#components/coin-pack-checkout-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import * as PaymentProviderChoice from "#components/payment-provider-choice";
 import * as PromotionCode from "#components/promotion-code";
 import {
   episodeSaleDestination,
@@ -29,6 +30,7 @@ import type {
   EpisodePurchaseSurface,
 } from "#lib/catalog";
 import { coinPackTotal } from "#lib/coins";
+import type { PaymentProviderOption } from "#lib/payment-providers";
 import { episodeSaleKinds } from "#lib/promotion-code";
 import type { EpisodeSaleKind, PromotionCodeState } from "#lib/promotion-code";
 import type { TenantImageVariant } from "#lib/tenant";
@@ -287,6 +289,7 @@ const CheckoutForm = ({
     <input name="episodePublicId" type="hidden" value={episodePublicId} />
     <input name="episodeId" type="hidden" value={episodeId} />
     <input name="kind" type="hidden" value={kind} />
+    <PaymentProviderChoice.Input />
     <PromotionCode.CheckoutSubmit
       currency={currency}
       kind={kind}
@@ -424,6 +427,28 @@ const CheckoutActions = ({
       ) : null}
     </>
   );
+};
+
+/**
+ * The providers the gate lets the reader choose between: those of the site's
+ * checkout wherever the gate starts one, which is the episode's own for a
+ * signed-in reader on an episode the site sells, and the pack that makes up
+ * the coins they are short of. None elsewhere, so a guest is asked nothing.
+ */
+const gatePaymentProviders = ({
+  coinOffer,
+  payable,
+  paymentProviders,
+  signedIn,
+}: {
+  coinOffer?: CoinOffer;
+  payable: boolean;
+  paymentProviders: readonly PaymentProviderOption[];
+  signedIn: boolean;
+}): readonly PaymentProviderOption[] => {
+  const sellsPack = coinOffer?.kind === "offer" && coinOffer.pack !== undefined;
+
+  return signedIn && (payable || sellsPack) ? paymentProviders : [];
 };
 
 /**
@@ -855,6 +880,7 @@ export const EpisodeAccessGate = ({
   googlePlayUrl,
   locale,
   nextFreeEpisode,
+  paymentProviders,
   previewEnded = false,
   price,
   promotionCode,
@@ -894,6 +920,11 @@ export const EpisodeAccessGate = ({
   locale: Locale;
   /** Absent when no later episode of the series is free right now. */
   nextFreeEpisode?: EpisodeNeighborItem;
+  /**
+   * The providers the site's checkout pays through, which a signed-in reader
+   * chooses between above the checkouts while there is more than one.
+   */
+  paymentProviders: readonly PaymentProviderOption[];
   /** Whether the gate is the page after the episode's preview pages. */
   previewEnded?: boolean;
   /** What the permanent copy costs. */
@@ -1021,6 +1052,7 @@ export const EpisodeAccessGate = ({
             />
           </p>
         ) : null}
+        <PaymentProviderChoice.Picker />
         <CoinSection
           episodeId={episodeId}
           episodePublicId={episodePublicId}
@@ -1097,15 +1129,25 @@ export const EpisodeAccessGate = ({
   );
 
   return (
-    <PromotionCodeScope
-      offer={offeredPromotionCode({
-        currency,
+    <PaymentProviderChoice.Root
+      providers={gatePaymentProviders({
+        coinOffer,
         payable,
-        promotionCode,
+        paymentProviders,
         signedIn,
       })}
+      tenantId={tenantId}
     >
-      {gate}
-    </PromotionCodeScope>
+      <PromotionCodeScope
+        offer={offeredPromotionCode({
+          currency,
+          payable,
+          promotionCode,
+          signedIn,
+        })}
+      >
+        {gate}
+      </PromotionCodeScope>
+    </PaymentProviderChoice.Root>
   );
 };

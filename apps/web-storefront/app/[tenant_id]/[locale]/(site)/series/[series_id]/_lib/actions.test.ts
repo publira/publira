@@ -133,7 +133,7 @@ describe("startVolumeCheckoutAction", () => {
       "NEXT_REDIRECT:https://checkout.stripe.test/volume"
     );
     expect(mockStartVolumeCheckout).toHaveBeenCalledWith(
-      { promotionCode: "", tenant: { tenantId }, volumeId },
+      { promotionCode: "", provider: "", tenant: { tenantId }, volumeId },
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockUpdateTag).not.toHaveBeenCalled();
@@ -153,10 +153,33 @@ describe("startVolumeCheckoutAction", () => {
       "NEXT_REDIRECT:https://checkout.stripe.test/volume"
     );
     expect(mockStartVolumeCheckout).toHaveBeenCalledWith(
-      { promotionCode: "SPRING10", tenant: { tenantId }, volumeId },
+      {
+        promotionCode: "SPRING10",
+        provider: "",
+        tenant: { tenantId },
+        volumeId,
+      },
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockUpdateTag).toHaveBeenCalledTimes(2);
+  });
+
+  it("Send the volume's checkout to the provider the reader chose", async () => {
+    mockStartVolumeCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://pay.jp.test/volume",
+    });
+
+    const form = volumeForm();
+    form.set("provider", "payjp");
+
+    const { startVolumeCheckoutAction } = await import("./actions");
+
+    await expect(startVolumeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://pay.jp.test/volume"
+    );
+    expect(mockStartVolumeCheckout.mock.calls[0]?.[0]).toMatchObject({
+      provider: "payjp",
+    });
   });
 
   it("Bring a code that stopped applying back to the section to say why", async () => {
@@ -277,9 +300,27 @@ describe("startSeriesRemainderCheckoutAction", () => {
       startSeriesRemainderCheckoutAction(remainderForm())
     ).rejects.toThrow("NEXT_REDIRECT:https://checkout.stripe.test/remainder");
     expect(mockStartSeriesRemainderCheckout).toHaveBeenCalledWith(
-      { locale: "ja", seriesId, tenant: { tenantId } },
+      { locale: "ja", provider: "", seriesId, tenant: { tenantId } },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("Send the rest of the series to the provider the reader chose", async () => {
+    mockStartSeriesRemainderCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://pay.jp.test/remainder",
+    });
+
+    const form = remainderForm();
+    form.set("provider", "payjp");
+
+    const { startSeriesRemainderCheckoutAction } = await import("./actions");
+
+    await expect(startSeriesRemainderCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://pay.jp.test/remainder"
+    );
+    expect(mockStartSeriesRemainderCheckout.mock.calls[0]?.[0]).toMatchObject({
+      provider: "payjp",
+    });
   });
 
   it.each([

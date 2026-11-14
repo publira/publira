@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
+import * as PaymentProviderChoice from "#components/payment-provider-choice";
 import type { TenantSales } from "#lib/app-payments";
 import { buildLoginPath } from "#lib/auth-shared";
 import type { EpisodeDetail } from "#lib/catalog";
@@ -25,7 +26,8 @@ const TipButtonLabel = () => (
 /**
  * **Tip the Authors**, beside the reaction control on the page after the last
  * one: a dialog naming the episode's Authors, with each of the tenant's amounts
- * as a button that hands the reader to the provider's checkout of that amount.
+ * as a button that hands the reader to the provider's checkout of that amount,
+ * and the choice of provider above them while the site has more than one.
  *
  * The reader is read here for what the shared episode read cannot say, so this
  * sits in a `<Suspense>` of its own. Whether the episode credits them comes
@@ -119,36 +121,43 @@ export const EpisodeTipControl = async ({
                 </Suspense>
               </p>
             ) : null}
-            <form
-              action={startTipCheckoutAction}
-              className="flex flex-wrap gap-2"
+            <PaymentProviderChoice.Root
+              providers={sales.paymentProviders}
+              tenantId={tenantId}
             >
-              <LocaleField />
-              <input name="episodeId" type="hidden" value={episode.id} />
-              <input
-                name="episodePublicId"
-                type="hidden"
-                value={episode.publicId}
-              />
-              <input
-                name="seriesPublicId"
-                type="hidden"
-                value={seriesPublicId}
-              />
-              <input name="tenantId" type="hidden" value={tenantId} />
-              {amounts.map((amount) => (
-                <Button
-                  className="tabular-nums"
-                  key={amount}
-                  name="amount"
-                  type="submit"
-                  value={amount}
-                  variant="outline"
-                >
-                  {formatPrice(amount, { currency, locale })}
-                </Button>
-              ))}
-            </form>
+              <PaymentProviderChoice.Picker />
+              <form
+                action={startTipCheckoutAction}
+                className="flex flex-wrap gap-2"
+              >
+                <LocaleField />
+                <PaymentProviderChoice.Input />
+                <input name="episodeId" type="hidden" value={episode.id} />
+                <input
+                  name="episodePublicId"
+                  type="hidden"
+                  value={episode.publicId}
+                />
+                <input
+                  name="seriesPublicId"
+                  type="hidden"
+                  value={seriesPublicId}
+                />
+                <input name="tenantId" type="hidden" value={tenantId} />
+                {amounts.map((amount) => (
+                  <Button
+                    className="tabular-nums"
+                    key={amount}
+                    name="amount"
+                    type="submit"
+                    value={amount}
+                    variant="outline"
+                  >
+                    {formatPrice(amount, { currency, locale })}
+                  </Button>
+                ))}
+              </form>
+            </PaymentProviderChoice.Root>
           </Dialog.Popup>
         </Dialog.Viewport>
       </EpisodeDialogPortal>
