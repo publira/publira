@@ -1333,6 +1333,27 @@
       "created": "Author created.",
       "list_failed": "Could not load the authors. Please try again later.",
       "save_failed": "Could not save the author. Please try again later.",
+      "credits": {
+        "title": "Credits",
+        "description": "The series and episodes that credit this author, and the role of each credit. Open one to change its credits there.",
+        "list_error": "Could not display the credits",
+        "list_failed": "Could not load the credits. Please try again later.",
+        "columns": {
+          "series": "Series",
+          "episode": "Episode",
+          "role": "Role",
+          "actions": "Actions"
+        },
+        "on_series": "The series itself",
+        "no_role": "No role",
+        "untitled": "Untitled",
+        "open_series": "Open series",
+        "open_episode": "Open episode",
+        "empty_title": "No series or episode credits this author.",
+        "empty_description": "Credit them under Authors on a series form or on an episode's edit screen.",
+        "pagination_aria": "Credit list pagination",
+        "pagination_description": "Grouped by series, up to {$count} credits per page."
+      },
       "accounts": {
         "title": "Reader accounts",
         "description": "The reader accounts that belong to the person credited as this author. Only tenant admins can link and unlink them.",
@@ -1379,9 +1400,9 @@
         "failed": "Could not delete the author. Please try again later.",
         "not_found": "This author has already been deleted. Go back to the author list.",
         "name_mismatch": "The name entered is not this author's name.",
-        "view_series": "View series",
+        "view_credits": "View credits",
         "refused": {
-          "credited": "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode that credits them first.",
+          "credited": "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode listed under Credits on this page first.",
           "on_royalty_statement": "This author cannot be deleted: a closed royalty statement has a line for them, and a statement is kept as it was closed.",
           "has_linked_account": "This author cannot be deleted while a reader account is linked to them. Unlink each account under Reader accounts on this page first.",
           "referenced": "This author cannot be deleted: a record that has to be kept refers to them."

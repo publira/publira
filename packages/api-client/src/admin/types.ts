@@ -30,7 +30,12 @@ export type {
   ContactMessageEntry,
 } from "../gen/publira/admin/v1/contact_pb.js";
 
-export type { CreatorAccount } from "../gen/publira/admin/v1/creator_pb.js";
+export type {
+  CreatorAccount,
+  CreatorCredit,
+  CreditedEpisode,
+  CreditedSeries,
+} from "../gen/publira/admin/v1/creator_pb.js";
 
 export type { TenantEmailSettings } from "../gen/publira/admin/v1/email_pb.js";
 

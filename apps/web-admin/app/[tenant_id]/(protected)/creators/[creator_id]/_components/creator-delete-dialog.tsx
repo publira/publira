@@ -6,12 +6,13 @@ import * as Dialog from "@publira/ui-components/dialog";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { MouseEvent } from "react";
 
 import { ClientMessage } from "#components/client-message";
 
 import type { CreatorDeleteActionState } from "../../creator-types";
+import { CREATOR_CREDITS_TITLE_ID } from "../_lib/creator-credits-anchor";
 
 interface CreatorDeleteDialogProps {
   action: (
@@ -27,9 +28,10 @@ interface CreatorDeleteDialogProps {
 
 /**
  * Deletes the Author from a dialog that asks for their name. A refusal stays
- * in the dialog, naming what refers to them; a deletion leaves for the Author
- * list, which the Action redirects to. Every opening starts over, with an
- * empty field and no refusal left from the last one.
+ * in the dialog, naming what refers to them, and a refusal for a credit links
+ * to the Credits section above; a deletion leaves for the Author list, which
+ * the Action redirects to. Every opening starts over, with an empty field and
+ * no refusal left from the last one.
  */
 export const CreatorDeleteDialog = ({
   action,
@@ -41,25 +43,48 @@ export const CreatorDeleteDialog = ({
   const [open, setOpen] = useState(false);
   const [opening, setOpening] = useState(0);
   const [typed, setTyped] = useState("");
+  // Set when the dialog closes for the Credits link. Focus then stays off the
+  // trigger at the end of the screen, which would scroll back to it, and the
+  // section is scrolled to once the dialog has released the page's scroll.
+  const leftForCredits = useRef(false);
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
 
     if (next) {
+      leftForCredits.current = false;
       setOpening((current) => current + 1);
       setTyped("");
     }
   };
 
+  const handleOpenChangeComplete = (next: boolean) => {
+    if (!next && leftForCredits.current) {
+      document
+        .querySelector(`#${CREATOR_CREDITS_TITLE_ID}`)
+        ?.scrollIntoView({ block: "start" });
+    }
+  };
+
+  const handleViewCredits = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    leftForCredits.current = true;
+    setOpen(false);
+  };
+
   return (
-    <Dialog.Root onOpenChange={handleOpenChange} open={open}>
+    <Dialog.Root
+      onOpenChange={handleOpenChange}
+      onOpenChangeComplete={handleOpenChangeComplete}
+      open={open}
+    >
       <Dialog.Trigger render={<Button type="button" variant="destructive" />}>
         <ClientMessage message="admin.creators.delete.action" />
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Viewport>
-          <Dialog.Popup>
+          <Dialog.Popup finalFocus={() => !leftForCredits.current}>
             <ActionForm.Root
               action={action}
               className="grid gap-4"
@@ -112,15 +137,16 @@ export const CreatorDeleteDialog = ({
                   {state ? (
                     <FormMessage variant="destructive">
                       {state.message}
-                      {state.reference === "series" ? (
+                      {state.reference === "credits" ? (
                         <>
                           {" "}
-                          <Link
+                          <a
                             className="font-medium underline underline-offset-4"
-                            href="/series"
+                            href={`#${CREATOR_CREDITS_TITLE_ID}`}
+                            onClick={handleViewCredits}
                           >
-                            <ClientMessage message="admin.creators.delete.view_series" />
-                          </Link>
+                            <ClientMessage message="admin.creators.delete.view_credits" />
+                          </a>
                         </>
                       ) : null}
                     </FormMessage>

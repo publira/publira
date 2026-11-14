@@ -241,7 +241,7 @@ describe("deleteCreatorAction", () => {
       message:
         "This author cannot be deleted while a series or an episode credits them.",
       ok: false,
-      reference: "series",
+      reference: "credits",
     };
 
     mockDeleteCreator.mockResolvedValueOnce(refusal);
