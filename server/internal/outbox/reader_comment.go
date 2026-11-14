@@ -164,6 +164,7 @@ type commentAuthorNotificationBody struct {
 // commentAuthorNotifier is the inserts the helper runs, named so a test can
 // drive the write without a database behind it.
 type commentAuthorNotifier interface {
+	EpisodeExistsByPublicID(ctx context.Context, arg dbmodels.EpisodeExistsByPublicIDParams) (bool, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 	ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error)
@@ -180,6 +181,10 @@ func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n
 	}
 	category, err := NotificationCategoryFor(NotificationTypeCommentApproved)
 	if err != nil {
+		return err
+	}
+	gone, err := episodeDeletedSince(ctx, queries, n.TenantID, n.EpisodePublicID)
+	if err != nil || gone {
 		return err
 	}
 

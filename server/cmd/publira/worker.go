@@ -520,6 +520,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeDataExportReadyNotification, outbox.NewDataExportReadyNotificationHandler(dataExportHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer, searchCacheRecorder))
+	handlers.Register(outbox.EventTypeEpisodeNotificationsRemoval, outbox.NewEpisodeNotificationsRemovalHandler(outbox.NotificationRemovalHandlerConfig{DB: emailHandlers.DB}))
 	memberPush := outbox.NewMemberPushNotificationHandler(pushHandlers)
 	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, memberPush)
 	handlers.RegisterMessage(outbox.EventTypeAnnouncementPushNotification, memberPush)

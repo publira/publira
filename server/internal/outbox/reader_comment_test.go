@@ -91,6 +91,25 @@ func TestNotifyCommentApprovedMailsOnlyAnEpisodeTheSiteShows(t *testing.T) {
 	}
 }
 
+// An approval drained after its episode was deleted files nothing, since the
+// deletion has already removed the episode's notifications.
+func TestNotifyCommentApprovedFilesNothingForADeletedEpisode(t *testing.T) {
+	queries := &stubCommentAuthorNotifier{episodeDeleted: true}
+
+	err := notifyCommentApproved(context.Background(), queries, CommentApprovedNotification{
+		TenantID:        uuid.New(),
+		UserID:          uuid.New(),
+		CommentPublicID: "CMTPEND00001",
+		EpisodePublicID: "EPISODE00001",
+	})
+	if err != nil {
+		t.Fatalf("notifyCommentApproved: %v", err)
+	}
+	if len(queries.created) != 0 || len(queries.queued) != 0 {
+		t.Fatalf("notifications = %+v, outbox events = %+v, want neither", queries.created, queries.queued)
+	}
+}
+
 func TestNotifyCommentApprovedReturnsAFailedInsert(t *testing.T) {
 	queries := &stubCommentAuthorNotifier{createErr: errors.New("connection refused")}
 
@@ -257,12 +276,19 @@ func assertCommentAuthorPayload(t *testing.T, raw []byte, want map[string]string
 }
 
 type stubCommentAuthorNotifier struct {
-	created   []dbmodels.CreateNotificationParams
-	createErr error
-	queued    []dbmodels.InsertOutboxEventParams
+	// episodeDeleted answers that the comment's episode is gone, where a stub
+	// left alone still has it.
+	episodeDeleted bool
+	created        []dbmodels.CreateNotificationParams
+	createErr      error
+	queued         []dbmodels.InsertOutboxEventParams
 	// appOnly shows the comment's episode on the app alone, where a stub left
 	// alone shows it on the site too.
 	appOnly bool
+}
+
+func (s *stubCommentAuthorNotifier) EpisodeExistsByPublicID(context.Context, dbmodels.EpisodeExistsByPublicIDParams) (bool, error) {
+	return !s.episodeDeleted, nil
 }
 
 func (s *stubCommentAuthorNotifier) ListPublishedEpisodeSurfacesByPublicID(

@@ -266,6 +266,85 @@ func (q *Queries) GetEpisodeDeletionBlocker(ctx context.Context, arg GetEpisodeD
 	return blocker, err
 }
 
+const ListEpisodeCommentPublicIDs = `-- name: ListEpisodeCommentPublicIDs :many
+SELECT c.public_id
+FROM episode_comments c
+WHERE c.tenant_id = $1
+    AND c.episode_id = $2::uuid
+ORDER BY c.public_id
+`
+
+type ListEpisodeCommentPublicIDsParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The comments on the episode, whose authors' notifications are filed under
+// each comment's public ID. Read under the episode's lock, which holds off a
+// new comment, and before the deletion takes them.
+func (q *Queries) ListEpisodeCommentPublicIDs(ctx context.Context, arg ListEpisodeCommentPublicIDsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentPublicIDs, arg.TenantID, arg.EpisodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var public_id string
+		if err := rows.Scan(&public_id); err != nil {
+			return nil, err
+		}
+		items = append(items, public_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodeReturnedReviewIDs = `-- name: ListEpisodeReturnedReviewIDs :many
+SELECT r.id
+FROM episode_reviews r
+WHERE r.tenant_id = $1
+    AND r.episode_id = $2::uuid
+    AND r.decision = 'returned'
+ORDER BY r.id
+`
+
+type ListEpisodeReturnedReviewIDsParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The review rounds of the episode that were sent back, each of which filed a
+// notification for its submitter under the round's ID. Read before the
+// deletion takes them, as the comments are.
+func (q *Queries) ListEpisodeReturnedReviewIDs(ctx context.Context, arg ListEpisodeReturnedReviewIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeReturnedReviewIDs, arg.TenantID, arg.EpisodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockEpisodeForDeletion = `-- name: LockEpisodeForDeletion :one
 
 SELECT e.id,

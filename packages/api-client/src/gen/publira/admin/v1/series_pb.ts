@@ -1913,7 +1913,9 @@ export const ReorderEpisodeImagesResponseSchema: GenMessage<ReorderEpisodeImages
  * app, and the search index as an episode taken back to a draft does, and its
  * images are reclaimed by the orphan image sweep. A volume that holds it and
  * has never been on sale, a bundle checkout that expired unpaid and names it, and a promotion code
- * for it that nobody redeemed lose it.
+ * for it that nobody redeemed lose it. The notifications about the episode,
+ * its comments, and its review rounds are removed from every recipient's
+ * inbox by the worker shortly after.
  *
  * An episode something refers to is failed_precondition with an ErrorInfo
  * reason naming the first of these, in this order:

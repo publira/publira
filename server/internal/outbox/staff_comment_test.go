@@ -53,6 +53,21 @@ func TestStaffCommentIdempotencyKeySeparatesQueuesAndTenants(t *testing.T) {
 	}
 }
 
+// An alert drained after its episode was deleted files nothing, since the
+// deletion has already removed the episode's notifications.
+func TestStaffCommentNotificationFilesNothingForADeletedEpisode(t *testing.T) {
+	queries := &stubStaffNotificationQuerier{episodeDeleted: true, staff: []uuid.UUID{uuid.New()}}
+
+	handler := staffCommentNotificationHandler(
+		StaffNotificationHandlerConfig{}, NotificationTypeCommentReported, queries)
+	if err := handler(context.Background(), staffCommentEvent(t, uuid.New(), EventTypeCommentReportedNotification)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.created) != 0 {
+		t.Fatalf("notifications written = %+v, want none", queries.created)
+	}
+}
+
 func TestStaffCommentNotificationWritesOneRowPerStaffMember(t *testing.T) {
 	tenantID := uuid.New()
 	first := uuid.New()
@@ -213,11 +228,18 @@ func staffCommentEvent(t *testing.T, tenantID uuid.UUID, eventType string) dbmod
 }
 
 type stubStaffNotificationQuerier struct {
-	staff     []uuid.UUID
-	listed    uuid.UUID
-	listErr   error
-	created   []dbmodels.CreateNotificationParams
-	createErr error
+	// episodeDeleted answers that the event's episode is gone, where a stub
+	// left alone still has it.
+	episodeDeleted bool
+	staff          []uuid.UUID
+	listed         uuid.UUID
+	listErr        error
+	created        []dbmodels.CreateNotificationParams
+	createErr      error
+}
+
+func (s *stubStaffNotificationQuerier) EpisodeExistsByPublicID(context.Context, dbmodels.EpisodeExistsByPublicIDParams) (bool, error) {
+	return !s.episodeDeleted, nil
 }
 
 func (s *stubStaffNotificationQuerier) ListTenantAdminIDs(_ context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {

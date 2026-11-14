@@ -100,6 +100,31 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 	return i, err
 }
 
+const EpisodeExistsByPublicID = `-- name: EpisodeExistsByPublicID :one
+SELECT EXISTS (
+        SELECT 1
+        FROM episodes e
+        WHERE e.tenant_id = $1
+            AND e.public_id = $2
+    )::bool AS episode_exists
+`
+
+type EpisodeExistsByPublicIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Whether the tenant still has the episode, which a worker filing a
+// notification about it asks first: one deleted since the event was queued
+// has had its notifications removed, and a row filed after that would name a
+// page that is no longer there.
+func (q *Queries) EpisodeExistsByPublicID(ctx context.Context, arg EpisodeExistsByPublicIDParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, EpisodeExistsByPublicID, arg.TenantID, arg.PublicID)
+	var episode_exists bool
+	err := row.Scan(&episode_exists)
+	return episode_exists, err
+}
+
 const GetEpisodeByIDForTenant = `-- name: GetEpisodeByIDForTenant :one
 SELECT e.id,
     e.public_id,

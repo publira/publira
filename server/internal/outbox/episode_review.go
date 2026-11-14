@@ -160,7 +160,7 @@ func fileEpisodeReviewReturnedNotification(
 		TenantID:         tenantID,
 		UserID:           notice.RecipientUserID.UUID,
 		NotificationType: NotificationTypeEpisodeReviewReturned,
-		SubjectKey:       "episode_review:" + reviewID.String(),
+		SubjectKey:       EpisodeReviewSubjectKey(reviewID),
 		Payload:          body,
 		Category:         category,
 	}); err != nil {

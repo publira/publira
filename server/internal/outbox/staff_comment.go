@@ -58,10 +58,13 @@ const staffCommentWindow = time.Hour
 // time zone would only make two tenants commenting on the same minute collapse
 // differently.
 func StaffCommentSubjectKey(episodePublicID string, at time.Time) string {
-	return fmt.Sprintf("episode:%s:%s",
-		episodePublicID,
-		at.UTC().Truncate(staffCommentWindow).Format("2006-01-02T15"),
-	)
+	return staffCommentSubjectKeyPrefix(episodePublicID) + at.UTC().Truncate(staffCommentWindow).Format("2006-01-02T15")
+}
+
+// staffCommentSubjectKeyPrefix is what every window's key for the episode
+// begins with.
+func staffCommentSubjectKeyPrefix(episodePublicID string) string {
+	return EpisodeSubjectKey(episodePublicID) + ":"
 }
 
 // StaffCommentIdempotencyKey is the outbox key for one window's event. The
@@ -97,6 +100,7 @@ type StaffNotificationHandlerConfig struct {
 // staffNotificationQuerier is the statement pair the handlers run, named so a
 // test can drive the fan-out without a database behind it.
 type staffNotificationQuerier interface {
+	EpisodeExistsByPublicID(ctx context.Context, arg dbmodels.EpisodeExistsByPublicIDParams) (bool, error)
 	ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
@@ -156,6 +160,16 @@ func staffCommentNotificationHandler(
 		category, err := NotificationCategoryFor(notificationType)
 		if err != nil {
 			return Permanent(err)
+		}
+
+		gone, err := episodeDeletedSince(ctx, queries, tenantID, payload.EpisodeID)
+		if err != nil {
+			return err
+		}
+		if gone {
+			logStaffComment(ctx, cfg.Logger, "episode was deleted; staff are not notified about its comments", event,
+				"notification_type", notificationType)
+			return nil
 		}
 
 		staff, err := queries.ListTenantAdminIDs(ctx, tenantID)

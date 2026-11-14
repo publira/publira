@@ -145,6 +145,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypePlatformOperatorRoleGrantedEmail,
 		outbox.EventTypeNextCacheRevalidation,
 		outbox.EventTypeCatalogIndexSync,
+		outbox.EventTypeEpisodeNotificationsRemoval,
 		outbox.EventTypeGooglePlayPurchaseConsume,
 		outbox.EventTypeGooglePlaySubscriptionAcknowledge,
 		outbox.EventTypeAppleSignInCodeExchange,

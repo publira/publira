@@ -262,7 +262,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 		return
 	}
 
-	subjectKey := "episode:" + row.EpisodePublicID
+	subjectKey := outbox.EpisodeSubjectKey(row.EpisodePublicID)
 	for _, adminID := range admins {
 		notificationID, err := uuid.NewV7()
 		if err != nil {
@@ -322,7 +322,7 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 		return
 	}
 
-	subjectKey := "episode:" + row.EpisodePublicID
+	subjectKey := outbox.EpisodeSubjectKey(row.EpisodePublicID)
 	for _, operatorID := range operators {
 		notificationID, err := uuid.NewV7()
 		if err != nil {

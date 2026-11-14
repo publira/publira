@@ -239,6 +239,18 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
 ORDER BY e.id
 FOR UPDATE OF e;
 
+-- name: EpisodeExistsByPublicID :one
+-- Whether the tenant still has the episode, which a worker filing a
+-- notification about it asks first: one deleted since the event was queued
+-- has had its notifications removed, and a row filed after that would name a
+-- page that is no longer there.
+SELECT EXISTS (
+        SELECT 1
+        FROM episodes e
+        WHERE e.tenant_id = sqlc.arg('tenant_id')
+            AND e.public_id = sqlc.arg('public_id')
+    )::bool AS episode_exists;
+
 -- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

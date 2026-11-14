@@ -148,7 +148,7 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 	}
 	availability := sql.NullString{String: notificationAvailability(surfaces), Valid: true}
 
-	subjectKey := "episode:" + publication.EpisodePublicID
+	subjectKey := EpisodeSubjectKey(publication.EpisodePublicID)
 	file := func(category NotificationCategory, followerID uuid.UUID) error {
 		filedUnder, err := NotificationCategoryFor(NotificationTypeEpisodePublished, category)
 		if err != nil {

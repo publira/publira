@@ -675,6 +675,15 @@ type Querier interface {
 	// to the label by a foreign key, so it would otherwise stay behind naming
 	// nothing.
 	DeleteLabelPromotionCodes(ctx context.Context, arg DeleteLabelPromotionCodesParams) error
+	// DeleteNotificationsBySubjects for the subject keys that begin with a prefix,
+	// for a subject filed under one key per window.
+	DeleteNotificationsBySubjectPrefix(ctx context.Context, arg DeleteNotificationsBySubjectPrefixParams) (int64, error)
+	// At most batch_size of the tenant's notifications of one of the types filed
+	// under one of the subject keys, for every recipient alike, which only a
+	// connection past the member policy reaches. Their read marks go with them.
+	// The batch keeps one statement from holding the rows of every follower an
+	// episode had at once.
+	DeleteNotificationsBySubjects(ctx context.Context, arg DeleteNotificationsBySubjectsParams) (int64, error)
 	// The page, and through the foreign keys that cascade from it its
 	// translations and their versions.
 	DeletePageByIDForTenant(ctx context.Context, arg DeletePageByIDForTenantParams) error
@@ -821,6 +830,11 @@ type Querier interface {
 	// Gives a tenant that has saved nothing its row, with every column at its
 	// default, so the save after it always has a row to lock.
 	EnsureTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) error
+	// Whether the tenant still has the episode, which a worker filing a
+	// notification about it asks first: one deleted since the event was queued
+	// has had its notifications removed, and a row filed after that would name a
+	// page that is no longer there.
+	EpisodeExistsByPublicID(ctx context.Context, arg EpisodeExistsByPublicIDParams) (bool, error)
 	// Deletes up to batch_size entries of the audit log of a tenant marked for
 	// deletion, through the one function that may: the log is append-only for
 	// every role the processes connect as.
@@ -2368,6 +2382,10 @@ type Querier interface {
 	ListEpisodeCampaignPricesByEpisodeForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesByEpisodeForTenantDescParams) ([]ListEpisodeCampaignPricesByEpisodeForTenantDescRow, error)
 	ListEpisodeCampaignPricesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantAscParams) ([]ListEpisodeCampaignPricesBySeriesForTenantAscRow, error)
 	ListEpisodeCampaignPricesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantDescParams) ([]ListEpisodeCampaignPricesBySeriesForTenantDescRow, error)
+	// The comments on the episode, whose authors' notifications are filed under
+	// each comment's public ID. Read under the episode's lock, which holds off a
+	// new comment, and before the deletion takes them.
+	ListEpisodeCommentPublicIDs(ctx context.Context, arg ListEpisodeCommentPublicIDsParams) ([]string, error)
 	// Every report the reader made of a comment. The comment is named by its ID
 	// alone: its body is its author's, not the reporter's.
 	ListEpisodeCommentReportsForDataExport(ctx context.Context, arg ListEpisodeCommentReportsForDataExportParams) ([]ListEpisodeCommentReportsForDataExportRow, error)
@@ -2531,6 +2549,10 @@ type Querier interface {
 	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
 	// The reading history: each episode read, and when.
 	ListEpisodeReadsForDataExport(ctx context.Context, arg ListEpisodeReadsForDataExportParams) ([]ListEpisodeReadsForDataExportRow, error)
+	// The review rounds of the episode that were sent back, each of which filed a
+	// notification for its submitter under the round's ID. Read before the
+	// deletion takes them, as the comments are.
+	ListEpisodeReturnedReviewIDs(ctx context.Context, arg ListEpisodeReturnedReviewIDsParams) ([]uuid.UUID, error)
 	// ListEpisodeRevenueDesc walked the other way, to build a previous page. The
 	// order it describes is the same one.
 	ListEpisodeRevenueAsc(ctx context.Context, arg ListEpisodeRevenueAscParams) ([]ListEpisodeRevenueAscRow, error)

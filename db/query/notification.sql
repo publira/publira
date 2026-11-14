@@ -83,6 +83,35 @@ VALUES (
 ON CONFLICT (user_id, notification_type, subject_key) DO UPDATE
 SET in_inbox = true;
 
+-- name: DeleteNotificationsBySubjects :execrows
+-- At most batch_size of the tenant's notifications of one of the types filed
+-- under one of the subject keys, for every recipient alike, which only a
+-- connection past the member policy reaches. Their read marks go with them.
+-- The batch keeps one statement from holding the rows of every follower an
+-- episode had at once.
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = sqlc.arg('tenant_id')
+            AND n.notification_type = ANY(sqlc.arg('notification_types')::text[])
+            AND n.subject_key = ANY(sqlc.arg('subject_keys')::text[])
+        LIMIT sqlc.arg('batch_size')
+    );
+
+-- name: DeleteNotificationsBySubjectPrefix :execrows
+-- DeleteNotificationsBySubjects for the subject keys that begin with a prefix,
+-- for a subject filed under one key per window.
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = sqlc.arg('tenant_id')
+            AND n.notification_type = ANY(sqlc.arg('notification_types')::text[])
+            AND starts_with(n.subject_key, sqlc.arg('subject_key_prefix')::text)
+        LIMIT sqlc.arg('batch_size')
+    );
+
 -- name: CreatePlatformNotification :one
 INSERT INTO platform_notifications (
     id,
