@@ -47,11 +47,13 @@ type API struct {
 	sandbox    *httptest.Server
 
 	mu sync.Mutex
-	// secrets holds the secret of each API key, by account.
-	secrets  map[string]string
-	accounts map[string]*account
-	codes    []CodeRequest
-	ids      int
+	// secrets holds the secret of each API key, and merchants the merchant ID
+	// it acts for, by account.
+	secrets   map[string]string
+	merchants map[string]string
+	accounts  map[string]*account
+	codes     []CodeRequest
+	ids       int
 	// refuseDuplicates makes a code requested again under a merchantPaymentId
 	// answered as a duplicate rather than as it was first made.
 	refuseDuplicates bool
@@ -99,7 +101,7 @@ type refund struct {
 // NewAPI answers a fake that serves until t ends.
 func NewAPI(t testing.TB) *API {
 	t.Helper()
-	api := &API{secrets: map[string]string{}, accounts: map[string]*account{}}
+	api := &API{secrets: map[string]string{}, merchants: map[string]string{}, accounts: map[string]*account{}}
 	api.production = httptest.NewServer(api.mux(""))
 	api.sandbox = httptest.NewServer(api.mux(paypay.EnvironmentSandbox))
 	t.Cleanup(api.production.Close)
@@ -112,11 +114,14 @@ func (a *API) Provider() *paypay.Provider {
 	return paypay.New(paypay.WithBaseURLs(a.production.URL, a.sandbox.URL))
 }
 
-// Register makes the fake take requests under credentials.
+// Register makes the fake take requests under credentials, for the merchant
+// they name.
 func (a *API) Register(credentials paymentprovider.Credentials) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.secrets[accountKey(credentials[paypay.FieldEnvironment], credentials[paypay.FieldAPIKey])] = credentials[paypay.FieldAPISecret]
+	key := credentialsKey(credentials)
+	a.secrets[key] = credentials[paypay.FieldAPISecret]
+	a.merchants[key] = credentials[paypay.FieldMerchantID]
 }
 
 // RefuseDuplicateCodes makes the fake answer a code requested again under a
@@ -161,7 +166,8 @@ func (a *API) mux(environment string) http.Handler {
 }
 
 // authenticated checks a request's Authorization header against the secret of
-// the key it names, and hands next the key of the account it reaches and the
+// the key it names, and its merchant against the one the key acts for, as
+// PayPay asks every request to name one, and hands next the key of the account it reaches and the
 // body it carried.
 func (a *API) authenticated(environment string, next func(http.ResponseWriter, *http.Request, string, []byte)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +187,12 @@ func (a *API) authenticated(environment string, next func(http.ResponseWriter, *
 		key := accountKey(environment, apiKey)
 		a.mu.Lock()
 		secret, known := a.secrets[key]
+		merchant := a.merchants[key]
 		a.mu.Unlock()
+		if known && r.Header.Get(paypay.MerchantHeader) != merchant {
+			writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "The merchant is not one the api key acts for")
+			return
+		}
 		if err != nil || !known || time.Since(time.Unix(epoch, 0)).Abs() > clockSkew ||
 			paypay.Authorization(apiKey, secret, r.Method, r.URL.EscapedPath(), nonce, epoch, r.Header.Get("Content-Type"), body) != r.Header.Get("Authorization") {
 			writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No valid api key and secret provided")
@@ -619,15 +630,17 @@ func (f *Fixture) Provider() paymentprovider.Provider {
 
 func (*Fixture) Credentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{
-		paypay.FieldAPIKey:    "a_ContractFixtureAAAA",
-		paypay.FieldAPISecret: "ContractFixtureSecretAAAA",
+		paypay.FieldAPIKey:     "a_ContractFixtureAAAA",
+		paypay.FieldAPISecret:  "ContractFixtureSecretAAAA",
+		paypay.FieldMerchantID: "000000000000000001",
 	}
 }
 
 func (*Fixture) OtherCredentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{
-		paypay.FieldAPIKey:    "a_ContractFixtureBBBB",
-		paypay.FieldAPISecret: "ContractFixtureSecretBBBB",
+		paypay.FieldAPIKey:     "a_ContractFixtureBBBB",
+		paypay.FieldAPISecret:  "ContractFixtureSecretBBBB",
+		paypay.FieldMerchantID: "000000000000000002",
 	}
 }
 
@@ -635,6 +648,7 @@ func (*Fixture) TestCredentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{
 		paypay.FieldAPIKey:      "a_ContractFixtureSandbox",
 		paypay.FieldAPISecret:   "ContractFixtureSecretSandbox",
+		paypay.FieldMerchantID:  "000000000000000003",
 		paypay.FieldEnvironment: paypay.EnvironmentSandbox,
 	}
 }

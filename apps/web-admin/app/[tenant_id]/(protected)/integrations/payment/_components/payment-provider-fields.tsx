@@ -67,6 +67,12 @@ const PaymentCredentialName = ({
       );
     }
 
+    case "paypay.merchant_id": {
+      return (
+        <Message message="admin.settings.payment.fields.paypay.merchant_id" />
+      );
+    }
+
     case "paypay.environment": {
       return (
         <Message message="admin.settings.payment.fields.paypay.environment" />
@@ -123,6 +129,16 @@ const PaymentCredentialSource = ({
         <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.payment.field_sources.paypay.api_secret" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    case "paypay.merchant_id": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paypay.merchant_id" />
           </Suspense>
         </Field.Description>
       );

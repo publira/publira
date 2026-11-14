@@ -80,6 +80,7 @@ const paypay: PaymentProvider = {
   fields: [
     { name: "api_key", public: false, required: true, secret: true },
     { name: "api_secret", public: false, required: true, secret: true },
+    { name: "merchant_id", public: false, required: true, secret: false },
     { name: "environment", public: false, required: false, secret: false },
   ],
   id: "paypay",
@@ -323,6 +324,7 @@ describe("TenantPaymentSettingsForm", () => {
           fields: [
             { configured: false, hint: "", name: "api_key" },
             { configured: false, hint: "", name: "api_secret" },
+            { configured: false, hint: "", name: "merchant_id" },
             { configured: false, hint: "", name: "environment" },
           ],
           provider: "paypay",
@@ -333,6 +335,14 @@ describe("TenantPaymentSettingsForm", () => {
 
     expect(screen.getByLabelText("API key")).toBeDefined();
     expect(screen.getByLabelText("API secret")).toBeDefined();
+    expect(screen.getByLabelText<HTMLInputElement>("Merchant ID").type).toBe(
+      "text"
+    );
+    expect(
+      screen.getByText(
+        "The merchant ID shown beside the API key in PayPay for Developers, which every request to PayPay names."
+      )
+    ).toBeDefined();
     expect(screen.getByLabelText<HTMLInputElement>("Environment").type).toBe(
       "text"
     );

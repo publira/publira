@@ -183,17 +183,17 @@ PayPay的Web Payment會將讀者導向PayPay的付款頁面，讀者可在PayPay
 
 在PayPay for Developers中：
 
-1. 複製您販售所用環境的**API Key**與**API Secret**：測試期間使用沙盒的，PayPay核准租戶的帳戶進行正式付款後則使用正式環境的。沙盒的Key只能進行測試付款。
+1. 複製您販售所用環境的**API Key**、**API Secret**與**商家ID**：測試期間使用沙盒的，PayPay核准租戶的帳戶進行正式付款後則使用正式環境的。沙盒的Key只能進行測試付款。
 2. 將主控台在**付款設定**下顯示的**Webhook URL**（在**新增服務商**中選擇PayPay後即會顯示，新增之後則顯示在PayPay的卡片上），也就是`https://<tenant-domain>/api/v1/webhook/payment/paypay`，註冊為PayPay傳送交易事件的URL。
 
 接著在主控台的**新增服務商**中：
 
 1. 選擇PayPay作為**付款服務商**。
-2. 輸入**API Key**與**API Secret**。
+2. 輸入**API Key**、**API Secret**與**商家ID**。
 3. 在**環境**中，PayPay沙盒的Key請輸入`sandbox`，正式環境的Key則留空。
 4. 在**啟用付款**下勾選**啟用**，然後選擇**新增服務商**。
 
-![尚未新增任何付款服務商、並在新增服務商中選擇了PayPay的付款設定：未設定狀態、付款服務商、貨幣、啟用付款、API Key、API Secret、環境、要向PayPay註冊的Webhook URL，以及新增服務商。](./selling-episodes-paypay-settings.png)
+![尚未新增任何付款服務商、並在新增服務商中選擇了PayPay的付款設定：未設定狀態、付款服務商、貨幣、啟用付款、API Key、API Secret、商家ID、環境、要向PayPay註冊的Webhook URL，以及新增服務商。](./selling-episodes-paypay-settings.png)
 
 PayPay不會簽署任何內容，也沒有說明安裝實例接收通知失敗時是否會重新傳送。因此，安裝實例只從通知中取得它所指的是哪一筆付款，並使用上述API Key向PayPay讀取該筆付款，所以他人傳送的通知無法開放任何PayPay未收款的內容。安裝實例也會自行讀回每一筆PayPay結帳的付款，直到該結帳已付款或已無法再付款為止：通知始終未送達的付款，仍會在付款後約十分鐘內開放其章節。PayPay讓其未付款即過期的代碼，會在讀者再次購買時引導讀者前往新的代碼。
 
@@ -467,6 +467,6 @@ Stripe與PAY.JP會在一段時間內重新傳送失敗的通知，其控制台�
 5. 回到章節，等待它開放，然後確認它列在**已購買**下。若一分鐘內沒有開放，請在付款服務商的控制台中查看傳送紀錄，如[付款後章節沒有開放時](#付款後章節沒有開放時)所述。
 6. 從**付款** › **購買記錄**退還該購買，或在付款服務商的控制台中全額退還該付款，藉此證明退款也會送達安裝實例。PayPay的購買請從**付款** › **購買記錄**退款，因為在PayPay自己的工具中進行的退款永遠不會送達安裝實例。重新載入章節：章節再次鎖定，**前往結帳**也重新出現。
 
-兩項都通過後，將測試系列的**顯示位置**設為**不在任何位置顯示**。接著將測試的secret key換成正式的，在正式模式中註冊Webhook，輸入其signing secret或權杖，然後儲存。若是PayPay，請輸入正式環境的API Key與API Secret，並清空**環境**。
+兩項都通過後，將測試系列的**顯示位置**設為**不在任何位置顯示**。接著將測試的secret key換成正式的，在正式模式中註冊Webhook，輸入其signing secret或權杖，然後儲存。若是PayPay，請輸入正式環境的API Key、API Secret與商家ID，並清空**環境**。
 
 若要測試應用程式內購買，請依[測試購買](../5-mobile-app/5-purchases-and-sign-in.md#測試購買)的說明使用商店本身的測試買家。這些購買同樣會記錄為測試。

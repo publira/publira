@@ -3931,6 +3931,7 @@
           "paypay": {
             "api_key": "APIキー",
             "api_secret": "APIシークレット",
+            "merchant_id": "加盟店ID",
             "environment": "環境"
           }
         },
@@ -3942,6 +3943,7 @@
           "paypay": {
             "api_key": "PayPay for Developersで発行したAPIキーです。PayPayのサンドボックスのキーではテスト決済だけを受け付けます。",
             "api_secret": "APIキーと一緒にPayPay for Developersで発行されるAPIシークレットです。",
+            "merchant_id": "PayPay for DevelopersでAPIキーと並んで表示される加盟店IDです。PayPayへのリクエストはどれもこのIDを付けて送ります。",
             "environment": "本番環境のキーなら空欄のまま、PayPayのサンドボックスのキーならsandboxと入力します。"
           }
         },

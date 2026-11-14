@@ -25,6 +25,10 @@ import (
 // contentType is the content type every request body is sent and signed as.
 const contentType = "application/json;charset=UTF-8"
 
+// MerchantHeader names the merchant a request is made for, which PayPay
+// asks of every request.
+const MerchantHeader = "X-ASSUME-MERCHANT"
+
 // emptyContent stands for both the content type and the body hash of a
 // request without a body in what it is signed over.
 const emptyContent = "empty"
@@ -117,8 +121,9 @@ func (e *APIError) refused() bool {
 func (p *Provider) do(ctx context.Context, credentials paymentprovider.Credentials, method, path string, body, out any) error {
 	apiKey := strings.TrimSpace(credentials[FieldAPIKey])
 	apiSecret := strings.TrimSpace(credentials[FieldAPISecret])
-	if apiKey == "" || apiSecret == "" {
-		return errors.New("paypay api key or secret is not configured")
+	merchantID := strings.TrimSpace(credentials[FieldMerchantID])
+	if apiKey == "" || apiSecret == "" || merchantID == "" {
+		return errors.New("paypay api key, secret, or merchant id is not configured")
 	}
 	origin, err := p.origin(credentials)
 	if err != nil {
@@ -145,6 +150,7 @@ func (p *Provider) do(ctx context.Context, credentials paymentprovider.Credentia
 	signedPath := req.URL.EscapedPath()
 	req.Header.Set("Authorization", Authorization(apiKey, apiSecret, method, signedPath, nonce, time.Now().Unix(), contentType, payload))
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set(MerchantHeader, merchantID)
 	if payload != nil {
 		req.Header.Set("Content-Type", contentType)
 	}

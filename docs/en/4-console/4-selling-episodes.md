@@ -182,17 +182,17 @@ PayPay's Web Payment sends the reader to a payment page of PayPay's, where they 
 
 In PayPay for Developers:
 
-1. Copy the **API key** and the **API secret** of the environment you sell in: the sandbox's while you test, and production's once PayPay has approved the tenant's account for live payments. A sandbox key takes test payments only.
+1. Copy the **API key**, the **API secret**, and the **merchant ID** of the environment you sell in: the sandbox's while you test, and production's once PayPay has approved the tenant's account for live payments. A sandbox key takes test payments only.
 2. Register the **Webhook URL** the console shows under **Payment settings** once PayPay is chosen under **Add a provider**, or on PayPay's card once it is added, `https://<tenant-domain>/api/v1/webhook/payment/paypay`, as the URL PayPay sends its transaction events to.
 
 Then in the console, under **Add a provider**:
 
 1. Choose PayPay as the **Payment provider**.
-2. Enter the **API key** and the **API secret**.
+2. Enter the **API key**, the **API secret**, and the **Merchant ID**.
 3. Under **Environment**, enter `sandbox` for a key of PayPay's sandbox, or leave it empty for a production key.
 4. Under **Enable payments**, check **Enable**, and choose **Add provider**.
 
-![Payment settings with no provider added yet and PayPay chosen under Add a provider: the Not set status, Payment provider, Currency, Enable payments, API key, API secret, Environment, the Webhook URL to register with PayPay, and Add provider.](./selling-episodes-paypay-settings.png)
+![Payment settings with no provider added yet and PayPay chosen under Add a provider: the Not set status, Payment provider, Currency, Enable payments, API key, API secret, Merchant ID, Environment, the Webhook URL to register with PayPay, and Add provider.](./selling-episodes-paypay-settings.png)
 
 PayPay signs nothing, and does not say whether it sends a notification again when the install fails to take it. The install therefore takes a notification for nothing but which payment it names, and reads that payment from PayPay with the API key above, so a notification someone else sends can open nothing PayPay has not taken. It also reads the payment of every PayPay checkout back by itself until the checkout is paid or can no longer be: a payment whose notification never arrives still opens its episode, within about ten minutes of the payment. A code PayPay lets expire unpaid leads the reader to a new one when they buy again.
 
@@ -466,6 +466,6 @@ A purchase made in the provider's test mode opens the episode but is recorded as
 5. Back on the episode, wait for it to open, then check that it is listed under **Purchases**. If it does not open within a minute, read the delivery in the provider's dashboard, as [When a payment does not open the episode](#when-a-payment-does-not-open-the-episode) describes.
 6. Refund the purchase from **Payments** › **Purchases**, or the payment in full from the provider's dashboard, which proves that refunds reach the install too. Refund a PayPay purchase from **Payments** › **Purchases**, since a refund made in PayPay's own tools never reaches the install. Reload the episode: it is locked again, and **Buy this episode** is back.
 
-When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save. For PayPay, enter production's API key and API secret and empty **Environment**.
+When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save. For PayPay, enter production's API key, API secret, and merchant ID, and empty **Environment**.
 
 To test in-app purchase, use the stores' own test buyers as [Testing a purchase](../5-mobile-app/5-purchases-and-sign-in.md#testing-a-purchase) describes. Those purchases are recorded as tests as well.

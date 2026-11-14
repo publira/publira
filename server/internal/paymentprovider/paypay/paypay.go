@@ -40,6 +40,9 @@ const (
 	// for Developers issues, which sign every request.
 	FieldAPIKey    = "api_key"
 	FieldAPISecret = "api_secret"
+	// FieldMerchantID is the merchant ID PayPay for Developers shows beside
+	// the key, which every request names the merchant by.
+	FieldMerchantID = "merchant_id"
 	// FieldEnvironment names the host the key belongs to: empty for
 	// production, and EnvironmentSandbox for PayPay's sandbox, whose keys
 	// take test payments only.
@@ -135,6 +138,7 @@ func (*Provider) Declaration() paymentprovider.Declaration {
 		Fields: []paymentprovider.Field{
 			{Name: FieldAPIKey, Secret: true, Required: true},
 			{Name: FieldAPISecret, Secret: true, Required: true},
+			{Name: FieldMerchantID, Required: true},
 			{Name: FieldEnvironment},
 		},
 		Currencies:         []string{currency},

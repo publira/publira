@@ -3931,6 +3931,7 @@
           "paypay": {
             "api_key": "API Key",
             "api_secret": "API Secret",
+            "merchant_id": "商户ID",
             "environment": "环境"
           }
         },
@@ -3942,6 +3943,7 @@
           "paypay": {
             "api_key": "在PayPay for Developers中签发的API Key。PayPay沙盒的Key只能接受测试付款。",
             "api_secret": "与API Key一起在PayPay for Developers中签发的API Secret。",
+            "merchant_id": "PayPay for Developers中与API Key一同显示的商户ID。发往PayPay的每个请求都会附带此ID。",
             "environment": "生产环境的Key请留空，PayPay沙盒的Key请输入sandbox。"
           }
         },

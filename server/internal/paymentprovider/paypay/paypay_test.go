@@ -2,6 +2,7 @@ package paypay_test
 
 import (
 	"errors"
+	"maps"
 	"net/url"
 	"strings"
 	"testing"
@@ -15,8 +16,16 @@ import (
 )
 
 var testCredentials = paymentprovider.Credentials{
-	paypay.FieldAPIKey:    "a_ProviderTestAAAA",
-	paypay.FieldAPISecret: "ProviderTestSecretAAAA",
+	paypay.FieldAPIKey:     "a_ProviderTestAAAA",
+	paypay.FieldAPISecret:  "ProviderTestSecretAAAA",
+	paypay.FieldMerchantID: "000000000000000001",
+}
+
+// withCredential answers testCredentials with name holding value instead.
+func withCredential(name, value string) paymentprovider.Credentials {
+	credentials := maps.Clone(testCredentials)
+	credentials[name] = value
+	return credentials
 }
 
 func newAPI(t *testing.T) (*paypaytest.API, *paypay.Provider) {
@@ -138,11 +147,7 @@ func TestStartCheckoutRefusesWhatPayPayCannotCharge(t *testing.T) {
 
 func TestStartCheckoutRefusesAnEnvironmentItDoesNotKnow(t *testing.T) {
 	_, provider := newAPI(t)
-	credentials := paymentprovider.Credentials{
-		paypay.FieldAPIKey:      testCredentials[paypay.FieldAPIKey],
-		paypay.FieldAPISecret:   testCredentials[paypay.FieldAPISecret],
-		paypay.FieldEnvironment: "staging",
-	}
+	credentials := withCredential(paypay.FieldEnvironment, "staging")
 	if _, err := provider.StartCheckout(t.Context(), credentials, checkoutRequest("env0123456789abcdef0123456789abc")); err == nil {
 		t.Fatal("StartCheckout under an unknown environment = nil error, want one")
 	}
@@ -151,16 +156,40 @@ func TestStartCheckoutRefusesAnEnvironmentItDoesNotKnow(t *testing.T) {
 	}
 }
 
-func TestStartCheckoutUnderAWrongSecretIsRefused(t *testing.T) {
-	_, provider := newAPI(t)
-	credentials := paymentprovider.Credentials{
-		paypay.FieldAPIKey:    testCredentials[paypay.FieldAPIKey],
-		paypay.FieldAPISecret: "AnotherSecret",
+func TestStartCheckoutUnderAWrongSecretOrMerchantIsRefused(t *testing.T) {
+	for name, credentials := range map[string]paymentprovider.Credentials{
+		"another secret":   withCredential(paypay.FieldAPISecret, "AnotherSecret"),
+		"another merchant": withCredential(paypay.FieldMerchantID, "000000000000000009"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, provider := newAPI(t)
+			_, err := provider.StartCheckout(t.Context(), credentials, checkoutRequest("auth0123456789abcdef0123456789ab"))
+			var apiErr *paypay.APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != "UNAUTHORIZED" {
+				t.Fatalf("StartCheckout error = %v, want PayPay's UNAUTHORIZED", err)
+			}
+		})
 	}
-	_, err := provider.StartCheckout(t.Context(), credentials, checkoutRequest("auth0123456789abcdef0123456789ab"))
-	var apiErr *paypay.APIError
-	if !errors.As(err, &apiErr) || apiErr.Code != "UNAUTHORIZED" {
-		t.Fatalf("StartCheckout error = %v, want PayPay's UNAUTHORIZED", err)
+}
+
+func TestEveryRequestNamesTheMerchant(t *testing.T) {
+	api, provider := newAPI(t)
+	// The fake refuses a request whose merchant is not the key's, so each of
+	// these reaching it is a request that named the merchant.
+	const checkoutID = "merchant0123456789abcdef01234567"
+	if _, err := provider.StartCheckout(t.Context(), testCredentials, checkoutRequest(checkoutID)); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+	api.Pay(testCredentials, checkoutID, 500, "JPY", time.Now())
+	if _, err := provider.ParseNotification(t.Context(), provider.CheckoutNotification(checkoutID), nil, testCredentials); err != nil {
+		t.Fatalf("ParseNotification: %v", err)
+	}
+	if _, err := provider.Refund(t.Context(), testCredentials, paymentprovider.RefundRequest{PaymentID: checkoutID, IdempotencyKey: "merchant-refund"}); err != nil {
+		t.Fatalf("Refund: %v", err)
+	}
+	// Without one, nothing is sent.
+	if _, err := provider.StartCheckout(t.Context(), withCredential(paypay.FieldMerchantID, ""), checkoutRequest("nomerchant0123456789abcdef012345")); err == nil {
+		t.Fatal("StartCheckout without a merchant id = nil error, want one")
 	}
 }
 
@@ -216,10 +245,7 @@ func TestParseNotificationOfACodeThatRanOutUnpaidIsOneThePaymentIsNotHeldFor(t *
 
 func TestParseNotificationUnderAWrongSecretIsCredentialsRefused(t *testing.T) {
 	_, provider := newAPI(t)
-	credentials := paymentprovider.Credentials{
-		paypay.FieldAPIKey:    testCredentials[paypay.FieldAPIKey],
-		paypay.FieldAPISecret: "AnotherSecret",
-	}
+	credentials := withCredential(paypay.FieldAPISecret, "AnotherSecret")
 	payload, headers := paypaytest.Notification(t, "transaction.completed.json", map[string]any{"merchant_order_id": "credentials0123456789abcdef01234"})
 	if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrCredentialsRefused) {
 		t.Fatalf("ParseNotification error = %v, want ErrCredentialsRefused", err)

@@ -3931,6 +3931,7 @@
           "paypay": {
             "api_key": "API 키",
             "api_secret": "API 시크릿",
+            "merchant_id": "가맹점 ID",
             "environment": "환경"
           }
         },
@@ -3942,6 +3943,7 @@
           "paypay": {
             "api_key": "PayPay for Developers에서 발급한 API 키입니다. PayPay 샌드박스의 키로는 테스트 결제만 받을 수 있습니다.",
             "api_secret": "API 키와 함께 PayPay for Developers에서 발급되는 API 시크릿입니다.",
+            "merchant_id": "PayPay for Developers에서 API 키와 함께 표시되는 가맹점 ID입니다. PayPay로 보내는 모든 요청에 이 ID를 붙입니다.",
             "environment": "운영 환경의 키라면 비워 두고, PayPay 샌드박스의 키라면 sandbox를 입력합니다."
           }
         },

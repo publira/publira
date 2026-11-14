@@ -3931,6 +3931,7 @@
           "paypay": {
             "api_key": "API key",
             "api_secret": "API secret",
+            "merchant_id": "Merchant ID",
             "environment": "Environment"
           }
         },
@@ -3942,6 +3943,7 @@
           "paypay": {
             "api_key": "The API key issued in PayPay for Developers. A key of PayPay's sandbox takes test payments only.",
             "api_secret": "The API secret issued with the API key in PayPay for Developers.",
+            "merchant_id": "The merchant ID shown beside the API key in PayPay for Developers, which every request to PayPay names.",
             "environment": "Leave it empty for a production key, or enter sandbox for a key of PayPay's sandbox."
           }
         },
