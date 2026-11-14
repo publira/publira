@@ -3846,8 +3846,9 @@ type Querier interface {
 	// The episode, with the title the audit entry keeps once no row is left to
 	// join. The row lock is what keeps a reference from arriving while the episode
 	// is deleted: every row that refers to the episode through a foreign key takes
-	// a key share lock on it when it is written, which waits for this one, and
-	// fails once the episode is gone.
+	// a key share lock on it when it is written, and so does a new promotion code,
+	// which names it by none. The key share lock waits for this one, and fails
+	// once the episode is gone.
 	LockEpisodeForDeletion(ctx context.Context, arg LockEpisodeForDeletionParams) (LockEpisodeForDeletionRow, error)
 	// Whether the episode is published, so the deletion owes the episode.unpublished
 	// a published episode leaving the site owes. The listing is locked rather than
@@ -4514,11 +4515,11 @@ type Querier interface {
 	// Whether the label, series, volume, or episode a new code names is one of
 	// the tenant's. The catalog is always there.
 	//
-	// A label and a series are read under a key share lock, held until the code
-	// is committed: the code names its target by no foreign key, so the lock is
-	// what makes a DeleteLabel or a DeleteSeries running at the same time either
-	// wait for the code and refuse, or delete the target first and leave nothing
-	// here to find.
+	// A label, a series, and an episode are read under a key share lock, held
+	// until the code is committed: the code names its target by no foreign key,
+	// so the lock is what makes a DeleteLabel, a DeleteSeries, or a DeleteEpisode
+	// running at the same time either wait for the code and see it, or delete the
+	// target first and leave nothing here to find.
 	PromotionCodeTargetExists(ctx context.Context, arg PromotionCodeTargetExistsParams) (bool, error)
 	// The console's publication of an episode given a time that has already
 	// passed: what MarkEpisodePublished does once the time is reached, done in the
