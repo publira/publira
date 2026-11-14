@@ -1333,6 +1333,27 @@
       "created": "作者已创建。",
       "list_failed": "无法加载作者。请稍后再试。",
       "save_failed": "无法保存该作者。请稍后再试。",
+      "credits": {
+        "title": "署名",
+        "description": "署名该作者的系列和章节，以及每条署名的角色。打开后即可在那里更改署名。",
+        "list_error": "无法显示署名",
+        "list_failed": "无法加载署名。请稍后再试。",
+        "columns": {
+          "series": "系列",
+          "episode": "章节",
+          "role": "角色",
+          "actions": "操作"
+        },
+        "on_series": "整个系列",
+        "no_role": "无角色",
+        "untitled": "无标题",
+        "open_series": "打开系列",
+        "open_episode": "打开章节",
+        "empty_title": "没有署名该作者的系列或章节。",
+        "empty_description": "可在系列表单或章节编辑页面的作者中为其署名。",
+        "pagination_aria": "署名列表分页",
+        "pagination_description": "按系列分组，每页最多{$count}条。"
+      },
       "accounts": {
         "title": "读者账户",
         "description": "以该作者署名的本人所持有的读者账户。只有租户管理员可以关联和解除关联。",
@@ -1379,9 +1400,9 @@
         "failed": "无法删除作者。请稍后再试。",
         "not_found": "该作者已被删除。请返回作者列表。",
         "name_mismatch": "输入的姓名与本作者的姓名不一致。",
-        "view_series": "查看系列",
+        "view_credits": "查看署名",
         "refused": {
-          "credited": "在系列或章节中署名的作者无法删除。请先将其从所有署名该作者的系列和章节的作者中移除。",
+          "credited": "在系列或章节中署名的作者无法删除。请先将其从本页署名中列出的所有系列和章节的作者中移除。",
           "on_royalty_statement": "已结算的版税明细中有该作者的行，因此无法删除。明细会按结算时的样子保留。",
           "has_linked_account": "已关联读者账户的作者无法删除。请先在本页的读者账户中解除所有账户的关联。",
           "referenced": "有需要保留的记录引用了本作者，因此无法删除。"

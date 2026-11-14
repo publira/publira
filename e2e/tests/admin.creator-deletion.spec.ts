@@ -7,6 +7,7 @@ import {
 } from "../src/admin";
 import { applyScenarioSql, deleteCreatorsByPublicIds } from "../src/db";
 import { SEED_CATALOG, uniqueSuffix } from "../src/scenarios/admin-publish";
+import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   TENANT_ROLES_EDITOR,
   TENANT_ROLES_SCENARIO,
@@ -19,8 +20,8 @@ const SEED_CREATOR_PATH = `/creators/${SEED_CATALOG.creatorPublicId}`;
 /**
  * Deleting an Author from the end of their screen: a Tenant admin deletes one
  * that nothing refers to by typing their name, a refused deletion keeps the
- * dialog open with the reason and a link to the series list, and an Editor is
- * offered no control at all.
+ * dialog open with the reason and a link to the credits on the same screen,
+ * and an Editor is offered no control at all.
  */
 test.describe("admin author deletion", () => {
   let createdCreatorIds: string[] = [];
@@ -63,7 +64,7 @@ test.describe("admin author deletion", () => {
     ).toBeVisible();
   });
 
-  test("keeps a credited author and links to the series list", async ({
+  test("keeps a credited author and takes the admin to their credits", async ({
     page,
   }) => {
     await signInAsSeedAdmin(page);
@@ -81,13 +82,29 @@ test.describe("admin author deletion", () => {
 
     await expect(
       dialog.getByText(
-        "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode that credits them first."
+        "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode listed under Credits on this page first."
       )
     ).toBeVisible();
     expect(new URL(page.url()).pathname).toBe(SEED_CREATOR_PATH);
 
-    await dialog.getByRole("link", { name: "View series" }).click();
-    await page.waitForURL((url) => url.pathname === "/series");
+    await dialog.getByRole("link", { name: "View credits" }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Credits" })
+    ).toBeInViewport();
+
+    // The credit on the seed series itself opens the series form, where it
+    // is removed.
+    const seriesCredit = page
+      .getByRole("row")
+      .filter({ hasText: SEED_TENANT.series.title })
+      .filter({ hasText: "The series itself" });
+
+    await seriesCredit.getByRole("link", { name: "Open series" }).click();
+    await page.waitForURL(
+      (url) => url.pathname === `/series/${SEED_TENANT.series.publicId}`
+    );
 
     // The Author is still there.
     await page.goto(`${WEB_ADMIN_BASE_URL}${SEED_CREATOR_PATH}`);

@@ -1,8 +1,8 @@
 ---
 title: Authors and Author roles
-description: Register the people credited on a work, choose what they are credited as, link an Author to their own reader account, and delete an Author that nothing refers to.
+description: Register the people credited on a work, choose what they are credited as, see the series and episodes that credit an Author, link an Author to their own reader account, and delete an Author that nothing refers to.
 published: 2026-10-07
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 An Author is a person credited on a work: the writer, the artist, the original author of an adaptation. A series and each of its episodes credit their Authors, each in an Author role, and those credits are what readers see beside a title and what royalties are paid on.
@@ -30,6 +30,14 @@ A person who publishes under two pen names is two Authors.
 - An Author without a published series has no page.
 
 The credits on a series or episode page are plain text and do not link to the Author's page.
+
+### An Author's credits
+
+**Credits**, under the form on the Author's page, lists every series and episode that credits the Author, whatever the state of the series or the episode. Everyone who can open the page sees it, Editors and Auditors included.
+
+Each row names the **Series**, the **Episode**, or **The series itself** for a credit on the series, and the **Role** the Author is credited in. An Author credited in two roles on one series or episode has a row for each. The rows are grouped by series, the series' own credit first and then its episodes in reading order, twenty to a page. **Open series** and **Open episode** open the screen where that credit is changed, as [Crediting Authors](#crediting-authors) describes.
+
+![The Credits section of an Author's page: a row for the credit on the series itself and one for each episode, each with its role and Open series or Open episode.](./authors-credits-list.png)
 
 ### Linking an Author to a reader account
 
@@ -66,7 +74,7 @@ A Tenant admin deletes an Author with **Delete this author**, at the end of the 
 
 An Author is deleted only once nothing refers to them. While any of these does, the dialog says which instead of deleting them:
 
-- A credit on a series or an episode, whatever its state. Remove the Author from **Authors** on the form of each series and on the edit screen of each episode that credits them, as [Crediting Authors](#crediting-authors) describes. **View series** opens the **Series** list.
+- A credit on a series or an episode, whatever its state. Remove the Author from **Authors** on the form of each series and on the edit screen of each episode that credits them, as [Crediting Authors](#crediting-authors) describes. **View credits** closes the dialog and takes you to [Credits](#an-authors-credits) on the same page, which lists each of them.
 - A line of a closed royalty statement. A statement is kept as it was closed, so an Author who has been on one is never deleted.
 - A reader account linked to the Author. **Unlink** each one under **Reader accounts** on the same page.
 

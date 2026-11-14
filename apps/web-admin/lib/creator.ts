@@ -1,4 +1,10 @@
-import type { Creator, CreatorAccount } from "@publira/api-client/admin/types";
+import type {
+  Creator,
+  CreatorAccount,
+  CreatorCredit,
+  CreditedEpisode,
+  CreditedSeries,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -23,6 +29,7 @@ import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
+import { creatorRolesCacheTag } from "./creator-roles";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -30,10 +37,12 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { episodesCacheTag } from "./episode";
 import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageKey } from "./messages";
 import { mapReader } from "./reader";
+import { seriesListCacheTag } from "./series";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -73,9 +82,10 @@ export type UpdateCreatorResult =
 
 /**
  * Where the console sends a staff member to clear what keeps an Author from
- * being deleted, for a refusal it can point to.
+ * being deleted, for a refusal it can point to: `credits` is the Credits
+ * section of the Author's own screen.
  */
-export type CreatorDeletionReference = "series";
+export type CreatorDeletionReference = "credits";
 
 export type DeleteCreatorResult =
   | { ok: true }
@@ -515,6 +525,166 @@ export const getCreator = async (
     await getCreatorForSession(input, locale, await getAccessToken())
   );
 
+/** A series or an episode a credit names, as far as a row links to it. */
+export interface CreditedItem {
+  /** The primary key the admin API addresses it by. */
+  id: string;
+  /** What its console screen is addressed by in the URL. */
+  publicId: string;
+  /** In the tenant's default locale; empty when it has no translation. */
+  title: string;
+}
+
+/**
+ * One credit naming an Author: on the series when `episode` is unset, on that
+ * episode of the series when it is set.
+ */
+export interface CreatorCreditItem {
+  series: CreditedItem;
+  episode?: CreditedItem;
+  /** The role's primary key, or empty where {@link roleName} is. */
+  roleId: string;
+  /**
+   * The role's name, or empty for a credit written before the tenant had
+   * roles, which states none.
+   */
+  roleName: string;
+}
+
+export type ListCreatorCreditsResult = CursorPageTokens &
+  (
+    | { ok: true; credits: CreatorCreditItem[] }
+    | {
+        ok: false;
+        message: string;
+        credits: CreatorCreditItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn?: boolean;
+      }
+  );
+
+/** The generated `CreatorCredit` fields {@link mapCreatorCredits} reads. */
+type RawCreatorCredit = Pick<CreatorCredit, "episode" | "role" | "series">;
+
+/** The generated `CreditedSeries` / `CreditedEpisode` fields a row reads. */
+type RawCreditedItem =
+  | Pick<CreditedEpisode, "id" | "publicId" | "title">
+  | Pick<CreditedSeries, "id" | "publicId" | "title">;
+
+const mapCreditedItem = ({
+  id,
+  publicId,
+  title,
+}: RawCreditedItem): CreditedItem => ({
+  id: id ?? "",
+  publicId: publicId ?? "",
+  title: title ?? "",
+});
+
+const mapCreatorCredits = (
+  credits: RawCreatorCredit[] | undefined
+): CreatorCreditItem[] =>
+  // A credit whose series the response left out has nowhere to link to.
+  (credits ?? []).flatMap(({ episode, role, series }) =>
+    series
+      ? [
+          {
+            episode: episode ? mapCreditedItem(episode) : undefined,
+            roleId: role?.id ?? "",
+            roleName: role?.name ?? "",
+            series: mapCreditedItem(series),
+          },
+        ]
+      : []
+  );
+
+const listCreatorCreditsForSession = async (
+  input: {
+    tenantId: string;
+    /** The creator's primary key. */
+    creatorId: string;
+    token: string;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<CachedRead<ListCreatorCreditsResult>> => {
+  "use cache: private";
+  // A credit is written with the series or the episode it is on, and a row
+  // shows their titles and the role's name, so the writes that clear these
+  // tags are the ones that change what the list reports.
+  cacheTag(`creators-${input.tenantId}`);
+  cacheTag(seriesListCacheTag(input.tenantId));
+  cacheTag(episodesCacheTag(input.tenantId));
+  cacheTag(creatorRolesCacheTag(input.tenantId));
+
+  const t = await getMessagesFor(locale);
+
+  if (!sessionId) {
+    dropFailedCacheEntry();
+
+    return {
+      ...emptyCursorPageTokens,
+      credits: [],
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.creator.listCreatorCredits(
+      {
+        ...cursorPageRequest({ token: input.token }),
+        creatorId: input.creatorId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ...cursorPageTokens(response),
+      // Keep the server's order: grouped by series, the series' own credit
+      // first and then its episodes in reading order.
+      credits: mapCreatorCredits(response.credits),
+      ok: true,
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+
+    return {
+      ...emptyCursorPageTokens,
+      credits: [],
+      message: rpcErrorMessage(error, t("admin.creators.credits.list_failed"), {
+        locale,
+      }),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
+  }
+};
+
+/**
+ * One page of the series and episode credits naming an Author, read with the
+ * operator's session: the service credential is not admitted on this RPC.
+ */
+export const listCreatorCredits = async (
+  input: {
+    tenantId: string;
+    /** The creator's primary key. */
+    creatorId: string;
+    token?: string;
+  },
+  locale: Locale
+): Promise<ListCreatorCreditsResult> =>
+  settleCachedRead(
+    await listCreatorCreditsForSession(
+      { ...input, token: input.token ?? "" },
+      locale,
+      await getAccessToken()
+    )
+  );
+
 export interface CreatorAccountInput {
   tenantId: string;
   /** The creator's primary key. */
@@ -617,10 +787,10 @@ export const unlinkCreatorAccount = async (
 /**
  * What `DeleteCreator` refuses an Author for, in the order the API checks
  * them, with the sentence each is worded in and, where there is one, the
- * screen to clear it from. No list names an Author's credits, so a credit
- * points to the series list; a linked account is cleared under **Reader
- * accounts** on the Author's own screen, and a royalty statement line is never
- * cleared.
+ * place to clear it from. A credit points to the Credits section of the
+ * Author's own screen, whose rows open each series and episode crediting them;
+ * a linked account is cleared under **Reader accounts** on the same screen,
+ * and a royalty statement line is never cleared.
  */
 const CREATOR_DELETION_REFUSALS: readonly {
   message: AdminMessageKey;
@@ -630,7 +800,7 @@ const CREATOR_DELETION_REFUSALS: readonly {
   {
     message: "admin.creators.delete.refused.credited",
     reason: RPC_ERROR_REASON.creatorCredited,
-    reference: "series",
+    reference: "credits",
   },
   {
     message: "admin.creators.delete.refused.on_royalty_statement",

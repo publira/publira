@@ -29,6 +29,7 @@ const {
   mockGetAccessToken,
   mockGetCreator,
   mockLinkCreatorAccount,
+  mockListCreatorCredits,
   mockListCreators,
   mockUnlinkCreatorAccount,
 } = vi.hoisted(() => ({
@@ -38,6 +39,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetCreator: vi.fn(),
   mockLinkCreatorAccount: vi.fn(),
+  mockListCreatorCredits: vi.fn(),
   mockListCreators: vi.fn(),
   mockUnlinkCreatorAccount: vi.fn(),
 }));
@@ -57,6 +59,7 @@ vi.mock("./api", () => ({
       deleteCreator: mockDeleteCreator,
       getCreator: mockGetCreator,
       linkCreatorAccount: mockLinkCreatorAccount,
+      listCreatorCredits: mockListCreatorCredits,
       listCreators: mockListCreators,
       unlinkCreatorAccount: mockUnlinkCreatorAccount,
     },
@@ -383,6 +386,183 @@ describe("getCreator", () => {
   });
 });
 
+describe("listCreatorCredits", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads one page of the author's credits with the operator's session", async () => {
+    mockListCreatorCredits.mockResolvedValue({
+      credits: [],
+      nextToken: "next-page",
+      previousToken: "previous-page",
+    });
+
+    const { listCreatorCredits } = await import("./creator");
+
+    const result = await listCreatorCredits(
+      {
+        creatorId: "CREATOR001-ID",
+        tenantId: "TENANT001",
+        token: "current-page",
+      },
+      "en"
+    );
+
+    // The service credential is not admitted on ListCreatorCredits.
+    expect(mockListCreatorCredits).toHaveBeenCalledExactlyOnceWith(
+      {
+        creatorId: "CREATOR001-ID",
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      credits: [],
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "previous-page",
+    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  // A credit changes with the series or the episode it is on, and a row shows
+  // their titles and the role's name, so the read carries the tags their
+  // writes clear rather than one of its own that nothing would clear.
+  it("carries the tags of the series, the episodes, and the roles", async () => {
+    mockListCreatorCredits.mockResolvedValue({ credits: [] });
+
+    const { listCreatorCredits } = await import("./creator");
+
+    await listCreatorCredits(
+      { creatorId: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockCacheTag).toHaveBeenCalledWith("creators-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("creator-roles-TENANT001");
+  });
+
+  it("keeps the server's order and tells a series credit from an episode's", async () => {
+    mockListCreatorCredits.mockResolvedValue({
+      credits: [
+        {
+          role: { id: "ROLE-WRITER", name: "Writer", publicId: "writer" },
+          series: { id: "SERIES-B", publicId: "SERIESB", title: "Beta" },
+        },
+        {
+          episode: { id: "EPISODE-1", publicId: "EPISODE1", title: "One" },
+          series: { id: "SERIES-B", publicId: "SERIESB", title: "Beta" },
+        },
+        {
+          episode: { id: "EPISODE-2", publicId: "EPISODE2", title: "Two" },
+          role: { id: "ROLE-ARTIST", name: "Artist", publicId: "artist" },
+          series: { id: "SERIES-A", publicId: "SERIESA", title: "Alpha" },
+        },
+        // A credit whose series the response left out has nowhere to link.
+        {
+          episode: { id: "EPISODE-3", publicId: "EPISODE3", title: "Three" },
+        },
+      ],
+    });
+
+    const { listCreatorCredits } = await import("./creator");
+
+    const result = await listCreatorCredits(
+      { creatorId: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.credits).toEqual([
+      {
+        episode: undefined,
+        roleId: "ROLE-WRITER",
+        roleName: "Writer",
+        series: { id: "SERIES-B", publicId: "SERIESB", title: "Beta" },
+      },
+      {
+        episode: { id: "EPISODE-1", publicId: "EPISODE1", title: "One" },
+        roleId: "",
+        roleName: "",
+        series: { id: "SERIES-B", publicId: "SERIESB", title: "Beta" },
+      },
+      {
+        episode: { id: "EPISODE-2", publicId: "EPISODE2", title: "Two" },
+        roleId: "ROLE-ARTIST",
+        roleName: "Artist",
+        series: { id: "SERIES-A", publicId: "SERIESA", title: "Alpha" },
+      },
+    ]);
+  });
+
+  it("returns an error without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+
+    const { listCreatorCredits } = await import("./creator");
+
+    const result = await listCreatorCredits(
+      { creatorId: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListCreatorCredits).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      credits: [],
+      message: "Your session is no longer valid. Please sign in again.",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: true,
+    });
+  });
+
+  it("returns a message and drops the entry when the read fails", async () => {
+    mockListCreatorCredits.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listCreatorCredits } = await import("./creator");
+
+    const result = await listCreatorCredits(
+      { creatorId: "CREATOR001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      credits: [],
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListCreatorCredits.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listCreatorCredits } = await import("./creator");
+
+    await expect(
+      listCreatorCredits(
+        { creatorId: "CREATOR001-ID", tenantId: "TENANT001" },
+        "en"
+      )
+    ).rejects.toThrow(Error);
+  });
+});
+
 describe("listAllCreators", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -668,9 +848,9 @@ describe("deleteCreator", () => {
   it.each([
     {
       message:
-        "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode that credits them first.",
+        "This author cannot be deleted while a series or an episode credits them. Remove them from the Authors of each series and episode listed under Credits on this page first.",
       reason: "CREATOR_CREDITED",
-      reference: "series",
+      reference: "credits",
     },
     {
       message:

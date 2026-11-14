@@ -992,6 +992,33 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      // The seed Author is credited on the seed series and every one of its
+      // episodes, so the shot ends at the third credit: the series' own and
+      // the first of its episodes'.
+      test("the credits naming an Author", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          `/creators/${SEED_CATALOG.creatorPublicId}`
+        );
+
+        const section = docsSection(page, t("admin.creators.credits.title"));
+
+        await expectDocsScreenshot(page, {
+          element: [
+            section.getByRole("heading", { level: 2 }),
+            section.getByRole("row").nth(3),
+          ],
+          locale,
+          page: "console/catalog/authors",
+          subject: "credits-list",
+        });
+      });
+
       // The dialog is left with the name typed and never submitted, so the
       // seed Author stays.
       test("the dialog that deletes an Author, with their name typed", async ({

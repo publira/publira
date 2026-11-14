@@ -3,6 +3,7 @@ import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -23,7 +24,12 @@ import {
 } from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getCreator } from "#lib/creator";
+import { getCreator, listCreatorCredits } from "#lib/creator";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -32,7 +38,9 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { CreatorForm } from "../_components/creator-form";
 import { deleteCreatorAction, updateCreatorAction } from "../_lib/actions";
 import { CreatorAccounts } from "./_components/creator-accounts";
+import { CreatorCredits } from "./_components/creator-credits";
 import { CreatorDeleteDialog } from "./_components/creator-delete-dialog";
+import { CREATOR_CREDITS_TITLE_ID } from "./_lib/creator-credits-anchor";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -53,12 +61,7 @@ const EditCreatorFormSkeleton = () => (
   </div>
 );
 
-interface EditCreatorPageProps {
-  params: Promise<{
-    creator_id: string;
-    tenant_id: string;
-  }>;
-}
+type EditCreatorPageProps = PageProps<"/[tenant_id]/creators/[creator_id]">;
 
 const editCreatorParamsSchema = z.object({
   creator_id: routeParamString(),
@@ -119,6 +122,54 @@ const EditCreatorFormData = async ({
       key={result.creator.publicId}
       mode="update"
       tenantId={tenantId}
+    />
+  );
+};
+
+/**
+ * The series and episode credits naming the Author, for every role that can
+ * open the screen: what keeps them from being deleted, and where each is
+ * changed. An Author that could not be read is already reported by the form
+ * above.
+ */
+const CreatorCreditsData = async ({
+  params,
+  searchParams,
+}: EditCreatorPageProps) => {
+  const [rawParams, sp] = await Promise.all([params, searchParams]);
+  const parsedParams = parseRouteParams(editCreatorParamsSchema, rawParams);
+
+  if (!parsedParams) {
+    return null;
+  }
+
+  const { token } = parseCursorSearchParams(sp);
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const creator = await getCreator(
+    { publicId: parsedParams.creator_id, tenantId },
+    locale
+  );
+
+  if (!creator.ok) {
+    return null;
+  }
+
+  const result = await listCreatorCredits(
+    { creatorId: creator.creator.id, tenantId, token },
+    locale
+  );
+
+  await redirectToLoginIfSessionRejected(result);
+
+  return (
+    <CreatorCredits
+      credits={result.credits}
+      listErrorMessage={result.ok ? undefined : result.message}
+      locale={locale}
+      {...cursorPageHrefs(result)}
+      pageSize={DEFAULT_PAGE_SIZE}
     />
   );
 };
@@ -237,7 +288,7 @@ const CreatorDeleteSection = async ({
   );
 };
 
-const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
+const EditCreatorPage = ({ params, searchParams }: EditCreatorPageProps) => (
   <ConsolePage.Root>
     <ConsolePage.Header>
       <ConsolePage.Heading>
@@ -276,6 +327,33 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
             </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
+        <ConsoleSection.Root>
+          <ConsoleSection.Header>
+            <ConsoleSection.Heading>
+              <ConsoleSection.Title id={CREATOR_CREDITS_TITLE_ID}>
+                <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+                  <Message message="admin.creators.credits.title" />
+                </Suspense>
+              </ConsoleSection.Title>
+              <ConsoleSection.Description>
+                <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                  <Message message="admin.creators.credits.description" />
+                </Suspense>
+              </ConsoleSection.Description>
+            </ConsoleSection.Heading>
+          </ConsoleSection.Header>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.creators.credits.list_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<Table.Skeleton />}>
+              <CreatorCreditsData params={params} searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </ConsoleSection.Root>
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
