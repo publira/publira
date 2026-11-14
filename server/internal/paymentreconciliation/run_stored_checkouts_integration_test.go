@@ -22,21 +22,35 @@ import (
 
 // A provider whose API lists no payments is read through the checkouts the
 // server started with it: a payment of one of them that no purchase records
-// is found, as a payment another provider lists is.
+// is found, as a payment another provider lists is, whether the provider names
+// the payment by an id of its own or by its checkout's.
 func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	t.Parallel()
+	for id, newFixture := range map[string]func(testing.TB) *readbacktest.Fixture{
+		readbacktest.ID:           readbacktest.NewFixture,
+		readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+	} {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			testReconciliationReadsThePaymentOfEveryStoredCheckout(t, newFixture(t))
+		})
+	}
+}
+
+func testReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T, fixture *readbacktest.Fixture) {
+	t.Helper()
 	pg := testutil.StartIsolatedPostgres(t)
 	ctx := context.Background()
 	encryptor, err := secretcrypto.NewManager(map[string][]byte{"k1": bytes.Repeat([]byte{7}, 32)}, "k1")
 	if err != nil {
 		t.Fatalf("NewManager: %v", err)
 	}
-	fixture := readbacktest.NewFixture(t)
 	registry := paymentprovider.NewRegistry(fixture.Provider())
+	providerID := fixture.Provider().Declaration().ID
 	credentials := fixture.Credentials()
 	tenant := pg.SeedTenant(t, "RECONSTORE01", "reconcile-stored.example.com", "Reconcile stored")
 	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, registry, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Provider: readbacktest.ID,
+		Provider: providerID,
 		Enabled:  true,
 		Currency: "JPY",
 		Fields:   []paymentsettings.FieldUpdate{{Name: readbacktest.FieldAPIKey, Mode: secretupdate.Replace, Value: credentials[readbacktest.FieldAPIKey]}},
@@ -56,7 +70,7 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 		if _, err := pg.DB.ExecContext(ctx, `
 			INSERT INTO payment_checkouts (tenant_id, provider, checkout_id, purchase, created_at, last_started_at)
 			VALUES ($1, $2, $3, '{}', $4, $5)
-		`, tenant.ID, readbacktest.ID, checkoutID, first, last); err != nil {
+		`, tenant.ID, providerID, checkoutID, first, last); err != nil {
 			t.Fatalf("store a checkout: %v", err)
 		}
 	}
@@ -67,13 +81,17 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	paid := func(checkoutID, paymentID string, paidAt time.Time) {
 		fixture.API().Pay(credentials, checkoutID, paymentID, 500, "JPY", false, paidAt)
 	}
+	// reported is the id the provider reports for the payment paymentID of the
+	// checkout checkoutID, which a purchase and a finding record.
+	reported := fixture.API().PaymentID
 	bought := func(checkoutID, paymentID string, at time.Time) {
 		t.Helper()
+		paymentID = reported(checkoutID, paymentID)
 		if _, err := pg.DB.ExecContext(ctx, `
 			INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency, purchased_at,
 				provider, provider_checkout_id, provider_payment_id)
 			VALUES ($1, $2, $3, $4, 500, 'JPY', $5, $6, $7, $8)
-		`, uuid.New(), tenant.ID, reader.ID, episode.ID, at, readbacktest.ID, checkoutID, paymentID); err != nil {
+		`, uuid.New(), tenant.ID, reader.ID, episode.ID, at, providerID, checkoutID, paymentID); err != nil {
 			t.Fatalf("insert purchase: %v", err)
 		}
 	}
@@ -97,7 +115,7 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	if _, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO payment_reconciliations (id, tenant_id, provider, start_date, end_date, time_zone, starts_at, ends_at)
 		VALUES ($1, $2, $3, $4, $5, 'UTC', $6, $7)
-	`, runID, tenant.ID, readbacktest.ID, march, march.AddDate(0, 1, -1), march, march.AddDate(0, 1, 0)); err != nil {
+	`, runID, tenant.ID, providerID, march, march.AddDate(0, 1, -1), march, march.AddDate(0, 1, 0)); err != nil {
 		t.Fatalf("insert reconciliation: %v", err)
 	}
 	summary, err := paymentreconciliation.RunPending(ctx, paymentreconciliation.Deps{
@@ -132,9 +150,9 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 		got = append(got, kind+" "+paymentID)
 	}
 	want := []string{
-		paymentreconciliation.KindRecordUnmatched + " payment_overnight",
-		paymentreconciliation.KindRecordUnmatched + " payment_lost",
-		paymentreconciliation.KindRecordUnmatched + " payment_retried",
+		paymentreconciliation.KindRecordUnmatched + " " + reported("checkout_overnight", "payment_overnight"),
+		paymentreconciliation.KindRecordUnmatched + " " + reported("checkout_lost", "payment_lost"),
+		paymentreconciliation.KindRecordUnmatched + " " + reported("checkout_retried", "payment_retried"),
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("findings = %v, want %v", got, want)

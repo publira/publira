@@ -6,6 +6,11 @@
 // and its API lists no payments, so it reads the payment of each checkout it
 // is handed. No provider this build registers has that shape yet, and this one
 // holds the contract and the purchase flow to it.
+//
+// [NewFixtureByCheckout] answers the same fake with an API that reads a
+// payment by nothing but the id of its checkout, so its provider declares
+// [paymentprovider.Declaration.PaymentsByCheckout] and names each payment by
+// its checkout, keeping the API's own id of the payment to itself.
 package readbacktest
 
 import (
@@ -27,6 +32,10 @@ import (
 const (
 	// ID is the provider id the fake registers under.
 	ID = "readback"
+	// IDByCheckout is the provider id the fake that names its payments by
+	// their checkouts registers under, so that the two never share a
+	// provider's ids in one database.
+	IDByCheckout = "readback_by_checkout"
 	// FieldAPIKey is the one credential the fake declares, which names the
 	// account of its API a request reads.
 	FieldAPIKey = "api_key"
@@ -60,8 +69,8 @@ func NewProvider(api *API) *Provider {
 	return &Provider{api: api}
 }
 
-func (*Provider) Declaration() paymentprovider.Declaration {
-	return paymentprovider.Declaration{
+func (p *Provider) Declaration() paymentprovider.Declaration {
+	declaration := paymentprovider.Declaration{
 		ID:               ID,
 		DisplayName:      "Read-back test provider",
 		Fields:           []paymentprovider.Field{{Name: FieldAPIKey, Secret: true, Required: true}},
@@ -69,6 +78,11 @@ func (*Provider) Declaration() paymentprovider.Declaration {
 		StoredCheckouts:  true,
 		CheckoutLifetime: CheckoutLifetime,
 	}
+	if p.api.byCheckout {
+		declaration.ID = IDByCheckout
+		declaration.PaymentsByCheckout = true
+	}
+	return declaration
 }
 
 // StartCheckout records the checkout in the fake's API and answers a URL that
@@ -120,17 +134,17 @@ func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 		return paymentprovider.PurchaseCompleted{
 			ID:         n.ID,
 			CheckoutID: payment.checkoutID,
-			PaymentID:  payment.id,
+			PaymentID:  p.api.reported(payment),
 			Purchase:   paymentprovider.Purchase{Currency: payment.currency},
 			AmountPaid: int32(payment.amount),
 			Test:       payment.test,
 		}, nil
 	case notificationRefunds:
-		payment := account.payment(n.PaymentID)
+		payment := p.api.named(account, n.PaymentID)
 		if payment == nil {
 			return nil, paymentprovider.ErrInvalidSignature
 		}
-		return payment.refundEvent(n.ID)
+		return payment.refundEvent(n.ID, p.api.reported(payment))
 	default:
 		return paymentprovider.Ignored{ID: n.ID, Type: n.Type}, nil
 	}
@@ -153,7 +167,7 @@ func (p *Provider) Refund(_ context.Context, credentials paymentprovider.Credent
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	account := p.api.accounts[credentials[FieldAPIKey]]
-	payment := account.payment(req.PaymentID)
+	payment := p.api.named(account, req.PaymentID)
 	if payment == nil {
 		return false, fmt.Errorf("%w: no such payment", paymentprovider.ErrRefundRefused)
 	}
@@ -196,7 +210,7 @@ func (p *Provider) Refund(_ context.Context, credentials paymentprovider.Credent
 func (p *Provider) RefundMade(_ context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
-	payment := p.api.accounts[credentials[FieldAPIKey]].payment(paymentID)
+	payment := p.api.named(p.api.accounts[credentials[FieldAPIKey]], paymentID)
 	if payment == nil {
 		return false, nil
 	}
@@ -217,7 +231,7 @@ func (p *Provider) ListTransactions(_ context.Context, credentials paymentprovid
 			continue
 		}
 		transactions = append(transactions, paymentprovider.Transaction{
-			PaymentID:      payment.id,
+			PaymentID:      p.api.reported(payment),
 			Amount:         payment.amount,
 			AmountRefunded: payment.refunded(),
 			Currency:       payment.currency,
@@ -238,11 +252,43 @@ type API struct {
 	accounts map[string]*account
 	started  []paymentprovider.CheckoutRequest
 	events   int
+	// byCheckout makes it an API that reads a payment by the id of its
+	// checkout alone.
+	byCheckout bool
 }
 
 // NewAPI answers an empty fake API.
 func NewAPI() *API {
 	return &API{accounts: map[string]*account{}}
+}
+
+// NewAPIByCheckout answers an empty fake API that reads a payment by the id
+// of its checkout alone.
+func NewAPIByCheckout() *API {
+	return &API{accounts: map[string]*account{}, byCheckout: true}
+}
+
+// PaymentID answers the id the provider reports for the payment paymentID of
+// the checkout checkoutID, as [API.Pay] was told them: the checkout's for an
+// API that reads a payment by nothing else, and the payment's own otherwise.
+func (a *API) PaymentID(checkoutID, paymentID string) string {
+	if a.byCheckout {
+		return checkoutID
+	}
+	return paymentID
+}
+
+// reported answers the id the provider reports for payment.
+func (a *API) reported(payment *payment) string {
+	return a.PaymentID(payment.checkoutID, payment.id)
+}
+
+// named answers the payment of account the provider reports as paymentID.
+func (a *API) named(account *account, paymentID string) *payment {
+	if a.byCheckout {
+		return account.byCheckout(paymentID)
+	}
+	return account.payment(paymentID)
 }
 
 type account struct {
@@ -327,22 +373,23 @@ func (p *payment) add(r *refund) {
 	p.changed = r
 }
 
-// refundEvent is what the notification of the payment's refunds reports.
-func (p *payment) refundEvent(id string) (paymentprovider.Event, error) {
+// refundEvent is what the notification of the payment's refunds reports,
+// naming the payment paymentID.
+func (p *payment) refundEvent(id, paymentID string) (paymentprovider.Event, error) {
 	for _, r := range p.refunds {
 		if r.status == refundPending {
 			return nil, paymentprovider.ErrRefundPending
 		}
 	}
 	if p.changed != nil && p.changed.status == refundFailed {
-		failed := paymentprovider.RefundFailed{ID: id, PaymentID: p.id, AmountRefunded: p.refunded(), Currency: p.currency}
+		failed := paymentprovider.RefundFailed{ID: id, PaymentID: paymentID, AmountRefunded: p.refunded(), Currency: p.currency}
 		if p.changed.keyed {
 			failed.RefundKey = p.changed.key
 		}
 		return failed, nil
 	}
 	if total := p.refunded(); total > 0 {
-		return paymentprovider.Refunded{ID: id, PaymentID: p.id, AmountRefunded: total, Currency: p.currency}, nil
+		return paymentprovider.Refunded{ID: id, PaymentID: paymentID, AmountRefunded: total, Currency: p.currency}, nil
 	}
 	return paymentprovider.Ignored{ID: id, Type: notificationRefunds}, nil
 }
@@ -371,7 +418,8 @@ func (a *API) Started() []paymentprovider.CheckoutRequest {
 
 // Pay makes the account credentials name hold the payment paymentID of the
 // checkout checkoutID, of amount in currency, taken at at, and answers the
-// notification the fake sends for it.
+// notification the fake sends for it. paymentID is the API's own id of the
+// payment, which [API.PaymentID] answers the id the provider reports for.
 func (a *API) Pay(credentials paymentprovider.Credentials, checkoutID, paymentID string, amount int64, currency string, test bool, at time.Time) []byte {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -393,33 +441,33 @@ func (a *API) Expire(credentials paymentprovider.Credentials, checkoutID, curren
 	return a.notification(notification{Type: notificationPayment, CheckoutID: checkoutID})
 }
 
-// HoldNextRefund makes the next refund of the payment one the fake has
-// neither made nor failed until SettleRefunds.
+// HoldNextRefund makes the next refund of the payment the provider reports as
+// paymentID one the fake has neither made nor failed until SettleRefunds.
 func (a *API) HoldNextRefund(credentials paymentprovider.Credentials, paymentID string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if p := a.account(credentials).payments[paymentID]; p != nil {
+	if p := a.named(a.account(credentials), paymentID); p != nil {
 		p.holdNext = true
 	}
 }
 
-// BreakNextRefund makes the next request for a refund of the payment fail
-// before the fake makes any, as a request cut off on its way to a provider
-// does.
+// BreakNextRefund makes the next request for a refund of the payment the
+// provider reports as paymentID fail before the fake makes any, as a request
+// cut off on its way to a provider does.
 func (a *API) BreakNextRefund(credentials paymentprovider.Credentials, paymentID string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if p := a.account(credentials).payments[paymentID]; p != nil {
+	if p := a.named(a.account(credentials), paymentID); p != nil {
 		p.breakNext = true
 	}
 }
 
-// SettleRefunds makes every pending refund of the payment, failing them when
-// fail is set.
+// SettleRefunds makes every pending refund of the payment the provider reports
+// as paymentID, failing them when fail is set.
 func (a *API) SettleRefunds(credentials paymentprovider.Credentials, paymentID string, fail bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	p := a.account(credentials).payments[paymentID]
+	p := a.named(a.account(credentials), paymentID)
 	if p == nil {
 		return
 	}
@@ -458,6 +506,24 @@ func NewFixture(testing.TB) *Fixture {
 	return &Fixture{api: api, provider: NewProvider(api)}
 }
 
+// NewFixtureByCheckout answers a fixture over a fake API of its own that
+// reads a payment by the id of its checkout alone.
+func NewFixtureByCheckout(testing.TB) *Fixture {
+	api := NewAPIByCheckout()
+	return &Fixture{api: api, provider: NewProvider(api)}
+}
+
+// ownID answers the id the fake's API gives the payment of the checkout
+// checkoutID that the provider reports as paymentID: that id, or, for an API
+// that reads a payment by its checkout alone, one of its own that the
+// provider never reports, so that a provider reporting it is caught.
+func (f *Fixture) ownID(checkoutID, paymentID string) string {
+	if f.api.byCheckout {
+		return "own_" + checkoutID
+	}
+	return paymentID
+}
+
 // API answers the fixture's fake API, for a test that drives it directly.
 func (f *Fixture) API() *API { return f.api }
 
@@ -472,11 +538,11 @@ func (*Fixture) OtherCredentials() paymentprovider.Credentials {
 }
 
 func (f *Fixture) CheckoutCompleted(_ testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
-	return f.api.Pay(credentials, checkout.CheckoutID, checkout.PaymentID, int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, time.Time{}), http.Header{}
+	return f.api.Pay(credentials, checkout.CheckoutID, f.ownID(checkout.CheckoutID, checkout.PaymentID), int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, time.Time{}), http.Header{}
 }
 
 func (f *Fixture) PaymentTaken(_ testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {
-	f.api.Pay(credentials, checkout.CheckoutID, checkout.PaymentID, int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, at)
+	f.api.Pay(credentials, checkout.CheckoutID, f.ownID(checkout.CheckoutID, checkout.PaymentID), int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, at)
 }
 
 // Refunded refunds as much more of the payment as brings its total to
@@ -485,12 +551,18 @@ func (f *Fixture) PaymentTaken(_ testing.TB, credentials paymentprovider.Credent
 func (f *Fixture) Refunded(_ testing.TB, credentials paymentprovider.Credentials, refunded paymentprovidertest.Refund) ([]byte, http.Header) {
 	f.api.mu.Lock()
 	acct := f.api.account(credentials)
-	p := acct.payments[refunded.PaymentID]
+	p := f.api.named(acct, refunded.PaymentID)
 	if p == nil {
 		// A refund may arrive before its payment is recorded anywhere but
-		// the provider's, which the fake holds as a payment no checkout names.
+		// the provider's, which the fake holds as a payment no checkout names,
+		// or, for an API that reads a payment by its checkout alone, as one
+		// the checkout it is reported by names.
 		p = &payment{id: refunded.PaymentID, currency: refunded.Currency, amount: refunded.AmountRefunded, status: paymentPaid}
-		acct.payments[refunded.PaymentID] = p
+		if f.api.byCheckout {
+			p.id, p.checkoutID = f.ownID(refunded.PaymentID, ""), refunded.PaymentID
+			acct.checkouts[p.checkoutID] = p.id
+		}
+		acct.payments[p.id] = p
 	}
 	if more := refunded.AmountRefunded - p.refunded(); more > 0 {
 		p.amount = max(p.amount, refunded.AmountRefunded)
@@ -503,7 +575,7 @@ func (f *Fixture) Refunded(_ testing.TB, credentials paymentprovider.Credentials
 func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
-	p := f.api.account(credentials).payments[paymentID]
+	p := f.api.named(f.api.account(credentials), paymentID)
 	if p == nil {
 		return 0
 	}
@@ -513,7 +585,7 @@ func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Creden
 func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
-	if p := f.api.account(credentials).payments[paymentID]; p != nil {
+	if p := f.api.named(f.api.account(credentials), paymentID); p != nil {
 		p.failNext = true
 	}
 }
@@ -529,7 +601,7 @@ func (f *Fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovide
 // refunded, and answers the notification of the payment's refunds.
 func (f *Fixture) RefundFailed(_ testing.TB, credentials paymentprovider.Credentials, failed paymentprovidertest.Refund) ([]byte, http.Header) {
 	f.api.mu.Lock()
-	if p := f.api.account(credentials).payments[failed.PaymentID]; p != nil {
+	if p := f.api.named(f.api.account(credentials), failed.PaymentID); p != nil {
 		if failed.Key != "" {
 			if r := p.refundBy(failed.Key, true); r != nil {
 				r.status = refundFailed

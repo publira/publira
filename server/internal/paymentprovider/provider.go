@@ -72,6 +72,16 @@ type Declaration struct {
 	// [CheckoutExpired.CheckoutID] name, so the provider answers those events
 	// with a Purchase that holds nothing but the Currency the payment names.
 	StoredCheckouts bool
+	// PaymentsByCheckout is set by a provider that declares StoredCheckouts
+	// and names each payment by the [CheckoutRequest.CheckoutID] its checkout
+	// was started under, as one whose API reads a payment by nothing else
+	// must, however it names the payment itself. [PurchaseCompleted.PaymentID]
+	// is then the same id as [PurchaseCompleted.CheckoutID], and so is every
+	// payment id the provider reports or is handed: in [Transaction], in the
+	// refund events, in [RefundRequest], and in [Provider.RefundMade] and
+	// [RefundFollower.RefundNotification]. The provider reads its own id of
+	// the payment from the payment whenever a call of its API needs that one.
+	PaymentsByCheckout bool
 	// CheckoutLifetime is how long after it starts a checkout of a provider
 	// that declares StoredCheckouts can still be paid, which bounds the
 	// checkouts [Provider.ListTransactions] is handed. It is zero for every
@@ -377,7 +387,8 @@ type PurchaseCompleted struct {
 	// [CheckoutRequest.CheckoutID] the checkout was started under.
 	CheckoutID string
 	// PaymentID is the provider's id of the payment its refunds name. It may
-	// be empty when the provider reports none.
+	// be empty when the provider reports none. For a provider that declares
+	// [Declaration.PaymentsByCheckout] it is CheckoutID.
 	PaymentID string
 	Purchase  Purchase
 	// AmountPaid is what the reader paid, in the minor unit of
@@ -483,7 +494,8 @@ func (Ignored) isEvent()           {}
 // reads it from the provider's own records.
 type Transaction struct {
 	// PaymentID is the provider's id of the payment, the one
-	// [PurchaseCompleted.PaymentID] names.
+	// [PurchaseCompleted.PaymentID] names, which for a provider that declares
+	// [Declaration.PaymentsByCheckout] is the id of the payment's checkout.
 	PaymentID string
 	// Amount is what the payment took, and AmountRefunded the total refunded
 	// on it so far, each in the minor unit of Currency.

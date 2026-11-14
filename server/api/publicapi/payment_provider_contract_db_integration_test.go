@@ -56,14 +56,19 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 		})
 	}
 	// No registered provider carries nothing on its payments, signs nothing,
-	// and notifies no refund yet, so the fake of one holds the purchase flow to
-	// that shape.
-	t.Run(readbacktest.ID, func(t *testing.T) {
-		fixture := readbacktest.NewFixture(t)
-		server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
-		harness.registry = server.paymentProviders
-		paymentprovidertest.Run(t, harness, fixture)
-	})
+	// and notifies no refund yet, nor names its payments by their checkouts,
+	// so the fakes of one hold the purchase flow to those shapes.
+	for id, newFixture := range map[string]func(testing.TB) *readbacktest.Fixture{
+		readbacktest.ID:           readbacktest.NewFixture,
+		readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+	} {
+		t.Run(id, func(t *testing.T) {
+			fixture := newFixture(t)
+			server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
+			harness.registry = server.paymentProviders
+			paymentprovidertest.Run(t, harness, fixture)
+		})
+	}
 }
 
 // contractHarness delivers notifications to the public API over a real

@@ -137,6 +137,18 @@ func TestRegistryRefusesStoredCheckoutsWithoutALifetime(t *testing.T) {
 	NewRegistry(declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}})
 }
 
+func TestRegistryRefusesPaymentsByCheckoutWithoutStoredCheckouts(t *testing.T) {
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("NewRegistry accepted payments named by checkouts the server does not name")
+			}
+		}()
+		NewRegistry(declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, PaymentsByCheckout: true}})
+	}()
+	NewRegistry(declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour, PaymentsByCheckout: true}})
+}
+
 func TestRegistryRefusesARefundFollowerThatDeclaresASignatureHeader(t *testing.T) {
 	func() {
 		defer func() {

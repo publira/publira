@@ -20,8 +20,11 @@ import (
 // Checkout is a completed checkout a fixture signs a notification for.
 type Checkout struct {
 	CheckoutID string
-	PaymentID  string
-	Purchase   paymentprovider.Purchase
+	// PaymentID is the id the provider reports for the checkout's payment,
+	// which the contract makes CheckoutID for a provider that declares
+	// [paymentprovider.Declaration.PaymentsByCheckout].
+	PaymentID string
+	Purchase  paymentprovider.Purchase
 	// Test makes it a checkout paid in the provider's test mode, and its
 	// absence one paid in live mode.
 	Test bool
@@ -29,6 +32,8 @@ type Checkout struct {
 
 // Refund is a refund a fixture signs a notification for.
 type Refund struct {
+	// PaymentID is the payment's id as the provider reports it, the
+	// [Checkout.PaymentID] of its checkout.
 	PaymentID string
 	// Currency is the ISO 4217 code of the payment the refund is on, in
 	// capitals.
@@ -117,6 +122,17 @@ type Fixture interface {
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
 
+// names answers the ids the contract gives the checkout it calls name and the
+// payment of that checkout: one of each, or the checkout's for both for a
+// provider that declares [paymentprovider.Declaration.PaymentsByCheckout].
+func names(declaration paymentprovider.Declaration, name string) (checkoutID, paymentID string) {
+	checkoutID = "checkout_" + name
+	if declaration.PaymentsByCheckout {
+		return checkoutID, checkoutID
+	}
+	return checkoutID, "payment_" + name
+}
+
 // contractCurrencies are the currencies the contract charges in, where the
 // provider declares them: one without decimals and one with two, so that a
 // provider is seen to carry the amount in the minor unit either way.
@@ -167,10 +183,8 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	// A provider that keeps no list of its payments is handed the checkouts
 	// the server started through it, each of which it reads the payment of.
 	var checkoutIDs []string
-	taken := func(paymentID string, price int32, test bool, at time.Time) Checkout {
+	taken := func(name string, price int32, test bool, at time.Time) Checkout {
 		checkout := Checkout{
-			CheckoutID: "checkout_" + paymentID,
-			PaymentID:  paymentID,
 			Purchase: paymentprovider.Purchase{
 				TenantID:  uuid.New(),
 				ReaderID:  uuid.New(),
@@ -181,16 +195,17 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 			},
 			Test: test,
 		}
+		checkout.CheckoutID, checkout.PaymentID = names(provider.Declaration(), name)
 		fixture.PaymentTaken(t, credentials, checkout, at)
 		if provider.Declaration().StoredCheckouts {
 			checkoutIDs = append(checkoutIDs, checkout.CheckoutID)
 		}
 		return checkout
 	}
-	live := taken("payment_list_live_"+currency, 500, false, from.Add(time.Hour))
-	test := taken("payment_list_test_"+currency, 300, true, from.Add(2*time.Hour))
-	taken("payment_list_before_"+currency, 700, false, from.Add(-time.Hour))
-	taken("payment_list_after_"+currency, 900, false, to.Add(time.Hour))
+	live := taken("list_live_"+currency, 500, false, from.Add(time.Hour))
+	test := taken("list_test_"+currency, 300, true, from.Add(2*time.Hour))
+	taken("list_before_"+currency, 700, false, from.Add(-time.Hour))
+	taken("list_after_"+currency, 900, false, to.Add(time.Hour))
 	_, _ = fixture.Refunded(t, credentials, Refund{PaymentID: live.PaymentID, Currency: currency, AmountRefunded: 200})
 
 	t.Run("the payments of the period are listed oldest first with their refunds", func(t *testing.T) {
@@ -234,8 +249,6 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
 	checkout := Checkout{
-		CheckoutID: "checkout_contract",
-		PaymentID:  "payment_contract",
 		Purchase: paymentprovider.Purchase{
 			TenantID:           uuid.New(),
 			ReaderID:           uuid.New(),
@@ -245,6 +258,14 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			Currency:           currency,
 			ReadingPeriodHours: 72,
 		},
+	}
+	checkout.CheckoutID, checkout.PaymentID = names(provider.Declaration(), "contract")
+	// paying answers the checkout as one of its own called name, paid by a
+	// payment of its own.
+	paying := func(name string) Checkout {
+		paid := checkout
+		paid.CheckoutID, paid.PaymentID = names(provider.Declaration(), name)
+		return paid
 	}
 	// A provider that declares stored checkouts carries nothing of a purchase
 	// but the currency its payment names, and the server fills in the rest
@@ -624,8 +645,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund returns the whole payment once however often it is asked for", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_" + strings.ToLower(currency)
+		paid := paying("refund_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		key := "refund_contract_" + strings.ToLower(currency)
 		refund := func(key string) bool {
@@ -653,8 +673,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund after a partial one returns the rest", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_rest_" + strings.ToLower(currency)
+		paid := paying("refund_rest_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
 		refunded, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_rest_" + strings.ToLower(currency)})
@@ -670,8 +689,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund of an amount returns that much once however often it is asked for", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_amount_" + strings.ToLower(currency)
+		paid := paying("refund_amount_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		key := "refund_contract_amount_" + strings.ToLower(currency)
 		refund := func(key string, amount, want int64) {
@@ -702,8 +720,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund of an amount is told apart from the payment's other refunds by its key", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_amount_made_" + strings.ToLower(currency)
+		paid := paying("refund_amount_made_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		key := "refund_contract_amount_made_" + strings.ToLower(currency)
 		made := func(key string, want bool) {
@@ -730,8 +747,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund of an amount is found again once the provider has forgotten its key", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_amount_forgotten_" + strings.ToLower(currency)
+		paid := paying("refund_amount_forgotten_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		key := "refund_contract_amount_forgotten_" + strings.ToLower(currency)
 		request := paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}
@@ -765,8 +781,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund the provider answers as failed is refused", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_failed_" + strings.ToLower(currency)
+		paid := paying("refund_failed_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		fixture.FailNextRefund(t, credentials, paid.PaymentID)
 		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_failed_" + strings.ToLower(currency)})
@@ -779,8 +794,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund that fails later names its payment and what stays refunded", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_failed_later_" + strings.ToLower(currency)
+		paid := paying("refund_failed_later_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
 		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 500})
@@ -799,8 +813,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund of an amount that fails later names the key it was made under", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_amount_failed_later_" + strings.ToLower(currency)
+		paid := paying("refund_amount_failed_later_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, credentials, paid)
 		key := "refund_contract_amount_failed_later_" + strings.ToLower(currency)
 		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}); err != nil {
@@ -821,8 +834,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a refund of a payment the account does not hold is refused", func(t *testing.T) {
-		paid := checkout
-		paid.PaymentID = "payment_refund_other_" + strings.ToLower(currency)
+		paid := paying("refund_other_" + strings.ToLower(currency))
 		fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
 		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_other_" + strings.ToLower(currency)})
 		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
@@ -837,9 +849,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		// A checkout the tenant's account holds no payment of, which is what
 		// tells another account's notification apart for a provider that
 		// signs nothing.
-		forged := checkout
-		forged.CheckoutID = "checkout_contract_other_account"
-		forged.PaymentID = "payment_contract_other_account_" + strings.ToLower(currency)
+		forged := paying("contract_other_account_" + strings.ToLower(currency))
 		payload, headers := fixture.CheckoutCompleted(t, fixture.OtherCredentials(), forged)
 		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
 			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
@@ -859,8 +869,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 	if follower, ok := provider.(paymentprovider.RefundFollower); ok {
 		t.Run("a refund the provider was asked for is read back through its own notification", func(t *testing.T) {
-			paid := checkout
-			paid.PaymentID = "payment_refund_followed_" + strings.ToLower(currency)
+			paid := paying("refund_followed_" + strings.ToLower(currency))
 			fixture.CheckoutCompleted(t, credentials, paid)
 			read := func(t *testing.T) paymentprovider.Event {
 				t.Helper()
@@ -883,8 +892,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		})
 
 		t.Run("the notification of the refunds of a payment the account does not hold is refused", func(t *testing.T) {
-			paid := checkout
-			paid.PaymentID = "payment_refund_followed_other_" + strings.ToLower(currency)
+			paid := paying("refund_followed_other_" + strings.ToLower(currency))
 			fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
 			if _, err := provider.ParseNotification(t.Context(), follower.RefundNotification(paid.PaymentID), http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
 				t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
@@ -1055,8 +1063,13 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	}
 	// A provider's ids are unique across tenants, so each currency's run names
 	// checkouts and payments of its own.
-	id := func(name string) string {
-		return name + "_" + strings.ToLower(currency)
+	checkoutNamed := func(name string) string {
+		checkoutID, _ := names(provider.Declaration(), name+"_"+strings.ToLower(currency))
+		return checkoutID
+	}
+	paymentNamed := func(name string) string {
+		_, paymentID := names(provider.Declaration(), name+"_"+strings.ToLower(currency))
+		return paymentID
 	}
 	// completed answers the notification of a paid checkout delivered to
 	// tenant, having written its purchase down there first, as the server
@@ -1073,8 +1086,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a completed checkout creates one purchase however often it is delivered", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		payload, headers := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_redelivered"),
-			PaymentID:  id("payment_redelivered"),
+			CheckoutID: checkoutNamed("redelivered"),
+			PaymentID:  paymentNamed("redelivered"),
 			Purchase:   tenant.Purchase(),
 		})
 		for delivery := range 3 {
@@ -1090,8 +1103,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a live-mode checkout opens the episode and is a sale", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		payload, headers := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_live"),
-			PaymentID:  id("payment_live"),
+			CheckoutID: checkoutNamed("live"),
+			PaymentID:  paymentNamed("live"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err != nil {
@@ -1112,8 +1125,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		tenant := newTenant(t, credentials)
 		purchase := tenant.DiscountedPurchase(t)
 		payload, headers := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_promotion_code"),
-			PaymentID:  id("payment_promotion_code"),
+			CheckoutID: checkoutNamed("promotion_code"),
+			PaymentID:  paymentNamed("promotion_code"),
 			Purchase:   purchase,
 		})
 		for delivery := range 2 {
@@ -1136,7 +1149,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			t.Fatalf("sales gross = %d, want %d, the list price", got, want)
 		}
 		// A refund of half of what was paid takes half of the list price off.
-		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_promotion_code"), Currency: currency, AmountRefunded: int64(purchase.Price) / 2})
+		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentNamed("promotion_code"), Currency: currency, AmountRefunded: int64(purchase.Price) / 2})
 		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 			t.Fatalf("refund: %v", err)
 		}
@@ -1148,8 +1161,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a test-mode checkout opens the episode and is no sale", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		payload, headers := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_test_mode"),
-			PaymentID:  id("payment_test_mode"),
+			CheckoutID: checkoutNamed("test_mode"),
+			PaymentID:  paymentNamed("test_mode"),
 			Purchase:   tenant.Purchase(),
 			Test:       true,
 		})
@@ -1169,7 +1182,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a refund before its purchase is held and applied later", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_early"), Currency: currency, AmountRefunded: 500})
+		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentNamed("early"), Currency: currency, AmountRefunded: 500})
 		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 			t.Fatalf("refund: %v", err)
 		}
@@ -1177,8 +1190,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			t.Fatalf("held refunds = %d, want 1", got)
 		}
 		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_early"),
-			PaymentID:  id("payment_early"),
+			CheckoutID: checkoutNamed("early"),
+			PaymentID:  paymentNamed("early"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
@@ -1195,15 +1208,15 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("partial refunds close the purchase once they reach its price", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_partial"),
-			PaymentID:  id("payment_partial"),
+			CheckoutID: checkoutNamed("partial"),
+			PaymentID:  paymentNamed("partial"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
 			t.Fatalf("checkout: %v", err)
 		}
 		for _, total := range []int64{200, 500} {
-			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_partial"), Currency: currency, AmountRefunded: total})
+			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentNamed("partial"), Currency: currency, AmountRefunded: total})
 			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 				t.Fatalf("refund to %d: %v", total, err)
 			}
@@ -1215,7 +1228,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a refund that fails before its purchase corrects the held refund", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		paymentID := id("payment_held_refund_failed")
+		paymentID := paymentNamed("held_refund_failed")
 		for _, total := range []int64{200, 500} {
 			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: total})
 			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
@@ -1227,7 +1240,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			t.Fatalf("failed refund: %v", err)
 		}
 		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_held_refund_failed"),
+			CheckoutID: checkoutNamed("held_refund_failed"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
 		})
@@ -1244,9 +1257,9 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		paymentID := id("payment_refund_reopened")
+		paymentID := paymentNamed("refund_reopened")
 		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_refund_reopened"),
+			CheckoutID: checkoutNamed("refund_reopened"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
 		})
@@ -1277,9 +1290,9 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a staff refund that fails reopens the purchase", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		paymentID := id("payment_staff_refund_failed")
+		paymentID := paymentNamed("staff_refund_failed")
 		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: id("checkout_staff_refund_failed"),
+			CheckoutID: checkoutNamed("staff_refund_failed"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
 		})
@@ -1300,8 +1313,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a notification with a bad signature is refused", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		payload, headers := completed(t, tenant, fixture.OtherCredentials(), Checkout{
-			CheckoutID: id("checkout_forged"),
-			PaymentID:  id("payment_forged"),
+			CheckoutID: checkoutNamed("forged"),
+			PaymentID:  paymentNamed("forged"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err == nil {
@@ -1316,8 +1329,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		tenant := newTenant(t, credentials)
 		other := newTenant(t, fixture.OtherCredentials())
 		payload, headers := completed(t, other, credentials, Checkout{
-			CheckoutID: id("checkout_crossed"),
-			PaymentID:  id("payment_crossed"),
+			CheckoutID: checkoutNamed("crossed"),
+			PaymentID:  paymentNamed("crossed"),
 			Purchase:   other.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err == nil {
