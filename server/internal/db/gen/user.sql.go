@@ -725,18 +725,22 @@ WHERE NOT EXISTS (
         OR t.public_id = $5::text
     )
     AND (
-        $6::uuid IS NULL
+        $6::text IS NULL
+        OR canonical_email(u.email) = canonical_email($6::text)
+    )
+    AND (
+        $7::uuid IS NULL
         OR (
-            $7::boolean
-            AND (u.created_at, u.id) >= ($8::timestamptz, $6::uuid)
+            $8::boolean
+            AND (u.created_at, u.id) >= ($9::timestamptz, $7::uuid)
         )
         OR (
-            NOT $7::boolean
-            AND (u.created_at, u.id) > ($8::timestamptz, $6::uuid)
+            NOT $8::boolean
+            AND (u.created_at, u.id) > ($9::timestamptz, $7::uuid)
         )
     )
 ORDER BY u.created_at ASC, u.id ASC
-LIMIT $9
+LIMIT $10
 `
 
 type ListEndUsersAscParams struct {
@@ -745,6 +749,7 @@ type ListEndUsersAscParams struct {
 	Status          sql.NullString `json:"status"`
 	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
+	Email           sql.NullString `json:"email"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
@@ -769,6 +774,7 @@ func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams
 		arg.Status,
 		pq.Array(arg.Ids),
 		arg.TenantPublicID,
+		arg.Email,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -834,18 +840,22 @@ WHERE NOT EXISTS (
         OR t.public_id = $5::text
     )
     AND (
-        $6::uuid IS NULL
+        $6::text IS NULL
+        OR canonical_email(u.email) = canonical_email($6::text)
+    )
+    AND (
+        $7::uuid IS NULL
         OR (
-            $7::boolean
-            AND (u.created_at, u.id) <= ($8::timestamptz, $6::uuid)
+            $8::boolean
+            AND (u.created_at, u.id) <= ($9::timestamptz, $7::uuid)
         )
         OR (
-            NOT $7::boolean
-            AND (u.created_at, u.id) < ($8::timestamptz, $6::uuid)
+            NOT $8::boolean
+            AND (u.created_at, u.id) < ($9::timestamptz, $7::uuid)
         )
     )
 ORDER BY u.created_at DESC, u.id DESC
-LIMIT $9
+LIMIT $10
 `
 
 type ListEndUsersDescParams struct {
@@ -854,6 +864,7 @@ type ListEndUsersDescParams struct {
 	Status          sql.NullString `json:"status"`
 	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
+	Email           sql.NullString `json:"email"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
@@ -885,6 +896,7 @@ func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescPara
 		arg.Status,
 		pq.Array(arg.Ids),
 		arg.TenantPublicID,
+		arg.Email,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,

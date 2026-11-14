@@ -134,6 +134,10 @@ WHERE NOT EXISTS (
         OR t.public_id = sqlc.narg('tenant_public_id')::text
     )
     AND (
+        sqlc.narg('email')::text IS NULL
+        OR canonical_email(u.email) = canonical_email(sqlc.narg('email')::text)
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -175,6 +179,10 @@ WHERE NOT EXISTS (
         sqlc.narg('tenant_public_id')::text IS NULL
         OR sqlc.narg('tenant_public_id')::text = ''
         OR t.public_id = sqlc.narg('tenant_public_id')::text
+    )
+    AND (
+        sqlc.narg('email')::text IS NULL
+        OR canonical_email(u.email) = canonical_email(sqlc.narg('email')::text)
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

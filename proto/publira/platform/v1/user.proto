@@ -40,6 +40,11 @@ message ListEndUsersRequest {
   string token = 8;
   // Restricts the list to these users, by primary key (EndUser.id).
   repeated string user_ids = 9;
+  // Restricts the list to the accounts that hold this inbox, on every tenant.
+  // Addresses are compared lowercased and without the +tag of the local part,
+  // so john+news@Example.com finds john@example.com. Empty means every
+  // address.
+  string email = 10;
 }
 
 message ListEndUsersResponse {

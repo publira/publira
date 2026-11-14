@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailaddress"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -172,6 +173,7 @@ type endUserQueryFilters struct {
 	userIDs        []uuid.UUID
 	status         sql.NullString
 	tenantPublicID sql.NullString
+	email          sql.NullString
 }
 
 func (s *platformServer) endUserPage(
@@ -189,6 +191,7 @@ func (s *platformServer) endUserPage(
 			Ids:             filters.userIDs,
 			Status:          filters.status,
 			TenantPublicID:  filters.tenantPublicID,
+			Email:           filters.email,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -207,6 +210,7 @@ func (s *platformServer) endUserPage(
 		Ids:             filters.userIDs,
 		Status:          filters.status,
 		TenantPublicID:  filters.tenantPublicID,
+		Email:           filters.email,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -257,19 +261,22 @@ func (s *platformServer) ListEndUsers(
 	}
 	filterStatus := strings.TrimSpace(req.Status)
 	filterTenantPublicID := strings.TrimSpace(req.TenantPublicId)
+	filterEmail := emailaddress.Canonical(strings.TrimSpace(req.Email))
 	filters := endUserQueryFilters{
 		createdAfter:   createdAfterFilter,
 		createdBefore:  createdBeforeFilter,
 		userIDs:        userIDs,
 		status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 		tenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
+		email:          sql.NullString{String: filterEmail, Valid: filterEmail != ""},
 	}
 	listKey := pagination.NewListKey("created_at_desc").
 		Time("created_after", createdAfterFilter.Time, createdAfterFilter.Valid).
 		Time("created_before", createdBeforeFilter.Time, createdBeforeFilter.Valid).
 		Value("status", filterStatus).
 		Values("user_ids", uuidStrings(userIDs)).
-		Value("tenant_public_id", filterTenantPublicID)
+		Value("tenant_public_id", filterTenantPublicID).
+		Value("email", filterEmail)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = listKey.DecodeTimeUUID(cursor)

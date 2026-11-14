@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -134,7 +135,47 @@ func TestGetUserByCanonicalEmailForTenantUsesTheIndex(t *testing.T) {
 	if _, err := conn.ExecContext(ctx, `SET enable_seqscan = off`); err != nil {
 		t.Fatalf("disable sequential scans: %v", err)
 	}
-	rows, err := conn.QueryContext(ctx, `EXPLAIN `+dbmodels.GetUserByCanonicalEmailForTenant, uuid.New(), "john+a@example.com")
+	plan := explain(ctx, t, conn, dbmodels.GetUserByCanonicalEmailForTenant, uuid.New(), "john+a@example.com")
+	if !strings.Contains(plan, "idx_users_tenant_id_canonical_email") {
+		t.Fatalf("the lookup does not use idx_users_tenant_id_canonical_email:\n%s", plan)
+	}
+}
+
+// The platform operator looks an inbox up across every tenant, which
+// idx_users_tenant_id_canonical_email cannot answer with the tenant leading it,
+// so the list has to reach idx_users_canonical_email rather than walk every
+// account in creation order.
+func TestListEndUsersByEmailUsesTheIndex(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	conn, err := pg.DB.Conn(ctx)
+	if err != nil {
+		t.Fatalf("conn: %v", err)
+	}
+	defer conn.Close() //nolint:errcheck
+	if _, err := conn.ExecContext(ctx, `SET enable_seqscan = off`); err != nil {
+		t.Fatalf("disable sequential scans: %v", err)
+	}
+	for name, query := range map[string]string{
+		"ListEndUsersDesc": dbmodels.ListEndUsersDesc,
+		"ListEndUsersAsc":  dbmodels.ListEndUsersAsc,
+	} {
+		plan := explain(ctx, t, conn, query,
+			nil, nil, nil, nil, nil, "john+a@example.com", nil, false, nil, 21)
+		if !strings.Contains(plan, "idx_users_canonical_email") {
+			t.Fatalf("%s filtered by email does not use idx_users_canonical_email:\n%s", name, plan)
+		}
+	}
+}
+
+func explain(ctx context.Context, t *testing.T, conn *sql.Conn, query string, args ...any) string {
+	t.Helper()
+
+	rows, err := conn.QueryContext(ctx, `EXPLAIN `+query, args...)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -150,7 +191,5 @@ func TestGetUserByCanonicalEmailForTenantUsesTheIndex(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatalf("read plan: %v", err)
 	}
-	if !strings.Contains(plan.String(), "idx_users_tenant_id_canonical_email") {
-		t.Fatalf("the lookup does not use idx_users_tenant_id_canonical_email:\n%s", plan.String())
-	}
+	return plan.String()
 }
