@@ -93,17 +93,25 @@ func TestNotifyCommentApprovedMailsOnlyAnEpisodeTheSiteShows(t *testing.T) {
 
 // An approval drained after its episode was deleted files nothing, since the
 // deletion has already removed the episode's notifications.
-func TestNotifyCommentApprovedFilesNothingForADeletedEpisode(t *testing.T) {
-	queries := &stubCommentAuthorNotifier{episodeDeleted: true}
-
-	err := notifyCommentApproved(context.Background(), queries, CommentApprovedNotification{
-		TenantID:        uuid.New(),
+func TestCommentApprovedNotificationFilesNothingForADeletedEpisode(t *testing.T) {
+	tenantID := uuid.New()
+	payload, err := json.Marshal(CommentApprovedNotification{
+		TenantID:        tenantID,
 		UserID:          uuid.New(),
 		CommentPublicID: "CMTPEND00001",
 		EpisodePublicID: "EPISODE00001",
 	})
 	if err != nil {
-		t.Fatalf("notifyCommentApproved: %v", err)
+		t.Fatalf("encode payload: %v", err)
+	}
+	queries := &stubCommentAuthorNotifier{episodeDeleted: true}
+	if err := commentApprovedNotificationHandler(queries.hold())(context.Background(), dbmodels.OutboxEvent{
+		ID:        uuid.New(),
+		TenantID:  uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType: EventTypeCommentApprovedNotification,
+		Payload:   payload,
+	}); err != nil {
+		t.Fatalf("handler: %v", err)
 	}
 	if len(queries.created) != 0 || len(queries.queued) != 0 {
 		t.Fatalf("notifications = %+v, outbox events = %+v, want neither", queries.created, queries.queued)
@@ -194,7 +202,7 @@ func TestQueuedCommentApprovalIsFiledByTheWorker(t *testing.T) {
 	}
 
 	filed := &stubCommentAuthorNotifier{}
-	handler := commentApprovedNotificationHandler(filed)
+	handler := commentApprovedNotificationHandler(filed.hold())
 	err := handler(context.Background(), dbmodels.OutboxEvent{
 		ID:        event.ID,
 		TenantID:  event.TenantID,
@@ -244,7 +252,7 @@ func TestCommentApprovedNotificationRejectsAPayloadNamingAnotherTenant(t *testin
 		t.Fatalf("encode payload: %v", err)
 	}
 	filed := &stubCommentAuthorNotifier{}
-	err = commentApprovedNotificationHandler(filed)(context.Background(), dbmodels.OutboxEvent{
+	err = commentApprovedNotificationHandler(filed.hold())(context.Background(), dbmodels.OutboxEvent{
 		ID:        uuid.New(),
 		TenantID:  uuid.NullUUID{UUID: uuid.New(), Valid: true},
 		EventType: EventTypeCommentApprovedNotification,
@@ -287,8 +295,8 @@ type stubCommentAuthorNotifier struct {
 	appOnly bool
 }
 
-func (s *stubCommentAuthorNotifier) EpisodeExistsByPublicID(context.Context, dbmodels.EpisodeExistsByPublicIDParams) (bool, error) {
-	return !s.episodeDeleted, nil
+func (s *stubCommentAuthorNotifier) hold() episodeHold[commentAuthorNotifier] {
+	return stubEpisodeHold[commentAuthorNotifier](s, s.episodeDeleted)
 }
 
 func (s *stubCommentAuthorNotifier) ListPublishedEpisodeSurfacesByPublicID(

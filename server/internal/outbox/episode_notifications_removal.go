@@ -117,6 +117,7 @@ type NotificationRemovalHandlerConfig struct {
 type notificationRemover interface {
 	DeleteNotificationsBySubjects(ctx context.Context, arg dbmodels.DeleteNotificationsBySubjectsParams) (int64, error)
 	DeleteNotificationsBySubjectPrefix(ctx context.Context, arg dbmodels.DeleteNotificationsBySubjectPrefixParams) (int64, error)
+	DeleteNotificationsByPayloadEpisode(ctx context.Context, arg dbmodels.DeleteNotificationsByPayloadEpisodeParams) (int64, error)
 }
 
 // NewEpisodeNotificationsRemovalHandler deletes every notification filed under
@@ -179,6 +180,19 @@ func episodeNotificationsRemovalHandler(queries notificationRemover, batchSize i
 				return fmt.Errorf("delete %s notifications: %w", strings.Join(group.types, ", "), err)
 			}
 		}
+		// A comment purged before the episode was deleted is not among the
+		// comments the deletion read, and its approval notice names the episode
+		// only in its payload.
+		if err := deleteInBatches(batchSize, func() (int64, error) {
+			return queries.DeleteNotificationsByPayloadEpisode(ctx, dbmodels.DeleteNotificationsByPayloadEpisodeParams{
+				TenantID:          r.TenantID,
+				NotificationTypes: []string{NotificationTypeCommentApproved},
+				EpisodePublicID:   r.EpisodePublicID,
+				BatchSize:         batchSize,
+			})
+		}); err != nil {
+			return fmt.Errorf("delete comment approval notifications naming the episode: %w", err)
+		}
 		if err := deleteInBatches(batchSize, func() (int64, error) {
 			return queries.DeleteNotificationsBySubjectPrefix(ctx, dbmodels.DeleteNotificationsBySubjectPrefixParams{
 				TenantID:          r.TenantID,
@@ -207,28 +221,54 @@ func deleteInBatches(batchSize int32, deleteBatch func() (int64, error)) error {
 	}
 }
 
-// episodeExistenceChecker is the read [episodeDeletedSince] runs.
-type episodeExistenceChecker interface {
-	EpisodeExistsByPublicID(ctx context.Context, arg dbmodels.EpisodeExistsByPublicIDParams) (bool, error)
-}
-
-// episodeDeletedSince reports whether the episode an event about it was queued
-// for has been deleted since. A handler that would file a notification about
-// it files none then: the deletion queued the removal of the episode's
-// notifications, which may already have run, and a row filed after it would
-// link to a page that is no longer there. An event that names no episode is
-// filed as it always was.
-func episodeDeletedSince(ctx context.Context, queries episodeExistenceChecker, tenantID uuid.UUID, episodePublicID string) (bool, error) {
+// HoldEpisode runs file in a transaction that holds the episode against
+// [EventTypeEpisodeNotificationsRemoval]'s deletion, and answers false without
+// running it when the episode is gone. Every notification about an episode is
+// filed through it: a check that the episode exists, made apart from the
+// insert, would let the deletion commit and its removal run between the two,
+// and leave the row the insert files behind for good. Held, a deletion that
+// began first is waited for and leaves nothing to file, and one that begins
+// after waits for the commit, so its removal finds the row.
+//
+// An empty episodePublicID names no episode to hold, and file runs on db as it
+// would have without one.
+func HoldEpisode(ctx context.Context, db *sql.DB, tenantID uuid.UUID, episodePublicID string, file func(*dbmodels.Queries) error) (bool, error) {
 	episodePublicID = strings.TrimSpace(episodePublicID)
 	if episodePublicID == "" {
+		return true, file(dbmodels.New(db))
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("begin the notification transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	q := dbmodels.New(tx)
+	_, err = q.HoldEpisodeForNotification(ctx, dbmodels.HoldEpisodeForNotificationParams{TenantID: tenantID, PublicID: episodePublicID})
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
-	exists, err := queries.EpisodeExistsByPublicID(ctx, dbmodels.EpisodeExistsByPublicIDParams{
-		TenantID: tenantID,
-		PublicID: episodePublicID,
-	})
 	if err != nil {
-		return false, fmt.Errorf("check the episode still exists: %w", err)
+		return false, fmt.Errorf("hold the episode against deletion: %w", err)
 	}
-	return !exists, nil
+	if err := file(q); err != nil {
+		return true, err
+	}
+	if err := tx.Commit(); err != nil {
+		return true, fmt.Errorf("commit the notification transaction: %w", err)
+	}
+	return true, nil
+}
+
+// episodeHold is [HoldEpisode] over the statements one handler runs, so a test
+// can stand in for the transaction with a stub.
+type episodeHold[Q any] func(ctx context.Context, tenantID uuid.UUID, episodePublicID string, file func(Q) error) (bool, error)
+
+// holdEpisodeOn is the [episodeHold] of a handler whose statements
+// [dbmodels.Queries] runs.
+func holdEpisodeOn[Q any](db *sql.DB, as func(*dbmodels.Queries) Q) episodeHold[Q] {
+	return func(ctx context.Context, tenantID uuid.UUID, episodePublicID string, file func(Q) error) (bool, error) {
+		return HoldEpisode(ctx, db, tenantID, episodePublicID, func(q *dbmodels.Queries) error {
+			return file(as(q))
+		})
+	}
 }

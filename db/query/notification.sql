@@ -99,6 +99,20 @@ WHERE id IN (
         LIMIT sqlc.arg('batch_size')
     );
 
+-- name: DeleteNotificationsByPayloadEpisode :execrows
+-- DeleteNotificationsBySubjects for the notifications whose payload names the
+-- episode, for a subject that can be deleted before the episode is and leave
+-- nothing that names it.
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = sqlc.arg('tenant_id')
+            AND n.notification_type = ANY(sqlc.arg('notification_types')::text[])
+            AND n.payload->>'episode_id' = sqlc.arg('episode_public_id')::text
+        LIMIT sqlc.arg('batch_size')
+    );
+
 -- name: DeleteNotificationsBySubjectPrefix :execrows
 -- DeleteNotificationsBySubjects for the subject keys that begin with a prefix,
 -- for a subject filed under one key per window.

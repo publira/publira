@@ -97,8 +97,15 @@ func NewEpisodeReviewReturnedNotificationHandler(cfg EmailHandlerConfig) Handler
 			return Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
 		}
 
-		if err := fileEpisodeReviewReturnedNotification(ctx, queries, tenantID, reviewID, notice); err != nil {
+		held, err := HoldEpisode(ctx, cfg.DB, tenantID, notice.EpisodePublicID, func(q *dbmodels.Queries) error {
+			return fileEpisodeReviewReturnedNotification(ctx, q, tenantID, reviewID, notice)
+		})
+		if err != nil {
 			return err
+		}
+		if !held {
+			logEpisodeReview(ctx, cfg, event, "returned episode review no longer exists")
+			return nil
 		}
 
 		episodeURL, err := tenantAdminConsolePageURL(tenant, "/series/"+notice.SeriesPublicID+"/episodes/"+notice.EpisodePublicID)

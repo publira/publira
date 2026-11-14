@@ -100,31 +100,6 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 	return i, err
 }
 
-const EpisodeExistsByPublicID = `-- name: EpisodeExistsByPublicID :one
-SELECT EXISTS (
-        SELECT 1
-        FROM episodes e
-        WHERE e.tenant_id = $1
-            AND e.public_id = $2
-    )::bool AS episode_exists
-`
-
-type EpisodeExistsByPublicIDParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-// Whether the tenant still has the episode, which a worker filing a
-// notification about it asks first: one deleted since the event was queued
-// has had its notifications removed, and a row filed after that would name a
-// page that is no longer there.
-func (q *Queries) EpisodeExistsByPublicID(ctx context.Context, arg EpisodeExistsByPublicIDParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, EpisodeExistsByPublicID, arg.TenantID, arg.PublicID)
-	var episode_exists bool
-	err := row.Scan(&episode_exists)
-	return episode_exists, err
-}
-
 const GetEpisodeByIDForTenant = `-- name: GetEpisodeByIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -725,6 +700,35 @@ func (q *Queries) GetResolvedEpisodePurchaseAvailability(ctx context.Context, ar
 	var purchase_availability string
 	err := row.Scan(&purchase_availability)
 	return purchase_availability, err
+}
+
+const HoldEpisodeForNotification = `-- name: HoldEpisodeForNotification :one
+SELECT el.episode_id
+FROM episode_listings el
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+    AND e.id = el.episode_id
+WHERE e.tenant_id = $1
+    AND e.public_id = $2
+FOR KEY SHARE OF el
+`
+
+type HoldEpisodeForNotificationParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// The episode's listing, held against deletion for the transaction that files
+// a notification about the episode. DeleteEpisode locks the listing for
+// update, so a deletion that started first is waited for and leaves no row
+// here, and one that starts after waits until the notification is committed,
+// where the removal the deletion queues finds it. No row means the episode is
+// gone and nothing is to be filed about it. The listing rather than the
+// episode is held because the ticker role may lock it.
+func (q *Queries) HoldEpisodeForNotification(ctx context.Context, arg HoldEpisodeForNotificationParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, HoldEpisodeForNotification, arg.TenantID, arg.PublicID)
+	var episode_id uuid.UUID
+	err := row.Scan(&episode_id)
+	return episode_id, err
 }
 
 const ListEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many

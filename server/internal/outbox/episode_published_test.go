@@ -19,7 +19,7 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 	second := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID, first, second)
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, tenantID, episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestEpisodePublishedNotificationWalksEveryFollowerPage(t *testing.T) {
 	episodeID := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New(), uuid.New(), uuid.New())
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, 2)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), 2)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestEpisodePublishedNotificationIsFiledForTheOneSurfaceTheEpisodeIsShownOn(
 			queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
 			queries.surfaces = []string{surface}
 
-			handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+			handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 			if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 				t.Fatalf("handler: %v", err)
 			}
@@ -126,12 +126,27 @@ func TestEpisodePublishedNotificationIsFiledForTheOneSurfaceTheEpisodeIsShownOn(
 	}
 }
 
+// An episode deleted after it was read is told about to nobody: the hold finds
+// it gone, and the fan-out never runs.
+func TestEpisodePublishedNotificationWritesNothingForADeletedEpisode(t *testing.T) {
+	episodeID := uuid.New()
+	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
+
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, true), DefaultEpisodeFollowerPageSize)
+	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.created) != 0 || len(queries.outbox) != 0 {
+		t.Fatalf("notifications, outbox events = %d, %d, want 0, 0", len(queries.created), len(queries.outbox))
+	}
+}
+
 func TestEpisodePublishedNotificationWritesNothingForAnEpisodeShownNowhere(t *testing.T) {
 	episodeID := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
 	queries.surfaces = nil
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -151,7 +166,7 @@ func TestEpisodePublishedNotificationFilesACreatorFollowerUnderFollowedCreators(
 	queries := newStubEpisodePublishedQuerier(episodeID, seriesFollower)
 	queries.creatorFollowers = []uuid.UUID{creatorFollower}
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -178,7 +193,7 @@ func TestEpisodePublishedNotificationQueuesAPushForCreatorFollowersAlone(t *test
 	queries := newStubEpisodePublishedQuerier(episodeID)
 	queries.creatorFollowers = []uuid.UUID{uuid.New()}
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -191,7 +206,7 @@ func TestEpisodePublishedNotificationQueuesNoPushWithoutFollowers(t *testing.T) 
 	episodeID := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID)
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -204,7 +219,7 @@ func TestEpisodePublishedNotificationCompletesForAnEpisodeNoLongerPublished(t *t
 	queries := newStubEpisodePublishedQuerier(uuid.New(), uuid.New())
 	queries.getErr = sql.ErrNoRows
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -217,7 +232,7 @@ func TestEpisodePublishedNotificationRetriesAFailedLookup(t *testing.T) {
 	queries := newStubEpisodePublishedQuerier(uuid.New())
 	queries.getErr = errors.New("connection refused")
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), uuid.New()))
 	if err == nil || IsPermanent(err) {
 		t.Fatalf("handler error = %v, want a retriable error", err)
@@ -228,7 +243,7 @@ func TestEpisodePublishedNotificationRejectsAPayloadNamingAnotherTenant(t *testi
 	episodeID := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
 
-	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, stubEpisodeHold[EpisodeFollowerQuerier](queries, false), DefaultEpisodeFollowerPageSize)
 	event := episodePublishedEvent(t, uuid.New(), episodeID)
 	event.TenantID = uuid.NullUUID{UUID: uuid.New(), Valid: true}
 

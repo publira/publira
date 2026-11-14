@@ -199,13 +199,20 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 // it. It answers the notification's ID.
 func (f *episodeDeletionFixture) seedNotification(t *testing.T, userID uuid.UUID, notificationType, subjectKey string) uuid.UUID {
 	t.Helper()
+	return f.seedNotificationWithPayload(t, userID, notificationType, subjectKey, "{}")
+}
+
+// seedNotificationWithPayload is seedNotification with the payload the row
+// carries.
+func (f *episodeDeletionFixture) seedNotificationWithPayload(t *testing.T, userID uuid.UUID, notificationType, subjectKey, payload string) uuid.UUID {
+	t.Helper()
 	category, err := outbox.NotificationCategoryFor(notificationType)
 	if err != nil {
 		t.Fatalf("category of %s: %v", notificationType, err)
 	}
 	id := uuid.Must(uuid.NewV7())
-	f.exec(t, "INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category) VALUES ($1, $2, $3, $4, $5, $6)",
-		id, f.admin.Tenant.ID, userID, notificationType, subjectKey, category)
+	f.exec(t, "INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category, payload) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)",
+		id, f.admin.Tenant.ID, userID, notificationType, subjectKey, category, payload)
 	f.exec(t, "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", id, userID, f.admin.Tenant.ID)
 	return id
 }
@@ -214,7 +221,9 @@ func (f *episodeDeletionFixture) seedNotification(t *testing.T, userID uuid.UUID
 // under the subject keys the outbox files them under: the publication and the
 // approval of a comment in the reader's inbox, and the failed publication, the
 // comment alerts of two windows, and a returned review round in the staff's
-// bell. It answers their IDs.
+// bell. A comment purged before the episode is deleted leaves its approval
+// notice too, which names the episode in its payload alone. It answers their
+// IDs.
 func (f *episodeDeletionFixture) seedEpisodeNotifications(t *testing.T, episode testutil.Episode) []uuid.UUID {
 	t.Helper()
 	tenantID := f.admin.Tenant.ID
@@ -227,7 +236,10 @@ func (f *episodeDeletionFixture) seedEpisodeNotifications(t *testing.T, episode 
 	f.exec(t, "INSERT INTO episode_reviews (id, tenant_id, episode_id, decision, decided_at, comment) VALUES ($1, $2, $3, 'returned', now(), 'Fix page 3')", reviewID, tenantID, episode.ID)
 
 	now := time.Now()
+	purgedCommentPublicID := f.publicID("CMNT")
 	return []uuid.UUID{
+		f.seedNotificationWithPayload(t, f.reader.ID, outbox.NotificationTypeCommentApproved, outbox.CommentAuthorSubjectKey(purgedCommentPublicID),
+			fmt.Sprintf(`{"episode_id": %q, "comment_id": %q}`, episode.PublicID, purgedCommentPublicID)),
 		f.seedNotification(t, f.reader.ID, outbox.NotificationTypeEpisodePublished, outbox.EpisodeSubjectKey(episode.PublicID)),
 		f.seedNotification(t, f.reader.ID, outbox.NotificationTypeCommentApproved, outbox.CommentAuthorSubjectKey(commentPublicID)),
 		f.seedNotification(t, staff, outbox.NotificationTypeEpisodePublishFailed, outbox.EpisodeSubjectKey(episode.PublicID)),

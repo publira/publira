@@ -129,10 +129,11 @@ func NewCommentApprovedNotificationHandler(cfg CommentApprovedNotificationHandle
 			return errors.New("comment approved notification handler database is not configured")
 		}
 	}
-	return commentApprovedNotificationHandler(dbmodels.New(cfg.DB))
+	return commentApprovedNotificationHandler(
+		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) commentAuthorNotifier { return q }))
 }
 
-func commentApprovedNotificationHandler(queries commentAuthorNotifier) Handler {
+func commentApprovedNotificationHandler(hold episodeHold[commentAuthorNotifier]) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		var n CommentApprovedNotification
 		if err := json.Unmarshal(event.Payload, &n); err != nil {
@@ -144,7 +145,12 @@ func commentApprovedNotificationHandler(queries commentAuthorNotifier) Handler {
 		if err := n.validate(); err != nil {
 			return Permanent(err)
 		}
-		return notifyCommentApproved(ctx, queries, n)
+		// Filed while the episode is held, so a deletion that lands meanwhile
+		// is waited for or leaves nothing to file.
+		_, err := hold(ctx, n.TenantID, n.EpisodePublicID, func(queries commentAuthorNotifier) error {
+			return notifyCommentApproved(ctx, queries, n)
+		})
+		return err
 	}
 }
 
@@ -164,7 +170,6 @@ type commentAuthorNotificationBody struct {
 // commentAuthorNotifier is the inserts the helper runs, named so a test can
 // drive the write without a database behind it.
 type commentAuthorNotifier interface {
-	EpisodeExistsByPublicID(ctx context.Context, arg dbmodels.EpisodeExistsByPublicIDParams) (bool, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 	ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error)
@@ -181,10 +186,6 @@ func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n
 	}
 	category, err := NotificationCategoryFor(NotificationTypeCommentApproved)
 	if err != nil {
-		return err
-	}
-	gone, err := episodeDeletedSince(ctx, queries, n.TenantID, n.EpisodePublicID)
-	if err != nil || gone {
 		return err
 	}
 

@@ -63,6 +63,10 @@ func TestEpisodeNotificationsRemovalDeletesEverySubjectInBatches(t *testing.T) {
 	if len(queries.byPrefix) == 0 || queries.byPrefix[0].SubjectKeyPrefix != "episode:EPISODE00001:" {
 		t.Fatalf("prefix deletes = %+v, want the episode's staff alert windows", queries.byPrefix)
 	}
+	if len(queries.byPayload) == 0 || queries.byPayload[0].EpisodePublicID != "EPISODE00001" ||
+		!slices.Equal(queries.byPayload[0].NotificationTypes, []string{NotificationTypeCommentApproved}) {
+		t.Fatalf("payload deletes = %+v, want the approvals naming the episode", queries.byPayload)
+	}
 	// The first group had five rows to delete in batches of two, so it ran
 	// until a batch came back short.
 	if queries.firstGroupCalls != 3 {
@@ -108,7 +112,7 @@ func TestEpisodeNotificationsRemovalRejectsAPoisonPayload(t *testing.T) {
 			if !IsPermanent(err) {
 				t.Fatalf("error = %v, want a permanent one", err)
 			}
-			if len(queries.bySubjects)+len(queries.byPrefix) != 0 {
+			if len(queries.bySubjects)+len(queries.byPrefix)+len(queries.byPayload) != 0 {
 				t.Fatal("a poison payload deleted notifications")
 			}
 		})
@@ -174,6 +178,7 @@ type stubNotificationRemover struct {
 	err             error
 	bySubjects      []dbmodels.DeleteNotificationsBySubjectsParams
 	byPrefix        []dbmodels.DeleteNotificationsBySubjectPrefixParams
+	byPayload       []dbmodels.DeleteNotificationsByPayloadEpisodeParams
 }
 
 func (s *stubNotificationRemover) DeleteNotificationsBySubjects(_ context.Context, arg dbmodels.DeleteNotificationsBySubjectsParams) (int64, error) {
@@ -195,5 +200,24 @@ func (s *stubNotificationRemover) DeleteNotificationsBySubjectPrefix(_ context.C
 		return 0, s.err
 	}
 	s.byPrefix = append(s.byPrefix, arg)
+	return 0, nil
+}
+
+// stubEpisodeHold stands in for [HoldEpisode] over q: it runs file on q, or
+// answers that the episode is gone without running it.
+func stubEpisodeHold[Q any](q Q, deleted bool) episodeHold[Q] {
+	return func(_ context.Context, _ uuid.UUID, _ string, file func(Q) error) (bool, error) {
+		if deleted {
+			return false, nil
+		}
+		return true, file(q)
+	}
+}
+
+func (s *stubNotificationRemover) DeleteNotificationsByPayloadEpisode(_ context.Context, arg dbmodels.DeleteNotificationsByPayloadEpisodeParams) (int64, error) {
+	if s.err != nil {
+		return 0, s.err
+	}
+	s.byPayload = append(s.byPayload, arg)
 	return 0, nil
 }

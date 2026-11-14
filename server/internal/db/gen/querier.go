@@ -675,6 +675,10 @@ type Querier interface {
 	// to the label by a foreign key, so it would otherwise stay behind naming
 	// nothing.
 	DeleteLabelPromotionCodes(ctx context.Context, arg DeleteLabelPromotionCodesParams) error
+	// DeleteNotificationsBySubjects for the notifications whose payload names the
+	// episode, for a subject that can be deleted before the episode is and leave
+	// nothing that names it.
+	DeleteNotificationsByPayloadEpisode(ctx context.Context, arg DeleteNotificationsByPayloadEpisodeParams) (int64, error)
 	// DeleteNotificationsBySubjects for the subject keys that begin with a prefix,
 	// for a subject filed under one key per window.
 	DeleteNotificationsBySubjectPrefix(ctx context.Context, arg DeleteNotificationsBySubjectPrefixParams) (int64, error)
@@ -830,11 +834,6 @@ type Querier interface {
 	// Gives a tenant that has saved nothing its row, with every column at its
 	// default, so the save after it always has a row to lock.
 	EnsureTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) error
-	// Whether the tenant still has the episode, which a worker filing a
-	// notification about it asks first: one deleted since the event was queued
-	// has had its notifications removed, and a row filed after that would name a
-	// page that is no longer there.
-	EpisodeExistsByPublicID(ctx context.Context, arg EpisodeExistsByPublicIDParams) (bool, error)
 	// Deletes up to batch_size entries of the audit log of a tenant marked for
 	// deletion, through the one function that may: the log is append-only for
 	// every role the processes connect as.
@@ -1829,6 +1828,14 @@ type Querier interface {
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
+	// The episode's listing, held against deletion for the transaction that files
+	// a notification about the episode. DeleteEpisode locks the listing for
+	// update, so a deletion that started first is waited for and leaves no row
+	// here, and one that starts after waits until the notification is committed,
+	// where the removal the deletion queues finds it. No row means the episode is
+	// gone and nothing is to be filed about it. The listing rather than the
+	// episode is held because the ticker role may lock it.
+	HoldEpisodeForNotification(ctx context.Context, arg HoldEpisodeForNotificationParams) (uuid.UUID, error)
 	// Keeps a dispute whose purchase is not here yet, so the notification that
 	// creates the purchase can still revoke it, and record it lost when lost is
 	// set. A dispute held as lost stays lost through a later delivery of the one

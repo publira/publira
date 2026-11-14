@@ -247,6 +247,41 @@ func (q *Queries) CreateStaffNotification(ctx context.Context, arg CreateStaffNo
 	return err
 }
 
+const DeleteNotificationsByPayloadEpisode = `-- name: DeleteNotificationsByPayloadEpisode :execrows
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = $1
+            AND n.notification_type = ANY($2::text[])
+            AND n.payload->>'episode_id' = $3::text
+        LIMIT $4
+    )
+`
+
+type DeleteNotificationsByPayloadEpisodeParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	NotificationTypes []string  `json:"notification_types"`
+	EpisodePublicID   string    `json:"episode_public_id"`
+	BatchSize         int32     `json:"batch_size"`
+}
+
+// DeleteNotificationsBySubjects for the notifications whose payload names the
+// episode, for a subject that can be deleted before the episode is and leave
+// nothing that names it.
+func (q *Queries) DeleteNotificationsByPayloadEpisode(ctx context.Context, arg DeleteNotificationsByPayloadEpisodeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteNotificationsByPayloadEpisode,
+		arg.TenantID,
+		pq.Array(arg.NotificationTypes),
+		arg.EpisodePublicID,
+		arg.BatchSize,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const DeleteNotificationsBySubjectPrefix = `-- name: DeleteNotificationsBySubjectPrefix :execrows
 DELETE FROM notifications
 WHERE id IN (

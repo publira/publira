@@ -263,34 +263,50 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 	}
 
 	subjectKey := outbox.EpisodeSubjectKey(row.EpisodePublicID)
-	for _, adminID := range admins {
-		notificationID, err := uuid.NewV7()
-		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to allocate publish notification id",
-				"episode_id", row.EpisodeID,
-				"user_id", adminID,
-				"notification_type", notificationType,
-				"error", err,
-			)
-			continue
+	// Filed while the episode is held, so an episode deleted since the
+	// publication is told about to nobody, and one deleted meanwhile waits for
+	// these rows and takes them with it.
+	held, err := outbox.HoldEpisode(ctx, r.db, row.TenantID, row.EpisodePublicID, func(q *dbmodels.Queries) error {
+		for _, adminID := range admins {
+			notificationID, err := uuid.NewV7()
+			if err != nil {
+				r.logger.ErrorContext(ctx, "failed to allocate publish notification id",
+					"episode_id", row.EpisodeID,
+					"user_id", adminID,
+					"notification_type", notificationType,
+					"error", err,
+				)
+				continue
+			}
+			// A failed insert aborts the transaction, so the rest of the staff
+			// could not be filed for either.
+			if err := q.CreateStaffNotification(ctx, dbmodels.CreateStaffNotificationParams{
+				ID:               notificationID,
+				TenantID:         row.TenantID,
+				UserID:           adminID,
+				NotificationType: notificationType,
+				SubjectKey:       subjectKey,
+				Payload:          payload,
+				Category:         category,
+			}); err != nil {
+				return fmt.Errorf("insert publish notification for %s: %w", adminID, err)
+			}
 		}
-		err = r.queries.CreateStaffNotification(ctx, dbmodels.CreateStaffNotificationParams{
-			ID:               notificationID,
-			TenantID:         row.TenantID,
-			UserID:           adminID,
-			NotificationType: notificationType,
-			SubjectKey:       subjectKey,
-			Payload:          payload,
-			Category:         category,
-		})
-		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to insert publish notification",
-				"episode_id", row.EpisodeID,
-				"user_id", adminID,
-				"notification_type", notificationType,
-				"error", err,
-			)
-		}
+		return nil
+	})
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to insert publish notification",
+			"episode_id", row.EpisodeID,
+			"notification_type", notificationType,
+			"error", err,
+		)
+		return
+	}
+	if !held {
+		r.logger.InfoContext(ctx, "episode was deleted; staff are not notified",
+			"episode_id", row.EpisodeID,
+			"notification_type", notificationType,
+		)
 	}
 }
 
