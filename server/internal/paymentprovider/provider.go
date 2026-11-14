@@ -410,9 +410,10 @@ type PurchaseCompleted struct {
 	// entered at the checkout, and empty when they entered none. The tenant's
 	// own code is Purchase.PromotionCodeID.
 	PromotionCodeID string
-	// Test reports a payment made in the provider's test mode. Such a
-	// purchase opens the episode, but no money reached the tenant, so royalty
-	// statements and the daily stats leave it out.
+	// Test reports a payment made in the provider's test mode, which for a
+	// [TestModeByCredentials] is every payment read under the credentials of
+	// that mode. Such a purchase opens the episode, but no money reached the
+	// tenant, so royalty statements and the daily stats leave it out.
 	Test bool
 }
 
@@ -506,7 +507,9 @@ type Transaction struct {
 	AmountRefunded int64
 	// Currency is the ISO 4217 code of the payment, in capitals.
 	Currency string
-	// Test reports a payment of the provider's test mode.
+	// Test reports a payment of the provider's test mode, which for a
+	// [TestModeByCredentials] is every payment listed under the credentials
+	// of that mode.
 	Test bool
 	// Created is when the provider took the payment.
 	Created time.Time
@@ -573,6 +576,21 @@ type RefundFollower interface {
 	// failed, ParseNotification answers [ErrRefundPending], and the server
 	// reads the refunds again later.
 	RefundNotification(paymentID string) []byte
+}
+
+// TestModeByCredentials is implemented, beside [Provider], by a provider whose
+// test mode is a property of the credentials rather than of each payment, as
+// one whose sandbox is a host of its own with keys of its own is, and whose
+// payments say nothing of which of the two took them. Every payment it reads
+// under credentials TestMode reports is a test, in [PurchaseCompleted.Test]
+// and [Transaction.Test], and none it reads under any other credentials is.
+// Its payments of one mode are held under that mode's credentials alone, so
+// the server reads under a tenant's credentials the payments of the mode they
+// name and no others.
+type TestModeByCredentials interface {
+	// TestMode reports whether credentials are those of the provider's test
+	// mode.
+	TestMode(credentials Credentials) bool
 }
 
 // StaffRefundKey is the idempotency key every request of one attempt of
