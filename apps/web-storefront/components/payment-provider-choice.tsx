@@ -28,9 +28,9 @@ const PaymentProviderChoiceContext =
 
 /**
  * The provider the checkouts inside it pay through, which the reader chooses
- * with {@link Picker} and every checkout form posts with {@link Input}. The
- * picker and the forms sit apart, so the choice is shared through context
- * rather than through a common form.
+ * with {@link PaymentProviderChoicePicker} and every checkout form posts with
+ * {@link PaymentProviderChoiceInput}. The picker and the forms sit apart, so
+ * the choice is shared through context rather than through a common form.
  *
  * The choice is remembered by this browser for the tenant, so the next
  * purchase starts on the provider the reader used last, on this page and on
@@ -41,7 +41,7 @@ const PaymentProviderChoiceContext =
  * With one provider, or none, there is nothing to choose: the picker and the
  * fields render nothing, and the API sends each checkout to the one provider.
  */
-export const Root = ({
+const PaymentProviderChoiceRoot = ({
   children,
   providers,
   tenantId,
@@ -128,20 +128,27 @@ const ProviderOptions = ({
  * **Pay with**: one option per provider, named by its display name and what it
  * is known to take. Nothing at all where there is no choice to make.
  */
-export const Picker = () => {
+const PaymentProviderChoicePicker = () => {
   const choice = use(PaymentProviderChoiceContext);
 
   return choice ? <ProviderOptions choice={choice} /> : null;
 };
 
 /**
- * The `provider` a checkout form posts: the one chosen with {@link Picker}.
+ * The `provider` a checkout form posts: the one chosen with
+ * {@link PaymentProviderChoicePicker}.
  * Nothing where there is no choice, which the API reads as the one provider.
  */
-export const Input = () => {
+const PaymentProviderChoiceInput = () => {
   const choice = use(PaymentProviderChoiceContext);
 
   return choice ? (
     <input name="provider" type="hidden" value={choice.chosen} />
   ) : null;
+};
+
+export {
+  PaymentProviderChoiceInput as Input,
+  PaymentProviderChoicePicker as Picker,
+  PaymentProviderChoiceRoot as Root,
 };
