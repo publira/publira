@@ -11,40 +11,59 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
 )
 
+// fixtures are the two shapes of the fake: one that names a payment by an id
+// of its own, and one that names it by its checkout's.
+var fixtures = map[string]func(testing.TB) *readbacktest.Fixture{
+	readbacktest.ID:           readbacktest.NewFixture,
+	readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+}
+
 func TestReadBackProviderReadsItsNotifications(t *testing.T) {
 	t.Parallel()
 
-	fixture := readbacktest.NewFixture(t)
-	// The registry's rules hold for the fake as for a registered provider.
-	paymentprovider.NewRegistry(fixture.Provider())
-	paymentprovidertest.RunParse(t, fixture)
+	for id, newFixture := range fixtures {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			fixture := newFixture(t)
+			// The registry's rules hold for the fake as for a registered
+			// provider.
+			paymentprovider.NewRegistry(fixture.Provider())
+			paymentprovidertest.RunParse(t, fixture)
+		})
+	}
 }
 
 func TestReadBackProviderReportsARefundItHasNotSettled(t *testing.T) {
 	t.Parallel()
 
-	fixture := readbacktest.NewFixture(t)
-	provider := fixture.Provider()
-	follower := provider.(paymentprovider.RefundFollower)
-	credentials := fixture.Credentials()
-	fixture.API().Pay(credentials, "checkout_pending", "payment_pending", 500, "JPY", false, testTime)
-	fixture.API().HoldNextRefund(credentials, "payment_pending")
-	if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: "payment_pending", IdempotencyKey: "refund_pending"}); err != nil {
-		t.Fatalf("Refund: %v", err)
-	}
-	read := func() (paymentprovider.Event, error) {
-		return provider.ParseNotification(t.Context(), follower.RefundNotification("payment_pending"), http.Header{}, credentials)
-	}
-	if _, err := read(); !errors.Is(err, paymentprovider.ErrRefundPending) {
-		t.Fatalf("ParseNotification error = %v, want ErrRefundPending", err)
-	}
-	fixture.API().SettleRefunds(credentials, "payment_pending", false)
-	event, err := read()
-	if err != nil {
-		t.Fatalf("ParseNotification: %v", err)
-	}
-	if refunded, ok := event.(paymentprovider.Refunded); !ok || refunded.AmountRefunded != 500 {
-		t.Fatalf("event = %+v, want a refund of 500", event)
+	for id, newFixture := range fixtures {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			fixture := newFixture(t)
+			provider := fixture.Provider()
+			follower := provider.(paymentprovider.RefundFollower)
+			credentials := fixture.Credentials()
+			fixture.API().Pay(credentials, "checkout_pending", "payment_pending", 500, "JPY", false, testTime)
+			paymentID := fixture.API().PaymentID("checkout_pending", "payment_pending")
+			fixture.API().HoldNextRefund(credentials, paymentID)
+			if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paymentID, IdempotencyKey: "refund_pending"}); err != nil {
+				t.Fatalf("Refund: %v", err)
+			}
+			read := func() (paymentprovider.Event, error) {
+				return provider.ParseNotification(t.Context(), follower.RefundNotification(paymentID), http.Header{}, credentials)
+			}
+			if _, err := read(); !errors.Is(err, paymentprovider.ErrRefundPending) {
+				t.Fatalf("ParseNotification error = %v, want ErrRefundPending", err)
+			}
+			fixture.API().SettleRefunds(credentials, paymentID, false)
+			event, err := read()
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			if refunded, ok := event.(paymentprovider.Refunded); !ok || refunded.AmountRefunded != 500 || refunded.PaymentID != paymentID {
+				t.Fatalf("event = %+v, want a refund of 500 on %q", event, paymentID)
+			}
+		})
 	}
 }
 

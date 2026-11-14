@@ -40,6 +40,13 @@ type storedCheckoutEnv struct {
 
 func newStoredCheckoutEnv(t *testing.T) storedCheckoutEnv {
 	t.Helper()
+	return newStoredCheckoutEnvOf(t, readbacktest.NewFixture)
+}
+
+// newStoredCheckoutEnvOf answers the tenant of newStoredCheckoutEnv selling
+// through the fake newFixture answers.
+func newStoredCheckoutEnvOf(t *testing.T, newFixture func(testing.TB) *readbacktest.Fixture) storedCheckoutEnv {
+	t.Helper()
 	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "STORED", "stored-checkout.example.com", "Stored checkout tenant")
@@ -51,13 +58,13 @@ func newStoredCheckoutEnv(t *testing.T) storedCheckoutEnv {
 		PublishedAt: time.Now().Add(-time.Hour),
 	})
 
-	fixture := readbacktest.NewFixture(t)
+	fixture := newFixture(t)
 	registry := paymentprovider.NewRegistry(fixture.Provider())
 	credentials := fixture.Credentials()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, registry, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Provider: readbacktest.ID,
+		Provider: fixture.Provider().Declaration().ID,
 		Enabled:  true,
 		Fields:   []paymentsettings.FieldUpdate{{Name: readbacktest.FieldAPIKey, Mode: secretupdate.Replace, Value: credentials[readbacktest.FieldAPIKey]}},
 	}, paymentsettings.AuditMeta{}); err != nil {
@@ -99,7 +106,7 @@ func (e storedCheckoutEnv) start(t *testing.T) string {
 
 func (e storedCheckoutEnv) deliver(t *testing.T, payload []byte) error {
 	t.Helper()
-	_, err := e.purchases.ProcessPaymentWebhook(t.Context(), paymentWebhookRequest(e.tenant.ID.String(), readbacktest.ID, payload, http.Header{}))
+	_, err := e.purchases.ProcessPaymentWebhook(t.Context(), paymentWebhookRequest(e.tenant.ID.String(), e.fixture.Provider().Declaration().ID, payload, http.Header{}))
 	return err
 }
 
@@ -202,20 +209,46 @@ func TestDBAStoredCheckoutThatExpiredIsStartedAfresh(t *testing.T) {
 }
 
 // A refund asked of a provider that notifies none is read back by the
-// follow-up the worker runs, and waits while the provider has not settled it.
+// follow-up the worker runs, and waits while the provider has not settled it,
+// whether the provider names the payment by an id of its own or by its
+// checkout's.
 func TestDBARefundFollowUpRecordsWhatTheProviderSettled(t *testing.T) {
 	t.Parallel()
 
-	env := newStoredCheckoutEnv(t)
+	for id, newFixture := range map[string]func(testing.TB) *readbacktest.Fixture{
+		readbacktest.ID:           readbacktest.NewFixture,
+		readbacktest.IDByCheckout: readbacktest.NewFixtureByCheckout,
+	} {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			testRefundFollowUpRecordsWhatTheProviderSettled(t, newStoredCheckoutEnvOf(t, newFixture))
+		})
+	}
+}
+
+func testRefundFollowUpRecordsWhatTheProviderSettled(t *testing.T, env storedCheckoutEnv) {
+	t.Helper()
 	checkoutID := env.start(t)
 	if err := env.deliver(t, env.fixture.API().Pay(env.credentials, checkoutID, "payment_followed", 500, "JPY", false, time.Now())); err != nil {
 		t.Fatalf("checkout: %v", err)
 	}
-	env.fixture.API().HoldNextRefund(env.credentials, "payment_followed")
-	if _, err := env.fixture.Provider().Refund(t.Context(), env.credentials, paymentprovider.RefundRequest{PaymentID: "payment_followed", IdempotencyKey: "refund_followed"}); err != nil {
+	// The payment as the purchase recorded it, which is the id the provider
+	// reports.
+	paymentID := env.fixture.API().PaymentID(checkoutID, "payment_followed")
+	var recorded string
+	if err := env.pg.DB.QueryRowContext(t.Context(),
+		`SELECT provider_payment_id FROM purchases WHERE tenant_id = $1`, env.tenant.ID,
+	).Scan(&recorded); err != nil {
+		t.Fatalf("read the purchase: %v", err)
+	}
+	if recorded != paymentID {
+		t.Fatalf("the purchase records the payment %q, want %q", recorded, paymentID)
+	}
+	env.fixture.API().HoldNextRefund(env.credentials, paymentID)
+	if _, err := env.fixture.Provider().Refund(t.Context(), env.credentials, paymentprovider.RefundRequest{PaymentID: paymentID, IdempotencyKey: "refund_followed"}); err != nil {
 		t.Fatalf("Refund: %v", err)
 	}
-	if err := outbox.QueuePaymentRefundFollow(t.Context(), dbmodels.New(env.pg.DB), env.tenant.ID, readbacktest.ID, "payment_followed"); err != nil {
+	if err := outbox.QueuePaymentRefundFollow(t.Context(), dbmodels.New(env.pg.DB), env.tenant.ID, env.fixture.Provider().Declaration().ID, paymentID); err != nil {
 		t.Fatalf("QueuePaymentRefundFollow: %v", err)
 	}
 	var eventID uuid.UUID
@@ -244,7 +277,7 @@ func TestDBARefundFollowUpRecordsWhatTheProviderSettled(t *testing.T) {
 	if got := refunded(); got != 0 {
 		t.Fatalf("refunded purchases while the refund is pending = %d, want 0", got)
 	}
-	env.fixture.API().SettleRefunds(env.credentials, "payment_followed", false)
+	env.fixture.API().SettleRefunds(env.credentials, paymentID, false)
 	if err := handle(t.Context(), event); err != nil {
 		t.Fatalf("follow-up of a settled refund: %v", err)
 	}

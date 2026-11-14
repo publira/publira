@@ -23,7 +23,9 @@ type Registry struct {
 // registered twice, on a field declared twice or both secret and public, on a
 // provider that declares no currency, a currency twice, or a code that is not
 // three capital letters, on one that declares stored checkouts without a
-// checkout lifetime or a lifetime without them, and on a [RefundFollower] that
+// checkout lifetime or a lifetime without them, on one that names its payments
+// by their checkouts without declaring stored checkouts, the only providers
+// handed the id of a checkout, and on a [RefundFollower] that
 // declares a signature header: each is a programming error in the provider
 // list.
 func NewRegistry(providers ...Provider) *Registry {
@@ -62,6 +64,9 @@ func NewRegistry(providers ...Provider) *Registry {
 		}
 		if declaration := provider.Declaration(); declaration.StoredCheckouts != (declaration.CheckoutLifetime > 0) {
 			panic(fmt.Sprintf("paymentprovider: provider %q declares a checkout lifetime without stored checkouts, or stored checkouts without a lifetime", id))
+		}
+		if declaration := provider.Declaration(); declaration.PaymentsByCheckout && !declaration.StoredCheckouts {
+			panic(fmt.Sprintf("paymentprovider: provider %q names its payments by their checkouts without declaring stored checkouts", id))
 		}
 		if _, follows := provider.(RefundFollower); follows && provider.Declaration().SignatureHeader != "" {
 			panic(fmt.Sprintf("paymentprovider: provider %q follows its refunds but declares a signature header its own notification of them cannot carry", id))
