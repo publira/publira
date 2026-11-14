@@ -315,7 +315,7 @@ func (declaredProvider) RefundMade(context.Context, paymentprovider.Credentials,
 	return false, nil
 }
 
-func (declaredProvider) ListTransactions(context.Context, paymentprovider.Credentials, time.Time, time.Time) ([]paymentprovider.Transaction, error) {
+func (declaredProvider) ListTransactions(context.Context, paymentprovider.Credentials, time.Time, time.Time, []string) ([]paymentprovider.Transaction, error) {
 	return nil, nil
 }
 

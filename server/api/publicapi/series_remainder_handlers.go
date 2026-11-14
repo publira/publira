@@ -280,10 +280,9 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to write down the series bundle", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
-	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "series_id", series.ID.String())
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "series_id", series.ID.String())
-		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		return nil, err
 	}
 	return &publirav1.StartSeriesRemainderCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }

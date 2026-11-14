@@ -539,7 +539,7 @@ const listPageSize = 100
 // refunds made since it began, which are every refund those flows can have.
 // Both lists come newest first, so each is read until it reaches what was
 // made before the period.
-func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time) ([]paymentprovider.Transaction, error) {
+func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time, _ []string) ([]paymentprovider.Transaction, error) {
 	client, err := p.client(credentials)
 	if err != nil {
 		return nil, err

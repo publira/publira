@@ -6,6 +6,8 @@ package paymentprovider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -30,6 +32,11 @@ var ErrMalformedNotification = errors.New("payment notification is malformed")
 // not hold or one the reader has disputed.
 var ErrRefundRefused = errors.New("the payment provider refused the refund")
 
+// ErrRefundPending reports that a refund of a payment has been neither made
+// nor failed yet, so what a [RefundFollower]'s own notification of the
+// payment's refunds would say is not settled.
+var ErrRefundPending = errors.New("a refund of the payment is still pending")
+
 // Field is one credential a provider needs from a tenant.
 type Field struct {
 	// Name is the key the value is stored and passed under.
@@ -50,8 +57,26 @@ type Declaration struct {
 	DisplayName string
 	Fields      []Field
 	// SignatureHeader is the request header the provider signs or
-	// authenticates its notifications with.
+	// authenticates its notifications with, and empty for a provider that does
+	// neither. Such a provider takes nothing from a notification but which of
+	// its objects the notification is about, reads that object from its API
+	// under the tenant's credentials, and answers [ErrInvalidSignature] for one
+	// the API does not hold under them, so a notification anyone could have
+	// sent says nothing the provider's API does not.
 	SignatureHeader string
+	// StoredCheckouts is set by a provider that cannot carry a checkout's
+	// [Purchase] to the notification that confirms it, as one whose payments
+	// take no metadata cannot. The server writes the purchase down under
+	// [CheckoutRequest.CheckoutID] before the checkout starts, and finds it
+	// again by the id [PurchaseCompleted.CheckoutID] and
+	// [CheckoutExpired.CheckoutID] name, so the provider answers those events
+	// with a Purchase that holds nothing but the Currency the payment names.
+	StoredCheckouts bool
+	// CheckoutLifetime is how long after it starts a checkout of a provider
+	// that declares StoredCheckouts can still be paid, which bounds the
+	// checkouts [Provider.ListTransactions] is handed. It is zero for every
+	// other provider.
+	CheckoutLifetime time.Duration
 	// Currencies are the ISO 4217 codes, in capitals, of the currencies the
 	// provider can charge in, each in the unit ISO 4217 gives as its minor
 	// unit, which is the unit a price is stored in. A tenant may sell only in
@@ -303,6 +328,21 @@ type CheckoutRequest struct {
 	// requests whose other fields differ, which the provider would refuse or
 	// answer with the checkout of the earlier one.
 	IdempotencyKey string
+	// CheckoutID is, for a provider that declares
+	// [Declaration.StoredCheckouts], the id the provider gives the checkout,
+	// which the server wrote the purchase down under: [StoredCheckoutID] of
+	// IdempotencyKey, so a retried request names the same checkout. It is
+	// empty for every other provider, which names its checkouts itself, and is
+	// left out of the encoding an idempotency key is made from.
+	CheckoutID string `json:",omitzero"`
+}
+
+// StoredCheckoutID answers the [CheckoutRequest.CheckoutID] of the checkout
+// started under idempotencyKey: 32 lower-case hexadecimal digits, which the
+// id field of any provider's checkout holds.
+func StoredCheckoutID(idempotencyKey string) string {
+	sum := sha256.Sum256([]byte(idempotencyKey))
+	return hex.EncodeToString(sum[:16])
 }
 
 // RefundRequest asks for whatever of one payment has not been refunded yet.
@@ -333,6 +373,8 @@ type PurchaseCompleted struct {
 	ID string
 	// CheckoutID is the provider's id of the checkout. A purchase is created
 	// once per checkout however many times the notification is delivered.
+	// For a provider that declares [Declaration.StoredCheckouts] it is the
+	// [CheckoutRequest.CheckoutID] the checkout was started under.
 	CheckoutID string
 	// PaymentID is the provider's id of the payment its refunds name. It may
 	// be empty when the provider reports none.
@@ -346,7 +388,9 @@ type PurchaseCompleted struct {
 	// discounted price. It is what the
 	// purchase records, since a refund of the payment returns this much and no
 	// more. A code may take off the whole price, which leaves it zero and the
-	// checkout with no payment, and so no PaymentID.
+	// checkout with no payment, and so no PaymentID. A provider that declares
+	// [Declaration.StoredCheckouts] answers what the payment took, which the
+	// server holds against the price it wrote down.
 	AmountPaid int32
 	// PromotionCodeID is the provider's id of the promotion code the reader
 	// entered at the checkout, and empty when they entered none. The tenant's
@@ -405,7 +449,10 @@ type DisputeLost struct {
 // revokes nothing, since nothing was bought, but the reader's next checkout of
 // the same episode has to be a new one.
 type CheckoutExpired struct {
-	ID         string
+	ID string
+	// CheckoutID is the provider's id of the checkout, which for a provider
+	// that declares [Declaration.StoredCheckouts] is the
+	// [CheckoutRequest.CheckoutID] it was started under.
 	CheckoutID string
 	Purchase   Purchase
 }
@@ -484,7 +531,33 @@ type Provider interface {
 	// with what has been refunded on it by now. It reads the provider's
 	// records and changes none of them. It answers [ErrCredentialsRefused] for
 	// credentials the provider will not answer.
-	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time) ([]Transaction, error)
+	//
+	// checkoutIDs are, for a provider that declares
+	// [Declaration.StoredCheckouts], the [CheckoutRequest.CheckoutID] of every
+	// checkout the server started through it under the credentials from
+	// [Declaration.CheckoutLifetime] before from up to to, so that a provider
+	// whose API lists no payments reads the payment of each. Every other
+	// provider is handed none.
+	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time, checkoutIDs []string) ([]Transaction, error)
+}
+
+// RefundFollower is implemented, beside [Provider], by a provider that sends
+// no notification of a refund. Once the server has asked such a provider for
+// a refund, it reads the payment's refunds back itself, by handing
+// [Provider.ParseNotification] the notification RefundNotification answers,
+// until the provider has made or failed every refund of the payment. The
+// provider's notifications carry no signature, as its own one could not,
+// so its [Declaration.SignatureHeader] is empty.
+type RefundFollower interface {
+	// RefundNotification answers a notification about the refunds of the
+	// payment paymentID names, which ParseNotification reads from the
+	// provider's API as it reads every notification of the provider: as
+	// [Refunded] with the total refunded on the payment, as [RefundFailed]
+	// when one of its refunds failed, or as [Ignored] when nothing is
+	// refunded. While a refund of the payment has been neither made nor
+	// failed, ParseNotification answers [ErrRefundPending], and the server
+	// reads the refunds again later.
+	RefundNotification(paymentID string) []byte
 }
 
 // StaffRefundKey is the idempotency key every request of one attempt of

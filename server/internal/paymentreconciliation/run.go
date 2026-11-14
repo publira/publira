@@ -227,7 +227,18 @@ func sourceFor(ctx context.Context, deps Deps, queries *dbmodels.Queries, run db
 		if !ok {
 			return nil, false, fmt.Errorf("%w: provider %s is not registered", ErrCredentials, run.Provider.String)
 		}
-		return providerSource{provider: provider, credentials: credentials}, true, nil
+		source := providerSource{provider: provider, credentials: credentials}
+		if declaration := provider.Declaration(); declaration.StoredCheckouts {
+			source.checkouts = func(ctx context.Context, from, to time.Time) ([]string, error) {
+				return queries.ListPaymentCheckoutIDs(ctx, dbmodels.ListPaymentCheckoutIDsParams{
+					TenantID:    run.TenantID,
+					Provider:    run.Provider.String,
+					CreatedFrom: from.Add(-declaration.CheckoutLifetime),
+					CreatedTo:   to,
+				})
+			}
+		}
+		return source, true, nil
 	case run.Store.String == storepurchase.StoreAppStore:
 		if deps.AppStore == nil || deps.AppStoreVerifier == nil {
 			return nil, false, errors.New("paymentreconciliation: no App Store client")

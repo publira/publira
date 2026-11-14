@@ -3,6 +3,7 @@ package paymentprovider
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,9 +30,16 @@ func (declaredProvider) RefundMade(context.Context, Credentials, string, string)
 	return false, nil
 }
 
-func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time, time.Time) ([]Transaction, error) {
+func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time, time.Time, []string) ([]Transaction, error) {
 	return nil, nil
 }
+
+// followingProvider is a declaredProvider that follows its own refunds.
+type followingProvider struct {
+	declaredProvider
+}
+
+func (followingProvider) RefundNotification(string) []byte { return nil }
 
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
@@ -109,6 +117,48 @@ func TestRegistryRefusesACurrencyThatIsNotAnISOCode(t *testing.T) {
 			}()
 			NewRegistry(declaredProvider{Declaration{ID: "stripe", Currencies: currencies}})
 		})
+	}
+}
+
+func TestRegistryRefusesStoredCheckoutsWithoutALifetime(t *testing.T) {
+	for name, declaration := range map[string]Declaration{
+		"stored checkouts without a lifetime": {ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true},
+		"a lifetime without stored checkouts": {ID: "paypay", Currencies: []string{"JPY"}, CheckoutLifetime: time.Hour},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("NewRegistry accepted %+v", declaration)
+				}
+			}()
+			NewRegistry(declaredProvider{declaration})
+		})
+	}
+	NewRegistry(declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}})
+}
+
+func TestRegistryRefusesARefundFollowerThatDeclaresASignatureHeader(t *testing.T) {
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("NewRegistry accepted a refund follower with a signature header")
+			}
+		}()
+		NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, SignatureHeader: "X-Signature"}}})
+	}()
+	NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}}}})
+}
+
+func TestStoredCheckoutIDNamesOneCheckoutPerKey(t *testing.T) {
+	id := StoredCheckoutID("episode-checkout:a")
+	if len(id) != 32 || strings.Trim(id, "0123456789abcdef") != "" {
+		t.Fatalf("StoredCheckoutID = %q, want 32 lower-case hexadecimal digits", id)
+	}
+	if again := StoredCheckoutID("episode-checkout:a"); again != id {
+		t.Fatalf("StoredCheckoutID of the same key = %q, then %q", id, again)
+	}
+	if other := StoredCheckoutID("episode-checkout:b"); other == id {
+		t.Fatalf("StoredCheckoutID of two keys = %q", id)
 	}
 }
 
