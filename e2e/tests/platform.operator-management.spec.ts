@@ -56,6 +56,38 @@ const listRow = (page: Page, text: string): Locator =>
   page.locator("tr", { hasText: text });
 
 /**
+ * Open the user list at `path` and follow its Next links until a row naming
+ * `name` is on screen, reporting whether one turned up. The list is newest
+ * first across every tenant and other suites create readers of their own, so
+ * how far down a seeded reader sits depends on how many ran before this one.
+ * Each page is a fresh load rather than a click, so the page left behind is
+ * not still mounted beside the one searched.
+ */
+const showUserRow = async (
+  page: Page,
+  path: string,
+  name: string
+): Promise<boolean> => {
+  await page.goto(platformUrl(path));
+  await page
+    .getByRole("heading", { level: 1, name: "Users" })
+    .waitFor({ state: "visible" });
+
+  if ((await listRow(page, name).count()) > 0) {
+    return true;
+  }
+
+  const next = page
+    .getByRole("navigation", { name: "User list pagination" })
+    .getByRole("link", { name: "Next" });
+
+  const nextPath =
+    (await next.count()) > 0 ? await next.getAttribute("href") : null;
+
+  return nextPath ? showUserRow(page, nextPath, name) : false;
+};
+
+/**
  * Put the operators back and drop what web-platform holds of them: the list
  * and the detail are shared `"use cache"` reads, and the scenario writes their
  * rows straight to Postgres.
@@ -408,37 +440,22 @@ test.describe("platform operator management", () => {
     // write straight to Postgres does not clear.
     await revalidatePlatformTags([platformEndUsersTag]);
 
-    // 50 per page: the list is newest-first across every tenant and other suites
-    // create readers of their own, so the two seeded ones are not on a page of 20
-    // forever.
     const listPath = "/users?limit=50";
-    await openWhen(page, listPath, async () => {
-      await page
-        .getByRole("heading", { level: 1, name: "Users" })
-        .waitFor({ state: "visible" });
-
-      return (await listRow(page, NOTIFICATION_INBOX_MEMBER.name).count()) > 0;
-    });
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Users" })
-    ).toBeVisible();
+    await openWhen(page, listPath, () =>
+      showUserRow(page, listPath, NOTIFICATION_INBOX_MEMBER.name)
+    );
 
     // The list names each reader rather than showing their public id: an
     // identifier belongs on the detail screen, which is where this test picks
     // it up again below.
-    await expect(
-      listRow(page, SEED_MEMBER.name).getByRole("link", {
-        name: SEED_TENANT.name,
-      })
-    ).toHaveAttribute("href", `/tenants/${SEED_TENANT.publicId}`);
     await expect(
       listRow(page, NOTIFICATION_INBOX_MEMBER.name).getByRole("link", {
         name: NOTIFICATION_INBOX_TENANT.name,
       })
     ).toHaveAttribute("href", `/tenants/${NOTIFICATION_INBOX_TENANT.publicId}`);
 
-    // Narrowing to one tenant is what proves the two rows above came from
-    // different ones, rather than from a list whose tenant column is decoration.
+    // Narrowing to one tenant is what proves the two rows come from different
+    // ones, rather than from a list whose tenant column is decoration.
     await page
       .getByRole("searchbox", { name: "Search tenants" })
       .fill(NOTIFICATION_INBOX_TENANT.name);
@@ -446,7 +463,15 @@ test.describe("platform operator management", () => {
     await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
     await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
 
-    await page.goto(platformUrl(listPath));
+    expect(
+      await showUserRow(page, listPath, SEED_MEMBER.name),
+      `${SEED_MEMBER.name} is on no page of ${listPath}`
+    ).toBe(true);
+    await expect(
+      listRow(page, SEED_MEMBER.name).getByRole("link", {
+        name: SEED_TENANT.name,
+      })
+    ).toHaveAttribute("href", `/tenants/${SEED_TENANT.publicId}`);
     await listRow(page, SEED_MEMBER.name)
       .getByRole("link", { name: "Details" })
       .click();
