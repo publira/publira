@@ -58,10 +58,11 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 			paymentprovidertest.Run(t, harness, fixture)
 		})
 	}
-	// No registered provider carries nothing on its payments, signs nothing,
-	// and notifies no refund or a checkout's payment only once yet, nor names its payments by their checkouts,
-	// nor takes its test-mode payments under credentials of their own, so the
-	// fakes of one hold the purchase flow to those shapes.
+	// The fakes hold the purchase flow to each shape a provider may take on
+	// its own — carrying nothing on its payments, signing nothing, notifying
+	// no refund and a checkout's payment only once, naming its payments by
+	// their checkouts, taking its test-mode payments under credentials of
+	// their own — whichever registered providers take it too.
 	for _, fixture := range []paymentprovidertest.Fixture{
 		readbacktest.NewFixture(t),
 		readbacktest.NewFixtureByCheckout(t),

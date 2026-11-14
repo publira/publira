@@ -3927,18 +3927,29 @@
           "payjp": {
             "secret_key": "密鑰",
             "webhook_token": "Webhook權杖"
+          },
+          "paypay": {
+            "api_key": "API Key",
+            "api_secret": "API Secret",
+            "environment": "環境"
           }
         },
         "field_sources": {
           "payjp": {
             "secret_key": "PAY.JP管理後台API設定頁面中的密鑰（sk_live_…或sk_test_…）。測試密鑰只能接受測試付款。",
             "webhook_token": "PAY.JP管理後台帳戶設定中顯示的Webhook權杖（whook_…）。"
+          },
+          "paypay": {
+            "api_key": "在PayPay for Developers中核發的API Key。PayPay沙盒的Key只能接受測試付款。",
+            "api_secret": "與API Key一起在PayPay for Developers中核發的API Secret。",
+            "environment": "正式環境的Key請留空，PayPay沙盒的Key請輸入sandbox。"
           }
         },
         "public_description": "此值會在結帳時交給讀者的瀏覽器，因此依儲存的原樣顯示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "請在{$provider}中將此URL設定為付款通知的接收位址。",
         "webhook_url_payjp_description": "PAY.JP傳送的每則通知都會附上上方儲存的Webhook權杖，未附上該權杖的通知將被拒絕。",
+        "webhook_url_paypay_description": "PayPay的通知不附簽章，因此收到的每則通知都會用上方的Key從PayPay的API重新讀取付款加以確認。",
         "saved": "付款設定已儲存。",
         "load_failed": "無法載入付款設定。請稍後再試。",
         "save_failed": "無法儲存付款設定。請稍後再試。",

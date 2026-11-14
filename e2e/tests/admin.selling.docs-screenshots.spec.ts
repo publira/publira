@@ -200,6 +200,7 @@ for (const locale of DOCS_LOCALES) {
       for (const [subject, provider, webhookPath] of [
         ["stripe-settings", "Stripe", "stripe"],
         ["payjp-settings", "PAY.JP", "payjp"],
+        ["paypay-settings", "PayPay", "paypay"],
       ] as const) {
         test(`the payment settings, with ${provider} chosen`, async ({
           consoleSessions,

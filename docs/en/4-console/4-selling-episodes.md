@@ -1,6 +1,6 @@
 ---
 title: Selling episodes
-description: Price an episode, record the tax its price includes, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
+description: Price an episode, record the tax its price includes, take payment through Stripe, PAY.JP, or PayPay, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
 updated: 2026-11-14
 ---
@@ -104,14 +104,15 @@ A tenant takes payment on the site through the providers it adds under **Payment
 | --- | --- |
 | Stripe | The payment methods turned on for your account in the Stripe Dashboard, such as cards and konbini. An episode bought with a method that is paid later, such as konbini, opens once the payment arrives. |
 | PAY.JP | Cards, with 3-D Secure authentication on every payment. |
+| PayPay | PayPay, in the PayPay app or on PayPay's web page. A tenant on Stripe gets PayPay by turning it on in the Stripe Dashboard instead. |
 
 **Add a provider** adds one the tenant does not hold yet, and leaves the others as they are. Each provider the tenant holds then has a card of its own under **Payment settings**, with its status, what it sells, its credentials, the **Webhook URL** to register with it, **Save**, and **Remove**.
 
-![Payment settings holding Stripe and PAY.JP: a card for each with the Ready status, what it sells, Remove, Currency, Enable payments, its credentials, its Webhook URL, and Save.](./selling-episodes-providers.png)
+![Payment settings holding Stripe and PAY.JP: a card for each with the Ready status, what it sells, Remove, Currency, Enable payments, its credentials, its Webhook URL, and Save, and below them Add a provider with PayPay chosen.](./selling-episodes-providers.png)
 
-Every provider sells episodes, volumes, the rest of a series, coins, and tips. A subscription plan is sold through a provider that takes recurring payments, which Stripe does and PAY.JP does not, and through the first of them on the screen that is **Ready** when the tenant holds more than one; each card says which it sells.
+Every provider sells episodes, volumes, the rest of a series, coins, and tips. A subscription plan is sold through a provider that takes recurring payments, which Stripe does and PAY.JP and PayPay do not, and through the first of them on the screen that is **Ready** when the tenant holds more than one; each card says which it sells.
 
-Payments are taken in the tenant's currency, chosen under **Currency** on any card: every price is entered and shown in it, on the site and in the app as in the console, and every provider the tenant holds charges in it. **Currency** offers the currencies the provider and every other one the tenant holds charge in — PAY.JP charges in yen only — and starts on the platform's default currency, which the install's operators set, until a provider is saved. A provider that cannot charge in a currency the others charge in cannot be added beside them, and its form says so. Choose the currency before the first sale: once the tenant has a purchase, every price and every sale is an amount in that currency, so **Currency** can no longer be changed.
+Payments are taken in the tenant's currency, chosen under **Currency** on any card: every price is entered and shown in it, on the site and in the app as in the console, and every provider the tenant holds charges in it. **Currency** offers the currencies the provider and every other one the tenant holds charge in — PAY.JP and PayPay charge in yen only — and starts on the platform's default currency, which the install's operators set, until a provider is saved. A provider that cannot charge in a currency the others charge in cannot be added beside them, and its form says so. Choose the currency before the first sale: once the tenant has a purchase, every price and every sale is an amount in that currency, so **Currency** can no longer be changed.
 
 The status on each card says where that provider stands:
 
@@ -155,7 +156,7 @@ Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own 
 
 A reader can also enter a promotion code on Stripe's checkout page. These codes are created in the Stripe Dashboard, under the coupons of the same account and mode as the secret key, and nothing is set in the console: every checkout of an episode or a volume takes them. A checkout of the rest of a series sold at a discount does not, and neither does a checkout started with one of the tenant's own [promotion codes](#promotion-codes), since Stripe applies one discount to a checkout, never two.
 
-The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history** and the amount a full refund returns, and the price before the code beside it, which is the sale the episode's Authors are paid royalties on: the tenant offered the promotion, so the tenant bears it. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP's checkout page takes no code of its own; the tenant's own codes work with it as with Stripe.
+The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history** and the amount a full refund returns, and the price before the code beside it, which is the sale the episode's Authors are paid royalties on: the tenant offered the promotion, so the tenant bears it. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. Neither PAY.JP's checkout page nor PayPay's takes a code of its own; the tenant's own codes work with them as with Stripe.
 
 ### PAY.JP
 
@@ -175,6 +176,26 @@ Then in the console, under **Add a provider**:
 
 PAY.JP signs nothing: the install trusts a notification because it carries the webhook token, and refuses one that does not, so keep the token as secret as the secret key.
 
+### PayPay
+
+PayPay's Web Payment sends the reader to a payment page of PayPay's, where they pay in the PayPay app or on the page itself. It takes payment in yen only, sells no subscription plan, and takes no promotion code of its own.
+
+In PayPay for Developers:
+
+1. Copy the **API key** and the **API secret** of the environment you sell in: the sandbox's while you test, and production's once PayPay has approved the tenant's account for live payments. A sandbox key takes test payments only.
+2. Register the **Webhook URL** the console shows under **Payment settings** once PayPay is chosen under **Add a provider**, or on PayPay's card once it is added, `https://<tenant-domain>/api/v1/webhook/payment/paypay`, as the URL PayPay sends its transaction events to.
+
+Then in the console, under **Add a provider**:
+
+1. Choose PayPay as the **Payment provider**.
+2. Enter the **API key** and the **API secret**.
+3. Under **Environment**, enter `sandbox` for a key of PayPay's sandbox, or leave it empty for a production key.
+4. Under **Enable payments**, check **Enable**, and choose **Add provider**.
+
+![Payment settings with no provider added yet and PayPay chosen under Add a provider: the Not set status, Payment provider, Currency, Enable payments, API key, API secret, Environment, the Webhook URL to register with PayPay, and Add provider.](./selling-episodes-paypay-settings.png)
+
+PayPay signs nothing, and does not say whether it sends a notification again when the install fails to take it. The install therefore takes a notification for nothing but which payment it names, and reads that payment from PayPay with the API key above, so a notification someone else sends can open nothing PayPay has not taken. It also reads the payment of every PayPay checkout back by itself until the checkout is paid or can no longer be: a payment whose notification never arrives still opens its episode, within about ten minutes of the payment. A code PayPay lets expire unpaid leads the reader to a new one when they buy again.
+
 ### Removing a provider
 
 **Remove** on a provider's card, once confirmed, stops new checkouts through it at once and leaves the other providers as they are. The provider stays on the screen as **Removed**, with its credentials: a checkout a reader started before the removal can still be paid, and the provider's notifications, the refunds from **Purchases**, and the reconciliation of what it took go on working, as do the subscriptions it bills. **Add back** on its card sells through it again.
@@ -193,7 +214,7 @@ The provider's dashboard lists each delivery to the webhook with the status the 
 | 503 | The provider the URL names is not **Ready**, or the tenant has not added it | Finish the setup above. The provider retries the delivery. |
 | No delivery | The webhook is not registered, or is registered for the other mode | Register it in the mode the keys belong to. |
 
-Both providers retry a failed delivery for some time, and their dashboards can resend one. Once the setup is fixed, a payment whose notification arrives opens the episode it paid for.
+Stripe and PAY.JP retry a failed delivery for some time, and their dashboards can resend one. Once the setup is fixed, a payment whose notification arrives opens the episode it paid for. PayPay is different: the install answers 400 to a PayPay notification of a payment that PayPay holds no record of under the API key in the console, which usually means a key of the other environment, and since the install reads every PayPay checkout back by itself, a payment opens its episode once the key and the **Environment** are right, whether its notification arrived or not.
 
 ## Where episodes are sold
 
@@ -363,6 +384,7 @@ A purchase a [promotion code](#promotion-codes) discounted, one of the tenant's 
 Each refund reaches the install the way its purchase did:
 
 - **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`. A refund the provider accepted can still fail later, for example when the reader's card has been closed; the provider reports that too, through `refund.updated` on Stripe, and the episode opens to the reader again unless what stays refunded still adds up to what the reader paid.
+- **PayPay** sends no notification of a refund. Once the console has asked PayPay for one, the install reads the payment's refunds back from PayPay until the refund is made or has failed, and treats a failed one as above. A refund made in PayPay's own tools is one the install never hears of, so refund a PayPay purchase from the console; one refunded elsewhere shows up only in a [reconciliation](#reconciling-with-the-provider), as **Amount differs**.
 - **The App Store** reports it to the **App Store Server Notifications URL** the console shows in the **App Store** section, which is registered in App Store Connect as both the Production and the Sandbox Server URL.
 - **Google Play** reports it to the **Google Play real-time developer notifications URL** the console shows in the **Google Play** section, through the Pub/Sub push subscription [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#what-each-store-needs-for-in-app-purchase) describes. The install also reads Google Play's voided purchases once an hour, for the last 30 days, which applies a refund whose notification never arrived; without the notifications, a refunded purchase can keep its episode open for up to an hour. That reading runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes.
 
@@ -394,7 +416,7 @@ How the bank decides changes only the royalty statement, which learns of the dec
 
 ## Abandoned checkouts
 
-A reader who leaves the payment page without paying can start the purchase again at any time. Once Stripe reports the abandoned checkout expired, which is why its endpoint needs `checkout.session.expired`, the reader's next attempt opens a new payment page instead of the expired one.
+A reader who leaves the payment page without paying can start the purchase again at any time. Once Stripe reports the abandoned checkout expired, which is why its endpoint needs `checkout.session.expired`, the reader's next attempt opens a new payment page instead of the expired one. PayPay sends no such report, so the install asks PayPay for the code again on the reader's next attempt, and starts a new one once PayPay answers that the code has expired.
 
 ## Reconciling with the provider
 
@@ -410,12 +432,13 @@ Each source is read where it keeps its records:
 
 - **Stripe**: the account's balance transactions, each matched by the payment intent the purchase records. A payment that paid a [subscription plan](./5-subscription-plans.md)'s invoice is not a purchase, and is left out.
 - **PAY.JP**: the account's payment flows, and the refunds made on them.
+- **PayPay**: the payment of each PayPay checkout started in the period, and the refunds made on it. PayPay lists no payments, so a payment taken with no checkout the install started is one the reconciliation cannot see.
 - **The App Store**: the transaction history of every customer the tenant has an App Store purchase from in the period. Apple keeps a history per customer and none for the whole app, so a purchase by a customer whose every purchase the app failed to record is one the reconciliation cannot see.
 - **Google Play**: each of the tenant's Google Play purchases of the period, with its order, and Google Play's voided purchases. Google Play lists no other purchases, and keeps the voided ones for 30 days, so a purchase the app failed to record shows up only once it is refunded within that time.
 
 A run lists these lines as its findings:
 
-- **Payment with no purchase**: the source took the payment, and no purchase records it. This is what a payment whose notification never reached the install looks like. The line names the source's own ID of the payment, a payment intent on Stripe, a payment flow on PAY.JP, a transaction on the App Store, and a purchase token on Google Play, so it can be found in the source's dashboard.
+- **Payment with no purchase**: the source took the payment, and no purchase records it. This is what a payment whose notification never reached the install looks like. The line names the source's own ID of the payment, a payment intent on Stripe, a payment flow on PAY.JP, the checkout's merchant payment ID on PayPay, a transaction on the App Store, and a purchase token on Google Play, so it can be found in the source's dashboard.
 - **Purchase with no payment**: a purchase of the period that the source has no record of.
 - **Amount differs**: a purchase and its payment that disagree on the amount, on the currency, or on what has been refunded. A store charges the reader in their own currency, so for a store the amounts are compared only when it charged in the tenant's currency, and otherwise only whether the payment was refunded.
 - **Held refund** or **Held dispute**: a refund or a dispute that arrived for a payment no purchase named, and has been waiting for its purchase since before the period began. One that finds its purchase is applied then, as [Refunds](#refunds) describes, so one still waiting points to a purchase that was never recorded.
@@ -439,10 +462,10 @@ A purchase made in the provider's test mode opens the episode but is recorded as
 1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that its card under **Payment settings** shows **Ready**. A tenant that holds more than one provider tests each in turn, choosing it under **Pay with** on the episode in step 3.
 2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, and sold on the web.
 3. On the site, sign in with a reader account that holds no console role, open the episode, and choose **Buy this episode**.
-4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with both providers. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome.
+4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with Stripe and PAY.JP. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome. On PayPay, pay as one of the test users PayPay for Developers lists for the sandbox.
 5. Back on the episode, wait for it to open, then check that it is listed under **Purchases**. If it does not open within a minute, read the delivery in the provider's dashboard, as [When a payment does not open the episode](#when-a-payment-does-not-open-the-episode) describes.
-6. Refund the purchase from **Payments** › **Purchases**, or the payment in full from the provider's dashboard, which proves that refunds reach the install too. Reload the episode: it is locked again, and **Buy this episode** is back.
+6. Refund the purchase from **Payments** › **Purchases**, or the payment in full from the provider's dashboard, which proves that refunds reach the install too. Refund a PayPay purchase from **Payments** › **Purchases**, since a refund made in PayPay's own tools never reaches the install. Reload the episode: it is locked again, and **Buy this episode** is back.
 
-When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save.
+When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save. For PayPay, enter production's API key and API secret and empty **Environment**.
 
 To test in-app purchase, use the stores' own test buyers as [Testing a purchase](../5-mobile-app/5-purchases-and-sign-in.md#testing-a-purchase) describes. Those purchases are recorded as tests as well.

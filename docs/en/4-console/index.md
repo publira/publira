@@ -2,7 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
-updated: 2026-11-04
+updated: 2026-11-14
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -38,7 +38,7 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 - [Publishing works](./1-catalog/index.md): taking an empty catalog to a first episode readers can open, and the series, episodes, labels, Authors, Author roles, and genres it is made of.
 - [Readers, comments, and contact messages](./2-readers/index.md): suspending and deleting readers' accounts, working the comment approval and report queues, answering contact messages, and opening a paid episode to a reader with an access ticket.
 - [Setting up the tenant](./3-setup/index.md): taking a new tenant to a site with the publisher's look, legal pages, and staff, through its settings, branding, pages, announcements, campaign banners, members, mail server, audit log, and your own account.
-- [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
+- [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe, PAY.JP, or PayPay, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
 - [Subscription plans](./5-subscription-plans.md): selling readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, the Price and the webhook events it needs in Stripe, and what a subscriber does on the site.
 - [Reports and royalties](./6-reports-and-royalties.md): what the Dashboard and the Analytics screens count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
 - [Sign-in with Apple and Google](./7-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.

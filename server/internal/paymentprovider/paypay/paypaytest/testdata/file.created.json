@@ -1,0 +1,7 @@
+{
+  "notification_type": "file.created",
+  "notification_id": "00000000-0000-0000-0000-000000000000",
+  "fileType": "transaction_recon",
+  "path": "https://example.com/paypay/recon/transaction_recon.csv",
+  "requestedAt": 1767323045
+}

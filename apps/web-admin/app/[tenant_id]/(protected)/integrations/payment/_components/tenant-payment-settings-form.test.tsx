@@ -74,6 +74,19 @@ const payjp: PaymentProvider = {
   webhookPath: "/api/v1/webhook/payment/payjp",
 };
 
+const paypay: PaymentProvider = {
+  currencies: ["JPY"],
+  displayName: "PayPay",
+  fields: [
+    { name: "api_key", public: false, required: true, secret: true },
+    { name: "api_secret", public: false, required: true, secret: true },
+    { name: "environment", public: false, required: false, secret: false },
+  ],
+  id: "paypay",
+  subscriptions: false,
+  webhookPath: "/api/v1/webhook/payment/paypay",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const examplePay: PaymentProvider = {
   currencies: ["JPY", "USD"],
@@ -293,6 +306,49 @@ describe("TenantPaymentSettingsForm", () => {
     expect(
       screen.getByText(
         "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused."
+      )
+    ).toBeDefined();
+  });
+
+  it("names PayPay's fields and tells where each comes from and how its notifications are checked", () => {
+    render(
+      <TenantPaymentSettingsForm
+        locale="en"
+        providers={[paypay, stripe]}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{
+          ...emptyTenantPaymentSettings,
+          currency: "JPY",
+          fields: [
+            { configured: false, hint: "", name: "api_key" },
+            { configured: false, hint: "", name: "api_secret" },
+            { configured: false, hint: "", name: "environment" },
+          ],
+          provider: "paypay",
+        }}
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    expect(screen.getByLabelText("API key")).toBeDefined();
+    expect(screen.getByLabelText("API secret")).toBeDefined();
+    expect(screen.getByLabelText<HTMLInputElement>("Environment").type).toBe(
+      "text"
+    );
+    expect(
+      screen.getByText(
+        "Leave it empty for a production key, or enter sandbox for a key of PayPay's sandbox."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByDisplayValue(
+        "https://comics.example/api/v1/webhook/payment/paypay"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "PayPay signs no notification, so each one is checked by reading its payment back from PayPay's API with the key above."
       )
     ).toBeDefined();
   });

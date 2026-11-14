@@ -57,6 +57,22 @@ const PaymentCredentialName = ({
       );
     }
 
+    case "paypay.api_key": {
+      return <Message message="admin.settings.payment.fields.paypay.api_key" />;
+    }
+
+    case "paypay.api_secret": {
+      return (
+        <Message message="admin.settings.payment.fields.paypay.api_secret" />
+      );
+    }
+
+    case "paypay.environment": {
+      return (
+        <Message message="admin.settings.payment.fields.paypay.environment" />
+      );
+    }
+
     default: {
       return field;
     }
@@ -92,6 +108,36 @@ const PaymentCredentialSource = ({
       );
     }
 
+    case "paypay.api_key": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paypay.api_key" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    case "paypay.api_secret": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paypay.api_secret" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    case "paypay.environment": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paypay.environment" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
     default: {
       return null;
     }
@@ -100,17 +146,31 @@ const PaymentCredentialSource = ({
 
 /** What a provider's webhook URL block adds for that provider alone. */
 const PaymentWebhookNote = ({ provider }: { provider: string }) => {
-  if (provider !== "payjp") {
-    return null;
-  }
+  switch (provider) {
+    case "payjp": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.webhook_url_payjp_description" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
 
-  return (
-    <Field.Description>
-      <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-        <Message message="admin.settings.payment.webhook_url_payjp_description" />
-      </Suspense>
-    </Field.Description>
-  );
+    case "paypay": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.webhook_url_paypay_description" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    default: {
+      return null;
+    }
+  }
 };
 
 const PaymentCredentialDescription = ({
