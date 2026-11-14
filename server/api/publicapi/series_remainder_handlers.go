@@ -272,17 +272,16 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 	}
 	// The key is made before the bundle is written down, so it names the
 	// sale rather than the row, and the row is found again by it.
-	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+	checkoutURL, err := s.startNextCheckout(ctx, provider, credentials, checkout, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
 		return seriesRemainderIdempotencyKey(checkout, series.ID, sale, expiredCheckoutID, paidCheckoutID)
-	}, "series_id", series.ID.String())
-	if err != nil {
-		return nil, err
-	}
-	checkout.Purchase.SeriesBundleID, err = s.writeSeriesBundle(ctx, queries, tenant.ID, user.ID, series.ID, sale, checkout.IdempotencyKey)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to write down the series bundle", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
-	}
-	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "series_id", series.ID.String())
+	}, func(req *paymentprovider.CheckoutRequest) error {
+		var err error
+		req.Purchase.SeriesBundleID, err = s.writeSeriesBundle(ctx, queries, tenant.ID, user.ID, series.ID, sale, req.IdempotencyKey)
+		if err != nil {
+			return s.internalDBError(ctx, "failed to write down the series bundle", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
+		}
+		return nil
+	}, "failed to start a checkout with the payment provider", "series_id", series.ID.String())
 	if err != nil {
 		return nil, err
 	}

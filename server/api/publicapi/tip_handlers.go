@@ -170,13 +170,9 @@ func (s *apiServer) StartTipCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+	checkoutURL, err := s.startNextCheckout(ctx, provider, credentials, checkout, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
 		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
-	}, "episode_id", episode.ID.String())
-	if err != nil {
-		return nil, err
-	}
-	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a tip checkout with the payment provider", "episode_id", episode.ID.String())
+	}, nil, "failed to start a tip checkout with the payment provider", "episode_id", episode.ID.String())
 	if err != nil {
 		return nil, err
 	}

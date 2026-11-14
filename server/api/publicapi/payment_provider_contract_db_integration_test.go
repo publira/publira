@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/providers/providerstest"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
@@ -34,7 +35,7 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), nil, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 
@@ -123,6 +124,8 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 	return &contractTenant{
 		harness:  h,
 		provider: provider.Declaration().ID,
+		tenant:   tenant,
+		token:    tokenFor(t, tenant, reader),
 		purchase: paymentprovider.Purchase{
 			TenantID:  tenant.ID,
 			ReaderID:  reader.ID,
@@ -136,6 +139,9 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 type contractTenant struct {
 	harness  *contractHarness
 	provider string
+	tenant   testutil.Tenant
+	// token signs the reader in.
+	token    string
 	purchase paymentprovider.Purchase
 }
 
@@ -348,4 +354,24 @@ func (c *contractTenant) LapseCheckout(t *testing.T, checkoutID string) {
 	`, c.purchase.TenantID, c.provider, checkoutID, ago.Seconds()); err != nil {
 		t.Fatalf("move the starts of %s: %v", checkoutID, err)
 	}
+}
+
+func (c *contractTenant) StartCheckout(t *testing.T) string {
+	t.Helper()
+	if _, err := c.harness.client.StartEpisodeCheckout(testutil.WithBearer(t.Context(), c.token), &publirav1.StartEpisodeCheckoutRequest{
+		Tenant:    tenantContext(c.tenant),
+		EpisodeId: c.purchase.EpisodeID.String(),
+	}); err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	var checkoutID string
+	if err := c.harness.pg.DB.QueryRowContext(t.Context(), `
+		SELECT checkout_id FROM payment_checkouts
+		WHERE tenant_id = $1 AND provider = $2
+		ORDER BY last_started_at DESC
+		LIMIT 1
+	`, c.purchase.TenantID, c.provider).Scan(&checkoutID); err != nil {
+		t.Fatalf("read the checkout last started: %v", err)
+	}
+	return checkoutID
 }

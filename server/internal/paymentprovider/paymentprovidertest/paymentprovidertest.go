@@ -138,6 +138,19 @@ type TestCredentialsFixture interface {
 	TestCredentials() paymentprovider.Credentials
 }
 
+// ExpiringCheckoutFixture is the fixture of a provider that declares
+// [paymentprovider.Declaration.StoredCheckouts] and whose checkouts may run
+// out sooner than its [paymentprovider.Declaration.CheckoutLifetime], on a
+// clock it sets, with no notification of it, so that it answers
+// [paymentprovider.ErrCheckoutExpired] when it is handed one that has.
+type ExpiringCheckoutFixture interface {
+	Fixture
+	// CheckoutRanOut makes the provider's API hold checkout, which the suite
+	// started through the provider, as one whose time to be paid has run out,
+	// with no notification sent for it.
+	CheckoutRanOut(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout)
+}
+
 // testCredentials answers the credentials the suite takes the fixture's
 // test-mode payments under: its [TestCredentialsFixture.TestCredentials], or
 // else the credentials it takes every other payment under.
@@ -1011,21 +1024,42 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			}
 		})
 	}
+
+	if expiring, ok := fixture.(ExpiringCheckoutFixture); ok {
+		t.Run("a checkout that ran out is answered as expired when it is started again", func(t *testing.T) {
+			if !stored {
+				t.Fatal("the fixture's checkouts run out, but its provider declares no stored checkouts")
+			}
+			ranOut := paying("checkout_ran_out_" + strings.ToLower(currency))
+			startCheckout(t, provider, credentials, ranOut)
+			// A retry within its time is the same checkout.
+			startCheckout(t, provider, credentials, ranOut)
+			expiring.CheckoutRanOut(t, credentials, ranOut)
+			if _, err := provider.StartCheckout(t.Context(), credentials, checkoutRequest(ranOut)); !errors.Is(err, paymentprovider.ErrCheckoutExpired) {
+				t.Fatalf("StartCheckout error = %v, want ErrCheckoutExpired", err)
+			}
+		})
+	}
 }
 
 // startCheckout starts checkout through provider under credentials, as the
 // server does once it has written its purchase down, under the checkout's id.
 func startCheckout(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials, checkout Checkout) {
 	t.Helper()
-	if _, err := provider.StartCheckout(t.Context(), credentials, paymentprovider.CheckoutRequest{
+	if _, err := provider.StartCheckout(t.Context(), credentials, checkoutRequest(checkout)); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+}
+
+// checkoutRequest is the request the server starts checkout with.
+func checkoutRequest(checkout Checkout) paymentprovider.CheckoutRequest {
+	return paymentprovider.CheckoutRequest{
 		Purchase:       checkout.Purchase,
 		LineItemName:   "Contract episode",
 		SuccessURL:     "https://contract.example.com/success",
 		CancelURL:      "https://contract.example.com/cancel",
 		IdempotencyKey: "contract-checkout:" + checkout.CheckoutID,
 		CheckoutID:     checkout.CheckoutID,
-	}); err != nil {
-		t.Fatalf("StartCheckout: %v", err)
 	}
 }
 
@@ -1176,6 +1210,11 @@ type Tenant interface {
 	// LapseCheckout moves every start of the checkout checkoutID back past the
 	// provider's [paymentprovider.Declaration.CheckoutLifetime].
 	LapseCheckout(t *testing.T, checkoutID string)
+	// StartCheckout starts the reader's checkout of the episode as the
+	// storefront does, through the provider of a tenant that declares stored
+	// checkouts, and answers the [paymentprovider.CheckoutRequest.CheckoutID]
+	// the provider was last handed for it.
+	StartCheckout(t *testing.T) string
 	// RevokeAsStaff revokes the tenant's only purchase as staff do when they
 	// refund it, before the provider has reported the refund.
 	RevokeAsStaff(t *testing.T)
@@ -1290,6 +1329,35 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			}
 			if got := tenant.Purchases(t); got != 0 {
 				t.Fatalf("purchases = %d, want 0", got)
+			}
+		})
+	}
+
+	if expiring, ok := fixture.(ExpiringCheckoutFixture); ok {
+		t.Run("a checkout the provider answers as expired is started again under a new id", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			ranOut := tenant.StartCheckout(t)
+			if again := tenant.StartCheckout(t); again != ranOut {
+				t.Fatalf("a retry was started as %q, want %q", again, ranOut)
+			}
+			expiring.CheckoutRanOut(t, credentials, Checkout{CheckoutID: ranOut, Purchase: tenant.Purchase()})
+			fresh := tenant.StartCheckout(t)
+			if fresh == ranOut {
+				t.Fatal("the checkout that ran out was started under its own id again")
+			}
+			if again := tenant.StartCheckout(t); again != fresh {
+				t.Fatalf("a retry of the new checkout was started as %q, want %q", again, fresh)
+			}
+			paymentID := "payment_" + fresh
+			if provider.Declaration().PaymentsByCheckout {
+				paymentID = fresh
+			}
+			payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{CheckoutID: fresh, PaymentID: paymentID, Purchase: tenant.Purchase()})
+			if err := tenant.Deliver(t, payload, headers); err != nil {
+				t.Fatalf("deliver the payment of the new checkout: %v", err)
+			}
+			if got := tenant.Purchases(t); got != 1 || !tenant.OpensEpisode(t) {
+				t.Fatalf("purchases = %d, opens the episode %v; want 1 that opens it", got, tenant.OpensEpisode(t))
 			}
 		})
 	}

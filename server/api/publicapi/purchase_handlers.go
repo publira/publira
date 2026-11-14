@@ -185,13 +185,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+	checkoutURL, err := s.startNextCheckout(ctx, provider, credentials, checkout, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
 		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
-	}, "episode_id", episode.ID.String())
-	if err != nil {
-		return nil, err
-	}
-	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "episode_id", episode.ID.String())
+	}, nil, "failed to start a checkout with the payment provider", "episode_id", episode.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +234,8 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 // A provider that declares [paymentprovider.Declaration.StoredCheckouts] need
 // report no expiry, so the key of its checkout is the one
 // [apiServer.nextCheckoutKey] arrives at from this one, which takes a checkout
-// past its lifetime for one that expired.
+// past its lifetime for one that expired, and [apiServer.startNextCheckout]
+// moves on from one the provider answers as expired when it is started.
 func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) (string, error) {
 	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID, nil)
 	if err != nil {
@@ -1938,6 +1935,69 @@ func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID,
 	return provider, credentials, nil
 }
 
+// errStartedCheckoutExpired is what [apiServer.startCheckout] answers for a
+// checkout the provider answered [paymentprovider.ErrCheckoutExpired] for,
+// once the expiry is recorded, so that [apiServer.startNextCheckout] starts
+// the next one.
+var errStartedCheckoutExpired = errors.New("the payment provider answered the checkout as expired")
+
+// startNextCheckout starts the reader's next checkout through provider and
+// answers the URL the reader pays at, or the error the RPC answers, logging a
+// failure of the provider's as message with keyvals. The checkout is started
+// under the idempotency key [apiServer.nextCheckoutKey] arrives at from
+// expiredCheckoutID with key, after prepare, when it is not nil, has written
+// down under that key what checkout sells beyond what it carries, as a
+// checkout of the rest of a series writes down its bundle.
+//
+// A provider that declares [paymentprovider.Declaration.StoredCheckouts] may
+// set how long its checkouts can be paid on a clock of its own, shorter than
+// [paymentprovider.Declaration.CheckoutLifetime], and notify no expiry, so the
+// key may name a checkout that ran out. The provider answers that one with
+// [paymentprovider.ErrCheckoutExpired], which [apiServer.startCheckout]
+// records as the provider's [paymentprovider.CheckoutExpired] would be
+// recorded, and the checkout is started once more under the key that moves
+// on from it, the one the reader's next attempt would arrive at, so the reader
+// is sent to a checkout they can pay rather than answered an error. It is
+// started once more and no further: a checkout the provider is handed for the
+// first time cannot have run out, so a provider that answers the next one as
+// expired as well is answering one started before too, and the RPC answers
+// unavailable rather than walk on through however many there are. That
+// expiry is recorded as well, so the reader's next attempt moves on from it.
+func (s *apiServer) startNextCheckout(
+	ctx context.Context,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	checkout paymentprovider.CheckoutRequest,
+	expiredCheckoutID string,
+	key func(expiredCheckoutID string) (string, error),
+	prepare func(*paymentprovider.CheckoutRequest) error,
+	message string,
+	keyvals ...any,
+) (string, error) {
+	for restarted := false; ; restarted = true {
+		idempotencyKey, err := s.nextCheckoutKey(ctx, provider, checkout.Purchase.TenantID, expiredCheckoutID, key, keyvals...)
+		if err != nil {
+			return "", err
+		}
+		checkout.IdempotencyKey = idempotencyKey
+		if prepare != nil {
+			if err := prepare(&checkout); err != nil {
+				return "", err
+			}
+		}
+		checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, message, keyvals...)
+		if !errors.Is(err, errStartedCheckoutExpired) {
+			return checkoutURL, err
+		}
+		if restarted {
+			args := append([]any{"error", err, "tenant_id", checkout.Purchase.TenantID, "provider", provider.Declaration().ID}, keyvals...)
+			s.logger.ErrorContext(ctx, message, args...)
+			return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		}
+		expiredCheckoutID = paymentprovider.StoredCheckoutID(idempotencyKey)
+	}
+}
+
 // startCheckout starts checkout through provider and answers the URL the
 // reader pays at, or the error the RPC answers, logging a failure of the
 // provider's as message with keyvals. A provider that declares
@@ -1947,7 +2007,10 @@ func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID,
 // provider is asked, since the reader can pay as soon as it answers. A
 // [paymentprovider.CheckoutFollower] may notify the payment only once, so the
 // worker is set to read it back as well, at the same point and for the same
-// reason.
+// reason. A checkout such a provider answers as expired is recorded as its
+// [paymentprovider.CheckoutExpired] would be, and answered as
+// errStartedCheckoutExpired, which [apiServer.startNextCheckout] moves on
+// from.
 func (s *apiServer) startCheckout(
 	ctx context.Context,
 	provider paymentprovider.Provider,
@@ -1978,6 +2041,12 @@ func (s *apiServer) startCheckout(
 		}
 	}
 	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	if provider.Declaration().StoredCheckouts && errors.Is(err, paymentprovider.ErrCheckoutExpired) {
+		if err := s.recordExpiredCheckout(ctx, tenantID, providerID, paymentprovider.CheckoutExpired{CheckoutID: checkout.CheckoutID, Purchase: checkout.Purchase}); err != nil {
+			return "", s.internalDBError(ctx, "failed to record an expired checkout", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkout.CheckoutID)
+		}
+		return "", errStartedCheckoutExpired
+	}
 	if err != nil {
 		args := append([]any{"error", err, "tenant_id", tenantID, "provider", providerID}, keyvals...)
 		s.logger.ErrorContext(ctx, message, args...)

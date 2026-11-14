@@ -32,6 +32,15 @@ var ErrMalformedNotification = errors.New("payment notification is malformed")
 // not hold or one the reader has disputed.
 var ErrRefundRefused = errors.New("the payment provider refused the refund")
 
+// ErrCheckoutExpired reports, from [Provider.StartCheckout] of a provider that
+// declares [Declaration.StoredCheckouts], that the checkout it was handed
+// under [CheckoutRequest.CheckoutID] is one it made before and that can no
+// longer be paid, as a provider whose checkouts run out on a clock of its own
+// and with no notification of it tells from the checkout it answers the id
+// with. The server takes the checkout for one the provider reported as
+// [CheckoutExpired] and starts the reader's checkout again under a new id.
+var ErrCheckoutExpired = errors.New("the checkout has expired")
+
 // ErrRefundPending reports that a refund of a payment has been neither made
 // nor failed yet, so what a [RefundFollower]'s own notification of the
 // payment's refunds would say is not settled.
@@ -83,12 +92,16 @@ type Declaration struct {
 	// the payment from the payment whenever a call of its API needs that one.
 	PaymentsByCheckout bool
 	// CheckoutLifetime is how long after it starts a checkout of a provider
-	// that declares StoredCheckouts can still be paid, which bounds the
-	// checkouts [Provider.ListTransactions] is handed. Once it has passed
-	// since a checkout was first started, the reader's next checkout of the
-	// same sale is started under a new [CheckoutRequest.CheckoutID], so a
-	// provider that reports no [CheckoutExpired] never answers the reader with
-	// a checkout that ran out. It is zero for every other provider.
+	// that declares StoredCheckouts can still be paid at the longest, which
+	// bounds the checkouts [Provider.ListTransactions] is handed. Once it has
+	// passed since a checkout was first started, the reader's next checkout
+	// of the same sale is started under a new [CheckoutRequest.CheckoutID],
+	// as it is once the provider reports the checkout as [CheckoutExpired]. A
+	// provider whose checkouts may run out sooner, on a clock it sets and may
+	// change, answers [ErrCheckoutExpired] when it is handed one that has, so
+	// that a provider that reports no [CheckoutExpired] never answers the
+	// reader with a checkout that ran out. It is zero for every other
+	// provider.
 	CheckoutLifetime time.Duration
 	// Currencies are the ISO 4217 codes, in capitals, of the currencies the
 	// provider can charge in, each in the unit ISO 4217 gives as its minor
@@ -344,9 +357,12 @@ type CheckoutRequest struct {
 	// CheckoutID is, for a provider that declares
 	// [Declaration.StoredCheckouts], the id the provider gives the checkout,
 	// which the server wrote the purchase down under: [StoredCheckoutID] of
-	// IdempotencyKey, so a retried request names the same checkout. It is
-	// empty for every other provider, which names its checkouts itself, and is
-	// left out of the encoding an idempotency key is made from.
+	// IdempotencyKey, so a retried request names the same checkout. It names
+	// a new checkout once the one it named has expired, as the provider
+	// reported it, or answered [ErrCheckoutExpired] for it, or as
+	// [Declaration.CheckoutLifetime] has passed since it was first started.
+	// It is empty for every other provider, which names its checkouts itself,
+	// and is left out of the encoding an idempotency key is made from.
 	CheckoutID string `json:",omitzero"`
 }
 
@@ -519,6 +535,9 @@ type Transaction struct {
 type Provider interface {
 	Declaration() Declaration
 	// StartCheckout answers the URL the reader is sent to in order to pay.
+	// A provider that declares [Declaration.StoredCheckouts] answers
+	// [ErrCheckoutExpired] instead for a [CheckoutRequest.CheckoutID] whose
+	// checkout it made before and can no longer be paid.
 	StartCheckout(ctx context.Context, credentials Credentials, req CheckoutRequest) (string, error)
 	// ParseNotification verifies a notification against the tenant's
 	// credentials and reads it, consulting the provider's API when the
