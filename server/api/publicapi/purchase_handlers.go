@@ -786,67 +786,12 @@ func (s *apiServer) ProcessPaymentWebhook(
 			return nil, err
 		}
 	case paymentprovider.CheckoutExpired:
-		if provider.Declaration().StoredCheckouts {
-			purchase, err := s.checkoutStoredFor(ctx, tenant.ID, providerID, event.ID, event.CheckoutID, event.Purchase.Currency)
-			if err != nil {
-				return nil, err
-			}
-			event.Purchase = purchase
-		}
-		if event.Purchase.TenantID != tenant.ID {
-			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
-		}
-		if err := s.recordExpiredCheckout(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
-			return nil, s.internalDBError(ctx, "failed to record an expired checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
-		}
-	case paymentprovider.PurchaseCompleted:
-		if provider.Declaration().StoredCheckouts {
-			purchase, err := s.checkoutStoredFor(ctx, tenant.ID, providerID, event.ID, event.CheckoutID, event.Purchase.Currency)
-			if err != nil {
-				return nil, err
-			}
-			// The provider took no promotion code of its own, so the payment
-			// took the price the checkout charged, or it is not that checkout's.
-			if event.AmountPaid != purchase.Price {
-				s.logger.WarnContext(ctx, "a stored checkout was paid an amount other than its price",
-					"tenant_id", tenant.ID,
-					"provider", providerID,
-					"event_id", event.ID,
-					"checkout_id", event.CheckoutID,
-					"amount_paid", event.AmountPaid,
-					"price", purchase.Price,
-				)
-				return nil, connect.NewError(connect.CodeInvalidArgument, "the payment does not match its checkout")
-			}
-			event.Purchase = purchase
-		}
-		if event.Purchase.TenantID != tenant.ID {
-			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
-		}
-		// A checkout started before the tenant changed its currency completes
-		// in the one it was started in. The reader has paid, so the purchase is
-		// recorded in that currency rather than refused, and is no sale on a
-		// royalty statement in the new one.
-		currency, err := s.tenantCurrency(ctx, s.queriesFor(ctx), tenant.ID)
-		if err != nil {
+		if err := s.recordCheckoutExpiry(ctx, tenant.ID, provider, event); err != nil {
 			return nil, err
 		}
-		if event.Purchase.Currency != currency {
-			s.logger.WarnContext(ctx, "a completed checkout was paid in a currency other than the tenant's",
-				"tenant_id", tenant.ID,
-				"event_id", event.ID,
-				"checkout_id", event.CheckoutID,
-				"checkout_currency", event.Purchase.Currency,
-				"tenant_currency", currency,
-			)
-		}
-		if err := s.createPurchase(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
-			if !isEpisodeCheckout(event.Purchase) || !dberr.IsForeignKeyViolation(err) {
-				return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
-			}
-			if err := s.refundCheckoutOfDeletedEpisode(ctx, tenant.ID, provider, credentials, event, err); err != nil {
-				return nil, err
-			}
+	case paymentprovider.PurchaseCompleted:
+		if err := s.recordCompletedCheckout(ctx, tenant.ID, provider, credentials, event); err != nil {
+			return nil, err
 		}
 	case paymentprovider.SubscriptionChanged:
 		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event, nil); err != nil {
@@ -862,6 +807,88 @@ func (s *apiServer) ProcessPaymentWebhook(
 		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
+}
+
+// recordCheckoutExpiry records the checkout event reports closed unpaid, or
+// answers the error the webhook answers, which is
+// [connect.CodeInvalidArgument] for a checkout no retry makes the tenant's.
+func (s *apiServer) recordCheckoutExpiry(ctx context.Context, tenantID uuid.UUID, provider paymentprovider.Provider, event paymentprovider.CheckoutExpired) error {
+	if provider.Declaration().StoredCheckouts {
+		purchase, err := s.checkoutStoredFor(ctx, tenantID, provider.Declaration().ID, event.ID, event.CheckoutID, event.Purchase.Currency)
+		if err != nil {
+			return err
+		}
+		event.Purchase = purchase
+	}
+	if event.Purchase.TenantID != tenantID {
+		return connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
+	}
+	if err := s.recordExpiredCheckout(ctx, tenantID, provider.Declaration().ID, event); err != nil {
+		return s.internalDBError(ctx, "failed to record an expired checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+	}
+	return nil
+}
+
+// recordCompletedCheckout records the purchase of the checkout event reports
+// paid, once however many times it is reported, or answers the error the
+// webhook answers, which is [connect.CodeInvalidArgument] for a payment no
+// retry makes one of the tenant's checkouts.
+func (s *apiServer) recordCompletedCheckout(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	event paymentprovider.PurchaseCompleted,
+) error {
+	if provider.Declaration().StoredCheckouts {
+		purchase, err := s.checkoutStoredFor(ctx, tenantID, provider.Declaration().ID, event.ID, event.CheckoutID, event.Purchase.Currency)
+		if err != nil {
+			return err
+		}
+		// The provider took no promotion code of its own, so the payment
+		// took the price the checkout charged, or it is not that checkout's.
+		if event.AmountPaid != purchase.Price {
+			s.logger.WarnContext(ctx, "a stored checkout was paid an amount other than its price",
+				"tenant_id", tenantID,
+				"provider", provider.Declaration().ID,
+				"event_id", event.ID,
+				"checkout_id", event.CheckoutID,
+				"amount_paid", event.AmountPaid,
+				"price", purchase.Price,
+			)
+			return connect.NewError(connect.CodeInvalidArgument, "the payment does not match its checkout")
+		}
+		event.Purchase = purchase
+	}
+	if event.Purchase.TenantID != tenantID {
+		return connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
+	}
+	// A checkout started before the tenant changed its currency completes
+	// in the one it was started in. The reader has paid, so the purchase is
+	// recorded in that currency rather than refused, and is no sale on a
+	// royalty statement in the new one.
+	currency, err := s.tenantCurrency(ctx, s.queriesFor(ctx), tenantID)
+	if err != nil {
+		return err
+	}
+	if event.Purchase.Currency != currency {
+		s.logger.WarnContext(ctx, "a completed checkout was paid in a currency other than the tenant's",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"checkout_id", event.CheckoutID,
+			"checkout_currency", event.Purchase.Currency,
+			"tenant_currency", currency,
+		)
+	}
+	if err := s.createPurchase(ctx, tenantID, provider.Declaration().ID, event); err != nil {
+		if !isEpisodeCheckout(event.Purchase) || !dberr.IsForeignKeyViolation(err) {
+			return s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+		}
+		if err := s.refundCheckoutOfDeletedEpisode(ctx, tenantID, provider, credentials, event, err); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // recordExpiredCheckout records the checkout the provider reports expired as
@@ -1917,7 +1944,10 @@ func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID,
 // [paymentprovider.Declaration.StoredCheckouts] cannot carry the purchase to
 // its notification, so the purchase is written down first, under the id the
 // checkout is started with, for the notification to find it by: before the
-// provider is asked, since the reader can pay as soon as it answers.
+// provider is asked, since the reader can pay as soon as it answers. A
+// [paymentprovider.CheckoutFollower] may notify the payment only once, so the
+// worker is set to read it back as well, at the same point and for the same
+// reason.
 func (s *apiServer) startCheckout(
 	ctx context.Context,
 	provider paymentprovider.Provider,
@@ -1940,6 +1970,11 @@ func (s *apiServer) startCheckout(
 			Purchase:   purchase,
 		}); err != nil {
 			return "", s.internalDBError(ctx, "failed to record the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+		}
+		if _, follows := provider.(paymentprovider.CheckoutFollower); follows {
+			if err := outbox.QueuePaymentCheckoutFollow(ctx, s.queriesFor(ctx), tenantID, providerID, checkout.CheckoutID); err != nil {
+				return "", s.internalDBError(ctx, "failed to queue the reading back of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+			}
 		}
 	}
 	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)

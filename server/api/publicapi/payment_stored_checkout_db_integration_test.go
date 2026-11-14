@@ -146,6 +146,11 @@ func TestDBAStoredCheckoutIsFoundAgainByItsNotification(t *testing.T) {
 	if got := env.count(t, "SELECT count(*) FROM payment_checkouts WHERE tenant_id = $1 AND last_started_at > created_at"); got != 1 {
 		t.Fatalf("stored checkouts started again since = %d, want 1", got)
 	}
+	// The worker reads the checkout back for as long as it can be paid,
+	// however many times a request starts it.
+	if got := env.count(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = '"+outbox.EventTypePaymentCheckoutFollow+"'"); got != 1 {
+		t.Fatalf("readings back of the checkout queued = %d, want 1", got)
+	}
 
 	payload := env.fixture.API().Pay(env.credentials, checkoutID, "payment_stored", 500, "JPY", false, time.Now())
 	for delivery := range 2 {
@@ -375,7 +380,7 @@ func testRefundFollowUpRecordsWhatTheProviderSettled(t *testing.T, env storedChe
 	if err != nil {
 		t.Fatalf("read the follow-up: %v", err)
 	}
-	handle := NewPaymentRefundFollowHandler(PaymentRefundFollowConfig{
+	handle := NewPaymentRefundFollowHandler(PaymentFollowConfig{
 		DB:        env.pg.OpenOutboxDB(t),
 		Encryptor: env.encryptor,
 		Providers: env.registry,

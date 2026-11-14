@@ -3,8 +3,9 @@
 // provider. Its payments carry no metadata, so it declares stored checkouts;
 // its notifications carry no signature and name no more than which payment
 // they are about; it sends no notification of a refund, so it follows its own;
-// and its API lists no payments, so it reads the payment of each checkout it
-// is handed. No provider this build registers has that shape yet, and this one
+// it notifies a checkout's payment no more than once, so it follows its
+// checkouts too; and its API lists no payments, so it reads the payment of
+// each checkout it is handed. No provider this build registers has that shape yet, and this one
 // holds the contract and the purchase flow to it.
 //
 // [NewFixtureByCheckout] answers the same fake with an API that reads a
@@ -66,6 +67,7 @@ const (
 
 // The states of a payment and of a refund in the fake's API.
 const (
+	paymentOpen    = "open"
 	paymentPaid    = "paid"
 	paymentExpired = "expired"
 
@@ -78,6 +80,8 @@ const (
 type Provider struct {
 	api *API
 }
+
+var _ paymentprovider.CheckoutFollower = (*Provider)(nil)
 
 // NewProvider answers the fake provider over api.
 func NewProvider(api *API) *Provider {
@@ -121,9 +125,10 @@ func sandbox(credentials paymentprovider.Credentials) bool {
 	return credentials[FieldEnvironment] == EnvironmentSandbox
 }
 
-// StartCheckout records the checkout in the fake's API and answers a URL that
-// names it. A checkout started without the id the server gives it is refused,
-// since nothing could then find its purchase again.
+// StartCheckout records the checkout in the fake's API, as one the account
+// holds open until it is paid, and answers a URL that names it. A checkout
+// started without the id the server gives it is refused, since nothing could
+// then find its purchase again.
 func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
 	if credentials[FieldAPIKey] == "" {
 		return "", errors.New("readbacktest: no api key")
@@ -134,6 +139,12 @@ func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	p.api.started = append(p.api.started, req)
+	acct := p.api.account(credentials)
+	if acct.byCheckout(req.CheckoutID) == nil {
+		paymentID := "open_" + req.CheckoutID
+		acct.payments[paymentID] = &payment{id: paymentID, checkoutID: req.CheckoutID, currency: req.Purchase.Currency, status: paymentOpen}
+		acct.checkouts[req.CheckoutID] = paymentID
+	}
 	return "https://readback.example/checkouts/" + req.CheckoutID, nil
 }
 
@@ -159,6 +170,9 @@ func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 		payment := account.byCheckout(n.CheckoutID)
 		if payment == nil {
 			return nil, paymentprovider.ErrInvalidSignature
+		}
+		if payment.status == paymentOpen {
+			return paymentprovider.Ignored{ID: n.ID, Type: n.Type}, nil
 		}
 		if payment.status == paymentExpired {
 			return paymentprovider.CheckoutExpired{
@@ -190,6 +204,16 @@ func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 // fake would send if it sent one.
 func (*Provider) RefundNotification(paymentID string) []byte {
 	payload, err := json.Marshal(notification{ID: "follow_" + paymentID, Type: notificationRefunds, PaymentID: paymentID})
+	if err != nil {
+		panic(err)
+	}
+	return payload
+}
+
+// CheckoutNotification answers the notification of the payment of the
+// checkout checkoutID, which is the one the fake sends once it is paid.
+func (*Provider) CheckoutNotification(checkoutID string) []byte {
+	payload, err := json.Marshal(notification{ID: "follow_" + checkoutID, Type: notificationPayment, CheckoutID: checkoutID})
 	if err != nil {
 		panic(err)
 	}

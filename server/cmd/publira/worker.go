@@ -535,12 +535,15 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeSubscriptionCancel, outbox.NewSubscriptionCancelHandler(subscriptionCancelHandlers))
 	// A refund's follow-up reads the provider through the same settings a
 	// subscription's cancellation does.
-	handlers.Register(outbox.EventTypePaymentRefundFollow, publicapi.NewPaymentRefundFollowHandler(publicapi.PaymentRefundFollowConfig{
+	paymentFollow := publicapi.PaymentFollowConfig{
 		DB:        subscriptionCancelHandlers.DB,
 		Encryptor: subscriptionCancelHandlers.Encryptor,
 		Providers: subscriptionCancelHandlers.Providers,
 		Logger:    logger,
-	}))
+	}
+	handlers.Register(outbox.EventTypePaymentRefundFollow, publicapi.NewPaymentRefundFollowHandler(paymentFollow))
+	// So does reading back the payment of a checkout.
+	handlers.Register(outbox.EventTypePaymentCheckoutFollow, publicapi.NewPaymentCheckoutFollowHandler(paymentFollow))
 	// A webhook goes to a server the tenant runs, which may be down for longer
 	// than the default budget spans.
 	handlers.RegisterWithAttempts(outbox.EventTypeWebhookDelivery, outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{

@@ -41,6 +41,14 @@ type followingProvider struct {
 
 func (followingProvider) RefundNotification(string) []byte { return nil }
 
+// checkoutFollowingProvider is a declaredProvider that follows its own
+// checkouts.
+type checkoutFollowingProvider struct {
+	declaredProvider
+}
+
+func (checkoutFollowingProvider) CheckoutNotification(string) []byte { return nil }
+
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
 		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}}},
@@ -159,6 +167,23 @@ func TestRegistryRefusesARefundFollowerThatDeclaresASignatureHeader(t *testing.T
 		NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, SignatureHeader: "X-Signature"}}})
 	}()
 	NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}}}})
+}
+
+func TestRegistryRefusesACheckoutFollowerWithoutStoredCheckoutsOrWithASignatureHeader(t *testing.T) {
+	for name, declaration := range map[string]Declaration{
+		"without stored checkouts": {ID: "paypay", Currencies: []string{"JPY"}},
+		"with a signature header":  {ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour, SignatureHeader: "X-Signature"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewRegistry accepted the checkout follower")
+				}
+			}()
+			NewRegistry(checkoutFollowingProvider{declaredProvider{declaration}})
+		})
+	}
+	NewRegistry(checkoutFollowingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}}})
 }
 
 func TestStoredCheckoutIDNamesOneCheckoutPerKey(t *testing.T) {

@@ -34,6 +34,36 @@ func (q *Queries) GetPaymentCheckoutPurchase(ctx context.Context, arg GetPayment
 	return purchase, err
 }
 
+const IsPaymentCheckoutClosed = `-- name: IsPaymentCheckoutClosed :one
+SELECT (last_started_at <= now() - make_interval(secs => $1::double precision))::boolean AS closed
+FROM payment_checkouts
+WHERE tenant_id = $2
+    AND provider = $3
+    AND checkout_id = $4
+`
+
+type IsPaymentCheckoutClosedParams struct {
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	CheckoutID      string    `json:"checkout_id"`
+}
+
+// Whether lifetime_seconds have passed since the checkout was last started,
+// after which the provider takes no payment of it: a retry may be what made
+// the provider's checkout, so its last start bounds when it can be paid.
+func (q *Queries) IsPaymentCheckoutClosed(ctx context.Context, arg IsPaymentCheckoutClosedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, IsPaymentCheckoutClosed,
+		arg.LifetimeSeconds,
+		arg.TenantID,
+		arg.Provider,
+		arg.CheckoutID,
+	)
+	var closed bool
+	err := row.Scan(&closed)
+	return closed, err
+}
+
 const IsPaymentCheckoutLapsed = `-- name: IsPaymentCheckoutLapsed :one
 SELECT (created_at <= now() - make_interval(secs => $1::double precision))::boolean AS lapsed
 FROM payment_checkouts

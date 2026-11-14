@@ -965,6 +965,68 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			}
 		})
 	}
+
+	if follower, ok := provider.(paymentprovider.CheckoutFollower); ok {
+		t.Run("a checkout started and not paid is read back as nothing to record", func(t *testing.T) {
+			open := paying("checkout_followed_open_" + strings.ToLower(currency))
+			startCheckout(t, provider, credentials, open)
+			event, err := provider.ParseNotification(t.Context(), follower.CheckoutNotification(open.CheckoutID), http.Header{}, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			if !isIgnored(event) {
+				t.Fatalf("event of an unpaid checkout = %+v, want it ignored", event)
+			}
+		})
+
+		t.Run("a checkout paid with no notification sent is read back through its own notification", func(t *testing.T) {
+			paid := paying("checkout_followed_paid_" + strings.ToLower(currency))
+			startCheckout(t, provider, credentials, paid)
+			fixture.PaymentTaken(t, credentials, paid, time.Now())
+			event, err := provider.ParseNotification(t.Context(), follower.CheckoutNotification(paid.CheckoutID), http.Header{}, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.CheckoutID != paid.CheckoutID || completed.PaymentID != paid.PaymentID {
+				t.Fatalf("ids = (%q, %q), want (%q, %q)", completed.CheckoutID, completed.PaymentID, paid.CheckoutID, paid.PaymentID)
+			}
+			if want := carried(paid.Purchase); completed.Purchase != want {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, want)
+			}
+			if completed.AmountPaid != paid.Purchase.Price || completed.Test {
+				t.Fatalf("paid %d, test %v; want %d in live mode", completed.AmountPaid, completed.Test, paid.Purchase.Price)
+			}
+		})
+
+		t.Run("the payment of a checkout the account does not hold is refused", func(t *testing.T) {
+			other := paying("checkout_followed_other_" + strings.ToLower(currency))
+			startCheckout(t, provider, fixture.OtherCredentials(), other)
+			fixture.PaymentTaken(t, fixture.OtherCredentials(), other, time.Now())
+			if _, err := provider.ParseNotification(t.Context(), follower.CheckoutNotification(other.CheckoutID), http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
+				t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
+			}
+		})
+	}
+}
+
+// startCheckout starts checkout through provider under credentials, as the
+// server does once it has written its purchase down, under the checkout's id.
+func startCheckout(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials, checkout Checkout) {
+	t.Helper()
+	if _, err := provider.StartCheckout(t.Context(), credentials, paymentprovider.CheckoutRequest{
+		Purchase:       checkout.Purchase,
+		LineItemName:   "Contract episode",
+		SuccessURL:     "https://contract.example.com/success",
+		CancelURL:      "https://contract.example.com/cancel",
+		IdempotencyKey: "contract-checkout:" + checkout.CheckoutID,
+		CheckoutID:     checkout.CheckoutID,
+	}); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
 }
 
 func isIgnored(event paymentprovider.Event) bool {
@@ -1106,6 +1168,14 @@ type Tenant interface {
 	RefundedAmount(t *testing.T) int32
 	// HeldRefunds counts the refunds still waiting for their purchase.
 	HeldRefunds(t *testing.T) int
+	// FollowCheckout reads the payment of the checkout checkoutID back once,
+	// as the worker does for a provider that is a
+	// [paymentprovider.CheckoutFollower], and reports whether the worker
+	// would read it again.
+	FollowCheckout(t *testing.T, checkoutID string) bool
+	// LapseCheckout moves every start of the checkout checkoutID back past the
+	// provider's [paymentprovider.Declaration.CheckoutLifetime].
+	LapseCheckout(t *testing.T, checkoutID string)
 	// RevokeAsStaff revokes the tenant's only purchase as staff do when they
 	// refund it, before the provider has reported the refund.
 	RevokeAsStaff(t *testing.T)
@@ -1165,6 +1235,64 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			t.Fatalf("purchases = %d, want 1", got)
 		}
 	})
+
+	if _, ok := provider.(paymentprovider.CheckoutFollower); ok {
+		// started writes the checkout's purchase down and starts it through
+		// the provider, as the server does.
+		started := func(t *testing.T, tenant Tenant, name string) Checkout {
+			t.Helper()
+			checkout := Checkout{CheckoutID: checkoutNamed(name), PaymentID: paymentNamed(name), Purchase: tenant.Purchase()}
+			tenant.RecordCheckout(t, checkout.CheckoutID, checkout.Purchase)
+			startCheckout(t, provider, credentials, checkout)
+			return checkout
+		}
+
+		t.Run("a paid checkout whose notification never arrives is recorded once by reading it back", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			checkout := started(t, tenant, "followed")
+			if !tenant.FollowCheckout(t, checkout.CheckoutID) {
+				t.Fatal("an unpaid checkout within its lifetime is read no more")
+			}
+			if got := tenant.Purchases(t); got != 0 {
+				t.Fatalf("purchases of an unpaid checkout = %d, want 0", got)
+			}
+			fixture.PaymentTaken(t, credentials, checkout, time.Now())
+			if tenant.FollowCheckout(t, checkout.CheckoutID) {
+				t.Fatal("a checkout read back as paid is read again")
+			}
+			if !tenant.OpensEpisode(t) {
+				t.Fatal("the purchase read back does not open the episode")
+			}
+			if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
+				t.Fatalf("sales gross = %d, want %d", got, want)
+			}
+			// The notification may yet arrive, and the reading back may be
+			// run again, as an event is at least once.
+			payload, headers := fixture.CheckoutCompleted(t, credentials, checkout)
+			if err := tenant.Deliver(t, payload, headers); err != nil {
+				t.Fatalf("the late notification: %v", err)
+			}
+			tenant.FollowCheckout(t, checkout.CheckoutID)
+			if got := tenant.Purchases(t); got != 1 {
+				t.Fatalf("purchases = %d, want 1", got)
+			}
+		})
+
+		t.Run("a checkout never paid records nothing and is read no more once its lifetime has passed", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			checkout := started(t, tenant, "followed_unpaid")
+			if !tenant.FollowCheckout(t, checkout.CheckoutID) {
+				t.Fatal("an unpaid checkout within its lifetime is read no more")
+			}
+			tenant.LapseCheckout(t, checkout.CheckoutID)
+			if tenant.FollowCheckout(t, checkout.CheckoutID) {
+				t.Fatal("a checkout past its lifetime is read again")
+			}
+			if got := tenant.Purchases(t); got != 0 {
+				t.Fatalf("purchases = %d, want 0", got)
+			}
+		})
+	}
 
 	t.Run("a live-mode checkout opens the episode and is a sale", func(t *testing.T) {
 		tenant := newTenant(t, credentials)

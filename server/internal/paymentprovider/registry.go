@@ -25,9 +25,9 @@ type Registry struct {
 // three capital letters, on one that declares stored checkouts without a
 // checkout lifetime or a lifetime without them, on one that names its payments
 // by their checkouts without declaring stored checkouts, the only providers
-// handed the id of a checkout, and on a [RefundFollower] that
-// declares a signature header: each is a programming error in the provider
-// list.
+// handed the id of a checkout, on a [RefundFollower] or a [CheckoutFollower]
+// that declares a signature header, and on a [CheckoutFollower] that does not
+// declare stored checkouts: each is a programming error in the provider list.
 func NewRegistry(providers ...Provider) *Registry {
 	r := &Registry{providers: make(map[string]Provider, len(providers))}
 	for _, provider := range providers {
@@ -70,6 +70,11 @@ func NewRegistry(providers ...Provider) *Registry {
 		}
 		if _, follows := provider.(RefundFollower); follows && provider.Declaration().SignatureHeader != "" {
 			panic(fmt.Sprintf("paymentprovider: provider %q follows its refunds but declares a signature header its own notification of them cannot carry", id))
+		}
+		if _, follows := provider.(CheckoutFollower); follows {
+			if declaration := provider.Declaration(); declaration.SignatureHeader != "" || !declaration.StoredCheckouts {
+				panic(fmt.Sprintf("paymentprovider: provider %q follows its checkouts but declares a signature header its own notification of them cannot carry, or no stored checkouts to follow", id))
+			}
 		}
 		r.providers[id] = provider
 		r.ids = append(r.ids, id)
