@@ -288,7 +288,7 @@ const taxonomyActionName = (action: string) => {
   }
 };
 
-/** An action on pages, announcements, or comments. */
+/** An action on pages or announcements. */
 const siteActionName = (action: string) => {
   switch (action) {
     case "page_created": {
@@ -297,6 +297,10 @@ const siteActionName = (action: string) => {
 
     case "page_updated": {
       return <Message message="admin.audit.actions.page_updated" />;
+    }
+
+    case "page_deleted": {
+      return <Message message="admin.audit.actions.page_deleted" />;
     }
 
     case "page_unpublished": {
@@ -339,6 +343,15 @@ const siteActionName = (action: string) => {
       return <Message message="admin.audit.actions.announcement_unpinned" />;
     }
 
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An action on comments or their reports. */
+const commentActionName = (action: string) => {
+  switch (action) {
     case "comment_approved": {
       return <Message message="admin.audit.actions.comment_approved" />;
     }
@@ -1022,6 +1035,7 @@ const actionName = (action: string) =>
   volumeActionName(action) ??
   taxonomyActionName(action) ??
   siteActionName(action) ??
+  commentActionName(action) ??
   campaignBannerActionName(action) ??
   contactMessageActionName(action) ??
   readerActionName(action) ??

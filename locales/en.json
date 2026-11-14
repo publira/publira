@@ -541,6 +541,7 @@
         "genre_eye_catch_aspect_image_uploaded": "Genre cover image uploaded",
         "page_created": "Page created",
         "page_updated": "Page updated",
+        "page_deleted": "Page deleted",
         "page_unpublished": "Page unpublished",
         "page_version_created": "Page version created",
         "page_version_published": "Page version published",

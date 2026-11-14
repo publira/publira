@@ -541,6 +541,7 @@
         "genre_eye_catch_aspect_image_uploaded": "上傳了類型封面圖",
         "page_created": "建立了頁面",
         "page_updated": "更新了頁面",
+        "page_deleted": "刪除了頁面",
         "page_unpublished": "取消發布了頁面",
         "page_version_created": "建立了頁面版本",
         "page_version_published": "發布了頁面版本",

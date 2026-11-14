@@ -111,6 +111,13 @@ const (
 	// ReasonOwnAccount refuses an administrator suspending or deleting the
 	// account they are signed in with.
 	ReasonOwnAccount = "OWN_ACCOUNT"
+	// The refusals of deleting a page that has to be kept, one per reason: a
+	// translation of it published, the tenant naming it as its terms of
+	// service or its privacy policy, and a reader's agreement to one of its
+	// versions.
+	ReasonPagePublished   = "PAGE_PUBLISHED"
+	ReasonPageIsLegalPage = "PAGE_IS_LEGAL_PAGE"
+	ReasonPageAgreedTo    = "PAGE_AGREED_TO"
 	// ReasonProviderAlreadyLinked refuses linking a provider account to a
 	// reader who has an account of that provider linked already.
 	ReasonProviderAlreadyLinked = "PROVIDER_ALREADY_LINKED"

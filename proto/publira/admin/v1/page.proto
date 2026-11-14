@@ -156,6 +156,32 @@ message DeletePageTranslationRequest {
 
 message DeletePageTranslationResponse {}
 
+// Deletes a page that no reader can reach and none agreed to: one created by
+// mistake, or one that is no longer needed. Its translations and every version
+// of them go with it. It leaves the storefront at its slug, the footer, and
+// the sitemap. The audit log keeps the page's id, slug, and title.
+//
+// A page that has to be kept is failed_precondition with an ErrorInfo reason
+// naming the first of these, in this order:
+//
+//   - PAGE_PUBLISHED: a translation with a published version. Unpublish each
+//     with UnpublishPage first.
+//   - PAGE_IS_LEGAL_PAGE: the tenant names it as its terms of service or its
+//     privacy policy. Name another page, or none, with
+//     UpdateTenantLegalPages first.
+//   - PAGE_AGREED_TO: a reader agreed to one of its versions, which is the
+//     record of what they agreed to and is kept.
+//
+// Nothing is deleted with the refusal.
+// A page that does not exist, a second request for one deleted already
+// included, is not_found.
+message DeletePageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+}
+
+message DeletePageResponse {}
+
 // A request that carries a locale beside a page_id works on that one
 // translation. An empty locale means the translation page_translation_for picks
 // for the tenant's default locale; any other must name a translation the page
@@ -192,4 +218,6 @@ service AdminPagesService {
   //
   // Minimum role: tenant_editor.
   rpc DeletePageTranslation(DeletePageTranslationRequest) returns (DeletePageTranslationResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeletePage(DeletePageRequest) returns (DeletePageResponse) {}
 }

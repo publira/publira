@@ -541,6 +541,7 @@
         "genre_eye_catch_aspect_image_uploaded": "장르 커버 이미지 업로드",
         "page_created": "페이지 생성",
         "page_updated": "페이지 변경",
+        "page_deleted": "페이지 삭제",
         "page_unpublished": "페이지 공개 내림",
         "page_version_created": "페이지 버전 생성",
         "page_version_published": "페이지 버전 공개",
