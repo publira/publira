@@ -63,7 +63,10 @@ test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ browser }) => {
   applyScenarioSql(EPISODE_RENTALS_SCENARIO);
+  // Episode 1 ends on the tip control, and episode 2's gate is drawn over
+  // its opening pages.
   uploadEpisodePages(EPISODE_RENTALS_EPISODE.publicId);
+  uploadEpisodePages(EPISODE_RENTALS_LATER_EPISODES[0].publicId);
 
   const page = await browser.newPage();
 
