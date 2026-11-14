@@ -1957,6 +1957,30 @@
         "deleted": "翻译已删除。",
         "delete_failed": "无法删除翻译。请稍后再试。",
         "last_translation": "页面至少需要保留一个翻译，因此无法删除最后一个翻译。"
+      },
+      "delete": {
+        "title": "删除页面",
+        "description": "永久删除本页面。已发布的页面、被指定为服务条款或隐私政策的页面，以及读者已同意的页面，无法删除。",
+        "section_error": "无法显示页面删除",
+        "action": "删除本页面",
+        "confirm_title": "要删除“{$title}”吗？",
+        "confirm_description": "页面的所有翻译及其内容的所有版本会一起删除。此操作无法撤销。",
+        "confirm_kept": "被指定为服务条款或隐私政策的页面，以及读者已同意的页面不会被删除，原因会显示在这里。",
+        "slug_label": "请输入页面的slug“{$slug}”以确认",
+        "confirm_action": "删除页面",
+        "pending": "正在删除...",
+        "deleted": "已删除“{$title}”。",
+        "failed": "无法删除页面。请稍后再试。",
+        "not_found": "该页面已被删除。请返回页面列表。",
+        "slug_mismatch": "输入的slug与本页面的slug不一致。",
+        "open_published": "打开已发布的翻译",
+        "open_legal_pages": "打开服务条款与隐私政策",
+        "refused": {
+          "published": "已发布的页面无法删除。请先取消发布所有已发布的翻译。",
+          "legal_page": "被指定为服务条款或隐私政策的页面无法删除。请先在设置中指定其他页面，或取消指定。",
+          "agreed_to": "读者已同意本页面的某个版本，因此无法删除。读者同意的内容会作为记录保留。",
+          "kept": "有需要保留的记录引用了本页面，因此无法删除。"
+        }
       }
     },
     "readers": {

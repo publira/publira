@@ -20,11 +20,13 @@ import {
 } from "../src/scenarios/admin-mfa-settings";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { ANNOUNCEMENT_BANNER_ADMIN } from "../src/scenarios/announcement-banner";
+import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { CONTACT_WORKFLOW_EDITOR } from "../src/scenarios/contact-workflow";
 import { totpCode } from "../src/totp";
 import {
   WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL,
   WEB_ADMIN_BASE_URL,
+  WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
   WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL,
 } from "../src/urls";
 
@@ -51,6 +53,16 @@ test.use({ baseURL: WEB_ADMIN_BASE_URL });
 /** The seed tenant's page that the site's privacy policy is written on. */
 const PAGE_ID = "018f1000-0001-7000-8000-000000000001";
 
+/**
+ * The moderation tenant's draft page, which `840_docs_pages.sql` adds so that
+ * the dialog that deletes a page, offered only while the page is unpublished,
+ * has a page to open on.
+ */
+const DRAFT_PAGE = {
+  id: "018f1090-0840-7000-8000-000000000001",
+  slug: "/about",
+} as const;
+
 /** Sign in as the seed tenant's admin and open `path` in `locale`. */
 const openScreen = async (
   page: Page,
@@ -61,6 +73,22 @@ const openScreen = async (
   await consoleSessions.signIn(page, SEED_ADMIN, WEB_ADMIN_BASE_URL);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
+};
+
+/** The same on the moderation tenant's console, which holds the draft page. */
+const openModerationTenant = async (
+  page: Page,
+  consoleSessions: ConsoleSessions,
+  locale: string,
+  path: string
+): Promise<void> => {
+  await consoleSessions.signIn(
+    page,
+    COMMENT_MODERATION_ADMIN,
+    WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+  );
+  await setDocsLocale(page, WEB_ADMIN_COMMENT_MODERATION_BASE_URL, locale);
+  await page.goto(`${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}${path}`);
 };
 
 /** The same on the banner tenant's console, which holds the announcements. */
@@ -389,6 +417,39 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: "console/setup/pages",
           subject: "versions",
+        });
+      });
+
+      // The dialog is left with the slug typed and never submitted, so the
+      // draft page stays.
+      test("the dialog that deletes a page, with its slug typed", async ({
+        consoleSessions,
+        page,
+      }) => {
+        await openModerationTenant(
+          page,
+          consoleSessions,
+          locale,
+          `/pages/${DRAFT_PAGE.id}`
+        );
+        await page
+          .getByRole("button", { name: t("admin.pages.delete.action") })
+          .click();
+
+        const dialog = page.getByRole("dialog");
+
+        await dialog.getByRole("textbox").fill(DRAFT_PAGE.slug);
+        await expect(
+          dialog.getByRole("button", {
+            name: t("admin.pages.delete.confirm_action"),
+          })
+        ).toBeEnabled();
+
+        await expectDocsScreenshot(page, {
+          element: dialog,
+          locale,
+          page: "console/setup/pages",
+          subject: "delete",
         });
       });
     });

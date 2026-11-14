@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
 
-import type { PageItem, PageVersionItem } from "#lib/page";
+import type {
+  PageDeletionReference,
+  PageItem,
+  PageVersionItem,
+} from "#lib/page";
 import { translationEditPath } from "#lib/translation-locales";
 
 /**
@@ -68,3 +72,22 @@ export type PageFormState = {
 export type PageListItem = PageItem;
 
 export type PageVersionListItem = PageVersionItem;
+
+/**
+ * A deletion the API refused, with where to clear what holds the page when the
+ * console can point to it. A deletion that goes through leaves the screen
+ * instead of answering.
+ */
+export type PageDeleteActionState = {
+  ok: false;
+  message: string;
+  link?: { href: string; reference: PageDeletionReference };
+} | null;
+
+/**
+ * Whether the slug typed into the delete dialog is the page's, compared as the
+ * path it serves: with or without its leading `/`, and `/` for the page at the
+ * site's root. Nothing typed confirms nothing.
+ */
+export const isPageSlugConfirmed = (typed: string, slug: string): boolean =>
+  typed.trim() !== "" && formatPagePath(typed) === formatPagePath(slug);

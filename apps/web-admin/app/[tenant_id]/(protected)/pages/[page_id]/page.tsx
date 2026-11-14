@@ -20,7 +20,10 @@ import { z } from "zod";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import {
+  TenantAdminOnly,
+  TenantEditorFieldset,
+} from "#components/tenant-role-gate";
 import { TranslationTabs } from "#components/translation-tabs";
 import {
   isSignedInTenantAdmin,
@@ -38,6 +41,7 @@ import { resolveTranslationLocales } from "#lib/translation-locales";
 import { PageWorkspace } from "../_components/page-workspace";
 import {
   addPageTranslationAction,
+  deletePageAction,
   deletePageTranslationAction,
   publishVersionAction,
   rollbackVersionAction,
@@ -45,6 +49,7 @@ import {
   unpublishPageAction,
 } from "../_lib/actions";
 import { pageEditPath } from "../page-types";
+import { PageDeleteDialog } from "./_components/page-delete-dialog";
 import { PageTranslationAddForm } from "./_components/page-translation-add-form";
 import { PageTranslationDeleteButton } from "./_components/page-translation-delete-button";
 
@@ -262,6 +267,68 @@ const PageWorkspaceData = async ({
   );
 };
 
+/**
+ * Deleting the page, for a Tenant admin alone, since the API refuses anyone
+ * else, and only while no translation of it is published, since the API
+ * refuses that too. A page that could not be read is already reported by the
+ * workspace above.
+ */
+const PageDeleteSection = async ({
+  params,
+}: Pick<EditPagePageProps, "params">) => {
+  const parsedParams = parseRouteParams(editPageParamsSchema, await params);
+
+  if (!parsedParams) {
+    return null;
+  }
+
+  const { page_id: pageId } = parsedParams;
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [pageResult, translationsResult] = await Promise.all([
+    getPage({ pageId, tenantId }, locale),
+    listPageTranslations({ pageId, tenantId }, locale),
+  ]);
+
+  if (
+    !(pageResult.ok && translationsResult.ok) ||
+    translationsResult.translations.some(
+      (translation) => translation.publishedVersionId
+    )
+  ) {
+    return null;
+  }
+
+  const { slug, title } = pageResult.page;
+
+  return (
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
+            <Message message="admin.pages.delete.title" />
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
+            <Message message="admin.pages.delete.description" />
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
+          <PageDeleteDialog
+            action={deletePageAction}
+            // A rename remounts the dialog with the title it now names.
+            key={`${pageId}:delete:${title}`}
+            pageId={pageId}
+            slug={slug}
+            tenantId={tenantId}
+            title={title}
+          />
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
+    </ConsoleSection.Root>
+  );
+};
+
 const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
   <ConsolePage.Root>
     <ConsolePage.Header>
@@ -311,6 +378,19 @@ const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
           <TenantEditorFieldset>
             <PageWorkspaceData params={params} searchParams={searchParams} />
           </TenantEditorFieldset>
+        </Suspense>
+      </SectionErrorBoundary>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.pages.delete.section_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={null}>
+          <TenantAdminOnly>
+            <PageDeleteSection params={params} />
+          </TenantAdminOnly>
         </Suspense>
       </SectionErrorBoundary>
     </ConsolePage.Content>

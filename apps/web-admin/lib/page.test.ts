@@ -2,6 +2,7 @@ import {
   BadRequestSchema,
   Code,
   ConnectError,
+  ErrorInfoSchema,
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +12,7 @@ const {
   mockCreatePage,
   mockCreatePageTranslation,
   mockCreateVersion,
+  mockDeletePage,
   mockDeletePageTranslation,
   mockGetAccessToken,
   mockGetPage,
@@ -24,6 +26,7 @@ const {
   mockCreatePage: vi.fn(),
   mockCreatePageTranslation: vi.fn(),
   mockCreateVersion: vi.fn(),
+  mockDeletePage: vi.fn(),
   mockDeletePageTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetPage: vi.fn(),
@@ -43,6 +46,7 @@ vi.mock("./api", () => ({
       createPage: mockCreatePage,
       createPageTranslation: mockCreatePageTranslation,
       createVersion: mockCreateVersion,
+      deletePage: mockDeletePage,
       deletePageTranslation: mockDeletePageTranslation,
       getPage: mockGetPage,
       listPageTranslations: mockListPageTranslations,
@@ -919,6 +923,94 @@ describe("deletePageTranslation", () => {
     expect(result).toEqual({
       message:
         "A page keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
+    });
+  });
+});
+
+const pageKeptError = (reason: string) =>
+  new ConnectError("page has to be kept", Code.FailedPrecondition, undefined, [
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+  ]);
+
+describe("deletePage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const input = { pageId: "PAGE001", tenantId: "TENANT001" };
+
+  it("deletes the page with the operator's session", async () => {
+    mockDeletePage.mockResolvedValue({});
+
+    const { deletePage } = await import("./page");
+    const result = await deletePage(input, "en");
+
+    expect(mockDeletePage).toHaveBeenCalledWith(
+      { pageId: "PAGE001", tenant: { tenantId: "TENANT001" } },
+      SESSION_HEADERS
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each([
+    {
+      message:
+        "This page cannot be deleted while it is published. Unpublish each translation that is published first.",
+      reason: "PAGE_PUBLISHED",
+      reference: "unpublish",
+    },
+    {
+      message:
+        "This page cannot be deleted while it is named as the terms of service or the privacy policy. Name another page, or none, under Settings first.",
+      reason: "PAGE_IS_LEGAL_PAGE",
+      reference: "legal_pages",
+    },
+    {
+      message:
+        "This page cannot be deleted: readers agreed to one of its versions, and what they agreed to is kept.",
+      reason: "PAGE_AGREED_TO",
+      reference: undefined,
+    },
+  ])(
+    "words $reason as what keeps the page",
+    async ({ message, reason, reference }) => {
+      mockDeletePage.mockRejectedValue(pageKeptError(reason));
+
+      const { deletePage } = await import("./page");
+      const result = await deletePage(input, "en");
+
+      expect(result).toEqual({ message, ok: false, reference });
+    }
+  );
+
+  // A server newer than this console may refuse for a reason it has no
+  // sentence for yet, which is still a refusal rather than a failure.
+  it("words a refusal for a reason it does not know as a refusal", async () => {
+    mockDeletePage.mockRejectedValue(pageKeptError("PAGE_SOMETHING_NEW"));
+
+    const { deletePage } = await import("./page");
+    const result = await deletePage(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "This page cannot be deleted: a record that has to be kept refers to it.",
+      ok: false,
+    });
+  });
+
+  it("says a page deleted already is gone", async () => {
+    mockDeletePage.mockRejectedValue(
+      new ConnectError("page not found", Code.NotFound)
+    );
+
+    const { deletePage } = await import("./page");
+    const result = await deletePage(input, "en");
+
+    expect(result).toEqual({
+      message: "This page has already been deleted. Go back to the page list.",
       ok: false,
     });
   });

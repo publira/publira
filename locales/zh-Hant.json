@@ -1957,6 +1957,30 @@
         "deleted": "翻譯已刪除。",
         "delete_failed": "無法刪除翻譯。請稍後再試。",
         "last_translation": "頁面至少需要保留一個翻譯，因此無法刪除最後一個翻譯。"
+      },
+      "delete": {
+        "title": "刪除頁面",
+        "description": "永久刪除本頁面。已發布的頁面、被指定為服務條款或隱私權政策的頁面，以及讀者已同意的頁面，無法刪除。",
+        "section_error": "無法顯示頁面刪除",
+        "action": "刪除本頁面",
+        "confirm_title": "要刪除「{$title}」嗎？",
+        "confirm_description": "頁面的所有翻譯及其內容的所有版本會一起刪除。此操作無法復原。",
+        "confirm_kept": "被指定為服務條款或隱私權政策的頁面，以及讀者已同意的頁面不會被刪除，原因會顯示在這裡。",
+        "slug_label": "請輸入頁面的slug「{$slug}」以確認",
+        "confirm_action": "刪除頁面",
+        "pending": "正在刪除...",
+        "deleted": "已刪除「{$title}」。",
+        "failed": "無法刪除頁面。請稍後再試。",
+        "not_found": "此頁面已被刪除。請返回頁面列表。",
+        "slug_mismatch": "輸入的slug與本頁面的slug不一致。",
+        "open_published": "開啟已發布的翻譯",
+        "open_legal_pages": "開啟服務條款與隱私權政策",
+        "refused": {
+          "published": "已發布的頁面無法刪除。請先取消發布所有已發布的翻譯。",
+          "legal_page": "被指定為服務條款或隱私權政策的頁面無法刪除。請先在設定中指定其他頁面，或取消指定。",
+          "agreed_to": "讀者已同意本頁面的某個版本，因此無法刪除。讀者同意的內容會作為記錄保留。",
+          "kept": "有需要保留的記錄引用了本頁面，因此無法刪除。"
+        }
       }
     },
     "readers": {

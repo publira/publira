@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   isFormText,
@@ -22,7 +22,10 @@ import {
   createPage,
   createPageTranslation,
   createPageVersion,
+  deletePage,
   deletePageTranslation,
+  getPage,
+  listPageTranslations,
   pageCacheTag,
   pagesCacheTag,
   publishPageVersion,
@@ -30,10 +33,15 @@ import {
   unpublishPage,
   updatePage,
 } from "#lib/page";
+import { TENANT_LEGAL_PAGES_SECTION_ID } from "#lib/tenant-legal-pages-shared";
 import { findTenantLocales } from "#lib/tenant-locales";
 
-import { normalizePageSlugInput, pageEditPath } from "../page-types";
-import type { PageFormState } from "../page-types";
+import {
+  isPageSlugConfirmed,
+  normalizePageSlugInput,
+  pageEditPath,
+} from "../page-types";
+import type { PageDeleteActionState, PageFormState } from "../page-types";
 
 const formBooleanSchema = z.preprocess((value) => {
   if (!isFormText(value)) {
@@ -537,4 +545,111 @@ export const deletePageTranslationAction = async (
   updateTag(pageCacheTag(tenantId, pageId));
 
   redirect(pageEditPath(pageId, undefined, "translation_deleted"));
+};
+
+const deletePageSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    pageId: requiredTrimmedString(
+      t("admin.pages.validation.update_id_missing")
+    ),
+    slugConfirmation: z.string().catch(""),
+    tenantId: requiredTrimmedString(t("admin.pages.validation.tenant_missing")),
+  });
+};
+
+/**
+ * The editor of a translation that is published, where its **Unpublish** is.
+ * The refusal names no translation, so this one is read again; when that read
+ * fails or finds none published any more, the page's default one is opened.
+ */
+const publishedTranslationPath = async (
+  input: { pageId: string; tenantId: string },
+  locale: Locale
+): Promise<string> => {
+  const translations = await listPageTranslations(input, locale);
+
+  const published = translations.ok
+    ? translations.translations.find(
+        (translation) => translation.publishedVersionId
+      )
+    : undefined;
+
+  return pageEditPath(input.pageId, published?.locale);
+};
+
+/**
+ * Deletes the page once the slug typed into the dialog is the one it has, then
+ * leaves for the page list. The list names the page in its toast from the
+ * query string, since no page is left to read its title from.
+ */
+export const deletePageAction = async (
+  _prevState: PageDeleteActionState,
+  formData: FormData
+): Promise<PageDeleteActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deletePageSchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      pageId: { kind: "value", name: "page_id" },
+      slugConfirmation: { kind: "value", name: "slug_confirmation" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { pageId, slugConfirmation, tenantId } = parsed.data;
+  await verifyAdminSession(tenantId);
+
+  const [t, target] = await Promise.all([
+    getMessagesFor(locale),
+    getPage({ pageId, tenantId }, locale),
+  ]);
+
+  if (!target.ok) {
+    return {
+      message: target.notFound
+        ? t("admin.pages.delete.not_found")
+        : target.message,
+      ok: false,
+    };
+  }
+
+  if (!isPageSlugConfirmed(slugConfirmation, target.page.slug)) {
+    return { message: t("admin.pages.delete.slug_mismatch"), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deletePage({ pageId, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    if (!result.reference) {
+      return { message: result.message, ok: false };
+    }
+
+    const href =
+      result.reference === "unpublish"
+        ? await publishedTranslationPath({ pageId, tenantId }, locale)
+        : `/settings#${TENANT_LEGAL_PAGES_SECTION_ID}`;
+
+    return {
+      link: { href, reference: result.reference },
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(pagesCacheTag(tenantId));
+  updateTag(pageCacheTag(tenantId, pageId));
+
+  redirect(
+    `/pages?${new URLSearchParams({ deleted: "1", deleted_title: target.page.title }).toString()}`
+  );
 };

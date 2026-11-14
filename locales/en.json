@@ -1957,6 +1957,30 @@
         "deleted": "Translation deleted.",
         "delete_failed": "Could not delete the translation. Please try again later.",
         "last_translation": "A page keeps at least one translation, so its last one cannot be deleted."
+      },
+      "delete": {
+        "title": "Deleting this page",
+        "description": "Deletes this page for good. A page that is published, named as the terms of service or the privacy policy, or agreed to by readers cannot be deleted.",
+        "section_error": "Could not display the deletion of this page",
+        "action": "Delete this page",
+        "confirm_title": "Delete “{$title}”?",
+        "confirm_description": "Every translation of the page and every version of its content are deleted with it. This cannot be undone.",
+        "confirm_kept": "A page named as the terms of service or the privacy policy, or one readers have agreed to, is not deleted, and the reason is shown here.",
+        "slug_label": "Enter the page's slug, {$slug}, to confirm",
+        "confirm_action": "Delete page",
+        "pending": "Deleting...",
+        "deleted": "“{$title}” was deleted.",
+        "failed": "Could not delete the page. Please try again later.",
+        "not_found": "This page has already been deleted. Go back to the page list.",
+        "slug_mismatch": "The slug entered is not this page's slug.",
+        "open_published": "Open the published translation",
+        "open_legal_pages": "Open Terms and privacy policy",
+        "refused": {
+          "published": "This page cannot be deleted while it is published. Unpublish each translation that is published first.",
+          "legal_page": "This page cannot be deleted while it is named as the terms of service or the privacy policy. Name another page, or none, under Settings first.",
+          "agreed_to": "This page cannot be deleted: readers agreed to one of its versions, and what they agreed to is kept.",
+          "kept": "This page cannot be deleted: a record that has to be kept refers to it."
+        }
       }
     },
     "readers": {

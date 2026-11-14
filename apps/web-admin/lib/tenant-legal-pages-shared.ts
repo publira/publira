@@ -19,3 +19,9 @@ export interface TenantLegalPages {
   privacyPage?: TenantLegalPage;
   termsPage?: TenantLegalPage;
 }
+
+/**
+ * The anchor of **Terms and privacy policy** on the settings screen, which a
+ * refusal to delete a nominated page links to.
+ */
+export const TENANT_LEGAL_PAGES_SECTION_ID = "terms-and-privacy-policy";
