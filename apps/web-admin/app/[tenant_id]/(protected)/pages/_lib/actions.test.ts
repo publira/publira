@@ -742,7 +742,7 @@ describe("deletePageAction", () => {
       ok: true,
       translations: [
         { id: "T-en", locale: "en", publishedVersionId: "", title: "About" },
-        { id: "T-ja", locale: "ja", publishedVersionId: "V1", title: "概要" },
+        { id: "T-ja", locale: "ja", publishedVersionId: "V1", title: "About" },
       ],
     });
 
