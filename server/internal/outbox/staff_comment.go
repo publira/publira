@@ -58,10 +58,13 @@ const staffCommentWindow = time.Hour
 // time zone would only make two tenants commenting on the same minute collapse
 // differently.
 func StaffCommentSubjectKey(episodePublicID string, at time.Time) string {
-	return fmt.Sprintf("episode:%s:%s",
-		episodePublicID,
-		at.UTC().Truncate(staffCommentWindow).Format("2006-01-02T15"),
-	)
+	return staffCommentSubjectKeyPrefix(episodePublicID) + at.UTC().Truncate(staffCommentWindow).Format("2006-01-02T15")
+}
+
+// staffCommentSubjectKeyPrefix is what every window's key for the episode
+// begins with.
+func staffCommentSubjectKeyPrefix(episodePublicID string) string {
+	return EpisodeSubjectKey(episodePublicID) + ":"
 }
 
 // StaffCommentIdempotencyKey is the outbox key for one window's event. The
@@ -122,13 +125,14 @@ func newStaffCommentNotificationHandler(cfg StaffNotificationHandlerConfig, noti
 			return errors.New("staff comment notification handler database is not configured")
 		}
 	}
-	return staffCommentNotificationHandler(cfg, notificationType, dbmodels.New(cfg.DB))
+	return staffCommentNotificationHandler(cfg, notificationType,
+		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) staffNotificationQuerier { return q }))
 }
 
 func staffCommentNotificationHandler(
 	cfg StaffNotificationHandlerConfig,
 	notificationType string,
-	queries staffNotificationQuerier,
+	hold episodeHold[staffNotificationQuerier],
 ) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		var payload StaffCommentNotificationPayload
@@ -158,41 +162,66 @@ func staffCommentNotificationHandler(
 			return Permanent(err)
 		}
 
-		staff, err := queries.ListTenantAdminIDs(ctx, tenantID)
+		held, err := hold(ctx, tenantID, payload.EpisodeID, func(queries staffNotificationQuerier) error {
+			return fileStaffCommentNotifications(ctx, cfg, event, queries, tenantID, notificationType, subjectKey, body, category)
+		})
 		if err != nil {
-			return fmt.Errorf("list tenant staff: %w", err)
+			return err
 		}
-		if len(staff) == 0 {
-			// A tenant whose last administrator was removed still has a queue,
-			// and the row it would be shown in has no recipient. Completing is
-			// the honest answer: a retry would find the same empty list.
-			logStaffComment(ctx, cfg.Logger, "no staff to notify about comments", event,
+		if !held {
+			logStaffComment(ctx, cfg.Logger, "episode was deleted; staff are not notified about its comments", event,
 				"notification_type", notificationType)
-			return nil
-		}
-
-		for _, userID := range staff {
-			notificationID, err := uuid.NewV7()
-			if err != nil {
-				return fmt.Errorf("allocate notification id: %w", err)
-			}
-			err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-				ID:               notificationID,
-				TenantID:         tenantID,
-				UserID:           userID,
-				NotificationType: notificationType,
-				SubjectKey:       subjectKey,
-				Payload:          body,
-				Category:         category,
-			})
-			// A recipient who already has this window's row, which is what a
-			// redelivered event looks like, is a no-op rather than an error.
-			if err != nil {
-				return fmt.Errorf("insert notification for %s: %w", userID, err)
-			}
 		}
 		return nil
 	}
+}
+
+// fileStaffCommentNotifications writes one window's row for every member of
+// the tenant's staff.
+func fileStaffCommentNotifications(
+	ctx context.Context,
+	cfg StaffNotificationHandlerConfig,
+	event dbmodels.OutboxEvent,
+	queries staffNotificationQuerier,
+	tenantID uuid.UUID,
+	notificationType, subjectKey string,
+	body []byte,
+	category string,
+) error {
+	staff, err := queries.ListTenantAdminIDs(ctx, tenantID)
+	if err != nil {
+		return fmt.Errorf("list tenant staff: %w", err)
+	}
+	if len(staff) == 0 {
+		// A tenant whose last administrator was removed still has a queue,
+		// and the row it would be shown in has no recipient. Completing is
+		// the honest answer: a retry would find the same empty list.
+		logStaffComment(ctx, cfg.Logger, "no staff to notify about comments", event,
+			"notification_type", notificationType)
+		return nil
+	}
+
+	for _, userID := range staff {
+		notificationID, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("allocate notification id: %w", err)
+		}
+		err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			ID:               notificationID,
+			TenantID:         tenantID,
+			UserID:           userID,
+			NotificationType: notificationType,
+			SubjectKey:       subjectKey,
+			Payload:          body,
+			Category:         category,
+		})
+		// A recipient who already has this window's row, which is what a
+		// redelivered event looks like, is a no-op rather than an error.
+		if err != nil {
+			return fmt.Errorf("insert notification for %s: %w", userID, err)
+		}
+	}
+	return nil
 }
 
 // staffCommentNotificationBody is what the console reads back. It is the

@@ -129,10 +129,11 @@ func NewCommentApprovedNotificationHandler(cfg CommentApprovedNotificationHandle
 			return errors.New("comment approved notification handler database is not configured")
 		}
 	}
-	return commentApprovedNotificationHandler(dbmodels.New(cfg.DB))
+	return commentApprovedNotificationHandler(
+		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) commentAuthorNotifier { return q }))
 }
 
-func commentApprovedNotificationHandler(queries commentAuthorNotifier) Handler {
+func commentApprovedNotificationHandler(hold episodeHold[commentAuthorNotifier]) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		var n CommentApprovedNotification
 		if err := json.Unmarshal(event.Payload, &n); err != nil {
@@ -144,7 +145,12 @@ func commentApprovedNotificationHandler(queries commentAuthorNotifier) Handler {
 		if err := n.validate(); err != nil {
 			return Permanent(err)
 		}
-		return notifyCommentApproved(ctx, queries, n)
+		// Filed while the episode is held, so a deletion that lands meanwhile
+		// is waited for or leaves nothing to file.
+		_, err := hold(ctx, n.TenantID, n.EpisodePublicID, func(queries commentAuthorNotifier) error {
+			return notifyCommentApproved(ctx, queries, n)
+		})
+		return err
 	}
 }
 

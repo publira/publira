@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const CountUnreadNotificationsForUser = `-- name: CountUnreadNotificationsForUser :one
@@ -244,6 +245,112 @@ func (q *Queries) CreateStaffNotification(ctx context.Context, arg CreateStaffNo
 		arg.Category,
 	)
 	return err
+}
+
+const DeleteNotificationsByPayloadEpisode = `-- name: DeleteNotificationsByPayloadEpisode :execrows
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = $1
+            AND n.notification_type = ANY($2::text[])
+            AND n.payload->>'episode_id' = $3::text
+        LIMIT $4
+    )
+`
+
+type DeleteNotificationsByPayloadEpisodeParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	NotificationTypes []string  `json:"notification_types"`
+	EpisodePublicID   string    `json:"episode_public_id"`
+	BatchSize         int32     `json:"batch_size"`
+}
+
+// DeleteNotificationsBySubjects for the notifications whose payload names the
+// episode, for a subject that can be deleted before the episode is and leave
+// nothing that names it.
+func (q *Queries) DeleteNotificationsByPayloadEpisode(ctx context.Context, arg DeleteNotificationsByPayloadEpisodeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteNotificationsByPayloadEpisode,
+		arg.TenantID,
+		pq.Array(arg.NotificationTypes),
+		arg.EpisodePublicID,
+		arg.BatchSize,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const DeleteNotificationsBySubjectPrefix = `-- name: DeleteNotificationsBySubjectPrefix :execrows
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = $1
+            AND n.notification_type = ANY($2::text[])
+            AND starts_with(n.subject_key, $3::text)
+        LIMIT $4
+    )
+`
+
+type DeleteNotificationsBySubjectPrefixParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	NotificationTypes []string  `json:"notification_types"`
+	SubjectKeyPrefix  string    `json:"subject_key_prefix"`
+	BatchSize         int32     `json:"batch_size"`
+}
+
+// DeleteNotificationsBySubjects for the subject keys that begin with a prefix,
+// for a subject filed under one key per window.
+func (q *Queries) DeleteNotificationsBySubjectPrefix(ctx context.Context, arg DeleteNotificationsBySubjectPrefixParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteNotificationsBySubjectPrefix,
+		arg.TenantID,
+		pq.Array(arg.NotificationTypes),
+		arg.SubjectKeyPrefix,
+		arg.BatchSize,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const DeleteNotificationsBySubjects = `-- name: DeleteNotificationsBySubjects :execrows
+DELETE FROM notifications
+WHERE id IN (
+        SELECT n.id
+        FROM notifications n
+        WHERE n.tenant_id = $1
+            AND n.notification_type = ANY($2::text[])
+            AND n.subject_key = ANY($3::text[])
+        LIMIT $4
+    )
+`
+
+type DeleteNotificationsBySubjectsParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	NotificationTypes []string  `json:"notification_types"`
+	SubjectKeys       []string  `json:"subject_keys"`
+	BatchSize         int32     `json:"batch_size"`
+}
+
+// At most batch_size of the tenant's notifications of one of the types filed
+// under one of the subject keys, for every recipient alike, which only a
+// connection past the member policy reaches. Their read marks go with them.
+// The batch keeps one statement from holding the rows of every follower an
+// episode had at once.
+func (q *Queries) DeleteNotificationsBySubjects(ctx context.Context, arg DeleteNotificationsBySubjectsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteNotificationsBySubjects,
+		arg.TenantID,
+		pq.Array(arg.NotificationTypes),
+		pq.Array(arg.SubjectKeys),
+		arg.BatchSize,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const ListNotificationEmailRecipients = `-- name: ListNotificationEmailRecipients :many

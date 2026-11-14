@@ -2,7 +2,7 @@
 title: Episodes
 description: Create an episode, add, replace, and delete its pages, import a series and its episodes from a ZIP, change its title in each language, its price, its reading period, its rental, and its preview pages, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, see what goes out when on the calendar, and delete an episode nothing has to keep.
 published: 2026-10-07
-updated: 2026-11-09
+updated: 2026-11-14
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -321,7 +321,7 @@ Readers who bought the episode lose access to it with any of these, until it is 
 
 ### Deleting an episode
 
-A Tenant admin deletes an episode with **Delete this episode**, at the end of the **Basic information** tab of its edit screen; an Editor or an Auditor is not offered it. The dialog asks for the episode's title, and **Delete episode** stays unavailable until it is typed exactly. Choosing it deletes the episode with its pages, cover image, translations, credits, free reading periods, campaign prices, and review history, and with what readers left on it: comments and their reports, follows, reactions, and reading history. It leaves the site, the app, and the search index at once, and the console returns to the series' episode list. A deletion cannot be undone, and **Audit logs** records it with the episode's title.
+A Tenant admin deletes an episode with **Delete this episode**, at the end of the **Basic information** tab of its edit screen; an Editor or an Auditor is not offered it. The dialog asks for the episode's title, and **Delete episode** stays unavailable until it is typed exactly. Choosing it deletes the episode with its pages, cover image, translations, credits, free reading periods, campaign prices, and review history, and with what readers left on it: comments and their reports, follows, reactions, and reading history. Shortly after, the notifications about the episode, its comments, and its review history are removed too, for readers and staff alike. It leaves the site, the app, and the search index at once, and the console returns to the series' episode list. A deletion cannot be undone, and **Audit logs** records it with the episode's title.
 
 ![The dialog that deletes an episode: what is deleted with it, which episodes are kept and that the reason is shown, the episode's title typed into the confirmation field, Cancel, and Delete episode.](./episodes-delete.png)
 

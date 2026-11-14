@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/catalogindex"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -127,6 +128,9 @@ func (s *adminServer) deleteEpisode(txCtx context.Context, tenantID, episodeID u
 			return episode, fail("failed to queue the episode.unpublished webhook", err)
 		}
 	}
+	if err := queueEpisodeNotificationsRemoval(txCtx, q, tenantID, episode); err != nil {
+		return episode, fail("failed to queue the removal of the episode's notifications", err)
+	}
 	if err := q.DeleteEpisodeFromUnsoldVolumes(txCtx, dbmodels.DeleteEpisodeFromUnsoldVolumesParams{TenantID: tenantID, EpisodeID: episodeID}); err != nil {
 		return episode, fail("failed to take the episode out of volumes never on sale", err)
 	}
@@ -146,4 +150,25 @@ func (s *adminServer) deleteEpisode(txCtx context.Context, tenantID, episodeID u
 		return episode, fail("failed to queue the search index sync for the episode's series", err)
 	}
 	return episode, nil
+}
+
+// queueEpisodeNotificationsRemoval owes the removal of every notification about
+// the episode, which only the worker can reach. The comments and the review
+// rounds those notifications are filed under are deleted with the episode, so
+// they are read here, under its lock, before they go.
+func queueEpisodeNotificationsRemoval(txCtx context.Context, q Querier, tenantID uuid.UUID, episode dbmodels.LockEpisodeForDeletionRow) error {
+	comments, err := q.ListEpisodeCommentPublicIDs(txCtx, dbmodels.ListEpisodeCommentPublicIDsParams{TenantID: tenantID, EpisodeID: episode.ID})
+	if err != nil {
+		return fmt.Errorf("list the episode's comments: %w", err)
+	}
+	reviews, err := q.ListEpisodeReturnedReviewIDs(txCtx, dbmodels.ListEpisodeReturnedReviewIDsParams{TenantID: tenantID, EpisodeID: episode.ID})
+	if err != nil {
+		return fmt.Errorf("list the episode's returned review rounds: %w", err)
+	}
+	return outbox.QueueEpisodeNotificationsRemoval(txCtx, q, outbox.EpisodeNotificationsRemoval{
+		TenantID:         tenantID,
+		EpisodePublicID:  episode.PublicID,
+		CommentPublicIDs: comments,
+		ReviewIDs:        reviews,
+	})
 }

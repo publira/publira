@@ -252,3 +252,24 @@ DELETE FROM promotion_codes
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND target_kind = 'episode'
     AND target_id = sqlc.arg('episode_id')::uuid;
+
+-- name: ListEpisodeCommentPublicIDs :many
+-- The comments on the episode, whose authors' notifications are filed under
+-- each comment's public ID. Read under the episode's lock, which holds off a
+-- new comment, and before the deletion takes them.
+SELECT c.public_id
+FROM episode_comments c
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.episode_id = sqlc.arg('episode_id')::uuid
+ORDER BY c.public_id;
+
+-- name: ListEpisodeReturnedReviewIDs :many
+-- The review rounds of the episode that were sent back, each of which filed a
+-- notification for its submitter under the round's ID. Read before the
+-- deletion takes them, as the comments are.
+SELECT r.id
+FROM episode_reviews r
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.episode_id = sqlc.arg('episode_id')::uuid
+    AND r.decision = 'returned'
+ORDER BY r.id;

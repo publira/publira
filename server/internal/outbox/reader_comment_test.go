@@ -91,6 +91,33 @@ func TestNotifyCommentApprovedMailsOnlyAnEpisodeTheSiteShows(t *testing.T) {
 	}
 }
 
+// An approval drained after its episode was deleted files nothing, since the
+// deletion has already removed the episode's notifications.
+func TestCommentApprovedNotificationFilesNothingForADeletedEpisode(t *testing.T) {
+	tenantID := uuid.New()
+	payload, err := json.Marshal(CommentApprovedNotification{
+		TenantID:        tenantID,
+		UserID:          uuid.New(),
+		CommentPublicID: "CMTPEND00001",
+		EpisodePublicID: "EPISODE00001",
+	})
+	if err != nil {
+		t.Fatalf("encode payload: %v", err)
+	}
+	queries := &stubCommentAuthorNotifier{episodeDeleted: true}
+	if err := commentApprovedNotificationHandler(queries.hold())(context.Background(), dbmodels.OutboxEvent{
+		ID:        uuid.New(),
+		TenantID:  uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType: EventTypeCommentApprovedNotification,
+		Payload:   payload,
+	}); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.created) != 0 || len(queries.queued) != 0 {
+		t.Fatalf("notifications = %+v, outbox events = %+v, want neither", queries.created, queries.queued)
+	}
+}
+
 func TestNotifyCommentApprovedReturnsAFailedInsert(t *testing.T) {
 	queries := &stubCommentAuthorNotifier{createErr: errors.New("connection refused")}
 
@@ -175,7 +202,7 @@ func TestQueuedCommentApprovalIsFiledByTheWorker(t *testing.T) {
 	}
 
 	filed := &stubCommentAuthorNotifier{}
-	handler := commentApprovedNotificationHandler(filed)
+	handler := commentApprovedNotificationHandler(filed.hold())
 	err := handler(context.Background(), dbmodels.OutboxEvent{
 		ID:        event.ID,
 		TenantID:  event.TenantID,
@@ -225,7 +252,7 @@ func TestCommentApprovedNotificationRejectsAPayloadNamingAnotherTenant(t *testin
 		t.Fatalf("encode payload: %v", err)
 	}
 	filed := &stubCommentAuthorNotifier{}
-	err = commentApprovedNotificationHandler(filed)(context.Background(), dbmodels.OutboxEvent{
+	err = commentApprovedNotificationHandler(filed.hold())(context.Background(), dbmodels.OutboxEvent{
 		ID:        uuid.New(),
 		TenantID:  uuid.NullUUID{UUID: uuid.New(), Valid: true},
 		EventType: EventTypeCommentApprovedNotification,
@@ -257,12 +284,19 @@ func assertCommentAuthorPayload(t *testing.T, raw []byte, want map[string]string
 }
 
 type stubCommentAuthorNotifier struct {
-	created   []dbmodels.CreateNotificationParams
-	createErr error
-	queued    []dbmodels.InsertOutboxEventParams
+	// episodeDeleted answers that the comment's episode is gone, where a stub
+	// left alone still has it.
+	episodeDeleted bool
+	created        []dbmodels.CreateNotificationParams
+	createErr      error
+	queued         []dbmodels.InsertOutboxEventParams
 	// appOnly shows the comment's episode on the app alone, where a stub left
 	// alone shows it on the site too.
 	appOnly bool
+}
+
+func (s *stubCommentAuthorNotifier) hold() episodeHold[commentAuthorNotifier] {
+	return stubEpisodeHold[commentAuthorNotifier](s, s.episodeDeleted)
 }
 
 func (s *stubCommentAuthorNotifier) ListPublishedEpisodeSurfacesByPublicID(

@@ -148,7 +148,7 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 	}
 	availability := sql.NullString{String: notificationAvailability(surfaces), Valid: true}
 
-	subjectKey := "episode:" + publication.EpisodePublicID
+	subjectKey := EpisodeSubjectKey(publication.EpisodePublicID)
 	file := func(category NotificationCategory, followerID uuid.UUID) error {
 		filedUnder, err := NotificationCategoryFor(NotificationTypeEpisodePublished, category)
 		if err != nil {
@@ -382,12 +382,15 @@ func NewEpisodePublishedNotificationHandler(cfg EpisodePublishedNotificationHand
 			return errors.New("episode published notification handler database is not configured")
 		}
 	}
-	return episodePublishedNotificationHandler(cfg, dbmodels.New(cfg.DB), DefaultEpisodeFollowerPageSize)
+	return episodePublishedNotificationHandler(cfg, dbmodels.New(cfg.DB),
+		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) EpisodeFollowerQuerier { return q }),
+		DefaultEpisodeFollowerPageSize)
 }
 
 func episodePublishedNotificationHandler(
 	cfg EpisodePublishedNotificationHandlerConfig,
 	queries episodePublishedNotificationQuerier,
+	hold episodeHold[EpisodeFollowerQuerier],
 	pageSize int32,
 ) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
@@ -420,14 +423,24 @@ func episodePublishedNotificationHandler(
 			return fmt.Errorf("get published episode: %w", err)
 		}
 
-		return NotifyEpisodeFollowers(ctx, queries, EpisodePublication{
-			TenantID:        tenantID,
-			EpisodeID:       episode.EpisodeID,
-			EpisodePublicID: episode.EpisodePublicID,
-			EpisodeTitle:    episode.EpisodeTitle,
-			SeriesPublicID:  episode.SeriesPublicID,
-			SeriesTitle:     episode.SeriesTitle,
-		}, pageSize)
+		held, err := hold(ctx, tenantID, episode.EpisodePublicID, func(q EpisodeFollowerQuerier) error {
+			return NotifyEpisodeFollowers(ctx, q, EpisodePublication{
+				TenantID:        tenantID,
+				EpisodeID:       episode.EpisodeID,
+				EpisodePublicID: episode.EpisodePublicID,
+				EpisodeTitle:    episode.EpisodeTitle,
+				SeriesPublicID:  episode.SeriesPublicID,
+				SeriesTitle:     episode.SeriesTitle,
+			}, pageSize)
+		})
+		if err != nil {
+			return err
+		}
+		if !held {
+			logEpisodePublished(ctx, cfg.Logger, "episode was deleted; followers are not notified", event,
+				"episode_id", episodeID.String())
+		}
+		return nil
 	}
 }
 

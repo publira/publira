@@ -239,6 +239,22 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
 ORDER BY e.id
 FOR UPDATE OF e;
 
+-- name: HoldEpisodeForNotification :one
+-- The episode's listing, held against deletion for the transaction that files
+-- a notification about the episode. DeleteEpisode locks the listing for
+-- update, so a deletion that started first is waited for and leaves no row
+-- here, and one that starts after waits until the notification is committed,
+-- where the removal the deletion queues finds it. No row means the episode is
+-- gone and nothing is to be filed about it. The listing rather than the
+-- episode is held because the ticker role may lock it.
+SELECT el.episode_id
+FROM episode_listings el
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+    AND e.id = el.episode_id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.public_id = sqlc.arg('public_id')
+FOR KEY SHARE OF el;
+
 -- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

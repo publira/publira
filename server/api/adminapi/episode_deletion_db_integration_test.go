@@ -9,6 +9,8 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
@@ -189,6 +191,145 @@ func TestDBDeleteEpisodeTakesWhatIsItsOwn(t *testing.T) {
 	// A request delivered again finds nothing to delete.
 	if err := f.delete(f.admin, episode); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("DeleteEpisode again = %v, want not_found", err)
+	}
+}
+
+// seedNotification files a notification for userID under the subject key, as
+// the worker would, and marks it read, so the test sees the read mark go with
+// it. It answers the notification's ID.
+func (f *episodeDeletionFixture) seedNotification(t *testing.T, userID uuid.UUID, notificationType, subjectKey string) uuid.UUID {
+	t.Helper()
+	return f.seedNotificationWithPayload(t, userID, notificationType, subjectKey, "{}")
+}
+
+// seedNotificationWithPayload is seedNotification with the payload the row
+// carries.
+func (f *episodeDeletionFixture) seedNotificationWithPayload(t *testing.T, userID uuid.UUID, notificationType, subjectKey, payload string) uuid.UUID {
+	t.Helper()
+	category, err := outbox.NotificationCategoryFor(notificationType)
+	if err != nil {
+		t.Fatalf("category of %s: %v", notificationType, err)
+	}
+	id := uuid.Must(uuid.NewV7())
+	f.exec(t, "INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category, payload) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)",
+		id, f.admin.Tenant.ID, userID, notificationType, subjectKey, category, payload)
+	f.exec(t, "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", id, userID, f.admin.Tenant.ID)
+	return id
+}
+
+// seedEpisodeNotifications files every kind of notification about the episode
+// under the subject keys the outbox files them under: the publication and the
+// approval of a comment in the reader's inbox, and the failed publication, the
+// comment alerts of two windows, and a returned review round in the staff's
+// bell. A comment purged before the episode is deleted leaves its approval
+// notice too, which names the episode in its payload alone. It answers their
+// IDs.
+func (f *episodeDeletionFixture) seedEpisodeNotifications(t *testing.T, episode testutil.Episode) []uuid.UUID {
+	t.Helper()
+	tenantID := f.admin.Tenant.ID
+	staff := f.admin.User.ID
+
+	commentPublicID := f.publicID("CMNT")
+	f.exec(t, "INSERT INTO episode_comments (id, tenant_id, public_id, episode_id, user_id, body, status, published_at) VALUES ($1, $2, $3, $4, $5, 'Great chapter', 'published', now())",
+		uuid.Must(uuid.NewV7()), tenantID, commentPublicID, episode.ID, f.reader.ID)
+	reviewID := uuid.Must(uuid.NewV7())
+	f.exec(t, "INSERT INTO episode_reviews (id, tenant_id, episode_id, decision, decided_at, comment) VALUES ($1, $2, $3, 'returned', now(), 'Fix page 3')", reviewID, tenantID, episode.ID)
+
+	now := time.Now()
+	purgedCommentPublicID := f.publicID("CMNT")
+	return []uuid.UUID{
+		f.seedNotificationWithPayload(t, f.reader.ID, outbox.NotificationTypeCommentApproved, outbox.CommentAuthorSubjectKey(purgedCommentPublicID),
+			fmt.Sprintf(`{"episode_id": %q, "comment_id": %q}`, episode.PublicID, purgedCommentPublicID)),
+		f.seedNotification(t, f.reader.ID, outbox.NotificationTypeEpisodePublished, outbox.EpisodeSubjectKey(episode.PublicID)),
+		f.seedNotification(t, f.reader.ID, outbox.NotificationTypeCommentApproved, outbox.CommentAuthorSubjectKey(commentPublicID)),
+		f.seedNotification(t, staff, outbox.NotificationTypeEpisodePublishFailed, outbox.EpisodeSubjectKey(episode.PublicID)),
+		f.seedNotification(t, staff, outbox.NotificationTypeCommentAwaitingApproval, outbox.StaffCommentSubjectKey(episode.PublicID, now)),
+		f.seedNotification(t, staff, outbox.NotificationTypeCommentReported, outbox.StaffCommentSubjectKey(episode.PublicID, now.Add(-2*time.Hour))),
+		f.seedNotification(t, staff, outbox.NotificationTypeEpisodeReviewReturned, outbox.EpisodeReviewSubjectKey(reviewID)),
+	}
+}
+
+// drainNotificationRemovals runs, as the worker would, every removal the
+// deletions queued, and answers how many there were.
+func (f *episodeDeletionFixture) drainNotificationRemovals(t *testing.T) int {
+	t.Helper()
+	ctx := context.Background()
+	rows, err := f.env.PG.DB.QueryContext(ctx,
+		"SELECT id, tenant_id, event_type, payload, idempotency_key FROM outbox_events WHERE event_type = $1 ORDER BY id",
+		outbox.EventTypeEpisodeNotificationsRemoval,
+	)
+	if err != nil {
+		t.Fatalf("list notification removal events: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var events []dbmodels.OutboxEvent
+	for rows.Next() {
+		var event dbmodels.OutboxEvent
+		if err := rows.Scan(&event.ID, &event.TenantID, &event.EventType, &event.Payload, &event.IdempotencyKey); err != nil {
+			t.Fatalf("scan notification removal event: %v", err)
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate notification removal events: %v", err)
+	}
+
+	handler := outbox.NewEpisodeNotificationsRemovalHandler(outbox.NotificationRemovalHandlerConfig{DB: f.env.PG.OpenOutboxDB(t)})
+	for _, event := range events {
+		if err := handler(ctx, event); err != nil {
+			t.Fatalf("handle %s: %v", event.IdempotencyKey, err)
+		}
+	}
+	return len(events)
+}
+
+// The notifications about a deleted episode, its comments, and its review
+// rounds leave every recipient's inbox once the worker drains what the deletion
+// queued, and those about another episode stay, even one whose public ID begins
+// with the deleted one's.
+func TestDBDeleteEpisodeRemovesItsNotifications(t *testing.T) {
+	t.Parallel()
+
+	f := newEpisodeDeletionFixture(t)
+	episode := f.episode(t, "Chapter to delete")
+	kept := f.env.PG.SeedEpisode(t, f.admin.Tenant.ID, f.series.ID, testutil.EpisodeSeed{
+		PublicID: episode.PublicID + "9",
+		Title:    "Chapter to keep",
+		Price:    120,
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	removed := f.seedEpisodeNotifications(t, episode)
+	stays := f.seedEpisodeNotifications(t, kept)
+
+	if err := f.delete(f.admin, episode); err != nil {
+		t.Fatalf("DeleteEpisode: %v", err)
+	}
+	// The deletion's connection reaches no one's notification but its own
+	// caller's, so the rows wait for the worker.
+	if got := f.drainNotificationRemovals(t); got != 1 {
+		t.Fatalf("notification removals queued = %d, want 1", got)
+	}
+
+	for _, id := range removed {
+		if got := f.env.countRows(t, "SELECT count(*) FROM notifications WHERE id = $1", id); got != 0 {
+			t.Errorf("the deleted episode's notification %s stayed", id)
+		}
+		if got := f.env.countRows(t, "SELECT count(*) FROM notification_reads WHERE notification_id = $1", id); got != 0 {
+			t.Errorf("the read mark of %s stayed", id)
+		}
+	}
+	for _, id := range stays {
+		if got := f.env.countRows(t, "SELECT count(*) FROM notifications WHERE id = $1", id); got != 1 {
+			t.Errorf("the other episode's notification %s is gone", id)
+		}
+	}
+
+	// An event delivered again finds nothing left to remove.
+	if got := f.drainNotificationRemovals(t); got != 1 {
+		t.Fatalf("notification removals queued = %d, want 1", got)
+	}
+	if got := f.env.countRows(t, "SELECT count(*) FROM notifications WHERE tenant_id = $1", f.admin.Tenant.ID); got != len(stays) {
+		t.Errorf("notifications left = %d, want %d", got, len(stays))
 	}
 }
 

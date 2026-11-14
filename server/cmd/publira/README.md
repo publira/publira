@@ -187,6 +187,7 @@ It also handles these non-mail events:
 | `episode_published_notification` | The `notifications` rows, and the `member_push_notification` that mirrors them, for the followers of an episode the admin console published as it created it; an episode the scheduled publication job publishes has them written by that job |
 | `comment_approved_notification` | The `notifications` row telling a reader that staff approved their comment |
 | `episode_review_returned_notification` | The `notifications` row telling the member of staff who submitted an episode for review that a Tenant admin returned it, and the mail to them that quotes the comment |
+| `episode_notifications_removal` | The deletion, from every recipient's inbox, of the `notifications` rows about an episode `DeleteEpisode` deleted, its comments, and its returned review rounds, with their read marks and the mail and push still owed for them |
 | `data_export_ready_notification` | The `notifications` row telling a reader that the archive of their data they asked for is ready, in their inbox whatever their settings say, and the `data_export_ready_email` that mirrors it |
 | `data_export_ready_email` | That mail, sent the way `notification_email` sends a notification's. It is a type of its own because a worker of the release before gives up on a `notification_email` it has no mail for, and leaves a type it does not know pending instead |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
