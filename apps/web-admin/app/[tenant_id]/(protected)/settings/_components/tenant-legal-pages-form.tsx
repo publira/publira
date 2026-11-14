@@ -7,6 +7,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { TENANT_LEGAL_PAGES_SECTION_ID } from "#lib/tenant-legal-pages-shared";
 import type { TenantLegalPages } from "#lib/tenant-legal-pages-shared";
 
 import { updateTenantLegalPagesAction } from "../_lib/actions";
@@ -43,7 +44,7 @@ export const TenantLegalPagesForm = ({
     <ConsoleSection.Root>
       <ConsoleSection.Header>
         <ConsoleSection.Heading>
-          <ConsoleSection.Title>
+          <ConsoleSection.Title id={TENANT_LEGAL_PAGES_SECTION_ID}>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.settings.legal_pages.title" />
             </Suspense>

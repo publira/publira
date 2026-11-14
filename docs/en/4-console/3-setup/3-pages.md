@@ -1,15 +1,15 @@
 ---
 title: Pages
-description: Write the site's own pages in a rich text editor, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
+description: Write the site's own pages in a rich text editor, publish and roll back their versions, translate them, delete one no reader can reach, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-11-09
+updated: 2026-11-14
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in a rich text editor, kept in versions, and can be translated into each of the site's languages.
 
 ![The Pages list: Create page at the top, and a row for each page with its title, slug, status, whether it is in the footer, when it was updated, and Edit.](./pages-list.png)
 
-A Tenant admin and an Editor can create, edit, publish, and translate pages. An Auditor can open them without changing anything.
+A Tenant admin and an Editor can create, edit, publish, and translate pages, and a Tenant admin alone can delete one. An Auditor can open them without changing anything.
 
 ## Creating a page
 
@@ -24,7 +24,7 @@ Choose **Create page** and fill in:
 
 ![The Create page form: slug, Title, Show in footer, Content, and Create page.](./pages-create-form.png)
 
-Pages cannot be deleted. A page that should no longer be read is unpublished instead, as described below.
+A page that should no longer be read is unpublished, as described below. A page created by mistake, or no longer needed, can then be deleted, as [Deleting a page](#deleting-a-page) describes.
 
 ## Writing and publishing
 
@@ -57,6 +57,22 @@ The site shows a change moments after it is published.
 The edit screen has a tab under **Languages** for each language the site offers, which a Tenant admin chooses under [**Settings**](./1-settings.md#languages). A translation in a language the site no longer offers has no tab, and is kept: its tab comes back, with the translation as it was, when the language is offered again. Readers are not shown it either, so a page published only in languages the site no longer offers is off the site, and out of its sitemap, until one of them is offered again or the page is published in one the site offers. A language without its own translation is marked **(not added)**, and readers browsing the site in that language see the page in another language, with a note saying so. To add one, open its tab, enter a title, and choose **Add translation**. Then write and publish its body as above.
 
 Each translation has its own title, versions, and published version, so a correction to one does not reach the others until it is made there too. **Delete this translation** removes one, but not the last.
+
+## Deleting a page
+
+A Tenant admin deletes a page with **Delete this page**, under **Deleting this page** at the end of its edit screen; an Editor or an Auditor is not offered it. It is offered only while no translation of the page is published, so a page readers can reach is first taken off the site with **Unpublish** on the tab of each translation that is published.
+
+The dialog asks for the page's slug, and **Delete page** stays unavailable until it is typed exactly, with or without its leading `/`. Choosing it deletes the page with every translation and every version of it, and the console returns to the **Pages** list. A deletion cannot be undone, and **Audit logs** records it with the page's slug and title.
+
+![The dialog that deletes a page: what is deleted with it, which pages are kept and that the reason is shown, the page's slug typed into the confirmation field, Cancel, and Delete page.](./pages-delete.png)
+
+While any of these holds, the dialog says which instead of deleting the page:
+
+- A translation of it is published, as it is when someone publishes one after the dialog was opened. **Open the published translation** opens the tab of one, where **Unpublish** takes it off the site.
+- The tenant names it as its terms of service or its privacy policy, which an unpublished page stays until another page, or **None**, is chosen. **Open Terms and privacy policy** opens that setting.
+- A reader agreed to one of its versions. What a reader agreed to is kept as the record of their agreement, so a page that readers have agreed to as the terms of service or the privacy policy is never deleted, and stays unpublished instead.
+
+The dialog names the first of these, in this order, so a page held by more than one is refused again for the next once the first is cleared.
 
 ## The terms of service and the privacy policy
 

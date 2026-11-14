@@ -5,23 +5,31 @@ const {
   mockCreatePage,
   mockCreatePageTranslation,
   mockCreatePageVersion,
+  mockDeletePage,
   mockDeletePageTranslation,
   mockFindTenantLocales,
+  mockGetPage,
+  mockListPageTranslations,
   mockPublishPageVersion,
   mockRedirect,
   mockUpdatePage,
   mockUpdateTag,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreatePage: vi.fn(),
   mockCreatePageTranslation: vi.fn(),
   mockCreatePageVersion: vi.fn(),
+  mockDeletePage: vi.fn(),
   mockDeletePageTranslation: vi.fn(),
   mockFindTenantLocales: vi.fn(),
+  mockGetPage: vi.fn(),
+  mockListPageTranslations: vi.fn(),
   mockPublishPageVersion: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdatePage: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", () => ({
@@ -35,6 +43,7 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
   withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
@@ -42,7 +51,10 @@ vi.mock("#lib/page", () => ({
   createPage: mockCreatePage,
   createPageTranslation: mockCreatePageTranslation,
   createPageVersion: mockCreatePageVersion,
+  deletePage: mockDeletePage,
   deletePageTranslation: mockDeletePageTranslation,
+  getPage: mockGetPage,
+  listPageTranslations: mockListPageTranslations,
   pageCacheTag: (tenantId: string, pageId: string) =>
     `page-${tenantId}-${pageId}`,
   pagesCacheTag: (tenantId: string) => `pages-${tenantId}`,
@@ -653,5 +665,144 @@ describe("deletePageTranslationAction", () => {
         "A page keeps at least one translation, so its last one cannot be deleted.",
       ok: false,
     });
+  });
+});
+
+const deleteForm = (slugConfirmation: string): FormData => {
+  const data = new FormData();
+  data.set("tenant_id", TENANT_ID);
+  data.set("page_id", PAGE_ID);
+  data.set("slug_confirmation", slugConfirmation);
+
+  return data;
+};
+
+const deletePage = async (formData: FormData) => {
+  const { deletePageAction } = await import("./actions");
+
+  return await deletePageAction(null, formData);
+};
+
+describe("deletePageAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetPage.mockResolvedValue({
+      ok: true,
+      page: { id: PAGE_ID, slug: "/about", title: "About us" },
+    });
+  });
+
+  it("refuses a slug that is not the page's without calling the API", async () => {
+    const result = await deletePage(deleteForm("/about-us"));
+
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith(TENANT_ID);
+    expect(result).toEqual({
+      message: "The slug entered is not this page's slug.",
+      ok: false,
+    });
+    expect(mockDeletePage).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty slug for the page at the site's root", async () => {
+    mockGetPage.mockResolvedValueOnce({
+      ok: true,
+      page: { id: PAGE_ID, slug: "", title: "Home" },
+    });
+
+    const result = await deletePage(deleteForm(""));
+
+    expect(result).toEqual({
+      message: "The slug entered is not this page's slug.",
+      ok: false,
+    });
+    expect(mockDeletePage).not.toHaveBeenCalled();
+  });
+
+  it("says a page deleted already is gone", async () => {
+    mockGetPage.mockResolvedValueOnce({ notFound: true, ok: false });
+
+    const result = await deletePage(deleteForm("/about"));
+
+    expect(result).toEqual({
+      message: "This page has already been deleted. Go back to the page list.",
+      ok: false,
+    });
+    expect(mockDeletePage).not.toHaveBeenCalled();
+  });
+
+  it("links a refusal for a published page to the translation that is published", async () => {
+    mockDeletePage.mockResolvedValueOnce({
+      message: "This page cannot be deleted while it is published.",
+      ok: false,
+      reference: "unpublish",
+    });
+    mockListPageTranslations.mockResolvedValueOnce({
+      ok: true,
+      translations: [
+        { id: "T-en", locale: "en", publishedVersionId: "", title: "About" },
+        { id: "T-ja", locale: "ja", publishedVersionId: "V1", title: "About" },
+      ],
+    });
+
+    const result = await deletePage(deleteForm("/about"));
+
+    expect(result).toEqual({
+      link: { href: `/pages/${PAGE_ID}?locale=ja`, reference: "unpublish" },
+      message: "This page cannot be deleted while it is published.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("links a refusal for the terms of service to where they are named", async () => {
+    mockDeletePage.mockResolvedValueOnce({
+      message: "This page cannot be deleted while it is named.",
+      ok: false,
+      reference: "legal_pages",
+    });
+
+    const result = await deletePage(deleteForm("about"));
+
+    expect(result).toEqual({
+      link: {
+        href: "/settings#terms-and-privacy-policy",
+        reference: "legal_pages",
+      },
+      message: "This page cannot be deleted while it is named.",
+      ok: false,
+    });
+  });
+
+  it("keeps a refusal nothing clears without a link", async () => {
+    mockDeletePage.mockResolvedValueOnce({
+      message: "This page cannot be deleted: readers agreed to it.",
+      ok: false,
+    });
+
+    const result = await deletePage(deleteForm("/about"));
+
+    expect(result).toEqual({
+      message: "This page cannot be deleted: readers agreed to it.",
+      ok: false,
+    });
+  });
+
+  it("deletes the page and names it to the page list", async () => {
+    mockDeletePage.mockResolvedValueOnce({ ok: true });
+
+    await deletePage(deleteForm("about"));
+
+    expect(mockDeletePage).toHaveBeenCalledWith(
+      { pageId: PAGE_ID, tenantId: TENANT_ID },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(`pages-${TENANT_ID}`);
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/pages?deleted=1&deleted_title=About+us"
+    );
   });
 });

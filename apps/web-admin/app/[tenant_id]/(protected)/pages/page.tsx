@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import {
@@ -95,6 +96,11 @@ const PagesPage = ({ searchParams }: PagesPageProps) => (
       </Suspense>
     </ConsolePage.Header>
     <ConsolePage.Content>
+      <FlashToast
+        keyName="deleted"
+        message="admin.pages.delete.deleted"
+        valueParams={{ title: "deleted_title" }}
+      />
       <Suspense fallback={<Table.Skeleton />}>
         <PageManagerData searchParams={searchParams} />
       </Suspense>

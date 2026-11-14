@@ -9,10 +9,13 @@ import {
   isMissingResourceRpcError,
   isRpcError,
   rethrowUnclassifiedRpcError,
+  RPC_ERROR_REASON,
   RPC_FIELD_VIOLATION_REASON,
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorReason } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { parseLocale, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -33,6 +36,7 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface PageItem {
@@ -173,6 +177,17 @@ export type CreatePageTranslationResult =
 export type DeletePageTranslationResult =
   | { ok: true }
   | { ok: false; message: string };
+
+/**
+ * What a staff member clears before a refused page can be deleted, for a
+ * refusal the console can point to: the page's **Unpublish**, or the
+ * terms and privacy policy under **Settings**.
+ */
+export type PageDeletionReference = "legal_pages" | "unpublish";
+
+export type DeletePageResult =
+  | { ok: true }
+  | { ok: false; message: string; reference?: PageDeletionReference };
 
 /** The tag every page read is filed under, and every write to the page list drops. */
 export const pagesCacheTag = (tenantId: string): string => `pages-${tenantId}`;
@@ -1198,6 +1213,88 @@ export const deletePageTranslation = async (
         t("admin.pages.translations.delete_failed"),
         locale
       ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * What `DeletePage` refuses a page for, in the order the API checks them, with
+ * the sentence each is worded in and, where there is one, what clears it. A
+ * reader's agreement to a version is the record of what they agreed to, so
+ * nothing clears it.
+ */
+const PAGE_DELETION_REFUSALS: readonly {
+  message: AdminMessageKey;
+  reason: RpcErrorReason;
+  reference?: PageDeletionReference;
+}[] = [
+  {
+    message: "admin.pages.delete.refused.published",
+    reason: RPC_ERROR_REASON.pagePublished,
+    reference: "unpublish",
+  },
+  {
+    message: "admin.pages.delete.refused.legal_page",
+    reason: RPC_ERROR_REASON.pageIsLegalPage,
+    reference: "legal_pages",
+  },
+  {
+    message: "admin.pages.delete.refused.agreed_to",
+    reason: RPC_ERROR_REASON.pageAgreedTo,
+  },
+];
+
+/**
+ * Deletes a page with every translation and version of it. Tenant admins
+ * only. A refusal is worded from its ErrorInfo reason rather than the server's
+ * English message, and one with no reason this console knows is still worded
+ * as a refusal rather than a failure.
+ */
+export const deletePage = async (
+  input: { tenantId: string; pageId: string },
+  locale: Locale
+): Promise<DeletePageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.pages.deletePage(
+      { pageId: input.pageId, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    const refusal = PAGE_DELETION_REFUSALS.find(({ reason }) =>
+      rpcErrorHasReason(error, reason)
+    );
+
+    if (refusal) {
+      return {
+        message: t(refusal.message),
+        ok: false,
+        reference: refusal.reference,
+      };
+    }
+
+    return {
+      message: rpcErrorMessage(error, t("admin.pages.delete.failed"), {
+        locale,
+        overrides: {
+          "not-found": t("admin.pages.delete.not_found"),
+          precondition: t("admin.pages.delete.refused.kept"),
+        },
+      }),
       ok: false,
     };
   }
