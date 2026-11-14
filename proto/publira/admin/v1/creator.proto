@@ -49,6 +49,65 @@ message CreatorAccount {
   string linked_at = 2;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListCreatorCreditsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The creator's primary key (Creator.id).
+  string creator_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListCreatorCreditsResponse {
+  // Grouped by series, the series in the order they were created: the credit
+  // on the series itself first, then those on its episodes in reading order,
+  // and two roles held on one of them in a fixed order of their own.
+  repeated CreatorCredit credits = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// One credit naming a creator: on a series when episode is unset, on that
+// episode of the series when it is set. A person credited in two roles on the
+// same series or episode is two credits.
+message CreatorCredit {
+  // The series the credit is on, or the series of the episode it is on.
+  CreditedSeries series = 1;
+  // The episode the credit is on. Unset for a credit on the series itself.
+  CreditedEpisode episode = 2;
+  // The role the credit is held in. Unset for a credit written before the
+  // tenant had roles, which states none.
+  publira.types.v1.CreatorRole role = 3;
+  // Where an episode credit was written: baked from the series, which a range
+  // edit with BulkEditEpisodeCredits reaches, or added on the episode alone,
+  // which only ReplaceEpisodeCredits does. Unspecified for a series credit.
+  publira.types.v1.CreatorCreditSource source = 4;
+}
+
+// The series a credit names, in as much as the console needs to link to it.
+message CreditedSeries {
+  // The series' primary key, which the admin API addresses it by.
+  string id = 1;
+  string public_id = 2;
+  // In the tenant's default locale, or the series' oldest translation when
+  // it has none in that locale.
+  string title = 3;
+}
+
+// The episode a credit names, in as much as the console needs to link to it.
+message CreditedEpisode {
+  // The episode's primary key, which the admin API addresses it by.
+  string id = 1;
+  string public_id = 2;
+  // In the tenant's default locale, or the episode's oldest translation when
+  // it has none in that locale.
+  string title = 3;
+}
+
 message CreateCreatorRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
@@ -144,6 +203,13 @@ service AdminCreatorService {
   rpc ListCreators(ListCreatorsRequest) returns (ListCreatorsResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetCreator(GetCreatorRequest) returns (GetCreatorResponse) {}
+  // Every credit naming the creator, on a series or on an episode, whatever
+  // the state of the series or the episode: what DeleteCreator refuses with
+  // CREATOR_CREDITED while any is left. not_found for a creator that does not
+  // exist or belongs to another tenant.
+  //
+  // Minimum role: tenant_auditor.
+  rpc ListCreatorCredits(ListCreatorCreditsRequest) returns (ListCreatorCreditsResponse) {}
   // Minimum role: tenant_editor.
   rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
   // Minimum role: tenant_editor.
