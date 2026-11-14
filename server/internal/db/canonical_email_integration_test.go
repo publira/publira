@@ -146,8 +146,9 @@ func TestGetUserByCanonicalEmailForTenantUsesTheIndex(t *testing.T) {
 // so the list has to reach idx_users_canonical_email rather than walk every
 // account in creation order.
 func TestListEndUsersByEmailUsesTheIndex(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
