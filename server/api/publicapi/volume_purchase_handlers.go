@@ -125,9 +125,11 @@ func (s *apiServer) StartVolumeCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid volume checkout", err, "tenant_id", tenant.ID.String(), "volume_id", volume.ID.String())
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	}, "volume_id", volume.ID.String())
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "volume_id", volume.ID.String())
+		return nil, err
 	}
 	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "volume_id", volume.ID.String())
 	if err != nil {

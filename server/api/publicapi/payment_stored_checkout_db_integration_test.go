@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretupdate"
@@ -34,6 +35,7 @@ type storedCheckoutEnv struct {
 	registry    *paymentprovider.Registry
 	encryptor   paymentsettings.SecretManager
 	purchases   publirav1connect.PurchaseServiceClient
+	coins       publirav1connect.CoinServiceClient
 	token       string
 	credentials paymentprovider.Credentials
 }
@@ -72,10 +74,12 @@ func newStoredCheckoutEnvOf(t *testing.T, newFixture func(testing.TB) *readbackt
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
+	guards := guardsWith(func(policy *platformpolicy.Policy) { policy.TenantCoinsAllowed = true })
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard(), nil)
 	server.paymentProviders = registry
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
+	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
 	return storedCheckoutEnv{
 		pg:          pg,
 		tenant:      tenant,
@@ -84,7 +88,8 @@ func newStoredCheckoutEnvOf(t *testing.T, newFixture func(testing.TB) *readbackt
 		fixture:     fixture,
 		registry:    registry,
 		encryptor:   encryptor,
-		purchases:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		purchases:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(transport)),
+		coins:       publirav1connect.NewCoinServiceClient(connect.NewClient(transport)),
 		token:       tokenFor(t, tenant, reader),
 		credentials: credentials,
 	}
@@ -205,6 +210,115 @@ func TestDBAStoredCheckoutThatExpiredIsStartedAfresh(t *testing.T) {
 	}
 	if second := env.start(t); second == first {
 		t.Fatal("the checkout after an expiry was started under the expired one's id")
+	}
+}
+
+// A provider that reports no expiry answers a checkout id it has seen with the
+// checkout it made for it, so once the provider's lifetime of a checkout has
+// passed since it was first started, the reader's next request of whatever
+// they buy names a checkout of its own, which a retry reuses in turn while it
+// can still be paid.
+func TestDBAStoredCheckoutPastItsLifetimeIsStartedAfresh(t *testing.T) {
+	t.Parallel()
+
+	env := newStoredCheckoutEnv(t)
+	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "STOREDSERIE2", Published: true})
+	seed := func(publicID string, price int32) testutil.Episode {
+		return env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID:    publicID,
+			Price:       price,
+			Status:      testutil.EpisodeStatusPublished,
+			PublishedAt: time.Now().Add(-time.Hour),
+		})
+	}
+	first, second := seed("STOREDEPISO2", 300), seed("STOREDEPISO3", 200)
+	volume := env.pg.SeedVolume(t, env.tenant.ID, series.ID, testutil.VolumeSeed{
+		PublicID:   "STOREDVOLUM1",
+		Title:      "Volume One",
+		Price:      400,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{first.ID, second.ID},
+	})
+	takeTips(t, env.pg, env.tenant.ID, 100)
+	env.pg.SeedCoinSettings(t, env.tenant.ID, testutil.CoinSettingsSeed{Names: map[string]string{"en": "Points"}})
+	pack := env.pg.SeedCoinPack(t, env.tenant.ID, testutil.CoinPackSeed{PublicID: "STOREDPACK01", Coins: 100, Price: 1000})
+
+	ctx := testutil.WithBearer(t.Context(), env.token)
+	tenant := tenantContext(env.tenant)
+	starts := []struct {
+		name  string
+		start func() error
+	}{
+		{"episode", func() error {
+			_, err := env.purchases.StartEpisodeCheckout(ctx, &publirav1.StartEpisodeCheckoutRequest{Tenant: tenant, EpisodeId: env.episode.ID.String()})
+			return err
+		}},
+		{"tip", func() error {
+			_, err := env.purchases.StartTipCheckout(ctx, &publirav1.StartTipCheckoutRequest{Tenant: tenant, EpisodeId: env.episode.ID.String(), Amount: 100, Locale: "en"})
+			return err
+		}},
+		{"volume", func() error {
+			_, err := env.purchases.StartVolumeCheckout(ctx, &publirav1.StartVolumeCheckoutRequest{Tenant: tenant, VolumeId: volume.ID.String()})
+			return err
+		}},
+		{"series remainder", func() error {
+			_, err := env.purchases.StartSeriesRemainderCheckout(ctx, &publirav1.StartSeriesRemainderCheckoutRequest{Tenant: tenant, SeriesId: series.ID.String()})
+			return err
+		}},
+		{"coin pack", func() error {
+			_, err := env.coins.StartCoinPackCheckout(ctx, &publirav1.StartCoinPackCheckoutRequest{Tenant: tenant, CoinPackId: pack.ID.String(), Locale: "en"})
+			return err
+		}},
+	}
+	// The cases share the fake, which answers the checkout last started, so
+	// they run one after another.
+	for _, tc := range starts {
+		t.Run(tc.name, func(t *testing.T) {
+			start := func() string {
+				t.Helper()
+				if err := tc.start(); err != nil {
+					t.Fatalf("start the checkout: %v", err)
+				}
+				started := env.fixture.API().Started()
+				return started[len(started)-1].CheckoutID
+			}
+			// startedAgo moves the checkout's starts to ago in the past.
+			startedAgo := func(checkoutID string, ago time.Duration) {
+				t.Helper()
+				if _, err := env.pg.DB.ExecContext(t.Context(), `
+					UPDATE payment_checkouts
+					SET created_at = now() - make_interval(secs => $3), last_started_at = now() - make_interval(secs => $3)
+					WHERE tenant_id = $1 AND checkout_id = $2
+				`, env.tenant.ID, checkoutID, ago.Seconds()); err != nil {
+					t.Fatalf("move the starts of %s: %v", checkoutID, err)
+				}
+			}
+
+			lapsed := start()
+			if again := start(); again != lapsed {
+				t.Fatalf("a retry was started as %q, want %q", again, lapsed)
+			}
+			startedAgo(lapsed, readbacktest.CheckoutLifetime-time.Minute)
+			if again := start(); again != lapsed {
+				t.Fatalf("a retry within the checkout's lifetime was started as %q, want %q", again, lapsed)
+			}
+
+			startedAgo(lapsed, readbacktest.CheckoutLifetime+time.Minute)
+			fresh := start()
+			if fresh == lapsed {
+				t.Fatal("the checkout after its lifetime was started under its own id again")
+			}
+			if again := start(); again != fresh {
+				t.Fatalf("a retry of the new checkout was started as %q, want %q", again, fresh)
+			}
+
+			// A checkout that runs out after one that ran out moves on as
+			// well, rather than back onto either.
+			startedAgo(fresh, readbacktest.CheckoutLifetime+time.Minute)
+			if third := start(); third == fresh || third == lapsed {
+				t.Fatalf("the checkout after a second lifetime was started as %q, one of the lapsed %q and %q", third, lapsed, fresh)
+			}
+		})
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 )
 
 func TestPurchaseReturnURL(t *testing.T) {
@@ -184,6 +185,36 @@ func TestCheckoutIdempotencyKeyMovesPastAPaidCheckout(t *testing.T) {
 // Every locale names a rental by the episode's title and the period it is
 // rented for, so a catalog that drops either would show the payment page a sale
 // the reader cannot tell from the permanent copy.
+// A provider that reports its expiries keeps the key the request and the
+// reader's expired and paid checkouts make, and nothing is read to find it:
+// the server here has no database at all.
+func TestNextCheckoutKeyOfAProviderThatReportsExpiriesIsTheRequestsKey(t *testing.T) {
+	request := paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:  uuid.Must(uuid.NewV7()),
+			ReaderID:  uuid.Must(uuid.NewV7()),
+			EpisodeID: uuid.Must(uuid.NewV7()),
+			Price:     300,
+		},
+		LineItemName: "Episode 1",
+		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
+		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
+	}
+	want, err := checkoutIdempotencyKey(request, "cs_expired", "cs_paid")
+	if err != nil {
+		t.Fatalf("checkoutIdempotencyKey: %v", err)
+	}
+	server := &apiServer{}
+	for _, provider := range providers.Registry().Providers() {
+		got, err := server.nextCheckoutKey(t.Context(), provider, request.Purchase.TenantID, "cs_expired", func(expiredCheckoutID string) (string, error) {
+			return checkoutIdempotencyKey(request, expiredCheckoutID, "cs_paid")
+		})
+		if err != nil || got != want {
+			t.Fatalf("nextCheckoutKey through %s = %q, %v; want %q", provider.Declaration().ID, got, err, want)
+		}
+	}
+}
+
 func TestRentalLineItemNameCarriesTheTitleAndThePeriodInEveryLocale(t *testing.T) {
 	for _, code := range locale.Supported {
 		t.Run(code, func(t *testing.T) {

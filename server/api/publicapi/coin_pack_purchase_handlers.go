@@ -180,9 +180,11 @@ func (s *apiServer) StartCoinPackCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's last paid coin pack checkout", err, "tenant_id", tenant.ID.String(), "coin_pack_id", pack.ID.String())
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+		return checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
+	}, "coin_pack_id", pack.ID.String())
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "coin_pack_id", pack.ID.String())
+		return nil, err
 	}
 	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "coin_pack_id", pack.ID.String())
 	if err != nil {

@@ -34,6 +34,36 @@ func (q *Queries) GetPaymentCheckoutPurchase(ctx context.Context, arg GetPayment
 	return purchase, err
 }
 
+const IsPaymentCheckoutLapsed = `-- name: IsPaymentCheckoutLapsed :one
+SELECT (created_at <= now() - make_interval(secs => $1::double precision))::boolean AS lapsed
+FROM payment_checkouts
+WHERE tenant_id = $2
+    AND provider = $3
+    AND checkout_id = $4
+`
+
+type IsPaymentCheckoutLapsedParams struct {
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	CheckoutID      string    `json:"checkout_id"`
+}
+
+// Whether lifetime_seconds have passed since the checkout was first started,
+// the earliest the provider could have made it, after which the provider may
+// answer its id with a checkout that can no longer be paid.
+func (q *Queries) IsPaymentCheckoutLapsed(ctx context.Context, arg IsPaymentCheckoutLapsedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, IsPaymentCheckoutLapsed,
+		arg.LifetimeSeconds,
+		arg.TenantID,
+		arg.Provider,
+		arg.CheckoutID,
+	)
+	var lapsed bool
+	err := row.Scan(&lapsed)
+	return lapsed, err
+}
+
 const ListPaymentCheckoutIDs = `-- name: ListPaymentCheckoutIDs :many
 SELECT checkout_id
 FROM payment_checkouts

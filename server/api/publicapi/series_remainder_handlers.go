@@ -272,9 +272,11 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 	}
 	// The key is made before the bundle is written down, so it names the
 	// sale rather than the row, and the row is found again by it.
-	checkout.IdempotencyKey, err = seriesRemainderIdempotencyKey(checkout, series.ID, sale, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = s.nextCheckoutKey(ctx, provider, tenant.ID, expiredCheckoutID, func(expiredCheckoutID string) (string, error) {
+		return seriesRemainderIdempotencyKey(checkout, series.ID, sale, expiredCheckoutID, paidCheckoutID)
+	}, "series_id", series.ID.String())
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
+		return nil, err
 	}
 	checkout.Purchase.SeriesBundleID, err = s.writeSeriesBundle(ctx, queries, tenant.ID, user.ID, series.ID, sale, checkout.IdempotencyKey)
 	if err != nil {
