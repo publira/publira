@@ -3927,18 +3927,31 @@
           "payjp": {
             "secret_key": "시크릿 키",
             "webhook_token": "웹훅 토큰"
+          },
+          "paypay": {
+            "api_key": "API 키",
+            "api_secret": "API 시크릿",
+            "merchant_id": "가맹점 ID",
+            "environment": "환경"
           }
         },
         "field_sources": {
           "payjp": {
             "secret_key": "PAY.JP 관리 화면의 API 설정 페이지에 있는 시크릿 키(sk_live_… 또는 sk_test_…)입니다. 테스트 키로는 테스트 결제만 받을 수 있습니다.",
             "webhook_token": "PAY.JP 관리 화면의 계정 설정에 표시되는 웹훅 토큰(whook_…)입니다."
+          },
+          "paypay": {
+            "api_key": "PayPay for Developers에서 발급한 API 키입니다. PayPay 샌드박스의 키로는 테스트 결제만 받을 수 있습니다.",
+            "api_secret": "API 키와 함께 PayPay for Developers에서 발급되는 API 시크릿입니다.",
+            "merchant_id": "PayPay for Developers에서 API 키와 함께 표시되는 가맹점 ID입니다. PayPay로 보내는 모든 요청에 이 ID를 붙입니다.",
+            "environment": "운영 환경의 키라면 비워 두고, PayPay 샌드박스의 키라면 sandbox를 입력합니다."
           }
         },
         "public_description": "이 값은 결제할 때 독자의 브라우저에 전달되므로 저장된 그대로 표시됩니다.",
         "webhook_url": "웹훅 URL",
         "webhook_url_description": "{$provider}에 결제 알림을 보낼 곳으로 이 URL을 등록해 주세요.",
         "webhook_url_payjp_description": "PAY.JP는 모든 알림에 위에 저장한 웹훅 토큰을 붙여 보냅니다. 토큰이 붙어 있지 않은 알림은 받지 않습니다.",
+        "webhook_url_paypay_description": "PayPay는 알림에 서명을 붙이지 않습니다. 도착한 알림은 모두 위의 키로 PayPay API에서 결제를 다시 읽어 확인합니다.",
         "saved": "결제 설정을 저장했습니다.",
         "load_failed": "결제 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "save_failed": "결제 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",

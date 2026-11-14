@@ -3927,18 +3927,31 @@
           "payjp": {
             "secret_key": "シークレットキー",
             "webhook_token": "Webhookトークン"
+          },
+          "paypay": {
+            "api_key": "APIキー",
+            "api_secret": "APIシークレット",
+            "merchant_id": "加盟店ID",
+            "environment": "環境"
           }
         },
         "field_sources": {
           "payjp": {
             "secret_key": "PAY.JP管理画面のAPI設定ページにあるシークレットキー (sk_live_…またはsk_test_…) です。テスト用のキーではテスト決済だけを受け付けます。",
             "webhook_token": "PAY.JP管理画面のアカウント設定に表示されるWebhookトークン (whook_…) です。"
+          },
+          "paypay": {
+            "api_key": "PayPay for Developersで発行したAPIキーです。PayPayのサンドボックスのキーではテスト決済だけを受け付けます。",
+            "api_secret": "APIキーと一緒にPayPay for Developersで発行されるAPIシークレットです。",
+            "merchant_id": "PayPay for DevelopersでAPIキーと並んで表示される加盟店IDです。PayPayへのリクエストはどれもこのIDを付けて送ります。",
+            "environment": "本番環境のキーなら空欄のまま、PayPayのサンドボックスのキーならsandboxと入力します。"
           }
         },
         "public_description": "この値は決済時に読者のブラウザへ渡されるため、保存した値をそのまま表示します。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "{$provider}に、決済の通知の送信先としてこのURLを登録してください。",
         "webhook_url_payjp_description": "PAY.JPはすべての通知に上で保存したWebhookトークンを付けて送ります。トークンが付いていない通知は受け付けません。",
+        "webhook_url_paypay_description": "PayPayは通知に署名を付けません。届いた通知はどれも、上のキーでPayPayのAPIから決済を読み直して確かめます。",
         "saved": "決済設定を保存しました。",
         "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",
         "save_failed": "決済設定の保存に失敗しました。時間をおいて再試行してください。",

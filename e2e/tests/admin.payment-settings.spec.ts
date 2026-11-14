@@ -186,7 +186,8 @@ test.describe("payment providers", () => {
       .click();
 
     await expect(page.getByText("PAY.JP was added.")).toBeVisible();
-    await expect(addForm(page)).toBeHidden();
+    // What is left to add is PayPay.
+    await expect(provider).toContainText("PayPay");
     await expect(providerCard(page, "PAY.JP")).toContainText(
       "Readers can pay through PAY.JP."
     );

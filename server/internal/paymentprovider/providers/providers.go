@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
+	"github.com/publira/publira/server/internal/paymentprovider/paypay"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 )
 
@@ -44,6 +45,7 @@ func New(cfg Config) *paymentprovider.Registry {
 	}
 	return paymentprovider.NewRegistry(
 		payjp.New(),
+		paypay.New(),
 		stripe.New(stripeOptions...),
 	)
 }

@@ -159,6 +159,23 @@ payjp-cli listen --forward-to localhost:3080/api/v1/webhook/payment/payjp
 
 For test cards, `4242 4242 4242 4242` with any future date and any three-digit CVC works; in test mode, 3-D Secure shows PAY.JP's test authentication screen, where the outcome is chosen.
 
+### PayPay
+
+`internal/paymentprovider/paypay` creates a code per purchase on PayPay's Open Payment API for Web Payment (`POST /v2/codes` with `codeType` `ORDER_QR`), which the reader pays in the PayPay app or on PayPay's web page. It charges in JPY alone. Its fields are the API key (`api_key`) and the API secret (`api_secret`), both secret and required, which sign every request with PayPay's HMAC authentication; the merchant ID (`merchant_id`), required and not secret, which every request names in `X-ASSUME-MERCHANT`, as PayPay asks of every request; and the environment (`environment`), neither secret nor required: empty for production (`https://apigw.paypay.ne.jp`), and `sandbox` for PayPay's sandbox (`https://apigw.sandbox.paypay.ne.jp`), every payment of which is a test purchase.
+
+A PayPay payment carries nothing of ours but the `merchantPaymentId` its code is created under, so the provider declares `StoredCheckouts` and `PaymentsByCheckout`: the `merchantPaymentId` is the checkout id, the payment id a purchase records is that same id, and PayPay's own `paymentId` is read from the payment whenever a refund needs it. PayPay signs no notification, so a notification is taken for nothing but the `merchant_order_id` it names, whose payment is read with `GET /v2/codes/payments/{merchantPaymentId}` under the tenant's key:
+
+| Payment `status`                         | Answered as           |
+| ---------------------------------------- | --------------------- |
+| `COMPLETED`, `REFUNDED`                  | `PurchaseCompleted`   |
+| `FAILED`, `CANCELED`, `EXPIRED`          | `CheckoutExpired`     |
+| `CREATED`, `AUTHORIZED`, `REAUTHORIZING` | `Ignored`             |
+| Not held under the tenant's key          | `ErrInvalidSignature` |
+
+Any other notification, such as the reconciliation file's `file.created`, is `Ignored`. PayPay documents no retry of a notification, so the provider follows its checkouts, and it sends none of a refund, so it follows its refunds too, reading them from the payment's `refunds.data`. A refund is made under a `merchantRefundId` spelled from its idempotency key, which PayPay answers again however often it is sent and the payment lists beside the refund. Reconciliation reads the payment of each checkout started in the period, since PayPay lists no payments. A code PayPay answers again past its `expiryDate` is `ErrCheckoutExpired`, and the reader's next attempt gets a new code.
+
+In PayPay for Developers, copy the API key, the API secret, and the merchant ID of the environment the tenant sells in, and register `https://<tenant-domain>/api/v1/webhook/payment/paypay` as the URL the transaction events are sent to. The worker reads every checkout's payment back whether its notification arrives or not, so local development needs no tunnel: save the sandbox's key, secret, and merchant ID with `environment` set to `sandbox`, start a purchase, and pay the code as one of the test users PayPay for Developers lists for the sandbox. The episode opens once the worker reads the payment back, which it tries again every ten minutes while the code can still be paid.
+
 ### Adding a payment provider
 
 A provider whose specification and sandbox are public, such as PayPay or Paidy, is contributed to this repository through the steps below. GMO Payment Gateway, SB Payment Service, Sony Payment Services, and Veritrans give their specifications and test environments to merchants under contract only, and a provider of theirs is not contributed here: nobody without a contract can read what its code is written against, so nobody here could review it or keep it working when the provider changes. The operator who holds the contract implements it in their own fork of this repository, as the Apache License 2.0 permits, and runs it from there.

@@ -8,12 +8,15 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp/payjptest"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
+	"github.com/publira/publira/server/internal/paymentprovider/paypay"
+	"github.com/publira/publira/server/internal/paymentprovider/paypay/paypaytest"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 )
 
 var fixtures = map[string]func(testing.TB) paymentprovidertest.Fixture{
 	payjp.ID:  func(t testing.TB) paymentprovidertest.Fixture { return payjptest.NewFixture(t) },
+	paypay.ID: func(t testing.TB) paymentprovidertest.Fixture { return paypaytest.NewFixture(t) },
 	stripe.ID: func(t testing.TB) paymentprovidertest.Fixture { return stripetest.NewFixture(t) },
 }
 

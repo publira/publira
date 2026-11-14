@@ -3927,18 +3927,31 @@
           "payjp": {
             "secret_key": "密钥",
             "webhook_token": "Webhook令牌"
+          },
+          "paypay": {
+            "api_key": "API Key",
+            "api_secret": "API Secret",
+            "merchant_id": "商户ID",
+            "environment": "环境"
           }
         },
         "field_sources": {
           "payjp": {
             "secret_key": "PAY.JP管理后台API设置页面中的密钥（sk_live_…或sk_test_…）。测试密钥只能接受测试付款。",
             "webhook_token": "PAY.JP管理后台账户设置中显示的Webhook令牌（whook_…）。"
+          },
+          "paypay": {
+            "api_key": "在PayPay for Developers中签发的API Key。PayPay沙盒的Key只能接受测试付款。",
+            "api_secret": "与API Key一起在PayPay for Developers中签发的API Secret。",
+            "merchant_id": "PayPay for Developers中与API Key一同显示的商户ID。发往PayPay的每个请求都会附带此ID。",
+            "environment": "生产环境的Key请留空，PayPay沙盒的Key请输入sandbox。"
           }
         },
         "public_description": "该值会在结账时交给读者的浏览器，因此按保存的原样显示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "请在{$provider}中将此URL登记为支付通知的接收地址。",
         "webhook_url_payjp_description": "PAY.JP发送的每条通知都会附带上方保存的Webhook令牌，未附带该令牌的通知将被拒绝。",
+        "webhook_url_paypay_description": "PayPay的通知不带签名，因此收到的每条通知都会用上方的Key从PayPay的API重新读取付款加以核实。",
         "saved": "支付设置已保存。",
         "load_failed": "无法加载支付设置。请稍后再试。",
         "save_failed": "无法保存支付设置。请稍后再试。",

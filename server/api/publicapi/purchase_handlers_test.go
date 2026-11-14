@@ -206,6 +206,11 @@ func TestNextCheckoutKeyOfAProviderThatReportsExpiriesIsTheRequestsKey(t *testin
 	}
 	server := &apiServer{}
 	for _, provider := range providers.Registry().Providers() {
+		// The key of a provider that declares stored checkouts also follows
+		// its checkouts' lifetime, which is read from the database.
+		if provider.Declaration().StoredCheckouts {
+			continue
+		}
 		got, err := server.nextCheckoutKey(t.Context(), provider, request.Purchase.TenantID, "cs_expired", func(expiredCheckoutID string) (string, error) {
 			return checkoutIdempotencyKey(request, expiredCheckoutID, "cs_paid")
 		})

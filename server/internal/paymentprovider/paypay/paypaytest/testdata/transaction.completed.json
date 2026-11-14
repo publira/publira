@@ -1,0 +1,13 @@
+{
+  "notification_type": "Transaction",
+  "merchant_id": "000000000000000000",
+  "store_id": "0000000000000000000",
+  "pos_id": "",
+  "order_id": "00000000000000000000",
+  "merchant_order_id": "merchant-payment-id",
+  "authorized_at": "2026-01-02T03:04:05Z",
+  "expires_at": "2026-01-02T03:09:05Z",
+  "paid_at": "2026-01-02T03:04:05Z",
+  "order_amount": "500",
+  "state": "COMPLETED"
+}

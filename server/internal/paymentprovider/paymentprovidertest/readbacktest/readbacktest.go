@@ -6,8 +6,9 @@
 // it notifies a checkout's payment no more than once, so it follows its
 // checkouts too; its checkouts run out with no notification of it, so it
 // answers one that has as expired when it is started again; and its API lists
-// no payments, so it reads the payment of each checkout it is handed. No provider this build registers has that shape yet, and this one
-// holds the contract and the purchase flow to it.
+// no payments, so it reads the payment of each checkout it is handed. It
+// holds the contract and the purchase flow to that shape apart from any
+// provider this build registers.
 //
 // [NewFixtureByCheckout] answers the same fake with an API that reads a
 // payment by nothing but the id of its checkout, so its provider declares
