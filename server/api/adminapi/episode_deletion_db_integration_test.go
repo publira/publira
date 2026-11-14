@@ -466,3 +466,55 @@ func TestDBDeleteEpisodeRefusesWhatHasToBeKept(t *testing.T) {
 		t.Fatalf("another tenant's episode is gone")
 	}
 }
+
+// A promotion code created for an episode while a deletion holds it waits for
+// the deletion, and once the episode is gone is refused rather than left
+// naming nothing.
+func TestDBDeleteEpisodeHoldsOffANewPromotionCode(t *testing.T) {
+	t.Parallel()
+
+	f := newEpisodeDeletionFixture(t)
+	episode := f.episode(t, "Episode raced by a code")
+
+	ctx := context.Background()
+	tx, err := f.env.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := tx.ExecContext(ctx, "SELECT 1 FROM episodes WHERE id = $1 FOR UPDATE", episode.ID); err != nil {
+		t.Fatalf("lock the episode as a deletion does: %v", err)
+	}
+
+	created := make(chan error, 1)
+	go func() {
+		_, err := f.env.promotionCodeClient().CreatePromotionCode(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.CreatePromotionCodeRequest{
+			Tenant:        f.admin.tenantContext(),
+			Code:          "RACE10",
+			DiscountKind:  publiraadminv1.PromotionCodeDiscountKind_PROMOTION_CODE_DISCOUNT_KIND_PERCENT,
+			DiscountValue: 10,
+			TargetKind:    publiraadminv1.PromotionCodeTargetKind_PROMOTION_CODE_TARGET_KIND_EPISODE,
+			TargetId:      episode.ID.String(),
+		})
+		created <- err
+	}()
+
+	select {
+	case err := <-created:
+		t.Fatalf("CreatePromotionCode did not wait for the episode lock: %v", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM episodes WHERE id = $1", episode.ID); err != nil {
+		t.Fatalf("delete the episode: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	if err := <-created; connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreatePromotionCode for an episode deleted meanwhile = %v, want invalid_argument", err)
+	}
+	if got := f.env.countRows(t, "SELECT count(*) FROM promotion_codes WHERE target_id = $1", episode.ID); got != 0 {
+		t.Fatalf("codes naming the deleted episode = %d, want 0", got)
+	}
+}

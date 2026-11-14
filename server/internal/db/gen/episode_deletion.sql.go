@@ -383,8 +383,9 @@ type LockEpisodeForDeletionRow struct {
 // The episode, with the title the audit entry keeps once no row is left to
 // join. The row lock is what keeps a reference from arriving while the episode
 // is deleted: every row that refers to the episode through a foreign key takes
-// a key share lock on it when it is written, which waits for this one, and
-// fails once the episode is gone.
+// a key share lock on it when it is written, and so does a new promotion code,
+// which names it by none. The key share lock waits for this one, and fails
+// once the episode is gone.
 func (q *Queries) LockEpisodeForDeletion(ctx context.Context, arg LockEpisodeForDeletionParams) (LockEpisodeForDeletionRow, error) {
 	row := q.db.QueryRowContext(ctx, LockEpisodeForDeletion, arg.TenantID, arg.ID)
 	var i LockEpisodeForDeletionRow
