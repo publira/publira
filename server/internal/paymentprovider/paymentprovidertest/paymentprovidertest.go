@@ -140,11 +140,8 @@ func Currencies(declaration paymentprovider.Declaration) []string {
 // RunParse checks that the fixture's provider reads its notifications, in
 // every currency [Currencies] answers for it.
 func RunParse(t *testing.T, fixture Fixture) {
-	t.Run("the declaration names the signature header and required fields", func(t *testing.T) {
+	t.Run("the declaration requires nothing the fixture's credentials lack", func(t *testing.T) {
 		declaration := fixture.Provider().Declaration()
-		if declaration.SignatureHeader == "" {
-			t.Fatal("SignatureHeader is empty")
-		}
 		if missing := declaration.Missing(fixture.Credentials()); len(missing) > 0 {
 			t.Fatalf("fixture credentials miss required fields %v", missing)
 		}
@@ -167,6 +164,9 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	// they are made.
 	to := time.Now().Add(time.Hour).Truncate(time.Second)
 	from := to.Add(-3 * time.Hour)
+	// A provider that keeps no list of its payments is handed the checkouts
+	// the server started through it, each of which it reads the payment of.
+	var checkoutIDs []string
 	taken := func(paymentID string, price int32, test bool, at time.Time) Checkout {
 		checkout := Checkout{
 			CheckoutID: "checkout_" + paymentID,
@@ -182,6 +182,9 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 			Test: test,
 		}
 		fixture.PaymentTaken(t, credentials, checkout, at)
+		if provider.Declaration().StoredCheckouts {
+			checkoutIDs = append(checkoutIDs, checkout.CheckoutID)
+		}
 		return checkout
 	}
 	live := taken("payment_list_live_"+currency, 500, false, from.Add(time.Hour))
@@ -191,7 +194,7 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	_, _ = fixture.Refunded(t, credentials, Refund{PaymentID: live.PaymentID, Currency: currency, AmountRefunded: 200})
 
 	t.Run("the payments of the period are listed oldest first with their refunds", func(t *testing.T) {
-		listed, err := provider.ListTransactions(t.Context(), credentials, from, to)
+		listed, err := provider.ListTransactions(t.Context(), credentials, from, to, checkoutIDs)
 		if err != nil {
 			t.Fatalf("ListTransactions: %v", err)
 		}
@@ -217,7 +220,7 @@ func runListTransactions(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("another account's payments are not listed", func(t *testing.T) {
-		transactions, err := provider.ListTransactions(t.Context(), fixture.OtherCredentials(), from, to)
+		transactions, err := provider.ListTransactions(t.Context(), fixture.OtherCredentials(), from, to, checkoutIDs)
 		if err != nil {
 			t.Fatalf("ListTransactions: %v", err)
 		}
@@ -243,6 +246,16 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			ReadingPeriodHours: 72,
 		},
 	}
+	// A provider that declares stored checkouts carries nothing of a purchase
+	// but the currency its payment names, and the server fills in the rest
+	// from what it wrote down when the checkout started.
+	stored := provider.Declaration().StoredCheckouts
+	carried := func(purchase paymentprovider.Purchase) paymentprovider.Purchase {
+		if stored {
+			return paymentprovider.Purchase{Currency: purchase.Currency}
+		}
+		return purchase
+	}
 
 	t.Run("a completed checkout names its purchase", func(t *testing.T) {
 		payload, headers := fixture.CheckoutCompleted(t, credentials, checkout)
@@ -257,8 +270,8 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		if completed.CheckoutID != checkout.CheckoutID || completed.PaymentID != checkout.PaymentID {
 			t.Fatalf("ids = (%q, %q), want (%q, %q)", completed.CheckoutID, completed.PaymentID, checkout.CheckoutID, checkout.PaymentID)
 		}
-		if completed.Purchase != checkout.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, checkout.Purchase)
+		if want := carried(checkout.Purchase); completed.Purchase != want {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, want)
 		}
 		// A checkout the reader entered no promotion code at was paid its
 		// price, which is what the purchase records.
@@ -270,294 +283,298 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
-	t.Run("a rental checkout names its kind", func(t *testing.T) {
-		rental := checkout
-		rental.CheckoutID = "checkout_contract_rental"
-		rental.Purchase.Kind = paymentprovider.KindRental
-		rental.Purchase.Price = 200
-		rental.Purchase.ReadingPeriodHours = 48
-		payload, headers := fixture.CheckoutCompleted(t, credentials, rental)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != rental.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, rental.Purchase)
-		}
-	})
-
-	t.Run("a checkout the tenant's promotion code discounted names the code and the price before it", func(t *testing.T) {
-		discounted := checkout
-		discounted.CheckoutID = "checkout_contract_promotion_code"
-		discounted.Purchase.Price = 400
-		discounted.Purchase.ListPrice = 500
-		discounted.Purchase.PromotionCodeID = uuid.New()
-		payload, headers := fixture.CheckoutCompleted(t, credentials, discounted)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != discounted.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, discounted.Purchase)
-		}
-		// The checkout charged the discounted price, and offered no code of
-		// the provider's beside the tenant's.
-		if completed.AmountPaid != 400 || completed.PromotionCodeID != "" {
-			t.Fatalf("paid %d with provider code %q, want 400 with none", completed.AmountPaid, completed.PromotionCodeID)
-		}
-	})
-
-	t.Run("a promotion code the checkout cannot carry is malformed", func(t *testing.T) {
-		for name, malformed := range map[string]func(*Checkout){
-			"a list price below the price": func(c *Checkout) { c.Purchase.ListPrice = 300 },
-			"a code without a list price":  func(c *Checkout) { c.Purchase.ListPrice = 0 },
-			"a list price without a code":  func(c *Checkout) { c.Purchase.PromotionCodeID = uuid.Nil },
-			"a code on a tip": func(c *Checkout) {
-				c.Purchase.Kind = paymentprovider.KindTip
-				c.Purchase.ReadingPeriodHours = 0
-			},
-			"a code on a series bundle": func(c *Checkout) {
-				c.Purchase.EpisodeID = uuid.Nil
-				c.Purchase.ReadingPeriodHours = 0
-				c.Purchase.SeriesBundleID = uuid.New()
-			},
-		} {
-			t.Run(name, func(t *testing.T) {
-				bad := checkout
-				bad.CheckoutID = "checkout_contract_bad_promotion_code"
-				bad.Purchase.Price = 400
-				bad.Purchase.ListPrice = 500
-				bad.Purchase.PromotionCodeID = uuid.New()
-				malformed(&bad)
-				payload, headers := fixture.CheckoutCompleted(t, credentials, bad)
-				if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-					t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-				}
-			})
-		}
-	})
-
-	t.Run("a rental that names no period is malformed", func(t *testing.T) {
-		unbounded := checkout
-		unbounded.CheckoutID = "checkout_contract_unbounded_rental"
-		unbounded.Purchase.Kind = paymentprovider.KindRental
-		unbounded.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, unbounded)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a tip checkout names its kind and episode", func(t *testing.T) {
-		tip := checkout
-		tip.CheckoutID = "checkout_contract_tip"
-		tip.Purchase.Kind = paymentprovider.KindTip
-		tip.Purchase.Price = 300
-		tip.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, tip)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != tip.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, tip.Purchase)
-		}
-	})
-
-	t.Run("a tip that names a period is malformed", func(t *testing.T) {
-		bounded := checkout
-		bounded.CheckoutID = "checkout_contract_bounded_tip"
-		bounded.Purchase.Kind = paymentprovider.KindTip
-		bounded.Purchase.ReadingPeriodHours = 24
-		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a volume checkout names its volume and no episode", func(t *testing.T) {
-		volume := checkout
-		volume.CheckoutID = "checkout_contract_volume"
-		volume.Purchase.EpisodeID = uuid.Nil
-		volume.Purchase.VolumeID = uuid.New()
-		volume.Purchase.Price = 1500
-		volume.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, volume)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != volume.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, volume.Purchase)
-		}
-	})
-
-	t.Run("a checkout that names both an episode and a volume is malformed", func(t *testing.T) {
-		both := checkout
-		both.CheckoutID = "checkout_contract_both"
-		both.Purchase.VolumeID = uuid.New()
-		both.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a volume checkout with a reading period is malformed", func(t *testing.T) {
-		bounded := checkout
-		bounded.CheckoutID = "checkout_contract_bounded_volume"
-		bounded.Purchase.EpisodeID = uuid.Nil
-		bounded.Purchase.VolumeID = uuid.New()
-		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a series bundle checkout names its bundle and no episode", func(t *testing.T) {
-		bundle := checkout
-		bundle.CheckoutID = "checkout_contract_series_bundle"
-		bundle.Purchase.EpisodeID = uuid.Nil
-		bundle.Purchase.SeriesBundleID = uuid.New()
-		bundle.Purchase.Price = 2700
-		bundle.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, bundle)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != bundle.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, bundle.Purchase)
-		}
-	})
-
-	t.Run("a checkout that names both an episode and a series bundle is malformed", func(t *testing.T) {
-		both := checkout
-		both.CheckoutID = "checkout_contract_episode_and_bundle"
-		both.Purchase.SeriesBundleID = uuid.New()
-		both.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a checkout that names both a volume and a series bundle is malformed", func(t *testing.T) {
-		both := checkout
-		both.CheckoutID = "checkout_contract_volume_and_bundle"
-		both.Purchase.EpisodeID = uuid.Nil
-		both.Purchase.VolumeID = uuid.New()
-		both.Purchase.SeriesBundleID = uuid.New()
-		both.Purchase.ReadingPeriodHours = 0
-		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a series bundle checkout with a reading period is malformed", func(t *testing.T) {
-		bounded := checkout
-		bounded.CheckoutID = "checkout_contract_bounded_series_bundle"
-		bounded.Purchase.EpisodeID = uuid.Nil
-		bounded.Purchase.SeriesBundleID = uuid.New()
-		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	coinPack := func(id string) Checkout {
-		pack := checkout
-		pack.CheckoutID = id
-		pack.Purchase.EpisodeID = uuid.Nil
-		pack.Purchase.CoinPackID = uuid.New()
-		pack.Purchase.Coins = 1000
-		pack.Purchase.BonusCoins = 100
-		pack.Purchase.CoinExpiryDays = 180
-		pack.Purchase.Price = 1000
-		pack.Purchase.ReadingPeriodHours = 0
-		return pack
-	}
-
-	t.Run("a coin pack checkout names its pack and what it grants", func(t *testing.T) {
-		pack := coinPack("checkout_contract_coin_pack")
-		payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase != pack.Purchase {
-			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, pack.Purchase)
-		}
-	})
-
-	t.Run("a checkout that names both an episode and a coin pack is malformed", func(t *testing.T) {
-		both := coinPack("checkout_contract_episode_and_coin_pack")
-		both.Purchase.EpisodeID = uuid.New()
-		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
-		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
-		}
-	})
-
-	t.Run("a coin pack checkout that grants nothing or never expires is malformed", func(t *testing.T) {
-		for _, malformed := range []func(*Checkout){
-			func(c *Checkout) { c.Purchase.Coins = 0 },
-			func(c *Checkout) { c.Purchase.BonusCoins = -1 },
-			func(c *Checkout) { c.Purchase.CoinExpiryDays = 0 },
-			func(c *Checkout) { c.Purchase.CoinExpiryDays = paymentprovider.MaxCoinExpiryDays + 1 },
-			func(c *Checkout) { c.Purchase.ReadingPeriodHours = 24 },
-		} {
-			pack := coinPack("checkout_contract_malformed_coin_pack")
-			malformed(&pack)
-			payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
-			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
-				t.Fatalf("ParseNotification(%+v) error = %v, want ErrMalformedNotification", pack.Purchase, err)
+	// What a checkout sells is read from what the provider carried, which a
+	// provider that declares stored checkouts carries none of.
+	if !stored {
+		t.Run("a rental checkout names its kind", func(t *testing.T) {
+			rental := checkout
+			rental.CheckoutID = "checkout_contract_rental"
+			rental.Purchase.Kind = paymentprovider.KindRental
+			rental.Purchase.Price = 200
+			rental.Purchase.ReadingPeriodHours = 48
+			payload, headers := fixture.CheckoutCompleted(t, credentials, rental)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
 			}
-		}
-	})
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != rental.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, rental.Purchase)
+			}
+		})
 
-	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
-		unnamed := checkout
-		unnamed.CheckoutID = "checkout_contract_unnamed"
-		unnamed.Purchase.Kind = ""
-		payload, headers := fixture.CheckoutCompleted(t, credentials, unnamed)
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
+		t.Run("a checkout the tenant's promotion code discounted names the code and the price before it", func(t *testing.T) {
+			discounted := checkout
+			discounted.CheckoutID = "checkout_contract_promotion_code"
+			discounted.Purchase.Price = 400
+			discounted.Purchase.ListPrice = 500
+			discounted.Purchase.PromotionCodeID = uuid.New()
+			payload, headers := fixture.CheckoutCompleted(t, credentials, discounted)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != discounted.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, discounted.Purchase)
+			}
+			// The checkout charged the discounted price, and offered no code of
+			// the provider's beside the tenant's.
+			if completed.AmountPaid != 400 || completed.PromotionCodeID != "" {
+				t.Fatalf("paid %d with provider code %q, want 400 with none", completed.AmountPaid, completed.PromotionCodeID)
+			}
+		})
+
+		t.Run("a promotion code the checkout cannot carry is malformed", func(t *testing.T) {
+			for name, malformed := range map[string]func(*Checkout){
+				"a list price below the price": func(c *Checkout) { c.Purchase.ListPrice = 300 },
+				"a code without a list price":  func(c *Checkout) { c.Purchase.ListPrice = 0 },
+				"a list price without a code":  func(c *Checkout) { c.Purchase.PromotionCodeID = uuid.Nil },
+				"a code on a tip": func(c *Checkout) {
+					c.Purchase.Kind = paymentprovider.KindTip
+					c.Purchase.ReadingPeriodHours = 0
+				},
+				"a code on a series bundle": func(c *Checkout) {
+					c.Purchase.EpisodeID = uuid.Nil
+					c.Purchase.ReadingPeriodHours = 0
+					c.Purchase.SeriesBundleID = uuid.New()
+				},
+			} {
+				t.Run(name, func(t *testing.T) {
+					bad := checkout
+					bad.CheckoutID = "checkout_contract_bad_promotion_code"
+					bad.Purchase.Price = 400
+					bad.Purchase.ListPrice = 500
+					bad.Purchase.PromotionCodeID = uuid.New()
+					malformed(&bad)
+					payload, headers := fixture.CheckoutCompleted(t, credentials, bad)
+					if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+						t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+					}
+				})
+			}
+		})
+
+		t.Run("a rental that names no period is malformed", func(t *testing.T) {
+			unbounded := checkout
+			unbounded.CheckoutID = "checkout_contract_unbounded_rental"
+			unbounded.Purchase.Kind = paymentprovider.KindRental
+			unbounded.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, unbounded)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a tip checkout names its kind and episode", func(t *testing.T) {
+			tip := checkout
+			tip.CheckoutID = "checkout_contract_tip"
+			tip.Purchase.Kind = paymentprovider.KindTip
+			tip.Purchase.Price = 300
+			tip.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, tip)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != tip.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, tip.Purchase)
+			}
+		})
+
+		t.Run("a tip that names a period is malformed", func(t *testing.T) {
+			bounded := checkout
+			bounded.CheckoutID = "checkout_contract_bounded_tip"
+			bounded.Purchase.Kind = paymentprovider.KindTip
+			bounded.Purchase.ReadingPeriodHours = 24
+			payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a volume checkout names its volume and no episode", func(t *testing.T) {
+			volume := checkout
+			volume.CheckoutID = "checkout_contract_volume"
+			volume.Purchase.EpisodeID = uuid.Nil
+			volume.Purchase.VolumeID = uuid.New()
+			volume.Purchase.Price = 1500
+			volume.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, volume)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != volume.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, volume.Purchase)
+			}
+		})
+
+		t.Run("a checkout that names both an episode and a volume is malformed", func(t *testing.T) {
+			both := checkout
+			both.CheckoutID = "checkout_contract_both"
+			both.Purchase.VolumeID = uuid.New()
+			both.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a volume checkout with a reading period is malformed", func(t *testing.T) {
+			bounded := checkout
+			bounded.CheckoutID = "checkout_contract_bounded_volume"
+			bounded.Purchase.EpisodeID = uuid.Nil
+			bounded.Purchase.VolumeID = uuid.New()
+			payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a series bundle checkout names its bundle and no episode", func(t *testing.T) {
+			bundle := checkout
+			bundle.CheckoutID = "checkout_contract_series_bundle"
+			bundle.Purchase.EpisodeID = uuid.Nil
+			bundle.Purchase.SeriesBundleID = uuid.New()
+			bundle.Purchase.Price = 2700
+			bundle.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, bundle)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != bundle.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, bundle.Purchase)
+			}
+		})
+
+		t.Run("a checkout that names both an episode and a series bundle is malformed", func(t *testing.T) {
+			both := checkout
+			both.CheckoutID = "checkout_contract_episode_and_bundle"
+			both.Purchase.SeriesBundleID = uuid.New()
+			both.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a checkout that names both a volume and a series bundle is malformed", func(t *testing.T) {
+			both := checkout
+			both.CheckoutID = "checkout_contract_volume_and_bundle"
+			both.Purchase.EpisodeID = uuid.Nil
+			both.Purchase.VolumeID = uuid.New()
+			both.Purchase.SeriesBundleID = uuid.New()
+			both.Purchase.ReadingPeriodHours = 0
+			payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a series bundle checkout with a reading period is malformed", func(t *testing.T) {
+			bounded := checkout
+			bounded.CheckoutID = "checkout_contract_bounded_series_bundle"
+			bounded.Purchase.EpisodeID = uuid.Nil
+			bounded.Purchase.SeriesBundleID = uuid.New()
+			payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		coinPack := func(id string) Checkout {
+			pack := checkout
+			pack.CheckoutID = id
+			pack.Purchase.EpisodeID = uuid.Nil
+			pack.Purchase.CoinPackID = uuid.New()
+			pack.Purchase.Coins = 1000
+			pack.Purchase.BonusCoins = 100
+			pack.Purchase.CoinExpiryDays = 180
+			pack.Purchase.Price = 1000
+			pack.Purchase.ReadingPeriodHours = 0
+			return pack
 		}
-		completed, ok := event.(paymentprovider.PurchaseCompleted)
-		if !ok {
-			t.Fatalf("event = %T, want PurchaseCompleted", event)
-		}
-		if completed.Purchase.Kind != paymentprovider.KindPurchase {
-			t.Fatalf("kind = %q, want %q", completed.Purchase.Kind, paymentprovider.KindPurchase)
-		}
-	})
+
+		t.Run("a coin pack checkout names its pack and what it grants", func(t *testing.T) {
+			pack := coinPack("checkout_contract_coin_pack")
+			payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase != pack.Purchase {
+				t.Fatalf("purchase = %+v, want %+v", completed.Purchase, pack.Purchase)
+			}
+		})
+
+		t.Run("a checkout that names both an episode and a coin pack is malformed", func(t *testing.T) {
+			both := coinPack("checkout_contract_episode_and_coin_pack")
+			both.Purchase.EpisodeID = uuid.New()
+			payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+		})
+
+		t.Run("a coin pack checkout that grants nothing or never expires is malformed", func(t *testing.T) {
+			for _, malformed := range []func(*Checkout){
+				func(c *Checkout) { c.Purchase.Coins = 0 },
+				func(c *Checkout) { c.Purchase.BonusCoins = -1 },
+				func(c *Checkout) { c.Purchase.CoinExpiryDays = 0 },
+				func(c *Checkout) { c.Purchase.CoinExpiryDays = paymentprovider.MaxCoinExpiryDays + 1 },
+				func(c *Checkout) { c.Purchase.ReadingPeriodHours = 24 },
+			} {
+				pack := coinPack("checkout_contract_malformed_coin_pack")
+				malformed(&pack)
+				payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
+				if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+					t.Fatalf("ParseNotification(%+v) error = %v, want ErrMalformedNotification", pack.Purchase, err)
+				}
+			}
+		})
+
+		t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
+			unnamed := checkout
+			unnamed.CheckoutID = "checkout_contract_unnamed"
+			unnamed.Purchase.Kind = ""
+			payload, headers := fixture.CheckoutCompleted(t, credentials, unnamed)
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			completed, ok := event.(paymentprovider.PurchaseCompleted)
+			if !ok {
+				t.Fatalf("event = %T, want PurchaseCompleted", event)
+			}
+			if completed.Purchase.Kind != paymentprovider.KindPurchase {
+				t.Fatalf("kind = %q, want %q", completed.Purchase.Kind, paymentprovider.KindPurchase)
+			}
+		})
+	}
 
 	t.Run("a test-mode checkout is reported as a test", func(t *testing.T) {
 		testCheckout := checkout
@@ -817,18 +834,68 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	})
 
 	t.Run("a notification signed with other credentials is refused", func(t *testing.T) {
-		payload, headers := fixture.CheckoutCompleted(t, fixture.OtherCredentials(), checkout)
+		// A checkout the tenant's account holds no payment of, which is what
+		// tells another account's notification apart for a provider that
+		// signs nothing.
+		forged := checkout
+		forged.CheckoutID = "checkout_contract_other_account"
+		forged.PaymentID = "payment_contract_other_account_" + strings.ToLower(currency)
+		payload, headers := fixture.CheckoutCompleted(t, fixture.OtherCredentials(), forged)
 		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
 			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
 		}
 	})
 
-	t.Run("an unsigned notification is refused", func(t *testing.T) {
-		payload, _ := fixture.CheckoutCompleted(t, credentials, checkout)
-		if _, err := provider.ParseNotification(t.Context(), payload, http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
-			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
-		}
-	})
+	// A provider that signs nothing reads everything from its API, which the
+	// notification read with other credentials has already shown it does.
+	if provider.Declaration().SignatureHeader != "" {
+		t.Run("an unsigned notification is refused", func(t *testing.T) {
+			payload, _ := fixture.CheckoutCompleted(t, credentials, checkout)
+			if _, err := provider.ParseNotification(t.Context(), payload, http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
+				t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
+			}
+		})
+	}
+
+	if follower, ok := provider.(paymentprovider.RefundFollower); ok {
+		t.Run("a refund the provider was asked for is read back through its own notification", func(t *testing.T) {
+			paid := checkout
+			paid.PaymentID = "payment_refund_followed_" + strings.ToLower(currency)
+			fixture.CheckoutCompleted(t, credentials, paid)
+			read := func(t *testing.T) paymentprovider.Event {
+				t.Helper()
+				event, err := provider.ParseNotification(t.Context(), follower.RefundNotification(paid.PaymentID), http.Header{}, credentials)
+				if err != nil {
+					t.Fatalf("ParseNotification: %v", err)
+				}
+				return event
+			}
+			if event := read(t); !isIgnored(event) {
+				t.Fatalf("event before any refund = %+v, want it ignored", event)
+			}
+			if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_followed_" + strings.ToLower(currency), Amount: 300}); err != nil {
+				t.Fatalf("Refund: %v", err)
+			}
+			refunded, ok := read(t).(paymentprovider.Refunded)
+			if !ok || refunded.PaymentID != paid.PaymentID || refunded.AmountRefunded != 300 || refunded.Currency != currency {
+				t.Fatalf("event = %+v, want a refund of 300 %s on %q", refunded, currency, paid.PaymentID)
+			}
+		})
+
+		t.Run("the notification of the refunds of a payment the account does not hold is refused", func(t *testing.T) {
+			paid := checkout
+			paid.PaymentID = "payment_refund_followed_other_" + strings.ToLower(currency)
+			fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
+			if _, err := provider.ParseNotification(t.Context(), follower.RefundNotification(paid.PaymentID), http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
+				t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
+			}
+		})
+	}
+}
+
+func isIgnored(event paymentprovider.Event) bool {
+	_, ok := event.(paymentprovider.Ignored)
+	return ok
 }
 
 // runParseSubscriptionPayments checks that a provider that sells subscription
@@ -934,6 +1001,10 @@ type Tenant interface {
 	// Purchase answers the reader's purchase of the episode, as a checkout
 	// started for it would name it.
 	Purchase() paymentprovider.Purchase
+	// RecordCheckout writes purchase down under checkoutID, as the server does
+	// when it starts a checkout through a provider that declares stored
+	// checkouts.
+	RecordCheckout(t *testing.T, checkoutID string, purchase paymentprovider.Purchase)
 	// Deliver hands a notification to the purchase flow.
 	Deliver(t *testing.T, payload []byte, headers http.Header) error
 	// Purchases counts the tenant's purchases.
@@ -987,10 +1058,21 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	id := func(name string) string {
 		return name + "_" + strings.ToLower(currency)
 	}
+	// completed answers the notification of a paid checkout delivered to
+	// tenant, having written its purchase down there first, as the server
+	// does when it starts a checkout, for a provider that declares stored
+	// checkouts.
+	completed := func(t *testing.T, tenant Tenant, credentials paymentprovider.Credentials, checkout Checkout) ([]byte, http.Header) {
+		t.Helper()
+		if provider.Declaration().StoredCheckouts {
+			tenant.RecordCheckout(t, checkout.CheckoutID, checkout.Purchase)
+		}
+		return fixture.CheckoutCompleted(t, credentials, checkout)
+	}
 
 	t.Run("a completed checkout creates one purchase however often it is delivered", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+		payload, headers := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_redelivered"),
 			PaymentID:  id("payment_redelivered"),
 			Purchase:   tenant.Purchase(),
@@ -1007,7 +1089,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a live-mode checkout opens the episode and is a sale", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+		payload, headers := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_live"),
 			PaymentID:  id("payment_live"),
 			Purchase:   tenant.Purchase(),
@@ -1029,7 +1111,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a checkout the tenant's promotion code discounted redeems it once and is a sale at its list price", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		purchase := tenant.DiscountedPurchase(t)
-		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+		payload, headers := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_promotion_code"),
 			PaymentID:  id("payment_promotion_code"),
 			Purchase:   purchase,
@@ -1065,7 +1147,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a test-mode checkout opens the episode and is no sale", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+		payload, headers := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_test_mode"),
 			PaymentID:  id("payment_test_mode"),
 			Purchase:   tenant.Purchase(),
@@ -1094,7 +1176,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		if got := tenant.HeldRefunds(t); got != 1 {
 			t.Fatalf("held refunds = %d, want 1", got)
 		}
-		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_early"),
 			PaymentID:  id("payment_early"),
 			Purchase:   tenant.Purchase(),
@@ -1112,7 +1194,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("partial refunds close the purchase once they reach its price", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_partial"),
 			PaymentID:  id("payment_partial"),
 			Purchase:   tenant.Purchase(),
@@ -1144,7 +1226,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
 			t.Fatalf("failed refund: %v", err)
 		}
-		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_held_refund_failed"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
@@ -1163,7 +1245,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		paymentID := id("payment_refund_reopened")
-		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_refund_reopened"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
@@ -1196,7 +1278,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a staff refund that fails reopens the purchase", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		paymentID := id("payment_staff_refund_failed")
-		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
 			CheckoutID: id("checkout_staff_refund_failed"),
 			PaymentID:  paymentID,
 			Purchase:   tenant.Purchase(),
@@ -1217,7 +1299,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a notification with a bad signature is refused", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
-		payload, headers := fixture.CheckoutCompleted(t, fixture.OtherCredentials(), Checkout{
+		payload, headers := completed(t, tenant, fixture.OtherCredentials(), Checkout{
 			CheckoutID: id("checkout_forged"),
 			PaymentID:  id("payment_forged"),
 			Purchase:   tenant.Purchase(),
@@ -1233,7 +1315,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	t.Run("a checkout naming another tenant creates nothing", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		other := newTenant(t, fixture.OtherCredentials())
-		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+		payload, headers := completed(t, other, credentials, Checkout{
 			CheckoutID: id("checkout_crossed"),
 			PaymentID:  id("payment_crossed"),
 			Purchase:   other.Purchase(),

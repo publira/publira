@@ -20,9 +20,12 @@ type Registry struct {
 }
 
 // NewRegistry registers providers, and panics on an id that is malformed or
-// registered twice, on a field declared twice or both secret and public, or on
-// a provider that declares no currency, a currency twice, or a code that is not
-// three capital letters: each is a programming error in the provider list.
+// registered twice, on a field declared twice or both secret and public, on a
+// provider that declares no currency, a currency twice, or a code that is not
+// three capital letters, on one that declares stored checkouts without a
+// checkout lifetime or a lifetime without them, and on a [RefundFollower] that
+// declares a signature header: each is a programming error in the provider
+// list.
 func NewRegistry(providers ...Provider) *Registry {
 	r := &Registry{providers: make(map[string]Provider, len(providers))}
 	for _, provider := range providers {
@@ -56,6 +59,12 @@ func NewRegistry(providers ...Provider) *Registry {
 				panic(fmt.Sprintf("paymentprovider: provider %q declares currency %q twice", id, currency))
 			}
 			declared[currency] = true
+		}
+		if declaration := provider.Declaration(); declaration.StoredCheckouts != (declaration.CheckoutLifetime > 0) {
+			panic(fmt.Sprintf("paymentprovider: provider %q declares a checkout lifetime without stored checkouts, or stored checkouts without a lifetime", id))
+		}
+		if _, follows := provider.(RefundFollower); follows && provider.Declaration().SignatureHeader != "" {
+			panic(fmt.Sprintf("paymentprovider: provider %q follows its refunds but declares a signature header its own notification of them cannot carry", id))
 		}
 		r.providers[id] = provider
 		r.ids = append(r.ids, id)

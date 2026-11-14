@@ -14,6 +14,7 @@ import (
 
 	"github.com/riverqueue/river"
 
+	"github.com/publira/publira/server/api/publicapi"
 	"github.com/publira/publira/server/internal/appstore"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
@@ -532,6 +533,14 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
 	subscriptionCancelHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeSubscriptionCancel, outbox.NewSubscriptionCancelHandler(subscriptionCancelHandlers))
+	// A refund's follow-up reads the provider through the same settings a
+	// subscription's cancellation does.
+	handlers.Register(outbox.EventTypePaymentRefundFollow, publicapi.NewPaymentRefundFollowHandler(publicapi.PaymentRefundFollowConfig{
+		DB:        subscriptionCancelHandlers.DB,
+		Encryptor: subscriptionCancelHandlers.Encryptor,
+		Providers: subscriptionCancelHandlers.Providers,
+		Logger:    logger,
+	}))
 	// A webhook goes to a server the tenant runs, which may be down for longer
 	// than the default budget spans.
 	handlers.RegisterWithAttempts(outbox.EventTypeWebhookDelivery, outbox.NewWebhookDeliveryHandler(outbox.WebhookDeliveryHandlerConfig{

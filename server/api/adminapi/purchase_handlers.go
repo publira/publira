@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
@@ -730,6 +731,25 @@ func (s *adminServer) staffRefundError(ctx context.Context, refund staffRefund, 
 	return false, connect.NewError(connect.CodeUnavailable, "the payment provider did not complete the refund").WithCause(err)
 }
 
+// followStaffRefund queues the reading back of the refund staff asked for
+// from a provider that sends no notification of its refunds, given
+// refundErr, what the provider answered the request with: the follow-up
+// records what the provider made of it, as another provider's notification
+// does. A refund the provider refused made nothing to follow. One that failed
+// some other way may have been made, and one the provider answers with
+// nothing left to refund was made in its own dashboard, so both are followed.
+// A follow-up that cannot be queued fails the request, whose retry sends the
+// refund under the same key and queues one again.
+func (s *adminServer) followStaffRefund(ctx context.Context, refund staffRefund, refundErr error) error {
+	if _, ok := refund.provider.(paymentprovider.RefundFollower); !ok || errors.Is(refundErr, paymentprovider.ErrRefundRefused) {
+		return nil
+	}
+	if err := outbox.QueuePaymentRefundFollow(ctx, s.queriesFor(ctx), refund.tenantID, refund.row.Provider.String, refund.row.ProviderPaymentID.String); err != nil {
+		return s.internalDBError(ctx, "failed to queue the follow-up of a refund", err, "tenant_id", refund.tenantID.String(), "purchase_id", refund.row.ID.String())
+	}
+	return nil
+}
+
 // refundPurchaseWhole refunds whatever of the purchase is left and revokes it.
 //
 // The purchase stops opening the episode before the provider is asked, so
@@ -796,6 +816,9 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 		PaymentID:      row.ProviderPaymentID.String,
 		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 	})
+	if err := s.followStaffRefund(ctx, refund, err); err != nil {
+		return err
+	}
 	if err != nil {
 		refused, answer := s.staffRefundError(ctx, refund, err)
 		// Whether a request that failed some other way reached the provider is
@@ -891,6 +914,9 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 		Amount:         amount,
 	})
+	if err := s.followStaffRefund(ctx, refund, err); err != nil {
+		return err
+	}
 	if err != nil {
 		refused, answer := s.staffRefundError(ctx, refund, err)
 		// A request that failed some other way may have reached the provider,

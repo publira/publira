@@ -760,6 +760,15 @@ type PageVersion struct {
 	AgreementRequiredAt sql.NullTime  `json:"agreement_required_at"`
 }
 
+type PaymentCheckout struct {
+	TenantID      uuid.UUID       `json:"tenant_id"`
+	Provider      string          `json:"provider"`
+	CheckoutID    string          `json:"checkout_id"`
+	Purchase      json.RawMessage `json:"purchase"`
+	CreatedAt     time.Time       `json:"created_at"`
+	LastStartedAt time.Time       `json:"last_started_at"`
+}
+
 type PaymentReconciliation struct {
 	ID            uuid.UUID      `json:"id"`
 	TenantID      uuid.UUID      `json:"tenant_id"`

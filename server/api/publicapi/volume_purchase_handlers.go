@@ -129,10 +129,9 @@ func (s *apiServer) StartVolumeCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "volume_id", volume.ID.String())
 	}
-	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "volume_id", volume.ID.String())
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "volume_id", volume.ID.String())
-		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		return nil, err
 	}
 	return &publirav1.StartVolumeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }

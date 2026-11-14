@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
+	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest/readbacktest"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/providers/providerstest"
 	"github.com/publira/publira/server/internal/paymentsettings"
@@ -49,9 +51,19 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 			}
 			// The server has to read the fixture's fake of the provider's API.
 			server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
+			harness.registry = server.paymentProviders
 			paymentprovidertest.Run(t, harness, fixture)
 		})
 	}
+	// No registered provider carries nothing on its payments, signs nothing,
+	// and notifies no refund yet, so the fake of one holds the purchase flow to
+	// that shape.
+	t.Run(readbacktest.ID, func(t *testing.T) {
+		fixture := readbacktest.NewFixture(t)
+		server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
+		harness.registry = server.paymentProviders
+		paymentprovidertest.Run(t, harness, fixture)
+	})
 }
 
 // contractHarness delivers notifications to the public API over a real
@@ -60,7 +72,10 @@ type contractHarness struct {
 	pg        *testutil.PostgresEnv
 	encryptor paymentsettings.SecretManager
 	client    publirav1connect.PurchaseServiceClient
-	tenants   int
+	// registry holds the provider of the run, whose settings each tenant
+	// saves.
+	registry *paymentprovider.Registry
+	tenants  int
 }
 
 func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials, currency string) paymentprovidertest.Tenant {
@@ -85,7 +100,7 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(h.pg.DB), h.encryptor, providers.Registry(), nil, slog.Default())
+	store := paymentsettings.New(dbmodels.New(h.pg.DB), h.encryptor, h.registry, nil, slog.Default())
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Provider: provider.Declaration().ID,
 		Enabled:  true,
@@ -116,6 +131,22 @@ type contractTenant struct {
 
 func (c *contractTenant) Purchase() paymentprovider.Purchase {
 	return c.purchase
+}
+
+func (c *contractTenant) RecordCheckout(t *testing.T, checkoutID string, purchase paymentprovider.Purchase) {
+	t.Helper()
+	encoded, err := json.Marshal(purchase)
+	if err != nil {
+		t.Fatalf("encode the purchase of a checkout: %v", err)
+	}
+	if err := dbmodels.New(c.harness.pg.DB).RecordPaymentCheckout(context.Background(), dbmodels.RecordPaymentCheckoutParams{
+		TenantID:   purchase.TenantID,
+		Provider:   c.provider,
+		CheckoutID: checkoutID,
+		Purchase:   encoded,
+	}); err != nil {
+		t.Fatalf("RecordPaymentCheckout: %v", err)
+	}
 }
 
 func (c *contractTenant) Deliver(t *testing.T, payload []byte, headers http.Header) error {

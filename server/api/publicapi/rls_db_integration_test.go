@@ -254,6 +254,9 @@ var publicDataTables = []struct {
 	// Written by the same webhook for an expired checkout, and read when the
 	// reader starts the next one.
 	{name: "expired_checkouts", count: "SELECT count(*) FROM expired_checkouts"},
+	// Written when a checkout starts through a provider that carries no
+	// purchase, and read by the webhook that reports it paid or expired.
+	{name: "payment_checkouts", count: "SELECT count(*) FROM payment_checkouts"},
 	// The same for a checkout of a volume.
 	{name: "expired_volume_checkouts", count: "SELECT count(*) FROM expired_volume_checkouts"},
 	// Written by the same webhook with the purchase of a volume: what each of
@@ -472,6 +475,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount, currency) VALUES ($1, 'stripe', $2, $3, 'JPY')", first.ID, "pi_rls_held", 500)
 	seed("held dispute", "INSERT INTO unapplied_disputes (tenant_id, provider, provider_payment_id) VALUES ($1, 'stripe', $2)", first.ID, "pi_rls_disputed")
 	seed("expired checkout", "INSERT INTO expired_checkouts (tenant_id, user_id, episode_id, provider, provider_checkout_id) VALUES ($1, $2, $3, 'stripe', $4)", first.ID, member.ID, episode.ID, "cs_rls_expired")
+	seed("stored checkout", "INSERT INTO payment_checkouts (tenant_id, provider, checkout_id, purchase) VALUES ($1, 'paypay', $2, '{}')", first.ID, "checkout_rls_stored")
 	volume := env.PG.SeedVolume(t, first.ID, series.ID, testutil.VolumeSeed{PublicID: "VOLUMEA00001", Published: true, EpisodeIDs: []uuid.UUID{freeEpisode.ID}})
 	volumeCoverImageID := uuid.Must(uuid.NewV7())
 	seed("volume cover image", "INSERT INTO volume_cover_images (id, tenant_id, volume_id) VALUES ($1, $2, $3)", volumeCoverImageID, first.ID, volume.ID)

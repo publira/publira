@@ -184,10 +184,9 @@ func (s *apiServer) StartCoinPackCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "coin_pack_id", pack.ID.String())
 	}
-	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "coin_pack_id", pack.ID.String())
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "coin_pack_id", pack.ID.String())
-		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		return nil, err
 	}
 	return &publirav1.StartCoinPackCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }

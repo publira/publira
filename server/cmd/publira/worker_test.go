@@ -151,6 +151,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeAppleSignInCodeExchange,
 		outbox.EventTypeAppleSignInTokenRevoke,
 		outbox.EventTypeSubscriptionCancel,
+		outbox.EventTypePaymentRefundFollow,
 	}
 
 	for _, eventType := range slices.Concat(messages, others) {

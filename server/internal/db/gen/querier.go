@@ -1252,6 +1252,7 @@ type Querier interface {
 	// The page with its translation in exactly this locale, and no row when the
 	// page has none: an edit aimed at one language must not land on another.
 	GetPageWithTranslationForTenant(ctx context.Context, arg GetPageWithTranslationForTenantParams) (GetPageWithTranslationForTenantRow, error)
+	GetPaymentCheckoutPurchase(ctx context.Context, arg GetPaymentCheckoutPurchaseParams) (json.RawMessage, error)
 	GetPaymentReconciliation(ctx context.Context, arg GetPaymentReconciliationParams) (PaymentReconciliation, error)
 	GetPaymentReconciliationForPeriod(ctx context.Context, arg GetPaymentReconciliationForPeriodParams) (PaymentReconciliation, error)
 	// What the site shows as a banner: the newest delivered announcement still
@@ -2909,6 +2910,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]ListPagesForTenantAscRow, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]ListPagesForTenantDescRow, error)
+	// The checkouts first started before started_to and last started at or after
+	// started_from, which are every checkout started in between, however many
+	// times a request started it.
+	ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentCheckoutIDsParams) ([]string, error)
 	// Admin ListPaymentReconciliationFindings is (occurred_at, id) ASC, the order
 	// the lines happened in. Forward uses the ASC query; backward uses DESC, and
 	// the handler flips its rows back. A NULL kind or is_test is no filter.
@@ -4630,6 +4635,9 @@ type Querier interface {
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.
 	RecordOutboxEventProgress(ctx context.Context, arg RecordOutboxEventProgressParams) (int64, error)
+	// A retried request names the same checkout with the same purchase, so the
+	// row already there is kept, and only when it was last started moves.
+	RecordPaymentCheckout(ctx context.Context, arg RecordPaymentCheckoutParams) error
 	// Records why the build of a revision failed, unless a save has moved the
 	// revision on since, which leaves the failure about nothing.
 	RecordPlatformSearchBuildFailure(ctx context.Context, arg RecordPlatformSearchBuildFailureParams) (int64, error)

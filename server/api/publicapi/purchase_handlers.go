@@ -189,10 +189,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	checkoutURL, err := s.startCheckout(ctx, provider, credentials, checkout, "failed to start a checkout with the payment provider", "episode_id", episode.ID.String())
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
-		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		return nil, err
 	}
 	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }
@@ -724,6 +723,13 @@ func (s *apiServer) ProcessPaymentWebhook(
 			return nil, err
 		}
 	case paymentprovider.CheckoutExpired:
+		if provider.Declaration().StoredCheckouts {
+			purchase, err := s.checkoutStoredFor(ctx, tenant.ID, providerID, event.ID, event.CheckoutID, event.Purchase.Currency)
+			if err != nil {
+				return nil, err
+			}
+			event.Purchase = purchase
+		}
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
 		}
@@ -731,6 +737,26 @@ func (s *apiServer) ProcessPaymentWebhook(
 			return nil, s.internalDBError(ctx, "failed to record an expired checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	case paymentprovider.PurchaseCompleted:
+		if provider.Declaration().StoredCheckouts {
+			purchase, err := s.checkoutStoredFor(ctx, tenant.ID, providerID, event.ID, event.CheckoutID, event.Purchase.Currency)
+			if err != nil {
+				return nil, err
+			}
+			// The provider took no promotion code of its own, so the payment
+			// took the price the checkout charged, or it is not that checkout's.
+			if event.AmountPaid != purchase.Price {
+				s.logger.WarnContext(ctx, "a stored checkout was paid an amount other than its price",
+					"tenant_id", tenant.ID,
+					"provider", providerID,
+					"event_id", event.ID,
+					"checkout_id", event.CheckoutID,
+					"amount_paid", event.AmountPaid,
+					"price", purchase.Price,
+				)
+				return nil, connect.NewError(connect.CodeInvalidArgument, "the payment does not match its checkout")
+			}
+			event.Purchase = purchase
+		}
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
 		}
@@ -1820,4 +1846,99 @@ func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID,
 		return nil, nil, paymentsNotConfiguredError()
 	}
 	return provider, credentials, nil
+}
+
+// startCheckout starts checkout through provider and answers the URL the
+// reader pays at, or the error the RPC answers, logging a failure of the
+// provider's as message with keyvals. A provider that declares
+// [paymentprovider.Declaration.StoredCheckouts] cannot carry the purchase to
+// its notification, so the purchase is written down first, under the id the
+// checkout is started with, for the notification to find it by: before the
+// provider is asked, since the reader can pay as soon as it answers.
+func (s *apiServer) startCheckout(
+	ctx context.Context,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	checkout paymentprovider.CheckoutRequest,
+	message string,
+	keyvals ...any,
+) (string, error) {
+	tenantID, providerID := checkout.Purchase.TenantID, provider.Declaration().ID
+	if provider.Declaration().StoredCheckouts {
+		checkout.CheckoutID = paymentprovider.StoredCheckoutID(checkout.IdempotencyKey)
+		purchase, err := json.Marshal(checkout.Purchase)
+		if err != nil {
+			return "", s.internalError(ctx, "failed to encode the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+		}
+		if err := s.queriesFor(ctx).RecordPaymentCheckout(ctx, dbmodels.RecordPaymentCheckoutParams{
+			TenantID:   tenantID,
+			Provider:   providerID,
+			CheckoutID: checkout.CheckoutID,
+			Purchase:   purchase,
+		}); err != nil {
+			return "", s.internalDBError(ctx, "failed to record the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+		}
+	}
+	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
+	if err != nil {
+		args := append([]any{"error", err, "tenant_id", tenantID, "provider", providerID}, keyvals...)
+		s.logger.ErrorContext(ctx, message, args...)
+		return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+	}
+	return checkoutURL, nil
+}
+
+// checkoutStoredFor answers the purchase written down for the tenant's
+// checkout checkoutID, which the notification eventID reports on, or the
+// error the webhook answers when the tenant started no such checkout through
+// the provider: one another tenant started, say, which no retry makes the
+// tenant's.
+func (s *apiServer) checkoutStoredFor(ctx context.Context, tenantID uuid.UUID, providerID, eventID, checkoutID, currency string) (paymentprovider.Purchase, error) {
+	purchase, found, err := s.storedCheckoutPurchase(ctx, tenantID, providerID, checkoutID, currency)
+	if err != nil {
+		return paymentprovider.Purchase{}, err
+	}
+	if !found {
+		s.logger.WarnContext(ctx, "a notification names a checkout the tenant did not start",
+			"tenant_id", tenantID,
+			"provider", providerID,
+			"event_id", eventID,
+			"checkout_id", checkoutID,
+		)
+		return paymentprovider.Purchase{}, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
+	}
+	return purchase, nil
+}
+
+// storedCheckoutPurchase answers the purchase the checkout checkoutID names
+// was started on through a provider that declares
+// [paymentprovider.Declaration.StoredCheckouts], with the currency its
+// notification reports the payment made in, and false when no checkout of the
+// tenant's through the provider is under that id, as one another tenant
+// started is not.
+func (s *apiServer) storedCheckoutPurchase(ctx context.Context, tenantID uuid.UUID, providerID, checkoutID, currency string) (paymentprovider.Purchase, bool, error) {
+	encoded, err := s.queriesFor(ctx).GetPaymentCheckoutPurchase(ctx, dbmodels.GetPaymentCheckoutPurchaseParams{
+		TenantID:   tenantID,
+		Provider:   providerID,
+		CheckoutID: checkoutID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return paymentprovider.Purchase{}, false, nil
+	}
+	if err != nil {
+		return paymentprovider.Purchase{}, false, s.internalDBError(ctx, "failed to read the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
+	}
+	var purchase paymentprovider.Purchase
+	if err := json.Unmarshal(encoded, &purchase); err != nil {
+		return paymentprovider.Purchase{}, false, s.internalError(ctx, "failed to decode the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
+	}
+	// Written by the server, the purchase is read by the rules a provider
+	// reads the one it carried by.
+	if purchase.Kind, err = paymentprovider.ParseKind(string(purchase.Kind), int64(purchase.ReadingPeriodHours)); err != nil {
+		return paymentprovider.Purchase{}, false, s.internalError(ctx, "the purchase of a checkout names no kind it can be", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
+	}
+	if currency != "" {
+		purchase.Currency = currency
+	}
+	return purchase, true, nil
 }

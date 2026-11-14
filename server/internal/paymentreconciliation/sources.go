@@ -49,10 +49,22 @@ type GooglePlayReader interface {
 type providerSource struct {
 	provider    paymentprovider.Provider
 	credentials paymentprovider.Credentials
+	// checkouts lists the checkouts started through a provider that declares
+	// stored checkouts, from its checkout lifetime before from up to to, which
+	// such a provider reads the payment of each of in place of a list of its
+	// own. It is nil for every other provider.
+	checkouts func(ctx context.Context, from, to time.Time) ([]string, error)
 }
 
 func (s providerSource) records(ctx context.Context, from, to time.Time, _ []Purchase) ([]Record, error) {
-	transactions, err := s.provider.ListTransactions(ctx, s.credentials, from, to)
+	var checkoutIDs []string
+	if s.checkouts != nil {
+		var err error
+		if checkoutIDs, err = s.checkouts(ctx, from, to); err != nil {
+			return nil, fmt.Errorf("list stored checkouts: %w", err)
+		}
+	}
+	transactions, err := s.provider.ListTransactions(ctx, s.credentials, from, to, checkoutIDs)
 	if errors.Is(err, paymentprovider.ErrCredentialsRefused) {
 		return nil, fmt.Errorf("%w: %v", ErrCredentials, err)
 	}

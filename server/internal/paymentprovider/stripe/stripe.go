@@ -372,7 +372,7 @@ var transactionTypes = []stripego.BalanceTransactionType{
 // ListTransactions reads the account's balance transactions of the period,
 // each with the charge it records expanded, which names the payment intent a
 // purchase stores and what has been refunded on it.
-func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time) ([]paymentprovider.Transaction, error) {
+func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time, _ []string) ([]paymentprovider.Transaction, error) {
 	client, err := p.client(credentials)
 	if err != nil {
 		return nil, err
