@@ -80,6 +80,29 @@ const expectPublicPageHeading = async (
 };
 
 /**
+ * Read the public URL until its footer lists `title` as a link `count` times.
+ *
+ * The footer comes off the same cache tags as the page, and the admin API
+ * drops them out of band with `revalidateTag(tag, "max")`, whose first request
+ * after the drop is still answered from the stale entry while it renders
+ * again. A screen read once can therefore show the footer from before the
+ * write and keep showing it, so the read is repeated until it has caught up.
+ */
+const expectFooterLink = async (
+  page: Page,
+  pathname: string,
+  title: string,
+  count: number
+): Promise<void> => {
+  await expect(async () => {
+    await page.goto(storefrontUrl(pathname));
+    await expect(
+      footerLinks(page).getByRole("link", { name: title })
+    ).toHaveCount(count, { timeout: 5000 });
+  }).toPass({ timeout: 60_000 });
+};
+
+/**
  * Published page management: the console screens under `/pages` and the public
  * page they put up at `/page/[...slug]` on the same tenant's web-storefront.
  *
@@ -190,9 +213,7 @@ test.describe("admin published pages", () => {
 
     await publishVersion(page, 1);
     await expectPublicPageHeading(page, slug, title);
-    await expect(
-      footerLinks(page).getByRole("link", { name: title })
-    ).toBeVisible();
+    await expectFooterLink(page, slug, title, 1);
 
     await page.goto(adminUrl(`/pages/${pageId}`));
     await page.getByRole("button", { exact: true, name: "Unpublish" }).click();
@@ -257,22 +278,11 @@ test.describe("admin published pages", () => {
       await expect(versionRow(page, 2)).toHaveCount(0);
     };
 
-    // The footer comes off the same cache tags as the page, which the admin
-    // API drops out of band, so the public read is polled.
-    const expectFooterLink = async (count: number): Promise<void> => {
-      await expect(async () => {
-        await page.goto(storefrontUrl(slug));
-        await expect(
-          footerLinks(page).getByRole("link", { name: title })
-        ).toHaveCount(count, { timeout: 5000 });
-      }).toPass({ timeout: 60_000 });
-    };
-
     await setFooter(true);
-    await expectFooterLink(1);
+    await expectFooterLink(page, slug, title, 1);
 
     await setFooter(false);
-    await expectFooterLink(0);
+    await expectFooterLink(page, slug, title, 0);
   });
 
   test("editing the title and the body reaches the public page", async ({
@@ -473,7 +483,9 @@ test.describe("admin published pages", () => {
     await expectPublicPageHeading(page, slug, title);
     await expect(page.getByText(body)).toBeVisible();
 
-    await page.goto(storefrontUrl("/"));
+    // The home page was rendered before the page was published, so its footer
+    // is the one read that has to catch up.
+    await expectFooterLink(page, "/", title, 1);
     await footerLinks(page).getByRole("link", { name: title }).click();
     await expect(page).toHaveURL(new RegExp(`${slug}$`, "u"));
     await expect(
