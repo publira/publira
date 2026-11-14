@@ -2280,6 +2280,31 @@ type Querier interface {
 	// The accounts linked to one creator, oldest link first. The account columns
 	// are the ones GetTenantReaderByID selects, less the birth date.
 	ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCreatorAccountsByCreatorIDParams) ([]ListCreatorAccountsByCreatorIDRow, error)
+	// The credits that name one creator, on series and on episodes alike, for the
+	// console to show what keeps the creator from being deleted. Every series and
+	// episode counts whatever its state, as GetCreatorDeletionBlocker counts them.
+	//
+	// A credit is placed by (series_id, kind_rank, episode_order_index,
+	// episode_id, role_key): a series in the order it was created, the credit on
+	// the series itself before those on its episodes, the episodes in their
+	// reading order, and a person holding two roles on one of them in role id
+	// order. The series credit carries the nil uuid for episode_id, and role_key
+	// is the role id with the nil uuid for a credit that states none, so every
+	// key is non-null and the row comparison stays a plain one.
+	//
+	// The keys span two tables and a join to episodes, so no index holds them.
+	// idx_series_creators_tenant_creator and idx_episode_creators_tenant_creator
+	// find the creator's credits, and only those are sorted: they are the credits
+	// of one person, not a scan of the tenant's catalogue.
+	//
+	// The titles are those of the tenant default locale, as every admin list
+	// shows them. The joins to the translations are outer so that a credit is
+	// listed even on a series or an episode that has none.
+	//
+	// Forward uses the ascending query and backward the descending one, which the
+	// handler puts back in ascending order. Cursor rules: proto/README.md.
+	ListCreatorCreditsAsc(ctx context.Context, arg ListCreatorCreditsAscParams) ([]ListCreatorCreditsAscRow, error)
+	ListCreatorCreditsDesc(ctx context.Context, arg ListCreatorCreditsDescParams) ([]ListCreatorCreditsDescRow, error)
 	// The previous-page half of ListCreatorEpisodeCommentsDesc. The handler
 	// reverses the returned rows to preserve the newest-first display order.
 	ListCreatorEpisodeCommentsAsc(ctx context.Context, arg ListCreatorEpisodeCommentsAscParams) ([]ListCreatorEpisodeCommentsAscRow, error)

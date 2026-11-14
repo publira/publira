@@ -30,6 +30,9 @@ const (
 	// AdminCreatorServiceGetCreatorProcedure is the procedure name of the AdminCreatorService's
 	// GetCreator RPC.
 	AdminCreatorServiceGetCreatorProcedure = "/publira.admin.v1.AdminCreatorService/GetCreator"
+	// AdminCreatorServiceListCreatorCreditsProcedure is the procedure name of the AdminCreatorService's
+	// ListCreatorCredits RPC.
+	AdminCreatorServiceListCreatorCreditsProcedure = "/publira.admin.v1.AdminCreatorService/ListCreatorCredits"
 	// AdminCreatorServiceCreateCreatorProcedure is the procedure name of the AdminCreatorService's
 	// CreateCreator RPC.
 	AdminCreatorServiceCreateCreatorProcedure = "/publira.admin.v1.AdminCreatorService/CreateCreator"
@@ -60,6 +63,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("GetCreator"),
 			Procedure:  AdminCreatorServiceGetCreatorProcedure,
+		}
+	})
+	adminCreatorServiceListCreatorCreditsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("ListCreatorCredits"),
+			Procedure:  AdminCreatorServiceListCreatorCreditsProcedure,
 		}
 	})
 	adminCreatorServiceCreateCreatorSpec = sync.OnceValue(func() connect.Spec {
@@ -105,6 +115,13 @@ type AdminCreatorServiceClient interface {
 	ListCreators(context.Context, *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error)
 	// Minimum role: tenant_auditor.
 	GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error)
+	// Every credit naming the creator, on a series or on an episode, whatever
+	// the state of the series or the episode: what DeleteCreator refuses with
+	// CREATOR_CREDITED while any is left. not_found for a creator that does not
+	// exist or belongs to another tenant.
+	//
+	// Minimum role: tenant_auditor.
+	ListCreatorCredits(context.Context, *v1.ListCreatorCreditsRequest) (*v1.ListCreatorCreditsResponse, error)
 	// Minimum role: tenant_editor.
 	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
@@ -139,6 +156,13 @@ type AdminCreatorServiceHandler interface {
 	ListCreators(context.Context, *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error)
 	// Minimum role: tenant_auditor.
 	GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error)
+	// Every credit naming the creator, on a series or on an episode, whatever
+	// the state of the series or the episode: what DeleteCreator refuses with
+	// CREATOR_CREDITED while any is left. not_found for a creator that does not
+	// exist or belongs to another tenant.
+	//
+	// Minimum role: tenant_auditor.
+	ListCreatorCredits(context.Context, *v1.ListCreatorCreditsRequest) (*v1.ListCreatorCreditsResponse, error)
 	// Minimum role: tenant_editor.
 	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
@@ -167,6 +191,7 @@ func RegisterAdminCreatorServiceHandler(server *connect.Server, svc AdminCreator
 	server.Register(
 		connect.Method{Spec: adminCreatorServiceListCreatorsSpec(), Handler: adapter.listCreators},
 		connect.Method{Spec: adminCreatorServiceGetCreatorSpec(), Handler: adapter.getCreator},
+		connect.Method{Spec: adminCreatorServiceListCreatorCreditsSpec(), Handler: adapter.listCreatorCredits},
 		connect.Method{Spec: adminCreatorServiceCreateCreatorSpec(), Handler: adapter.createCreator},
 		connect.Method{Spec: adminCreatorServiceUpdateCreatorSpec(), Handler: adapter.updateCreator},
 		connect.Method{Spec: adminCreatorServiceDeleteCreatorSpec(), Handler: adapter.deleteCreator},
@@ -184,6 +209,10 @@ func (UnimplementedAdminCreatorServiceHandler) ListCreators(context.Context, *v1
 
 func (UnimplementedAdminCreatorServiceHandler) GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.GetCreator is not implemented")
+}
+
+func (UnimplementedAdminCreatorServiceHandler) ListCreatorCredits(context.Context, *v1.ListCreatorCreditsRequest) (*v1.ListCreatorCreditsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.ListCreatorCredits is not implemented")
 }
 
 func (UnimplementedAdminCreatorServiceHandler) CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error) {
@@ -221,6 +250,14 @@ func (c *adminCreatorServiceClient) ListCreators(ctx context.Context, req *v1.Li
 func (c *adminCreatorServiceClient) GetCreator(ctx context.Context, req *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error) {
 	var res v1.GetCreatorResponse
 	if err := c.client.CallUnary(ctx, adminCreatorServiceGetCreatorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) ListCreatorCredits(ctx context.Context, req *v1.ListCreatorCreditsRequest) (*v1.ListCreatorCreditsResponse, error) {
+	var res v1.ListCreatorCreditsResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceListCreatorCreditsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -286,6 +323,18 @@ func (h adminCreatorServiceHandler) getCreator(ctx context.Context, _ connect.Sp
 		return err
 	}
 	res, err := h.svc.GetCreator(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) listCreatorCredits(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListCreatorCreditsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListCreatorCredits(ctx, &req)
 	if err != nil {
 		return err
 	}
