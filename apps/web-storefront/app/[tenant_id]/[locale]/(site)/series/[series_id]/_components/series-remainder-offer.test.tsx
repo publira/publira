@@ -46,6 +46,7 @@ afterEach(cleanup);
 const SELLING: TenantSales = {
   app: false,
   currency: "JPY",
+  paymentProviders: [],
   taxIncluded: false,
   web: true,
 };
@@ -155,11 +156,23 @@ describe("SeriesRemainderOffer", () => {
   it.each([
     [
       "takes no payments",
-      { app: false, currency: "JPY", taxIncluded: false, web: false },
+      {
+        app: false,
+        currency: "JPY",
+        paymentProviders: [],
+        taxIncluded: false,
+        web: false,
+      },
     ],
     [
       "could not be read",
-      { app: false, currency: null, taxIncluded: false, web: true },
+      {
+        app: false,
+        currency: null,
+        paymentProviders: [],
+        taxIncluded: false,
+        web: true,
+      },
     ],
   ] satisfies [string, TenantSales][])(
     "offers nothing, and asks nothing, on a site that %s",

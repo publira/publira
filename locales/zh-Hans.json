@@ -6951,6 +6951,13 @@
       "not_applicable_volumes": "此优惠码不适用于这些卷。",
       "rate_limited": "输入优惠码的次数过多，请稍后再试。",
       "error": "无法验证优惠码，请重试。"
+    },
+    "payment_provider": {
+      "label": "支付方式",
+      "methods": {
+        "payjp": "银行卡",
+        "stripe": "银行卡等"
+      }
     }
   },
   "mobile": {

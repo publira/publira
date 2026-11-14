@@ -20,6 +20,7 @@ afterEach(cleanup);
 const sellsEverywhere = {
   app: true,
   currency: "JPY",
+  paymentProviders: [],
   taxIncluded: false,
   web: true,
 };
@@ -55,7 +56,13 @@ describe("EpisodePrice", () => {
   it("Quote the price of an episode sold in the app alone while the app cannot sell it", () => {
     render(
       <EpisodePrice
-        sales={{ app: false, currency: "JPY", taxIncluded: false, web: true }}
+        sales={{
+          app: false,
+          currency: "JPY",
+          paymentProviders: [],
+          taxIncluded: false,
+          web: true,
+        }}
         locale="en"
         price={1200}
         purchaseSurface="app"
@@ -72,7 +79,13 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: true, currency: "JPY", taxIncluded: false, web: false }}
+        sales={{
+          app: true,
+          currency: "JPY",
+          paymentProviders: [],
+          taxIncluded: false,
+          web: false,
+        }}
       />
     );
 
@@ -86,7 +99,13 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: false, currency: "JPY", taxIncluded: false, web: false }}
+        sales={{
+          app: false,
+          currency: "JPY",
+          paymentProviders: [],
+          taxIncluded: false,
+          web: false,
+        }}
       />
     );
 
@@ -269,7 +288,13 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: false, currency: null, taxIncluded: false, web: false }}
+        sales={{
+          app: false,
+          currency: null,
+          paymentProviders: [],
+          taxIncluded: false,
+          web: false,
+        }}
       />
     );
 

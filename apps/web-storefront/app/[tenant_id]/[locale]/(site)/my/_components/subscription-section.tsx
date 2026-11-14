@@ -11,6 +11,7 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { redirectToLogin } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
+import { sellsSubscriptions } from "#lib/payment-providers";
 import {
   getMySubscription,
   holdsSubscription,
@@ -260,7 +261,14 @@ export const SubscriptionSection = async () => {
       getTenantSiteInfo(tenantId),
     ]);
 
-    if (!(plans.ok && plans.value.length > 0 && tenant?.acceptsPayments)) {
+    if (
+      !(
+        plans.ok &&
+        plans.value.length > 0 &&
+        tenant !== null &&
+        sellsSubscriptions(tenant)
+      )
+    ) {
       return null;
     }
 

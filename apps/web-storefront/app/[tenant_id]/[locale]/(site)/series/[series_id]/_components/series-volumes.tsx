@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
+import * as PaymentProviderChoice from "#components/payment-provider-choice";
 import * as PromotionCode from "#components/promotion-code";
 import { resolveAccessToken } from "#lib/api-client";
 import type { TenantSales } from "#lib/app-payments";
@@ -54,6 +55,7 @@ const VolumeBuyForm = ({
     <input name="tenantId" type="hidden" value={tenantId} />
     <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
     <input name="volumeId" type="hidden" value={volumeId} />
+    <PaymentProviderChoice.Input />
     <PromotionCode.CheckoutSubmit
       currency={currency}
       locale={locale}
@@ -380,7 +382,9 @@ const VolumeCards = ({
  * way an episode row quotes a price nobody can pay right now; a reader who
  * already holds a volume is still told so. A price is not
  * quoted at all while the tenant's currency is unknown, and says it includes
- * tax while the tenant states a rate.
+ * tax while the tenant states a rate. Where the site sells through more than
+ * one provider, the reader chooses which under the heading, once for every
+ * card.
  */
 export const SeriesVolumes = ({
   acceptsPromotionCodes,
@@ -422,35 +426,41 @@ export const SeriesVolumes = ({
   );
 
   return (
-    <section className="grid gap-4">
-      <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
-        <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-          <Message message="storefront.series.volumes_heading" />
-        </Suspense>
-      </h2>
-      <Suspense fallback={null}>
-        <VolumeOwnershipFailure
-          locale={locale}
-          seriesId={seriesId}
-          tenantId={tenantId}
-        />
-      </Suspense>
-      {acceptsPromotionCodes && sales.web && sales.currency ? (
-        <Suspense fallback={cards}>
-          <VolumePromotionCodeScope
+    <PaymentProviderChoice.Root
+      providers={sales.web ? sales.paymentProviders : []}
+      tenantId={tenantId}
+    >
+      <section className="grid gap-4">
+        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="storefront.series.volumes_heading" />
+          </Suspense>
+        </h2>
+        <PaymentProviderChoice.Picker />
+        <Suspense fallback={null}>
+          <VolumeOwnershipFailure
             locale={locale}
-            searchParams={searchParams}
             seriesId={seriesId}
-            seriesPublicId={seriesPublicId}
             tenantId={tenantId}
-            volumes={volumes}
-          >
-            {cards}
-          </VolumePromotionCodeScope>
+          />
         </Suspense>
-      ) : (
-        cards
-      )}
-    </section>
+        {acceptsPromotionCodes && sales.web && sales.currency ? (
+          <Suspense fallback={cards}>
+            <VolumePromotionCodeScope
+              locale={locale}
+              searchParams={searchParams}
+              seriesId={seriesId}
+              seriesPublicId={seriesPublicId}
+              tenantId={tenantId}
+              volumes={volumes}
+            >
+              {cards}
+            </VolumePromotionCodeScope>
+          </Suspense>
+        ) : (
+          cards
+        )}
+      </section>
+    </PaymentProviderChoice.Root>
   );
 };

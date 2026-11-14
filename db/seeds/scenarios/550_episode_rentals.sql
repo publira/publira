@@ -11,8 +11,10 @@
 -- reader applies at episode 1's gate and buys it with, and a seventh enters a
 -- code the tenant does not hold. Episode 1 credits an Author, so the open
 -- month's royalties show what the code's sale is paid on. Another reader, who
--- already holds episode 1 and tipped its Author, tips again. The
--- documentation's shots of a tip are taken here too.
+-- already holds episode 1 and tipped its Author, tips again. Last, the admin
+-- adds PAY.JP beside Stripe, and one more reader chooses Stripe at episode 2's
+-- gate and is sent to its checkout. The documentation's shots of a tip, and of
+-- that choice, are taken here too.
 -- The payment settings decide whether the storefront sells anything, so no
 -- tenant another suite reads can absorb them.
 --
@@ -30,7 +32,7 @@
 --            RntlMMBRAAA7 (Code Mistyper),
 --            RntlMMBRAAA8 (Volume Code Buyer),
 --            RntlMMBRAAA9 (Rental Tipper), who holds episode 1 and gave a tip
---            of 300 yen on it
+--            of 300 yen on it, RntlMMBRAABA (Provider Chooser)
 --   creator  RntlCRTRAAA1 (Mina Ito), credited on episode 1
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
@@ -201,6 +203,13 @@ CROSS JOIN (
             'rental-tipper@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Rental Tipper'
+        ),
+        (
+            '018f1100-0002-7000-8000-00000000000b'::uuid,
+            'RntlMMBRAABA',
+            'provider-chooser@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Provider Chooser'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';

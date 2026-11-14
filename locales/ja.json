@@ -6951,6 +6951,13 @@
       "not_applicable_volumes": "このコードはこれらの巻には使えません。",
       "rate_limited": "コードの入力回数が多すぎます。しばらく待ってからもう一度お試しください。",
       "error": "コードを確認できませんでした。もう一度お試しください。"
+    },
+    "payment_provider": {
+      "label": "支払い方法",
+      "methods": {
+        "payjp": "カード",
+        "stripe": "カードなど"
+      }
     }
   },
   "mobile": {

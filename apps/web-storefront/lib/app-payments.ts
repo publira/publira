@@ -2,6 +2,7 @@ import type { GetTenantResponse } from "@publira/api-client/public/tenant";
 import { AppPurchaseRoute } from "@publira/api-client/public/types";
 
 import type { EpisodePurchaseSurface } from "./catalog";
+import type { PaymentProviderOption } from "./payment-providers";
 
 /**
  * Whether the tenant's app can sell an episode right now, on each platform it
@@ -42,6 +43,11 @@ export interface TenantSales extends TenantSaleChannels {
    */
   currency: string | null;
   /**
+   * The providers the site's checkout can pay through, which a reader chooses
+   * between while there is more than one.
+   */
+  paymentProviders: readonly PaymentProviderOption[];
+  /**
    * Whether the tenant states a tax rate, which every price it offers then
    * includes and says it does. False while the tenant could not be read.
    */
@@ -63,15 +69,18 @@ export const toTenantSales = ({
   acceptsPayments,
   appPayments,
   currency,
+  paymentProviders,
   taxIncluded,
 }: {
   acceptsPayments: boolean;
   appPayments: TenantAppPayments;
   currency: string | null;
+  paymentProviders: readonly PaymentProviderOption[];
   taxIncluded: boolean;
 }): TenantSales => ({
   ...toTenantSaleChannels({ acceptsPayments, appPayments }),
   currency,
+  paymentProviders,
   taxIncluded,
 });
 

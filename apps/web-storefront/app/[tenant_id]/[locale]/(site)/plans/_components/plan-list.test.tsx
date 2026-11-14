@@ -104,6 +104,7 @@ beforeEach(() => {
   mockGetTenantSiteInfo.mockResolvedValue({
     acceptsPayments: true,
     invoice: { taxRateBps: null },
+    paymentProviders: [],
   });
   mockGetMySubscription.mockReset();
   mockListSubscriptionPlans.mockReset();
@@ -179,6 +180,40 @@ describe("PlanList", () => {
     expect(subscribe()).toBeTruthy();
   });
 
+  it("sells a plan through the provider that takes recurring payments, with no choice of provider", async () => {
+    mockGetMySubscription.mockResolvedValue({ ok: true, subscription: null });
+    mockGetTenantSiteInfo.mockResolvedValue({
+      acceptsPayments: true,
+      invoice: { taxRateBps: null },
+      paymentProviders: [
+        { displayName: "PAY.JP", id: "payjp", subscriptions: false },
+        { displayName: "Stripe", id: "stripe", subscriptions: true },
+      ],
+    });
+
+    await renderList();
+
+    expect(subscribe()).toBeTruthy();
+    expect(screen.queryByText("storefront.payment_provider.label")).toBeNull();
+    expect(document.querySelector('input[name="provider"]')).toBeNull();
+  });
+
+  it("sells no plan where no provider the tenant holds takes recurring payments", async () => {
+    mockGetMySubscription.mockResolvedValue({ ok: true, subscription: null });
+    mockGetTenantSiteInfo.mockResolvedValue({
+      acceptsPayments: true,
+      invoice: { taxRateBps: null },
+      paymentProviders: [
+        { displayName: "PAY.JP", id: "payjp", subscriptions: false },
+      ],
+    });
+
+    await renderList();
+
+    expect(subscribe()).toBeNull();
+    expect(screen.getByText("storefront.plans.not_selling")).toBeTruthy();
+  });
+
   it("says a plan's price includes tax while the tenant states a rate", async () => {
     mockGetMySubscription.mockResolvedValue({ ok: true, subscription: null });
 
@@ -190,6 +225,7 @@ describe("PlanList", () => {
     mockGetTenantSiteInfo.mockResolvedValue({
       acceptsPayments: true,
       invoice: { taxRateBps: 1000 },
+      paymentProviders: [],
     });
 
     await renderList();

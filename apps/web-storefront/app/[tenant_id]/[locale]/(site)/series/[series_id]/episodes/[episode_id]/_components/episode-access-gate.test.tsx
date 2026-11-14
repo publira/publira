@@ -92,6 +92,12 @@ const valuesOf = (button: HTMLElement | null) => {
   );
 };
 
+/** The payment provider a checkout button's form sends, if any. */
+const providerOf = (button: HTMLElement) =>
+  button
+    .closest("form")
+    ?.querySelector<HTMLInputElement>('input[name="provider"]')?.value;
+
 const promotionCodeField = () =>
   screen.queryByRole("textbox", {
     name: "storefront.promotion_code.label",
@@ -109,6 +115,7 @@ const props = {
   episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   episodePublicId: "EPISODE_001",
   locale: "en" as const,
+  paymentProviders: [],
   price: 499,
   purchaseSurface: "all" as const,
   rentalPeriodHours: 0,
@@ -1147,6 +1154,53 @@ describe("EpisodeAccessGate", () => {
       expect(valuesOf(buyButton())).toEqual({ price: "$4.99" });
       expect(codeOf(buyButton())).toBeUndefined();
       expect(promotionCodeField()?.closest("details")?.open).toBe(true);
+    });
+  });
+
+  describe("the payment provider", () => {
+    const providers = [
+      { displayName: "Stripe", id: "stripe", subscriptions: true },
+      { displayName: "PAY.JP", id: "payjp", subscriptions: false },
+    ];
+
+    it("Let a signed-in reader choose between the tenant's providers, and send the purchase through the one chosen", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          paymentProviders={providers}
+        />
+      );
+
+      expect(screen.getByRole("radio", { name: "Stripe" })).toBeDefined();
+      expect(screen.getByRole("radio", { name: "PAY.JP" })).toBeDefined();
+      expect(providerOf(purchaseButton())).toBe("stripe");
+    });
+
+    it("Keep the one-step button on a tenant with one provider", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          paymentProviders={providers.slice(0, 1)}
+        />
+      );
+
+      expect(screen.queryByRole("radio")).toBeNull();
+      expect(providerOf(purchaseButton())).toBeUndefined();
+    });
+
+    it("Ask a guest nothing about the provider", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          paymentProviders={providers}
+          signedIn={false}
+        />
+      );
+
+      expect(screen.queryByRole("radio")).toBeNull();
     });
   });
 });

@@ -438,6 +438,7 @@ const EpisodeContent = async (
                     labelPublicId={labelPublicId}
                     nextEpisode={nextEpisode}
                     nextFreeEpisode={nextFreeEpisode}
+                    paymentProviders={sales.paymentProviders}
                     previewImages={previewImages}
                     previewPages={previewPages}
                     previousEpisode={previousEpisode}

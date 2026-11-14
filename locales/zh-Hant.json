@@ -6951,6 +6951,13 @@
       "not_applicable_volumes": "此促銷代碼不適用於這些卷。",
       "rate_limited": "輸入促銷代碼的次數過多，請稍後再試。",
       "error": "無法驗證促銷代碼，請重試。"
+    },
+    "payment_provider": {
+      "label": "付款方式",
+      "methods": {
+        "payjp": "信用卡",
+        "stripe": "信用卡等"
+      }
     }
   },
   "mobile": {

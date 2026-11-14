@@ -9,6 +9,12 @@
 
 export const EPISODE_RENTALS_SCENARIO = "550_episode_rentals";
 
+/** The tenant, whose internal ID names its storefront cache tags. */
+export const EPISODE_RENTALS_TENANT = {
+  id: "018f1100-0001-7000-8000-000000000001",
+  publicId: "RntlTNNTAAA1",
+} as const;
+
 /** Tenant admin who takes the tenant's payments. Password hash is `adminpass`. */
 export const EPISODE_RENTALS_ADMIN = {
   email: "rentals-admin@example.com",
@@ -91,6 +97,15 @@ export const EPISODE_RENTALS_READERS = {
     email: "code-mistyper@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA7",
+  },
+  /**
+   * Chooses Stripe at episode 2's gate once the tenant takes payments through
+   * PAY.JP beside it, and is shown that choice there for the documentation.
+   */
+  providerChooser: {
+    email: "provider-chooser@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAABA",
   },
   /** Buys every episode in one checkout, at the series' discount. */
   remainderBuyer: {

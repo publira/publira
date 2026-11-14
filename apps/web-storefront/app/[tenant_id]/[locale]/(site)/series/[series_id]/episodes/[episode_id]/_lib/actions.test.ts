@@ -117,7 +117,25 @@ describe("startEpisodeCheckoutAction", () => {
       kind: PurchaseKind.PURCHASE,
       locale: "en",
       promotionCode: "",
+      provider: "",
       tenant: { tenantId },
+    });
+  });
+
+  it("Send the checkout to the provider the reader chose", async () => {
+    mockStartEpisodeCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://pay.jp.test/session",
+    });
+    const form = checkoutForm();
+    form.set("provider", "payjp");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://pay.jp.test/session"
+    );
+    expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toMatchObject({
+      provider: "payjp",
     });
   });
 
@@ -265,10 +283,28 @@ describe("startTipCheckoutAction", () => {
         client: StartEpisodeCheckoutRequest_Client.WEB,
         episodeId,
         locale: "en",
+        provider: "",
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("Send the tip to the provider the reader chose", async () => {
+    mockStartTipCheckout.mockResolvedValueOnce({
+      checkoutUrl: "https://pay.jp.test/tip",
+    });
+    const form = tipForm();
+    form.set("provider", "payjp");
+
+    const { startTipCheckoutAction } = await import("./actions");
+
+    await expect(startTipCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:https://pay.jp.test/tip"
+    );
+    expect(mockStartTipCheckout.mock.calls[0]?.[0]).toMatchObject({
+      provider: "payjp",
+    });
   });
 
   it.each(["", "0", "-100", "12.5", "abc"])(
