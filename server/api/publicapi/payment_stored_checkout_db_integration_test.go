@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
@@ -128,6 +129,11 @@ func TestDBAStoredCheckoutIsFoundAgainByItsNotification(t *testing.T) {
 	if got := env.count(t, "SELECT count(*) FROM payment_checkouts WHERE tenant_id = $1"); got != 1 {
 		t.Fatalf("stored checkouts = %d, want 1", got)
 	}
+	// The retry may be what makes the provider's checkout, so it is the
+	// latest start that bounds when the checkout can be paid.
+	if got := env.count(t, "SELECT count(*) FROM payment_checkouts WHERE tenant_id = $1 AND last_started_at > created_at"); got != 1 {
+		t.Fatalf("stored checkouts started again since = %d, want 1", got)
+	}
 
 	payload := env.fixture.API().Pay(env.credentials, checkoutID, "payment_stored", 500, "JPY", false, time.Now())
 	for delivery := range 2 {
@@ -209,11 +215,16 @@ func TestDBARefundFollowUpRecordsWhatTheProviderSettled(t *testing.T) {
 	if _, err := env.fixture.Provider().Refund(t.Context(), env.credentials, paymentprovider.RefundRequest{PaymentID: "payment_followed", IdempotencyKey: "refund_followed"}); err != nil {
 		t.Fatalf("Refund: %v", err)
 	}
-	if err := outbox.QueuePaymentRefundFollow(t.Context(), dbmodels.New(env.pg.DB), env.tenant.ID, readbacktest.ID, "payment_followed", "refund_followed"); err != nil {
+	if err := outbox.QueuePaymentRefundFollow(t.Context(), dbmodels.New(env.pg.DB), env.tenant.ID, readbacktest.ID, "payment_followed"); err != nil {
 		t.Fatalf("QueuePaymentRefundFollow: %v", err)
 	}
-	event, err := dbmodels.New(env.pg.DB).GetOutboxEventByIdempotencyKey(t.Context(),
-		outbox.EventTypePaymentRefundFollow+":"+env.tenant.ID.String()+":"+readbacktest.ID+":payment_followed:refund_followed")
+	var eventID uuid.UUID
+	if err := env.pg.DB.QueryRowContext(t.Context(),
+		`SELECT id FROM outbox_events WHERE tenant_id = $1 AND event_type = $2`, env.tenant.ID, outbox.EventTypePaymentRefundFollow,
+	).Scan(&eventID); err != nil {
+		t.Fatalf("find the follow-up: %v", err)
+	}
+	event, err := dbmodels.New(env.pg.DB).GetOutboxEvent(t.Context(), eventID)
 	if err != nil {
 		t.Fatalf("read the follow-up: %v", err)
 	}

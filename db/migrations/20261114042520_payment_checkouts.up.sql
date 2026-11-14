@@ -18,6 +18,11 @@ CREATE TABLE payment_checkouts (
     -- earlier release passes over, and one it lacks reads as zero.
     purchase jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    -- When a request last started the checkout. A retry names the same
+    -- checkout, and the provider may make it only then, after a first attempt
+    -- that never reached it, so the checkout can be paid from created_at up to
+    -- the provider's checkout lifetime after this.
+    last_started_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT payment_checkouts_purchase_object_check CHECK ((jsonb_typeof(purchase) = 'object'::text))
 );
 
@@ -29,9 +34,10 @@ ALTER TABLE ONLY payment_checkouts
 ALTER TABLE ONLY payment_checkouts
     ADD CONSTRAINT payment_checkouts_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
--- INDEX: idx_payment_checkouts_tenant_provider_created_at
--- Reconciliation lists a provider's checkouts of a period.
-CREATE INDEX idx_payment_checkouts_tenant_provider_created_at ON payment_checkouts USING btree (tenant_id, provider, created_at);
+-- INDEX: idx_payment_checkouts_tenant_provider_last_started_at
+-- Reconciliation lists the checkouts of a provider that could have been paid
+-- in a period.
+CREATE INDEX idx_payment_checkouts_tenant_provider_last_started_at ON payment_checkouts USING btree (tenant_id, provider, last_started_at);
 
 -- ROW SECURITY: payment_checkouts
 ALTER TABLE payment_checkouts ENABLE ROW LEVEL SECURITY;

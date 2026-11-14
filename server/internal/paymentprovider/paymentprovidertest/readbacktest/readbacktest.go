@@ -157,6 +157,10 @@ func (p *Provider) Refund(_ context.Context, credentials paymentprovider.Credent
 	if payment == nil {
 		return false, fmt.Errorf("%w: no such payment", paymentprovider.ErrRefundRefused)
 	}
+	if payment.breakNext {
+		payment.breakNext = false
+		return false, errors.New("readbacktest: the API did not answer")
+	}
 	if made := payment.refundBy(req.IdempotencyKey, req.Amount > 0 || account.remembers(req.IdempotencyKey)); made != nil {
 		if made.status == refundFailed {
 			return false, fmt.Errorf("%w: the refund failed", paymentprovider.ErrRefundRefused)
@@ -262,8 +266,9 @@ type payment struct {
 	// changed is the refund that changed last, which the refunds'
 	// notification reports on.
 	changed *refund
-	// failNext and holdNext make the next refund a failed or a pending one.
-	failNext, holdNext bool
+	// failNext and holdNext make the next refund a failed or a pending one,
+	// and breakNext the next request for one fail before the fake makes it.
+	failNext, holdNext, breakNext bool
 }
 
 type refund struct {
@@ -395,6 +400,17 @@ func (a *API) HoldNextRefund(credentials paymentprovider.Credentials, paymentID 
 	defer a.mu.Unlock()
 	if p := a.account(credentials).payments[paymentID]; p != nil {
 		p.holdNext = true
+	}
+}
+
+// BreakNextRefund makes the next request for a refund of the payment fail
+// before the fake makes any, as a request cut off on its way to a provider
+// does.
+func (a *API) BreakNextRefund(credentials paymentprovider.Credentials, paymentID string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if p := a.account(credentials).payments[paymentID]; p != nil {
+		p.breakNext = true
 	}
 }
 

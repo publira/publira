@@ -534,10 +534,10 @@ type Provider interface {
 	//
 	// checkoutIDs are, for a provider that declares
 	// [Declaration.StoredCheckouts], the [CheckoutRequest.CheckoutID] of every
-	// checkout the server started through it under the credentials from
-	// [Declaration.CheckoutLifetime] before from up to to, so that a provider
-	// whose API lists no payments reads the payment of each. Every other
-	// provider is handed none.
+	// checkout the server started, or started again for a retried request,
+	// through it under the credentials from [Declaration.CheckoutLifetime]
+	// before from up to to, so that a provider whose API lists no payments
+	// reads the payment of each. Every other provider is handed none.
 	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time, checkoutIDs []string) ([]Transaction, error)
 }
 

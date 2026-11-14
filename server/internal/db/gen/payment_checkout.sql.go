@@ -39,7 +39,7 @@ SELECT checkout_id
 FROM payment_checkouts
 WHERE tenant_id = $1
     AND provider = $2
-    AND created_at >= $3
+    AND last_started_at >= $3
     AND created_at < $4
 ORDER BY created_at, checkout_id
 `
@@ -47,16 +47,19 @@ ORDER BY created_at, checkout_id
 type ListPaymentCheckoutIDsParams struct {
 	TenantID    uuid.UUID `json:"tenant_id"`
 	Provider    string    `json:"provider"`
-	CreatedFrom time.Time `json:"created_from"`
-	CreatedTo   time.Time `json:"created_to"`
+	StartedFrom time.Time `json:"started_from"`
+	StartedTo   time.Time `json:"started_to"`
 }
 
+// The checkouts first started before started_to and last started at or after
+// started_from, which are every checkout started in between, however many
+// times a request started it.
 func (q *Queries) ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentCheckoutIDsParams) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, ListPaymentCheckoutIDs,
 		arg.TenantID,
 		arg.Provider,
-		arg.CreatedFrom,
-		arg.CreatedTo,
+		arg.StartedFrom,
+		arg.StartedTo,
 	)
 	if err != nil {
 		return nil, err
@@ -92,7 +95,8 @@ VALUES (
     $3,
     $4
 )
-ON CONFLICT (tenant_id, provider, checkout_id) DO NOTHING
+ON CONFLICT (tenant_id, provider, checkout_id) DO UPDATE
+SET last_started_at = now()
 `
 
 type RecordPaymentCheckoutParams struct {
@@ -103,7 +107,7 @@ type RecordPaymentCheckoutParams struct {
 }
 
 // A retried request names the same checkout with the same purchase, so the
-// row already there is kept.
+// row already there is kept, and only when it was last started moves.
 func (q *Queries) RecordPaymentCheckout(ctx context.Context, arg RecordPaymentCheckoutParams) error {
 	_, err := q.db.ExecContext(ctx, RecordPaymentCheckout,
 		arg.TenantID,

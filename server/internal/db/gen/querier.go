@@ -2881,6 +2881,9 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]ListPagesForTenantAscRow, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]ListPagesForTenantDescRow, error)
+	// The checkouts first started before started_to and last started at or after
+	// started_from, which are every checkout started in between, however many
+	// times a request started it.
 	ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentCheckoutIDsParams) ([]string, error)
 	// Admin ListPaymentReconciliationFindings is (occurred_at, id) ASC, the order
 	// the lines happened in. Forward uses the ASC query; backward uses DESC, and
@@ -4604,7 +4607,7 @@ type Querier interface {
 	// resume from. Only the run that holds the claim may move it.
 	RecordOutboxEventProgress(ctx context.Context, arg RecordOutboxEventProgressParams) (int64, error)
 	// A retried request names the same checkout with the same purchase, so the
-	// row already there is kept.
+	// row already there is kept, and only when it was last started moves.
 	RecordPaymentCheckout(ctx context.Context, arg RecordPaymentCheckoutParams) error
 	// Records why the build of a revision failed, unless a save has moved the
 	// revision on since, which leaves the failure about nothing.

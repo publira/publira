@@ -27,16 +27,21 @@ type PaymentRefundFollowPayload struct {
 }
 
 // QueuePaymentRefundFollow queues the reading back of the refunds of the
-// payment paymentID names, after the refund requested under refundKey. Each
-// refund is followed once: queuing the same refund again, as a retried
-// request does, does nothing, while another refund of the payment is followed
-// again.
-func QueuePaymentRefundFollow(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUID, providerID, paymentID, refundKey string) error {
+// payment paymentID names, after a request for a refund of it. Every request
+// queues a follow-up of its own, a retry of the same refund included: one
+// that read the payment before the refund was made, as a request that failed
+// before reaching the provider leaves it, has finished, and only the retry's
+// follow-up reads what the retry made.
+func QueuePaymentRefundFollow(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUID, providerID, paymentID string) error {
+	requestID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate the follow-up id: %w", err)
+	}
 	return insertTenantEvent(ctx, queries, tenantID, EventTypePaymentRefundFollow, PaymentRefundFollowPayload{
 		TenantID:  tenantID.String(),
 		Provider:  providerID,
 		PaymentID: paymentID,
-	}, EventTypePaymentRefundFollow+":"+tenantID.String()+":"+providerID+":"+paymentID+":"+refundKey)
+	}, EventTypePaymentRefundFollow+":"+tenantID.String()+":"+requestID.String())
 }
 
 // DecodePaymentRefundFollow reads the payload of event, answering a

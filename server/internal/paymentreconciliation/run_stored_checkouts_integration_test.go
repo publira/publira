@@ -48,16 +48,21 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	reader := pg.SeedEndUser(t, tenant.ID, "RECONSTUSR", "reader@reconcile-stored.example.com", "Reader")
 
 	march := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	// started writes down a checkout started at at, as the server does, and
-	// paid has the provider take its payment at paidAt.
-	started := func(checkoutID string, at time.Time) {
+	// startedAgain writes down a checkout first started at first and last at
+	// last, as the server does for a request and its retries, started one
+	// started once, and paid has the provider take its payment at paidAt.
+	startedAgain := func(checkoutID string, first, last time.Time) {
 		t.Helper()
 		if _, err := pg.DB.ExecContext(ctx, `
-			INSERT INTO payment_checkouts (tenant_id, provider, checkout_id, purchase, created_at)
-			VALUES ($1, $2, $3, '{}', $4)
-		`, tenant.ID, readbacktest.ID, checkoutID, at); err != nil {
+			INSERT INTO payment_checkouts (tenant_id, provider, checkout_id, purchase, created_at, last_started_at)
+			VALUES ($1, $2, $3, '{}', $4, $5)
+		`, tenant.ID, readbacktest.ID, checkoutID, first, last); err != nil {
 			t.Fatalf("store a checkout: %v", err)
 		}
+	}
+	started := func(checkoutID string, at time.Time) {
+		t.Helper()
+		startedAgain(checkoutID, at, at)
 	}
 	paid := func(checkoutID, paymentID string, paidAt time.Time) {
 		fixture.API().Pay(credentials, checkoutID, paymentID, 500, "JPY", false, paidAt)
@@ -74,7 +79,9 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	}
 
 	// A checkout paid and recorded, one paid with no notification, one
-	// started just before the month and paid in it, and one never paid.
+	// started just before the month and paid in it, one first started long
+	// before the month and started again, and made, only in it, and one never
+	// paid.
 	started("checkout_recorded", march.Add(5*24*time.Hour))
 	paid("checkout_recorded", "payment_recorded", march.Add(5*24*time.Hour+time.Minute))
 	bought("checkout_recorded", "payment_recorded", march.Add(5*24*time.Hour+2*time.Minute))
@@ -82,6 +89,8 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	paid("checkout_lost", "payment_lost", march.Add(6*24*time.Hour+time.Minute))
 	started("checkout_overnight", march.Add(-paymentreconciliation.Margin-readbacktest.CheckoutLifetime/2))
 	paid("checkout_overnight", "payment_overnight", march.Add(time.Minute))
+	startedAgain("checkout_retried", march.AddDate(0, 0, -20), march.Add(8*24*time.Hour))
+	paid("checkout_retried", "payment_retried", march.Add(8*24*time.Hour+time.Minute))
 	started("checkout_unpaid", march.Add(7*24*time.Hour))
 
 	runID := uuid.Must(uuid.NewV7())
@@ -125,6 +134,7 @@ func TestDBReconciliationReadsThePaymentOfEveryStoredCheckout(t *testing.T) {
 	want := []string{
 		paymentreconciliation.KindRecordUnmatched + " payment_overnight",
 		paymentreconciliation.KindRecordUnmatched + " payment_lost",
+		paymentreconciliation.KindRecordUnmatched + " payment_retried",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("findings = %v, want %v", got, want)

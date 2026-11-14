@@ -233,8 +233,8 @@ func sourceFor(ctx context.Context, deps Deps, queries *dbmodels.Queries, run db
 				return queries.ListPaymentCheckoutIDs(ctx, dbmodels.ListPaymentCheckoutIDsParams{
 					TenantID:    run.TenantID,
 					Provider:    run.Provider.String,
-					CreatedFrom: from.Add(-declaration.CheckoutLifetime),
-					CreatedTo:   to,
+					StartedFrom: from.Add(-declaration.CheckoutLifetime),
+					StartedTo:   to,
 				})
 			}
 		}

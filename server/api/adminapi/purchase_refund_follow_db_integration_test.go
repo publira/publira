@@ -67,21 +67,31 @@ func (f *refundFollowFixture) followUps(t *testing.T) int {
 	return f.env.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2", f.admin.Tenant.ID, outbox.EventTypePaymentRefundFollow)
 }
 
-// A refund staff ask of a provider that notifies none is followed up once per
-// attempt, so the purchase hears what became of it.
-func TestDBRefundPurchaseQueuesTheFollowUpOfAnUnnotifiedRefund(t *testing.T) {
+// A refund staff ask of a provider that notifies none is followed up, so the
+// purchase hears what became of it, and so is its retry after a request that
+// failed before the provider made anything: the first follow-up finds nothing
+// to record and is done, and only the retry's reads what the retry made.
+func TestDBRefundPurchaseQueuesTheFollowUpOfEveryRequestForAnUnnotifiedRefund(t *testing.T) {
 	t.Parallel()
 
 	f := newRefundFollowFixture(t)
 	ctx := testutil.WithBearer(context.Background(), f.admin.token())
 	request := &publiraadminv1.RefundPurchaseRequest{Tenant: f.admin.tenantContext(), PurchaseId: f.purchaseID.String(), Reason: "The reader bought the episode twice."}
-	for range 2 {
-		if _, err := f.client().RefundPurchase(ctx, request); err != nil {
-			t.Fatalf("RefundPurchase: %v", err)
-		}
+	f.fake.API().BreakNextRefund(f.fake.Credentials(), "payment_follow")
+	if _, err := f.client().RefundPurchase(ctx, request); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("RefundPurchase the provider did not answer: error = %v, want Unavailable", err)
 	}
 	if got := f.followUps(t); got != 1 {
-		t.Fatalf("follow-ups = %d, want 1", got)
+		t.Fatalf("follow-ups after the failed request = %d, want 1", got)
+	}
+	if _, err := f.client().RefundPurchase(ctx, request); err != nil {
+		t.Fatalf("RefundPurchase: %v", err)
+	}
+	if got := f.followUps(t); got != 2 {
+		t.Fatalf("follow-ups after the retry = %d, want 2", got)
+	}
+	if got := f.fake.RefundedTotal(t, f.fake.Credentials(), "payment_follow"); got != 500 {
+		t.Fatalf("refunded total = %d, want 500", got)
 	}
 }
 
