@@ -493,6 +493,46 @@ test.describe("platform operator management", () => {
     ).toHaveAttribute("href", `/tenants/${SEED_TENANT.publicId}`);
   });
 
+  test("finds a reader by email address however it is spelled, and combines it with the status filter", async ({
+    page,
+  }) => {
+    applyScenarioSql(NOTIFICATION_INBOX_SCENARIO);
+    await revalidatePlatformTags([platformEndUsersTag]);
+
+    await page.goto(platformUrl("/users"));
+    // A capital and a +tag the account was not signed up with: the server
+    // compares addresses in their canonical form, so neither hides it.
+    await page
+      .getByRole("textbox", { exact: true, name: "Email address" })
+      .fill("Notify-Member+books@Example.com");
+    await page.getByRole("button", { name: "Filter" }).click();
+
+    await expect(page).toHaveURL(
+      /[?&]email=Notify-Member%2Bbooks%40Example\.com/u
+    );
+    await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
+    await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
+
+    // The reader is active, so narrowing the same address to suspended
+    // accounts leaves nothing, and the table says the filters did it.
+    const email = encodeURIComponent(NOTIFICATION_INBOX_MEMBER.email);
+    await page.goto(platformUrl(`/users?email=${email}&status=suspended`));
+    await expect(
+      page.getByText("No users match these filters.", { exact: true })
+    ).toBeVisible();
+    await page.goto(platformUrl(`/users?email=${email}&status=active`));
+    await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
+
+    await page.goto(
+      platformUrl(`/users?email=${encodeURIComponent("nobody@example.com")}`)
+    );
+    await expect(
+      page.getByText("No account on any tenant has this email address.", {
+        exact: true,
+      })
+    ).toBeVisible();
+  });
+
   test("lists a tenant's members from the tenant detail", async ({ page }) => {
     await page.goto(platformUrl(`/tenants/${SEED_TENANT.publicId}`));
     await page.getByRole("link", { name: "Members" }).click();

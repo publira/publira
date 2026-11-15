@@ -38,6 +38,8 @@ import type {
   SearchPlatformTenantFilterOptionsResult,
 } from "#lib/users";
 
+import { emptyListCause } from "./_lib/empty-list";
+import type { EmptyListCause } from "./_lib/empty-list";
 import { buildUsersPath, parseUsersFilters } from "./_lib/search-params";
 import type { UsersFilters } from "./_lib/search-params";
 import { resolveTenantFilter, resolvedTenantId } from "./_lib/tenant-filter";
@@ -53,6 +55,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 const UsersTableSkeleton = () => (
   <div className="grid gap-4">
     <div className="flex flex-wrap gap-3">
+      <Skeleton className="h-10 w-64" />
       <Skeleton className="h-10 w-44" />
       <Skeleton className="h-10 w-56" />
       <Skeleton className="h-10 w-44" />
@@ -141,15 +144,19 @@ const buildSummaryText = async (
   return t("platform.users.showing", { count: String(usersLength) });
 };
 
+const emptyListMessageKeys = {
+  email: "platform.users.empty_email",
+  filtered: "platform.users.empty_filtered",
+  none: "platform.users.empty",
+} as const satisfies Record<EmptyListCause, string>;
+
 const buildEmptyMessage = async (
-  hasFilter: boolean,
+  cause: EmptyListCause,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return hasFilter
-    ? t("platform.users.empty_filtered")
-    : t("platform.users.empty");
+  return t(emptyListMessageKeys[cause]);
 };
 
 const buildTenantFilterItems = ({
@@ -246,8 +253,17 @@ const UsersFilterForm = async ({
       <Form
         action="/users"
         className="flex flex-wrap gap-3"
-        key={`${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
+        key={`${filters.email}::${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
       >
+        <Input
+          aria-label={t("platform.common.email")}
+          autoComplete="off"
+          className="w-64"
+          defaultValue={filters.email}
+          name="email"
+          placeholder={t("platform.users.search_email_placeholder")}
+          type="email"
+        />
         <Select
           className="w-44"
           defaultValue={filters.status || undefined}
@@ -354,14 +370,14 @@ const EndUserStatusCell = async ({
 }) => await getEndUserStatusLabel(status, locale);
 
 const UsersTableSection = async ({
-  hasFilter,
+  emptyCause,
   hideEmptyMessage = false,
   locale,
   result,
   timeZone,
   users,
 }: {
-  hasFilter: boolean;
+  emptyCause: EmptyListCause;
   hideEmptyMessage?: boolean;
   locale: Locale;
   result: ListPlatformEndUsersResult;
@@ -401,7 +417,7 @@ const UsersTableSection = async ({
         {result.ok && users.length === 0 && !hideEmptyMessage ? (
           <Table.Row>
             <Table.Cell className="text-muted-foreground" colSpan={5}>
-              {await buildEmptyMessage(hasFilter, locale)}
+              {await buildEmptyMessage(emptyCause, locale)}
             </Table.Cell>
           </Table.Row>
         ) : null}
@@ -516,6 +532,7 @@ const UsersContent = async ({
     : await listPlatformEndUsers({
         createdAfter: createdRangeStart(filters.createdFrom, timeZone),
         createdBefore: createdRangeEnd(filters.createdTo, timeZone),
+        email: filters.email || undefined,
         limit: filters.limit,
         status: filters.status || undefined,
         tenantId: tenantId || undefined,
@@ -524,13 +541,7 @@ const UsersContent = async ({
 
   const users = result.ok ? result.users : [];
 
-  const hasFilter = Boolean(
-    filters.status ||
-    tenantId ||
-    filters.tenantQuery ||
-    filters.createdFrom ||
-    filters.createdTo
-  );
+  const emptyCause = emptyListCause(filters, tenantId);
 
   const { nextHref, previousHref } = buildUsersPageHrefs(
     listFilters,
@@ -542,7 +553,7 @@ const UsersContent = async ({
     <div className="grid gap-4">
       <UsersFilterForm
         filters={filters}
-        hasFilter={hasFilter}
+        hasFilter={emptyCause !== "none"}
         tenantId={tenantId}
         tenantItems={tenantItems}
         tenantMessages={tenantMessages}
@@ -564,7 +575,7 @@ const UsersContent = async ({
       )}
 
       <UsersTableSection
-        hasFilter={hasFilter}
+        emptyCause={emptyCause}
         hideEmptyMessage={pendingTenantPick}
         locale={locale}
         result={result}

@@ -19,6 +19,7 @@ const statusValues = ["active", "suspended"] as const;
 interface ParseUsersFiltersInput {
   created_from?: SearchParamValue;
   created_to?: SearchParamValue;
+  email?: SearchParamValue;
   limit?: SearchParamValue;
   status?: SearchParamValue;
   tenant_id?: SearchParamValue;
@@ -29,6 +30,7 @@ interface ParseUsersFiltersInput {
 export interface UsersFilters {
   createdFrom: string;
   createdTo: string;
+  email: string;
   limit: number;
   status: string;
   tenantId: string;
@@ -44,6 +46,7 @@ export interface UsersFilters {
 const usersFiltersSchema = z.object({
   created_from: searchParamDate({ fallback: "" }),
   created_to: searchParamDate({ fallback: "" }),
+  email: searchParamString({ fallback: "" }),
   limit: listLimitSearchParam,
   status: searchParamEnum(statusValues, { fallback: "" }),
   tenant_id: searchParamString({ fallback: "" }),
@@ -59,6 +62,7 @@ export const parseUsersFilters = (
   return {
     createdFrom: parsed.created_from,
     createdTo: parsed.created_to,
+    email: parsed.email,
     limit: Number(parsed.limit),
     status: parsed.status,
     tenantId: parsed.tenant_id,
@@ -70,6 +74,7 @@ export const parseUsersFilters = (
 export const buildUsersPath = ({
   createdFrom,
   createdTo,
+  email,
   limit,
   status,
   tenantId,
@@ -77,6 +82,10 @@ export const buildUsersPath = ({
   token,
 }: UsersFilters): string => {
   const search = new URLSearchParams();
+
+  if (email) {
+    search.set("email", email);
+  }
 
   if (status) {
     search.set("status", status);

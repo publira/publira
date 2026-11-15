@@ -8,6 +8,7 @@ describe("parseUsersFilters", () => {
       parseUsersFilters({
         created_from: " 2026-03-01 ",
         created_to: "2026-03-02",
+        email: " John+news@Example.com ",
         limit: "10",
         status: " active ",
         tenant_id: " tenant_a ",
@@ -17,6 +18,7 @@ describe("parseUsersFilters", () => {
     ).toEqual({
       createdFrom: "2026-03-01",
       createdTo: "2026-03-02",
+      email: "John+news@Example.com",
       limit: 10,
       status: "active",
       tenantId: "tenant_a",
@@ -30,6 +32,7 @@ describe("parseUsersFilters", () => {
       parseUsersFilters({
         created_from: "2026-02-30",
         created_to: ["2026-03-01", "2026-03-02"],
+        email: ["a@example.com", "b@example.com"],
         limit: "7",
         status: "unknown",
         tenant_id: ["tenant_a", "tenant_b"],
@@ -39,6 +42,7 @@ describe("parseUsersFilters", () => {
     ).toEqual({
       createdFrom: "",
       createdTo: "",
+      email: "",
       limit: 20,
       status: "",
       tenantId: "",
@@ -54,6 +58,7 @@ describe("buildUsersPath", () => {
       buildUsersPath({
         createdFrom: "2026-03-01",
         createdTo: "2026-03-02",
+        email: "reader@example.com",
         limit: 10,
         status: "suspended",
         tenantId: "tenant_a",
@@ -61,7 +66,7 @@ describe("buildUsersPath", () => {
         token: "next-page",
       })
     ).toBe(
-      "/users?status=suspended&tenant_id=tenant_a&tenant_q=Press&created_from=2026-03-01&created_to=2026-03-02&limit=10&token=next-page"
+      "/users?email=reader%40example.com&status=suspended&tenant_id=tenant_a&tenant_q=Press&created_from=2026-03-01&created_to=2026-03-02&limit=10&token=next-page"
     );
   });
 
@@ -70,6 +75,7 @@ describe("buildUsersPath", () => {
       buildUsersPath({
         createdFrom: "",
         createdTo: "",
+        email: "",
         limit: 20,
         status: "",
         tenantId: "",

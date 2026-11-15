@@ -41,6 +41,12 @@ export interface PlatformTenantFilterOption {
 export interface ListPlatformEndUsersInput {
   createdAfter?: string;
   createdBefore?: string;
+  /**
+   * An inbox to narrow to, on every tenant. Sent as typed apart from the
+   * surrounding whitespace: the server compares it in its canonical form, so
+   * this side does not lowercase it or drop a `+tag`.
+   */
+  email?: string;
   limit?: number;
   status?: string;
   tenantId?: string;
@@ -158,6 +164,7 @@ export const platformEndUsersCacheTag = "platform:users";
 interface ListPlatformEndUsersQuery {
   createdAfter: string;
   createdBefore: string;
+  email: string;
   limit: number;
   status: string;
   tenantPublicId: string;
@@ -218,6 +225,7 @@ export const listPlatformEndUsers = async (
   return listPlatformEndUsersForLocale(await getPlatformLocale(), {
     createdAfter: input.createdAfter ?? "",
     createdBefore: input.createdBefore ?? "",
+    email: input.email?.trim() ?? "",
     limit: Math.max(1, input.limit ?? 20),
     status: input.status ?? "",
     tenantPublicId: normalizeTenantId(input),

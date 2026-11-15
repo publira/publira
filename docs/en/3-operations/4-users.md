@@ -2,16 +2,18 @@
 title: Users
 description: Find a reader's account across every tenant, and suspend or delete it from the Platform Console.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-11-15
 ---
 
 **Users**, under **Governance** in the Platform Console's sidebar, lists the readers of every tenant in one place. It exists for what a single tenant cannot handle alone: a complaint or a legal request that reaches the operator rather than the publisher, or an account a tenant's administrators cannot reach. Day to day, each tenant's administrators look after their own readers from **Readers** in the tenant console. There is no `publiractl` equivalent.
 
 ## What the list shows
 
-Every account belongs to one tenant, so a person who reads on two tenants' sites appears twice, once for each. The list shows each account's **Name**, its **Tenant**, when it was **Registered**, and its **Status**, and narrows them by status, by tenant, and by registration date. It has no search by name or email address: find an account by narrowing to its tenant and the date it signed up.
+Every account belongs to one tenant, so a person who reads on two tenants' sites appears twice, once for each. The list shows each account's **Name**, its **Tenant**, when it was **Registered**, and its **Status**, and narrows them by email address, by status, by tenant, and by registration date.
 
-![The Users list narrowed to one tenant: the status, tenant search, tenant, registration date, and page size filters with Filter and Clear, and two readers, one suspended and one active, each with their tenant, registration date, and Details.](./users-list.png)
+An address entered in the **Email address** field finds every account that holds it, one row for each tenant the person signed up on. Capital letters and a `+tag` after the name part of the address make no difference, so `John+news@Example.com` finds the account signed up as `john@example.com`. The field takes a whole address, not part of one, and there is no search by name. When no tenant has an account with the address, the list says so. The other filters narrow what the address finds: choose a status as well to see only the account that is suspended, for example.
+
+![The Users list searched by one email address: the email address, status, tenant search, registration date, and page size filters with Filter and Clear, and two accounts of the same reader, one on each of two tenants, each with its registration date, status, and Details.](./users-list.png)
 
 The list holds readers only. An account that holds a role in a tenant's console is staff, and is managed from that tenant's **Members**, as [A tenant's staff](./3-tenant-staff.md) describes.
 

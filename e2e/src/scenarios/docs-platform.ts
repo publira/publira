@@ -18,8 +18,13 @@ export const DOCS_PLATFORM_SUSPENDED_TENANT = {
   publicId: "PdocTNNTAAA2",
 } as const;
 
-/** A reader of {@link DOCS_PLATFORM_TENANT} who can be suspended or deleted. */
+/**
+ * A reader of {@link DOCS_PLATFORM_TENANT} who can be suspended or deleted.
+ * The seed gives them a second account on
+ * {@link DOCS_PLATFORM_SUSPENDED_TENANT}, under this address with a `+tag`.
+ */
 export const DOCS_PLATFORM_READER = {
+  email: "docs-reader@example.com",
   name: "Docs Reader",
   publicId: "PdocMMBRAAA1",
 } as const;
