@@ -707,7 +707,10 @@ type Buyer struct {
 	RegisteredAt time.Time
 	// Payments counts the payments the reader has made the tenant in the
 	// checkout's currency, and AmountPaid is what they took, less what was
-	// refunded of them, in its minor unit. Test payments are left out.
+	// refunded of them, in its minor unit. Test payments are left out, and so
+	// are those made through the provider the checkout is for, which holds
+	// them itself: Paidy, the provider that judges a buyer by this, asks for
+	// the history without its own payments.
 	Payments   int64
 	AmountPaid int64
 	// LastPaidAt and LastAmount are when the latest of those payments was made

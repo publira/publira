@@ -39,6 +39,7 @@ stack_env() {
     -u PUBLIRA_E2E_EMAIL_RENDERER_PORT \
     -u PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT \
     -u PUBLIRA_E2E_STRIPE_PORT \
+    -u PUBLIRA_E2E_PAIDY_PORT \
     -u PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT \
     -u PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT \
     -u PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT \
@@ -134,6 +135,15 @@ elif [[ "${stripe_override_dir}" != *"-st8510-"* ]]; then
   fail "PUBLIRA_E2E_STRIPE_PORT override dir ${stripe_override_dir} does not encode st8510"
 else
   pass "PUBLIRA_E2E_STRIPE_PORT override isolates RUN_DIR"
+fi
+
+paidy_override_dir="$(compute_run_dir PUBLIRA_E2E_PAIDY_PORT=8810)"
+if [[ "${paidy_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_PAIDY_PORT override still uses ${paidy_override_dir}"
+elif [[ "${paidy_override_dir}" != *"-pd8810-"* ]]; then
+  fail "PUBLIRA_E2E_PAIDY_PORT override dir ${paidy_override_dir} does not encode pd8810"
+else
+  pass "PUBLIRA_E2E_PAIDY_PORT override isolates RUN_DIR"
 fi
 
 google_tag_gateway_override_dir="$(compute_run_dir PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT=8610)"

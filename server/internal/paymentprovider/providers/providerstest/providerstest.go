@@ -5,6 +5,8 @@ package providerstest
 import (
 	"testing"
 
+	"github.com/publira/publira/server/internal/paymentprovider/paidy"
+	"github.com/publira/publira/server/internal/paymentprovider/paidy/paidytest"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp/payjptest"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
@@ -15,6 +17,7 @@ import (
 )
 
 var fixtures = map[string]func(testing.TB) paymentprovidertest.Fixture{
+	paidy.ID:  func(t testing.TB) paymentprovidertest.Fixture { return paidytest.NewFixture(t) },
 	payjp.ID:  func(t testing.TB) paymentprovidertest.Fixture { return payjptest.NewFixture(t) },
 	paypay.ID: func(t testing.TB) paymentprovidertest.Fixture { return paypaytest.NewFixture(t) },
 	stripe.ID: func(t testing.TB) paymentprovidertest.Fixture { return stripetest.NewFixture(t) },

@@ -610,7 +610,7 @@ type Fixture struct {
 }
 
 var (
-	_ paymentprovidertest.Fixture                 = (*Fixture)(nil)
+	_ paymentprovidertest.FailingRefundFixture    = (*Fixture)(nil)
 	_ paymentprovidertest.TestCredentialsFixture  = (*Fixture)(nil)
 	_ paymentprovidertest.ExpiringCheckoutFixture = (*Fixture)(nil)
 )

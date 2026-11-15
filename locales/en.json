@@ -3933,6 +3933,10 @@
             "api_secret": "API secret",
             "merchant_id": "Merchant ID",
             "environment": "Environment"
+          },
+          "paidy": {
+            "public_key": "Public key",
+            "secret_key": "Secret key"
           }
         },
         "field_sources": {
@@ -3945,6 +3949,10 @@
             "api_secret": "The API secret issued with the API key in PayPay for Developers.",
             "merchant_id": "The merchant ID shown beside the API key in PayPay for Developers, which every request to PayPay names.",
             "environment": "Leave it empty for a production key, or enter sandbox for a key of PayPay's sandbox."
+          },
+          "paidy": {
+            "public_key": "The public key (pk_…) in the Paidy merchant dashboard, which the payment page opens Paidy Checkout with.",
+            "secret_key": "The secret key (sk_…) of the same mode as the public key, from the Paidy merchant dashboard. Test keys take test payments only."
           }
         },
         "public_description": "This value is handed to the reader's browser at checkout, so it is shown as stored.",
@@ -3952,6 +3960,7 @@
         "webhook_url_description": "Register this URL with {$provider} as where it sends payment notifications.",
         "webhook_url_payjp_description": "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused.",
         "webhook_url_paypay_description": "PayPay signs no notification, so each one is checked by reading its payment back from PayPay's API with the key above.",
+        "webhook_url_paidy_description": "Paidy signs no notification, so each one is checked by reading its payment back from Paidy's API with the secret key above. For test keys, register this URL as the test webhook URL, which is the only place Paidy sends the notifications of test payments.",
         "saved": "The payment settings were saved.",
         "load_failed": "Could not load the payment settings. Please try again later.",
         "save_failed": "Could not save the payment settings. Please try again later.",

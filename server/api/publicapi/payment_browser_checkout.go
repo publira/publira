@@ -123,7 +123,7 @@ func (s *apiServer) GetBrowserCheckout(
 	if err != nil {
 		return nil, err
 	}
-	buyer, err := s.checkoutBuyer(ctx, tenant.ID, purchase, keyvals...)
+	buyer, err := s.checkoutBuyer(ctx, tenant.ID, providerID, purchase, keyvals...)
 	if err != nil {
 		return nil, err
 	}
@@ -146,11 +146,12 @@ func (s *apiServer) GetBrowserCheckout(
 }
 
 // checkoutBuyer answers what the server holds of the reader purchase is for,
-// or failed_precondition once their account is gone, as nothing can then be
-// bought for it.
-func (s *apiServer) checkoutBuyer(ctx context.Context, tenantID uuid.UUID, purchase paymentprovider.Purchase, keyvals ...any) (paymentprovider.Buyer, error) {
+// as the provider providerID is told it, or failed_precondition once their
+// account is gone, as nothing can then be bought for it.
+func (s *apiServer) checkoutBuyer(ctx context.Context, tenantID uuid.UUID, providerID string, purchase paymentprovider.Purchase, keyvals ...any) (paymentprovider.Buyer, error) {
 	history, err := s.queriesFor(ctx).GetReaderPaymentHistory(ctx, dbmodels.GetReaderPaymentHistoryParams{
 		Currency: purchase.Currency,
+		Provider: providerID,
 		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
 		UserID:   purchase.ReaderID,
 	})

@@ -79,6 +79,18 @@ const PaymentCredentialName = ({
       );
     }
 
+    case "paidy.public_key": {
+      return (
+        <Message message="admin.settings.payment.fields.paidy.public_key" />
+      );
+    }
+
+    case "paidy.secret_key": {
+      return (
+        <Message message="admin.settings.payment.fields.paidy.secret_key" />
+      );
+    }
+
     default: {
       return field;
     }
@@ -154,6 +166,26 @@ const PaymentCredentialSource = ({
       );
     }
 
+    case "paidy.public_key": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paidy.public_key" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    case "paidy.secret_key": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.paidy.secret_key" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
     default: {
       return null;
     }
@@ -178,6 +210,16 @@ const PaymentWebhookNote = ({ provider }: { provider: string }) => {
         <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.payment.webhook_url_paypay_description" />
+          </Suspense>
+        </Field.Description>
+      );
+    }
+
+    case "paidy": {
+      return (
+        <Field.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.webhook_url_paidy_description" />
           </Suspense>
         </Field.Description>
       );

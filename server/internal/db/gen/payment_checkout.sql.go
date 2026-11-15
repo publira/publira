@@ -99,6 +99,7 @@ CROSS JOIN LATERAL (
         AND p.user_id = u.id
         AND p.currency = $1
         AND NOT p.is_test
+        AND p.provider IS DISTINCT FROM $2::text
 ) AS totals
 LEFT JOIN LATERAL (
     SELECT p.purchased_at, p.price_at_purchase
@@ -107,15 +108,17 @@ LEFT JOIN LATERAL (
         AND p.user_id = u.id
         AND p.currency = $1
         AND NOT p.is_test
+        AND p.provider IS DISTINCT FROM $2::text
     ORDER BY p.purchased_at DESC, p.id DESC
     LIMIT 1
 ) AS latest ON true
-WHERE u.tenant_id = $2
-    AND u.id = $3
+WHERE u.tenant_id = $3
+    AND u.id = $4
 `
 
 type GetReaderPaymentHistoryParams struct {
 	Currency string        `json:"currency"`
+	Provider string        `json:"provider"`
 	TenantID uuid.NullUUID `json:"tenant_id"`
 	UserID   uuid.UUID     `json:"user_id"`
 }
@@ -132,11 +135,17 @@ type GetReaderPaymentHistoryRow struct {
 // What the reader has paid the tenant in currency, as a provider that judges
 // a buyer by their history with the merchant is told it: how many payments,
 // their total less what was refunded of them, and the latest of them. Test
-// payments took no money, so they are left out. A reader who has paid
-// nothing has no latest payment, and its columns then hold the time they
-// registered and zero.
+// payments took no money, so they are left out, and so are the payments made
+// through the provider being told, which holds those itself and asks for the
+// rest. A reader who has paid nothing has no latest payment, and its columns
+// then hold the time they registered and zero.
 func (q *Queries) GetReaderPaymentHistory(ctx context.Context, arg GetReaderPaymentHistoryParams) (GetReaderPaymentHistoryRow, error) {
-	row := q.db.QueryRowContext(ctx, GetReaderPaymentHistory, arg.Currency, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, GetReaderPaymentHistory,
+		arg.Currency,
+		arg.Provider,
+		arg.TenantID,
+		arg.UserID,
+	)
 	var i GetReaderPaymentHistoryRow
 	err := row.Scan(
 		&i.PublicID,

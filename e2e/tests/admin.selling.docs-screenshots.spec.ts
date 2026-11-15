@@ -201,6 +201,7 @@ for (const locale of DOCS_LOCALES) {
         ["stripe-settings", "Stripe", "stripe"],
         ["payjp-settings", "PAY.JP", "payjp"],
         ["paypay-settings", "PayPay", "paypay"],
+        ["paidy-settings", "Paidy", "paidy"],
       ] as const) {
         test(`the payment settings, with ${provider} chosen`, async ({
           consoleSessions,

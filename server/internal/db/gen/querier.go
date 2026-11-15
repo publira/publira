@@ -1370,9 +1370,10 @@ type Querier interface {
 	// What the reader has paid the tenant in currency, as a provider that judges
 	// a buyer by their history with the merchant is told it: how many payments,
 	// their total less what was refunded of them, and the latest of them. Test
-	// payments took no money, so they are left out. A reader who has paid
-	// nothing has no latest payment, and its columns then hold the time they
-	// registered and zero.
+	// payments took no money, so they are left out, and so are the payments made
+	// through the provider being told, which holds those itself and asks for the
+	// rest. A reader who has paid nothing has no latest payment, and its columns
+	// then hold the time they registered and zero.
 	GetReaderPaymentHistory(ctx context.Context, arg GetReaderPaymentHistoryParams) (GetReaderPaymentHistoryRow, error)
 	// Reader reports on episode comments, and the open-report counter they keep on
 	// the comment they are about.

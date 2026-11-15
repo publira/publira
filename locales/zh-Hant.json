@@ -3933,6 +3933,10 @@
             "api_secret": "API Secret",
             "merchant_id": "商家ID",
             "environment": "環境"
+          },
+          "paidy": {
+            "public_key": "公鑰",
+            "secret_key": "密鑰"
           }
         },
         "field_sources": {
@@ -3945,6 +3949,10 @@
             "api_secret": "與API Key一起在PayPay for Developers中核發的API Secret。",
             "merchant_id": "PayPay for Developers中與API Key一同顯示的商家ID。傳送至PayPay的每個請求都會附上此ID。",
             "environment": "正式環境的Key請留空，PayPay沙盒的Key請輸入sandbox。"
+          },
+          "paidy": {
+            "public_key": "Paidy商家管理後台中的公鑰（pk_…）。付款頁面用它開啟Paidy Checkout。",
+            "secret_key": "Paidy商家管理後台中與公鑰同一模式的密鑰（sk_…）。測試密鑰只能接受測試付款。"
           }
         },
         "public_description": "此值會在結帳時交給讀者的瀏覽器，因此依儲存的原樣顯示。",
@@ -3952,6 +3960,7 @@
         "webhook_url_description": "請在{$provider}中將此URL設定為付款通知的接收位址。",
         "webhook_url_payjp_description": "PAY.JP傳送的每則通知都會附上上方儲存的Webhook權杖，未附上該權杖的通知將被拒絕。",
         "webhook_url_paypay_description": "PayPay的通知不附簽章，因此收到的每則通知都會用上方的Key從PayPay的API重新讀取付款加以確認。",
+        "webhook_url_paidy_description": "Paidy的通知不附簽章，因此收到的每則通知都會用上方的密鑰從Paidy的API重新讀取付款加以確認。儲存的是測試密鑰時，請將此URL設定為測試用的Webhook URL，Paidy只會將測試付款的通知傳送到那裡。",
         "saved": "付款設定已儲存。",
         "load_failed": "無法載入付款設定。請稍後再試。",
         "save_failed": "無法儲存付款設定。請稍後再試。",

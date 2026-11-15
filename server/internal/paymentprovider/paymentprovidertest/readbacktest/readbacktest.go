@@ -796,7 +796,7 @@ type Fixture struct {
 }
 
 var (
-	_ paymentprovidertest.Fixture                 = (*Fixture)(nil)
+	_ paymentprovidertest.FailingRefundFixture    = (*Fixture)(nil)
 	_ paymentprovidertest.ExpiringCheckoutFixture = (*Fixture)(nil)
 )
 
@@ -817,7 +817,10 @@ type FixtureByCredentials struct {
 	*Fixture
 }
 
-var _ paymentprovidertest.TestCredentialsFixture = FixtureByCredentials{}
+var (
+	_ paymentprovidertest.TestCredentialsFixture = FixtureByCredentials{}
+	_ paymentprovidertest.FailingRefundFixture   = FixtureByCredentials{}
+)
 
 // NewFixtureByCredentials answers a fixture over a fake API of its own whose
 // test mode is its sandbox's accounts.
@@ -835,7 +838,10 @@ type FixtureInBrowser struct {
 	*fixture
 }
 
-var _ paymentprovidertest.BrowserCheckoutFixture = FixtureInBrowser{}
+var (
+	_ paymentprovidertest.BrowserCheckoutFixture = FixtureInBrowser{}
+	_ paymentprovidertest.FailingRefundFixture   = FixtureInBrowser{}
+)
 
 // NewFixtureInBrowser answers a fixture over a fake API of its own whose
 // payments only its script makes.
