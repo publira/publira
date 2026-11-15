@@ -94,16 +94,38 @@ const openCheckout = async (
 };
 
 /**
+ * What the Action answered for the payment, or `null` when the call itself
+ * failed: the request never reached the server, or the server failed in a way
+ * it does not classify, which the Action throws. The payment is authorized
+ * either way, and may already be captured, so the form keeps it to hand over
+ * again rather than letting the throw replace the form and lose it.
+ */
+const handOver = async (
+  formData: FormData
+): Promise<ActionForm.Result | null> => {
+  try {
+    return await completeBrowserCheckoutAction(formData);
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Hands the server the payment, and sends the reader to the success URL once
  * it has been taken.
  */
 const complete = async (
   formData: FormData,
   paymentId: string,
-  successUrl: string
+  successUrl: string,
+  failureMessage: string
 ): Promise<BrowserCheckoutState> => {
   formData.set(PAYMENT_ID_FIELD, paymentId);
-  const completed = await completeBrowserCheckoutAction(formData);
+
+  const completed = (await handOver(formData)) ?? {
+    message: failureMessage,
+    ok: false,
+  };
 
   if (!completed.ok) {
     return { ...completed, paymentId };
@@ -139,7 +161,12 @@ const BrowserCheckoutFormRoot = ({
     formData: FormData
   ): Promise<BrowserCheckoutState> => {
     if (previousState?.paymentId) {
-      return complete(formData, previousState.paymentId, checkout.successUrl);
+      return complete(
+        formData,
+        previousState.paymentId,
+        checkout.successUrl,
+        t("storefront.pay.errors.complete_failed")
+      );
     }
 
     const parsed = buyerSchema(t).safeParse(
@@ -176,7 +203,12 @@ const BrowserCheckoutFormRoot = ({
       return { message: "", ok: true };
     }
 
-    return complete(formData, outcome.paymentId, checkout.successUrl);
+    return complete(
+      formData,
+      outcome.paymentId,
+      checkout.successUrl,
+      t("storefront.pay.errors.complete_failed")
+    );
   };
 
   return (

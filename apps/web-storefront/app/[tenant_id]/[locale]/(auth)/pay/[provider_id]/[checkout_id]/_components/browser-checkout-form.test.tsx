@@ -208,6 +208,35 @@ describe("BrowserCheckoutForm", () => {
     ]);
   });
 
+  it("keeps the payment to hand over again when the call to the server throws", async () => {
+    const launches = fakePaidy({ id: "pay_0001", status: "authorized" });
+    mockCompleteBrowserCheckoutAction
+      .mockRejectedValueOnce(new Error("An unexpected response was received"))
+      .mockResolvedValueOnce({ message: "", ok: true });
+    await renderForm();
+
+    fillIn();
+    await press("Continue");
+
+    expect(
+      await screen.findByText(
+        "Your payment could not be confirmed yet. Press the button to confirm it again."
+      )
+    ).toBeDefined();
+    expect(mockLeavePage).not.toHaveBeenCalled();
+
+    await press("Confirm again");
+
+    await waitFor(() => {
+      expect(mockLeavePage).toHaveBeenCalledWith(checkout.successUrl);
+    });
+    expect(launches).toHaveBeenCalledTimes(1);
+    expect(handedOver()).toStrictEqual([
+      { checkoutId, paymentId: "pay_0001", provider: "paidy" },
+      { checkoutId, paymentId: "pay_0001", provider: "paidy" },
+    ]);
+  });
+
   it("opens no checkout for a postal code that is not seven digits", async () => {
     const launches = fakePaidy({ id: "pay_0001", status: "authorized" });
     await renderForm();
