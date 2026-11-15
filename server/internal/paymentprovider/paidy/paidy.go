@@ -255,14 +255,7 @@ func daysBetween(since, now time.Time) int64 {
 // payment captured before is answered as it is, and so is one a capture that
 // answered no success has captured all the same.
 func (p *Provider) CompleteCheckout(ctx context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (paymentprovider.PurchaseCompleted, error) {
-	if !paymentIDPattern.MatchString(paymentID) {
-		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: %q is not a payment id", paymentprovider.ErrPaymentMismatch, paymentID)
-	}
-	held, err := p.readPayment(ctx, credentials, paymentID)
-	if err != nil {
-		return paymentprovider.PurchaseCompleted{}, completionError("read the payment", err)
-	}
-	amount, err := checkPayment(held, checkout)
+	held, amount, err := p.checkoutPayment(ctx, credentials, checkout, paymentID)
 	if err != nil {
 		return paymentprovider.PurchaseCompleted{}, err
 	}
@@ -286,13 +279,54 @@ func (p *Provider) CompleteCheckout(ctx context.Context, credentials paymentprov
 		}
 		held = &captured
 	}
+	return completion(checkout, held, amount), nil
+}
+
+// CapturedCheckout reads the payment paymentID names and answers it as
+// CompleteCheckout does once it is captured, and captures nothing: a payment
+// Paidy Checkout authorized and nothing captured is
+// [paymentprovider.ErrPaymentNotCaptured].
+func (p *Provider) CapturedCheckout(ctx context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (paymentprovider.PurchaseCompleted, error) {
+	held, amount, err := p.checkoutPayment(ctx, credentials, checkout, paymentID)
+	if err != nil {
+		return paymentprovider.PurchaseCompleted{}, err
+	}
+	if held.captured() == nil {
+		if held.status() != statusAuthorized {
+			return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment is %s and was never captured", paymentprovider.ErrPaymentMismatch, held.Status)
+		}
+		return paymentprovider.PurchaseCompleted{}, paymentprovider.ErrPaymentNotCaptured
+	}
+	return completion(checkout, held, amount), nil
+}
+
+// checkoutPayment reads the payment paymentID names, and answers it with its
+// amount when it is a payment of checkout.
+func (p *Provider) checkoutPayment(ctx context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (*payment, int64, error) {
+	if !paymentIDPattern.MatchString(paymentID) {
+		return nil, 0, fmt.Errorf("%w: %q is not a payment id", paymentprovider.ErrPaymentMismatch, paymentID)
+	}
+	held, err := p.readPayment(ctx, credentials, paymentID)
+	if err != nil {
+		return nil, 0, completionError("read the payment", err)
+	}
+	amount, err := checkPayment(held, checkout)
+	if err != nil {
+		return nil, 0, err
+	}
+	return held, amount, nil
+}
+
+// completion answers the captured payment held of amount as the completion
+// of checkout.
+func completion(checkout paymentprovider.StoredCheckout, held *payment, amount int64) paymentprovider.PurchaseCompleted {
 	return paymentprovider.PurchaseCompleted{
 		CheckoutID: checkout.CheckoutID,
 		PaymentID:  held.ID,
 		Purchase:   paymentprovider.Purchase{Currency: currency},
 		AmountPaid: int32(amount),
 		Test:       held.Test,
-	}, nil
+	}
 }
 
 // checkPayment answers the amount of held when it is a payment of checkout,

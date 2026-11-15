@@ -424,28 +424,59 @@ func (p ProviderInBrowser) CheckoutScript(credentials paymentprovider.Credential
 func (p ProviderInBrowser) CompleteCheckout(_ context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (paymentprovider.PurchaseCompleted, error) {
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
-	payment := p.api.lookup(credentials).payment(paymentID)
-	switch {
-	case payment == nil:
-		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: no such payment", paymentprovider.ErrPaymentMismatch)
-	case payment.status != paymentAuthorized && payment.status != paymentPaid:
-		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment is %s", paymentprovider.ErrPaymentMismatch, payment.status)
-	case payment.checkoutID != checkout.CheckoutID:
-		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment is of checkout %s", paymentprovider.ErrPaymentMismatch, payment.checkoutID)
-	case payment.amount != int64(checkout.Purchase.Price) || payment.currency != checkout.Purchase.Currency:
-		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment took %d %s", paymentprovider.ErrPaymentMismatch, payment.amount, payment.currency)
+	payment, err := p.api.checkoutPayment(credentials, checkout, paymentID)
+	if err != nil {
+		return paymentprovider.PurchaseCompleted{}, err
 	}
 	if payment.status == paymentAuthorized {
 		payment.status = paymentPaid
 		payment.captures++
 	}
+	return payment.completed(checkout), nil
+}
+
+// CapturedCheckout answers the payment paymentID of checkout once it is
+// captured, and captures nothing.
+func (p ProviderInBrowser) CapturedCheckout(_ context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (paymentprovider.PurchaseCompleted, error) {
+	p.api.mu.Lock()
+	defer p.api.mu.Unlock()
+	payment, err := p.api.checkoutPayment(credentials, checkout, paymentID)
+	if err != nil {
+		return paymentprovider.PurchaseCompleted{}, err
+	}
+	if payment.status == paymentAuthorized {
+		return paymentprovider.PurchaseCompleted{}, paymentprovider.ErrPaymentNotCaptured
+	}
+	return payment.completed(checkout), nil
+}
+
+// checkoutPayment answers the payment paymentID of checkout, authorized or
+// captured, that the account credentials name holds, or
+// [paymentprovider.ErrPaymentMismatch]. The caller holds a.mu.
+func (a *API) checkoutPayment(credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (*payment, error) {
+	payment := a.lookup(credentials).payment(paymentID)
+	switch {
+	case payment == nil:
+		return nil, fmt.Errorf("%w: no such payment", paymentprovider.ErrPaymentMismatch)
+	case payment.status != paymentAuthorized && payment.status != paymentPaid:
+		return nil, fmt.Errorf("%w: the payment is %s", paymentprovider.ErrPaymentMismatch, payment.status)
+	case payment.checkoutID != checkout.CheckoutID:
+		return nil, fmt.Errorf("%w: the payment is of checkout %s", paymentprovider.ErrPaymentMismatch, payment.checkoutID)
+	case payment.amount != int64(checkout.Purchase.Price) || payment.currency != checkout.Purchase.Currency:
+		return nil, fmt.Errorf("%w: the payment took %d %s", paymentprovider.ErrPaymentMismatch, payment.amount, payment.currency)
+	}
+	return payment, nil
+}
+
+// completed answers the captured payment as the completion of checkout.
+func (p *payment) completed(checkout paymentprovider.StoredCheckout) paymentprovider.PurchaseCompleted {
 	return paymentprovider.PurchaseCompleted{
 		CheckoutID: checkout.CheckoutID,
-		PaymentID:  payment.id,
-		Purchase:   paymentprovider.Purchase{Currency: payment.currency},
-		AmountPaid: int32(payment.amount),
-		Test:       payment.test,
-	}, nil
+		PaymentID:  p.id,
+		Purchase:   paymentprovider.Purchase{Currency: p.currency},
+		AmountPaid: int32(p.amount),
+		Test:       p.test,
+	}
 }
 
 // API is the fake's API: each api key sees only the payments made under it,

@@ -404,6 +404,33 @@ func runParseBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, curre
 		}
 	})
 
+	t.Run("a payment the script only authorized is not read as captured, and nothing captures it", func(t *testing.T) {
+		checkout := checkoutOf("browser_uncaptured")
+		fixture.CheckoutCompleted(t, credentials, checkout)
+		if _, err := browser.CapturedCheckout(t.Context(), credentials, storedCheckout(checkout), checkout.PaymentID); !errors.Is(err, paymentprovider.ErrPaymentNotCaptured) {
+			t.Fatalf("CapturedCheckout error = %v, want ErrPaymentNotCaptured", err)
+		}
+		if got := fixture.Captures(t, credentials, checkout.PaymentID); got != 0 {
+			t.Fatalf("captures = %d, want 0", got)
+		}
+	})
+
+	t.Run("a captured payment is read as the completion it was captured as, and is not captured again", func(t *testing.T) {
+		checkout := checkoutOf("browser_read_captured")
+		payload, headers := fixture.CheckoutCompleted(t, credentials, checkout)
+		completed := completedEvent(t, provider, credentials, checkout, payload, headers)
+		read, err := browser.CapturedCheckout(t.Context(), credentials, storedCheckout(checkout), checkout.PaymentID)
+		if err != nil {
+			t.Fatalf("CapturedCheckout: %v", err)
+		}
+		if read != completed {
+			t.Fatalf("read as %+v, want %+v", read, completed)
+		}
+		if got := fixture.Captures(t, credentials, checkout.PaymentID); got != 1 {
+			t.Fatalf("captures = %d, want 1", got)
+		}
+	})
+
 	t.Run("a payment that is not the checkout's completes nothing and captures nothing", func(t *testing.T) {
 		for name, differ := range map[string]func(*paymentprovider.StoredCheckout){
 			"another amount":   func(c *paymentprovider.StoredCheckout) { c.Purchase.Price = 400 },
@@ -415,6 +442,9 @@ func runParseBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, curre
 				fixture.CheckoutCompleted(t, credentials, checkout)
 				stored := storedCheckout(checkout)
 				differ(&stored)
+				if _, err := browser.CapturedCheckout(t.Context(), credentials, stored, checkout.PaymentID); !errors.Is(err, paymentprovider.ErrPaymentMismatch) {
+					t.Fatalf("CapturedCheckout error = %v, want ErrPaymentMismatch", err)
+				}
 				if _, err := browser.CompleteCheckout(t.Context(), credentials, stored, checkout.PaymentID); !errors.Is(err, paymentprovider.ErrPaymentMismatch) {
 					t.Fatalf("CompleteCheckout error = %v, want ErrPaymentMismatch", err)
 				}
@@ -428,6 +458,9 @@ func runParseBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, curre
 	t.Run("a payment the account does not hold completes nothing", func(t *testing.T) {
 		checkout := checkoutOf("browser_other_account")
 		fixture.CheckoutCompleted(t, fixture.OtherCredentials(), checkout)
+		if _, err := browser.CapturedCheckout(t.Context(), credentials, storedCheckout(checkout), checkout.PaymentID); !errors.Is(err, paymentprovider.ErrPaymentMismatch) {
+			t.Fatalf("CapturedCheckout error = %v, want ErrPaymentMismatch", err)
+		}
 		if _, err := browser.CompleteCheckout(t.Context(), credentials, storedCheckout(checkout), checkout.PaymentID); !errors.Is(err, paymentprovider.ErrPaymentMismatch) {
 			t.Fatalf("CompleteCheckout error = %v, want ErrPaymentMismatch", err)
 		}
@@ -1853,7 +1886,8 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 // run in the reader's browser: the storefront page reads the checkout the
 // server started, and the payment the script authorized completes it once,
 // whether the page or the provider's notification reports it first, and only
-// when it is the checkout's and the checkout's lifetime has not passed.
+// when it is the checkout's, captured either before the checkout's lifetime
+// passed or never.
 func runBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, newTenant func(*testing.T, paymentprovider.Credentials) Tenant, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
@@ -2001,6 +2035,29 @@ func runBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, newTenant 
 		}
 		if got := fixture.Captures(t, credentials, checkout.PaymentID); got != 0 {
 			t.Fatalf("captures = %d, want 0", got)
+		}
+	})
+
+	t.Run("a payment captured before the server kept it is recorded once however late it is completed", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		checkout, payload, headers := authorized(t, tenant, "browser_captured_unkept", nil)
+		// A completion captured the payment and failed before the server
+		// kept it, and the checkout's lifetime passed before a retry.
+		if _, err := provider.(paymentprovider.BrowserCheckout).CompleteCheckout(t.Context(), credentials, storedCheckout(checkout), checkout.PaymentID); err != nil {
+			t.Fatalf("capture the payment: %v", err)
+		}
+		tenant.LapseCheckout(t, checkout.CheckoutID)
+		if err := tenant.CompleteBrowserCheckout(t, checkout.CheckoutID, checkout.PaymentID); err != nil {
+			t.Fatalf("completed by the page: %v", err)
+		}
+		if err := tenant.Deliver(t, payload, headers); err != nil {
+			t.Fatalf("completed by the notification: %v", err)
+		}
+		if got := tenant.Purchases(t); got != 1 || !tenant.OpensEpisode(t) {
+			t.Fatalf("purchases = %d, opens the episode %v; want 1 that opens it", got, tenant.OpensEpisode(t))
+		}
+		if got := fixture.Captures(t, credentials, checkout.PaymentID); got != 1 {
+			t.Fatalf("captures = %d, want 1", got)
 		}
 	})
 

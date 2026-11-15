@@ -49,6 +49,11 @@ var ErrCheckoutExpired = errors.New("the checkout has expired")
 // stored checkout's. Nothing is captured for it.
 var ErrPaymentMismatch = errors.New("the payment is not one of the checkout's")
 
+// ErrPaymentNotCaptured reports, from [BrowserCheckout.CapturedCheckout], a
+// payment of the checkout that the provider's script authorized and nothing
+// has captured.
+var ErrPaymentNotCaptured = errors.New("the payment is not captured")
+
 // ErrRefundPending reports that a refund of a payment has been neither made
 // nor failed yet, so what a [RefundFollower]'s own notification of the
 // payment's refunds would say is not settled.
@@ -657,12 +662,12 @@ type Provider interface {
 // payment the script authorized back to the server, which completes the
 // checkout with it through CompleteCheckout while the checkout's
 // [Declaration.CheckoutLifetime] has not passed since it was last started,
-// and keeps the payment's id beside the stored checkout, handing it back to
-// [Provider.ListTransactions] as [StartedCheckout.PaymentID]. Its
-// [Provider.ParseNotification] answers [CheckoutAuthorized] for a payment its
-// script authorized, which the server completes the same way, and never
-// [PurchaseCompleted]: that is what CompleteCheckout answers once the payment
-// is captured.
+// and through CapturedCheckout once it has, and keeps the payment's id beside
+// the stored checkout, handing it back to [Provider.ListTransactions] as
+// [StartedCheckout.PaymentID]. Its [Provider.ParseNotification] answers
+// [CheckoutAuthorized] for a payment its script authorized, which the server
+// completes the same way, and never [PurchaseCompleted]: that is what
+// CompleteCheckout answers once the payment is captured.
 //
 // A checkout of such a provider is no checkout of the provider's until its
 // script makes a payment of it, so there is nothing to read back before the
@@ -682,6 +687,14 @@ type BrowserCheckout interface {
 	// currency, or checkout differs from checkout's. The event's ID is left
 	// empty, for the server to fill in with whatever reported the payment.
 	CompleteCheckout(ctx context.Context, credentials Credentials, checkout StoredCheckout, paymentID string) (PurchaseCompleted, error)
+	// CapturedCheckout answers the payment paymentID names as CompleteCheckout
+	// does once it is captured, and captures nothing: it answers
+	// [ErrPaymentNotCaptured] for a payment of checkout the script authorized
+	// and nothing captured, and [ErrPaymentMismatch] for every payment
+	// CompleteCheckout answers it for. The server reads a payment this way
+	// once the checkout's [Declaration.CheckoutLifetime] has passed, to record
+	// a payment that a completion captured before the server could keep it.
+	CapturedCheckout(ctx context.Context, credentials Credentials, checkout StoredCheckout, paymentID string) (PurchaseCompleted, error)
 }
 
 // StoredCheckout is a checkout the server wrote down before it started it
