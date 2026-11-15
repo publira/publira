@@ -55,8 +55,8 @@ const launchPaidy = () => {
 
   return paidy.launch({
     buyer,
-    credentials: { public_key: "pk_test_0001" },
     payload,
+    credentials: { public_key: "pk_test_0001" },
   });
 };
 

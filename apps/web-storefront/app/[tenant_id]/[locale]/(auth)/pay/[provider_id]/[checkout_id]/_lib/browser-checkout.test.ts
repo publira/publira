@@ -17,9 +17,9 @@ const read = async () => {
 
   return readBrowserCheckout({
     checkoutId,
+    tenantId,
     locale: "en",
     provider: "paidy",
-    tenantId,
   });
 };
 

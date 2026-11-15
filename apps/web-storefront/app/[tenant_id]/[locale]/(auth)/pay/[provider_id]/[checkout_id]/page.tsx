@@ -233,8 +233,8 @@ const PayForm = async ({ params }: Pick<PayPageProps, "params">) => {
   const read = await readBrowserCheckout({
     checkoutId,
     locale,
-    provider: providerId,
     tenantId,
+    provider: providerId,
   });
 
   if (read.kind === "missing") {
