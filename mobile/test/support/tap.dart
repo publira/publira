@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -144,6 +145,12 @@ Future<void> _scrollUntilMatched(
 }
 
 /// Whether [element] lies entirely inside every scrollable that holds it.
+///
+/// An edge may lie beyond its viewport's by [precisionErrorTolerance]. A row
+/// [Scrollable.ensureVisible] brings up against a viewport's edge lands there
+/// only as closely as the scroll offset and the transforms back to the screen
+/// add up in floating point, which can leave it outside by a fraction of a
+/// pixel too small to see, and no amount of scrolling moves it closer.
 bool _isWholeOnScreen(Element element) {
   final rect = _globalRect(element);
   if (rect == null) {
@@ -151,7 +158,9 @@ bool _isWholeOnScreen(Element element) {
   }
   var scrollable = Scrollable.maybeOf(element);
   while (scrollable != null) {
-    final bounds = _globalRect(scrollable.context);
+    final bounds = _globalRect(
+      scrollable.context,
+    )?.inflate(precisionErrorTolerance);
     if (bounds == null || bounds.intersect(rect) != rect) {
       return false;
     }

@@ -165,6 +165,47 @@ void main() {
     expect(tapped, isFalse);
   });
 
+  testWidgets('taps a chip scrolled up against the edge of the screen', (
+    tester,
+  ) async {
+    var tapped = false;
+    // Floating point puts the offset this chip is scrolled to a fraction of a
+    // pixel past it, which leaves the chip, shorter than the row around it,
+    // that far above the viewport's top edge.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('Screen')),
+          body: CustomScrollView(
+            slivers: [
+              const SliverToBoxAdapter(child: SizedBox(height: 249.35)),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: SizedBox(
+                      height: 34,
+                      child: TextButton(
+                        key: const ValueKey('chip'),
+                        onPressed: () => tapped = true,
+                        child: const Text('Chip'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 3000)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tapVisible(tester, find.byKey(const ValueKey('chip')));
+
+    expect(tapped, isTrue);
+  });
+
   group('a row scrolled out of view', () {
     final list = find.descendant(
       of: find.byKey(const ValueKey('long-list')),
