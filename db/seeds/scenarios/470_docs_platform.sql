@@ -21,7 +21,9 @@
 -- development seed (`adminpass`, `memberpass`, and `platformpass`).
 --   tenant    PdocTNNTAAA1 (platform-docs.localhost), PdocTNNTAAA2 (suspended)
 --   staff     PdocADMNAAA1, PdocEDTRAAA1, PdocADTRAAA1
---   readers   PdocMMBRAAA1 (active), PdocMMBRAAA2 (suspended)
+--   readers   PdocMMBRAAA1 (active), PdocMMBRAAA2 (suspended), and
+--             PdocMMBRAAA3 (active, on the suspended tenant, under
+--             PdocMMBRAAA1's address with a +tag)
 --   operators PdocPFUSAAA1 (Operator), PdocPFUSAAA2 (Auditor),
 --             PdocPFUSAAA3 (suspended Operator)
 --
@@ -152,6 +154,41 @@ SET tenant_id = EXCLUDED.tenant_id,
     created_at = EXCLUDED.created_at,
     email_verified_at = EXCLUDED.email_verified_at;
 
+-- The same reader signed up on the second tenant's site too, with a +tag on
+-- their address, so a search for docs-reader@example.com finds one account on
+-- each tenant.
+INSERT INTO users (
+    id,
+    tenant_id,
+    public_id,
+    email,
+    password_hash,
+    name,
+    status,
+    created_at,
+    email_verified_at
+)
+SELECT
+    '018f1090-0007-7000-8000-000000000016'::uuid,
+    t.id,
+    'PdocMMBRAAA3',
+    'docs-reader+comics@example.com',
+    '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+    'Docs Reader',
+    'active',
+    TIMESTAMPTZ '2026-02-12 08:00:00+00',
+    TIMESTAMPTZ '2026-02-12 08:05:00+00'
+FROM tenants t
+WHERE t.public_id = 'PdocTNNTAAA2'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    name = EXCLUDED.name,
+    status = EXCLUDED.status,
+    created_at = EXCLUDED.created_at,
+    email_verified_at = EXCLUDED.email_verified_at;
+
 -- A role is replaced rather than edited when it changes, so the staff's roles
 -- are written again from nothing.
 DELETE FROM tenant_user_roles
@@ -160,7 +197,8 @@ WHERE user_id IN (
         '018f1090-0007-7000-8000-000000000012'::uuid,
         '018f1090-0007-7000-8000-000000000013'::uuid,
         '018f1090-0007-7000-8000-000000000014'::uuid,
-        '018f1090-0007-7000-8000-000000000015'::uuid
+        '018f1090-0007-7000-8000-000000000015'::uuid,
+        '018f1090-0007-7000-8000-000000000016'::uuid
     );
 
 INSERT INTO tenant_user_roles (id, user_id, role, tenant_id, created_at)

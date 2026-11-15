@@ -234,7 +234,7 @@ for (const locale of DOCS_LOCALES) {
     });
 
     test.describe("users", () => {
-      test("the user list narrowed to one tenant", async ({
+      test("the user list narrowed to one email address", async ({
         consoleSessions,
         page,
       }) => {
@@ -242,11 +242,24 @@ for (const locale of DOCS_LOCALES) {
           page,
           consoleSessions,
           locale,
-          `/users?tenant_id=${DOCS_PLATFORM_TENANT.publicId}`
+          `/users?email=${encodeURIComponent(DOCS_PLATFORM_READER.email)}`
         );
 
+        // One row per tenant: the second account was signed up with a +tag,
+        // which the search does not tell apart from the bare address.
+        const rows = page.locator("main table tbody tr");
+        await expect(rows).toHaveCount(2);
         await expect(
-          page.getByText(DOCS_PLATFORM_SUSPENDED_READER.name, { exact: true })
+          rows.getByRole("link", {
+            exact: true,
+            name: DOCS_PLATFORM_TENANT.name,
+          })
+        ).toBeVisible();
+        await expect(
+          rows.getByRole("link", {
+            exact: true,
+            name: DOCS_PLATFORM_SUSPENDED_TENANT.name,
+          })
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {

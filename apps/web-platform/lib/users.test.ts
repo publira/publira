@@ -116,6 +116,7 @@ describe("listPlatformEndUsers", () => {
       {
         createdAfter: "",
         createdBefore: "",
+        email: "",
         limit: 20,
         status: "",
         tenantPublicId: "",
@@ -169,6 +170,7 @@ describe("listPlatformEndUsers", () => {
       {
         createdAfter: "",
         createdBefore: "",
+        email: "",
         limit: 20,
         status: "",
         tenantPublicId: "tenant_a",
@@ -206,10 +208,35 @@ describe("listPlatformEndUsers", () => {
       {
         createdAfter: "",
         createdBefore: "",
+        email: "",
         limit: 10,
         status: "",
         tenantPublicId: "",
         token: "page-2",
+        userIds: [],
+      },
+      serviceHeaders
+    );
+  });
+
+  it("sends the email filter as typed, leaving the canonical comparison to the server", async () => {
+    mockListEndUsers.mockResolvedValueOnce({ users: [] });
+
+    await listPlatformEndUsers({
+      email: " John+news@Example.com ",
+      limit: 20,
+      status: "suspended",
+    });
+
+    expect(mockListEndUsers).toHaveBeenCalledWith(
+      {
+        createdAfter: "",
+        createdBefore: "",
+        email: "John+news@Example.com",
+        limit: 20,
+        status: "suspended",
+        tenantPublicId: "",
+        token: "",
         userIds: [],
       },
       serviceHeaders
