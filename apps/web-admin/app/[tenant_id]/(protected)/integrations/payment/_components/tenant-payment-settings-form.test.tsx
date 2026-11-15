@@ -88,6 +88,18 @@ const paypay: PaymentProvider = {
   webhookPath: "/api/v1/webhook/payment/paypay",
 };
 
+const paidy: PaymentProvider = {
+  currencies: ["JPY"],
+  displayName: "Paidy",
+  fields: [
+    { name: "public_key", public: true, required: true, secret: false },
+    { name: "secret_key", public: false, required: true, secret: true },
+  ],
+  id: "paidy",
+  subscriptions: false,
+  webhookPath: "/api/v1/webhook/payment/paidy",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const examplePay: PaymentProvider = {
   currencies: ["JPY", "USD"],
@@ -359,6 +371,54 @@ describe("TenantPaymentSettingsForm", () => {
     expect(
       screen.getByText(
         "PayPay signs no notification, so each one is checked by reading its payment back from PayPay's API with the key above."
+      )
+    ).toBeDefined();
+  });
+
+  it("names Paidy's fields and tells where each comes from and where test notifications go", () => {
+    render(
+      <TenantPaymentSettingsForm
+        locale="en"
+        providers={[paidy, stripe]}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{
+          ...emptyTenantPaymentSettings,
+          currency: "JPY",
+          fields: [
+            { configured: true, hint: "pk_test_4242", name: "public_key" },
+            { configured: false, hint: "", name: "secret_key" },
+          ],
+          provider: "paidy",
+        }}
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    const publicKey = screen.getByLabelText<HTMLInputElement>("Public key");
+    expect(publicKey.type).toBe("text");
+    expect(publicKey.value).toBe("pk_test_4242");
+    expect(screen.getByLabelText<HTMLInputElement>("Secret key").type).toBe(
+      "password"
+    );
+    expect(
+      screen.getByText(
+        "The public key (pk_…) in the Paidy merchant dashboard, which the payment page opens Paidy Checkout with."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "The secret key (sk_…) of the same mode as the public key, from the Paidy merchant dashboard. Test keys take test payments only."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByDisplayValue(
+        "https://comics.example/api/v1/webhook/payment/paidy"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Paidy signs no notification, so each one is checked by reading its payment back from Paidy's API with the secret key above. For test keys, register this URL as the test webhook URL, which is the only place Paidy sends the notifications of test payments."
       )
     ).toBeDefined();
   });

@@ -117,19 +117,28 @@ type Fixture interface {
 	// RefundedTotal answers the total the provider's API reports refunded on
 	// the payment, in the minor unit of its currency.
 	RefundedTotal(t testing.TB, credentials paymentprovider.Credentials, paymentID string) int64
-	// FailNextRefund makes the next refund the provider's API creates on the
-	// payment one it answers as failed.
-	FailNextRefund(t testing.TB, credentials paymentprovider.Credentials, paymentID string)
 	// ForgetIdempotencyKeys makes the provider's API forget the refund every
 	// idempotency key under the credentials created, as a provider forgets a
 	// key in time.
 	ForgetIdempotencyKeys(t testing.TB, credentials paymentprovider.Credentials)
+	// Unrelated answers a notification the purchase flow has no use for.
+	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
+}
+
+// FailingRefundFixture is the fixture of a provider whose refunds can fail:
+// answered as failed when they are asked for, or failing after the provider
+// accepted them. A provider whose API makes a refund or refuses it when it is
+// asked, and never fails one it made, supplies a [Fixture] without these, and
+// neither suite checks what a failed refund does.
+type FailingRefundFixture interface {
+	Fixture
+	// FailNextRefund makes the next refund the provider's API creates on the
+	// payment one it answers as failed.
+	FailNextRefund(t testing.TB, credentials paymentprovider.Credentials, paymentID string)
 	// RefundFailed answers the notification that a refund on the payment
 	// failed after it was accepted, and makes the provider's API report
 	// refund.AmountRefunded as what stays refunded on it.
 	RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund Refund) ([]byte, http.Header)
-	// Unrelated answers a notification the purchase flow has no use for.
-	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
 
 // TestCredentialsFixture is the fixture of a provider whose test mode follows
@@ -561,6 +570,17 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 		return purchase
 	}
+	// taken makes the payment of paid one the purchase flow has taken, as the
+	// payment of every purchase a refund is asked for is: for a provider
+	// whose checkouts run in the browser, completed, which captures it.
+	taken := func(t *testing.T, credentials paymentprovider.Credentials, paid Checkout) {
+		t.Helper()
+		payload, headers := fixture.CheckoutCompleted(t, credentials, paid)
+		if _, browser := provider.(paymentprovider.BrowserCheckout); browser {
+			completedEvent(t, provider, credentials, paid, payload, headers)
+		}
+	}
+	failing, failable := fixture.(FailingRefundFixture)
 
 	t.Run("a completed checkout names its purchase", func(t *testing.T) {
 		payload, headers := fixture.CheckoutCompleted(t, credentials, checkout)
@@ -916,7 +936,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 	t.Run("a refund returns the whole payment once however often it is asked for", func(t *testing.T) {
 		paid := paying("refund_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
+		taken(t, credentials, paid)
 		key := "refund_contract_" + strings.ToLower(currency)
 		refund := func(key string) bool {
 			t.Helper()
@@ -944,7 +964,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 	t.Run("a refund after a partial one returns the rest", func(t *testing.T) {
 		paid := paying("refund_rest_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
+		taken(t, credentials, paid)
 		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
 		refunded, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_rest_" + strings.ToLower(currency)})
 		if err != nil {
@@ -960,7 +980,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 	t.Run("a refund of an amount returns that much once however often it is asked for", func(t *testing.T) {
 		paid := paying("refund_amount_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
+		taken(t, credentials, paid)
 		key := "refund_contract_amount_" + strings.ToLower(currency)
 		refund := func(key string, amount, want int64) {
 			t.Helper()
@@ -991,7 +1011,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 	t.Run("a refund of an amount is told apart from the payment's other refunds by its key", func(t *testing.T) {
 		paid := paying("refund_amount_made_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
+		taken(t, credentials, paid)
 		key := "refund_contract_amount_made_" + strings.ToLower(currency)
 		made := func(key string, want bool) {
 			t.Helper()
@@ -1009,16 +1029,18 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 		made(key, true)
 		made(key+"_other", false)
-		fixture.FailNextRefund(t, credentials, paid.PaymentID)
-		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key + "_failed", Amount: 100}); !errors.Is(err, paymentprovider.ErrRefundRefused) {
-			t.Fatalf("Refund the provider fails: error = %v, want ErrRefundRefused", err)
+		if failable {
+			failing.FailNextRefund(t, credentials, paid.PaymentID)
+			if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key + "_failed", Amount: 100}); !errors.Is(err, paymentprovider.ErrRefundRefused) {
+				t.Fatalf("Refund the provider fails: error = %v, want ErrRefundRefused", err)
+			}
+			made(key+"_failed", false)
 		}
-		made(key+"_failed", false)
 	})
 
 	t.Run("a refund of an amount is found again once the provider has forgotten its key", func(t *testing.T) {
 		paid := paying("refund_amount_forgotten_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
+		taken(t, credentials, paid)
 		key := "refund_contract_amount_forgotten_" + strings.ToLower(currency)
 		request := paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}
 		if _, err := provider.Refund(t.Context(), credentials, request); err != nil {
@@ -1036,8 +1058,11 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			t.Fatalf("refunded total once the key is forgotten = %d, want 300", got)
 		}
 
+		if !failable {
+			return
+		}
 		failed := paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key + "_failed", Amount: 100}
-		fixture.FailNextRefund(t, credentials, paid.PaymentID)
+		failing.FailNextRefund(t, credentials, paid.PaymentID)
 		if _, err := provider.Refund(t.Context(), credentials, failed); !errors.Is(err, paymentprovider.ErrRefundRefused) {
 			t.Fatalf("Refund the provider fails: error = %v, want ErrRefundRefused", err)
 		}
@@ -1050,62 +1075,64 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
-	t.Run("a refund the provider answers as failed is refused", func(t *testing.T) {
-		paid := paying("refund_failed_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
-		fixture.FailNextRefund(t, credentials, paid.PaymentID)
-		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_failed_" + strings.ToLower(currency)})
-		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
-			t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
-		}
-		if got := fixture.RefundedTotal(t, credentials, paid.PaymentID); got != 0 {
-			t.Fatalf("refunded total = %d, want 0", got)
-		}
-	})
+	if failable {
+		t.Run("a refund the provider answers as failed is refused", func(t *testing.T) {
+			paid := paying("refund_failed_" + strings.ToLower(currency))
+			taken(t, credentials, paid)
+			failing.FailNextRefund(t, credentials, paid.PaymentID)
+			_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_failed_" + strings.ToLower(currency)})
+			if !errors.Is(err, paymentprovider.ErrRefundRefused) {
+				t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
+			}
+			if got := fixture.RefundedTotal(t, credentials, paid.PaymentID); got != 0 {
+				t.Fatalf("refunded total = %d, want 0", got)
+			}
+		})
 
-	t.Run("a refund that fails later names its payment and what stays refunded", func(t *testing.T) {
-		paid := paying("refund_failed_later_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
-		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
-		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 500})
-		payload, headers := fixture.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		failed, ok := event.(paymentprovider.RefundFailed)
-		if !ok {
-			t.Fatalf("event = %T, want RefundFailed", event)
-		}
-		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 200 || failed.Currency != currency || failed.RefundKey != "" {
-			t.Fatalf("failed refund = %+v, want 200 %s staying refunded on %q, under no key", failed, currency, paid.PaymentID)
-		}
-	})
+		t.Run("a refund that fails later names its payment and what stays refunded", func(t *testing.T) {
+			paid := paying("refund_failed_later_" + strings.ToLower(currency))
+			taken(t, credentials, paid)
+			fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
+			fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 500})
+			payload, headers := failing.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			failed, ok := event.(paymentprovider.RefundFailed)
+			if !ok {
+				t.Fatalf("event = %T, want RefundFailed", event)
+			}
+			if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 200 || failed.Currency != currency || failed.RefundKey != "" {
+				t.Fatalf("failed refund = %+v, want 200 %s staying refunded on %q, under no key", failed, currency, paid.PaymentID)
+			}
+		})
 
-	t.Run("a refund of an amount that fails later names the key it was made under", func(t *testing.T) {
-		paid := paying("refund_amount_failed_later_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, credentials, paid)
-		key := "refund_contract_amount_failed_later_" + strings.ToLower(currency)
-		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}); err != nil {
-			t.Fatalf("Refund: %v", err)
-		}
-		payload, headers := fixture.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 0, Key: key})
-		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
-		if err != nil {
-			t.Fatalf("ParseNotification: %v", err)
-		}
-		failed, ok := event.(paymentprovider.RefundFailed)
-		if !ok {
-			t.Fatalf("event = %T, want RefundFailed", event)
-		}
-		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 0 || failed.RefundKey != key {
-			t.Fatalf("failed refund = %+v, want nothing staying refunded on %q, under key %q", failed, paid.PaymentID, key)
-		}
-	})
+		t.Run("a refund of an amount that fails later names the key it was made under", func(t *testing.T) {
+			paid := paying("refund_amount_failed_later_" + strings.ToLower(currency))
+			taken(t, credentials, paid)
+			key := "refund_contract_amount_failed_later_" + strings.ToLower(currency)
+			if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}); err != nil {
+				t.Fatalf("Refund: %v", err)
+			}
+			payload, headers := failing.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 0, Key: key})
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			failed, ok := event.(paymentprovider.RefundFailed)
+			if !ok {
+				t.Fatalf("event = %T, want RefundFailed", event)
+			}
+			if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 0 || failed.RefundKey != key {
+				t.Fatalf("failed refund = %+v, want nothing staying refunded on %q, under key %q", failed, paid.PaymentID, key)
+			}
+		})
+	}
 
 	t.Run("a refund of a payment the account does not hold is refused", func(t *testing.T) {
 		paid := paying("refund_other_" + strings.ToLower(currency))
-		fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
+		taken(t, fixture.OtherCredentials(), paid)
 		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_other_" + strings.ToLower(currency)})
 		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
 			t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
@@ -1140,7 +1167,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 	if follower, ok := provider.(paymentprovider.RefundFollower); ok {
 		t.Run("a refund the provider was asked for is read back through its own notification", func(t *testing.T) {
 			paid := paying("refund_followed_" + strings.ToLower(currency))
-			fixture.CheckoutCompleted(t, credentials, paid)
+			taken(t, credentials, paid)
 			read := func(t *testing.T) paymentprovider.Event {
 				t.Helper()
 				event, err := provider.ParseNotification(t.Context(), follower.RefundNotification(paid.PaymentID), http.Header{}, credentials)
@@ -1163,7 +1190,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 
 		t.Run("the notification of the refunds of a payment the account does not hold is refused", func(t *testing.T) {
 			paid := paying("refund_followed_other_" + strings.ToLower(currency))
-			fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
+			taken(t, fixture.OtherCredentials(), paid)
 			if _, err := provider.ParseNotification(t.Context(), follower.RefundNotification(paid.PaymentID), http.Header{}, credentials); !errors.Is(err, paymentprovider.ErrInvalidSignature) {
 				t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
 			}
@@ -1704,89 +1731,91 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		}
 	})
 
-	t.Run("a refund that fails before its purchase corrects the held refund", func(t *testing.T) {
-		tenant := newTenant(t, credentials)
-		paymentID := paymentNamed("held_refund_failed")
-		for _, total := range []int64{200, 500} {
-			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: total})
-			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
-				t.Fatalf("refund to %d: %v", total, err)
+	if failing, ok := fixture.(FailingRefundFixture); ok {
+		t.Run("a refund that fails before its purchase corrects the held refund", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			paymentID := paymentNamed("held_refund_failed")
+			for _, total := range []int64{200, 500} {
+				refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: total})
+				if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
+					t.Fatalf("refund to %d: %v", total, err)
+				}
 			}
-		}
-		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 200})
-		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
-			t.Fatalf("failed refund: %v", err)
-		}
-		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: checkoutNamed("held_refund_failed"),
-			PaymentID:  paymentID,
-			Purchase:   tenant.Purchase(),
+			failed, failedHeaders := failing.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 200})
+			if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+				t.Fatalf("failed refund: %v", err)
+			}
+			checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
+				CheckoutID: checkoutNamed("held_refund_failed"),
+				PaymentID:  paymentID,
+				Purchase:   tenant.Purchase(),
+			})
+			if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+				t.Fatalf("checkout: %v", err)
+			}
+			if got := tenant.RefundedAmount(t); got != 200 {
+				t.Fatalf("refunded amount = %d, want the 200 that stays refunded", got)
+			}
+			if !tenant.OpensEpisode(t) {
+				t.Fatal("a purchase refunded in part does not open the episode")
+			}
 		})
-		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
-			t.Fatalf("checkout: %v", err)
-		}
-		if got := tenant.RefundedAmount(t); got != 200 {
-			t.Fatalf("refunded amount = %d, want the 200 that stays refunded", got)
-		}
-		if !tenant.OpensEpisode(t) {
-			t.Fatal("a purchase refunded in part does not open the episode")
-		}
-	})
 
-	t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
-		tenant := newTenant(t, credentials)
-		paymentID := paymentNamed("refund_reopened")
-		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: checkoutNamed("refund_reopened"),
-			PaymentID:  paymentID,
-			Purchase:   tenant.Purchase(),
+		t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			paymentID := paymentNamed("refund_reopened")
+			checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
+				CheckoutID: checkoutNamed("refund_reopened"),
+				PaymentID:  paymentID,
+				Purchase:   tenant.Purchase(),
+			})
+			if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+				t.Fatalf("checkout: %v", err)
+			}
+			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
+			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
+				t.Fatalf("refund: %v", err)
+			}
+			if tenant.OpensEpisode(t) {
+				t.Fatal("a refunded purchase still opens the episode")
+			}
+			failed, failedHeaders := failing.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
+			if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+				t.Fatalf("failed refund: %v", err)
+			}
+			if !tenant.OpensEpisode(t) {
+				t.Fatal("a purchase whose refund failed does not open the episode")
+			}
+			if got := tenant.RefundedAmount(t); got != 0 {
+				t.Fatalf("refunded amount = %d, want 0", got)
+			}
+			if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
+				t.Fatalf("sales gross = %d, want %d once the refund failed", got, want)
+			}
 		})
-		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
-			t.Fatalf("checkout: %v", err)
-		}
-		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
-		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
-			t.Fatalf("refund: %v", err)
-		}
-		if tenant.OpensEpisode(t) {
-			t.Fatal("a refunded purchase still opens the episode")
-		}
-		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
-		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
-			t.Fatalf("failed refund: %v", err)
-		}
-		if !tenant.OpensEpisode(t) {
-			t.Fatal("a purchase whose refund failed does not open the episode")
-		}
-		if got := tenant.RefundedAmount(t); got != 0 {
-			t.Fatalf("refunded amount = %d, want 0", got)
-		}
-		if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
-			t.Fatalf("sales gross = %d, want %d once the refund failed", got, want)
-		}
-	})
 
-	t.Run("a staff refund that fails reopens the purchase", func(t *testing.T) {
-		tenant := newTenant(t, credentials)
-		paymentID := paymentNamed("staff_refund_failed")
-		checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
-			CheckoutID: checkoutNamed("staff_refund_failed"),
-			PaymentID:  paymentID,
-			Purchase:   tenant.Purchase(),
+		t.Run("a staff refund that fails reopens the purchase", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			paymentID := paymentNamed("staff_refund_failed")
+			checkout, checkoutHeaders := completed(t, tenant, credentials, Checkout{
+				CheckoutID: checkoutNamed("staff_refund_failed"),
+				PaymentID:  paymentID,
+				Purchase:   tenant.Purchase(),
+			})
+			if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+				t.Fatalf("checkout: %v", err)
+			}
+			fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
+			tenant.RevokeAsStaff(t)
+			failed, failedHeaders := failing.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
+			if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+				t.Fatalf("failed refund: %v", err)
+			}
+			if !tenant.OpensEpisode(t) {
+				t.Fatal("a purchase whose staff refund failed does not open the episode")
+			}
 		})
-		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
-			t.Fatalf("checkout: %v", err)
-		}
-		fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
-		tenant.RevokeAsStaff(t)
-		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
-		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
-			t.Fatalf("failed refund: %v", err)
-		}
-		if !tenant.OpensEpisode(t) {
-			t.Fatal("a purchase whose staff refund failed does not open the episode")
-		}
-	})
+	}
 
 	t.Run("a notification with a bad signature is refused", func(t *testing.T) {
 		tenant := newTenant(t, credentials)

@@ -165,7 +165,11 @@ test.describe("payment providers", () => {
     );
     expect(storedProviders()).toBe("stripe|true|active");
 
-    // What is left to add is PAY.JP, and adding it deletes nothing.
+    // What is left to add starts on the first of the rest, Paidy, and adding
+    // PAY.JP deletes nothing.
+    await expect(provider).toContainText("Paidy");
+    await provider.click();
+    await page.getByRole("option", { name: "PAY.JP" }).click();
     await expect(provider).toContainText("PAY.JP");
     await expect(addForm(page).getByText(SECRET_KEY_SOURCE)).toBeVisible();
     await expect(addForm(page).getByText(WEBHOOK_TOKEN_SOURCE)).toBeVisible();
@@ -186,8 +190,8 @@ test.describe("payment providers", () => {
       .click();
 
     await expect(page.getByText("PAY.JP was added.")).toBeVisible();
-    // What is left to add is PayPay.
-    await expect(provider).toContainText("PayPay");
+    // What is left to add starts on Paidy again.
+    await expect(provider).toContainText("Paidy");
     await expect(providerCard(page, "PAY.JP")).toContainText(
       "Readers can pay through PAY.JP."
     );

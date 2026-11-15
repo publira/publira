@@ -1,0 +1,9 @@
+{
+  "payment_id": "pay_0000000000000000",
+  "capture_id": "cap_0000000000000000",
+  "event_type": "payment",
+  "status": "refund_success",
+  "order_ref": "00000000000000000000000000000000",
+  "reason": "requested_by_customer",
+  "timestamp": "2026-01-03T03:04:05.000Z"
+}

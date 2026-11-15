@@ -77,6 +77,7 @@ for port in \
   "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
   "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" \
   "${PUBLIRA_E2E_STRIPE_PORT}" \
+  "${PUBLIRA_E2E_PAIDY_PORT}" \
   "${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}" \
   "${PUBLIRA_E2E_WEBHOOK_RECEIVER_PORT}" \
   "${PUBLIRA_E2E_WEBHOOK_RECEIVER_HTTPS_PORT}" \
@@ -96,11 +97,13 @@ done
 : > "${LOG_DIR}/worker.log"
 : > "${LOG_DIR}/sign-in-provider.log"
 : > "${LOG_DIR}/stripe.log"
+: > "${LOG_DIR}/paidy.log"
 : > "${LOG_DIR}/google-tag-gateway.log"
 : > "${LOG_DIR}/webhook-receiver.log"
 
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/sign-in-provider.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/stripe.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/paidy.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/google-tag-gateway.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/webhook-receiver.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" start

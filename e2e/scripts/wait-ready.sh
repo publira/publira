@@ -81,6 +81,10 @@ wait_http "stripe/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_STRIPE_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "paidy/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_PAIDY_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 wait_http "google-tag-gateway/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"

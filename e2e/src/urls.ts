@@ -436,6 +436,23 @@ export const WEB_STOREFRONT_RENTALS_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the Paidy tenant from
+ * `db/seeds/scenarios/800_paidy_checkout.sql`. Its suite takes the tenant's
+ * payments through Paidy, which is what lets the storefront sell the episode,
+ * so it needs a console of its own.
+ */
+export const WEB_ADMIN_PAIDY_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_PAIDY_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.paidy.localhost")
+);
+
+/** Public site of the same Paidy tenant, whose payment page runs Paidy Checkout. */
+export const WEB_STOREFRONT_PAIDY_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_PAIDY_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "paidy.localhost")
+);
+
+/**
  * Admin console of the subscriptions tenant from
  * `db/seeds/scenarios/670_storefront_subscriptions.sql`. Its suite takes the
  * tenant's payments through Stripe, which is what lets the public site sell
@@ -659,6 +676,16 @@ export const SIGN_IN_PROVIDER_BASE_URL = envUrl(
 export const STRIPE_BASE_URL = envUrl(
   "PUBLIRA_E2E_STRIPE_BASE_URL",
   "http://127.0.0.1:8500"
+);
+
+/**
+ * The stand-in for Paidy (`scripts/paidy.ts`), whose API publira server calls
+ * and which serves the fake of Paidy Checkout a spec routes the storefront's
+ * request for the script to.
+ */
+export const PAIDY_BASE_URL = envUrl(
+  "PUBLIRA_E2E_PAIDY_BASE_URL",
+  "http://127.0.0.1:8800"
 );
 
 /**

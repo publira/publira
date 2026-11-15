@@ -237,6 +237,7 @@ services:
         moderate.localhost
         notify.localhost
         other.localhost
+        paidy.localhost
         payment.localhost
         plans.localhost
         policy.localhost
@@ -284,6 +285,7 @@ services:
         admin.moderate.localhost
         admin.notify.localhost
         admin.other.localhost
+        admin.paidy.localhost
         admin.payment.localhost
         admin.plans.localhost
         admin.policy.localhost

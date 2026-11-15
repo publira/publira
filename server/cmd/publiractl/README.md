@@ -888,6 +888,7 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt each tenant's payment provider and store credentials.
 - `PUBLIRA_STRIPE_API_URL`: replaces the origin of Stripe's API, as in `publira server`. Unset in every deployment.
+- `PUBLIRA_PAIDY_API_URL`: replaces the origin of Paidy's API, as in `publira server`. Unset in every deployment.
 
 A run the source refuses, or cannot be reached for, is recorded as failed on its row and logged with the tenant and the reason; the job goes on to the next and exits zero. It exits non-zero only when it cannot record the runs at all.
 

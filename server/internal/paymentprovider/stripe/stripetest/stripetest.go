@@ -1003,7 +1003,10 @@ type Fixture struct {
 	API *API
 }
 
-var _ paymentprovidertest.SubscriptionFixture = (*Fixture)(nil)
+var (
+	_ paymentprovidertest.SubscriptionFixture  = (*Fixture)(nil)
+	_ paymentprovidertest.FailingRefundFixture = (*Fixture)(nil)
+)
 
 // NewFixture answers a fixture whose fake API serves until t ends.
 func NewFixture(t testing.TB) *Fixture {
