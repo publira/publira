@@ -262,12 +262,13 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
 /**
  * A private, paged list of the signed-in reader's purchases.
  *
- * The one purchase this app records itself is an episode paid with coins,
- * and the Action that pays clears {@link tenantPurchasesTag}. Every other
- * checkout Action only hands the reader to the payment provider, and the
- * purchase is recorded when the provider's notification reaches the API, so
- * such a purchase shows in the library once the private entry goes stale, or
- * on a reload.
+ * The purchases this app records itself are an episode paid with coins and
+ * a payment a provider's script took on the payment page, and the Actions
+ * that record them clear {@link tenantPurchasesTag}. Every other checkout
+ * Action only hands the reader to the payment provider, and the purchase is
+ * recorded when the provider's notification reaches the API, so such a
+ * purchase shows in the library once the private entry goes stale, or on a
+ * reload.
  */
 const readPurchaseList = async (
   tenantId: string,

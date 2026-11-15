@@ -18,6 +18,7 @@ import {
   ACCOUNT_FLOW_PATHS,
   GUEST_ONLY_PATHS,
   MEMBER_PATH_PREFIXES,
+  PAYMENT_PATHS,
 } from "./reader-paths";
 import { getTenantPublicOrigin, getTenantSiteInfo } from "./tenant";
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -26,6 +27,7 @@ const READER_ONLY_PATHS = [
   ...MEMBER_PATH_PREFIXES,
   ...GUEST_ONLY_PATHS,
   ...ACCOUNT_FLOW_PATHS,
+  ...PAYMENT_PATHS,
 ];
 
 /**

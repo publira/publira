@@ -457,6 +457,14 @@
       ]
     },
     {
+      "name": "Paying on the site through a provider whose own script takes the payment",
+      "web": {
+        "routes": ["[locale]/(auth)/pay/[provider_id]/[checkout_id]"],
+        "rpcs": ["GetBrowserCheckout", "CompleteBrowserCheckout"]
+      },
+      "exception": "The app opens every checkout in the system browser, and a checkout of such a provider opens this page there; the app is the other end of it rather than a reader of it."
+    },
+    {
       "name": "Tipping the Authors at the end of an episode",
       "web": {
         "routes": ["[locale]/(site)/series/[series_id]/episodes/[episode_id]"],

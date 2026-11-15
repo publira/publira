@@ -6992,6 +6992,35 @@
         "payjp": "카드",
         "stripe": "카드 등"
       }
+    },
+    "pay": {
+      "title": "결제",
+      "description": "결제 서비스가 요구하는 이름과 청구지 주소를 입력한 뒤 결제를 진행하세요.",
+      "family_name_label": "성",
+      "given_name_label": "이름",
+      "postal_code_label": "우편번호",
+      "postal_code_help": "123-4567처럼 7자리로 입력하세요.",
+      "prefecture_label": "도도부현",
+      "city_label": "시구정촌",
+      "address_line_label": "상세 주소",
+      "building_label": "건물명·호수",
+      "submit": "결제 진행",
+      "submitting": "결제 중...",
+      "retry": "결제 다시 확인",
+      "closed": "이 구매는 여기에서 더 이상 결제할 수 없습니다. 이미 결제되었거나 기한이 지났습니다. 구매를 처음부터 다시 진행하세요.",
+      "load_failed": "결제를 열 수 없습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
+      "to_home": "첫 페이지로 돌아가기",
+      "errors": {
+        "family_name_required": "성을 입력하세요.",
+        "given_name_required": "이름을 입력하세요.",
+        "postal_code_invalid": "우편번호는 123-4567처럼 7자리로 입력하세요.",
+        "prefecture_required": "도도부현을 입력하세요.",
+        "city_required": "시구정촌을 입력하세요.",
+        "address_line_required": "상세 주소를 입력하세요.",
+        "script_unavailable": "결제 화면을 열 수 없습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
+        "payment_refused": "이 결제는 이 구매에 적용할 수 없어 대금을 받지 않았습니다. 구매를 처음부터 다시 진행하세요.",
+        "complete_failed": "아직 결제를 확인하지 못했습니다. 버튼을 눌러 다시 확인하세요."
+      }
     }
   },
   "mobile": {

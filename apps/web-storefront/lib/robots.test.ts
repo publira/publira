@@ -77,7 +77,7 @@ describe("buildRobotsTxt", () => {
       )
     );
 
-    for (const path of ["/my", "/settings", "/login", "/verify"]) {
+    for (const path of ["/my", "/settings", "/login", "/verify", "/pay"]) {
       expect(text).toContain(`Disallow: ${path}$`);
       expect(text).toContain(`Disallow: ${path}/`);
       expect(text).toContain(`Disallow: ${path}?`);
@@ -157,6 +157,7 @@ describe("buildRobotsTxt", () => {
           "/resend-verification",
           "/reset-password",
           "/verify",
+          "/pay",
         ].flatMap((path) => [
           `Disallow: ${path}$`,
           `Disallow: ${path}/`,
@@ -186,7 +187,7 @@ describe("buildRobotsTxt", () => {
     ]);
     expect(
       text.endsWith(
-        "Disallow: /en/verify?\n\nSitemap: https://shop.example.com/sitemap.xml\n"
+        "Disallow: /en/pay?\n\nSitemap: https://shop.example.com/sitemap.xml\n"
       )
     ).toBe(true);
   });

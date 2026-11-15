@@ -6992,6 +6992,35 @@
         "payjp": "银行卡",
         "stripe": "银行卡等"
       }
+    },
+    "pay": {
+      "title": "付款",
+      "description": "请输入付款服务要求的姓名和账单地址，然后继续付款。",
+      "family_name_label": "姓",
+      "given_name_label": "名",
+      "postal_code_label": "邮政编码",
+      "postal_code_help": "请输入7位数字，例如123-4567。",
+      "prefecture_label": "都道府县",
+      "city_label": "市区町村",
+      "address_line_label": "详细地址",
+      "building_label": "建筑名称和房间号",
+      "submit": "继续付款",
+      "submitting": "正在付款...",
+      "retry": "再次确认付款",
+      "closed": "此购买已无法在此付款。它已付款或已过期。请重新开始购买。",
+      "load_failed": "无法打开付款。请重新加载页面后再试。",
+      "to_home": "返回首页",
+      "errors": {
+        "family_name_required": "请输入姓。",
+        "given_name_required": "请输入名。",
+        "postal_code_invalid": "请输入7位数字的邮政编码，例如123-4567。",
+        "prefecture_required": "请输入都道府县。",
+        "city_required": "请输入市区町村。",
+        "address_line_required": "请输入详细地址。",
+        "script_unavailable": "无法打开付款页面。请重新加载页面后再试。",
+        "payment_refused": "此付款无法用于此购买，因此未收取款项。请重新开始购买。",
+        "complete_failed": "尚未能确认您的付款。请按按钮再次确认。"
+      }
     }
   },
   "mobile": {

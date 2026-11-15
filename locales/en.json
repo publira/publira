@@ -6992,6 +6992,35 @@
         "payjp": "Cards",
         "stripe": "Cards and more"
       }
+    },
+    "pay": {
+      "title": "Payment",
+      "description": "Enter the name and the billing address your payment provider asks for, then continue to pay.",
+      "family_name_label": "Family name",
+      "given_name_label": "Given name",
+      "postal_code_label": "Postal code",
+      "postal_code_help": "Seven digits, such as 123-4567.",
+      "prefecture_label": "Prefecture",
+      "city_label": "City",
+      "address_line_label": "Street address",
+      "building_label": "Building and room",
+      "submit": "Continue to payment",
+      "submitting": "Paying...",
+      "retry": "Confirm the payment again",
+      "closed": "This purchase can no longer be paid here. It has been paid already, or it has expired. Start the purchase again.",
+      "load_failed": "Could not open the payment. Reload the page and try again.",
+      "to_home": "Back to the top page",
+      "errors": {
+        "family_name_required": "Enter your family name.",
+        "given_name_required": "Enter your given name.",
+        "postal_code_invalid": "Enter a postal code of seven digits, such as 123-4567.",
+        "prefecture_required": "Enter your prefecture.",
+        "city_required": "Enter your city.",
+        "address_line_required": "Enter your street address.",
+        "script_unavailable": "The payment screen could not be opened. Reload the page and try again.",
+        "payment_refused": "The payment could not be applied to this purchase, so it was not taken. Start the purchase again.",
+        "complete_failed": "Your payment could not be confirmed yet. Press the button to confirm it again."
+      }
     }
   },
   "mobile": {

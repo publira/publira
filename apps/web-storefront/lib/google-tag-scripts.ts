@@ -1,4 +1,8 @@
-import { ACCOUNT_FLOW_PATHS, GUEST_ONLY_PATHS } from "./reader-paths";
+import {
+  ACCOUNT_FLOW_PATHS,
+  GUEST_ONLY_PATHS,
+  PAYMENT_PATHS,
+} from "./reader-paths";
 
 /** Where the tenant's Google tag is loaded from, with what each mode needs. */
 export type GoogleTagServing =
@@ -125,13 +129,15 @@ export const googleTagScripts = (
 /**
  * Pages that load no tag: every screen that takes a reader's password, a
  * passkey, or a token a mail carries — signing in and up, the account flows,
- * and the account settings. A payment is taken on the provider's own page,
- * and the series page a checkout returns to is measured as usual, so a
- * conversion is recorded on the page that follows.
+ * and the account settings — and the page where a reader types their name and
+ * address for a provider's script. Every other payment is taken on the
+ * provider's own page, and the series page a checkout returns to is measured
+ * as usual, so a conversion is recorded on the page that follows.
  */
 const UNTAGGED_PATHS = [
   ...GUEST_ONLY_PATHS,
   ...ACCOUNT_FLOW_PATHS,
+  ...PAYMENT_PATHS,
   "/settings",
 ] as const;
 
