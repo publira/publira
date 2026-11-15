@@ -41,3 +41,10 @@ export const ACCOUNT_FLOW_PATHS = [
   "/reset-password",
   "/verify",
 ] as const;
+
+/**
+ * The page a checkout of a provider whose payments its own script makes sends
+ * one reader to, under the id of that checkout, where they type the name and
+ * the address the provider asks for.
+ */
+export const PAYMENT_PATHS = ["/pay"] as const;

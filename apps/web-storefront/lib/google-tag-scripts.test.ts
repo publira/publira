@@ -127,6 +127,7 @@ describe("loadsGoogleTagOn", () => {
     "/settings",
     "/settings/security",
     "/settings/agreement",
+    "/pay/paidy/0123456789abcdef0123456789abcdef",
   ])("leaves the tag off %s", (path) => {
     expect(loadsGoogleTagOn(path)).toBe(false);
   });
@@ -139,6 +140,7 @@ describe("loadsGoogleTagOn", () => {
     "/notifications",
     "/loginhelp",
     "/settingsguide",
+    "/payments",
   ])("loads the tag on %s", (path) => {
     expect(loadsGoogleTagOn(path)).toBe(true);
   });
