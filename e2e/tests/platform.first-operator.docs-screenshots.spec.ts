@@ -81,8 +81,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("main"),
           locale,
+          element: page.getByRole("main"),
           page: "operations/platform-console",
           subject: "initial-setup",
         });

@@ -130,10 +130,10 @@ export const startEpisodeCheckoutAction = async (
     const response = await apiClient.purchase.startEpisodeCheckout(
       {
         episodeId,
-        kind: purchaseKinds[kind],
         locale,
         promotionCode,
         provider,
+        kind: purchaseKinds[kind],
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -257,8 +257,8 @@ export const applyEpisodePromotionCodeAction = async (
   try {
     return await quoteEpisodePromotionCode({
       code: promotionCode,
-      episodeId,
       kinds: [...new Set(kinds)],
+      episodeId,
       sessionId,
       tenantId,
     });
@@ -331,10 +331,10 @@ export const startTipCheckoutAction = async (
     const response = await apiClient.purchase.startTipCheckout(
       {
         amount,
-        client: StartEpisodeCheckoutRequest_Client.WEB,
         episodeId,
         locale,
         provider,
+        client: StartEpisodeCheckoutRequest_Client.WEB,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -505,8 +505,8 @@ export const payEpisodeWithCoinsAction = async (
         coins,
         episodeId,
         idempotencyKey,
-        kind: purchaseKinds[kind],
         locale,
+        kind: purchaseKinds[kind],
         surface: ClientSurface.WEB,
         tenant: { tenantId },
       },

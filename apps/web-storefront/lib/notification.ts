@@ -173,8 +173,8 @@ const readNotificationList = async (
     );
 
     return {
-      nextToken: response.nextToken ?? "",
       notifications,
+      nextToken: response.nextToken ?? "",
       ok: true,
       previousToken: response.previousToken ?? "",
       unexpected: false,

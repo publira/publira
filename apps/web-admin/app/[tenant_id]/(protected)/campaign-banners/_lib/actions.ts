@@ -183,13 +183,13 @@ export const createCampaignBannerAction = async (
     createCampaignBanner(
       {
         altText,
-        endsAt: window.endsAt,
-        imageContentType: image.type || undefined,
         imageData,
         linkUrl,
         published,
-        startsAt: window.startsAt,
         tenantId,
+        endsAt: window.endsAt,
+        imageContentType: image.type || undefined,
+        startsAt: window.startsAt,
       },
       locale
     )
@@ -286,14 +286,14 @@ const saveCampaignBanner = async (
     updateCampaignBanner(
       {
         altText,
-        endsAt: window.endsAt,
-        id: parsed.data.id,
         imageContentType,
         imageData,
         linkUrl,
         published,
-        startsAt: window.startsAt,
         tenantId,
+        endsAt: window.endsAt,
+        id: parsed.data.id,
+        startsAt: window.startsAt,
       },
       locale
     )
@@ -449,10 +449,10 @@ export const uploadCampaignBannerAspectImageAction = async (
 
   const parsed = z
     .object({
-      aspectImage: optionalFileFormSchema,
-      crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
       id,
       tenantId,
+      aspectImage: optionalFileFormSchema,
+      crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
       variantType: requiredTrimmedString(
         t("admin.eye_catch.aspect.variant_type_missing")
       ),
@@ -482,11 +482,11 @@ export const uploadCampaignBannerAspectImageAction = async (
     uploadCampaignBannerAspectImage(
       {
         crop,
+        imageData,
+        variantType,
         id: parsed.data.id,
         imageContentType: aspectImage.type || undefined,
-        imageData,
         tenantId: parsed.data.tenantId,
-        variantType,
       },
       locale
     )

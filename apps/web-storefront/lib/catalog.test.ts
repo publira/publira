@@ -1708,8 +1708,8 @@ describe("catalog.getSeriesDetail", () => {
       mockGetSeriesDetail.mockResolvedValueOnce({
         episodes: [],
         series: {
-          publicId: "SERIES_1",
           ratingAverage,
+          publicId: "SERIES_1",
           ratingCount: BigInt(ratingCount),
           title: "Series 1",
         },

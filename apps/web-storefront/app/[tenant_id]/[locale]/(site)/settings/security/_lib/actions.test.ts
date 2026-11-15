@@ -234,11 +234,11 @@ describe("linkIdentityAction", () => {
     );
     expect(mockSendToProvider).toHaveBeenCalledWith({
       accessToken,
+      tenantId,
       intent: "link",
       locale: "en",
       provider: "apple",
       returnTo: "/settings/security",
-      tenantId,
     });
   });
 
@@ -399,6 +399,7 @@ describe("confirmEmailChangeWithProviderAction", () => {
     expect(mockAssertSameOrigin).toHaveBeenCalled();
     expect(mockSendToProvider).toHaveBeenCalledWith({
       accessToken,
+      tenantId,
       emailChange: {
         currentEmail: "reader@example.com",
         newEmail: "moved@example.com",
@@ -407,7 +408,6 @@ describe("confirmEmailChangeWithProviderAction", () => {
       locale: "en",
       provider: "google",
       returnTo: "/settings/security",
-      tenantId,
     });
     expect(mockRequestPublicEmailChange).not.toHaveBeenCalled();
   });

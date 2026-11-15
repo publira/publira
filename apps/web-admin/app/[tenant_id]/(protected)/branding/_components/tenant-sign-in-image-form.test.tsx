@@ -57,11 +57,11 @@ const brandingImage = (url: string) => ({
   updatedAt: "2026-08-19T00:00:00Z",
   variants: [
     {
+      url,
       contentType: "image/jpeg",
       fileSizeBytes: 1024n,
       height: 1280,
       label: "original",
-      url,
       variantType: "sign_in",
       width: 1920,
     },

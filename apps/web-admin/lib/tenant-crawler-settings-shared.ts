@@ -144,7 +144,7 @@ export const parseCrawlerPaths = (
     const result = normalizeCrawlerPath(path);
 
     if (!result.ok) {
-      return { ok: false, path, reason: result.reason };
+      return { path, ok: false, reason: result.reason };
     }
 
     paths.push(path);

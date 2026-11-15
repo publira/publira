@@ -46,7 +46,7 @@ export const PromotionCodeRedemptions = async ({
   await redirectToLoginIfSessionRejected(result);
 
   const pageHref = (redemptions: string) =>
-    promotionCodeListQuery({ code: codeId, redemptions, token: params.token });
+    promotionCodeListQuery({ redemptions, code: codeId, token: params.token });
 
   return (
     <section className="grid gap-3">

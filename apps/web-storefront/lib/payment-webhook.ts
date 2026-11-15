@@ -30,8 +30,8 @@ export const forwardPaymentWebhook = async (
 
   return answerWebhook("payment", () =>
     apiClient.purchase.processPaymentWebhook({
-      headers: Object.fromEntries(request.headers),
       payload,
+      headers: Object.fromEntries(request.headers),
       provider: path.provider,
       tenant: { tenantId: path.tenantId },
     })
@@ -84,8 +84,8 @@ export const forwardGooglePlayNotification = async (
 
   return answerWebhook("payment", () =>
     apiClient.purchase.processGooglePlayNotification({
-      headers: Object.fromEntries(request.headers),
       payload,
+      headers: Object.fromEntries(request.headers),
       tenant: { tenantId: tenant.data },
     })
   );

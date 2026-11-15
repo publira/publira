@@ -193,20 +193,20 @@ const readFinding = (
   const index = diffIds.indexOf(diffId);
 
   return {
-    fixedVersion: stringField(vulnerability, "FixedVersion"),
     id,
     image,
+    target,
+    fixedVersion: stringField(vulnerability, "FixedVersion"),
     // A finding Trivy places in no layer of the image is not known to be the
     // base's, so it is held to the stricter rule.
     inBase: index !== -1 && index < baseLayers,
     installedVersion: stringField(vulnerability, "InstalledVersion") ?? "",
     layer: {
-      createdBy: index === -1 ? undefined : history[index],
       diffId,
+      createdBy: index === -1 ? undefined : history[index],
       position: index + 1,
     },
     packageName: stringField(vulnerability, "PkgName") ?? "",
-    target,
     title: stringField(vulnerability, "Title") ?? "",
     url: stringField(vulnerability, "PrimaryURL"),
   };

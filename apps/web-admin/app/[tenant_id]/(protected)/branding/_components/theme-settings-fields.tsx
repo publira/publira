@@ -126,7 +126,7 @@ const ThemeSettingsScope = ({
   );
 
   const darkContext = useMemo(
-    () => ({ darkTheme, lightTheme: theme, setDarkTheme }),
+    () => ({ darkTheme, setDarkTheme, lightTheme: theme }),
     [darkTheme, theme]
   );
 

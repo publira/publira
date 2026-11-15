@@ -32,9 +32,9 @@ const renderTabs = async (
 ) =>
   render(
     await TranslationTabs({
+      locales,
       children: <button type="button">Delete this translation</button>,
       hrefFor: (code) => `/pages/PAGE001?locale=${code}`,
-      locales,
       selectedLocale: "en",
       translatedLocales: ["ja", "en"],
     })

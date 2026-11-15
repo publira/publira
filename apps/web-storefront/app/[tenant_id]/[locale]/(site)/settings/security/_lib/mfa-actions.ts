@@ -411,11 +411,11 @@ export const disableMfaWithProviderAction = async (
 
   await sendToProvider({
     accessToken,
-    intent: "mfa_disable",
     locale,
-    mfaCode: code,
     provider,
-    returnTo: SECURITY_SETTINGS_RETURN_TO,
     tenantId,
+    intent: "mfa_disable",
+    mfaCode: code,
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
   });
 };

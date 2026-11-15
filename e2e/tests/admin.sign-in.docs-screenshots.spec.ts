@@ -122,8 +122,8 @@ for (const locale of DOCS_LOCALES) {
       // The key is generated for this run, and the console shows the last
       // characters of it.
       await expectDocsScreenshot(page, {
-        element: apple,
         locale,
+        element: apple,
         mask: [
           apple.getByRole("textbox", {
             name: t("admin.settings.sign_in.apple.private_key"),
@@ -133,8 +133,8 @@ for (const locale of DOCS_LOCALES) {
         subject: "apple",
       });
       await expectDocsScreenshot(page, {
-        element: google,
         locale,
+        element: google,
         page: "console/sign-in",
         subject: "google",
       });

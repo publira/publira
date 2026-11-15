@@ -55,8 +55,8 @@ const reader = (overrides: Partial<ReaderDetail> = {}): ReaderDetail => ({
 const renderAccount = async (detail: ReaderDetail, ownAccount = false) =>
   render(
     await ReaderAccount({
-      locale: "en",
       ownAccount,
+      locale: "en",
       reader: detail,
       tenantId: "TENANT001",
       timeZone: "UTC",

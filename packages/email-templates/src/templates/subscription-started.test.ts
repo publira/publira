@@ -22,8 +22,8 @@ const render = async (
   overrides: Partial<z.input<typeof subscriptionPaymentDataSchema>> = {}
 ) => {
   const result = await renderEmail({
-    data: { ...data, ...overrides },
     locale,
+    data: { ...data, ...overrides },
     messages: await loadEmailMessages(locale),
     template: "subscription_started",
     timeZone: "Asia/Tokyo",

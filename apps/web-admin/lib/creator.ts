@@ -243,8 +243,8 @@ export const listAllCreatorsForTenant = async (
         const response = await apiClient.creator.listCreators(
           {
             limit,
-            tenant: { tenantId },
             token,
+            tenant: { tenantId },
           },
           withServiceHeaders()
         );

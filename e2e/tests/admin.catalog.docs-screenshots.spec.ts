@@ -100,11 +100,11 @@ for (const locale of DOCS_LOCALES) {
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           sidebar.getByText(t("admin.nav.catalog"), { exact: true }),
           sidebar.getByRole("link", { name: t("admin.nav.genres_label") }),
         ],
-        locale,
         page: "console/catalog",
         subject: "catalog-group",
       });
@@ -118,8 +118,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/series");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           page: "console/catalog/series",
           subject: "list",
         });
@@ -167,8 +167,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/catalog/episodes",
           subject: "import",
         });
@@ -187,6 +187,7 @@ for (const locale of DOCS_LOCALES) {
 
         test("what readers see first", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsScreenHeader(page),
               docsField(
@@ -195,7 +196,6 @@ for (const locale of DOCS_LOCALES) {
                 })
               ),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "create-form",
           });
@@ -203,6 +203,7 @@ for (const locale of DOCS_LOCALES) {
 
         test("genres and tags", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsField(
                 page.getByRole("combobox", {
@@ -216,7 +217,6 @@ for (const locale of DOCS_LOCALES) {
                 })
               ),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "genres-and-tags",
           });
@@ -224,13 +224,13 @@ for (const locale of DOCS_LOCALES) {
 
         test("the cover image field", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: docsField(
               page.getByRole("button", {
                 exact: true,
                 name: t("admin.series.form.eye_catch"),
               })
             ),
-            locale,
             page: "console/catalog/series",
             subject: "cover-image-field",
           });
@@ -238,12 +238,12 @@ for (const locale of DOCS_LOCALES) {
 
         test("the publication date and time", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: docsField(
               page.getByRole("textbox", {
                 name: t("admin.series.form.published_at"),
               })
             ),
-            locale,
             page: "console/catalog/series",
             subject: "publication-date",
           });
@@ -251,6 +251,7 @@ for (const locale of DOCS_LOCALES) {
 
         test("Shown on and Sold on", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsField(
                 page.getByRole("combobox", {
@@ -263,7 +264,6 @@ for (const locale of DOCS_LOCALES) {
                 })
               ),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "shown-on-and-sold-on",
           });
@@ -273,6 +273,7 @@ for (const locale of DOCS_LOCALES) {
           page,
         }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsField(
                 page.getByRole("combobox", {
@@ -285,7 +286,6 @@ for (const locale of DOCS_LOCALES) {
                 })
               ),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "serialization",
           });
@@ -293,12 +293,12 @@ for (const locale of DOCS_LOCALES) {
 
         test("the age rating", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: docsField(
               page.getByRole("combobox", {
                 name: t("admin.series.form.age_rating"),
               })
             ),
-            locale,
             page: "console/catalog/series",
             subject: "age-rating",
           });
@@ -306,12 +306,12 @@ for (const locale of DOCS_LOCALES) {
 
         test("how comments are published", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: docsField(
               page.getByRole("combobox", {
                 name: t("admin.series.form.comment_mode"),
               })
             ),
-            locale,
             page: "console/catalog/series",
             subject: "comments",
           });
@@ -319,6 +319,7 @@ for (const locale of DOCS_LOCALES) {
 
         test("the reading direction and spreads", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsField(
                 page.getByRole("combobox", {
@@ -331,7 +332,6 @@ for (const locale of DOCS_LOCALES) {
                 })
               ),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "reading-direction",
           });
@@ -339,12 +339,12 @@ for (const locale of DOCS_LOCALES) {
 
         test("the reading period", async ({ page }) => {
           await expectDocsScreenshot(page, {
+            locale,
             element: docsField(
               page.getByRole("spinbutton", {
                 name: t("admin.series.form.reading_period"),
               })
             ),
-            locale,
             page: "console/catalog/series",
             subject: "reading-period",
           });
@@ -358,6 +358,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             page.getByRole("navigation", {
               name: t("admin.translations.tabs_label"),
@@ -366,7 +367,6 @@ for (const locale of DOCS_LOCALES) {
               page.getByRole("textbox", { name: t("admin.series.form.title") })
             ),
           ],
-          locale,
           page: "console/catalog/series",
           subject: "languages",
         });
@@ -384,11 +384,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("admin.eye_catch.aspect.title")),
           ],
-          locale,
           page: "console/catalog/series",
           subject: "cover-image",
         });
@@ -401,8 +401,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.series.wait_free.title")),
           locale,
+          element: docsSection(page, t("admin.series.wait_free.title")),
           page: "console/catalog/series",
           subject: "free-if-you-wait",
         });
@@ -415,8 +415,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.series.free_after.title")),
           locale,
+          element: docsSection(page, t("admin.series.free_after.title")),
           page: "console/catalog/series",
           subject: "free-after-publication",
         });
@@ -453,8 +453,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/catalog/series",
           subject: "delete",
         });
@@ -475,6 +475,7 @@ for (const locale of DOCS_LOCALES) {
           );
 
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsScreenHeader(page),
               // The volume `450_docs_publishing.sql` leaves off sale, which
@@ -483,7 +484,6 @@ for (const locale of DOCS_LOCALES) {
                 .getByRole("listitem")
                 .filter({ hasText: "Moderation Volume 2" }),
             ],
-            locale,
             page: "console/catalog/series",
             subject: "volumes",
           });
@@ -501,11 +501,11 @@ for (const locale of DOCS_LOCALES) {
           );
 
           await expectDocsScreenshot(page, {
+            locale,
             element: docsSection(
               page,
               t("admin.series.volumes.episodes.title")
             ),
-            locale,
             page: "console/catalog/series",
             subject: "volume-episodes",
           });
@@ -523,11 +523,11 @@ for (const locale of DOCS_LOCALES) {
           );
 
           await expectDocsScreenshot(page, {
+            locale,
             element: docsSection(
               page,
               t("admin.series.volumes.bookstore_links.title")
             ),
-            locale,
             page: "console/catalog/series",
             subject: "volume-bookstore-links",
           });
@@ -542,8 +542,8 @@ for (const locale of DOCS_LOCALES) {
           );
 
           await expectDocsScreenshot(page, {
-            element: docsSection(page, t("admin.series.volumes.sale.title")),
             locale,
+            element: docsSection(page, t("admin.series.volumes.sale.title")),
             page: "console/catalog/series",
             subject: "volume-sale",
           });
@@ -563,6 +563,7 @@ for (const locale of DOCS_LOCALES) {
         await openModerationScreen(page, consoleSessions, locale, path);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page
@@ -572,7 +573,6 @@ for (const locale of DOCS_LOCALES) {
               })
               .nth(2),
           ],
-          locale,
           page: "console/catalog/episodes",
           subject: "list",
         });
@@ -592,11 +592,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("main").getByRole("list").first(),
           ],
-          locale,
           page: "console/catalog/episodes",
           subject: "calendar",
         });
@@ -609,13 +609,13 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `${episodesPath}/new`);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("admin.series.episodes.form.create"),
             }),
           ],
-          locale,
           page: "console/catalog/episodes",
           subject: "create-form",
         });
@@ -638,8 +638,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/catalog/episodes",
+            locale,
             subject,
           });
         });
@@ -659,8 +659,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.series.episodes.pricing.title")),
           locale,
+          element: docsSection(page, t("admin.series.episodes.pricing.title")),
           page: "console/catalog/episodes",
           subject: "price-and-reading-period",
         });
@@ -678,11 +678,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsSection(
             page,
             t("admin.series.episodes.campaign_prices.title")
           ),
-          locale,
           page: "console/catalog/episodes",
           subject: "campaign-prices",
         });
@@ -708,8 +708,8 @@ for (const locale of DOCS_LOCALES) {
         ).toHaveCount(0);
 
         await expectDocsScreenshot(page, {
-          element: preview,
           locale,
+          element: preview,
           page: "console/catalog/episodes",
           subject: "preview",
         });
@@ -722,6 +722,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, editPath);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsSection(page, t("admin.series.episodes.availability.title")),
             docsSection(
@@ -729,7 +730,6 @@ for (const locale of DOCS_LOCALES) {
               t("admin.series.episodes.purchase_availability.title")
             ),
           ],
-          locale,
           page: "console/catalog/episodes",
           subject: "shown-on-and-sold-on",
         });
@@ -768,8 +768,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/catalog/episodes",
           subject: "delete",
         });
@@ -806,8 +806,8 @@ for (const locale of DOCS_LOCALES) {
           ).toBeVisible();
 
           await expectDocsScreenshot(page, {
-            element: page.getByRole("dialog"),
             locale,
+            element: page.getByRole("dialog"),
             page: "console/catalog/episodes",
             subject: "bulk-credits",
           });
@@ -824,8 +824,8 @@ for (const locale of DOCS_LOCALES) {
             .click();
 
           await expectDocsScreenshot(page, {
-            element: page.getByRole("dialog"),
             locale,
+            element: page.getByRole("dialog"),
             page: "console/catalog/episodes",
             subject: "bulk-free-reading-period",
           });
@@ -840,8 +840,8 @@ for (const locale of DOCS_LOCALES) {
             .click();
 
           await expectDocsScreenshot(page, {
-            element: page.getByRole("dialog"),
             locale,
+            element: page.getByRole("dialog"),
             page: "console/catalog/episodes",
             subject: "bulk-campaign-price",
           });
@@ -854,8 +854,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/labels");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           page: "console/catalog/labels",
           subject: "list",
         });
@@ -868,11 +868,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/labels/new");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", { name: t("admin.labels.form.create") }),
           ],
-          locale,
           page: "console/catalog/labels",
           subject: "create-form",
         });
@@ -890,11 +890,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", { name: t("admin.labels.form.update") }),
           ],
-          locale,
           page: "console/catalog/labels",
           subject: "edit",
         });
@@ -936,8 +936,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/catalog/labels",
           subject: "delete",
         });
@@ -949,8 +949,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/creators");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").nth(3)],
           page: "console/catalog/authors",
           subject: "list",
         });
@@ -963,11 +963,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/creators/new");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", { name: t("admin.creators.form.create") }),
           ],
-          locale,
           page: "console/catalog/authors",
           subject: "create-form",
         });
@@ -985,8 +985,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.creators.accounts.title")),
           locale,
+          element: docsSection(page, t("admin.creators.accounts.title")),
           page: "console/catalog/authors",
           subject: "reader-accounts",
         });
@@ -1009,11 +1009,11 @@ for (const locale of DOCS_LOCALES) {
         const section = docsSection(page, t("admin.creators.credits.title"));
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             section.getByRole("heading", { level: 2 }),
             section.getByRole("row").nth(3),
           ],
-          locale,
           page: "console/catalog/authors",
           subject: "credits-list",
         });
@@ -1045,8 +1045,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/catalog/authors",
           subject: "delete",
         });
@@ -1056,8 +1056,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/creator-roles");
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: "console/catalog/authors",
           subject: "roles",
         });
@@ -1067,10 +1067,10 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/series/${SERIES}`);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("group", { name: t("admin.series.form.creators") })
           ),
-          locale,
           page: "console/catalog/authors",
           subject: "credits",
         });
@@ -1081,8 +1081,8 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, "/genres");
 
       await expectDocsScreenshot(page, {
-        element: docsScreen(page),
         locale,
+        element: docsScreen(page),
         page: "console/catalog/genres",
         subject: "list",
       });
@@ -1098,8 +1098,8 @@ for (const locale of DOCS_LOCALES) {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: docsScreen(page),
         locale,
+        element: docsScreen(page),
         page: "console/catalog/genres",
         subject: "names",
       });
@@ -1149,11 +1149,11 @@ test.describe("web-admin episode cover documentation screenshots", () => {
       await page.reload();
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           docsSection(page, t("admin.eye_catch.aspect.title")),
         ],
-        locale,
         page: "console/catalog/episodes",
         subject: "cover-image",
       });

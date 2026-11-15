@@ -103,9 +103,9 @@ export const listPublishedCreators = async (
   try {
     response = await apiClient.catalog.listPublishedCreators({
       limit,
+      token,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     return localizedReadFailure(
@@ -169,9 +169,9 @@ export const searchPublishedCreators = async (
     response = await apiClient.catalog.searchPublishedCreators({
       limit,
       query,
+      token,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     return localizedReadFailure(
@@ -235,10 +235,10 @@ export const getPublishedCreatorDetail = async (
     response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
       locale,
+      token,
       publicId: normalizedCreatorId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     if (isMissingResourceRpcError(error)) {

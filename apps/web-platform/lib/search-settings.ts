@@ -339,10 +339,10 @@ export const toPlatformSearchSettings = (
   const buildState = toBuildState(settings?.buildState);
 
   return {
+    buildState,
     analysis: indentJson(settings?.analysis ?? ""),
     buildFailure:
       buildState === "failed" ? toBuildFailure(settings?.buildFailure) : null,
-    buildState,
     defaultAnalysis: settings?.defaultAnalysis ?? false,
     engine: toEngine(settings?.engine),
     hasPassword: settings?.hasPassword ?? false,

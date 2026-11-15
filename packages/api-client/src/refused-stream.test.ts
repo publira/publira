@@ -73,8 +73,8 @@ const startServer = async (
   });
 
   return {
-    baseUrl: `http://127.0.0.1:${port}`,
     sessions,
+    baseUrl: `http://127.0.0.1:${port}`,
     streams: () => streams,
   };
 };

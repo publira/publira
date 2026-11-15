@@ -64,7 +64,6 @@ const banner = (
   linkUrl = `/series/${publicId}`,
   altText = ""
 ): CampaignBannerItem => ({
-  altText,
   imageVariants: [
     {
       contentType: "image/webp",
@@ -76,6 +75,7 @@ const banner = (
       width: 800,
     },
   ],
+  altText,
   linkUrl,
   publicId,
 });

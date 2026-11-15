@@ -428,11 +428,11 @@ const readMyCreatorStats = async (
     const response = await apiClient.creator.getMyCreatorStats(
       {
         creatorId,
-        limit: defaultPageSize,
         locale,
+        token,
+        limit: defaultPageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
-        token,
       },
       buildSessionHeaders(sessionId)
     );
@@ -484,10 +484,10 @@ const readMyCreatorStatements = async (
     const response = await apiClient.creator.listMyCreatorStatements(
       {
         creatorId,
+        token,
         limit: defaultPageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
-        token,
       },
       buildSessionHeaders(sessionId)
     );
@@ -539,11 +539,11 @@ const readMyCreatorStatement = async (
     const response = await apiClient.creator.getMyCreatorStatement(
       {
         creatorId,
-        limit: defaultPageSize,
         period,
+        token,
+        limit: defaultPageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
-        token,
       },
       buildSessionHeaders(sessionId)
     );
@@ -597,11 +597,11 @@ const readMyCreatorComments = async (
     const response = await apiClient.creator.listMyCreatorEpisodeComments(
       {
         creatorId,
-        limit: defaultPageSize,
         locale,
+        token,
+        limit: defaultPageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
-        token,
       },
       buildSessionHeaders(sessionId)
     );

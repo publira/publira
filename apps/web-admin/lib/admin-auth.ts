@@ -363,8 +363,8 @@ const getAdminCurrentUserForSession = async (
     return {
       ok: true,
       user: {
-        name: response.user?.name?.trim() ?? "",
         publicId,
+        name: response.user?.name?.trim() ?? "",
         role: response.user?.role?.trim() ?? "",
       },
     };
@@ -707,8 +707,8 @@ export const requestAdminEmailChange = async (
   try {
     const response = await apiClient.auth.requestEmailChange(
       {
-        currentEmail: normalizedCurrentEmail,
         currentPassword,
+        currentEmail: normalizedCurrentEmail,
         newEmail: normalizedNewEmail,
         tenant: { tenantId },
       },

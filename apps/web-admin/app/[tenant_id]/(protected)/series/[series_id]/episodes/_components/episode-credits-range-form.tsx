@@ -253,13 +253,13 @@ export const EpisodeCreditsRangeForm = ({
 
   const canSubmit = canApplyCreditSelection({
     creditComplete,
-    hasCreators: creatorItems.length > 0,
-    hasRoles: roleItems.length > 0,
     isEpisodePending,
     isPending,
     replaceSame,
-    selectedCount: selected.length,
     selectionTooMany,
+    hasCreators: creatorItems.length > 0,
+    hasRoles: roleItems.length > 0,
+    selectedCount: selected.length,
   });
 
   const preview = creditSelectionPreview({
@@ -268,14 +268,14 @@ export const EpisodeCreditsRangeForm = ({
     credit,
     creditComplete,
     from,
-    intlLocale: toIntlLocale(locale),
     operation,
     replaceSame,
-    selectedCount: selected.length,
     selectionTooMany,
     shareText,
     t,
     to,
+    intlLocale: toIntlLocale(locale),
+    selectedCount: selected.length,
   });
 
   const handleOperationChange = useCallback((next: string) => {
@@ -321,12 +321,12 @@ export const EpisodeCreditsRangeForm = ({
       formAction={formAction}
       from={from}
       hidden={{
-        credit,
         episodeIds: JSON.stringify(selected.map((episode) => episode.id)),
+        share: shareText,
+        credit,
         from,
         operation,
         seriesId,
-        share: shareText,
         tenantId,
         to,
       }}

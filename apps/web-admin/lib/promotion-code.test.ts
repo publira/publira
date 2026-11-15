@@ -318,7 +318,7 @@ describe("setPromotionCodePaused", () => {
     const { setPromotionCodePaused } = await import("./promotion-code");
 
     const result = await setPromotionCodePaused(
-      { id: CODE_ID, paused, tenantId: "TENANT001" },
+      { paused, id: CODE_ID, tenantId: "TENANT001" },
       "en"
     );
 

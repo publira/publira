@@ -57,9 +57,9 @@ describe("resolveEmail", () => {
 
   it("an unknown template becomes unknown_template", () => {
     const result = resolveEmail({
+      messages,
       data: {},
       locale: "en",
-      messages,
       template: "password_reset",
       timeZone: "UTC",
     });
@@ -73,9 +73,9 @@ describe("resolveEmail", () => {
 
   it("invalid data becomes invalid_data", () => {
     const result = resolveEmail({
+      messages,
       data: { tenant_name: "Aoto Press" },
       locale: "en",
-      messages,
       template: "tenant_admin_invitation",
       timeZone: "UTC",
     });
@@ -92,9 +92,9 @@ describe("resolveEmail", () => {
 
   it("an invalid timeZone becomes invalid_data", () => {
     const result = resolveEmail({
+      messages,
       data: passwordResetData,
       locale: "en",
-      messages,
       template: "reader_password_reset",
       timeZone: "Local",
     });
@@ -108,9 +108,9 @@ describe("resolveEmail", () => {
 
   it("refuses a locale this build serves no catalog for", () => {
     const result = resolveEmail({
+      messages,
       data: passwordResetData,
       locale: "fr",
-      messages,
       template: "reader_password_reset",
       timeZone: "UTC",
     });
@@ -146,8 +146,8 @@ describe("renderEmail", () => {
     "asks the client to autospace the %s body",
     async (locale) => {
       const result = await renderEmail({
-        data: passwordResetData,
         locale,
+        data: passwordResetData,
         messages: await loadEmailMessages(locale),
         template: "reader_password_reset",
         timeZone: "UTC",

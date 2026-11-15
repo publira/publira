@@ -89,9 +89,9 @@ export const barGeometry = (values: readonly number[]): BarGeometry[] => {
     const bottom = scale.y(Math.min(value, 0));
 
     return {
+      width,
       height: bottom - top,
       negative: value < 0,
-      width,
       x: index * SLOT_WIDTH + (SLOT_WIDTH - width) / 2,
       y: top,
     };
@@ -133,10 +133,10 @@ export const stackedBarGeometry = (
       const top = scale.y(Math.max(from, to));
 
       segments.push({
+        width,
         height: scale.y(Math.min(from, to)) - top,
         negative: value < 0,
         series: seriesIndex,
-        width,
         x: index * SLOT_WIDTH + (SLOT_WIDTH - width) / 2,
         y: top,
       });

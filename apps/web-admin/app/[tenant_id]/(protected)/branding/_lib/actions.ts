@@ -318,10 +318,10 @@ const tenantBrandMarkSchema = async (locale: Locale) => {
 
   return z.discriminatedUnion("intent", [
     z.object({
-      image: await brandingImageFileSchema(locale),
-      intent: z.literal("upload"),
       kind,
       tenantId,
+      image: await brandingImageFileSchema(locale),
+      intent: z.literal("upload"),
       termsAccepted: z.literal("true", {
         error: t("admin.settings.brand_marks.terms_required"),
       }),

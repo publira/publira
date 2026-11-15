@@ -93,8 +93,8 @@ const scanOf = (
   readScan(trivyReport(vulnerabilities), "publira (linux/amd64)", base);
 
 const entry = (id: string, expires: string): IgnoreEntry => ({
-  expires: Temporal.PlainDate.from(expires),
   id,
+  expires: Temporal.PlainDate.from(expires),
   reason: "No fix in trixie yet; lifted by an Issue.",
 });
 

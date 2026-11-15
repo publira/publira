@@ -70,11 +70,11 @@ const tenantResponse = {
 };
 
 const brandingVariant = (url: string) => ({
+  url,
   contentType: "image/png",
   fileSizeBytes: 1024n,
   height: 64,
   label: "original",
-  url,
   variantType: "icon",
   width: 64,
 });

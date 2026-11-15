@@ -58,8 +58,8 @@ const render = async (
   overrides: Partial<z.input<typeof purchaseReceiptDataSchema>> = {}
 ) => {
   const result = await renderEmail({
-    data: { ...data, ...overrides },
     locale,
+    data: { ...data, ...overrides },
     messages: await loadEmailMessages(locale),
     template: "purchase_receipt",
     timeZone: "Asia/Tokyo",

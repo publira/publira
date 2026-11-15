@@ -63,8 +63,8 @@ describe("SiteSettingsFields", () => {
   it("shows the saved settings", async () => {
     render(
       await SiteSettingsFields({
-        canEdit: true,
         settings,
+        canEdit: true,
         tenantId: "TENANT001",
         translationLocale: "en",
       })
@@ -80,8 +80,8 @@ describe("SiteSettingsFields", () => {
   it("sends the language of its tab with the copy", async () => {
     const { container } = render(
       await SiteSettingsFields({
-        canEdit: true,
         settings,
+        canEdit: true,
         tenantId: "TENANT001",
         translationLocale: "en",
       })
@@ -97,8 +97,8 @@ describe("SiteSettingsFields", () => {
   it("sends no language from a card without tabs", async () => {
     const { container } = render(
       await SiteSettingsFields({
-        canEdit: true,
         settings,
+        canEdit: true,
         tenantId: "TENANT001",
         translationLocale: undefined,
       })
@@ -116,8 +116,8 @@ describe("SiteSettingsFields", () => {
   it("closes the fields while the save is in flight", async () => {
     render(
       await SiteSettingsFields({
-        canEdit: true,
         settings,
+        canEdit: true,
         tenantId: "TENANT001",
         translationLocale: "en",
       })
@@ -143,8 +143,8 @@ describe("SiteSettingsFields", () => {
   it("stays read-only for someone who is not a tenant admin", async () => {
     render(
       await SiteSettingsFields({
-        canEdit: false,
         settings,
+        canEdit: false,
         tenantId: "TENANT001",
         translationLocale: "en",
       })

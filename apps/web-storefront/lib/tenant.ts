@@ -457,6 +457,9 @@ export const getTenantSiteInfo = async (
     const defaultLocale = requireSupportedLocale(response.defaultLocale);
 
     return {
+      defaultLocale,
+      name,
+      publicId,
       acceptsPayments: response.acceptsPayments === true,
       acceptsPromotionCodes: response.acceptsPromotionCodes === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
@@ -467,7 +470,6 @@ export const getTenantSiteInfo = async (
       commentMode: toTenantCommentMode(response.commentMode),
       creatorPagesEnabled: response.creatorPagesEnabled,
       currency: requireCurrency(response.currency),
-      defaultLocale,
       domain: trimmed(response.tenantDomain) ?? "",
       googlePlayUrl: nonEmpty(response.googlePlayUrl),
       googleWebClientId: nonEmpty(response.googleSignIn?.webClientId),
@@ -480,11 +482,9 @@ export const getTenantSiteInfo = async (
       logoImageVariants: toTenantImageVariants(
         response.theme?.logoImageVariants
       ),
-      name,
       paymentProviders: toPaymentProviderOptions(
         response.paymentProviders ?? []
       ),
-      publicId,
       signInImageVariants: toTenantImageVariants(
         response.theme?.signInImageVariants
       ),

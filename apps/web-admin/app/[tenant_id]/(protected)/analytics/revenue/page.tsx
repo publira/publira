@@ -452,7 +452,7 @@ const RevenueContent = async ({
   const amount = (value: bigint) =>
     formatPrice(value, { currency: daily.currency, locale });
 
-  const query = { from, group: group === "day" ? "" : group, to };
+  const query = { from, to, group: group === "day" ? "" : group };
 
   const hrefFor = (column: RevenueColumn) =>
     `${PATH}${buildQueryString({

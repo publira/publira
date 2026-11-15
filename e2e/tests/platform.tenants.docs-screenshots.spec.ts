@@ -63,8 +63,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/tenants/new");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.locator("main form")],
           locale,
+          element: [docsScreenHeader(page), page.locator("main form")],
           page: "operations/tenants",
           subject: "create-tenant",
         });
@@ -77,11 +77,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, TENANT_PATH);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsSection(page, t("platform.tenants.basic_title")),
             docsSection(page, t("platform.tenants.domain_settings_title")),
           ],
-          locale,
           page: "operations/tenants",
           subject: "profile-domain",
         });
@@ -94,8 +94,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, TENANT_PATH);
 
         await expectDocsScreenshot(page, {
-          element: docsScreenHeader(page),
           locale,
+          element: docsScreenHeader(page),
           page: "operations/tenants",
           subject: "suspend",
         });
@@ -110,11 +110,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("platform.tenants.basic_title")),
           ],
-          locale,
           page: "operations/tenants",
           subject: "suspended",
         });
@@ -154,8 +154,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "operations/tenants",
           subject: "delete",
         });
@@ -168,10 +168,10 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: page.locator("main dl").filter({
             has: page.getByText(t("platform.dashboard.stats.suspended_label")),
           }),
-          locale,
           page: "operations/tenants",
           subject: "dashboard-counts",
         });
@@ -183,11 +183,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("platform.tenants.invite_admin_title")),
           ],
-          locale,
           page: "operations/tenant-staff",
           subject: "invite-admin",
         });
@@ -200,8 +200,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.tenants.invitations_title")),
           locale,
+          element: docsSection(page, t("platform.tenants.invitations_title")),
           page: "operations/tenant-staff",
           subject: "invitations",
         });
@@ -211,8 +211,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.tenants.add_member")),
           locale,
+          element: docsSection(page, t("platform.tenants.add_member")),
           page: "operations/tenant-staff",
           subject: "add-member",
         });
@@ -225,8 +225,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.tenants.members_list_title")),
           locale,
+          element: docsSection(page, t("platform.tenants.members_list_title")),
           page: "operations/tenant-staff",
           subject: "members",
         });
@@ -250,8 +250,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: "operations/users",
           subject: "list",
         });
@@ -266,8 +266,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: "operations/users",
           subject: "details",
         });
@@ -282,8 +282,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: docsScreenHeader(page),
           locale,
+          element: docsScreenHeader(page),
           page: "operations/users",
           subject: "suspended",
         });

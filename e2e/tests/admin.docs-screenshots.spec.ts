@@ -122,8 +122,8 @@ for (const locale of DOCS_LOCALES) {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("main"),
         locale,
+        element: page.getByRole("main"),
         page: "console",
         subject: "sign-in",
       });
@@ -140,11 +140,11 @@ for (const locale of DOCS_LOCALES) {
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           sidebar.getByRole("link").first(),
           sidebar.getByRole("link").last(),
         ],
-        locale,
         page: "console",
         subject: "sidebar",
       });
@@ -159,11 +159,11 @@ for (const locale of DOCS_LOCALES) {
 
       const sidebar = page.getByRole("navigation").first();
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           sidebar.getByText(t("admin.nav.site"), { exact: true }),
           sidebar.getByRole("link").last(),
         ],
-        locale,
         page: "console/setup",
         subject: "sidebar",
       });
@@ -174,11 +174,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/settings");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("admin.settings.site.title")),
           ],
-          locale,
           page: "console/setup/settings",
           subject: "public-site-display",
         });
@@ -195,8 +195,8 @@ for (const locale of DOCS_LOCALES) {
         await page.goto(`${WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL}/settings`);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.settings.site.title")),
           locale,
+          element: docsSection(page, t("admin.settings.site.title")),
           page: "console/setup/settings",
           subject: "read-only",
         });
@@ -223,8 +223,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/setup/settings",
+            locale,
             subject,
           });
         });
@@ -242,8 +242,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/setup/settings",
+            locale,
             subject,
           });
         });
@@ -266,8 +266,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/setup/settings",
+            locale,
             subject,
           });
         });
@@ -279,11 +279,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/branding");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsSection(page, t("admin.settings.logo.title")),
             docsSection(page, t("admin.settings.icon.title")),
           ],
-          locale,
           page: "console/setup/branding",
           subject: "logo-and-icon",
         });
@@ -298,8 +298,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/setup/branding",
+            locale,
             subject,
           });
         });
@@ -312,8 +312,8 @@ for (const locale of DOCS_LOCALES) {
           .click();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("tabpanel"),
           locale,
+          element: page.getByRole("tabpanel"),
           page: "console/setup/branding",
           subject: "preview",
         });
@@ -326,8 +326,8 @@ for (const locale of DOCS_LOCALES) {
           .click();
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.settings.theme.dark.title")),
           locale,
+          element: docsSection(page, t("admin.settings.theme.dark.title")),
           page: "console/setup/branding",
           subject: "dark-palette",
         });
@@ -337,8 +337,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/branding");
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.settings.brand_marks.title")),
           locale,
+          element: docsSection(page, t("admin.settings.brand_marks.title")),
           page: "console/setup/branding",
           subject: "brand-marks",
         });
@@ -355,8 +355,8 @@ for (const locale of DOCS_LOCALES) {
           .click();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("dialog"),
           locale,
+          element: page.getByRole("dialog"),
           page: "console/setup/branding",
           subject: "brand-marks-consent",
         });
@@ -368,8 +368,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/pages");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").last()],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").last()],
           page: "console/setup/pages",
           subject: "list",
         });
@@ -382,11 +382,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/pages/new");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", { name: t("admin.pages.form.create") }),
           ],
-          locale,
           page: "console/setup/pages",
           subject: "create-form",
         });
@@ -399,11 +399,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/pages/${PAGE_ID}`);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", { name: t("admin.pages.workspace.save") }),
           ],
-          locale,
           page: "console/setup/pages",
           subject: "editor",
         });
@@ -413,8 +413,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, `/pages/${PAGE_ID}`);
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.pages.workspace.versions_title")),
           locale,
+          element: docsSection(page, t("admin.pages.workspace.versions_title")),
           page: "console/setup/pages",
           subject: "versions",
         });
@@ -446,8 +446,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeEnabled();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "console/setup/pages",
           subject: "delete",
         });
@@ -462,8 +462,8 @@ for (const locale of DOCS_LOCALES) {
         await openBannerTenant(page, consoleSessions, locale, "/announcements");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").last()],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").last()],
           page: "console/setup/announcements",
           subject: "list",
         });
@@ -481,13 +481,13 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("admin.announcements.form.submit"),
             }),
           ],
-          locale,
           page: "console/setup/announcements",
           subject: "create-form",
         });
@@ -502,11 +502,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/campaign-banners");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("main").getByRole("listitem").last(),
           ],
-          locale,
           page: "console/setup/campaign-banners",
           subject: "list",
         });
@@ -524,13 +524,13 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("admin.campaign_banners.form.create"),
             }),
           ],
-          locale,
           page: "console/setup/campaign-banners",
           subject: "create-form",
         });
@@ -548,8 +548,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: "console/setup/members",
+            locale,
             subject,
           });
         });
@@ -569,8 +569,8 @@ for (const locale of DOCS_LOCALES) {
           .check();
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.settings.email.title")),
           locale,
+          element: docsSection(page, t("admin.settings.email.title")),
           page: "console/setup/email",
           subject: "outgoing",
         });
@@ -590,8 +590,8 @@ for (const locale of DOCS_LOCALES) {
           .click();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("dialog"),
           locale,
+          element: page.getByRole("dialog"),
           page: "console/setup/email",
           subject: "test-connection",
         });
@@ -615,8 +615,8 @@ for (const locale of DOCS_LOCALES) {
           .check();
 
         await expectDocsScreenshot(page, {
-          element: inbound,
           locale,
+          element: inbound,
           page: "console/setup/email",
           subject: "inbound",
         });
@@ -637,8 +637,8 @@ for (const locale of DOCS_LOCALES) {
       );
 
       await expectDocsScreenshot(page, {
-        element: [docsScreenHeader(page), page.getByRole("row").nth(5)],
         locale,
+        element: [docsScreenHeader(page), page.getByRole("row").nth(5)],
         page: "console/setup/audit-log",
         subject: "list",
       });
@@ -655,8 +655,8 @@ for (const locale of DOCS_LOCALES) {
         await trigger.click();
 
         await expectDocsScreenshot(page, {
-          element: [trigger, page.getByRole("menu")],
           locale,
+          element: [trigger, page.getByRole("menu")],
           page: "console/setup/your-account",
           subject: "menu",
         });
@@ -666,8 +666,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/settings/account");
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("admin.settings.email_change.title")),
           locale,
+          element: docsSection(page, t("admin.settings.email_change.title")),
           page: "console/setup/your-account",
           subject: "email-address",
         });
@@ -703,8 +703,8 @@ test.describe("web-admin two-step verification documentation screenshots", () =>
       const card = docsSection(page, t("admin.settings.mfa.title"));
 
       await expectDocsScreenshot(page, {
-        element: card,
         locale,
+        element: card,
         page: "console/setup/your-account",
         subject: "two-step",
       });
@@ -728,8 +728,8 @@ test.describe("web-admin two-step verification documentation screenshots", () =>
       // The QR code and the key are drawn for this setup alone, so they are
       // covered over: no other run shows the same ones.
       await expectDocsScreenshot(page, {
-        element: card,
         locale,
+        element: card,
         mask: [qrCode, setupKey],
         page: "console/setup/your-account",
         subject: "two-step-setup",
@@ -756,8 +756,8 @@ test.describe("web-admin two-step verification documentation screenshots", () =>
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: card,
         locale,
+        element: card,
         mask: [recoveryCodes],
         page: "console/setup/your-account",
         subject: "recovery-codes",
@@ -772,8 +772,8 @@ test.describe("web-admin two-step verification documentation screenshots", () =>
       await page.reload();
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("main"),
         locale,
+        element: page.getByRole("main"),
         page: "console",
         subject: "two-step-code",
       });

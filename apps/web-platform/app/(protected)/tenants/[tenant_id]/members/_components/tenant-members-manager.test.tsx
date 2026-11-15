@@ -73,9 +73,9 @@ const invitation = (
   acceptedAt: "",
   canceledAt: "",
   createdAt: "2026-06-01T00:00:00Z",
-  email,
   expiresAt: "2026-06-08T00:00:00Z",
   id: `invitation-${status}`,
+  email,
   role,
   status,
 });
@@ -86,9 +86,9 @@ const renderManager = async (
   render(
     await TenantMembersManager({
       invitations,
+      tenantId,
       locale: "en",
       members: [member],
-      tenantId,
       timeZone: "UTC",
     })
   );

@@ -251,8 +251,8 @@ const upstreamTarget = ({ upstream }: GoogleTagGateway): UpstreamTarget => {
   const override = readGatewayUrlOverride();
 
   return override
-    ? { checkAddress: false, host, origin: override }
-    : { checkAddress: true, host, origin: new URL(`https://${host}`) };
+    ? { host, checkAddress: false, origin: override }
+    : { host, checkAddress: true, origin: new URL(`https://${host}`) };
 };
 
 /** How long the upstream may stay silent, before its answer and within it. */

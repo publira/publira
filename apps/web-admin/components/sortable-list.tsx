@@ -288,8 +288,8 @@ const SortableItem = ({
   const disabled = ownDisabled ?? row?.disabled ?? false;
 
   const { handleRef, isDragging, ref } = useSortable({
-    accept,
     data: { label },
+    accept,
     disabled,
     id,
     index,

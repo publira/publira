@@ -171,8 +171,8 @@ describe("replyToContactMessageAction", () => {
     expect(mockAssertSameOrigin).toHaveBeenCalled();
     expect(mockReplyToContactMessage).toHaveBeenCalledWith(
       {
-        body: "Every episode marked free.\nThe rest need a ticket.",
         contactMessageId,
+        body: "Every episode marked free.\nThe rest need a ticket.",
         tenantId: "TENANT001",
       },
       "en"

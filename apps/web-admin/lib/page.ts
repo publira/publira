@@ -286,8 +286,8 @@ const mapPageTranslation = (
 
   return locale
     ? {
-        id: translation.id,
         locale,
+        id: translation.id,
         publishedVersionId: translation.publishedVersionId ?? "",
         title: translation.title,
       }
@@ -429,7 +429,7 @@ const listPublishedPagesForSession = async (
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.pages.listPages(
-          { limit, tenant: { tenantId }, token },
+          { limit, token, tenant: { tenantId } },
           withSessionHeaders(sessionId)
         );
 

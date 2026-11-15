@@ -32,15 +32,15 @@ const setupRevalidation = (revalidatedAt: () => number | undefined) => {
 
   const resolver = createTenantResolver(
     { domain: { getTenantByDomain } },
-    { max: 10, now: () => clock, readRevalidatedAt, ttl: 300_000 }
+    { readRevalidatedAt, max: 10, now: () => clock, ttl: 300_000 }
   );
 
   return {
     advance: (ms: number) => {
       clock += ms;
     },
-    getTenantByDomain,
     now: () => clock,
+    getTenantByDomain,
     readRevalidatedAt,
     resolver,
   };
@@ -329,7 +329,7 @@ describe("createTenantResolver", () => {
 
     const resolver = createTenantResolver(
       { domain: { getTenantByDomain } },
-      { max: 10, readRevalidatedAt, ttl: 10_000 }
+      { readRevalidatedAt, max: 10, ttl: 10_000 }
     );
 
     await resolver(["unknown.example.com"]);

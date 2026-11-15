@@ -553,8 +553,8 @@ test.describe("API keys and webhooks", () => {
       expect(
         received.map(({ body, event, verified }) => ({
           episode: body.data.episode_public_id,
-          event,
           title: body.data.title,
+          event,
           verified,
         }))
       ).toEqual(
@@ -663,9 +663,9 @@ test.describe("API keys and webhooks", () => {
 
       expect(
         received.map(({ body, event, verified }) => ({
-          episode: body.data.episode_public_id,
           event,
           verified,
+          episode: body.data.episode_public_id,
           withdrawn: body.data.withdrawn,
         }))
       ).toEqual(
@@ -893,9 +893,9 @@ test.describe("API keys and webhooks", () => {
         `${PUBLIC_API_BASE_URL}/publira.v1.ContactService/SubmitContactMessage`,
         {
           body: JSON.stringify({
+            subject,
             body: "Episode 3 is still locked after I bought it.",
             replyToEmail: WEBHOOKS_READER.email,
-            subject,
             tenant: { tenantId: TENANT_UUID },
           }),
           headers: {
@@ -923,17 +923,17 @@ test.describe("API keys and webhooks", () => {
       expect(
         received.map(({ body, event, verified }) => ({
           event,
+          verified,
           reader: body.data.reader_name,
           reply: body.data.reply,
           subject: body.data.subject,
-          verified,
         }))
       ).toEqual([
         {
+          subject,
           event: "contact_message.received",
           reader: WEBHOOKS_READER.name,
           reply: false,
-          subject,
           verified: true,
         },
       ]);

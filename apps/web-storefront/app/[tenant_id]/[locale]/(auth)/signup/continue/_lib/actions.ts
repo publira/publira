@@ -38,9 +38,9 @@ const continueSignUpFormSchema = async (locale: Locale) => {
   return z
     .object({
       agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
-      birthDate,
       consent: z.string().optional(),
       locale: localeFormSchema,
+      birthDate,
       tenantId,
     })
     .refine(
@@ -92,7 +92,7 @@ export const continueSignUpAction = async (
   if (!pending || pending.tenantId !== tenantId) {
     redirect(
       await signInFailurePath(
-        { intent: "login", locale, returnTo: "/", tenantId },
+        { intent: "login", returnTo: "/", locale, tenantId },
         t("storefront.auth.social.errors.expired")
       )
     );
@@ -109,8 +109,8 @@ export const continueSignUpAction = async (
   }
 
   const outcome = await loginWithIdToken(tenantId, pending, {
-    agreedPageVersionIds: publishedVersionIds,
     birthDate,
+    agreedPageVersionIds: publishedVersionIds,
     name: pending.name,
   });
 
@@ -123,7 +123,7 @@ export const continueSignUpAction = async (
   if (outcome.kind === "sign_up_closed") {
     await clearPendingSignUp();
     redirect(
-      await signUpClosedPath({ locale, returnTo: pending.returnTo, tenantId })
+      await signUpClosedPath({ locale, tenantId, returnTo: pending.returnTo })
     );
   }
 
@@ -146,7 +146,7 @@ export const continueSignUpAction = async (
     await clearPendingSignUp();
     redirect(
       await signInFailurePath(
-        { intent: "login", locale, returnTo: pending.returnTo, tenantId },
+        { intent: "login", returnTo: pending.returnTo, locale, tenantId },
         rpcErrorMessage(
           outcome.error,
           t("storefront.auth.social.errors.failed"),
@@ -169,8 +169,8 @@ export const continueSignUpAction = async (
     await writeMfaChallenge({
       challengeToken: outcome.challenge.token,
       expiresAt: outcome.challenge.expiresAt,
-      locale,
       returnTo: pending.returnTo,
+      locale,
       tenantId,
     });
     redirect(await tenantLocalePath(tenantId, locale, MFA_CHALLENGE_PATH));

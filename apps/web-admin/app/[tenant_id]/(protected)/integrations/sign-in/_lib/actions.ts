@@ -179,9 +179,9 @@ export const updateTenantSignInSettingsAction = async (
     updateTenantSignInSettings(
       {
         apple: {
+          privateKey,
           enabled: data.appleEnabled,
           keyId: data.keyId,
-          privateKey,
           servicesId: data.servicesId,
           teamId: data.teamId,
         },

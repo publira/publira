@@ -853,15 +853,15 @@ export const updateEpisodePricingAction = async (
     updateEpisodePricing(
       {
         currency: parsedPrice.currency,
-        episodeId,
         previewPageCount: previewPageCountFor(
           parsedPrice.value,
           previewPageCount
         ),
         price: parsedPrice.value,
-        readingPeriodHours,
         rentalPeriodHours: rental.rentalPeriodHours,
         rentalPrice: rental.rentalPrice,
+        episodeId,
+        readingPeriodHours,
         tenantId,
       },
       locale
@@ -1233,8 +1233,8 @@ export const updateEpisodeEyeCatchAction = async (
     const result = await withAdminSessionReauth(() =>
       uploadEpisodeEyeCatchImage(
         {
-          episodeId,
           imageContentType: eyeCatchImage.type || undefined,
+          episodeId,
           imageData,
           tenantId,
         },
@@ -1313,9 +1313,9 @@ export const uploadEpisodeEyeCatchAspectImageAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadEpisodeEyeCatchAspectImage(
       {
+        imageContentType: aspectImage.type || undefined,
         crop,
         episodeId,
-        imageContentType: aspectImage.type || undefined,
         imageData,
         tenantId,
         variantType,
@@ -1494,8 +1494,8 @@ export const createEpisodeFreeWindowAction = async (
     createEpisodeFreeWindow(
       {
         endsAt: period.endsAt,
-        episodeId,
         startsAt: period.startsAt,
+        episodeId,
         tenantId,
       },
       locale
@@ -1608,9 +1608,9 @@ export const createEpisodeCampaignPriceAction = async (
       {
         currency: price.currency,
         endsAt: period.endsAt,
-        episodeId,
         price: price.value,
         startsAt: period.startsAt,
+        episodeId,
         tenantId,
       },
       locale

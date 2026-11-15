@@ -167,7 +167,7 @@ export const startVolumeCheckoutAction = async (
   const { promotionCode, provider, tenantId, volumeId } = parsed.data;
   await startCheckout(parsed.data, (sessionId) =>
     apiClient.purchase.startVolumeCheckout(
-      { promotionCode, provider, tenant: { tenantId }, volumeId },
+      { promotionCode, provider, volumeId, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     )
   );
@@ -209,9 +209,9 @@ export const applyVolumePromotionCodeAction = async (
 
   try {
     return await quoteVolumePromotionCode({
-      code: promotionCode,
       sessionId,
       tenantId,
+      code: promotionCode,
       volumeIds: [...new Set(volumeIds)],
     });
   } catch (error) {

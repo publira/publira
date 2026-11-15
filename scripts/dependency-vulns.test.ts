@@ -23,13 +23,13 @@ const advisory = (
   }: { fixed?: string; name?: string; rating?: string } = {}
 ) => {
   const unrated = {
+    id,
     affected: [
       {
         package: { ecosystem: "npm", name },
         ranges: [{ events: [{ introduced: "0" }, { fixed }], type: "SEMVER" }],
       },
     ],
-    id,
     summary: `Summary of ${id}`,
   };
 
@@ -47,8 +47,8 @@ const lodash = (
   vulnerabilities: unknown[]
 ) => ({
   groups,
-  package: { ecosystem: "npm", name: "lodash", version: "4.17.20" },
   vulnerabilities,
+  package: { ecosystem: "npm", name: "lodash", version: "4.17.20" },
 });
 
 const finding = (overrides: Partial<Finding> = {}): Finding => ({
@@ -66,8 +66,8 @@ const finding = (overrides: Partial<Finding> = {}): Finding => ({
 });
 
 const entry = (id: string, expires: string): IgnoreEntry => ({
-  expires: Temporal.PlainDate.from(expires),
   id,
+  expires: Temporal.PlainDate.from(expires),
   reason: "Accepted until the upgrade lands.",
 });
 

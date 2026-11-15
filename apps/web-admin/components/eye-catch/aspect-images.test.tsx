@@ -83,9 +83,9 @@ const variant = (
 ): EyeCatchVariantItem => ({
   contentType: "image/jpeg",
   fileSizeBytes: 4096n,
-  height,
   label: `${variantType}_${width}w`,
   url: `/images/series/img/${variantType}/${width}`,
+  height,
   variantType,
   width,
 });

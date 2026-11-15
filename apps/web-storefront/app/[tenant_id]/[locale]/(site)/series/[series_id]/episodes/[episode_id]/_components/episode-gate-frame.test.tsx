@@ -10,11 +10,11 @@ import { EpisodeGateFrame } from "./episode-gate-frame";
 afterEach(cleanup);
 
 const previewImage = (id: string, displayOrder: number): EpisodeImageItem => ({
-  contentType: "image/webp",
   displayOrder,
+  id,
+  contentType: "image/webp",
   fileSizeBytes: 0n,
   height: 320,
-  id,
   imageUrl: `/images/episodes/${id}/preview`,
   width: 226,
 });

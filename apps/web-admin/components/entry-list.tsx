@@ -21,8 +21,8 @@ interface EntryRow {
 const toRows = (entries: readonly string[]): EntryRow[] =>
   (entries.length > 0 ? entries : [""]).map((value, id) => ({
     id,
-    touched: false,
     value,
+    touched: false,
   }));
 
 const nextRowId = (rows: readonly EntryRow[]): number =>
@@ -167,7 +167,7 @@ const EntryList = ({
       const position = rows.findIndex((row) => row.id === id);
       setRows([
         ...rows.slice(0, position),
-        { id, touched: true, value },
+        { id, value, touched: true },
         ...added,
         ...rows.slice(position + 1),
       ]);

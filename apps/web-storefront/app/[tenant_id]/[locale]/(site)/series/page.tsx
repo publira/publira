@@ -159,10 +159,10 @@ const SeriesListData = async ({
   const query = parseSeriesListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedSeries(tenantId, {
+    locale,
     genrePublicId: query.genre,
     hasFreeEpisodes: query.free,
     limit: SERIES_PAGE_SIZE,
-    locale,
     order: query.order,
     status: query.status || undefined,
     token: query.token,

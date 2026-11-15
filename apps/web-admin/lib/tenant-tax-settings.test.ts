@@ -211,8 +211,8 @@ describe("tenant-tax-settings", () => {
           "en"
         )
       ).resolves.toEqual({
-        fieldErrors: { [field]: message },
         message,
+        fieldErrors: { [field]: message },
         ok: false,
       });
     }

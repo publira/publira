@@ -107,6 +107,7 @@ const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
       inputRef,
       mode,
       selectedFileNames,
+      setSelectedFileNames,
       // Files picked for one mode mean nothing to another.
       setMode: (nextMode: EpisodePagesUploadMode) => {
         setMode(nextMode);
@@ -116,7 +117,6 @@ const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
           inputRef.current.value = "";
         }
       },
-      setSelectedFileNames,
     }),
     [mode, selectedFileNames]
   );

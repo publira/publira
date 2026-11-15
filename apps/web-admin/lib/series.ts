@@ -584,8 +584,8 @@ const listAllSeriesForTenant = async (
         const response = await apiClient.series.listSeries(
           {
             limit,
-            tenant: { tenantId },
             token,
+            tenant: { tenantId },
           },
           withServiceHeaders()
         );
@@ -723,9 +723,9 @@ export const getSeriesForTenant = async (
 
     return {
       commentMode,
-      ok: true,
       purchaseAvailability,
       readingLayout,
+      ok: true,
       series: mapSeries(response.series, response.creatorCredits),
       translations: toSeriesTranslations(response.translations),
     };

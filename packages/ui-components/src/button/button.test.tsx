@@ -82,7 +82,7 @@ describe("Button", () => {
         <Button size="sm">Small</Button>
         <Button>Medium</Button>
         <Button size="lg">Large</Button>
-        <Button aria-label="Icon" size="icon" />
+        <Button aria-label="Search" size="icon" />
       </>
     );
 
@@ -90,6 +90,6 @@ describe("Button", () => {
       expect(classesOf(name)).toContain("pointer-coarse:h-11");
     }
 
-    expect(classesOf("Icon")).toContain("pointer-coarse:size-11");
+    expect(classesOf("Search")).toContain("pointer-coarse:size-11");
   });
 });

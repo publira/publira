@@ -373,13 +373,13 @@ export const createSeriesAction = async (
   const result = await withAdminSessionReauth(() =>
     createSeries(
       {
+        eyeCatchImageContentType,
+        eyeCatchImageData,
         ageRating: parsed.data.ageRating,
         availability: parsed.data.availability,
         bundleDiscountPercent: parsed.data.bundleDiscountPercent,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
-        eyeCatchImageContentType,
-        eyeCatchImageData,
         genreIds: parsed.data.genreIds,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelId: parsed.data.labelId,
@@ -448,13 +448,13 @@ export const updateSeriesAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSeries(
       {
+        eyeCatchImageContentType,
+        eyeCatchImageData,
         ageRating: parsed.data.ageRating,
         availability: parsed.data.availability,
         bundleDiscountPercent: parsed.data.bundleDiscountPercent,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
-        eyeCatchImageContentType,
-        eyeCatchImageData,
         genreIds: parsed.data.genreIds,
         id: parsed.data.id,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
@@ -548,10 +548,10 @@ export const updateSeriesEyeCatchAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSeries(
       {
-        clearEyeCatchImage: parsed.data.clearEyeCatchImage,
-        creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
+        clearEyeCatchImage: parsed.data.clearEyeCatchImage,
+        creatorCredits: parsed.data.creatorCredits,
         genreIds: parsed.data.genreIds,
         id: parsed.data.id,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
@@ -833,9 +833,9 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadSeriesEyeCatchAspectImage(
       {
+        imageContentType: aspectImage.type || undefined,
         crop,
         id,
-        imageContentType: aspectImage.type || undefined,
         imageData,
         tenantId,
         variantType,

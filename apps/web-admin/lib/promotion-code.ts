@@ -175,7 +175,7 @@ const mapTarget = (code: RawPromotionCode): PromotionCodeTarget => {
   const kind = targetKindValues[code.targetKind];
 
   return kind
-    ? { id: code.targetId, kind, title: code.targetTitle }
+    ? { kind, id: code.targetId, title: code.targetTitle }
     : { kind: "catalog" };
 };
 

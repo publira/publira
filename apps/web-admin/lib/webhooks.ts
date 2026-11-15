@@ -518,8 +518,8 @@ export const updateWebhookEndpoint = async (
   try {
     const response = await apiClient.webhooks.updateWebhookEndpoint(
       {
-        enabled: input.enabled,
         endpointId,
+        enabled: input.enabled,
         eventTypes: input.eventTypes.map((value) => rpcEventTypes[value]),
         tenant: { tenantId: normalizedTenantId },
         url: input.url,

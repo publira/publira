@@ -31,8 +31,8 @@ const setup = (options?: { revalidatedAt?: () => number | null }) => {
     advance: (ms: number) => {
       clock += ms;
     },
-    listPublishedPageSlugs,
     now: () => clock,
+    listPublishedPageSlugs,
     readRevalidatedAt,
     resolve,
   };

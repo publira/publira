@@ -121,11 +121,11 @@ const renderQueue = async (
     await CommentReportQueue({
       canModerate,
       listErrorMessage,
+      reports,
+      statusOptions,
       locale: "en",
       pageSize: 20,
-      reports,
       status: "open",
-      statusOptions,
       tenantId: "TENANT001",
       timeZone: "UTC",
     })

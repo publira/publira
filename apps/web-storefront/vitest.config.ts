@@ -30,9 +30,9 @@ export default defineConfig({
           },
         ],
         test: {
+          name,
           clearMocks: true,
           environment: "node",
-          name,
           setupFiles: ["./vitest.setup.ts"],
         },
       },

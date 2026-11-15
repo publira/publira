@@ -50,10 +50,10 @@ describe("ReaderEmailVerificationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "reader_email_verification",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -77,10 +77,10 @@ describe("ReaderEmailVerificationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "reader_email_verification",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);

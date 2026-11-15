@@ -421,8 +421,8 @@ const collectMessages = (
     messages.push({
       identifier,
       key,
-      parameters: parametersOf(key, sources),
       sources,
+      parameters: parametersOf(key, sources),
     });
   }
 

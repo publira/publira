@@ -74,8 +74,8 @@ test.describe("web-storefront two-step verification documentation screenshots", 
       // The QR code and the key are drawn for this setup alone, so they are
       // covered over: no other run shows the same ones.
       await expectDocsScreenshot(page, {
-        element: section,
         locale,
+        element: section,
         mask: [qrCode, setupKey],
         page: "console/readers/accounts",
         subject: "two-step-setup",
@@ -106,8 +106,8 @@ test.describe("web-storefront two-step verification documentation screenshots", 
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: section,
         locale,
+        element: section,
         // The day it was turned on is the day the shot is taken.
         // The list is covered whole rather than code by code: a glyph of a
         // code can reach past its own box, and the codes differ every run.
@@ -129,8 +129,8 @@ test.describe("web-storefront two-step verification documentation screenshots", 
       await page.goto(storefrontUrl(locale, "/login/two-step"));
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("main"),
         locale,
+        element: page.getByRole("main"),
         page: "console/readers/accounts",
         subject: "two-step-code",
       });

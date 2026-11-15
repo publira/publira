@@ -52,9 +52,9 @@ const requestEmailChangeFormSchema = async (locale: Locale) => {
   return z.object({
     currentEmail,
     currentPassword,
-    locale: localeFormSchema,
     newEmail,
     tenantId,
+    locale: localeFormSchema,
   });
 };
 
@@ -154,10 +154,10 @@ const confirmEmailChangeWithProviderFormSchema = async (locale: Locale) => {
 
   return z.object({
     currentEmail,
-    locale: localeFormSchema,
     newEmail,
-    provider: z.enum(SIGN_IN_PROVIDERS),
     tenantId,
+    locale: localeFormSchema,
+    provider: z.enum(SIGN_IN_PROVIDERS),
   });
 };
 
@@ -209,12 +209,12 @@ export const confirmEmailChangeWithProviderAction = async (
 
   await sendToProvider({
     accessToken,
-    emailChange: { currentEmail, newEmail },
-    intent: "email_change",
     locale,
     provider,
-    returnTo: SECURITY_SETTINGS_RETURN_TO,
     tenantId,
+    emailChange: { currentEmail, newEmail },
+    intent: "email_change",
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
   });
 };
 
@@ -227,10 +227,10 @@ const requestEmailChangeWithPasskeyFormSchema = async (locale: Locale) => {
 
   return z.object({
     currentEmail,
-    locale: localeFormSchema,
     newEmail,
-    passkeyCredential: passkeyCredentialFormSchema,
     tenantId,
+    locale: localeFormSchema,
+    passkeyCredential: passkeyCredentialFormSchema,
   });
 };
 
@@ -332,9 +332,9 @@ const changePasswordFormSchema = async (locale: Locale) => {
       .object({
         confirmPassword,
         currentPassword,
-        locale: localeFormSchema,
         newPassword,
         tenantId,
+        locale: localeFormSchema,
       })
       .refine((value) => value.newPassword === value.confirmPassword, {
         error: t("storefront.auth.errors.password_mismatch"),
@@ -485,11 +485,11 @@ export const linkIdentityAction = async (formData: FormData): Promise<void> => {
 
   await sendToProvider({
     accessToken,
-    intent: "link",
     locale,
     provider,
-    returnTo: SECURITY_SETTINGS_RETURN_TO,
     tenantId,
+    intent: "link",
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
   });
 };
 

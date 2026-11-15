@@ -784,6 +784,7 @@ export const getSignUpFunnel = async (
 
     return {
       funnel: {
+        purchasedCount,
         activeCount: response.activeCount ?? 0n,
         // The API sends 0 when nobody has bought, which is no median rather
         // than a purchase at the moment of sign-up.
@@ -791,7 +792,6 @@ export const getSignUpFunnel = async (
           purchasedCount > 0n
             ? (response.medianDaysToFirstPurchase ?? 0)
             : null,
-        purchasedCount,
         purchasedWithinSevenDaysCount:
           response.purchasedWithinSevenDaysCount ?? 0n,
         purchasedWithinThirtyDaysCount:

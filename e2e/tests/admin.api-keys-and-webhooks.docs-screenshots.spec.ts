@@ -51,8 +51,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(keys.getByRole("row")).toHaveCount(4);
 
       await expectDocsScreenshot(page, {
-        element: keys,
         locale,
+        element: keys,
         page: PAGE,
         subject: "api-keys",
       });
@@ -67,8 +67,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(endpoint).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: endpoint,
         locale,
+        element: endpoint,
         page: PAGE,
         subject: "endpoint",
       });
@@ -83,8 +83,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(deliveries.getByRole("row")).toHaveCount(5);
 
       await expectDocsScreenshot(page, {
-        element: deliveries,
         locale,
+        element: deliveries,
         page: PAGE,
         subject: "deliveries",
       });

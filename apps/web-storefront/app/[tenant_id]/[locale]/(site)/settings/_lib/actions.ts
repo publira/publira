@@ -40,13 +40,13 @@ const updateProfileFormSchema = async (locale: Locale) => {
 
   return z.object({
     birthDate,
+    tenantId,
     locale: localeFormSchema,
     name: z
       .string({ error: nameRequired })
       .trim()
       .min(1, nameRequired)
       .max(100, t("storefront.settings.name_too_long")),
-    tenantId,
   });
 };
 

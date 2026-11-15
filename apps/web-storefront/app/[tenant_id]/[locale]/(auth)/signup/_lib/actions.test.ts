@@ -57,9 +57,9 @@ const password = "secret-password";
 
 const validSignupFields = {
   confirmPassword: password,
-  email,
   locale: "en",
   name: "Example User",
+  email,
   password,
   tenantId,
 };
@@ -80,8 +80,8 @@ describe("signupAction", () => {
     expect(mockSignupPublic).toHaveBeenCalledWith({
       agreedPageVersionIds: [],
       birthDate: "",
-      email,
       name: "Example User",
+      email,
       password,
       tenantId,
     });

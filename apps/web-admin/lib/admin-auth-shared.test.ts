@@ -18,8 +18,8 @@ const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
 const sealedCookie = (expiresAt: string): Promise<string> =>
   encryptSessionPayload(
     {
-      accessToken: "header.payload.signature",
       expiresAt,
+      accessToken: "header.payload.signature",
       tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     },
     PUBLIRA_AUTH_SECRET

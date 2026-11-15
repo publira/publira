@@ -5,9 +5,9 @@ import type { EpisodeItem } from "#lib/catalog";
 import { resolveContinueOffer } from "./continue-offer";
 
 const episode = (orderIndex: number): EpisodeItem => ({
+  orderIndex,
   id: `episode-${orderIndex}`,
   locale: "en",
-  orderIndex,
   price: 0,
   publicId: `EPISODE_00${orderIndex}`,
   publishedAt: "2026-09-01T00:00:00Z",

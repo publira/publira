@@ -19,12 +19,12 @@ export const LinkButton = ({
   ...props
 }: LinkButtonProps): ReactElement =>
   useRender({
+    ref,
     defaultTagName: "a",
     props: {
       ...props,
       className: cn(buttonVariants({ size, variant }), className),
     },
-    ref,
     // eslint-disable-next-line jsx-a11y/anchor-has-content, jsx-a11y/anchor-is-valid
     render: render ?? <a />,
   });

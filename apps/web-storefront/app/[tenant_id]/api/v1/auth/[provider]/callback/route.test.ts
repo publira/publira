@@ -174,9 +174,9 @@ const startMfaDisable = async (code = "abcde-12345") => {
 
   for (const [name, value] of Object.entries({
     code,
+    tenantId,
     locale: "en",
     provider: "google",
-    tenantId,
   })) {
     data.set(name, value);
   }
@@ -233,9 +233,9 @@ describe("Apple and Google sign-in round trip", () => {
     );
     expect(nonce).not.toBe("");
     expect(mockLoginWithIdToken).toHaveBeenCalledWith(tenantId, {
+      nonce,
       authorizationCode: "",
       idToken: "header.payload.signature",
-      nonce,
       provider: "google",
       redirectUri: "https://reader.example/api/v1/auth/google/callback",
     });

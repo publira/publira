@@ -475,7 +475,7 @@ const parseAnnouncementForm = async (
 
       return {
         ok: false,
-        state: { fieldErrors: { audience: message }, message, ok: false },
+        state: { message, fieldErrors: { audience: message }, ok: false },
       };
     }
 
@@ -497,7 +497,7 @@ const parseAnnouncementForm = async (
 
     return {
       ok: false,
-      state: { fieldErrors: { deliverAt: message }, message, ok: false },
+      state: { message, fieldErrors: { deliverAt: message }, ok: false },
     };
   }
 
@@ -530,17 +530,17 @@ const parseAnnouncementForm = async (
   }
 
   return {
+    locale,
     input: {
       audience,
+      pinnedUntil,
       deliverAt: deliverAt.value,
       delivery: data.delivery,
       linkUrl: data.linkUrl,
       pinned: data.pinned,
-      pinnedUntil,
       tenantId: data.tenantId,
       translations: data.translations,
     },
-    locale,
     ok: true,
   };
 };

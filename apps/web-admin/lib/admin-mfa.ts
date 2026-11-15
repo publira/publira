@@ -572,7 +572,7 @@ export const confirmAdminMfaEnrollment = async (
           await withClientAddressHeaders()
         )
       : await apiClient.auth.confirmMfaEnrollment(
-          { challengeToken: "", code, tenant: { tenantId } },
+          { code, challengeToken: "", tenant: { tenantId } },
           withSessionHeaders(sessionToken)
         );
 
@@ -813,8 +813,8 @@ export const finishAdminPasskeyRegistration = async (
         )
       : await apiClient.auth.finishPasskeyRegistration(
           {
-            challengeToken: "",
             credentialJson,
+            challengeToken: "",
             name: "",
             tenant: { tenantId },
           },

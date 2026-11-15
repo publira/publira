@@ -59,8 +59,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(servingMode(page, "google")).toBeChecked();
 
       await expectDocsScreenshot(page, {
-        element: docsScreen(page),
         locale,
+        element: docsScreen(page),
         page: PAGE,
         subject: "form",
       });
@@ -79,8 +79,8 @@ for (const locale of DOCS_LOCALES) {
       await url.fill("https://sgtm.example.com");
 
       await expectDocsScreenshot(page, {
-        element: [docsField(servingMode(page, "google")), docsField(url)],
         locale,
+        element: [docsField(servingMode(page, "google")), docsField(url)],
         page: PAGE,
         subject: "server-container",
       });
@@ -93,12 +93,12 @@ for (const locale of DOCS_LOCALES) {
       // of the fields a save submits, so the row of its first label is all
       // of them.
       await expectDocsScreenshot(page, {
+        locale,
         element: docsField(
           page.getByText(t("admin.settings.google_tag.gateway_path"), {
             exact: true,
           })
         ),
-        locale,
         page: PAGE,
         subject: "gateway",
       });
@@ -112,8 +112,8 @@ for (const locale of DOCS_LOCALES) {
         .click();
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("alertdialog").or(page.getByRole("dialog")),
         locale,
+        element: page.getByRole("alertdialog").or(page.getByRole("dialog")),
         page: PAGE,
         subject: "regenerate",
       });
@@ -133,8 +133,8 @@ for (const locale of DOCS_LOCALES) {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: docsField(askFirst),
         locale,
+        element: docsField(askFirst),
         page: PAGE,
         subject: "consent",
       });

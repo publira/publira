@@ -39,8 +39,8 @@ const confirmPasswordFormSchema = async (locale: Locale) => {
 
   return z
     .object({
-      confirmPassword,
       locale: localeFormSchema,
+      confirmPassword,
       newPassword,
       tenantId,
       token,

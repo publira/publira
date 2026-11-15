@@ -57,7 +57,7 @@ describe("requestEmailVerificationAction", () => {
     const { requestEmailVerificationAction } = await import("./actions");
     await requestEmailVerificationAction(
       { message: "", ok: false },
-      formData({ email, locale: "en", tenantId })
+      formData({ email, tenantId, locale: "en" })
     );
 
     expect(mockRequestPublicEmailVerification).toHaveBeenCalledWith(
@@ -78,7 +78,7 @@ describe("requestEmailVerificationAction", () => {
 
     const result = await requestEmailVerificationAction(
       { message: "", ok: false },
-      formData({ email, locale: "en", tenantId })
+      formData({ email, tenantId, locale: "en" })
     );
 
     expect(result).toEqual({

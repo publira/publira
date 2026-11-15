@@ -294,8 +294,8 @@ const readPurchaseList = async (
   try {
     const response = await apiClient.purchase.listMyPurchases(
       {
-        limit: input.limit ?? defaultPurchasePageSize,
         locale,
+        limit: input.limit ?? defaultPurchasePageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",
@@ -368,9 +368,9 @@ export const listAllMyPurchases = async (
   const response = await apiClient.purchase.listMyPurchases(
     {
       limit: maxPurchasePageSize,
-      locale,
       surface: ClientSurface.WEB,
       tenant: { tenantId },
+      locale,
       token,
     },
     buildSessionHeaders(accessToken)
@@ -417,8 +417,8 @@ export const findMyEpisodePurchase = async (
   try {
     const response = await apiClient.purchase.listMyPurchases(
       {
-        limit: defaultPurchasePageSize,
         locale,
+        limit: defaultPurchasePageSize,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
       },

@@ -106,8 +106,8 @@ const quotePromotionCode = async <K extends string>({
         code,
         sales: sales.map(({ episodeId, kind, volumeId }) => ({
           episodeId,
-          kind: kind ? purchaseKinds[kind] : undefined,
           volumeId,
+          kind: kind ? purchaseKinds[kind] : undefined,
         })),
         tenant: { tenantId },
       },
@@ -127,7 +127,7 @@ const quotePromotionCode = async <K extends string>({
   }
 
   return Object.keys(quotes).length > 0
-    ? { code, kind: "applied", quotes }
+    ? { code, quotes, kind: "applied" }
     : { code, kind: "refused", reason: "not_applicable" };
 };
 
@@ -149,8 +149,8 @@ export const quoteEpisodePromotionCode = ({
   tenantId: string;
 }): Promise<PromotionCodeState<EpisodeSaleKind>> =>
   quotePromotionCode({
+    sales: kinds.map((kind) => ({ episodeId, kind, key: kind })),
     code,
-    sales: kinds.map((kind) => ({ episodeId, key: kind, kind })),
     sessionId,
     tenantId,
   });
@@ -172,8 +172,8 @@ export const quoteVolumePromotionCode = ({
   volumeIds: readonly string[];
 }): Promise<PromotionCodeState<string>> =>
   quotePromotionCode({
-    code,
     sales: volumeIds.map((volumeId) => ({ key: volumeId, volumeId })),
+    code,
     sessionId,
     tenantId,
   });

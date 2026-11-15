@@ -48,9 +48,9 @@ vi.mock("next/cache", () => ({
 }));
 
 const announcement = (id: string, createdAt: string) => ({
-  body: "Announcement body",
   createdAt,
   id,
+  body: "Announcement body",
   linkUrl: "",
   title: "Announcement title",
 });

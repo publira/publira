@@ -182,6 +182,7 @@ export const notificationDisplay = async (
   // link to, and the row says which tenant it was by its name and domain.
   if (type === NOTIFICATION_TYPE_TENANT_DELETED) {
     return {
+      href,
       description:
         payload.tenant_name && payload.tenant_domain
           ? t("platform.notifications.events.tenant_deleted_description", {
@@ -189,13 +190,13 @@ export const notificationDisplay = async (
               tenant: payload.tenant_name,
             })
           : t("platform.notifications.events.unknown_description"),
-      href,
       title: t("platform.notifications.events.tenant_deleted_title"),
     };
   }
 
   if (type === NOTIFICATION_TYPE_TENANT_DELETION_FAILED) {
     return {
+      href,
       description: payload.tenant_name
         ? t(
             "platform.notifications.events.tenant_deletion_failed_description",
@@ -204,14 +205,13 @@ export const notificationDisplay = async (
             }
           )
         : t("platform.notifications.events.unknown_description"),
-      href,
       title: t("platform.notifications.events.tenant_deletion_failed_title"),
     };
   }
 
   return {
-    description: t("platform.notifications.events.unknown_description"),
     href,
+    description: t("platform.notifications.events.unknown_description"),
     title: t("platform.notifications.events.unknown_title"),
   };
 };

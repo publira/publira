@@ -160,8 +160,8 @@ export const resolveOpenGraphCardText = async (
     case "creator": {
       const [result, t] = await Promise.all([
         getPublishedCreatorDetail(tenantId, subject.creatorId, {
-          limit: CREATOR_SERIES_PAGE_SIZE,
           locale,
+          limit: CREATOR_SERIES_PAGE_SIZE,
           token: "",
         }),
         getMessagesFor(locale),
@@ -210,8 +210,8 @@ export const resolveOpenGraphCardText = async (
     case "label": {
       const [result, t] = await Promise.all([
         getPublishedLabelDetail(tenantId, subject.labelId, {
-          limit: LABEL_SERIES_PAGE_SIZE,
           locale,
+          limit: LABEL_SERIES_PAGE_SIZE,
           token: "",
         }),
         getMessagesFor(locale),

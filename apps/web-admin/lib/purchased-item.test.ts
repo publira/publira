@@ -5,10 +5,10 @@ import type { PurchaseItem, PurchasedItem } from "./purchase";
 import { purchasedItemHref, purchasedItemLabel } from "./purchased-item";
 
 const purchase = (item: PurchasedItem): PurchaseItem => ({
+  item,
   currency: "JPY",
   expiresAt: "",
   id: "018f0e6a-5000-7000-8000-000000000001",
-  item,
   kind: "purchase",
   listPrice: 500n,
   price: 500n,

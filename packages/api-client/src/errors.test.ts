@@ -27,8 +27,8 @@ const creatorRoleInUseError = (metadata: Record<string, string>) =>
     {
       desc: ErrorInfoSchema,
       value: {
-        domain: "publira",
         metadata,
+        domain: "publira",
         reason: "CREATOR_ROLE_IN_USE",
       },
     },

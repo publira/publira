@@ -45,6 +45,7 @@ vi.mock("next/link", () => ({
 }));
 
 const announcement = (id: string): AnnouncementItem => ({
+  id,
   audience: null,
   body: "Announcement body",
   createdAt: "2026-06-01T00:00:00Z",
@@ -52,7 +53,6 @@ const announcement = (id: string): AnnouncementItem => ({
   deliveredAt: "2026-06-01T00:00:00Z",
   deliveredCount: 3n,
   delivery: "preferred",
-  id,
   linkUrl: "/series/S001",
   openedCount: 1n,
   pinned: false,
@@ -242,6 +242,7 @@ describe("AnnouncementManager", () => {
     async (canEdit, count) => {
       render(
         await AnnouncementManager({
+          canEdit,
           announcements: [
             {
               ...announcement("n1"),
@@ -249,7 +250,6 @@ describe("AnnouncementManager", () => {
               pinnedUntil: "2026-07-01T00:00:00Z",
             },
           ],
-          canEdit,
           locale: "en",
           pageSize: 20,
           tenantId: "TENANT001",
@@ -299,6 +299,7 @@ describe("AnnouncementManager", () => {
     async (canEdit, count) => {
       render(
         await AnnouncementManager({
+          canEdit,
           announcements: [
             {
               ...announcement("018f0f90-0001-7000-8000-000000000101"),
@@ -307,7 +308,6 @@ describe("AnnouncementManager", () => {
             },
             announcement("n2"),
           ],
-          canEdit,
           locale: "en",
           pageSize: 20,
           tenantId: "TENANT001",

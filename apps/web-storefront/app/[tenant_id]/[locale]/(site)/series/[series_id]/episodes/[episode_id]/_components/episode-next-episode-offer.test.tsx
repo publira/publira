@@ -74,6 +74,7 @@ const nextEpisode: EpisodeNeighborItem = {
 const renderOffer = async (neighbor?: EpisodeNeighborItem) =>
   render(
     await EpisodeNextEpisodeOffer({
+      series,
       episodePublicId: "EPISODE_002",
       nextEpisode: neighbor,
       sales: {
@@ -83,7 +84,6 @@ const renderOffer = async (neighbor?: EpisodeNeighborItem) =>
         taxIncluded: false,
         web: true,
       },
-      series,
       tenantId: "TENANT_001",
       timeZone: "Asia/Tokyo",
     })

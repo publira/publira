@@ -281,7 +281,7 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => {
     ({ body, locale, title }) => {
       const code = parseLocale(locale);
 
-      return code ? [{ body, locale: code, title }] : [];
+      return code ? [{ body, title, locale: code }] : [];
     }
   );
 
@@ -418,7 +418,7 @@ const getAnnouncementForSession = async (
     await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.announcement.listAnnouncements(
-          { limit, tenant: { tenantId }, token },
+          { limit, token, tenant: { tenantId } },
           withSessionHeaders(sessionId)
         );
 

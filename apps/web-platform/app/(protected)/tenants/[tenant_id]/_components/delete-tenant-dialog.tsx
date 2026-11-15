@@ -54,7 +54,7 @@ const DeleteTenantDialog = ({
   }, []);
 
   const state = useMemo<DeleteTenantDialogState>(
-    () => ({ name, setOpen: handleOpenChange, setTyped, typed }),
+    () => ({ setOpen: handleOpenChange, name, setTyped, typed }),
     [handleOpenChange, name, typed]
   );
 

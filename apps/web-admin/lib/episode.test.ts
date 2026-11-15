@@ -119,10 +119,10 @@ vi.mock("./api", () => ({
 }));
 
 const episode = (publicId: string, orderIndex: number) => ({
-  id: `${publicId}-ID`,
   orderIndex,
-  price: 0,
   publicId,
+  id: `${publicId}-ID`,
+  price: 0,
   publishedAt: "",
   scheduledAt: "",
   status: "draft",
@@ -1481,7 +1481,7 @@ describe("deleteEpisode", () => {
         "en"
       );
 
-      expect(result).toEqual({ message, ok: false, reference });
+      expect(result).toEqual({ message, reference, ok: false });
     }
   );
 

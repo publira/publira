@@ -96,11 +96,11 @@ const listPlatformAuditLogsForSession = async (
   try {
     const response = await apiClient.auditLogs.listAuditLogs(
       {
+        limit,
         action: input.action?.trim() ?? "",
         actorUserPublicId: input.actorUserPublicId?.trim() ?? "",
         createdFrom: input.createdFrom ?? "",
         createdTo: input.createdTo ?? "",
-        limit,
         tenantId: input.tenantId?.trim() ?? "",
         token: input.token ?? "",
       },

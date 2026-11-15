@@ -177,12 +177,12 @@ const TagSeries = async ({
   tenantId: string;
 }) => {
   const result = await listPublishedSeries(tenantId, {
+    locale,
+    tagSlug,
     hasFreeEpisodes: query.free,
     limit: TAG_SERIES_PAGE_SIZE,
-    locale,
     order: query.order,
     status: query.status || undefined,
-    tagSlug,
     token: query.token,
   });
 

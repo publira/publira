@@ -40,10 +40,10 @@ describe("PlatformConsolePasswordResetEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "platform_console_password_reset",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -66,10 +66,10 @@ describe("PlatformConsolePasswordResetEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "platform_console_password_reset",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);

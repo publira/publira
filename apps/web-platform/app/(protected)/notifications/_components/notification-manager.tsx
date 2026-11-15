@@ -226,12 +226,12 @@ export const NotificationManager = async ({
         hasPageLinks,
         listErrorMessage,
         locale,
+        notifications,
+        timeZone,
         markReadAriaLabel: (title) =>
           t("platform.notifications.mark_read_aria", {
             title,
           }),
-        notifications,
-        timeZone,
       })}
 
       {showPagination ? (

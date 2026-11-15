@@ -132,8 +132,8 @@ export const groupRoyaltyLinesByCreator = (
 
     if (!group) {
       group = {
-        creatorName: line.creatorName,
         key,
+        creatorName: line.creatorName,
         lines: [],
         payoutSubtotal: 0n,
         sourceSubtotals: null,

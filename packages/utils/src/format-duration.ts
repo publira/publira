@@ -26,8 +26,8 @@ const getUnitFormatter = (
   }
 
   const formatter = new Intl.NumberFormat(intlLocale, {
-    style: "unit",
     unit,
+    style: "unit",
     unitDisplay: style,
   });
 

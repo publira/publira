@@ -46,8 +46,8 @@ const render = async (
   overrides: Partial<z.input<typeof purchaseRefundNoticeDataSchema>> = {}
 ) => {
   const result = await renderEmail({
-    data: { ...data, ...overrides },
     locale,
+    data: { ...data, ...overrides },
     messages: await loadEmailMessages(locale),
     template: "purchase_refund_notice",
     timeZone: "Asia/Tokyo",

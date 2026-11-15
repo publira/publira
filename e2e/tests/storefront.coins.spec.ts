@@ -307,8 +307,8 @@ test.describe("web-storefront coins", () => {
       received.map(({ body, event, verified }) => ({
         bonusCoins: body.data.bonus_coins,
         coins: body.data.coins,
-        event,
         pack: body.data.coin_pack_public_id,
+        event,
         verified,
       }))
     ).toEqual([

@@ -208,9 +208,9 @@ describe("SearchSettingsForm", () => {
         message: "The connection works.",
         ok: true,
         result: {
-          failure: "",
           plugins,
           pluginsListed,
+          failure: "",
           product: "OpenSearch",
           succeeded: true,
           version: "3.2.0",

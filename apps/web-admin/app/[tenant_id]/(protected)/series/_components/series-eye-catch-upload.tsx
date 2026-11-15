@@ -2,10 +2,11 @@
 
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
-import { createContext, use, useCallback, useEffect, useState } from "react";
+import { createContext, use, useCallback } from "react";
 import type { ChangeEventHandler, ReactNode } from "react";
 
 import { useClientMessages } from "#components/client-message";
+import { useObjectUrl } from "#lib/use-object-url";
 
 /** The object URL of the file picked, empty until one is. */
 const SeriesEyeCatchPreviewContext = createContext<string | null>(null);
@@ -28,30 +29,23 @@ const useSeriesEyeCatchPreviewUrl = (): string => {
  * `SeriesEyeCatchPreview`, framed above the file input.
  */
 const SeriesEyeCatchUpload = ({ children }: { children: ReactNode }) => {
-  const [previewUrl, setPreviewUrl] = useState("");
-
-  useEffect(
-    () => () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    },
-    [previewUrl]
-  );
+  const {
+    clear: clearPreview,
+    show: showPreview,
+    url: previewUrl,
+  } = useObjectUrl();
 
   const handleFileChange = useCallback<ChangeEventHandler<HTMLInputElement>>(
     (event) => {
       const file = event.currentTarget.files?.[0];
 
-      setPreviewUrl((currentValue) => {
-        if (currentValue) {
-          URL.revokeObjectURL(currentValue);
-        }
-
-        return file ? URL.createObjectURL(file) : "";
-      });
+      if (file) {
+        showPreview(file);
+      } else {
+        clearPreview();
+      }
     },
-    []
+    [clearPreview, showPreview]
   );
 
   return (

@@ -398,9 +398,9 @@ export const listMyCoinTransactions = async (
     const response = await apiClient.coin.listCoinTransactions(
       {
         limit: defaultCoinTransactionsPageSize,
-        locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
+        locale,
         token,
       },
       buildSessionHeaders(sessionId)

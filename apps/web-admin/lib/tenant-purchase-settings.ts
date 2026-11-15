@@ -88,9 +88,9 @@ const toTenantPurchaseSettings = (
   }
 
   return {
+    purchaseAvailability,
     appStoreUrl: settings?.appStoreUrl ?? "",
     googlePlayUrl: settings?.googlePlayUrl ?? "",
-    purchaseAvailability,
     // A server of the release before tips answers none, which is tips off.
     tips: {
       amounts: [...(settings?.tips?.amounts ?? [])],
@@ -281,12 +281,12 @@ export const updateTenantPurchaseSettings = async (
   return writeTenantPurchaseSettings(
     {
       sessionId,
+      tenantId,
       settings: {
         appStoreUrl: input.appStoreUrl,
         googlePlayUrl: input.googlePlayUrl,
         purchaseAvailability: input.purchaseAvailability,
       },
-      tenantId,
     },
     { failedMessage: t("admin.settings.purchase.save_failed"), locale, t }
   );
@@ -337,7 +337,7 @@ export const updateTenantTipSettings = async (
   }
 
   return writeTenantPurchaseSettings(
-    { sessionId, settings: { ...current, tips: input.tips }, tenantId },
+    { sessionId, tenantId, settings: { ...current, tips: input.tips } },
     { failedMessage, locale, t }
   );
 };

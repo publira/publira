@@ -414,10 +414,6 @@ export default defineConfig({
     "sonarjs/no-inconsistent-returns": "off",
     // TypeScript optional fields and API shapes use undefined, not null.
     "sonarjs/no-undefined-assignment": "off",
-    // A compound component's parts are reached through one namespace per
-    // subpath (`import * as Dialog from "@publira/ui-components/dialog"`),
-    // which is the import this rule refuses.
-    "sonarjs/no-wildcard-import": "off",
     // Complexity gates are valuable but need dedicated refactors; enable later.
     "sonarjs/too-many-break-or-continue-in-loop": "off",
   },

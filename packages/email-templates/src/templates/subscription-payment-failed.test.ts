@@ -23,8 +23,8 @@ const render = async (
   overrides: Partial<z.input<typeof subscriptionPaymentFailedDataSchema>> = {}
 ) => {
   const result = await renderEmail({
-    data: { ...data, ...overrides },
     locale,
+    data: { ...data, ...overrides },
     messages: await loadEmailMessages(locale),
     template: "subscription_payment_failed",
     timeZone: "Asia/Tokyo",

@@ -89,6 +89,7 @@ test.describe("web-platform object storage documentation screenshots", () => {
         await openScreen(page, consoleSessions, locale, "/services/storage");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsField(
               page.getByRole("textbox", {
@@ -101,7 +102,6 @@ test.describe("web-platform object storage documentation screenshots", () => {
               })
             ),
           ],
-          locale,
           page: "operations/object-storage",
           subject: "bucket",
         });
@@ -111,8 +111,8 @@ test.describe("web-platform object storage documentation screenshots", () => {
         await openScreen(page, consoleSessions, locale, "/services/storage");
 
         await expectDocsScreenshot(page, {
-          element: credentials(page),
           locale,
+          element: credentials(page),
           page: "operations/object-storage",
           subject: "credentials",
         });
@@ -136,6 +136,7 @@ test.describe("web-platform object storage documentation screenshots", () => {
         await expect(failed).toBeVisible();
 
         await expectDocsScreenshot(page, {
+          locale,
           // The innermost box that holds both the test's title and its steps.
           element: page
             .getByRole("main")
@@ -151,7 +152,6 @@ test.describe("web-platform object storage documentation screenshots", () => {
               }),
             })
             .last(),
-          locale,
           page: "operations/object-storage",
           subject: "connection-test",
         });
@@ -196,17 +196,17 @@ test.describe("web-platform object storage documentation screenshots", () => {
           ).toBeVisible();
 
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               credentials(page),
               page.getByRole("button", { name: t("platform.storage.save") }),
             ],
-            locale,
             page: "operations/object-storage",
             subject: "saved-access-key",
           });
           await expectDocsScreenshot(page, {
-            element: credentials(page),
             locale,
+            element: credentials(page),
             page: "operations/security/rotating-secrets",
             subject: "replace-access-key",
           });
@@ -230,8 +230,8 @@ test.describe("web-platform email documentation screenshots", () => {
         await openScreen(page, consoleSessions, locale, "/services/email");
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.settings.smtp_card_title")),
           locale,
+          element: docsSection(page, t("platform.settings.smtp_card_title")),
           page: "operations/email",
           subject: "smtp-settings",
         });
@@ -249,8 +249,8 @@ test.describe("web-platform email documentation screenshots", () => {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: dialog,
           locale,
+          element: dialog,
           page: "operations/email",
           subject: "connection-test",
         });
@@ -286,6 +286,7 @@ test.describe("web-platform email documentation screenshots", () => {
           await expect(change).toBeVisible();
 
           await expectDocsScreenshot(page, {
+            locale,
             element: [
               docsField(
                 page.getByRole("textbox", {
@@ -294,13 +295,12 @@ test.describe("web-platform email documentation screenshots", () => {
               ),
               docsField(change),
             ],
-            locale,
             page: "operations/email",
             subject: "saved-password",
           });
           await expectDocsScreenshot(page, {
-            element: docsField(change),
             locale,
+            element: docsField(change),
             page: "operations/security/rotating-secrets",
             subject: "smtp-password",
           });
@@ -331,8 +331,8 @@ test.describe("web-platform search documentation screenshots", () => {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.search.title")),
           locale,
+          element: docsSection(page, t("platform.search.title")),
           page: "operations/search",
           subject: "engine",
         });
@@ -385,16 +385,16 @@ test.describe("web-platform search documentation screenshots", () => {
           }).toPass({ timeout: 30_000 });
 
           await expectDocsScreenshot(page, {
-            element: docsSection(page, t("platform.search.status.title")),
             locale,
+            element: docsSection(page, t("platform.search.status.title")),
             // Every later attempt of the worker writes its own time.
             mask: [failedAt],
             page: "operations/search",
             subject: "build-failed",
           });
           await expectDocsScreenshot(page, {
-            element: docsSection(page, t("platform.search.analysis.title")),
             locale,
+            element: docsSection(page, t("platform.search.analysis.title")),
             page: "operations/search",
             subject: "text-analysis",
           });
@@ -420,11 +420,11 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, "/services/webpush");
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           page.getByRole("button", { name: t("platform.webpush.save") }),
         ],
-        locale,
         page: "operations/web-push",
         subject: "settings",
       });

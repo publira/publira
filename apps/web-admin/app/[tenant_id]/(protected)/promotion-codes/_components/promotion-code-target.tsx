@@ -139,6 +139,7 @@ const PromotionCodeTargetRoot = ({
       isChildPending,
       kind,
       labelId,
+      seriesId,
       onChildChange: setChildId,
       onKindChange: (nextKind) => {
         setKind(nextKind);
@@ -155,7 +156,6 @@ const PromotionCodeTargetRoot = ({
         setSeriesId(nextSeriesId);
         resetChildren(kind, nextSeriesId);
       },
-      seriesId,
     }),
     [
       childId,

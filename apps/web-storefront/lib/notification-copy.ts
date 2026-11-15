@@ -242,10 +242,10 @@ export const notificationDisplay = async (
       t("storefront.notifications.episode_published_subject_unknown");
 
     return {
+      href,
       description: t("storefront.notifications.episode_published_description", {
         subject,
       }),
-      href,
       title: t("storefront.notifications.episode_published_title"),
     };
   }
@@ -257,27 +257,27 @@ export const notificationDisplay = async (
 
     if (type === NOTIFICATION_TYPE_COMMENT_APPROVED) {
       return {
+        href,
         description: t(
           "storefront.notifications.comment_approved_description",
           {
             subject,
           }
         ),
-        href,
         title: t("storefront.notifications.comment_approved_title"),
       };
     }
 
     return {
-      description: commentHiddenDescription(t, payload, subject),
       href,
+      description: commentHiddenDescription(t, payload, subject),
       title: t("storefront.notifications.comment_hidden_title"),
     };
   }
 
   return {
-    description: t("storefront.notifications.unknown_description"),
     href,
+    description: t("storefront.notifications.unknown_description"),
     title: t("storefront.notifications.unknown_title"),
   };
 };

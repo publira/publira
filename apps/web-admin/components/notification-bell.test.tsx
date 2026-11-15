@@ -84,8 +84,8 @@ const renderBell = async ({
 } = {}) => {
   countUnreadNotifications.mockResolvedValue({ ok: true, unreadCount });
   listNotifications.mockResolvedValue({
-    nextToken: "",
     notifications,
+    nextToken: "",
     ok: true,
     previousToken: "",
   });

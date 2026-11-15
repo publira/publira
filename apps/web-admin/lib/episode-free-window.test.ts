@@ -62,15 +62,15 @@ const freeWindow = (
   ruleSeriesId = ""
 ) => ({
   createdAt: "2026-10-01T00:00:00Z",
-  endsAt,
   episodeId: "EPISODE-ID",
   episodePublicId: "EPISODE001",
   episodeTitle: "Chapter One",
-  id,
   publicId: `${id}-PUBLIC`,
-  ruleSeriesId,
   seriesId: "SERIES-ID",
   seriesPublicId: "SERIES001",
+  endsAt,
+  id,
+  ruleSeriesId,
   startsAt,
 });
 

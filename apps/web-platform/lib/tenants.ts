@@ -604,11 +604,11 @@ export const createPlatformTenant = async (
     const response = await apiClient.tenants.createTenant(
       {
         adminDomain,
-        defaultLocale: input.defaultLocale,
         domain,
         imageDomain,
         initialAdminEmails,
         name,
+        defaultLocale: input.defaultLocale,
         supportedLocales: [...input.supportedLocales],
       },
       buildSessionHeaders(sid)
@@ -1005,8 +1005,8 @@ export const updatePlatformTenant = async (
     }
 
     fields = {
-      adminDomain: change.adminDomain.trim(),
       domain,
+      adminDomain: change.adminDomain.trim(),
       imageDomain: change.imageDomain.trim(),
     };
   }

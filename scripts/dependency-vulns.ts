@@ -222,10 +222,10 @@ export const readFindings = (output: JsonValue, cwd: string): Finding[] => {
           id,
           lockfile,
           packageName,
-          rating: highestRating(advisories),
-          score: readScore(stringField(group, "max_severity")),
           summary,
           version,
+          rating: highestRating(advisories),
+          score: readScore(stringField(group, "max_severity")),
         });
       }
     }

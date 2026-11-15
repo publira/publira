@@ -280,7 +280,7 @@ export const getVolume = async (
   );
 
   return volume
-    ? { ok: true, volume, volumes: result.volumes }
+    ? { volume, ok: true, volumes: result.volumes }
     : { notFound: true, ok: false };
 };
 

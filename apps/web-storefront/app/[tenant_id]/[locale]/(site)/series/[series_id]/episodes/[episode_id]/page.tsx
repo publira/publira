@@ -149,8 +149,8 @@ export const generateMetadata = async (
     ...openGraphMetadata({
       description,
       image,
-      siteName: siteLabel,
       title,
+      siteName: siteLabel,
       type: "article",
       url: alternates?.canonical,
     }),

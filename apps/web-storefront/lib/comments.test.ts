@@ -481,8 +481,8 @@ describe("postEpisodeComment", () => {
     await expect(
       postEpisodeComment({
         body: "A comment",
-        episodeId,
         locale: "en",
+        episodeId,
         tenantId,
       })
     ).resolves.toEqual({ awaitingApproval: true, ok: true });
@@ -499,8 +499,8 @@ describe("postEpisodeComment", () => {
 
     const result = await postEpisodeComment({
       body: "A comment",
-      episodeId,
       locale: "en",
+      episodeId,
       tenantId,
     });
 
@@ -515,8 +515,8 @@ describe("postEpisodeComment", () => {
     await expect(
       postEpisodeComment({
         body: "A comment",
-        episodeId,
         locale: "en",
+        episodeId,
         tenantId,
       })
     ).resolves.toEqual({
@@ -534,8 +534,8 @@ describe("postEpisodeComment", () => {
     await expect(
       postEpisodeComment({
         body: "A comment",
-        episodeId,
         locale: "en",
+        episodeId,
         tenantId,
       })
     ).rejects.toThrow("expired");
@@ -554,8 +554,8 @@ describe("withdrawEpisodeComment", () => {
     await expect(
       withdrawEpisodeComment({
         commentId,
-        locale: "en",
         tenantId,
+        locale: "en",
       })
     ).resolves.toEqual({ ok: true });
   });
@@ -567,8 +567,8 @@ describe("withdrawEpisodeComment", () => {
 
     const result = await withdrawEpisodeComment({
       commentId,
-      locale: "en",
       tenantId,
+      locale: "en",
     });
 
     expect(result.ok).toBe(false);
@@ -587,10 +587,10 @@ describe("reportEpisodeComment", () => {
     await expect(
       reportEpisodeComment({
         commentId,
+        tenantId,
         locale: "en",
         note: "  Nothing to do with the episode.  ",
         reason: "spoiler",
-        tenantId,
       })
     ).resolves.toEqual({ ok: true });
     expect(mockReportEpisodeComment).toHaveBeenCalledWith(
@@ -615,10 +615,10 @@ describe("reportEpisodeComment", () => {
 
     const result = await reportEpisodeComment({
       commentId,
+      tenantId,
       locale: "en",
       note: "",
       reason: "spam",
-      tenantId,
     });
 
     expect(result.ok).toBe(false);
@@ -632,10 +632,10 @@ describe("reportEpisodeComment", () => {
     await expect(
       reportEpisodeComment({
         commentId,
+        tenantId,
         locale: "en",
         note: "",
         reason: "spam",
-        tenantId,
       })
     ).rejects.toThrow("expired");
   });

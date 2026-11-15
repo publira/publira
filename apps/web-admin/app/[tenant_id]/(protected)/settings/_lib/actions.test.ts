@@ -429,8 +429,8 @@ describe("updateTenantLocalesAction", () => {
     const result = await updateTenantLocalesAction(
       null,
       localesFormData({
-        defaultLocale: "en",
         supportedLocales,
+        defaultLocale: "en",
         tenantId: "TENANT001",
       })
     );
@@ -792,8 +792,8 @@ describe("updateTenantEmailRejectionAction", () => {
 
     const message = '"not a domain" is neither an email address nor a domain.';
     expect(result).toEqual({
-      fieldErrors: { entries: message },
       message,
+      fieldErrors: { entries: message },
       ok: false,
     });
     expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
@@ -835,8 +835,8 @@ describe("updateTenantEmailRejectionAction", () => {
       "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
 
     mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
-      entriesError: message,
       message,
+      entriesError: message,
       ok: false,
     });
 
@@ -848,8 +848,8 @@ describe("updateTenantEmailRejectionAction", () => {
     );
 
     expect(result).toEqual({
-      fieldErrors: { entries: message },
       message,
+      fieldErrors: { entries: message },
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
@@ -960,8 +960,8 @@ describe("updateTenantCrawlerSettingsAction", () => {
       );
 
       expect(result).toEqual({
-        fieldErrors: { excludedPaths: message },
         message,
+        fieldErrors: { excludedPaths: message },
         ok: false,
       });
       expect(mockUpdateTenantCrawlerSettings).not.toHaveBeenCalled();
@@ -1010,8 +1010,8 @@ describe("updateTenantCrawlerSettingsAction", () => {
       "Applebot can no longer be excluded. Reload the page and choose again.";
 
     mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
-      fieldErrors: { excludedUserAgents: message },
       message,
+      fieldErrors: { excludedUserAgents: message },
       ok: false,
     });
 
@@ -1023,8 +1023,8 @@ describe("updateTenantCrawlerSettingsAction", () => {
     );
 
     expect(result).toEqual({
-      fieldErrors: { excludedUserAgents: message },
       message,
+      fieldErrors: { excludedUserAgents: message },
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
@@ -1307,8 +1307,8 @@ describe("updateTenantSiteVerificationAction", () => {
       "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.";
 
     mockUpdateTenantSiteVerification.mockResolvedValueOnce({
-      fieldErrors: { bing: message },
       message,
+      fieldErrors: { bing: message },
       ok: false,
     });
 
@@ -1320,8 +1320,8 @@ describe("updateTenantSiteVerificationAction", () => {
     );
 
     expect(result).toEqual({
-      fieldErrors: { bing: message },
       message,
+      fieldErrors: { bing: message },
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

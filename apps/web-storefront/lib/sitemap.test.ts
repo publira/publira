@@ -82,8 +82,8 @@ const entry = (overrides: {
 /** A series translated into every locale. */
 const seriesEntry = (publicId: string) =>
   entry({
-    kind: SitemapEntryKind.SERIES,
     publicId,
+    kind: SitemapEntryKind.SERIES,
     publishedLocales: [...getLocales()],
   });
 

@@ -123,8 +123,8 @@ const listAnnouncementsRpc = (
     {
       limit,
       locale,
-      tenant: { tenantId },
       token,
+      tenant: { tenantId },
     },
     buildSessionHeaders(sessionId)
   );
@@ -439,8 +439,8 @@ export const getAnnouncement = async (
 
   try {
     const response = await apiClient.auth.getAnnouncement({
-      announcementId: parsed.data.announcementId,
       locale,
+      announcementId: parsed.data.announcementId,
       tenant: { tenantId: parsed.data.tenantId },
     });
 
@@ -630,8 +630,8 @@ export const getPinnedAnnouncement = async (
       body,
       id,
       linkUrl,
-      locale: servedLocaleFrom(response.announcement.locale, locale),
       title,
+      locale: servedLocaleFrom(response.announcement.locale, locale),
     };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {

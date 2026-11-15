@@ -53,7 +53,7 @@ export const toScheduledPeriod = async (
     };
   }
 
-  return { endsAt, ok: true, startsAt };
+  return { endsAt, startsAt, ok: true };
 };
 
 /** Where a scheduled period stands against the present moment. */

@@ -94,8 +94,8 @@ const mapEpisode = (
   }
 
   return {
-    orderIndex: episode?.orderIndex ?? 0,
     publicId,
+    orderIndex: episode?.orderIndex ?? 0,
     title: episode?.title ?? "",
   };
 };

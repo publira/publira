@@ -98,9 +98,9 @@ const readSiteSettingsTabs = async ({
 
   return getTenantSiteSettingsTabs({
     locale,
+    tenantId,
     requestedLocale:
       settingsSearchParamsSchema.parse(rawSearchParams).locale || undefined,
-    tenantId,
     tenantLocales: tenantLocales.ok ? tenantLocales : null,
   });
 };

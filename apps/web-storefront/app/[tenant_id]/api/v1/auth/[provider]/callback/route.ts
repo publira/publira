@@ -467,7 +467,7 @@ export const POST = async (
     const t = await getMessagesFor(locale);
 
     return failure(
-      { intent: "login", locale, returnTo: "/", tenantId: path.data.tenantId },
+      { locale, intent: "login", returnTo: "/", tenantId: path.data.tenantId },
       t("storefront.auth.social.errors.failed")
     );
   }

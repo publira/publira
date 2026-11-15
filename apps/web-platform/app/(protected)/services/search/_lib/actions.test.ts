@@ -466,8 +466,8 @@ describe("testPlatformSearchConnectionAction", () => {
       mockTestPlatformSearchConnection.mockResolvedValueOnce({
         ok: true,
         result: {
-          failure: "",
           plugins,
+          failure: "",
           pluginsListed: true,
           product: "OpenSearch",
           succeeded: true,

@@ -67,8 +67,8 @@ const toRemainderQuote = (
 
   return {
     discountPercent: offer?.discountPercent ?? 0,
-    episodeCount,
     listPrice: offer?.listPrice ?? 0,
+    episodeCount,
     price,
   };
 };

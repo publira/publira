@@ -58,8 +58,8 @@ const accessTicketFilterQuery = (
   buildQueryString({
     active: filters.active ? "1" : undefined,
     episode: filters.episode,
-    token,
     user: filters.user,
+    token,
   });
 
 const TicketManagerData = async ({

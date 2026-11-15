@@ -236,9 +236,10 @@ const LinkControl = ({
           aria-label={t("admin.pages.editor.link_url")}
           onChange={(event) => setHref(event.target.value)}
           // The popup is portalled outside the page's form, so Enter would
-          // submit nothing; it applies the link instead.
+          // submit nothing; it applies the link instead. An Enter that
+          // confirms an IME candidate is still composing the address.
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
               event.preventDefault();
               apply();
             }

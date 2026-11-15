@@ -6,7 +6,7 @@ import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
 import type { ChangeEventHandler, ReactEventHandler, ReactNode } from "react";
-import { createContext, use, useEffect, useMemo, useState } from "react";
+import { createContext, use, useMemo, useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
 import type { CropAspect, CropSource } from "#components/image-crop/crop";
@@ -17,6 +17,7 @@ import {
 import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
+import { useObjectUrl } from "#lib/use-object-url";
 
 /**
  * An author icon is one square, cut out of whatever was uploaded for it. The
@@ -69,20 +70,11 @@ const CreatorIcon = ({
   iconImageUrl: string;
 }) => {
   const [clearIconImage, setClearIconImage] = useState(false);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  const { show: showPreview, url: localPreviewUrl } = useObjectUrl();
   /** The picked file's own size, and the part of it the editor framed. */
   const [source, setSource] = useState<CropSource | null>(null);
   const [crop, setCrop] = useState<CropRect | null>(null);
   const [isFraming, setIsFraming] = useState(false);
-
-  useEffect(
-    () => () => {
-      if (localPreviewUrl) {
-        URL.revokeObjectURL(localPreviewUrl);
-      }
-    },
-    [localPreviewUrl]
-  );
 
   const context = useMemo<CreatorIconContextValue>(
     () => ({
@@ -91,6 +83,7 @@ const CreatorIcon = ({
       iconImageUrl,
       isFraming,
       localPreviewUrl,
+      source,
       onClearIconImageChange: setClearIconImage,
       onCropChange: setCrop,
       /**
@@ -116,22 +109,23 @@ const CreatorIcon = ({
           return;
         }
 
-        setLocalPreviewUrl((current) => {
-          if (current) {
-            URL.revokeObjectURL(current);
-          }
-
-          return URL.createObjectURL(file);
-        });
+        showPreview(file);
         // Both belong to the file that was just replaced. The new one reports
         // its own size when it is decoded, and the frame is derived from that.
         setSource(null);
         setCrop(null);
         setIsFraming(true);
       },
-      source,
     }),
-    [clearIconImage, crop, iconImageUrl, isFraming, localPreviewUrl, source]
+    [
+      clearIconImage,
+      crop,
+      iconImageUrl,
+      isFraming,
+      localPreviewUrl,
+      showPreview,
+      source,
+    ]
   );
 
   return (

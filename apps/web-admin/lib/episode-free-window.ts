@@ -142,9 +142,9 @@ const listEpisodeFreeWindowsForTenant = async (
         const response = await apiClient.series.listEpisodeFreeWindows(
           {
             limit,
+            token,
             scope: { case: "episodeId", value: input.episodeId },
             tenant: { tenantId: input.tenantId },
-            token,
           },
           withServiceHeaders()
         );

@@ -24,7 +24,7 @@ const requestEmailVerificationFormSchema = async (locale: Locale) => {
     tenantIdFormSchema(locale),
   ]);
 
-  return z.object({ email, locale: localeFormSchema, tenantId });
+  return z.object({ email, tenantId, locale: localeFormSchema });
 };
 
 export const requestEmailVerificationAction = async (

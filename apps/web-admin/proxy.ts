@@ -57,8 +57,8 @@ const suspendedConsoleResponse = (request: NextRequest): NextResponse => {
   const locale = suspendedTenantLocale(request);
 
   return suspendedTenantResponse({
-    description: sharedMessage("admin.errors.suspended_description", locale),
     locale,
+    description: sharedMessage("admin.errors.suspended_description", locale),
     title: sharedMessage("admin.errors.suspended_title", locale),
   });
 };

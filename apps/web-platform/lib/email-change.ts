@@ -52,8 +52,8 @@ export const requestPlatformEmailChange = async (
   try {
     const response = await apiClient.auth.requestEmailChange(
       {
-        currentEmail: normalizedCurrentEmail,
         currentPassword,
+        currentEmail: normalizedCurrentEmail,
         newEmail: normalizedNewEmail,
       },
       buildSessionHeaders(sessionId)

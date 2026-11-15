@@ -369,7 +369,7 @@ const AudienceContent = async ({
   }
 
   const rows = breakdown ?? daily;
-  const query = { from, group: group === "day" ? "" : group, to };
+  const query = { from, to, group: group === "day" ? "" : group };
 
   const hrefFor = (column: AudienceColumn) =>
     `${PATH}${buildQueryString({

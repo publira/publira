@@ -24,11 +24,11 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
 });
 
 const iconVariant = (url: string) => ({
+  url,
   contentType: "image/png",
   fileSizeBytes: 1024n,
   height: 64,
   label: "original",
-  url,
   variantType: "icon",
   width: 64,
 });

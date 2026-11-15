@@ -67,10 +67,10 @@ export const getJsonLdSite = async (
   }
 
   return {
-    defaultLocale: tenant.defaultLocale,
     locale,
-    name: await getTenantSiteLabel(tenantId, locale),
     origin,
+    defaultLocale: tenant.defaultLocale,
+    name: await getTenantSiteLabel(tenantId, locale),
     tenant: {
       appStoreUrl: tenant.appStoreUrl,
       googlePlayUrl: tenant.googlePlayUrl,

@@ -793,8 +793,8 @@ export const updateTenantLegalPagesAction = async (
   const result = await withAdminSessionReauth(() =>
     updateTenantLegalPages(
       {
-        privacyPageId: parsed.data.privacyPageId,
         tenantId,
+        privacyPageId: parsed.data.privacyPageId,
         termsPageId: parsed.data.termsPageId,
       },
       locale
@@ -1155,6 +1155,7 @@ const tenantTaxSettingsSchema = async (locale: Locale) => {
     });
 
   return z.object({
+    tenantId,
     invoiceLegalName: z
       .string()
       .default("")
@@ -1201,7 +1202,6 @@ const tenantTaxSettingsSchema = async (locale: Locale) => {
         }
       }),
     taxRateBps: rate,
-    tenantId,
     withholdingRateBps: rate,
   });
 };

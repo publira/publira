@@ -62,8 +62,8 @@ const download = ({
     ),
     {
       params: Promise.resolve({
-        creator_id: creatorId,
         period,
+        creator_id: creatorId,
         tenant_id: TENANT_ID,
       }),
     }

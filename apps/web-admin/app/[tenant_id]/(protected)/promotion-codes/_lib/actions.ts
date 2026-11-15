@@ -182,7 +182,7 @@ const toWindow = (
     };
   }
 
-  return { endsAt, ok: true, startsAt };
+  return { endsAt, startsAt, ok: true };
 };
 
 const createSchema = (t: AdminMessageAccessor) =>
@@ -208,8 +208,8 @@ const createSchema = (t: AdminMessageAccessor) =>
 
 /** A discount the form posted that cannot be read, said beside its field. */
 const invalidDiscount = (message: string) => ({
-  fieldErrors: { discount_value: message },
   message,
+  fieldErrors: { discount_value: message },
   ok: false as const,
 });
 
@@ -332,9 +332,9 @@ export const createPromotionCodeAction = async (
         currency: discount.currency,
         discountKind: parsed.data.discountKind,
         discountValue: discount.value,
-        limits,
         targetId: parsed.data.targetId,
         targetKind: parsed.data.targetKind,
+        limits,
         tenantId,
       },
       locale
@@ -409,13 +409,13 @@ export const updatePromotionCodeAction = async (
     updatePromotionCode(
       {
         id,
+        tenantId,
         limits: {
           endsAt: window.endsAt,
           maxRedemptions: parsed.data.maxRedemptions,
           maxRedemptionsPerReader: parsed.data.maxRedemptionsPerReader,
           startsAt: window.startsAt,
         },
-        tenantId,
       },
       locale
     )

@@ -76,8 +76,8 @@ const registerPasskey = async (page: Page): Promise<void> => {
         }
 
         const response = await fetch(`/rpc/publira.v1.AuthService/${method}`, {
-          body: JSON.stringify({ ...body, tenant: { tenantId } }),
           headers,
+          body: JSON.stringify({ ...body, tenant: { tenantId } }),
           method: "POST",
         });
 

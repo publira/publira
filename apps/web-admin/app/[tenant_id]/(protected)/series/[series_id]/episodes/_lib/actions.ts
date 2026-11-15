@@ -650,8 +650,8 @@ export const bulkEditEpisodeCreditsAction = async (
   const result = await withAdminSessionReauth(() =>
     bulkEditEpisodeCredits(
       {
-        episodeIds: selected.map((episode) => episode.id),
         operation,
+        episodeIds: selected.map((episode) => episode.id),
         seriesId: parsed.data.seriesId,
         tenantId: parsed.data.tenantId,
       },
@@ -787,8 +787,8 @@ export const createSeriesFreeWindowsAction = async (
       {
         endsAt: period.endsAt,
         episodeIds: covered.episodeIds,
-        seriesId,
         startsAt: period.startsAt,
+        seriesId,
         tenantId,
       },
       locale
@@ -939,8 +939,8 @@ export const createSeriesCampaignPricesAction = async (
         endsAt: period.endsAt,
         episodeIds: selected.map((episode) => episode.id),
         price: price.value,
-        seriesId,
         startsAt: period.startsAt,
+        seriesId,
         tenantId,
       },
       locale

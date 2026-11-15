@@ -166,8 +166,8 @@ const listPublishedPageLinksCached = async (
 
     links.push({
       href: publishedPageHrefFromSlug(slug),
-      id,
       label: title,
+      id,
       slug,
     });
   }
@@ -197,11 +197,11 @@ const toPublishedPage = (
   servedLocale: Locale,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): PublishedPage => ({
+  publishedLocales,
   contentMarkdown: version.contentMarkdown ?? "",
   id: page.id,
   locale: servedLocale,
   publishedAt: version.publishedAt ?? "",
-  publishedLocales,
   slug: page.slug ?? normalizedSlug,
   title: page.title?.trim() || t("storefront.pages.untitled"),
   versionId: version.id ?? "",

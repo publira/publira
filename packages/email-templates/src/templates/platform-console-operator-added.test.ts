@@ -40,10 +40,10 @@ describe("PlatformConsoleOperatorAddedEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "platform_console_operator_added",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);

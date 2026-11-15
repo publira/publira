@@ -33,9 +33,9 @@ const endpoint = "https://push.test/subscriptions/abc";
 
 const subscriptionInput = {
   auth: "auth-key",
-  endpoint,
   locale: "en",
   p256dh: "p256dh-key",
+  endpoint,
   tenantId,
 };
 
@@ -58,8 +58,8 @@ describe("registerBrowserPushAction", () => {
     expect(mockRegisterWebPushDevice).toHaveBeenCalledWith({
       locale: "en",
       subscription: {
-        auth: "auth-key",
         endpoint,
+        auth: "auth-key",
         p256dh: "p256dh-key",
       },
       tenantId,
@@ -121,14 +121,14 @@ describe("unregisterBrowserPushAction", () => {
     const { unregisterBrowserPushAction } = await import("./push-actions");
 
     await expect(
-      unregisterBrowserPushAction({ endpoint, locale: "en", tenantId })
+      unregisterBrowserPushAction({ endpoint, tenantId, locale: "en" })
     ).resolves.toEqual({ ok: true });
 
     expect(mockRequirePublicSession).not.toHaveBeenCalled();
     expect(mockUnregisterWebPushDevice).toHaveBeenCalledWith({
       endpoint,
-      locale: "en",
       tenantId,
+      locale: "en",
     });
   });
 

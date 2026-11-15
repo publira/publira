@@ -155,8 +155,8 @@ const resolveEditEpisodeContext = async (
 
   return {
     episodeId: parsedParams.episode_id,
-    locale,
     seriesId: parsedParams.series_id,
+    locale,
     tenantId,
   };
 };

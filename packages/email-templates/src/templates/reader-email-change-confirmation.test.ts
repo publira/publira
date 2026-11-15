@@ -76,10 +76,10 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "reader_email_change_confirmation",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -105,10 +105,10 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "reader_email_change_confirmation",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -131,16 +131,16 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
     const toCurrent = await renderEmail({
       data,
-      locale: "en",
       messages,
+      locale: "en",
       template: "reader_email_change_confirmation",
       timeZone: "UTC",
     });
 
     const toNew = await renderEmail({
+      messages,
       data: { ...data, recipient_kind: "new_email" },
       locale: "en",
-      messages,
       template: "reader_email_change_confirmation",
       timeZone: "UTC",
     });
