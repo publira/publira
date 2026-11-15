@@ -415,6 +415,7 @@ void main() {
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
+          scrollable: catalogList(),
         );
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
         // The paid episode's row, below the free one: how far the list has to
@@ -505,6 +506,7 @@ void main() {
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
+          scrollable: catalogList(),
         );
         // The episode count, rather than the heading over the episodes, which
         // the follow controls and the authors above it push off a phone.
@@ -567,7 +569,7 @@ void main() {
         final tabBar = find.byKey(const ValueKey('tab-bar'));
         await pumpApp(tester);
         await pumpUntilCatalogShows(tester, seriesTile);
-        await tapVisible(tester, seriesTile);
+        await tapVisible(tester, seriesTile, scrollable: catalogList());
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
 
         await tapReachable(tester, find.byKey(const ValueKey('tab-search')));
@@ -685,7 +687,7 @@ void main() {
         await pumpApp(tester);
         final genre = find.byKey(const ValueKey('genre-chip-SeedGENRAAA1'));
         await pumpUntilRouteSettled(tester, genre);
-        await tapVisible(tester, genre);
+        await tapVisible(tester, genre, scrollable: catalogList());
         await pumpUntilRouteSettled(
           tester,
           find.byKey(
@@ -1167,6 +1169,12 @@ void main() {
         }
 
         /// The catalog, scrolled down to the series the steps open.
+        ///
+        /// Signing in, signing out, and coming back from the reader each make
+        /// the shelves above the list read again — continue reading and the
+        /// recommendations are the reader's own — and one that finishes after
+        /// the tile was found can push it out of what the list keeps built.
+        /// Every tap on the tile is therefore given the list to find it again.
         Future<void> settleOnCatalog() async {
           await pumpUntilCatalogShows(tester, seriesTile);
           await pumpUntilNoPendingFrameCallbacks(tester);
@@ -1184,7 +1192,7 @@ void main() {
         await signIn(tester);
         await settleOnCatalog();
 
-        await tapVisible(tester, seriesTile);
+        await tapVisible(tester, seriesTile, scrollable: catalogList());
         await settleOnPaidEpisode();
         await tapVisible(tester, paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
@@ -1208,7 +1216,7 @@ void main() {
         await tapReachable(tester, find.byKey(const ValueKey('tab-home')));
         await settleOnCatalog();
 
-        await tapVisible(tester, seriesTile);
+        await tapVisible(tester, seriesTile, scrollable: catalogList());
         await settleOnPaidEpisode();
         await tapVisible(tester, paidEpisode);
         await pumpUntilFound(
@@ -2577,7 +2585,7 @@ void main() {
         );
         await pumpUntilCatalogShows(tester, tile);
 
-        await tapReachable(tester, tile);
+        await tapVisible(tester, tile, scrollable: catalogList());
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('series-detail-body')),
@@ -4239,7 +4247,7 @@ void main() {
           genre,
           timeout: const Duration(seconds: 20),
         );
-        await tapVisible(tester, genre);
+        await tapVisible(tester, genre, scrollable: catalogList());
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('genre-body')),
