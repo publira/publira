@@ -2059,8 +2059,7 @@ type Querier interface {
 	// has none left to write.
 	IsCatalogIndexTenantKept(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Whether lifetime_seconds have passed since the checkout was last started,
-	// after which the provider takes no payment of it: a retry may be what made
-	// the provider's checkout, so its last start bounds when it can be paid.
+	// after which the provider takes no payment of it.
 	IsPaymentCheckoutClosed(ctx context.Context, arg IsPaymentCheckoutClosedParams) (bool, error)
 	// Whether lifetime_seconds have passed since the checkout was first started,
 	// the earliest the provider could have made it, after which the provider may
@@ -3980,7 +3979,9 @@ type Querier interface {
 	// the check, and either one that arrives later waits and then fails.
 	LockPageVersionsForDeletion(ctx context.Context, arg LockPageVersionsForDeletionParams) error
 	// Holds the checkout while a payment completes it, so that the page and the
-	// provider's notification completing it at once capture the payment once.
+	// provider's notification completing it at once capture the payment once,
+	// with whether lifetime_seconds have passed since it was last started, after
+	// which no payment of it is captured.
 	LockPaymentCheckout(ctx context.Context, arg LockPaymentCheckoutParams) (LockPaymentCheckoutRow, error)
 	// Holds, for the rest of the caller's transaction, the one refund of a payment
 	// that may be at its provider, so that a refund of the same payment from any

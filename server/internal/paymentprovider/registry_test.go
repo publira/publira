@@ -62,6 +62,10 @@ func (browserProvider) CompleteCheckout(context.Context, Credentials, StoredChec
 	return PurchaseCompleted{}, nil
 }
 
+func (browserProvider) CapturedCheckout(context.Context, Credentials, StoredCheckout, string) (PurchaseCompleted, error) {
+	return PurchaseCompleted{}, nil
+}
+
 // followingBrowserProvider is a browserProvider that follows its checkouts
 // as well.
 type followingBrowserProvider struct {

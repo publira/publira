@@ -241,6 +241,17 @@ func (s *apiServer) recordAuthorizedCheckout(
 // webhook answers, which is [connect.CodeInvalidArgument] for a payment no
 // retry makes the checkout's.
 //
+// Once the checkout's [paymentprovider.Declaration.CheckoutLifetime] has
+// passed since it was last started, nothing captures a payment of it, so the
+// provider lets an authorization lapse and the reader is not charged:
+// [paymentprovider.Provider.ListTransactions] is handed only the checkouts
+// started within that lifetime before a period, so a capture later than that
+// is one no reconciliation of its period would read. A payment captured while
+// the checkout was open still completes it, read without capturing through
+// [paymentprovider.BrowserCheckout.CapturedCheckout], since a completion may
+// have captured it and failed before the payment was kept. One that is only
+// authorized is refused as [connect.CodeInvalidArgument].
+//
 // The checkout's row is held from before the payment is read until the
 // payment is kept, so that the page and the provider's notification
 // completing the same checkout at once capture the payment once, and a second
@@ -266,9 +277,10 @@ func (s *apiServer) completeBrowserCheckout(
 		defer tx.Rollback() //nolint:errcheck
 		queries := dbmodels.New(tx)
 		held, err := queries.LockPaymentCheckout(ctx, dbmodels.LockPaymentCheckoutParams{
-			TenantID:   tenantID,
-			Provider:   providerID,
-			CheckoutID: checkoutID,
+			LifetimeSeconds: provider.Declaration().CheckoutLifetime.Seconds(),
+			TenantID:        tenantID,
+			Provider:        providerID,
+			CheckoutID:      checkoutID,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
 			s.logger.WarnContext(ctx, "a payment names a checkout the tenant did not start", keyvals...)
@@ -285,8 +297,15 @@ func (s *apiServer) completeBrowserCheckout(
 		if err != nil {
 			return paymentprovider.PurchaseCompleted{}, err
 		}
-		completed, err := browser.CompleteCheckout(ctx, credentials, paymentprovider.StoredCheckout{CheckoutID: checkoutID, Purchase: purchase}, paymentID)
+		complete := browser.CompleteCheckout
+		if held.Closed {
+			complete = browser.CapturedCheckout
+		}
+		completed, err := complete(ctx, credentials, paymentprovider.StoredCheckout{CheckoutID: checkoutID, Purchase: purchase}, paymentID)
 		switch {
+		case errors.Is(err, paymentprovider.ErrPaymentNotCaptured):
+			s.logger.WarnContext(ctx, "a payment names a checkout that can no longer be paid", keyvals...)
+			return paymentprovider.PurchaseCompleted{}, connect.NewError(connect.CodeInvalidArgument, "the checkout can no longer be paid")
 		case errors.Is(err, paymentprovider.ErrPaymentMismatch):
 			s.logger.WarnContext(ctx, "a payment does not match the checkout it names", append(keyvals, "error", err)...)
 			return paymentprovider.PurchaseCompleted{}, connect.NewError(connect.CodeInvalidArgument, "the payment does not match its checkout")
