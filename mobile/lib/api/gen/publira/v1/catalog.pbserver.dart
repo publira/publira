@@ -365,6 +365,10 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.ListMyPurchasesRequest request);
   $async.Future<$1.ProcessPaymentWebhookResponse> processPaymentWebhook(
       $pb.ServerContext ctx, $1.ProcessPaymentWebhookRequest request);
+  $async.Future<$1.GetBrowserCheckoutResponse> getBrowserCheckout(
+      $pb.ServerContext ctx, $1.GetBrowserCheckoutRequest request);
+  $async.Future<$1.CompleteBrowserCheckoutResponse> completeBrowserCheckout(
+      $pb.ServerContext ctx, $1.CompleteBrowserCheckoutRequest request);
   $async.Future<$1.StartStorePurchaseResponse> startStorePurchase(
       $pb.ServerContext ctx, $1.StartStorePurchaseRequest request);
   $async.Future<$1.PreviewPromotionCodeResponse> previewPromotionCode(
@@ -394,6 +398,10 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
         return $1.ListMyPurchasesRequest();
       case 'ProcessPaymentWebhook':
         return $1.ProcessPaymentWebhookRequest();
+      case 'GetBrowserCheckout':
+        return $1.GetBrowserCheckoutRequest();
+      case 'CompleteBrowserCheckout':
+        return $1.CompleteBrowserCheckoutRequest();
       case 'StartStorePurchase':
         return $1.StartStorePurchaseRequest();
       case 'PreviewPromotionCode':
@@ -430,6 +438,11 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       case 'ProcessPaymentWebhook':
         return processPaymentWebhook(
             ctx, request as $1.ProcessPaymentWebhookRequest);
+      case 'GetBrowserCheckout':
+        return getBrowserCheckout(ctx, request as $1.GetBrowserCheckoutRequest);
+      case 'CompleteBrowserCheckout':
+        return completeBrowserCheckout(
+            ctx, request as $1.CompleteBrowserCheckoutRequest);
       case 'StartStorePurchase':
         return startStorePurchase(ctx, request as $1.StartStorePurchaseRequest);
       case 'PreviewPromotionCode':

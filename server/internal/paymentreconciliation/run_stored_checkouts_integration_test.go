@@ -3,6 +3,7 @@ package paymentreconciliation_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"log/slog"
 	"slices"
 	"testing"
@@ -305,5 +306,138 @@ func TestDBReconciliationReadsThePurchasesOfTheModeTheCredentialsName(t *testing
 	purchases, matched, findings = reconcile()
 	if purchases != 1 || matched != 1 || len(findings) != 0 {
 		t.Fatalf("under the sandbox's credentials: purchases %d, matched %d, findings %v; want 1, 1, none", purchases, matched, findings)
+	}
+}
+
+// A provider whose checkouts run in the reader's browser reads a payment by
+// its own id alone, so a run reads the payment the server kept beside each
+// checkout it completed: a payment captured and kept whose purchase was never
+// recorded is found, one recorded is matched, and a checkout no payment
+// completed is read for nothing.
+func TestDBReconciliationReadsThePaymentKeptBesideABrowserCheckout(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	ctx := context.Background()
+	encryptor, err := secretcrypto.NewManager(map[string][]byte{"k1": bytes.Repeat([]byte{7}, 32)}, "k1")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	fixture := readbacktest.NewFixtureInBrowser(t)
+	registry := paymentprovider.NewRegistry(fixture.Provider())
+	providerID := fixture.Provider().Declaration().ID
+	credentials := fixture.Credentials()
+	tenant := pg.SeedTenant(t, "RECONBROWS01", "reconcile-browser.example.com", "Reconcile browser")
+	var fields []paymentsettings.FieldUpdate
+	for _, name := range []string{readbacktest.FieldAPIKey, readbacktest.FieldPublicKey} {
+		fields = append(fields, paymentsettings.FieldUpdate{Name: name, Mode: secretupdate.Replace, Value: credentials[name]})
+	}
+	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, registry, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
+		Provider: providerID,
+		Enabled:  true,
+		Currency: "JPY",
+		Fields:   fields,
+	}, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("save payment settings: %v", err)
+	}
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RECONBRSER"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "RECONBREP1", Price: 500})
+	reader := pg.SeedEndUser(t, tenant.ID, "RECONBRUSR", "reader@reconcile-browser.example.com", "Reader")
+
+	march := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	queries := dbmodels.New(pg.DB)
+	// started writes down a checkout started at at.
+	started := func(checkoutID string, at time.Time) {
+		t.Helper()
+		if _, err := pg.DB.ExecContext(ctx, `
+			INSERT INTO payment_checkouts (tenant_id, provider, checkout_id, purchase, created_at, last_started_at)
+			VALUES ($1, $2, $3, '{}', $4, $4)
+		`, tenant.ID, providerID, checkoutID, at); err != nil {
+			t.Fatalf("store a checkout: %v", err)
+		}
+	}
+	// completed has the script's payment paymentID of the checkout captured
+	// at paidAt and kept beside the checkout, as the server keeps the payment
+	// that completes one.
+	completed := func(checkoutID, paymentID string, paidAt time.Time) {
+		t.Helper()
+		fixture.API().Pay(credentials, checkoutID, paymentID, 500, "JPY", false, paidAt)
+		if err := queries.KeepPaymentCheckoutPayment(ctx, dbmodels.KeepPaymentCheckoutPaymentParams{
+			PaymentID:  sql.NullString{String: paymentID, Valid: true},
+			TenantID:   tenant.ID,
+			Provider:   providerID,
+			CheckoutID: checkoutID,
+		}); err != nil {
+			t.Fatalf("keep the payment of a checkout: %v", err)
+		}
+	}
+	bought := func(checkoutID, paymentID string, at time.Time) {
+		t.Helper()
+		if _, err := pg.DB.ExecContext(ctx, `
+			INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency, purchased_at,
+				provider, provider_checkout_id, provider_payment_id)
+			VALUES ($1, $2, $3, $4, 500, 'JPY', $5, $6, $7, $8)
+		`, uuid.New(), tenant.ID, reader.ID, episode.ID, at, providerID, checkoutID, paymentID); err != nil {
+			t.Fatalf("insert purchase: %v", err)
+		}
+	}
+
+	started("checkout_recorded", march.Add(5*24*time.Hour))
+	completed("checkout_recorded", "payment_recorded", march.Add(5*24*time.Hour+time.Minute))
+	bought("checkout_recorded", "payment_recorded", march.Add(5*24*time.Hour+2*time.Minute))
+	started("checkout_lost", march.Add(6*24*time.Hour))
+	completed("checkout_lost", "payment_lost", march.Add(6*24*time.Hour+time.Minute))
+	// The script authorized a payment no one completed, and the server kept
+	// nothing beside the checkout.
+	started("checkout_authorized", march.Add(7*24*time.Hour))
+	fixture.API().Authorize(credentials, "checkout_authorized", "payment_authorized", 500, "JPY", false, march.Add(7*24*time.Hour+time.Minute))
+
+	runID := uuid.Must(uuid.NewV7())
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO payment_reconciliations (id, tenant_id, provider, start_date, end_date, time_zone, starts_at, ends_at)
+		VALUES ($1, $2, $3, $4, $5, 'UTC', $6, $7)
+	`, runID, tenant.ID, providerID, march, march.AddDate(0, 1, -1), march, march.AddDate(0, 1, 0)); err != nil {
+		t.Fatalf("insert reconciliation: %v", err)
+	}
+	summary, err := paymentreconciliation.RunPending(ctx, paymentreconciliation.Deps{
+		DB:       pg.OpenContentStatsDB(t),
+		Secrets:  encryptor,
+		Payments: registry,
+		Logger:   slog.New(slog.DiscardHandler),
+	})
+	if err != nil {
+		t.Fatalf("RunPending: %v", err)
+	}
+	if summary.Succeeded != 1 {
+		t.Fatalf("summary = %+v, want the run to succeed", summary)
+	}
+	var purchases, matched int32
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT purchase_count, matched_count FROM payment_reconciliations WHERE tenant_id = $1 AND id = $2
+	`, tenant.ID, runID).Scan(&purchases, &matched); err != nil {
+		t.Fatalf("read the run: %v", err)
+	}
+	var findings []string
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT kind, COALESCE(provider_payment_id, '')
+		FROM payment_reconciliation_findings
+		WHERE tenant_id = $1 AND reconciliation_id = $2
+		ORDER BY occurred_at, id
+	`, tenant.ID, runID)
+	if err != nil {
+		t.Fatalf("list findings: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	for rows.Next() {
+		var kind, paymentID string
+		if err := rows.Scan(&kind, &paymentID); err != nil {
+			t.Fatalf("scan finding: %v", err)
+		}
+		findings = append(findings, kind+" "+paymentID)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("list findings: %v", err)
+	}
+	if want := []string{paymentreconciliation.KindRecordUnmatched + " payment_lost"}; purchases != 1 || matched != 1 || !slices.Equal(findings, want) {
+		t.Fatalf("purchases %d, matched %d, findings %v; want 1, 1, %v", purchases, matched, findings, want)
 	}
 }

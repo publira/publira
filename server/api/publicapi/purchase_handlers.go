@@ -790,6 +790,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.recordCompletedCheckout(ctx, tenant.ID, provider, credentials, event); err != nil {
 			return nil, err
 		}
+	case paymentprovider.CheckoutAuthorized:
+		if err := s.recordAuthorizedCheckout(ctx, tenant.ID, provider, credentials, event); err != nil {
+			return nil, err
+		}
 	case paymentprovider.SubscriptionChanged:
 		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event, nil); err != nil {
 			return nil, err
@@ -1488,6 +1492,17 @@ func (s *apiServer) createPurchase(
 	var paymentID sql.NullString
 	if event.PaymentID != "" {
 		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
+		// Two deliveries of one payment at once, as the storefront page and
+		// the notification of a checkout in the browser make, would otherwise
+		// both insert, and the one that does not win the checkout's conflict
+		// fails on the payment's unique index instead of inserting nothing.
+		if err := queries.LockProviderPayment(ctx, dbmodels.LockProviderPaymentParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+		}); err != nil {
+			return fmt.Errorf("lock the payment of the purchase: %w", err)
+		}
 	}
 	// The purchase records what the reader paid rather than the price the
 	// checkout was started at, so that a promotion code's discount is what a
@@ -2007,10 +2022,13 @@ func (s *apiServer) startNextCheckout(
 // provider is asked, since the reader can pay as soon as it answers. A
 // [paymentprovider.CheckoutFollower] may notify the payment only once, so the
 // worker is set to read it back as well, at the same point and for the same
-// reason. A checkout such a provider answers as expired is recorded as its
-// [paymentprovider.CheckoutExpired] would be, and answered as
-// errStartedCheckoutExpired, which [apiServer.startNextCheckout] moves on
-// from.
+// reason. What the checkout shows the reader and where it returns them is
+// written down beside the purchase, for the storefront page that runs the
+// script of a [paymentprovider.BrowserCheckout], which the checkout is
+// started on and which reads it back. A checkout such a provider answers as
+// expired is recorded as its [paymentprovider.CheckoutExpired] would be, and
+// answered as errStartedCheckoutExpired, which [apiServer.startNextCheckout]
+// moves on from.
 func (s *apiServer) startCheckout(
 	ctx context.Context,
 	provider paymentprovider.Provider,
@@ -2022,15 +2040,34 @@ func (s *apiServer) startCheckout(
 	tenantID, providerID := checkout.Purchase.TenantID, provider.Declaration().ID
 	if provider.Declaration().StoredCheckouts {
 		checkout.CheckoutID = paymentprovider.StoredCheckoutID(checkout.IdempotencyKey)
+		if _, browser := provider.(paymentprovider.BrowserCheckout); browser {
+			pageURL, err := browserCheckoutPageURL(checkout.SuccessURL, providerID, checkout.CheckoutID)
+			if err != nil {
+				return "", s.internalError(ctx, "failed to name the page of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+			}
+			checkout.PageURL = pageURL
+		}
 		purchase, err := json.Marshal(checkout.Purchase)
 		if err != nil {
 			return "", s.internalError(ctx, "failed to encode the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
 		}
+		request, err := json.Marshal(storedCheckoutRequest{
+			LineItemName: checkout.LineItemName,
+			LineItems:    checkout.LineItems,
+			Discount:     checkout.Discount,
+			SuccessURL:   checkout.SuccessURL,
+			CancelURL:    checkout.CancelURL,
+		})
+		if err != nil {
+			return "", s.internalError(ctx, "failed to encode the request of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
+		}
+		requestJSON := json.RawMessage(request)
 		if err := s.queriesFor(ctx).RecordPaymentCheckout(ctx, dbmodels.RecordPaymentCheckoutParams{
 			TenantID:   tenantID,
 			Provider:   providerID,
 			CheckoutID: checkout.CheckoutID,
 			Purchase:   purchase,
+			Request:    &requestJSON,
 		}); err != nil {
 			return "", s.internalDBError(ctx, "failed to record the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID)
 		}
@@ -2095,14 +2132,11 @@ func (s *apiServer) storedCheckoutPurchase(ctx context.Context, tenantID uuid.UU
 	if err != nil {
 		return paymentprovider.Purchase{}, false, s.internalDBError(ctx, "failed to read the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
 	}
-	var purchase paymentprovider.Purchase
-	if err := json.Unmarshal(encoded, &purchase); err != nil {
-		return paymentprovider.Purchase{}, false, s.internalError(ctx, "failed to decode the purchase of a checkout", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
-	}
 	// Written by the server, the purchase is read by the rules a provider
 	// reads the one it carried by.
-	if purchase.Kind, err = paymentprovider.ParseKind(string(purchase.Kind), int64(purchase.ReadingPeriodHours)); err != nil {
-		return paymentprovider.Purchase{}, false, s.internalError(ctx, "the purchase of a checkout names no kind it can be", err, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
+	purchase, err := s.decodeStoredPurchase(ctx, encoded, "tenant_id", tenantID.String(), "provider", providerID, "checkout_id", checkoutID)
+	if err != nil {
+		return paymentprovider.Purchase{}, false, err
 	}
 	if currency != "" {
 		purchase.Currency = currency

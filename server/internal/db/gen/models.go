@@ -761,12 +761,14 @@ type PageVersion struct {
 }
 
 type PaymentCheckout struct {
-	TenantID      uuid.UUID       `json:"tenant_id"`
-	Provider      string          `json:"provider"`
-	CheckoutID    string          `json:"checkout_id"`
-	Purchase      json.RawMessage `json:"purchase"`
-	CreatedAt     time.Time       `json:"created_at"`
-	LastStartedAt time.Time       `json:"last_started_at"`
+	TenantID      uuid.UUID        `json:"tenant_id"`
+	Provider      string           `json:"provider"`
+	CheckoutID    string           `json:"checkout_id"`
+	Purchase      json.RawMessage  `json:"purchase"`
+	CreatedAt     time.Time        `json:"created_at"`
+	LastStartedAt time.Time        `json:"last_started_at"`
+	Request       *json.RawMessage `json:"request"`
+	PaymentID     sql.NullString   `json:"payment_id"`
 }
 
 type PaymentReconciliation struct {

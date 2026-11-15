@@ -17,14 +17,16 @@ type fixture interface {
 	API() *readbacktest.API
 }
 
-// fixtures answers the three shapes of the fake: one that names a payment by
-// an id of its own, one that names it by its checkout's, and one whose test
-// mode follows its credentials.
+// fixtures answers the four shapes of the fake: one that names a payment by
+// an id of its own, one that names it by its checkout's, one whose test mode
+// follows its credentials, and one whose checkouts run in the reader's
+// browser.
 func fixtures(t testing.TB) []fixture {
 	return []fixture{
 		readbacktest.NewFixture(t),
 		readbacktest.NewFixtureByCheckout(t),
 		readbacktest.NewFixtureByCredentials(t),
+		readbacktest.NewFixtureInBrowser(t),
 	}
 }
 

@@ -29,3 +29,8 @@ sql:
               import: "encoding/json"
               type: "RawMessage"
               pointer: true
+          - column: "payment_checkouts.request"
+            go_type:
+              import: "encoding/json"
+              type: "RawMessage"
+              pointer: true

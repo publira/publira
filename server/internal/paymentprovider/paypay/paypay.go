@@ -571,9 +571,10 @@ func (p *Provider) RefundMade(ctx context.Context, credentials paymentprovider.C
 
 // ListTransactions reads the payment of each checkout it is handed, since
 // PayPay lists no payments, and answers those paid from from up to to.
-func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time, checkoutIDs []string) ([]paymentprovider.Transaction, error) {
+func (p *Provider) ListTransactions(ctx context.Context, credentials paymentprovider.Credentials, from, to time.Time, checkouts []paymentprovider.StartedCheckout) ([]paymentprovider.Transaction, error) {
 	var transactions []paymentprovider.Transaction
-	for _, checkoutID := range checkoutIDs {
+	for _, checkout := range checkouts {
+		checkoutID := checkout.CheckoutID
 		read, err := p.payment(ctx, credentials, checkoutID)
 		var apiErr *APIError
 		switch {

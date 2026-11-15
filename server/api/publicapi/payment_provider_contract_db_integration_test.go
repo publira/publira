@@ -62,11 +62,13 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	// its own — carrying nothing on its payments, signing nothing, notifying
 	// no refund and a checkout's payment only once, naming its payments by
 	// their checkouts, taking its test-mode payments under credentials of
-	// their own — whichever registered providers take it too.
+	// their own, making its payments only in the reader's browser — whichever
+	// registered providers take it too.
 	for _, fixture := range []paymentprovidertest.Fixture{
 		readbacktest.NewFixture(t),
 		readbacktest.NewFixtureByCheckout(t),
 		readbacktest.NewFixtureByCredentials(t),
+		readbacktest.NewFixtureInBrowser(t),
 	} {
 		t.Run(fixture.Provider().Declaration().ID, func(t *testing.T) {
 			server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
@@ -375,4 +377,32 @@ func (c *contractTenant) StartCheckout(t *testing.T) string {
 		t.Fatalf("read the checkout last started: %v", err)
 	}
 	return checkoutID
+}
+
+func (c *contractTenant) BrowserCheckout(t *testing.T, checkoutID string) (paymentprovidertest.BrowserPage, error) {
+	t.Helper()
+	res, err := c.harness.client.GetBrowserCheckout(t.Context(), &publirav1.GetBrowserCheckoutRequest{
+		Tenant:     tenantContext(c.tenant),
+		Provider:   c.provider,
+		CheckoutId: checkoutID,
+	})
+	if err != nil {
+		return paymentprovidertest.BrowserPage{}, err
+	}
+	return paymentprovidertest.BrowserPage{
+		Script:     paymentprovider.Script{Credentials: res.Credentials, Payload: json.RawMessage(res.Payload)},
+		SuccessURL: res.SuccessUrl,
+		CancelURL:  res.CancelUrl,
+	}, nil
+}
+
+func (c *contractTenant) CompleteBrowserCheckout(t *testing.T, checkoutID, paymentID string) error {
+	t.Helper()
+	_, err := c.harness.client.CompleteBrowserCheckout(t.Context(), &publirav1.CompleteBrowserCheckoutRequest{
+		Tenant:     tenantContext(c.tenant),
+		Provider:   c.provider,
+		CheckoutId: checkoutID,
+		PaymentId:  paymentID,
+	})
+	return err
 }

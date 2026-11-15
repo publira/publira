@@ -20,6 +20,15 @@
 // payments say nothing of which mode took them, so its provider is a
 // [paymentprovider.TestModeByCredentials] and its fixture a
 // [paymentprovidertest.TestCredentialsFixture].
+//
+// [NewFixtureInBrowser] answers the same fake with an API whose payments only
+// its script in the reader's browser makes, authorized first and captured
+// once the merchant asks, each read by an id of its own and by nothing else,
+// so its provider is a [paymentprovider.BrowserCheckout] and its fixture a
+// [paymentprovidertest.BrowserCheckoutFixture]. Its checkout is nothing of the
+// API's until the script pays it, so nothing about it runs out and nothing
+// reads it back, and its notification names the payment rather than the
+// checkout.
 package readbacktest
 
 import (
@@ -48,6 +57,9 @@ const (
 	// IDByCredentials is the provider id the fake whose test mode follows its
 	// credentials registers under.
 	IDByCredentials = "readback_by_credentials"
+	// IDInBrowser is the provider id the fake whose checkouts run in the
+	// reader's browser registers under.
+	IDInBrowser = "readback_in_browser"
 	// FieldAPIKey is the credential the fake declares, which names the
 	// account of its API a request reads.
 	FieldAPIKey = "api_key"
@@ -57,6 +69,10 @@ const (
 	FieldEnvironment = "environment"
 	// EnvironmentSandbox is the FieldEnvironment of the fake's sandbox.
 	EnvironmentSandbox = "sandbox"
+	// FieldPublicKey is the public credential the fake whose checkouts run in
+	// the reader's browser declares beside FieldAPIKey, which configures its
+	// script.
+	FieldPublicKey = "public_key"
 
 	// CheckoutLifetime is how long a checkout of the fake can be paid.
 	CheckoutLifetime = time.Hour
@@ -72,25 +88,35 @@ const (
 	paymentOpen    = "open"
 	paymentPaid    = "paid"
 	paymentExpired = "expired"
+	// paymentAuthorized is a payment the script of the fake whose checkouts
+	// run in the reader's browser authorized and the merchant has not
+	// captured, which takes no money yet.
+	paymentAuthorized = "authorized"
 
 	refundMade    = "made"
 	refundFailed  = "failed"
 	refundPending = "pending"
 )
 
-// Provider is the fake provider, reading its fake API.
-type Provider struct {
+// provider is what every shape of the fake provider does, reading its fake
+// API.
+type provider struct {
 	api *API
+}
+
+// Provider is the fake provider, which follows its checkouts.
+type Provider struct {
+	*provider
 }
 
 var _ paymentprovider.CheckoutFollower = (*Provider)(nil)
 
 // NewProvider answers the fake provider over api.
 func NewProvider(api *API) *Provider {
-	return &Provider{api: api}
+	return &Provider{provider: &provider{api: api}}
 }
 
-func (p *Provider) Declaration() paymentprovider.Declaration {
+func (p *provider) Declaration() paymentprovider.Declaration {
 	declaration := paymentprovider.Declaration{
 		ID:               ID,
 		DisplayName:      "Read-back test provider",
@@ -106,6 +132,10 @@ func (p *Provider) Declaration() paymentprovider.Declaration {
 	if p.api.byCredentials {
 		declaration.ID = IDByCredentials
 		declaration.Fields = append(declaration.Fields, paymentprovider.Field{Name: FieldEnvironment})
+	}
+	if p.api.inBrowser {
+		declaration.ID = IDInBrowser
+		declaration.Fields = append(declaration.Fields, paymentprovider.Field{Name: FieldPublicKey, Public: true, Required: true})
 	}
 	return declaration
 }
@@ -133,7 +163,11 @@ func sandbox(credentials paymentprovider.Credentials) bool {
 // then find its purchase again, and one the account holds as expired is
 // [paymentprovider.ErrCheckoutExpired], as the fake's checkouts run out with
 // no notification sent unless the fake is asked for one.
-func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
+//
+// The fake whose checkouts run in the reader's browser records nothing in its
+// API, whose payments its script alone makes, and answers the storefront page
+// the server names, refusing a checkout that names none.
+func (p *provider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
 	if credentials[FieldAPIKey] == "" {
 		return "", errors.New("readbacktest: no api key")
 	}
@@ -143,6 +177,12 @@ func (p *Provider) StartCheckout(_ context.Context, credentials paymentprovider.
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	p.api.started = append(p.api.started, req)
+	if p.api.inBrowser {
+		if req.PageURL == "" {
+			return "", errors.New("readbacktest: the checkout names no page to run the script on")
+		}
+		return req.PageURL, nil
+	}
 	acct := p.api.account(credentials)
 	held := acct.byCheckout(req.CheckoutID)
 	if held != nil && held.status == paymentExpired {
@@ -165,7 +205,7 @@ type notification struct {
 	PaymentID  string `json:"payment_id,omitempty"`
 }
 
-func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
+func (p *provider) ParseNotification(_ context.Context, payload []byte, _ http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
 	var n notification
 	if err := json.Unmarshal(payload, &n); err != nil {
 		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
@@ -175,6 +215,9 @@ func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 	account := p.api.lookup(credentials)
 	switch n.Type {
 	case notificationPayment:
+		if p.api.inBrowser {
+			return authorizedEvent(n, account.payment(n.PaymentID))
+		}
 		payment := account.byCheckout(n.CheckoutID)
 		if payment == nil {
 			return nil, paymentprovider.ErrInvalidSignature
@@ -208,9 +251,23 @@ func (p *Provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 	}
 }
 
+// authorizedEvent is what the fake whose checkouts run in the reader's
+// browser reads the notification n of the payment it names as: the
+// authorization of a payment its script authorized, captured since or not,
+// for the checkout the payment names.
+func authorizedEvent(n notification, payment *payment) (paymentprovider.Event, error) {
+	switch {
+	case payment == nil:
+		return nil, paymentprovider.ErrInvalidSignature
+	case payment.status != paymentAuthorized && payment.status != paymentPaid:
+		return paymentprovider.Ignored{ID: n.ID, Type: n.Type}, nil
+	}
+	return paymentprovider.CheckoutAuthorized{ID: n.ID, CheckoutID: payment.checkoutID, PaymentID: payment.id}, nil
+}
+
 // RefundNotification answers the notification of the refunds of paymentID the
 // fake would send if it sent one.
-func (*Provider) RefundNotification(paymentID string) []byte {
+func (*provider) RefundNotification(paymentID string) []byte {
 	payload, err := json.Marshal(notification{ID: "follow_" + paymentID, Type: notificationRefunds, PaymentID: paymentID})
 	if err != nil {
 		panic(err)
@@ -231,7 +288,7 @@ func (*Provider) CheckoutNotification(checkoutID string) []byte {
 // Refund refunds req.Amount, or what is left of the payment, once per key: a
 // refund of an amount is found again by the key it was made under, which the
 // fake keeps beside the refund as a provider's metadata would.
-func (p *Provider) Refund(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
+func (p *provider) Refund(_ context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	account := p.api.lookup(credentials)
@@ -275,7 +332,7 @@ func (p *Provider) Refund(_ context.Context, credentials paymentprovider.Credent
 	return true, nil
 }
 
-func (p *Provider) RefundMade(_ context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
+func (p *provider) RefundMade(_ context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	payment := p.api.named(p.api.lookup(credentials), paymentID)
@@ -286,15 +343,22 @@ func (p *Provider) RefundMade(_ context.Context, credentials paymentprovider.Cre
 	return made != nil && made.status != refundFailed, nil
 }
 
-// ListTransactions reads the payment of each checkout it is handed, since the
-// fake's API lists none.
-func (p *Provider) ListTransactions(_ context.Context, credentials paymentprovider.Credentials, from, to time.Time, checkoutIDs []string) ([]paymentprovider.Transaction, error) {
+// ListTransactions reads the payment of each checkout it is handed, since
+// the fake's API lists none: by the checkout, or, for the fake whose
+// checkouts run in the reader's browser, by the payment the server kept as
+// the checkout's.
+func (p *provider) ListTransactions(_ context.Context, credentials paymentprovider.Credentials, from, to time.Time, checkouts []paymentprovider.StartedCheckout) ([]paymentprovider.Transaction, error) {
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
 	account := p.api.lookup(credentials)
 	var transactions []paymentprovider.Transaction
-	for _, checkoutID := range checkoutIDs {
-		payment := account.byCheckout(checkoutID)
+	for _, checkout := range checkouts {
+		payment := account.byCheckout(checkout.CheckoutID)
+		if p.api.inBrowser {
+			if payment = account.payment(checkout.PaymentID); payment != nil && payment.checkoutID != checkout.CheckoutID {
+				payment = nil
+			}
+		}
 		if payment == nil || payment.status != paymentPaid || payment.created.Before(from) || !payment.created.Before(to) {
 			continue
 		}
@@ -313,6 +377,77 @@ func (p *Provider) ListTransactions(_ context.Context, credentials paymentprovid
 	return transactions, nil
 }
 
+// ProviderInBrowser is the fake provider over an API whose payments only its
+// script in the reader's browser makes.
+type ProviderInBrowser struct {
+	*provider
+}
+
+var _ paymentprovider.BrowserCheckout = ProviderInBrowser{}
+
+// scriptPayload is what the fake's script is launched with.
+type scriptPayload struct {
+	CheckoutID string                     `json:"checkout_id"`
+	Amount     int32                      `json:"amount"`
+	Currency   string                     `json:"currency"`
+	Name       string                     `json:"name"`
+	Lines      []paymentprovider.LineItem `json:"lines,omitempty"`
+	Buyer      string                     `json:"buyer"`
+	Registered time.Time                  `json:"registered"`
+	Paid       int64                      `json:"paid"`
+}
+
+// CheckoutScript answers the checkout as the fake's script is launched with
+// it, configured with the tenant's public key.
+func (p ProviderInBrowser) CheckoutScript(credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, buyer paymentprovider.Buyer) (paymentprovider.Script, error) {
+	if credentials[FieldPublicKey] == "" {
+		return paymentprovider.Script{}, errors.New("readbacktest: no public key")
+	}
+	payload, err := json.Marshal(scriptPayload{
+		CheckoutID: checkout.CheckoutID,
+		Amount:     checkout.Purchase.Price,
+		Currency:   checkout.Purchase.Currency,
+		Name:       checkout.LineItemName,
+		Lines:      checkout.LineItems,
+		Buyer:      buyer.ID,
+		Registered: buyer.RegisteredAt,
+		Paid:       buyer.AmountPaid,
+	})
+	if err != nil {
+		return paymentprovider.Script{}, err
+	}
+	return paymentprovider.Script{Credentials: p.Declaration().PublicCredentials(credentials), Payload: payload}, nil
+}
+
+// CompleteCheckout captures the payment paymentID the fake's script
+// authorized for checkout, once, and answers it.
+func (p ProviderInBrowser) CompleteCheckout(_ context.Context, credentials paymentprovider.Credentials, checkout paymentprovider.StoredCheckout, paymentID string) (paymentprovider.PurchaseCompleted, error) {
+	p.api.mu.Lock()
+	defer p.api.mu.Unlock()
+	payment := p.api.lookup(credentials).payment(paymentID)
+	switch {
+	case payment == nil:
+		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: no such payment", paymentprovider.ErrPaymentMismatch)
+	case payment.status != paymentAuthorized && payment.status != paymentPaid:
+		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment is %s", paymentprovider.ErrPaymentMismatch, payment.status)
+	case payment.checkoutID != checkout.CheckoutID:
+		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment is of checkout %s", paymentprovider.ErrPaymentMismatch, payment.checkoutID)
+	case payment.amount != int64(checkout.Purchase.Price) || payment.currency != checkout.Purchase.Currency:
+		return paymentprovider.PurchaseCompleted{}, fmt.Errorf("%w: the payment took %d %s", paymentprovider.ErrPaymentMismatch, payment.amount, payment.currency)
+	}
+	if payment.status == paymentAuthorized {
+		payment.status = paymentPaid
+		payment.captures++
+	}
+	return paymentprovider.PurchaseCompleted{
+		CheckoutID: checkout.CheckoutID,
+		PaymentID:  payment.id,
+		Purchase:   paymentprovider.Purchase{Currency: payment.currency},
+		AmountPaid: int32(payment.amount),
+		Test:       payment.test,
+	}, nil
+}
+
 // API is the fake's API: each api key sees only the payments made under it,
 // as each account of a provider does.
 type API struct {
@@ -327,6 +462,10 @@ type API struct {
 	// which the credentials' FieldEnvironment names, and whose payments are
 	// tests exactly when they are the sandbox's.
 	byCredentials bool
+	// inBrowser makes it an API whose payments only its script makes,
+	// authorized and then captured, and whose notifications name a payment by
+	// its own id.
+	inBrowser bool
 }
 
 // NewAPI answers an empty fake API.
@@ -344,6 +483,12 @@ func NewAPIByCheckout() *API {
 // sandbox's accounts.
 func NewAPIByCredentials() *API {
 	return &API{accounts: map[string]*account{}, byCredentials: true}
+}
+
+// NewAPIInBrowser answers an empty fake API whose payments only its script
+// in the reader's browser makes.
+func NewAPIInBrowser() *API {
+	return &API{accounts: map[string]*account{}, inBrowser: true}
 }
 
 // key answers the key of the account credentials name: the api key, within
@@ -417,6 +562,8 @@ type payment struct {
 	// failNext and holdNext make the next refund a failed or a pending one,
 	// and breakNext the next request for one fail before the fake makes it.
 	failNext, holdNext, breakNext bool
+	// captures counts the captures of a payment the script authorized.
+	captures int
 }
 
 type refund struct {
@@ -530,6 +677,40 @@ func (a *API) Pay(credentials paymentprovider.Credentials, checkoutID, paymentID
 	acct := a.account(credentials)
 	acct.payments[paymentID] = &payment{id: paymentID, checkoutID: checkoutID, amount: amount, currency: currency, test: test, status: paymentPaid, created: at}
 	acct.checkouts[checkoutID] = paymentID
+	return a.paymentNotification(checkoutID, paymentID)
+}
+
+// Authorize makes the account credentials name hold the payment paymentID,
+// of amount in currency, as one the script of an API whose payments only its
+// script makes authorized for the checkout checkoutID at at and the merchant
+// has not captured, and answers the notification the fake sends for it. test
+// makes it a payment of the test mode.
+func (a *API) Authorize(credentials paymentprovider.Credentials, checkoutID, paymentID string, amount int64, currency string, test bool, at time.Time) []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	acct := a.account(credentials)
+	acct.payments[paymentID] = &payment{id: paymentID, checkoutID: checkoutID, amount: amount, currency: currency, test: test, status: paymentAuthorized, created: at}
+	return a.paymentNotification(checkoutID, paymentID)
+}
+
+// Captures counts the captures of the payment paymentID the account
+// credentials name has taken.
+func (a *API) Captures(credentials paymentprovider.Credentials, paymentID string) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if p := a.lookup(credentials).payment(paymentID); p != nil {
+		return p.captures
+	}
+	return 0
+}
+
+// paymentNotification answers the notification the fake sends of the payment
+// paymentID of the checkout checkoutID: naming the checkout, or the payment
+// for an API whose payments only its script makes.
+func (a *API) paymentNotification(checkoutID, paymentID string) []byte {
+	if a.inBrowser {
+		return a.notification(notification{Type: notificationPayment, PaymentID: paymentID})
+	}
 	return a.notification(notification{Type: notificationPayment, CheckoutID: checkoutID})
 }
 
@@ -596,12 +777,22 @@ func (a *API) notification(n notification) []byte {
 	return payload
 }
 
-// Fixture is the contract fixture of the fake.
-type Fixture struct {
+// fixture is what the contract fixture of every shape of the fake does.
+type fixture struct {
 	api      *API
 	provider paymentprovider.Provider
 	// fake is the provider the fixture's notifications are answered by.
-	fake *Provider
+	fake *provider
+}
+
+func newFixture(api *API) *fixture {
+	fake := &provider{api: api}
+	return &fixture{api: api, provider: &Provider{provider: fake}, fake: fake}
+}
+
+// Fixture is the contract fixture of the fake, whose checkouts run out.
+type Fixture struct {
+	*fixture
 }
 
 var (
@@ -611,18 +802,13 @@ var (
 
 // NewFixture answers a fixture over a fake API of its own.
 func NewFixture(testing.TB) *Fixture {
-	return newFixture(NewAPI())
-}
-
-func newFixture(api *API) *Fixture {
-	fake := NewProvider(api)
-	return &Fixture{api: api, provider: fake, fake: fake}
+	return &Fixture{fixture: newFixture(NewAPI())}
 }
 
 // NewFixtureByCheckout answers a fixture over a fake API of its own that
 // reads a payment by the id of its checkout alone.
 func NewFixtureByCheckout(testing.TB) *Fixture {
-	return newFixture(NewAPIByCheckout())
+	return &Fixture{fixture: newFixture(NewAPIByCheckout())}
 }
 
 // FixtureByCredentials is the contract fixture of the fake whose test mode
@@ -637,8 +823,38 @@ var _ paymentprovidertest.TestCredentialsFixture = FixtureByCredentials{}
 // test mode is its sandbox's accounts.
 func NewFixtureByCredentials(testing.TB) FixtureByCredentials {
 	fixture := newFixture(NewAPIByCredentials())
-	fixture.provider = ProviderByCredentials{Provider: fixture.fake}
-	return FixtureByCredentials{Fixture: fixture}
+	fixture.provider = ProviderByCredentials{Provider: &Provider{provider: fixture.fake}}
+	return FixtureByCredentials{Fixture: &Fixture{fixture: fixture}}
+}
+
+// FixtureInBrowser is the contract fixture of the fake whose checkouts run
+// in the reader's browser. Its CheckoutCompleted answers the notification of
+// a payment the script authorized and the merchant has not captured, and its
+// PaymentTaken makes the payment one already captured.
+type FixtureInBrowser struct {
+	*fixture
+}
+
+var _ paymentprovidertest.BrowserCheckoutFixture = FixtureInBrowser{}
+
+// NewFixtureInBrowser answers a fixture over a fake API of its own whose
+// payments only its script makes.
+func NewFixtureInBrowser(testing.TB) FixtureInBrowser {
+	fixture := newFixture(NewAPIInBrowser())
+	fixture.provider = ProviderInBrowser{provider: fixture.fake}
+	return FixtureInBrowser{fixture: fixture}
+}
+
+func (FixtureInBrowser) Credentials() paymentprovider.Credentials {
+	return paymentprovider.Credentials{FieldAPIKey: "readback_key", FieldPublicKey: "readback_public_key"}
+}
+
+func (FixtureInBrowser) OtherCredentials() paymentprovider.Credentials {
+	return paymentprovider.Credentials{FieldAPIKey: "readback_other_key", FieldPublicKey: "readback_other_public_key"}
+}
+
+func (f FixtureInBrowser) Captures(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int {
+	return f.api.Captures(credentials, paymentID)
 }
 
 // TestCredentials answers the credentials of an account of the fake's
@@ -651,7 +867,7 @@ func (FixtureByCredentials) TestCredentials() paymentprovider.Credentials {
 // checkoutID that the provider reports as paymentID: that id, or, for an API
 // that reads a payment by its checkout alone, one of its own that the
 // provider never reports, so that a provider reporting it is caught.
-func (f *Fixture) ownID(checkoutID, paymentID string) string {
+func (f *fixture) ownID(checkoutID, paymentID string) string {
 	if f.api.byCheckout {
 		return "own_" + checkoutID
 	}
@@ -659,22 +875,22 @@ func (f *Fixture) ownID(checkoutID, paymentID string) string {
 }
 
 // API answers the fixture's fake API, for a test that drives it directly.
-func (f *Fixture) API() *API { return f.api }
+func (f *fixture) API() *API { return f.api }
 
-func (f *Fixture) Provider() paymentprovider.Provider { return f.provider }
+func (f *fixture) Provider() paymentprovider.Provider { return f.provider }
 
-func (*Fixture) Credentials() paymentprovider.Credentials {
+func (*fixture) Credentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{FieldAPIKey: "readback_key"}
 }
 
-func (*Fixture) OtherCredentials() paymentprovider.Credentials {
+func (*fixture) OtherCredentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{FieldAPIKey: "readback_other_key"}
 }
 
 // checkMode fails t when the suite hands a fixture whose test mode follows
 // its credentials a checkout in the other mode than the credentials name,
 // which no tenant's payment of that provider could be.
-func (f *Fixture) checkMode(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) {
+func (f *fixture) checkMode(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) {
 	t.Helper()
 	switch {
 	case !f.api.byCredentials || checkout.Test == sandbox(credentials):
@@ -685,8 +901,11 @@ func (f *Fixture) checkMode(t testing.TB, credentials paymentprovider.Credential
 	}
 }
 
-func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
+func (f *fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
 	f.checkMode(t, credentials, checkout)
+	if f.api.inBrowser {
+		return f.api.Authorize(credentials, checkout.CheckoutID, checkout.PaymentID, int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, time.Time{}), http.Header{}
+	}
 	return f.api.Pay(credentials, checkout.CheckoutID, f.ownID(checkout.CheckoutID, checkout.PaymentID), int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, time.Time{}), http.Header{}
 }
 
@@ -696,7 +915,7 @@ func (f *Fixture) CheckoutRanOut(_ testing.TB, credentials paymentprovider.Crede
 	f.api.Expire(credentials, checkout.CheckoutID, checkout.Purchase.Currency)
 }
 
-func (f *Fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {
+func (f *fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout, at time.Time) {
 	f.checkMode(t, credentials, checkout)
 	f.api.Pay(credentials, checkout.CheckoutID, f.ownID(checkout.CheckoutID, checkout.PaymentID), int64(checkout.Purchase.Price), checkout.Purchase.Currency, checkout.Test, at)
 }
@@ -704,7 +923,7 @@ func (f *Fixture) PaymentTaken(t testing.TB, credentials paymentprovider.Credent
 // Refunded refunds as much more of the payment as brings its total to
 // refunded.AmountRefunded, as a refund made in the provider's dashboard does,
 // and answers the notification the fake would send of the payment's refunds.
-func (f *Fixture) Refunded(_ testing.TB, credentials paymentprovider.Credentials, refunded paymentprovidertest.Refund) ([]byte, http.Header) {
+func (f *fixture) Refunded(_ testing.TB, credentials paymentprovider.Credentials, refunded paymentprovidertest.Refund) ([]byte, http.Header) {
 	f.api.mu.Lock()
 	acct := f.api.account(credentials)
 	p := f.api.named(acct, refunded.PaymentID)
@@ -728,7 +947,7 @@ func (f *Fixture) Refunded(_ testing.TB, credentials paymentprovider.Credentials
 	return f.fake.RefundNotification(refunded.PaymentID), http.Header{}
 }
 
-func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
+func (f *fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
 	p := f.api.named(f.api.account(credentials), paymentID)
@@ -738,7 +957,7 @@ func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Creden
 	return p.refunded()
 }
 
-func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
+func (f *fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
 	if p := f.api.named(f.api.account(credentials), paymentID); p != nil {
@@ -746,7 +965,7 @@ func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Crede
 	}
 }
 
-func (f *Fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovider.Credentials) {
+func (f *fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovider.Credentials) {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
 	f.api.account(credentials).keys = map[string]bool{}
@@ -755,7 +974,7 @@ func (f *Fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovide
 // RefundFailed fails the refund made under failed.Key, or else the latest
 // refunds of the payment until no more than failed.AmountRefunded stays
 // refunded, and answers the notification of the payment's refunds.
-func (f *Fixture) RefundFailed(_ testing.TB, credentials paymentprovider.Credentials, failed paymentprovidertest.Refund) ([]byte, http.Header) {
+func (f *fixture) RefundFailed(_ testing.TB, credentials paymentprovider.Credentials, failed paymentprovidertest.Refund) ([]byte, http.Header) {
 	f.api.mu.Lock()
 	if p := f.api.named(f.api.account(credentials), failed.PaymentID); p != nil {
 		if failed.Key != "" {
@@ -775,7 +994,7 @@ func (f *Fixture) RefundFailed(_ testing.TB, credentials paymentprovider.Credent
 	return f.fake.RefundNotification(failed.PaymentID), http.Header{}
 }
 
-func (f *Fixture) Unrelated(testing.TB, paymentprovider.Credentials) ([]byte, http.Header) {
+func (f *fixture) Unrelated(testing.TB, paymentprovider.Credentials) ([]byte, http.Header) {
 	f.api.mu.Lock()
 	defer f.api.mu.Unlock()
 	return f.api.notification(notification{Type: notificationOther}), http.Header{}

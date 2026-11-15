@@ -30,7 +30,7 @@ func (declaredProvider) RefundMade(context.Context, Credentials, string, string)
 	return false, nil
 }
 
-func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time, time.Time, []string) ([]Transaction, error) {
+func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time, time.Time, []StartedCheckout) ([]Transaction, error) {
 	return nil, nil
 }
 
@@ -48,6 +48,27 @@ type checkoutFollowingProvider struct {
 }
 
 func (checkoutFollowingProvider) CheckoutNotification(string) []byte { return nil }
+
+// browserProvider is a declaredProvider whose checkouts run in the browser.
+type browserProvider struct {
+	declaredProvider
+}
+
+func (browserProvider) CheckoutScript(Credentials, StoredCheckout, Buyer) (Script, error) {
+	return Script{}, nil
+}
+
+func (browserProvider) CompleteCheckout(context.Context, Credentials, StoredCheckout, string) (PurchaseCompleted, error) {
+	return PurchaseCompleted{}, nil
+}
+
+// followingBrowserProvider is a browserProvider that follows its checkouts
+// as well.
+type followingBrowserProvider struct {
+	browserProvider
+}
+
+func (followingBrowserProvider) CheckoutNotification(string) []byte { return nil }
 
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
@@ -184,6 +205,40 @@ func TestRegistryRefusesACheckoutFollowerWithoutStoredCheckoutsOrWithASignatureH
 		})
 	}
 	NewRegistry(checkoutFollowingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}}})
+}
+
+func TestRegistryRefusesABrowserCheckoutThatTheServerCannotStoreOrHoldsNoPaymentOf(t *testing.T) {
+	stored := Declaration{ID: "paidy", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}
+	byCheckout := stored
+	byCheckout.PaymentsByCheckout = true
+	for name, provider := range map[string]Provider{
+		"without stored checkouts":         browserProvider{declaredProvider{Declaration{ID: "paidy", Currencies: []string{"JPY"}}}},
+		"with payments named by checkouts": browserProvider{declaredProvider{byCheckout}},
+		"following its checkouts":          followingBrowserProvider{browserProvider{declaredProvider{stored}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewRegistry accepted the browser checkout")
+				}
+			}()
+			NewRegistry(provider)
+		})
+	}
+	NewRegistry(browserProvider{declaredProvider{stored}})
+}
+
+func TestDeclarationPublicCredentialsAnswersOnlyPublicFields(t *testing.T) {
+	declaration := Declaration{Fields: []Field{
+		{Name: "secret_key", Secret: true, Required: true},
+		{Name: "public_key", Public: true, Required: true},
+		{Name: "unset_public", Public: true},
+		{Name: "environment"},
+	}}
+	public := declaration.PublicCredentials(Credentials{"secret_key": "sk", "public_key": "pk", "environment": "sandbox"})
+	if len(public) != 1 || public["public_key"] != "pk" {
+		t.Fatalf("PublicCredentials = %v, want only public_key", public)
+	}
 }
 
 func TestStoredCheckoutIDNamesOneCheckoutPerKey(t *testing.T) {

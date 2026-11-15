@@ -150,6 +150,12 @@ const (
 	// PurchaseServiceProcessPaymentWebhookProcedure is the procedure name of the PurchaseService's
 	// ProcessPaymentWebhook RPC.
 	PurchaseServiceProcessPaymentWebhookProcedure = "/publira.v1.PurchaseService/ProcessPaymentWebhook"
+	// PurchaseServiceGetBrowserCheckoutProcedure is the procedure name of the PurchaseService's
+	// GetBrowserCheckout RPC.
+	PurchaseServiceGetBrowserCheckoutProcedure = "/publira.v1.PurchaseService/GetBrowserCheckout"
+	// PurchaseServiceCompleteBrowserCheckoutProcedure is the procedure name of the PurchaseService's
+	// CompleteBrowserCheckout RPC.
+	PurchaseServiceCompleteBrowserCheckoutProcedure = "/publira.v1.PurchaseService/CompleteBrowserCheckout"
 	// PurchaseServiceStartStorePurchaseProcedure is the procedure name of the PurchaseService's
 	// StartStorePurchase RPC.
 	PurchaseServiceStartStorePurchaseProcedure = "/publira.v1.PurchaseService/StartStorePurchase"
@@ -1922,6 +1928,20 @@ var (
 			Procedure:  PurchaseServiceProcessPaymentWebhookProcedure,
 		}
 	})
+	purchaseServiceGetBrowserCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("GetBrowserCheckout"),
+			Procedure:  PurchaseServiceGetBrowserCheckoutProcedure,
+		}
+	})
+	purchaseServiceCompleteBrowserCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("CompleteBrowserCheckout"),
+			Procedure:  PurchaseServiceCompleteBrowserCheckoutProcedure,
+		}
+	})
 	purchaseServiceStartStorePurchaseSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -1981,6 +2001,8 @@ type PurchaseServiceClient interface {
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
+	GetBrowserCheckout(context.Context, *v1.GetBrowserCheckoutRequest) (*v1.GetBrowserCheckoutResponse, error)
+	CompleteBrowserCheckout(context.Context, *v1.CompleteBrowserCheckoutRequest) (*v1.CompleteBrowserCheckoutResponse, error)
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
 	PreviewPromotionCode(context.Context, *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
@@ -2004,6 +2026,8 @@ type PurchaseServiceHandler interface {
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
+	GetBrowserCheckout(context.Context, *v1.GetBrowserCheckoutRequest) (*v1.GetBrowserCheckoutResponse, error)
+	CompleteBrowserCheckout(context.Context, *v1.CompleteBrowserCheckoutRequest) (*v1.CompleteBrowserCheckoutResponse, error)
 	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
 	PreviewPromotionCode(context.Context, *v1.PreviewPromotionCodeRequest) (*v1.PreviewPromotionCodeResponse, error)
 	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
@@ -2023,6 +2047,8 @@ func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceH
 		connect.Method{Spec: purchaseServiceStartSeriesRemainderCheckoutSpec(), Handler: adapter.startSeriesRemainderCheckout},
 		connect.Method{Spec: purchaseServiceListMyPurchasesSpec(), Handler: adapter.listMyPurchases},
 		connect.Method{Spec: purchaseServiceProcessPaymentWebhookSpec(), Handler: adapter.processPaymentWebhook},
+		connect.Method{Spec: purchaseServiceGetBrowserCheckoutSpec(), Handler: adapter.getBrowserCheckout},
+		connect.Method{Spec: purchaseServiceCompleteBrowserCheckoutSpec(), Handler: adapter.completeBrowserCheckout},
 		connect.Method{Spec: purchaseServiceStartStorePurchaseSpec(), Handler: adapter.startStorePurchase},
 		connect.Method{Spec: purchaseServicePreviewPromotionCodeSpec(), Handler: adapter.previewPromotionCode},
 		connect.Method{Spec: purchaseServiceConfirmStorePurchaseSpec(), Handler: adapter.confirmStorePurchase},
@@ -2054,6 +2080,14 @@ func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *v1.
 
 func (UnimplementedPurchaseServiceHandler) ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessPaymentWebhook is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) GetBrowserCheckout(context.Context, *v1.GetBrowserCheckoutRequest) (*v1.GetBrowserCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.GetBrowserCheckout is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) CompleteBrowserCheckout(context.Context, *v1.CompleteBrowserCheckoutRequest) (*v1.CompleteBrowserCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.CompleteBrowserCheckout is not implemented")
 }
 
 func (UnimplementedPurchaseServiceHandler) StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error) {
@@ -2123,6 +2157,22 @@ func (c *purchaseServiceClient) ListMyPurchases(ctx context.Context, req *v1.Lis
 func (c *purchaseServiceClient) ProcessPaymentWebhook(ctx context.Context, req *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error) {
 	var res v1.ProcessPaymentWebhookResponse
 	if err := c.client.CallUnary(ctx, purchaseServiceProcessPaymentWebhookSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) GetBrowserCheckout(ctx context.Context, req *v1.GetBrowserCheckoutRequest) (*v1.GetBrowserCheckoutResponse, error) {
+	var res v1.GetBrowserCheckoutResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceGetBrowserCheckoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) CompleteBrowserCheckout(ctx context.Context, req *v1.CompleteBrowserCheckoutRequest) (*v1.CompleteBrowserCheckoutResponse, error) {
+	var res v1.CompleteBrowserCheckoutResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceCompleteBrowserCheckoutSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2240,6 +2290,30 @@ func (h purchaseServiceHandler) processPaymentWebhook(ctx context.Context, _ con
 		return err
 	}
 	res, err := h.svc.ProcessPaymentWebhook(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) getBrowserCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetBrowserCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetBrowserCheckout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) completeBrowserCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CompleteBrowserCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CompleteBrowserCheckout(ctx, &req)
 	if err != nil {
 		return err
 	}
