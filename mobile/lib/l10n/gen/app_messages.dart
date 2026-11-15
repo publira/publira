@@ -3155,6 +3155,26 @@ final class AppMessages {
     return _format('mobile.purchase.not_sold_in_app');
   }
 
+  /// `mobile.purchase.payment_provider.continue`
+  String get purchasePaymentProviderContinue {
+    return _format('mobile.purchase.payment_provider.continue');
+  }
+
+  /// `mobile.purchase.payment_provider.label`
+  String get purchasePaymentProviderLabel {
+    return _format('mobile.purchase.payment_provider.label');
+  }
+
+  /// `mobile.purchase.payment_provider.methods.payjp`
+  String get purchasePaymentProviderMethodsPayjp {
+    return _format('mobile.purchase.payment_provider.methods.payjp');
+  }
+
+  /// `mobile.purchase.payment_provider.methods.stripe`
+  String get purchasePaymentProviderMethodsStripe {
+    return _format('mobile.purchase.payment_provider.methods.stripe');
+  }
+
   /// `mobile.purchase.plan_billing_day`
   String purchasePlanBillingDay({required num count, required String price}) {
     return _format('mobile.purchase.plan_billing_day', {
@@ -5519,6 +5539,10 @@ const _jaSources = <String, String>{
   'mobile.purchase.confirming': '決済を確認しています。購入が反映されると本文を表示します。',
   'mobile.purchase.included_in_plan': 'プランに含まれています',
   'mobile.purchase.not_sold_in_app': '現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。',
+  'mobile.purchase.payment_provider.continue': '決済ページへ進む',
+  'mobile.purchase.payment_provider.label': '支払い方法',
+  'mobile.purchase.payment_provider.methods.payjp': 'カード',
+  'mobile.purchase.payment_provider.methods.stripe': 'カードなど',
   'mobile.purchase.plan_billing_day':
       '.input {\$count :integer}\n.match \$count\n1 {{1日ごとに{\$price}}}\n* {{{\$count}日ごとに{\$price}}}',
   'mobile.purchase.plan_billing_month':
@@ -6698,6 +6722,10 @@ const _enSources = <String, String>{
   'mobile.purchase.included_in_plan': 'Included in your plan',
   'mobile.purchase.not_sold_in_app':
       'This episode cannot be bought in the app right now. Try again later.',
+  'mobile.purchase.payment_provider.continue': 'Go to the payment page',
+  'mobile.purchase.payment_provider.label': 'Pay with',
+  'mobile.purchase.payment_provider.methods.payjp': 'Cards',
+  'mobile.purchase.payment_provider.methods.stripe': 'Cards and more',
   'mobile.purchase.plan_billing_day':
       '.input {\$count :integer}\n.match \$count\n1 {{{\$price} a day}}\n* {{{\$price} every {\$count} days}}',
   'mobile.purchase.plan_billing_month':
@@ -7824,6 +7852,10 @@ const _koSources = <String, String>{
   'mobile.purchase.included_in_plan': '플랜에 포함됨',
   'mobile.purchase.not_sold_in_app':
       '지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.payment_provider.continue': '결제 페이지로 이동',
+  'mobile.purchase.payment_provider.label': '결제 수단',
+  'mobile.purchase.payment_provider.methods.payjp': '카드',
+  'mobile.purchase.payment_provider.methods.stripe': '카드 등',
   'mobile.purchase.plan_billing_day':
       '.input {\$count :integer}\n.match \$count\n1 {{1일마다 {\$price}}}\n* {{{\$count}일마다 {\$price}}}',
   'mobile.purchase.plan_billing_month':
@@ -8820,6 +8852,10 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.confirming': '我们正在确认您的付款。购买生效后即可打开该章节。',
   'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前无法在应用中购买该章节。请稍后再试。',
+  'mobile.purchase.payment_provider.continue': '前往付款页面',
+  'mobile.purchase.payment_provider.label': '支付方式',
+  'mobile.purchase.payment_provider.methods.payjp': '银行卡',
+  'mobile.purchase.payment_provider.methods.stripe': '银行卡等',
   'mobile.purchase.plan_billing_day':
       '.input {\$count :integer}\n.match \$count\n1 {{每天{\$price}}}\n* {{每{\$count}天{\$price}}}',
   'mobile.purchase.plan_billing_month':
@@ -9779,6 +9815,10 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.confirming': '我們正在確認您的付款。購買生效後即可開啟該章節。',
   'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前無法在應用程式中購買該章節。請稍後再試。',
+  'mobile.purchase.payment_provider.continue': '前往付款頁面',
+  'mobile.purchase.payment_provider.label': '付款方式',
+  'mobile.purchase.payment_provider.methods.payjp': '信用卡',
+  'mobile.purchase.payment_provider.methods.stripe': '信用卡等',
   'mobile.purchase.plan_billing_day':
       '.input {\$count :integer}\n.match \$count\n1 {{每天{\$price}}}\n* {{每{\$count}天{\$price}}}',
   'mobile.purchase.plan_billing_month':

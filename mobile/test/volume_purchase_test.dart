@@ -389,6 +389,43 @@ void main() {
     });
   });
 
+  group('a tenant that sells through more than one provider', () {
+    final payjp = find.byKey(const ValueKey('payment-provider-payjp'));
+    final proceed = find.byKey(const ValueKey('payment-provider-continue'));
+
+    setUp(() {
+      purchases.providers = fakeTwoPaymentProviders;
+    });
+
+    Future<void> choose(WidgetTester tester, Finder button) async {
+      await pumpUntilFound(tester, button);
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await pumpUntilFound(tester, payjp);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payment-provider-stripe')));
+      await tester.pump();
+      await tester.tap(proceed);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+    }
+
+    testWidgets('has the reader choose one before a volume', (tester) async {
+      await pumpApp(tester);
+      await choose(tester, buyVolume);
+
+      expect(purchases.volumeCheckouts, [volume.id]);
+      expect(purchases.checkoutProviders, ['stripe']);
+    });
+
+    testWidgets('has the reader choose one before the rest', (tester) async {
+      await pumpApp(tester);
+      await choose(tester, buyRemainder);
+
+      expect(purchases.remainderCheckouts, [series.internalId]);
+      expect(purchases.checkoutProviders, ['stripe']);
+    });
+  });
+
   group('the rest of the series', () {
     testWidgets('is quoted with what the series takes off', (tester) async {
       await pumpApp(tester);

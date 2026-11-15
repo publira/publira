@@ -7478,6 +7478,14 @@
       "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
       "included_in_plan": "Included in your plan",
       "not_sold_in_app": "This episode cannot be bought in the app right now. Try again later.",
+      "payment_provider": {
+        "continue": "Go to the payment page",
+        "label": "Pay with",
+        "methods": {
+          "payjp": "Cards",
+          "stripe": "Cards and more"
+        }
+      },
       "plan_billing_day": ".input {$count :integer}\n.match $count\n1 {{{$price} a day}}\n* {{{$price} every {$count} days}}",
       "plan_billing_month": ".input {$count :integer}\n.match $count\n1 {{{$price} a month}}\n* {{{$price} every {$count} months}}",
       "plan_billing_week": ".input {$count :integer}\n.match $count\n1 {{{$price} a week}}\n* {{{$price} every {$count} weeks}}",

@@ -522,6 +522,70 @@ void main() {
     expect(holdings.remainder, isNull);
   });
 
+  test('the payment providers are read in the tenant\'s order', () async {
+    server.paymentProviders = [
+      pb.TenantPaymentProvider(id: 'payjp', displayName: 'PAY.JP'),
+      pb.TenantPaymentProvider(id: ' stripe ', subscriptions: true),
+      pb.TenantPaymentProvider(displayName: 'Nameless'),
+    ];
+
+    final providers = await repository().paymentProviders();
+
+    expect(providers.map((provider) => provider.id), ['payjp', 'stripe']);
+    expect(providers.map((provider) => provider.displayName), [
+      'PAY.JP',
+      'stripe',
+    ]);
+  });
+
+  test('a server that lists no payment provider answers none', () async {
+    expect(await repository().paymentProviders(), isEmpty);
+  });
+
+  test('every checkout through the web names the provider chosen', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.paymentProviders = [
+      pb.TenantPaymentProvider(id: 'payjp', displayName: 'PAY.JP'),
+      pb.TenantPaymentProvider(id: 'stripe', displayName: 'Stripe'),
+    ];
+    final episodeId = ConnectFixtureServer.internalIdOf(paidEpisodeId);
+    final seriesInternalId = ConnectFixtureServer.internalIdOf(seriesId);
+
+    expect(
+      await repository().startEpisodeCheckout(
+        episodeId,
+        locale: 'en',
+        provider: 'payjp',
+      ),
+      ConnectFixtureServer.checkoutUrlFor(paidEpisodeId, provider: 'payjp'),
+    );
+    await repository().startVolumeCheckout('volume-1', provider: 'payjp');
+    await repository().startSeriesRemainderCheckout(
+      seriesInternalId,
+      locale: 'en',
+      provider: 'payjp',
+    );
+    await repository().startTipCheckout(
+      episodeId,
+      amount: 300,
+      locale: 'en',
+      provider: 'payjp',
+    );
+
+    expect(
+      [
+        server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.provider,
+        server.requestsOf(pb.StartVolumeCheckoutRequest.new).single.provider,
+        server
+            .requestsOf(pb.StartSeriesRemainderCheckoutRequest.new)
+            .single
+            .provider,
+        server.requestsOf(pb.StartTipCheckoutRequest.new).single.provider,
+      ],
+      ['payjp', 'payjp', 'payjp', 'payjp'],
+    );
+  });
+
   test('a volume checkout asks to come back to the app', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 

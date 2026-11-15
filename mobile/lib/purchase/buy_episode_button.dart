@@ -7,6 +7,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/payment_lock.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -26,6 +27,9 @@ const _compactMaxWidth = 144.0;
 /// instead, and rents the episode through the web checkout. The store sells
 /// the permanent copy alone, so a rental is offered on the external-checkout
 /// route only.
+///
+/// Where the tenant sells through more than one payment provider on the web,
+/// the reader chooses one in [choosePaymentProvider]'s sheet first.
 ///
 /// A guest is sent to sign in first, because a purchase is bought by an
 /// account. The return from the browser is a link the app routes, not
@@ -156,11 +160,23 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         }
         return;
       }
+      if (!mounted) {
+        return;
+      }
+      final provider = await choosePaymentProvider(
+        context,
+        repository: repository,
+        choice: purchase.paymentProviderChoice,
+      );
+      if (provider == null) {
+        return;
+      }
       final url = await repository.startEpisodeCheckout(
         widget.episodeInternalId,
         locale: locale,
         kind: kind,
         promotionCode: widget.promotionCode,
+        provider: provider,
       );
       final opened = await purchase.launcher!.open(url);
       if (!opened) {

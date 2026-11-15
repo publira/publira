@@ -57,6 +57,7 @@ import 'package:publira/pages/http_page_repository.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/purchase/store_subscriber.dart';
@@ -109,6 +110,7 @@ class PubliraApp extends StatefulWidget {
     this.pages,
     this.purchases,
     this.checkoutLauncher,
+    this.paymentProviderChoice,
     this.storePurchaser,
     this.storeSubscriber,
     this.coins,
@@ -147,7 +149,8 @@ class PubliraApp extends StatefulWidget {
   ///
   /// [dismissedAnnouncements] remembers the banner the reader closed, which an
   /// on-device test replaces so a closed banner does not carry from one test
-  /// to the next.
+  /// to the next, and [paymentProviderChoice] the provider the reader last
+  /// paid through on the web, which one replaces for the same reason.
   ///
   /// [anonymousIds] keeps the identifier a signed-out reader's views are
   /// counted under, which an on-device test replaces so one test's reader is
@@ -177,6 +180,8 @@ class PubliraApp extends StatefulWidget {
     CheckoutLauncher? checkoutLauncher,
     DismissedAnnouncementStore dismissedAnnouncements =
         const FileDismissedAnnouncementStore(),
+    PaymentProviderChoiceStore paymentProviderChoice =
+        const FilePaymentProviderChoiceStore(),
     AnonymousIdStore anonymousIds = const FileAnonymousIdStore(),
     ProviderSignIn? providerSignIn,
     PasskeyAuthenticator? passkeyAuthenticator,
@@ -290,6 +295,7 @@ class PubliraApp extends StatefulWidget {
       pages: HttpPageRepository(client: client, tenants: tenants),
       purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
+      paymentProviderChoice: paymentProviderChoice,
       storePurchaser: storeSubscriber == null
           ? null
           : StorePurchaser(
@@ -439,6 +445,14 @@ class PubliraApp extends StatefulWidget {
   /// purchase at all, and a locked episode then offers none.
   final PurchaseRepository? purchases;
   final CheckoutLauncher? checkoutLauncher;
+
+  /// The provider the reader last paid through on the web, which the next
+  /// checkout's choice of provider starts on.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, and a widget test that leaves it out gets one held
+  /// in memory for the run.
+  final PaymentProviderChoiceStore? paymentProviderChoice;
 
   /// The store's in-app purchase, for a tenant whose app sells through it.
   ///
@@ -600,6 +614,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// widget test that does not care about ratings still has a store.
   AgeRatingConfirmationController? _ownedAgeRating;
   late AgeRatingConfirmationController _ageRating;
+
+  /// The choice this run holds when the widget did not pass a store.
+  final _ownedPaymentProviderChoice = MemoryPaymentProviderChoiceStore();
 
   StreamSubscription<Uri>? _incomingLinks;
 
@@ -1023,6 +1040,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                                     child: PurchaseScope(
                                       repository: widget.purchases,
                                       launcher: widget.checkoutLauncher,
+                                      paymentProviderChoice:
+                                          widget.paymentProviderChoice ??
+                                          _ownedPaymentProviderChoice,
                                       storePurchaser: widget.storePurchaser,
                                       storeSubscriber: widget.storeSubscriber,
                                       child: CoinScope(

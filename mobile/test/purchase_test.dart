@@ -178,6 +178,133 @@ void main() {
     });
   });
 
+  group('a tenant that sells through more than one provider', () {
+    final sheet = find.byKey(const ValueKey('payment-provider-sheet'));
+    final payjp = find.byKey(const ValueKey('payment-provider-payjp'));
+    final stripe = find.byKey(const ValueKey('payment-provider-stripe'));
+    final proceed = find.byKey(const ValueKey('payment-provider-continue'));
+
+    setUp(() {
+      purchases.providers = fakeTwoPaymentProviders;
+    });
+
+    /// Taps the purchase and waits for the sheet to have slid in, since its
+    /// buttons are below the screen until it has.
+    Future<void> openSheet(WidgetTester tester) async {
+      await pumpUntilFound(tester, buy);
+      await tester.tap(buy);
+      await pumpUntilFound(tester, sheet);
+      await tester.pumpAndSettle();
+    }
+
+    RadioListTile<String> tile(WidgetTester tester, Finder finder) =>
+        tester.widget<RadioListTile<String>>(finder);
+
+    testWidgets('names each provider and what it takes', (tester) async {
+      await pumpApp(tester, session: fakeSession);
+      await openSheet(tester);
+
+      expect(find.text('Pay with'), findsOne);
+      expect(
+        find.descendant(of: payjp, matching: find.text('PAY.JP')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: payjp, matching: find.text('Cards')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: stripe, matching: find.text('Cards and more')),
+        findsOne,
+      );
+      expect(purchases.checkouts, isEmpty);
+    });
+
+    testWidgets('starts on the first and pays through it', (tester) async {
+      await pumpApp(tester, session: fakeSession);
+      await openSheet(tester);
+
+      expect(tile(tester, payjp).value, 'payjp');
+      expect(
+        tester
+            .widget<RadioGroup<String>>(find.byType(RadioGroup<String>))
+            .groupValue,
+        'payjp',
+      );
+      await tester.tap(proceed);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
+      expect(purchases.checkoutProviders, ['payjp']);
+    });
+
+    testWidgets('starts the next purchase on the provider chosen', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await openSheet(tester);
+      await tester.tap(stripe);
+      await tester.pump();
+      await tester.tap(proceed);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      await openSheet(tester);
+      expect(
+        tester
+            .widget<RadioGroup<String>>(find.byType(RadioGroup<String>))
+            .groupValue,
+        'stripe',
+      );
+      await tester.tap(proceed);
+      await pumpUntilTrue(tester, () => launcher.opened.length == 2);
+
+      expect(purchases.checkoutProviders, ['stripe', 'stripe']);
+    });
+
+    testWidgets('starts no checkout from a sheet the reader dismissed', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await openSheet(tester);
+
+      await tester.tapAt(const Offset(200, 20));
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      expect(purchases.checkouts, isEmpty);
+      expect(launcher.opened, isEmpty);
+      expect(tester.widget<FilledButton>(buy).onPressed, isNotNull);
+    });
+
+    testWidgets('asks nothing where the tenant sells through one', (
+      tester,
+    ) async {
+      purchases.providers = fakeTwoPaymentProviders.take(1).toList();
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      await tester.tap(buy);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(sheet, findsNothing);
+      expect(purchases.checkoutProviders, ['']);
+    });
+
+    testWidgets('asks nothing where the store takes the payment', (
+      tester,
+    ) async {
+      purchases.route = AppPurchaseRoute.store;
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      await tester.tap(buy);
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      expect(purchases.checkouts, isEmpty);
+    });
+  });
+
   group('the return from the browser', () {
     Uri returnLink(String status, {String? episodeId}) => Uri.parse(
       'https://localhost/checkout/return'

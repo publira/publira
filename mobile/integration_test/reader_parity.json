@@ -543,7 +543,14 @@
         ],
         "rpcs": ["GetTenant"]
       },
-      "exception": "Not in the app yet: #5663."
+      "mobile": {
+        "routes": [
+          "/series/:seriesId/episodes/:episodeId",
+          "/series/:seriesId"
+        ],
+        "rpcs": ["GetTenant"]
+      },
+      "tests": ["a reader picks the payment provider before buying an episode"]
     },
     {
       "name": "The plan a reader holds on My Page, and the billing portal",

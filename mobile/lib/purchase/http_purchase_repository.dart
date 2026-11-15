@@ -72,6 +72,22 @@ class HttpPurchaseRepository implements PurchaseRepository {
   }
 
   @override
+  Future<List<PaymentProvider>> paymentProviders() async {
+    final tenant = await _tenant();
+    return List.unmodifiable([
+      for (final provider in tenant.paymentProviders)
+        // One without an id is one no checkout could name.
+        if (provider.id.trim() case final id when id.isNotEmpty)
+          PaymentProvider(
+            id: id,
+            displayName: provider.displayName.trim().isEmpty
+                ? id
+                : provider.displayName.trim(),
+          ),
+    ]);
+  }
+
+  @override
   Future<bool> acceptsPromotionCodes() async =>
       (await _tenant()).acceptsPromotionCodes;
 
@@ -387,6 +403,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
     String promotionCode = '',
+    String provider = '',
   }) async {
     // The token is read here and sent explicitly, so a checkout is never
     // started for a reader other than the one who tapped.
@@ -407,6 +424,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
           kind: _purchaseKind(kind),
           locale: locale,
           promotionCode: promotionCode,
+          provider: provider,
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );
@@ -420,6 +438,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
   Future<Uri> startVolumeCheckout(
     String volumeInternalId, {
     String promotionCode = '',
+    String provider = '',
   }) async {
     // Read once and sent explicitly, so the checkout is started for the reader
     // who tapped and no one else.
@@ -431,6 +450,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         pb.StartVolumeCheckoutRequest(
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
           promotionCode: promotionCode,
+          provider: provider,
           tenant: pb.TenantContext(tenantId: tenantId),
           volumeId: volumeInternalId,
         ),
@@ -445,6 +465,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
   Future<Uri> startSeriesRemainderCheckout(
     String seriesInternalId, {
     required String locale,
+    String provider = '',
   }) async {
     final accessToken = _requireAccessToken();
     try {
@@ -455,6 +476,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
             pb.StartSeriesRemainderCheckoutRequest(
               client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
               locale: locale,
+              provider: provider,
               seriesId: seriesInternalId,
               tenant: pb.TenantContext(tenantId: tenantId),
             ),
@@ -470,6 +492,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
     String episodeInternalId, {
     required int amount,
     required String locale,
+    String provider = '',
   }) async {
     final accessToken = _requireAccessToken();
     try {
@@ -481,6 +504,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
           episodeId: episodeInternalId,
           locale: locale,
+          provider: provider,
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );

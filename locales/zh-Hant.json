@@ -7478,6 +7478,14 @@
       "confirming": "我們正在確認您的付款。購買生效後即可開啟該章節。",
       "included_in_plan": "已包含在您的方案中",
       "not_sold_in_app": "目前無法在應用程式中購買該章節。請稍後再試。",
+      "payment_provider": {
+        "continue": "前往付款頁面",
+        "label": "付款方式",
+        "methods": {
+          "payjp": "信用卡",
+          "stripe": "信用卡等"
+        }
+      },
       "plan_billing_day": ".input {$count :integer}\n.match $count\n1 {{每天{$price}}}\n* {{每{$count}天{$price}}}",
       "plan_billing_month": ".input {$count :integer}\n.match $count\n1 {{每月{$price}}}\n* {{每{$count}個月{$price}}}",
       "plan_billing_week": ".input {$count :integer}\n.match $count\n1 {{每週{$price}}}\n* {{每{$count}週{$price}}}",

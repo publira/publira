@@ -6,6 +6,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -21,6 +22,10 @@ String tipProductId(int amount) => 'tip_$amount';
 /// episode the amount the reader picks there, the way the tenant's app takes
 /// a payment — the store's payment sheet, or the web checkout handed to the
 /// system browser.
+///
+/// Through the web checkout, a tenant that sells through more than one payment
+/// provider has the reader choose one in [choosePaymentProvider]'s sheet once
+/// the amount is picked.
 ///
 /// A guest is sent to sign in first, because a tip is given by an account. A
 /// tip the store took is thanked for here; one paid in the browser is
@@ -122,10 +127,19 @@ class _TipAuthorsButtonState extends State<TipAuthorsButton> {
         }
         return;
       }
+      final provider = await choosePaymentProvider(
+        context,
+        repository: repository,
+        choice: purchase.paymentProviderChoice,
+      );
+      if (provider == null) {
+        return;
+      }
       final url = await repository.startTipCheckout(
         widget.episodeInternalId,
         amount: amount,
         locale: locale,
+        provider: provider,
       );
       if (!await purchase.launcher!.open(url)) {
         tell(messages.tipStartFailed);
