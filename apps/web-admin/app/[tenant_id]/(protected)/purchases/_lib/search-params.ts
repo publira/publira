@@ -67,9 +67,9 @@ export const purchaseListQuery = (
     email: filters.email,
     episode: filters.episode,
     from: filters.from,
-    purchase,
     series: filters.series,
     to: filters.to,
+    purchase,
     token,
   }) || "?";
 

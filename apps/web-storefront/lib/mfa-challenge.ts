@@ -113,8 +113,8 @@ export const writeMfaChallenge = async (
   const sealed = await encryptPayload(challenge, resolveAuthSecret());
   const cookieStore = await cookies();
   cookieStore.set({
-    httpOnly: true,
     maxAge,
+    httpOnly: true,
     name: MFA_CHALLENGE_COOKIE_NAME,
     path: "/",
     sameSite: "lax",

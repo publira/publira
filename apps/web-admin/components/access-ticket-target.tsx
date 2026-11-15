@@ -124,6 +124,8 @@ const TicketTarget = ({
       episodeItems,
       episodesErrorMessage,
       isEpisodePending,
+      seriesId,
+      seriesItems,
       onEpisodeChange: (nextEpisodeId) => {
         setEpisodeId(nextEpisodeId);
         setSubmittable(readerId !== "" && nextEpisodeId !== "");
@@ -155,8 +157,6 @@ const TicketTarget = ({
 
         loadEpisodesForSeries(nextSeriesId);
       },
-      seriesId,
-      seriesItems,
     }),
     [
       episodeId,

@@ -46,9 +46,9 @@ const balance = (coins: bigint, owedCoins = 0n) =>
     ok: true,
     value: {
       coinName: "Points",
-      coins,
       nearestExpiryAt: "",
       nearestExpiryCoins: 0n,
+      coins,
       owedCoins,
     },
   }) as const;
@@ -90,8 +90,8 @@ describe("toCoinOffer", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
       balance: balance(300n),
-      episode,
       idempotencyKey: "key",
+      episode,
       settings,
     });
 
@@ -104,8 +104,8 @@ describe("toCoinOffer", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
       balance: balance(150n),
-      episode,
       idempotencyKey: "key",
+      episode,
       settings,
     });
 
@@ -122,8 +122,8 @@ describe("toCoinOffer", () => {
     const offer = toCoinOffer({
       acceptsPayments: true,
       balance: balance(250n, 80n),
-      episode,
       idempotencyKey: "key",
+      episode,
       settings,
     });
 
@@ -134,8 +134,8 @@ describe("toCoinOffer", () => {
     const offer = toCoinOffer({
       acceptsPayments: false,
       balance: balance(0n),
-      episode,
       idempotencyKey: "key",
+      episode,
       settings,
     });
 
@@ -160,8 +160,8 @@ describe("toCoinOffer", () => {
       toCoinOffer({
         acceptsPayments: true,
         balance: { ok: true, value: null },
-        episode,
         idempotencyKey: "key",
+        episode,
         settings,
       })
     ).toBeUndefined();
@@ -172,8 +172,8 @@ describe("toCoinOffer", () => {
       toCoinOffer({
         acceptsPayments: true,
         balance: { message: "Could not load your balance.", ok: false },
-        episode,
         idempotencyKey: "key",
+        episode,
         settings,
       })
     ).toEqual({ kind: "failed", message: "Could not load your balance." });

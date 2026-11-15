@@ -48,19 +48,19 @@ const signupFormSchema = async (locale: Locale) => {
       // The versions of the pages the form displayed, which may since have
       // been superseded.
       agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
-      birthDate,
       confirmPassword: z
         .string({ error: confirmRequired })
         .min(1, confirmRequired)
         .max(1024, t("storefront.auth.errors.password_confirm_too_long")),
       consent: z.string().optional(),
-      email,
       locale: localeFormSchema,
       name: z
         .string({ error: nameRequired })
         .trim()
         .min(1, nameRequired)
         .max(100, t("storefront.auth.errors.name_too_long")),
+      birthDate,
+      email,
       password,
       tenantId,
     })

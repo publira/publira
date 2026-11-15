@@ -516,8 +516,8 @@ export const checkSeriesImport = (
   }
 
   const context = {
-    currency: options.currency,
     entries,
+    currency: options.currency,
     now: options.now ?? Temporal.Now.instant(),
     seen: new Set<string>(),
   };

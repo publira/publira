@@ -187,11 +187,11 @@ const suspendedSiteResponse = (
   const locale = suspendedTenantLocale(request, pathLocale);
 
   return suspendedTenantResponse({
+    locale,
     description: sharedMessage(
       "storefront.errors.suspended_description",
       locale
     ),
-    locale,
     title: sharedMessage("storefront.errors.suspended_title", locale),
   });
 };

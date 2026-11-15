@@ -72,15 +72,15 @@ const campaignPrice = (
   endsAt: string
 ) => ({
   createdAt: "2026-10-01T00:00:00Z",
-  endsAt,
   episodeId: "EPISODE-ID",
   episodePublicId: "EPISODE001",
   episodeTitle: "Chapter One",
-  id,
-  price,
   publicId: `${id}-PUBLIC`,
   seriesId: "SERIES-ID",
   seriesPublicId: "SERIES001",
+  endsAt,
+  id,
+  price,
   startsAt,
 });
 

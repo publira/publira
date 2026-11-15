@@ -202,13 +202,13 @@ const tableOf = (
 
   return HOURS.map((hour) => {
     const rendered = partValue(
-      partsOf(formatter, { day: 2, hour, minute: 0, month: 1 }),
+      partsOf(formatter, { hour, day: 2, minute: 0, month: 1 }),
       type
     );
 
     for (const minute of MINUTES) {
       const other = partValue(
-        partsOf(formatter, { day: 2, hour, minute, month: 1 }),
+        partsOf(formatter, { hour, minute, day: 2, month: 1 }),
         type
       );
 

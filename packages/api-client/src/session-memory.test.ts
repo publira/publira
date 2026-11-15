@@ -70,9 +70,9 @@ const startServer = async () => {
   };
 
   return {
-    baseUrl: `http://127.0.0.1:${port}`,
     close,
     release,
+    baseUrl: `http://127.0.0.1:${port}`,
     uploadHeld: uploadHeld.promise,
   };
 };

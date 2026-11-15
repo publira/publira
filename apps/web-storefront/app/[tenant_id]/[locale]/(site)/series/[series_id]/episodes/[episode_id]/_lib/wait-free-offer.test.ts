@@ -34,8 +34,8 @@ describe("toWaitFreeOffer", () => {
   it("names an excluded episode whoever the reader is", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_LATEST",
         rule,
+        episodeId: "EPISODE_LATEST",
         ticketState: undefined,
       })
     ).toEqual({ kind: "excluded" });
@@ -44,8 +44,8 @@ describe("toWaitFreeOffer", () => {
   it("asks a guest to sign in", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_OLDER",
         rule,
+        episodeId: "EPISODE_OLDER",
         ticketState: undefined,
       })
     ).toEqual({ kind: "guest" });
@@ -54,8 +54,8 @@ describe("toWaitFreeOffer", () => {
   it("offers a ready ticket with the period it opens the episode for", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_OLDER",
         rule,
+        episodeId: "EPISODE_OLDER",
         ticketState: { ok: true, value: { ready: true } },
       })
     ).toEqual({ accessHours: 72, kind: "ready" });
@@ -64,8 +64,8 @@ describe("toWaitFreeOffer", () => {
   it("counts down to a ticket that is still recharging", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_OLDER",
         rule,
+        episodeId: "EPISODE_OLDER",
         ticketState: {
           ok: true,
           value: { nextAvailableAt: "2026-10-06T03:00:00Z", ready: false },
@@ -81,8 +81,8 @@ describe("toWaitFreeOffer", () => {
   it("says nothing when the API has nothing to offer the reader", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_OLDER",
         rule,
+        episodeId: "EPISODE_OLDER",
         ticketState: { ok: true, value: null },
       })
     ).toBeUndefined();
@@ -91,8 +91,8 @@ describe("toWaitFreeOffer", () => {
   it("carries the message of a state that could not be read", () => {
     expect(
       toWaitFreeOffer({
-        episodeId: "EPISODE_OLDER",
         rule,
+        episodeId: "EPISODE_OLDER",
         ticketState: { message: "Could not connect.", ok: false },
       })
     ).toEqual({ kind: "unavailable", message: "Could not connect." });

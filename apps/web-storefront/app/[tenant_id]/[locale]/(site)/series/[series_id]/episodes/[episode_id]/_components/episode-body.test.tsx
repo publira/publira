@@ -109,11 +109,11 @@ vi.mock("./episode-viewer", () => ({
 afterEach(cleanup);
 
 const page = (id: string, displayOrder: number): EpisodeImageItem => ({
-  contentType: "image/jpeg",
   displayOrder,
+  id,
+  contentType: "image/jpeg",
   fileSizeBytes: 1024n,
   height: 1500,
-  id,
   imageUrl: `/images/episodes/${id}`,
   width: 1050,
 });
@@ -149,6 +149,8 @@ const series: EpisodeSeriesSummary = {
 };
 
 const props: Parameters<typeof EpisodeBody>[0] = {
+  episode,
+  series,
   acceptsPayments: true,
   acceptsPromotionCodes: false,
   access: "locked",
@@ -157,14 +159,12 @@ const props: Parameters<typeof EpisodeBody>[0] = {
   commentMode: "disabled",
   commentToken: "",
   currency: "JPY",
-  episode,
   images: [],
   labelPublicId: "",
   paymentProviders: [],
   previewImages: [page("blurred_1", 1)],
   previewPages: [],
   promotionCode: "",
-  series,
   taxIncluded: false,
   tenantId: "TENANT_001",
   timeZone: "UTC",

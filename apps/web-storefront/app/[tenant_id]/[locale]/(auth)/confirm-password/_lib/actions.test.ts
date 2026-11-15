@@ -43,10 +43,10 @@ const confirmForm = (): FormData => {
   const data = new FormData();
 
   for (const [name, value] of Object.entries({
+    tenantId,
     confirmPassword: password,
     locale: "en",
     newPassword: password,
-    tenantId,
     token: "a".repeat(64),
   })) {
     data.set(name, value);

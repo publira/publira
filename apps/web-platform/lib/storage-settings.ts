@@ -183,21 +183,21 @@ const toCheckResults = async (
 
       if (!check) {
         return {
-          detail: t("platform.storage.test.skipped"),
           label,
+          detail: t("platform.storage.test.skipped"),
           status: "skipped" as const,
         };
       }
 
       if (check.succeeded) {
-        return { detail: "", label, status: "succeeded" as const };
+        return { label, detail: "", status: "succeeded" as const };
       }
 
       return {
+        label,
         detail:
           (await storageTestFailureMessage(check.reason, locale)) ??
           t("platform.storage.test.reasons.unknown"),
-        label,
         status: "failed" as const,
       };
     })

@@ -214,7 +214,7 @@ export const updateTenantSiteVerification = async (
     if (refused) {
       const message = siteVerificationCodeMessage(t, refused, "invalid");
 
-      return { fieldErrors: { [refused]: message }, message, ok: false };
+      return { message, fieldErrors: { [refused]: message }, ok: false };
     }
 
     return {

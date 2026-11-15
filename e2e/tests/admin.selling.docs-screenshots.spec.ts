@@ -146,6 +146,7 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsField(
               page.getByRole("spinbutton", {
@@ -161,7 +162,6 @@ for (const locale of DOCS_LOCALES) {
               })
             ),
           ],
-          locale,
           page: sellingPage,
           subject: "price-and-reading-period",
         });
@@ -179,6 +179,7 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsField(
               page.getByRole("spinbutton", {
@@ -191,7 +192,6 @@ for (const locale of DOCS_LOCALES) {
               })
             ),
           ],
-          locale,
           page: sellingPage,
           subject: "rental",
         });
@@ -229,8 +229,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: settings,
-            locale,
             page: sellingPage,
+            locale,
             subject,
           });
         });
@@ -251,8 +251,8 @@ for (const locale of DOCS_LOCALES) {
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t(title)),
-            locale,
             page: sellingPage,
+            locale,
             subject,
           });
         });
@@ -284,8 +284,8 @@ for (const locale of DOCS_LOCALES) {
         await amounts.nth(2).fill("1000");
 
         await expectDocsScreenshot(page, {
-          element: tips,
           locale,
+          element: tips,
           page: sellingPage,
           subject: "tips",
         });
@@ -312,8 +312,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: sellingPage,
           subject: "promotion-code-form",
         });
@@ -340,8 +340,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: detail,
           locale,
+          element: detail,
           page: sellingPage,
           subject: "promotion-code-detail",
         });
@@ -366,8 +366,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: plansPage,
           subject: "list",
         });
@@ -387,8 +387,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: docsScreen(page),
           locale,
+          element: docsScreen(page),
           page: plansPage,
           subject: "form",
         });
@@ -418,11 +418,11 @@ for (const locale of DOCS_LOCALES) {
         await page.goto(WEB_ADMIN_COMMENT_MODERATION_BASE_URL);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("admin.dashboard.queue_title")),
           ],
-          locale,
           page: reportsPage,
           subject: "dashboard",
         });
@@ -437,11 +437,11 @@ for (const locale of DOCS_LOCALES) {
         // From the figures down: the line above them names the last 28 days,
         // which move with the day the shot is taken.
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             page.getByRole("main").locator("dl").first(),
             docsSection(page, t("admin.analytics.episodes.list_title")),
           ],
-          locale,
           page: reportsPage,
           subject: "read-through",
         });
@@ -463,11 +463,11 @@ for (const locale of DOCS_LOCALES) {
         await page.goto(`${WEB_ADMIN_ANALYTICS_BASE_URL}${path}`);
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsSection(page, t("admin.analytics.cohorts.table_title")),
             docsSection(page, t("admin.analytics.funnel.title")),
           ],
-          locale,
           page: reportsPage,
           subject: "cohorts",
         });
@@ -484,11 +484,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("admin.royalties.lines.title")),
           ],
-          locale,
           page: reportsPage,
           subject: "open-month",
         });
@@ -506,8 +506,8 @@ for (const locale of DOCS_LOCALES) {
           .click();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("alertdialog").or(page.getByRole("dialog")),
           locale,
+          element: page.getByRole("alertdialog").or(page.getByRole("dialog")),
           page: reportsPage,
           subject: "close-month",
         });
@@ -522,8 +522,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").last()],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").last()],
           page: reportsPage,
           subject: "closed-statements",
         });
@@ -540,8 +540,8 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("row").last()],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("row").last()],
           page: reportsPage,
           subject: "statement",
         });
@@ -556,13 +556,13 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("admin.settings.royalties.submit"),
             }),
           ],
-          locale,
           page: reportsPage,
           subject: "closing-settings",
         });
@@ -688,8 +688,8 @@ test.describe("web-admin payment providers documentation screenshots", () => {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: settings,
         locale,
+        element: settings,
         page: "console/selling-episodes",
         subject: "providers",
       });

@@ -119,8 +119,8 @@ describe("tenant-community-limits", () => {
 
   it("separates the limits the tenant saved from the platform values", async () => {
     mockGetTenantCommunityLimitSettingsApi.mockResolvedValueOnce({
-      overrides: { commentPost: { perDay: 40, perMinute: 2 } },
       platformDefaults,
+      overrides: { commentPost: { perDay: 40, perMinute: 2 } },
       revision: 7n,
     });
 
@@ -131,12 +131,12 @@ describe("tenant-community-limits", () => {
 
     expect(result.ok).toBe(true);
     expect(result).toMatchObject({
+      platformDefaults,
       overrides: {
         commentPost: { perDay: 40, perMinute: 2 },
         commentReport: undefined,
         duplicateCommentWindowMinutes: undefined,
       },
-      platformDefaults,
       revision: 7n,
     });
     expect(mockCacheTag).toHaveBeenCalledWith(
@@ -207,8 +207,8 @@ describe("tenant-community-limits", () => {
 
   it("refuses a limit looser than the platform value and names it", async () => {
     mockGetTenantCommunityLimitSettingsApi.mockResolvedValueOnce({
-      overrides: {},
       platformDefaults,
+      overrides: {},
       revision: 7n,
     });
 
@@ -234,8 +234,8 @@ describe("tenant-community-limits", () => {
 
   it("sends an absent group for each limit that follows the platform value", async () => {
     mockGetTenantCommunityLimitSettingsApi.mockResolvedValueOnce({
-      overrides: {},
       platformDefaults,
+      overrides: {},
       revision: 7n,
     });
     mockUpdateTenantCommunityLimitSettingsApi.mockResolvedValueOnce({});
@@ -274,8 +274,8 @@ describe("tenant-community-limits", () => {
 
   it("words a stale save as a conflict the operator can act on", async () => {
     mockGetTenantCommunityLimitSettingsApi.mockResolvedValueOnce({
-      overrides: {},
       platformDefaults,
+      overrides: {},
       revision: 9n,
     });
     mockUpdateTenantCommunityLimitSettingsApi.mockRejectedValueOnce(

@@ -178,10 +178,10 @@ export const notificationDisplay = async (
     );
 
     return {
+      href,
       description: t("admin.notifications.events.published_description", {
         subject,
       }),
-      href,
       title: t("admin.notifications.events.published_title"),
     };
   }
@@ -194,10 +194,10 @@ export const notificationDisplay = async (
     );
 
     return {
+      href,
       description: t("admin.notifications.events.publish_failed_description", {
         subject,
       }),
-      href,
       title: t("admin.notifications.events.publish_failed_title"),
     };
   }
@@ -210,10 +210,10 @@ export const notificationDisplay = async (
     );
 
     return {
+      href,
       description: t("admin.notifications.events.review_returned_description", {
         subject,
       }),
-      href,
       title: t("admin.notifications.events.review_returned_title"),
     };
   }
@@ -258,8 +258,8 @@ export const notificationDisplay = async (
   }
 
   return {
-    description: t("admin.notifications.events.unknown_description"),
     href,
+    description: t("admin.notifications.events.unknown_description"),
     title: t("admin.notifications.events.unknown_title"),
   };
 };

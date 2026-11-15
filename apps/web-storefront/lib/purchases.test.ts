@@ -272,9 +272,9 @@ describe("listMyPurchases", () => {
 });
 
 const purchaseOf = (publicId: string, id: string, isActive = true) => ({
-  episode: { publicId },
   id,
   isActive,
+  episode: { publicId },
   kind: PurchaseKind.PURCHASE,
 });
 

@@ -66,12 +66,12 @@ vi.mock("next/cache", () => ({
 }));
 
 const page = (id: string, title: string) => ({
+  id,
+  title,
   createdAt: "2026-01-01T00:00:00Z",
   displayInFooter: false,
-  id,
   publishedVersionId: "",
   slug: `/pages/${id}`,
-  title,
   updatedAt: "2026-01-01T00:00:00Z",
 });
 
@@ -400,12 +400,12 @@ describe("createPage", () => {
 const SESSION_HEADERS = { headers: { Authorization: "Bearer session-token" } };
 
 const translation = (locale: string, title: string) => ({
+  locale,
+  title,
   createdAt: "2026-01-01T00:00:00Z",
   id: `TRANSLATION-${locale}`,
-  locale,
   pageId: "PAGE001",
   publishedVersionId: "",
-  title,
   updatedAt: "2026-01-01T00:00:00Z",
 });
 
@@ -982,7 +982,7 @@ describe("deletePage", () => {
       const { deletePage } = await import("./page");
       const result = await deletePage(input, "en");
 
-      expect(result).toEqual({ message, ok: false, reference });
+      expect(result).toEqual({ message, reference, ok: false });
     }
   );
 

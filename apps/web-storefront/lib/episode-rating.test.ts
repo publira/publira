@@ -252,9 +252,9 @@ describe("rateEpisode", () => {
     await expect(
       rateEpisode({
         episodeId,
+        tenantId,
         locale: "en",
         presses: 1,
-        tenantId,
       })
     ).resolves.toEqual({
       mode: "single",
@@ -284,9 +284,9 @@ describe("rateEpisode", () => {
     await expect(
       rateEpisode({
         episodeId,
+        tenantId,
         locale: "en",
         presses: 1,
-        tenantId,
       })
     ).resolves.toEqual({
       message:
@@ -303,9 +303,9 @@ describe("rateEpisode", () => {
     await expect(
       rateEpisode({
         episodeId,
+        tenantId,
         locale: "en",
         presses: 1,
-        tenantId,
       })
     ).resolves.toEqual({
       message:
@@ -322,9 +322,9 @@ describe("rateEpisode", () => {
     await expect(
       rateEpisode({
         episodeId,
+        tenantId,
         locale: "en",
         presses: 1,
-        tenantId,
       })
     ).resolves.toEqual({
       message:
@@ -341,9 +341,9 @@ describe("rateEpisode", () => {
     await expect(
       rateEpisode({
         episodeId,
+        tenantId,
         locale: "en",
         presses: 1,
-        tenantId,
       })
     ).rejects.toBeInstanceOf(ConnectError);
   });

@@ -113,8 +113,8 @@ export const EpisodeViewer = async ({
   const [savedPageIndex, viewerPreferences] = await Promise.all([
     getMyReadingPosition({
       accessToken,
-      episodeId: episode.id,
       tenantId,
+      episodeId: episode.id,
     }),
     getMyViewerPreferences({ accessToken, tenantId }),
   ]);

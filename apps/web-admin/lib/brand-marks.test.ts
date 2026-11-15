@@ -55,17 +55,17 @@ const storedMarkResponse = (
     imageUpdatedAt: acceptedAt,
     imageVariants: [
       {
+        variantType,
         contentType: "image/png",
         fileSizeBytes: 2048n,
         height: 40,
         label: "original",
         url: `/images/tenants/media-1/${variantType}`,
-        variantType,
         width: 120,
       },
     ],
-    kind,
     termsAcceptedAt: acceptedAt,
+    kind,
     termsUrl,
   },
   termsAcceptedByUserName: acceptedBy,
@@ -82,18 +82,18 @@ const storedMark = (
     updatedAt: acceptedAt,
     variants: [
       {
+        variantType,
         contentType: "image/png",
         fileSizeBytes: 2048n,
         height: 40,
         label: "original",
         url: `/images/tenants/media-1/${variantType}`,
-        variantType,
         width: 120,
       },
     ],
   },
-  kind,
   termsAcceptedAt: acceptedAt,
+  kind,
   termsAcceptedByName,
   termsUrl,
 });
@@ -211,9 +211,9 @@ describe("brand-marks", () => {
     const result = await uploadTenantBrandMark(
       {
         imageContentType: "image/png",
-        imageData,
         kind: "app_store_badge",
         tenantId: "TENANT001",
+        imageData,
         termsUrl,
       },
       "en"
@@ -226,10 +226,10 @@ describe("brand-marks", () => {
     expect(mockUploadTenantBrandMarkApi).toHaveBeenCalledWith(
       {
         imageContentType: "image/png",
-        imageData,
         kind: TenantBrandMarkKind.APP_STORE_BADGE,
         tenant: { tenantId: "TENANT001" },
         termsAccepted: true,
+        imageData,
         termsUrl,
       },
       { headers: { Authorization: "Bearer session-token" } }

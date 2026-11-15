@@ -129,11 +129,11 @@ export const POST = async (request: NextRequest) => {
 
   return respond(
     {
+      rows,
       message: finished
         ? t("admin.series.import.finished", { count: rows.length })
         : t("admin.series.import.stopped"),
       ok: finished,
-      rows,
       seriesPublicId: importedPublicId,
     },
     200

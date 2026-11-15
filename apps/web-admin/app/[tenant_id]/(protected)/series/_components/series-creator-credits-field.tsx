@@ -352,8 +352,8 @@ const SeriesCreatorCreditsEditor = ({
     setRows((currentRows) => [
       ...currentRows,
       {
-        creatorId: "",
         key,
+        creatorId: "",
         roleId: creatorRoles.at(0)?.id ?? "",
         shareText: "",
       },

@@ -54,13 +54,13 @@ vi.mock("#components/revoke-access-ticket-button", () => ({
 }));
 
 const ticket = (publicId: string): AccessTicketItem => ({
+  publicId,
   createdAt: "2026-06-01T00:00:00Z",
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   expiresAt: "",
   id: `id-${publicId}`,
   note: "",
-  publicId,
   revokedAt: "",
   seriesPublicId: "SERIES001",
   seriesTitle: "Series A",

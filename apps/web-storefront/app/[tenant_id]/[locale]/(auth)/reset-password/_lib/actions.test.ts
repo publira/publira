@@ -57,7 +57,7 @@ describe("requestPasswordResetAction", () => {
     const { requestPasswordResetAction } = await import("./actions");
     await requestPasswordResetAction(
       { message: "", ok: false },
-      formData({ email, locale: "en", tenantId })
+      formData({ email, tenantId, locale: "en" })
     );
 
     expect(mockRequestPublicPasswordReset).toHaveBeenCalledWith(
@@ -78,7 +78,7 @@ describe("requestPasswordResetAction", () => {
 
     const result = await requestPasswordResetAction(
       { message: "", ok: false },
-      formData({ email, locale: "en", tenantId })
+      formData({ email, tenantId, locale: "en" })
     );
 
     expect(result).toEqual({

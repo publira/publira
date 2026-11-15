@@ -507,8 +507,8 @@ const UsersContent = async ({
   const tenantMessages = await buildTenantFilterMessages({
     locale,
     resolution,
-    tenantQuery: filters.tenantQuery,
     tenantSearch,
+    tenantQuery: filters.tenantQuery,
   });
 
   const result = pendingTenantPick

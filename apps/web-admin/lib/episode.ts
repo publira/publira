@@ -865,9 +865,9 @@ export const listAllEpisodesForTenant = async (
         const response = await apiClient.series.listEpisodes(
           {
             limit,
+            token,
             seriesId: input.seriesId,
             tenant: { tenantId: input.tenantId },
-            token,
           },
           withServiceHeaders()
         );
@@ -995,10 +995,10 @@ export const getEpisodeForTenant = async (
     cacheTag(episodeCacheTag(input.tenantId, response.episode.id));
 
     return {
-      episode: mapEpisode(response.episode),
       layout,
-      ok: true,
       purchaseAvailability,
+      episode: mapEpisode(response.episode),
+      ok: true,
       translations: toEpisodeTranslations(response.translations),
     };
   } catch (error) {
@@ -1314,16 +1314,16 @@ export const uploadEpisodePages = async (
   try {
     const response = input.archive
       ? await uploadArchive({
+          sessionId,
           archive: input.archive,
           episodeId: input.episodeId,
           seriesId: input.seriesId,
-          sessionId,
           tenantId: input.tenantId,
         })
       : await uploadPages({
+          sessionId,
           episodeId: input.episodeId,
           pages: input.pages ?? [],
-          sessionId,
           tenantId: input.tenantId,
         });
 
@@ -1588,9 +1588,9 @@ const listSeriesEpisodeIds = async (input: {
       const response = await apiClient.series.listEpisodes(
         {
           limit,
+          token,
           seriesId: input.seriesId,
           tenant: { tenantId: input.tenantId },
-          token,
         },
         withSessionHeaders(input.sessionId)
       );
@@ -1655,8 +1655,8 @@ export const reorderEpisodePage = async (
 
   try {
     seriesEpisodeIds = await listSeriesEpisodeIds({
-      seriesId: input.seriesId,
       sessionId,
+      seriesId: input.seriesId,
       tenantId: input.tenantId,
     });
   } catch (error) {

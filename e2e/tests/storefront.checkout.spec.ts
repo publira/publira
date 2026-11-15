@@ -387,8 +387,8 @@ test.describe("web-storefront checkout", () => {
       received.map(({ body, event, verified }) => ({
         creators: body.data.creator_public_ids,
         episode: body.data.episode_public_id,
-        event,
         price: body.data.price,
+        event,
         verified,
       }))
     ).toEqual([

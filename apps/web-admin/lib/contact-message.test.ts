@@ -390,8 +390,8 @@ describe("contact message lib", () => {
 
     const result = await markContactMessageHandled(
       {
-        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
         handled,
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
         tenantId: "TENANT001",
       },
       "en"
@@ -399,8 +399,8 @@ describe("contact message lib", () => {
 
     expect(mockMarkContactMessageHandled).toHaveBeenCalledWith(
       {
-        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
         handled,
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -540,8 +540,8 @@ describe("contact message lib", () => {
 
       const result = await updateContactMessageStaffNote(
         {
-          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
           staffNote,
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
           tenantId: "TENANT001",
         },
         "en"
@@ -549,8 +549,8 @@ describe("contact message lib", () => {
 
       expect(mockUpdateContactMessageStaffNote).toHaveBeenCalledWith(
         {
-          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
           staffNote,
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
           tenant: { tenantId: "TENANT001" },
         },
         { headers: { Authorization: "Bearer session-token" } }

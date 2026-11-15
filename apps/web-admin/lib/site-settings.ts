@@ -225,9 +225,9 @@ export const getTenantSiteSettingsTabs = async ({
 
   return {
     locales,
+    shownLocale,
     ok: true,
     settings: copies.get(shownLocale) ?? defaultSettings,
-    shownLocale,
     translatedLocales: locales.filter((code) => {
       const copy = copies.get(code);
 

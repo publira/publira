@@ -700,8 +700,8 @@ describe("exportStats", () => {
     });
     expect(mockExportStatsApi).toHaveBeenCalledWith(
       {
-        endDate: "2025-03-09",
         kind,
+        endDate: "2025-03-09",
         startDate: "2025-03-03",
         tenant: { tenantId: "TENANT001" },
       },

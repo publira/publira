@@ -129,8 +129,8 @@ const setup = (options?: { revalidatedAt?: () => number | null }) => {
     advance: (ms: number) => {
       clock += ms;
     },
-    getTenantAnalyticsSettings,
     now: () => clock,
+    getTenantAnalyticsSettings,
     readRevalidatedAt,
     resolve,
   };

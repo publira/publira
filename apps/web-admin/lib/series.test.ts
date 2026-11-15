@@ -1429,7 +1429,7 @@ describe("deleteSeries", () => {
         "en"
       );
 
-      expect(result).toEqual({ message, ok: false, reference });
+      expect(result).toEqual({ message, reference, ok: false });
     }
   );
 

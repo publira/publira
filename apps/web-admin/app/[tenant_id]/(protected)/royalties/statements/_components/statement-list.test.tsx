@@ -38,10 +38,10 @@ const statement = (
   closedByUserName: string,
   currency = "JPY"
 ): RoyaltyStatementSummary => ({
-  closedAt: "2026-09-02T01:30:00Z",
   closedByUserName,
   currency,
   period,
+  closedAt: "2026-09-02T01:30:00Z",
   timeZone: "Asia/Tokyo",
   totals: {
     adjustment: -300n,

@@ -68,7 +68,7 @@ const LabelPagination = ({
       <ListPagination.Step
         href={
           previousToken
-            ? searchPageHref({ kind: "labels", query, token: previousToken })
+            ? searchPageHref({ query, kind: "labels", token: previousToken })
             : ""
         }
       >
@@ -79,7 +79,7 @@ const LabelPagination = ({
       <ListPagination.Step
         href={
           nextToken
-            ? searchPageHref({ kind: "labels", query, token: nextToken })
+            ? searchPageHref({ query, kind: "labels", token: nextToken })
             : ""
         }
       >

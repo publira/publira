@@ -64,6 +64,7 @@ const ACCEPTED_AT = "2026-10-20T03:04:05Z";
  * test, never one of the owners' real artwork.
  */
 const uploadedMark = (termsAcceptedByName: string): TenantBrandMark => ({
+  termsAcceptedByName,
   image: {
     updatedAt: ACCEPTED_AT,
     variants: [
@@ -80,16 +81,15 @@ const uploadedMark = (termsAcceptedByName: string): TenantBrandMark => ({
   },
   kind: "x_share",
   termsAcceptedAt: ACCEPTED_AT,
-  termsAcceptedByName,
   termsUrl: "https://example.com/brand/guidelines",
 });
 
 const renderCard = async (mark: TenantBrandMark | null) =>
   render(
     await TenantBrandMarkCard({
+      mark,
       kind: "x_share",
       locale: "en",
-      mark,
       tenantId: "TENANT001",
       timeZone: "UTC",
     })

@@ -66,8 +66,8 @@ const reachable: Finding = {
 };
 
 const entry = (id: string, expires: string): IgnoreEntry => ({
-  expires: Temporal.PlainDate.from(expires),
   id,
+  expires: Temporal.PlainDate.from(expires),
   reason: "Accepted until the upgrade lands.",
 });
 

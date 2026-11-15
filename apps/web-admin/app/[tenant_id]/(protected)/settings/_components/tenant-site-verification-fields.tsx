@@ -71,7 +71,6 @@ const CodeField = ({
 
   const context = useMemo(
     () => ({
-      error,
       leave: () => {
         const left = parseSiteVerificationCode(service, value);
 
@@ -81,6 +80,7 @@ const CodeField = ({
 
         setTouched(true);
       },
+      error,
       service,
       setValue,
       value,

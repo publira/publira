@@ -34,8 +34,8 @@ const setNavigator = (
   value: Navigator["share"] | Partial<Clipboard> | undefined
 ) => {
   Object.defineProperty(navigator, key, {
-    configurable: true,
     value,
+    configurable: true,
     writable: true,
   });
 };

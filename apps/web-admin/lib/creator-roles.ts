@@ -114,8 +114,8 @@ export const listCreatorRolesForTenant = async (
         const response = await apiClient.creatorRole.listCreatorRoles(
           {
             limit,
-            tenant: { tenantId },
             token,
+            tenant: { tenantId },
           },
           withServiceHeaders()
         );

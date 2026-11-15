@@ -448,8 +448,8 @@ describe("setVolumeBookstoreLinksAction", () => {
         ])
       )
     ).resolves.toEqual({
-      fieldErrors: { "bookstore_links[1].url": message },
       message,
+      fieldErrors: { "bookstore_links[1].url": message },
       ok: false,
     });
     expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();
@@ -467,8 +467,8 @@ describe("setVolumeBookstoreLinksAction", () => {
         ])
       )
     ).resolves.toEqual({
-      fieldErrors: { "bookstore_links[0].label": message },
       message,
+      fieldErrors: { "bookstore_links[0].label": message },
       ok: false,
     });
     expect(mockSetVolumeBookstoreLinks).not.toHaveBeenCalled();

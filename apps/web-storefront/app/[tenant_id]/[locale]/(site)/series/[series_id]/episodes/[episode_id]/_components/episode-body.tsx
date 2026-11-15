@@ -339,18 +339,18 @@ export const EpisodeBody = async ({
         acceptsPayments,
         acceptsPromotionCodes,
         appPayments,
-        code: promotionCode,
         episode,
         sessionId,
         tenantId,
+        code: promotionCode,
       }),
     ]);
 
   const coinOffer = coinBalance
     ? toCoinOffer({
         acceptsPayments,
-        balance: coinBalance,
         episode,
+        balance: coinBalance,
         // A key per rendering of the gate: a second tap of the button it
         // renders sends the same one, and spends nothing more.
         idempotencyKey: crypto.randomUUID(),

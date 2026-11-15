@@ -53,8 +53,8 @@ const SmtpOverride = ({
     () => ({
       canEdit,
       enabled,
-      interactive: canEdit && enabled,
       setEnabled,
+      interactive: canEdit && enabled,
     }),
     [canEdit, enabled]
   );

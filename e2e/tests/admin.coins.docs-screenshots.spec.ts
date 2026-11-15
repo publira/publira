@@ -84,8 +84,8 @@ for (const locale of DOCS_LOCALES) {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: settings,
         locale,
+        element: settings,
         page: PAGE,
         subject: "settings",
       });
@@ -96,8 +96,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(packs.getByRole("listitem")).toHaveCount(3);
 
       await expectDocsScreenshot(page, {
-        element: packs,
         locale,
+        element: packs,
         page: PAGE,
         subject: "packs",
       });
@@ -119,8 +119,8 @@ for (const locale of DOCS_LOCALES) {
       await expect(switches.getByRole("status")).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: switches,
         locale,
+        element: switches,
         page: PAGE,
         subject: "turning-off",
       });

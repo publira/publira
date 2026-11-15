@@ -54,6 +54,7 @@ const issueFormData = (): FormData => {
 };
 
 const ticket = (status: string) => ({
+  status,
   createdAt: "2026-01-05T11:00:00Z",
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
@@ -64,7 +65,6 @@ const ticket = (status: string) => ({
   revokedAt: "",
   seriesPublicId: "SERIES001",
   seriesTitle: "Series 1",
-  status,
   userEmail: "reader@example.com",
   userName: "Reader",
   userPublicId: "USER001",

@@ -94,7 +94,7 @@ export const toCampaignBannerWindow = async (
     };
   }
 
-  return { endsAt, ok: true, startsAt };
+  return { endsAt, startsAt, ok: true };
 };
 
 /** Where a banner stands for a reader of the site at the present moment. */

@@ -41,8 +41,8 @@ export const listTagSuggestions = async (
       async (token, limit) => {
         const response = await publicApiClient.catalog.listPublishedTags({
           limit,
-          tenant: { tenantId },
           token,
+          tenant: { tenantId },
         });
 
         return {

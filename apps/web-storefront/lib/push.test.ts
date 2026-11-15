@@ -27,7 +27,7 @@ vi.mock("./api-client", () => ({
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const endpoint = "https://push.test/subscriptions/abc";
-const subscription = { auth: "auth-key", endpoint, p256dh: "p256dh-key" };
+const subscription = { endpoint, auth: "auth-key", p256dh: "p256dh-key" };
 
 beforeEach(() => {
   mockResolveAccessToken.mockResolvedValue("session-token");
@@ -43,8 +43,8 @@ describe("registerWebPushDevice", () => {
 
     expect(mockRegister).toHaveBeenCalledWith(
       {
-        auth: "auth-key",
         endpoint,
+        auth: "auth-key",
         p256dh: "p256dh-key",
         platform: PushPlatform.WEB,
         tenant: { tenantId },
@@ -104,7 +104,7 @@ describe("unregisterWebPushDevice", () => {
     mockUnregister.mockResolvedValue({ unregistered: true });
 
     await expect(
-      unregisterWebPushDevice({ endpoint, locale: "en", tenantId })
+      unregisterWebPushDevice({ endpoint, tenantId, locale: "en" })
     ).resolves.toEqual({ ok: true });
 
     expect(mockUnregister).toHaveBeenCalledWith(
@@ -121,7 +121,7 @@ describe("unregisterWebPushDevice", () => {
     mockUnregister.mockResolvedValue({ unregistered: false });
 
     await expect(
-      unregisterWebPushDevice({ endpoint, locale: "en", tenantId })
+      unregisterWebPushDevice({ endpoint, tenantId, locale: "en" })
     ).resolves.toEqual({ ok: true });
   });
 
@@ -132,8 +132,8 @@ describe("unregisterWebPushDevice", () => {
 
     const result = await unregisterWebPushDevice({
       endpoint,
-      locale: "en",
       tenantId,
+      locale: "en",
     });
 
     expect(result.ok).toBe(false);

@@ -217,7 +217,7 @@ export const updateTenantTaxSettings = async (
     if (refused) {
       const message = t("admin.settings.tax.validation.refused");
 
-      return { fieldErrors: { [refused]: message }, message, ok: false };
+      return { message, fieldErrors: { [refused]: message }, ok: false };
     }
 
     return {

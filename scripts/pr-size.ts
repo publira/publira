@@ -301,8 +301,8 @@ export const scoreDiff = (diff: string): DiffScore => {
 
       return {
         coefficient: weight,
-        file,
         score: Math.round(weight * significantLines * 10) / 10,
+        file,
         significantLines,
       };
     }

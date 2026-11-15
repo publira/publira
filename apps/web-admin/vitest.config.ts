@@ -17,9 +17,9 @@ export default defineConfig({
          */
         resolve: { dedupe: ["next"] },
         test: {
+          name,
           clearMocks: true,
           environment: "node",
-          name,
           setupFiles: ["./vitest.setup.ts"],
         },
       },

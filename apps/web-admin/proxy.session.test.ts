@@ -19,8 +19,8 @@ const RETURN_TO_HEADER_NAME = "x-publira-return-to";
 const sealedCookie = (expiresAt: string): Promise<string> =>
   encryptSessionPayload(
     {
-      accessToken: "header.payload.signature",
       expiresAt,
+      accessToken: "header.payload.signature",
       tenantId: TENANT_ID,
     },
     PUBLIRA_AUTH_SECRET

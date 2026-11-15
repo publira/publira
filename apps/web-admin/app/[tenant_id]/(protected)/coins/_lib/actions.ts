@@ -280,12 +280,12 @@ export const updateCoinSettingsAction = async (
         currency: coinUnitAmount.currency,
         defaultLocale: locales.defaultLocale,
         settings: {
+          names,
           coinUnitAmount: coinUnitAmount.value,
           contact: input.contact,
           enabled: input.enabled,
           expiryDays: input.expiryDays,
           issuerName: input.issuerName,
-          names,
           notice: input.notice,
           selling: input.selling,
           termsUrl: input.termsUrl,
@@ -431,8 +431,8 @@ const parsePackFields = async (
     pack: {
       bonusCoins,
       coins,
-      currency: price.currency,
       onSale,
+      currency: price.currency,
       price: price.value,
     },
   };
@@ -492,7 +492,7 @@ export const createCoinPackAction = async (
       Math.max(-1, ...current.packs.map((pack) => pack.sortOrder)) + 1;
 
     return createCoinPack(
-      { coinName, pack: { ...fields.pack, sortOrder }, tenantId },
+      { coinName, tenantId, pack: { ...fields.pack, sortOrder } },
       locale
     );
   });
@@ -558,8 +558,8 @@ export const updateCoinPackAction = async (
         {
           coinName,
           id,
-          pack: { ...stored, currency: "", onSale },
           tenantId,
+          pack: { ...stored, currency: "", onSale },
         },
         locale
       );
@@ -581,8 +581,8 @@ export const updateCoinPackAction = async (
       {
         coinName,
         id,
-        pack: { ...fields.pack, sortOrder: stored.sortOrder },
         tenantId,
+        pack: { ...fields.pack, sortOrder: stored.sortOrder },
       },
       locale
     );

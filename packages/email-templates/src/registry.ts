@@ -581,9 +581,9 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
 
   return {
     element: resolved.element,
-    locale,
     ok: true,
     preview: resolved.preview,
+    locale,
     template,
     timeZone,
   };

@@ -116,8 +116,8 @@ export const forwardInboundEmailWebhook = async (
 
   const response = await answerWebhook("email", () =>
     apiClient.contact.processInboundEmailWebhook({
-      headers: Object.fromEntries(request.headers),
       payload,
+      headers: Object.fromEntries(request.headers),
       provider: path.provider,
       tenant: { tenantId: path.tenantId },
     })

@@ -1114,8 +1114,8 @@ export const confirmPublicPasswordReset = async (
     const response = await apiClient.auth.confirmPasswordReset(
       {
         newPassword,
-        tenant: { tenantId },
         token,
+        tenant: { tenantId },
       },
       await buildClientAddressHeaders()
     );

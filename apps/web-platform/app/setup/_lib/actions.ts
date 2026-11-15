@@ -43,6 +43,8 @@ const setupFormSchema = async (locale: Locale) => {
   return z
     .object({
       confirmPassword,
+      email,
+      password,
       defaultCurrency: z
         .string()
         .trim()
@@ -58,9 +60,7 @@ const setupFormSchema = async (locale: Locale) => {
         .refine(isValidTimeZone, {
           error: t("platform.auth.setup.timezone_invalid"),
         }),
-      email,
       name: requiredTrimmedString(t("platform.auth.setup.name_required")),
-      password,
     })
     .refine((value) => value.password === value.confirmPassword, {
       error: t("platform.auth.setup.password_mismatch"),

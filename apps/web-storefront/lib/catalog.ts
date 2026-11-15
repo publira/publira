@@ -669,11 +669,11 @@ const mapEpisodeNeighbor = (
   }
 
   return {
+    publicId,
     campaign: toEpisodeCampaign(neighbor),
     isFree: neighbor.isFree ?? false,
     orderIndex: neighbor.orderIndex ?? 0,
     price: neighbor.price ?? 0,
-    publicId,
     purchaseSurface: toEpisodePurchaseSurface(neighbor.purchaseAvailability),
     title: neighbor.title ?? "",
   };
@@ -1094,13 +1094,13 @@ export const listPublishedSeries = async (
       hasFreeEpisodes,
       limit,
       locale,
+      tagSlug,
+      token,
+      weekday,
       order: seriesOrders[order],
       status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
-      tagSlug,
       tenant: { tenantId: normalizedTenantId },
-      token,
-      weekday,
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "storefront.series.list_failed");
@@ -1245,9 +1245,9 @@ export const listPublishedGenres = async (
         const response = await apiClient.catalog.listPublishedGenres({
           limit,
           locale,
+          token,
           surface: ClientSurface.WEB,
           tenant: { tenantId: normalizedTenantId },
-          token,
         });
 
         return {
@@ -1329,9 +1329,9 @@ export const findPublishedTagBySlug = async (
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedTags({
           limit,
+          token,
           surface: ClientSurface.WEB,
           tenant: { tenantId: normalizedTenantId },
-          token,
         });
 
         return {
@@ -1401,9 +1401,9 @@ export const listRecommendedSeries = async (
     response = await apiClient.catalog.listRecommendedSeries({
       limit,
       locale,
+      token,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     return localizedReadFailure(
@@ -1488,9 +1488,9 @@ export const listMyRecommendedSeries = async (
       {
         limit,
         locale,
+        token,
         surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },
-        token,
       },
       buildSessionHeaders(sessionId)
     );
@@ -1574,10 +1574,10 @@ export const listRelatedSeries = async (
     response = await apiClient.catalog.listRelatedSeries({
       limit,
       locale,
+      token,
       seriesId: seriesId.trim(),
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
@@ -1735,12 +1735,12 @@ export const listRankedSeries = async (
   try {
     response = await apiClient.catalog.listRankedSeries({
       ageRating: rankingAgeRatings[ageRating],
-      genrePublicId,
-      limit,
-      locale,
       period: rankingPeriods[period],
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
+      genrePublicId,
+      limit,
+      locale,
       token,
     });
   } catch (error) {
@@ -1799,11 +1799,11 @@ export const listReaderRankedSeries = async (
     response = await apiClient.catalog.listRankedSeries(
       {
         ageRating: rankingAgeRatings[ageRating],
-        limit,
-        locale,
         period: rankingPeriods[period],
         surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },
+        limit,
+        locale,
         token,
       },
       buildSessionHeaders(sessionId)
@@ -1881,12 +1881,12 @@ export const searchPublishedSeries = async (
       hasFreeEpisodes,
       limit,
       locale,
-      order: order ? seriesOrders[order] : SeriesOrder.UNSPECIFIED,
       query,
+      token,
+      order: order ? seriesOrders[order] : SeriesOrder.UNSPECIFIED,
       status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     return localizedReadFailure(
@@ -1945,8 +1945,8 @@ export const listPublishedLabels = async (
     response = await apiClient.catalog.listPublishedLabels({
       hasPublishedSeries,
       limit,
-      tenant: { tenantId: normalizedTenantId },
       token,
+      tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "storefront.labels.list_failed");
@@ -1995,9 +1995,9 @@ export const searchPublishedLabels = async (
     response = await apiClient.catalog.searchPublishedLabels({
       limit,
       query,
+      token,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     return localizedReadFailure(
@@ -2039,6 +2039,7 @@ const toSeriesDetail = (
 
   return withRestrictedAgeRating(
     {
+      locale,
       commentMode: toSeriesCommentMode(response.commentMode),
       credits: toCreatorCredits(series.creators),
       eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt || undefined,
@@ -2051,7 +2052,6 @@ const toSeriesDetail = (
       id: series.id ?? "",
       labelName: series.label?.name?.trim() ?? "",
       labelPublicId: series.label?.publicId?.trim() ?? "",
-      locale,
       publicId: series.publicId ?? "",
       publishedLocales: publishedLocalesFrom(response.publishedLocales, locale),
       ratingAverage: series.ratingAverage,
@@ -2125,10 +2125,10 @@ export const getSeriesDetail = async (
   return {
     ok: true,
     value: {
+      series,
       episodes: (response.episodes ?? [])
         .map((episode) => toEpisodeItem(episode, locale))
         .toSorted((a, b) => a.orderIndex - b.orderIndex),
-      series,
       volumes: (response.volumes ?? [])
         .map(toVolumeItem)
         .toSorted((a, b) => a.orderIndex - b.orderIndex),
@@ -2256,8 +2256,9 @@ export const getEpisodeDetail = async (
   return {
     ok: true,
     value: {
-      access: toEpisodeAccessState(response.access, episode.price),
       episode,
+      series,
+      access: toEpisodeAccessState(response.access, episode.price),
       images: mapEpisodeImages(response.images),
       nextEpisode: mapEpisodeNeighbor(response.nextEpisode),
       nextFreeEpisode: mapEpisodeNeighbor(response.nextFreeEpisode),
@@ -2268,7 +2269,6 @@ export const getEpisodeDetail = async (
         response.publishedLocales,
         episode.locale
       ),
-      series,
       tipAmounts: response.tipAmounts ?? [],
     },
   };

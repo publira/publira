@@ -324,14 +324,14 @@ const RankingTabs = async ({
           <LocaleLink
             aria-current={period === "daily" ? "page" : undefined}
             className={rankingTabClassName(period === "daily")}
-            href={rankingHref({ genre, period: "daily", rating })}
+            href={rankingHref({ genre, rating, period: "daily" })}
           >
             {t("storefront.ranking.period_daily")}
           </LocaleLink>
           <LocaleLink
             aria-current={period === "weekly" ? "page" : undefined}
             className={rankingTabClassName(period === "weekly")}
-            href={rankingHref({ genre, period: "weekly", rating })}
+            href={rankingHref({ genre, rating, period: "weekly" })}
           >
             {t("storefront.ranking.period_weekly")}
           </LocaleLink>

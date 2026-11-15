@@ -55,7 +55,7 @@ export const parsePromotionCodeParams = (
  */
 export const promotionCodeListQuery = ({
   code,
-  edit,
+  edit: editing,
   redemptions,
   token,
 }: {
@@ -63,10 +63,8 @@ export const promotionCodeListQuery = ({
   edit?: boolean;
   redemptions?: string;
   token?: string;
-}): string =>
-  buildQueryString({
-    code,
-    edit: edit ? "1" : undefined,
-    redemptions,
-    token,
-  }) || "?";
+}): string => {
+  const edit = editing ? "1" : undefined;
+
+  return buildQueryString({ code, edit, redemptions, token }) || "?";
+};

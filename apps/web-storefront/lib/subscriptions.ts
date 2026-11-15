@@ -156,15 +156,15 @@ const toSubscriptionPlanItem = (
   }
 
   return {
-    currency: plan.currency ?? "",
-    description: plan.description ?? "",
     id,
     interval,
+    scope,
+    currency: plan.currency ?? "",
+    description: plan.description ?? "",
     intervalCount: plan.intervalCount ?? 0,
     labels: (plan.labels ?? []).map(toLabelListItem),
     name: plan.name ?? "",
     priceAmount: plan.priceAmount ?? 0,
-    scope,
     series: (plan.series ?? []).map(toSeriesListItem),
   };
 };
@@ -277,10 +277,10 @@ const toSubscriptionItem = (
   }
 
   return {
+    status,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
     currentPeriodEnd: subscription.currentPeriodEnd ?? "",
     plan: { name: subscription.plan?.name ?? "" },
-    status,
     store: subscriptionStores[subscription.store] ?? null,
   };
 };

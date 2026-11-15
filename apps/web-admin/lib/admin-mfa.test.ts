@@ -471,7 +471,7 @@ describe("passkey registration from the account settings", () => {
 
     await expect(
       finishAdminPasskeyRegistration("TENANT001", "", "{}", "en")
-    ).resolves.toEqual({ challengeExpired: false, message, ok: false });
+    ).resolves.toEqual({ message, challengeExpired: false, ok: false });
   });
 
   // A session the API rejected is the login redirect's to handle, not a

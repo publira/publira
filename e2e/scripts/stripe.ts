@@ -384,10 +384,10 @@ const createCoupon = async (
   coupons.set(`${secretKey}\n${id}`, amountOff);
 
   const created = {
-    amount_off: amountOff,
     currency,
-    duration: form.get("duration") ?? "once",
     id,
+    amount_off: amountOff,
+    duration: form.get("duration") ?? "once",
     livemode: false,
     max_redemptions: Number(form.get("max_redemptions")) || null,
     name: form.get("name"),
@@ -500,19 +500,19 @@ const createCheckoutSession = async (
   const subtotal = items.reduce((sum, { amount }) => sum + amount, 0);
 
   const session: CheckoutSession = {
+    currency,
+    discount,
+    mode,
+    secretKey,
     allowPromotionCodes: form.get("allow_promotion_codes") === "true",
     amount: subtotal - discount,
     apiVersion: String(request.headers["stripe-version"] ?? ""),
     cancelURL: form.get("cancel_url") ?? "",
-    currency,
     customer: form.get("customer") ?? "",
-    discount,
     id: randomId("cs_test_"),
     lineItems: items,
     metadata: hashOf(form, "metadata"),
-    mode,
     paymentIntent: randomId("pi_test_"),
-    secretKey,
     status: "open",
     subscription: "",
     subscriptionMetadata: hashOf(form, "subscription_data\\[metadata\\]"),
@@ -599,9 +599,9 @@ const createPrice = async (
   const price: Price = {
     amount,
     currency,
-    id: randomId("price_test_"),
     interval,
     intervalCount,
+    id: randomId("price_test_"),
     name: form.get("product_data[name]") ?? "Subscription",
   };
 
@@ -705,12 +705,12 @@ const registerPaymentIntent = async (
 
   const intent: PaymentIntent = {
     amount,
+    id,
     apiVersion: "",
     created: created
       ? Math.floor(Temporal.Instant.from(created).epochMilliseconds / 1000)
       : nowSeconds(),
     currency: currency.toLowerCase(),
-    id,
     livemode: livemode ?? false,
     refunded: 0,
   };
@@ -829,10 +829,10 @@ const createRefund = async (
 
   const created: Refund = {
     amount,
+    metadata,
     charge: `ch_${intent.id}`,
     currency: intent.currency,
     id: randomId("re_test_"),
-    metadata,
     object: "refund",
     payment_intent: intent.id,
     status: "succeeded",

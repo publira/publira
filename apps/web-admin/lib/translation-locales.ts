@@ -43,19 +43,19 @@ export const resolveTranslationLocales = ({
   const visibleLocales = translatedLocales.filter((code) => offered.has(code));
 
   if (requestedLocale && offered.has(requestedLocale)) {
-    return { locales, shownLocale: requestedLocale, visibleLocales };
+    return { locales, visibleLocales, shownLocale: requestedLocale };
   }
 
   if (!tenantLocales) {
-    return { locales, shownLocale: undefined, visibleLocales };
+    return { locales, visibleLocales, shownLocale: undefined };
   }
 
   return {
     locales,
+    visibleLocales,
     shownLocale: visibleLocales.includes(tenantLocales.defaultLocale)
       ? tenantLocales.defaultLocale
       : (visibleLocales[0] ?? tenantLocales.defaultLocale),
-    visibleLocales,
   };
 };
 
@@ -103,11 +103,11 @@ export const resolveTranslationToEdit = <T extends { locale: Locale }>({
 
   return {
     locales,
+    visibleLocales,
     shownLocale: localeToEdit,
     translation: translations.find(
       (translation) => translation.locale === localeToEdit
     ),
-    visibleLocales,
   };
 };
 

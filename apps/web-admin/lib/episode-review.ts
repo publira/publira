@@ -79,11 +79,11 @@ const mapRound = (
   }
 
   return {
+    state,
     comment: round.comment ?? "",
     decidedAt: round.decidedAt ?? "",
     decidedByName: round.decidedByName ?? "",
     id: round.id,
-    state,
     submittedAt: round.submittedAt ?? "",
     submittedByName: round.submittedByName ?? "",
   };

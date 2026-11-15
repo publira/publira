@@ -72,8 +72,8 @@ export const openGraphCardImage = (
   alt: string
 ): OpenGraphImage => ({
   alt,
-  height: OPEN_GRAPH_CARD_HEIGHT,
   url,
+  height: OPEN_GRAPH_CARD_HEIGHT,
   width: OPEN_GRAPH_CARD_WIDTH,
 });
 
@@ -133,11 +133,11 @@ export const openGraphMetadata = ({
   type,
   url,
 }: OpenGraphCard): Pick<Metadata, "openGraph" | "twitter"> => ({
-  openGraph: { description, images: image, siteName, title, type, url },
+  openGraph: { images: image, description, siteName, title, type, url },
   twitter: {
     card: "summary_large_image",
-    description,
     images: image,
+    description,
     title,
   },
 });

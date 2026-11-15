@@ -138,11 +138,11 @@ const detailSeries2 = {
 
 const eyeCatch = (url: string) => [
   {
+    url,
     contentType: "image/webp",
     fileSizeBytes: 4096n,
     height: 360,
     label: "landscape 640",
-    url,
     variantType: "landscape",
     width: 640,
   },

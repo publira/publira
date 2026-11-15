@@ -47,8 +47,8 @@ export const EpisodeReadRecorder = ({
     useViewerContext();
 
   const isFinished = isLastPageVisible({
-    currentIndex,
     pageCount: pages.length,
+    currentIndex,
     spreadStartIndex,
     viewMode,
   });

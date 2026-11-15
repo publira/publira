@@ -26,11 +26,11 @@ const { getTenantReaderIconChoice, offersReaderIconField } =
   await import("./reader-icon-policy");
 
 const presetVariant = (url: string) => ({
+  url,
   contentType: "image/png",
   fileSizeBytes: 2048n,
   height: 256,
   label: "original",
-  url,
   width: 256,
 });
 

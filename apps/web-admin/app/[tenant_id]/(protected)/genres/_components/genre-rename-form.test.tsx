@@ -44,10 +44,10 @@ vi.mock("#components/message", () => ({
 }));
 
 const genre = (id: string, name: string) => ({
-  eyeCatchImageUpdatedAt: "",
-  eyeCatchImageVariants: [],
   id,
   name,
+  eyeCatchImageUpdatedAt: "",
+  eyeCatchImageVariants: [],
   publicId: `${id}-public`,
   slug: name.toLowerCase(),
   translations: [],

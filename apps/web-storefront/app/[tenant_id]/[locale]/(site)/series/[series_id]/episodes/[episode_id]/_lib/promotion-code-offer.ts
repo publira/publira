@@ -57,9 +57,9 @@ export const toPromotionCodeOffer = async ({
 
   try {
     return await quoteEpisodePromotionCode({
-      code,
       episodeId: episode.id,
       kinds: episodeSaleKinds(episode),
+      code,
       sessionId,
       tenantId,
     });

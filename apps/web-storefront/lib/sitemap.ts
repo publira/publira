@@ -494,8 +494,8 @@ const tenantAddress = async (
 
   return tenant && origin
     ? {
-        defaultLocale: tenant.defaultLocale,
         origin,
+        defaultLocale: tenant.defaultLocale,
         supportedLocales: tenant.supportedLocales,
       }
     : null;

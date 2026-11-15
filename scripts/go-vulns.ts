@@ -194,9 +194,9 @@ export const readFindings = (messages: readonly JsonValue[]): Finding[] => {
     }
 
     findings.set(id, {
+      id,
       callStack: frames.toReversed().map(frameName),
       fixedVersion: stringField(finding, "fixed_version"),
-      id,
       module: stringField(symbol, "module") ?? "",
       summary: "",
       version: stringField(symbol, "version") ?? "",

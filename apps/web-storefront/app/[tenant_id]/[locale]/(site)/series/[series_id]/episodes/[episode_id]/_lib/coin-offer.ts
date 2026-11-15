@@ -100,6 +100,8 @@ export const toCoinOffer = ({
   const packs = acceptsPayments && settings?.selling ? settings.packs : [];
 
   return {
+    idempotencyKey,
+    needed,
     balance: coins,
     coinName: episode.coinName || balance.value.coinName,
     disclosures: settings?.disclosures ?? {
@@ -109,9 +111,7 @@ export const toCoinOffer = ({
       termsUrl: "",
     },
     expiryDays: settings?.expiryDays ?? 0,
-    idempotencyKey,
     kind: "offer",
-    needed,
     pack: needed > 0n ? coinPackCovering(packs, needed) : undefined,
     packsOnSale: packs.length > 0,
     price: episode.coinPrice,

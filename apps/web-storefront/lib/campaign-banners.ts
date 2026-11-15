@@ -40,9 +40,9 @@ const toCampaignBannerItem = (
   }
 
   return {
-    altText: banner.altText ?? "",
     imageVariants,
     linkUrl,
+    altText: banner.altText ?? "",
     publicId: banner.publicId ?? "",
   };
 };

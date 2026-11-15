@@ -211,8 +211,8 @@ const listGenresForTenant = async (
         const response = await apiClient.genre.listGenres(
           {
             limit,
-            tenant: { tenantId },
             token,
+            tenant: { tenantId },
           },
           withServiceHeaders()
         );
@@ -503,7 +503,7 @@ export const saveGenreNames = (
       ({ name, translationLocale }) =>
         () =>
           updateGenre(
-            { id: input.id, name, tenantId: input.tenantId, translationLocale },
+            { id: input.id, tenantId: input.tenantId, name, translationLocale },
             locale
           )
     ),

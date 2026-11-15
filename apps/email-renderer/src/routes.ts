@@ -21,9 +21,9 @@ export const emailRendererRoutes = (router: ConnectRouter): void => {
       const messages = await loadEmailMessages(locale);
 
       const rendered = await renderEmail({
-        data: request.data ?? {},
         locale,
         messages,
+        data: request.data ?? {},
         template: request.template,
         timeZone: request.timeZone,
       });

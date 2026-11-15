@@ -142,11 +142,11 @@ export const updatePlatformEmailSettingsAction = async (
 
   const result = await withPlatformSessionReauth(() =>
     updatePlatformEmailSettings({
+      locale,
       encryption: parsed.data.encryption,
       expectedRevision: parsed.data.revision,
       fromAddress: parsed.data.fromAddress,
       host: parsed.data.host,
-      locale,
       password: parsed.data.password,
       passwordUpdateMode: parsed.data.passwordUpdateMode,
       port: parsed.data.port,
@@ -189,10 +189,10 @@ export const sendPlatformSmtpTestEmailAction = async (
 
   const result = await withPlatformSessionReauth(() =>
     sendPlatformSmtpTestEmail({
+      locale,
       encryption: parsed.data.encryption,
       fromAddress: parsed.data.fromAddress,
       host: parsed.data.host,
-      locale,
       password: parsed.data.password,
       passwordUpdateMode: parsed.data.passwordUpdateMode,
       port: parsed.data.port,

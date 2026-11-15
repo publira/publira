@@ -411,9 +411,9 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadLabelEyeCatchAspectImage(
       {
+        imageContentType: aspectImage.type || undefined,
         crop,
         id,
-        imageContentType: aspectImage.type || undefined,
         imageData,
         tenantId,
         variantType,

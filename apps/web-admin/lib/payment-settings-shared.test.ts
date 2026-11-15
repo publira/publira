@@ -92,10 +92,10 @@ const provider = (
   subscriptions: boolean
 ): PaymentProvider => ({
   currencies,
-  displayName: id,
-  fields: [],
   id,
   subscriptions,
+  displayName: id,
+  fields: [],
   webhookPath: `/api/v1/webhook/payment/${id}`,
 });
 

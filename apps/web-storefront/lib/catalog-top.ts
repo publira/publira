@@ -376,8 +376,8 @@ export const getCatalogTopWeeklySchedule = async (
     WEEKDAY_NUMBERS.map(async (weekday) => ({
       page: await listPublishedSeries(tenantId, {
         limit: maxScheduledSeries,
-        locale,
         order: "updated",
+        locale,
         weekday,
       }),
       weekday,
@@ -423,9 +423,9 @@ export const getCatalogTopPopularSeries = async (
   { locale, maxRanked = 10, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopPopularSeries>> => {
   const ranking = await listRankedSeries(tenantId, {
+    locale,
     ageRating: "all",
     limit: maxRanked,
-    locale,
     period: "weekly",
   });
 

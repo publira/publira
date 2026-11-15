@@ -432,9 +432,9 @@ describe("label eye-catch aspect images", () => {
 
     const result = await uploadLabelEyeCatchAspectImage(
       {
+        imageData,
         id: "LABEL101",
         imageContentType: "image/jpeg",
-        imageData,
         tenantId: "TENANT001",
         variantType: "landscape",
       },
@@ -443,8 +443,8 @@ describe("label eye-catch aspect images", () => {
 
     expect(mockUploadAspectImage).toHaveBeenCalledExactlyOnceWith(
       {
-        imageContentType: "image/jpeg",
         imageData,
+        imageContentType: "image/jpeg",
         labelId: "LABEL101",
         tenant: { tenantId: "TENANT001" },
         variantType: "landscape",
@@ -586,7 +586,7 @@ describe("deleteLabel", () => {
         "en"
       );
 
-      expect(result).toEqual({ message, ok: false, reference });
+      expect(result).toEqual({ message, reference, ok: false });
     }
   );
 

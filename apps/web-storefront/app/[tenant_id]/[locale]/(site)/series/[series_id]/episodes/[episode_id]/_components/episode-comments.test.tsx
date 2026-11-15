@@ -197,10 +197,10 @@ const renderSection = async (
   commentMode: SeriesCommentMode = "immediate"
 ) => {
   const section = await EpisodeComments({
-    commentMode,
     episodeId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     episodePublicId: "SeedEPSDAAA1",
     seriesPublicId: "SeedSERSAAA1",
+    commentMode,
     tenantId,
     token,
   });
@@ -231,11 +231,11 @@ afterEach(() => {
 describe("EpisodeComments", () => {
   it("renders nothing at all where the series has commenting turned off", async () => {
     const section = await EpisodeComments({
+      tenantId,
       commentMode: "disabled",
       episodeId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       episodePublicId: "SeedEPSDAAA1",
       seriesPublicId: "SeedSERSAAA1",
-      tenantId,
       token: "",
     });
 

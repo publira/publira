@@ -300,7 +300,7 @@ describe("startSeriesRemainderCheckoutAction", () => {
       startSeriesRemainderCheckoutAction(remainderForm())
     ).rejects.toThrow("NEXT_REDIRECT:https://checkout.stripe.test/remainder");
     expect(mockStartSeriesRemainderCheckout).toHaveBeenCalledWith(
-      { locale: "ja", provider: "", seriesId, tenant: { tenantId } },
+      { seriesId, locale: "ja", provider: "", tenant: { tenantId } },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

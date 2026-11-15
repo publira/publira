@@ -88,8 +88,8 @@ export const cropBounds = (
   aspect: CropAspect
 ): CropBounds => ({
   aspect,
-  largest: centreCropRect(source, aspect),
   source,
+  largest: centreCropRect(source, aspect),
 });
 
 /**

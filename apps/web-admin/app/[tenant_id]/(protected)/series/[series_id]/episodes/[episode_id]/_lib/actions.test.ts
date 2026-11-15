@@ -2040,8 +2040,8 @@ describe("episode eye-catch actions", () => {
       });
       expect(mockUploadEpisodeEyeCatchAspectImage).toHaveBeenCalledWith(
         {
-          crop: undefined,
           episodeId,
+          crop: undefined,
           imageContentType: "image/png",
           imageData: new Uint8Array([1, 2, 3]),
           tenantId: "TENANT001",

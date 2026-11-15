@@ -88,8 +88,8 @@ const mark = async (
   const result = await withAdminSessionReauth(() =>
     markContactMessageHandled(
       {
-        contactMessageId: parsed.data.contactMessageId,
         handled,
+        contactMessageId: parsed.data.contactMessageId,
         tenantId: parsed.data.tenantId,
       },
       locale

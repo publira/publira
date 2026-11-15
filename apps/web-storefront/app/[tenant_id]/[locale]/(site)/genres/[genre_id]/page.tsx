@@ -199,10 +199,10 @@ const GenreSeries = async ({
   tenantId: string;
 }) => {
   const result = await listPublishedSeries(tenantId, {
+    locale,
     genrePublicId: genreId,
     hasFreeEpisodes: query.free,
     limit: GENRE_SERIES_PAGE_SIZE,
-    locale,
     order: query.order,
     status: query.status || undefined,
     token: query.token,
@@ -325,10 +325,10 @@ const GenreRankingSection = async ({
     genreId={genreId}
     locale={locale}
     result={await listRankedSeries(tenantId, {
+      locale,
       ageRating: "all",
       genrePublicId: genreId,
       limit: GENRE_RANKING_SHELF_SIZE,
-      locale,
       period: "weekly",
     })}
   />

@@ -39,11 +39,11 @@ const update = {
 
 const eyeCatch = (url: string) => [
   {
+    url,
     contentType: "image/webp",
     fileSizeBytes: 4096n,
     height: 160,
     label: "square 160",
-    url,
     variantType: "square",
     width: 160,
   },

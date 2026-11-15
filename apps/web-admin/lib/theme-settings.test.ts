@@ -75,10 +75,10 @@ const brandingImageUpdatedAt = "2026-08-19T00:00:00.000Z";
 const brandingImageFileSizeBytes = 1024n;
 
 const brandingVariant = (variantType: string) => ({
+  variantType,
   contentType: "image/png",
   height: 64,
   label: "original",
-  variantType,
   width: 64,
 });
 
@@ -346,8 +346,8 @@ describe("theme-settings", () => {
 
     const result = await uploadTenantIcon(
       {
-        iconContentType: "image/png",
         iconData,
+        iconContentType: "image/png",
         tenantId: "TENANT001",
       },
       "en"
@@ -359,8 +359,8 @@ describe("theme-settings", () => {
     });
     expect(mockUploadTenantIconApi).toHaveBeenCalledWith(
       {
-        iconContentType: "image/png",
         iconData,
+        iconContentType: "image/png",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -446,8 +446,8 @@ describe("theme-settings", () => {
 
     const result = await uploadTenantLogo(
       {
-        logoContentType: "image/png",
         logoData,
+        logoContentType: "image/png",
         tenantId: "TENANT001",
       },
       "en"
@@ -459,8 +459,8 @@ describe("theme-settings", () => {
     });
     expect(mockUploadTenantLogoApi).toHaveBeenCalledWith(
       {
-        logoContentType: "image/png",
         logoData,
+        logoContentType: "image/png",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -581,8 +581,8 @@ describe("theme-settings", () => {
 
     const result = await uploadTenantSignInImage(
       {
-        imageContentType: "image/jpeg",
         imageData,
+        imageContentType: "image/jpeg",
         tenantId: "TENANT001",
       },
       "en"
@@ -594,8 +594,8 @@ describe("theme-settings", () => {
     });
     expect(mockUploadTenantSignInImageApi).toHaveBeenCalledWith(
       {
-        imageContentType: "image/jpeg",
         imageData,
+        imageContentType: "image/jpeg",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }

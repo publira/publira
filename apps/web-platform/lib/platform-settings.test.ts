@@ -70,8 +70,8 @@ const savedRevision = 4;
 /** A stored settings row in USD, locked or not. */
 const stored = (defaultCurrencyLocked: boolean) => ({
   settings: {
-    defaultCurrency: "USD",
     defaultCurrencyLocked,
+    defaultCurrency: "USD",
     defaultLocale: "ja",
     defaultTimezone: "Asia/Tokyo",
     revision: BigInt(storedRevision),

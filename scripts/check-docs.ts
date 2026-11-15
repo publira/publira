@@ -406,13 +406,13 @@ const checkFrontmatter = (
   const { messages, redirects } = checkRedirects(values);
 
   return {
+    redirects,
     findings: [
       ...checkKeys(values, translated),
       ...checkText(values, spacesParentheses(file)),
       ...checkDates(values),
       ...messages,
-    ].map((message) => ({ file, line: 1, message })),
-    redirects,
+    ].map((message) => ({ file, message, line: 1 })),
     revision: revisionOf(values, translated),
   };
 };
@@ -721,7 +721,7 @@ export const checkPage = (file: string, source: string): CheckedPage => {
     }
   });
 
-  return { findings, links: collectLinks(tree), redirects, revision };
+  return { links: collectLinks(tree), findings, redirects, revision };
 };
 
 const SCHEME = /^[a-z][\d+.a-z-]*:/iu;

@@ -66,8 +66,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("main"),
           locale,
+          element: page.getByRole("main"),
           page: "operations/platform-console",
           subject: "sign-in",
         });
@@ -87,8 +87,8 @@ for (const locale of DOCS_LOCALES) {
         await expect(page.locator("tbody tr")).toHaveCount(1);
 
         await expectDocsScreenshot(page, {
-          element: page.getByRole("table"),
           locale,
+          element: page.getByRole("table"),
           page: "operations/platform-console",
           subject: "audit-log-command-line",
         });
@@ -102,8 +102,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("table")],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("table")],
           page: "operations/platform-console",
           subject: "operators",
         });
@@ -113,8 +113,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/operators/new");
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.locator("main form")],
           locale,
+          element: [docsScreenHeader(page), page.locator("main form")],
           page: "operations/platform-console",
           subject: "add-operator",
         });
@@ -132,11 +132,11 @@ for (const locale of DOCS_LOCALES) {
         );
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             docsSection(page, t("platform.operators.info_title")),
           ],
-          locale,
           page: "operations/platform-console",
           subject: "operator",
         });
@@ -158,8 +158,8 @@ for (const locale of DOCS_LOCALES) {
         await expect(settings).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: [button, page.getByRole("menu")],
           locale,
+          element: [button, page.getByRole("menu")],
           page: "operations/platform-console",
           subject: "account-menu",
         });
@@ -172,8 +172,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/account");
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.settings.email_change_title")),
           locale,
+          element: docsSection(page, t("platform.settings.email_change_title")),
           page: "operations/platform-console",
           subject: "account-settings",
         });
@@ -186,8 +186,8 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/account");
 
         await expectDocsScreenshot(page, {
-          element: docsSection(page, t("platform.settings.mfa.title")),
           locale,
+          element: docsSection(page, t("platform.settings.mfa.title")),
           page: "operations/platform-console",
           subject: "account-two-step-verification",
         });
@@ -203,13 +203,13 @@ for (const locale of DOCS_LOCALES) {
 
         const sidebar = page.getByRole("navigation").first();
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             sidebar.getByText(t("platform.nav.platform"), { exact: true }),
             sidebar.getByRole("link", {
               name: t("platform.nav.retention_label"),
             }),
           ],
-          locale,
           page: "operations/platform-policies",
           subject: "sidebar",
         });
@@ -219,11 +219,11 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/general");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsSection(page, t("platform.settings.default_locale_title")),
             docsSection(page, t("platform.settings.default_currency_title")),
           ],
-          locale,
           page: "operations/platform-policies",
           subject: "general",
         });
@@ -236,12 +236,12 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("checkbox", {
               name: t("platform.policy.security.mfa_required"),
             })
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "mfa-required",
         });
@@ -254,6 +254,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("checkbox", {
               name: t(
@@ -261,7 +262,6 @@ for (const locale of DOCS_LOCALES) {
               ),
             })
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "operator-mfa-required",
         });
@@ -274,12 +274,12 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("checkbox", {
               name: t("platform.policy.security.tenant_coins_allowed"),
             })
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "tenant-coins",
         });
@@ -289,6 +289,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsField(
               page.getByLabel(t("platform.policy.security.password_per_minute"))
@@ -299,7 +300,6 @@ for (const locale of DOCS_LOCALES) {
               )
             ),
           ],
-          locale,
           page: "operations/platform-policies",
           subject: "rate-limits",
         });
@@ -312,6 +312,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByLabel(
               t(
@@ -319,7 +320,6 @@ for (const locale of DOCS_LOCALES) {
               )
             )
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "sign-in-attempts",
         });
@@ -332,12 +332,12 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("group", {
               name: t("platform.policy.security.anonymous_read_legend"),
             })
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "anonymous-reads",
         });
@@ -350,12 +350,12 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: docsField(
             page.getByRole("textbox", {
               name: t("platform.policy.security.disposable_email_domains_url"),
             })
           ),
-          locale,
           page: "operations/platform-policies",
           subject: "disposable-email-domains",
         });
@@ -365,13 +365,13 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/community");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("platform.policy.community.save"),
             }),
           ],
-          locale,
           page: "operations/platform-policies",
           subject: "community",
         });
@@ -381,13 +381,13 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/retention");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsScreenHeader(page),
             page.getByRole("button", {
               name: t("platform.policy.retention.save"),
             }),
           ],
-          locale,
           page: "operations/platform-policies",
           subject: "retention",
         });
@@ -413,8 +413,8 @@ for (const locale of DOCS_LOCALES) {
       ).toBeVisible();
 
       await expectDocsScreenshot(page, {
-        element: [docsScreenHeader(page), page.getByRole("table")],
         locale,
+        element: [docsScreenHeader(page), page.getByRole("table")],
         page: "operations/scheduled-jobs",
         subject: "notifications",
       });
@@ -428,6 +428,7 @@ for (const locale of DOCS_LOCALES) {
         await openScreen(page, consoleSessions, locale, "/policies/security");
 
         await expectDocsScreenshot(page, {
+          locale,
           element: [
             docsField(
               page.getByRole("checkbox", {
@@ -438,7 +439,6 @@ for (const locale of DOCS_LOCALES) {
               name: t("platform.policy.security.save"),
             }),
           ],
-          locale,
           page: "operations/security/two-step-verification",
           subject: "mfa-required",
         });
@@ -463,8 +463,8 @@ for (const locale of DOCS_LOCALES) {
         ).toBeVisible();
 
         await expectDocsScreenshot(page, {
-          element: [docsScreenHeader(page), page.getByRole("table")],
           locale,
+          element: [docsScreenHeader(page), page.getByRole("table")],
           page: "operations/security/audit-logs",
           subject: "tenant-filter",
         });

@@ -40,11 +40,11 @@ vi.mock("next/cache", () => ({
 
 const ticket = (publicId: string, createdAt: string) => ({
   createdAt,
+  publicId,
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   expiresAt: "",
   note: "",
-  publicId,
   revokedAt: "",
   seriesPublicId: "SERIES001",
   seriesTitle: "Series A",

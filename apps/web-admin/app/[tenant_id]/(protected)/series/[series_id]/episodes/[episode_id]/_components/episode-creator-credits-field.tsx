@@ -194,8 +194,8 @@ export const EpisodeCreatorCreditsField = ({
     setRows((current) => [
       ...current,
       {
-        creatorId: "",
         key,
+        creatorId: "",
         roleId: creatorRoles.at(0)?.id ?? "",
         shareText: "",
         source: CreatorCreditSource.EPISODE,

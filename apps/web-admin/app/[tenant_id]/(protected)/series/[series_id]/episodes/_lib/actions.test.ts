@@ -772,9 +772,9 @@ describe("createSeriesFreeWindowsAction", () => {
     expect(mockCreateSeriesFreeWindows).toHaveBeenCalledWith(
       {
         endsAt,
+        startsAt,
         episodeIds: [campaignEpisodeId(1), campaignEpisodeId(3)],
         seriesId: SERIES_ID,
-        startsAt,
         tenantId: "TENANT001",
       },
       "en"
@@ -942,12 +942,12 @@ describe("createSeriesCampaignPricesAction", () => {
     expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
     expect(mockCreateSeriesCampaignPrices).toHaveBeenCalledWith(
       {
-        currency: "JPY",
         endsAt,
+        startsAt,
+        currency: "JPY",
         episodeIds: [campaignEpisodeId(1), campaignEpisodeId(3)],
         price: 300,
         seriesId: SERIES_ID,
-        startsAt,
         tenantId: "TENANT001",
       },
       "en"

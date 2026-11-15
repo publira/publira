@@ -130,9 +130,9 @@ describe("SearchAnalysisForm", () => {
         <SearchAnalysisForm
           locale="en"
           settings={{
-            analysis: DEFINITION,
             buildState,
             defaultAnalysis,
+            analysis: DEFINITION,
             localeAnalyses: {},
             revision: 4n,
           }}

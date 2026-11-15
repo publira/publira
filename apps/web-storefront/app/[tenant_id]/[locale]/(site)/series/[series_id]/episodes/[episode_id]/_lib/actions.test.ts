@@ -279,9 +279,9 @@ describe("startTipCheckoutAction", () => {
     );
     expect(mockStartTipCheckout).toHaveBeenCalledWith(
       {
+        episodeId,
         amount: 300,
         client: StartEpisodeCheckoutRequest_Client.WEB,
-        episodeId,
         locale: "en",
         provider: "",
         tenant: { tenantId },
@@ -515,8 +515,8 @@ describe("payEpisodeWithCoinsAction", () => {
     );
     expect(mockPayEpisodeWithCoins).toHaveBeenCalledWith(
       {
-        coins: 300,
         episodeId,
+        coins: 300,
         idempotencyKey: "payment-key",
         kind: PurchaseKind.PURCHASE,
         locale: "en",

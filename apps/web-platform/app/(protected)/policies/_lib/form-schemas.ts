@@ -97,7 +97,7 @@ const refineWindowPairs =
   (value: Record<K, number>, ctx: z.RefinementCtx) => {
     for (const { day, message, short } of pairs) {
       if (value[day] < value[short]) {
-        ctx.addIssue({ code: "custom", message, path: [day] });
+        ctx.addIssue({ message, code: "custom", path: [day] });
       }
     }
   };

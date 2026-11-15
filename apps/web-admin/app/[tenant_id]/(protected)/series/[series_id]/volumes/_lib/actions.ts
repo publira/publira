@@ -236,7 +236,7 @@ export const updateVolumeAction = async (
 
   const result = await withAdminSessionReauth(() =>
     updateVolume(
-      { currency: price.currency, id, price: price.value, tenantId, title },
+      { currency: price.currency, price: price.value, id, tenantId, title },
       locale
     )
   );
@@ -652,8 +652,8 @@ export const updateVolumeCoverAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadVolumeCoverImage(
       {
-        id,
         imageContentType: coverImage.type || undefined,
+        id,
         imageData,
         tenantId,
       },

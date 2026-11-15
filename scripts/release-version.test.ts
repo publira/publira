@@ -31,7 +31,7 @@ const ROOT_MANIFEST = [
 ].join("\n");
 
 const manifest = (name: string, version?: string): string =>
-  `${JSON.stringify({ name, private: true, version }, null, 2)}\n`;
+  `${JSON.stringify({ name, version, private: true }, null, 2)}\n`;
 
 describe("isReleaseVersion", () => {
   it("accepts a release and a prerelease", () => {

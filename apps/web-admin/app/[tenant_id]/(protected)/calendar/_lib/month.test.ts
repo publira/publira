@@ -16,8 +16,8 @@ const episode = (
   publishedAt: string
 ): EpisodePublicationItem => ({
   episodePublicId,
-  episodeTitle: `Episode ${episodePublicId}`,
   publishedAt,
+  episodeTitle: `Episode ${episodePublicId}`,
   seriesPublicId: "SR001",
   seriesTitle: "Series",
   status: "scheduled",

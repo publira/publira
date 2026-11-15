@@ -41,10 +41,10 @@ const loginFormSchema = async (locale: Locale) => {
 
   return z.object({
     email,
-    locale: localeFormSchema,
     password,
-    returnTo: returnToFormSchema,
     tenantId,
+    locale: localeFormSchema,
+    returnTo: returnToFormSchema,
   });
 };
 
@@ -134,8 +134,8 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     await writeMfaChallenge({
       challengeToken: result.mfaChallenge.token,
       expiresAt: result.mfaChallenge.expiresAt,
-      locale,
       returnTo: returnToPath,
+      locale,
       tenantId,
     });
 

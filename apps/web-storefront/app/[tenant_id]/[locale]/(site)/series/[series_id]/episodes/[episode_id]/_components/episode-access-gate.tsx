@@ -583,9 +583,9 @@ const CoinSection = ({
   const formProps = {
     episodeId,
     episodePublicId,
-    idempotencyKey: offer.idempotencyKey,
     seriesPublicId,
     tenantId,
+    idempotencyKey: offer.idempotencyKey,
   };
 
   const { coinName } = offer;

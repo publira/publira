@@ -54,9 +54,9 @@ const page = (ids: string[], nextToken = "") => ({
   nextToken,
   previousToken: "",
   purchases: ids.map((id) => ({
+    id,
     currency: "JPY",
     episode: { orderIndex: 1, publicId: "EPISODE001", title: "Episode" },
-    id,
     isActive: true,
     priceAtPurchase: 500,
     purchasedAt: "2026-10-01T09:00:00Z",

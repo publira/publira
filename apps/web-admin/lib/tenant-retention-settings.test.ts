@@ -52,8 +52,8 @@ describe("tenant-retention-settings", () => {
 
   it("separates the periods the tenant saved from the platform defaults", async () => {
     mockGetTenantRetentionSettingsApi.mockResolvedValueOnce({
-      overrides: { withdrawnCommentDays: 30 },
       platformDefaults,
+      overrides: { withdrawnCommentDays: 30 },
       revision: 4n,
     });
 
@@ -63,6 +63,7 @@ describe("tenant-retention-settings", () => {
     const result = await getTenantRetentionSettings("TENANT001", "en");
 
     expect(result).toEqual({
+      platformDefaults,
       ok: true,
       overrides: {
         contentEventDays: undefined,
@@ -70,7 +71,6 @@ describe("tenant-retention-settings", () => {
         weeklyRankingSnapshotDays: undefined,
         withdrawnCommentDays: 30,
       },
-      platformDefaults,
       revision: 4n,
     });
     expect(mockCacheTag).toHaveBeenCalledWith(

@@ -237,8 +237,8 @@ export const createGenreAction = async (
   const created = await withAdminSessionReauth(() =>
     createGenre(
       {
-        name: first.name,
         tenantId,
+        name: first.name,
         translationLocale: first.translationLocale,
       },
       locale
@@ -484,8 +484,8 @@ export const updateGenreEyeCatchAction = async (
   const result = await withAdminSessionReauth(() =>
     updateGenre(
       {
-        clearEyeCatchImage,
         eyeCatchImageContentType: eyeCatchImage?.type || undefined,
+        clearEyeCatchImage,
         eyeCatchImageData,
         id,
         tenantId,
@@ -568,9 +568,9 @@ export const uploadGenreEyeCatchAspectImageAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadGenreEyeCatchAspectImage(
       {
+        imageContentType: aspectImage.type || undefined,
         crop,
         id,
-        imageContentType: aspectImage.type || undefined,
         imageData,
         tenantId,
         variantType,

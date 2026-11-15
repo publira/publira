@@ -17,8 +17,8 @@ const variant = (
   height: number
 ): EyeCatchVariant => ({
   contentType: "image/webp",
-  height,
   url: `/images/series/SERIES01/${variantType}/${width}`,
+  height,
   variantType,
   width,
 });

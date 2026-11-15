@@ -18,9 +18,9 @@ const variant = (
 ): EyeCatchImageVariant => ({
   contentType: "image/jpeg",
   fileSizeBytes: BigInt(width * height),
-  height,
   label: `${variantType} ${width}`,
   url: `/images/series/00000000-0000-4000-8000-000000000000/${variantType}/${width}`,
+  height,
   variantType,
   width,
 });
@@ -183,8 +183,8 @@ describe("openGraphMetadata", () => {
 
     expect(
       openGraphMetadata({
-        description: "3 published series from Seed Label 01",
         image,
+        description: "3 published series from Seed Label 01",
         siteName: "Seed Tenant",
         title: "Seed Label 01",
         type: "website",

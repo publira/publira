@@ -515,7 +515,7 @@ export const listContactMessageAssignees = async (
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.members.listTenantMembers(
-          { limit, tenant: { tenantId }, token },
+          { limit, token, tenant: { tenantId } },
           withSessionHeaders(sessionId)
         );
 

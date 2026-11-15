@@ -78,7 +78,7 @@ const fetchCardLogo = async (
 
     const data = Buffer.from(await response.arrayBuffer()).toString("base64");
 
-    return { height, src: `data:image/png;base64,${data}`, width };
+    return { height, width, src: `data:image/png;base64,${data}` };
   } catch (error) {
     console.warn("[web-storefront] open graph card logo failed", error);
     dropFailedCacheEntry();
@@ -107,11 +107,11 @@ const isBrandName = (brand: CardProps["brand"]): brand is string =>
 const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
   <div
     style={{
+      fontFamily,
       backgroundColor: colors.backgroundColor,
       color: colors.foregroundColor,
       display: "flex",
       flexDirection: "column",
-      fontFamily,
       height: "100%",
       width: "100%",
     }}

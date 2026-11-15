@@ -79,11 +79,11 @@ describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: { ageRating: "", labelId: "", status: "", token: "" },
         labels: [],
         locale: "en",
-        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -99,11 +99,11 @@ describe("SeriesManager", () => {
   it("does not say the whole list is empty when a later page is empty", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: { ageRating: "", labelId: "", status: "", token: "" },
         labels: [],
         locale: "en",
-        now,
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
@@ -119,13 +119,13 @@ describe("SeriesManager", () => {
   it("shows only the error and does not call the list empty when the fetch fails", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: { ageRating: "", labelId: "", status: "", token: "" },
         labels: [],
         listErrorMessage: "Could not load the series.",
         locale: "en",
         nextHref: "?token=next",
-        now,
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
@@ -149,6 +149,7 @@ describe("SeriesManager", () => {
   it("keeps the chosen status and age rating in the filters", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: {
           ageRating: "r15",
@@ -158,7 +159,6 @@ describe("SeriesManager", () => {
         },
         labels: [],
         locale: "en",
-        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -177,11 +177,11 @@ describe("SeriesManager", () => {
   it("offers an editor to edit each series", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: { ageRating: "", labelId: "", status: "", token: "" },
         labels: [],
         locale: "en",
-        now,
         pageSize: 20,
         series: [series],
         timeZone: "UTC",
@@ -197,11 +197,11 @@ describe("SeriesManager", () => {
   it("offers an auditor only to view each series", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: false,
         filters: { ageRating: "", labelId: "", status: "", token: "" },
         labels: [],
         locale: "en",
-        now,
         pageSize: 20,
         series: [series],
         timeZone: "UTC",
@@ -219,6 +219,7 @@ describe("SeriesManager", () => {
   it("narrows the list by the tenant's labels", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: {
           ageRating: "",
@@ -231,7 +232,6 @@ describe("SeriesManager", () => {
           { id: "LABEL002-ID", name: "Lighthouse Books" },
         ],
         locale: "en",
-        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -247,6 +247,7 @@ describe("SeriesManager", () => {
   it("says the list cannot be narrowed by label when the labels cannot be read", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: {
           ageRating: "",
@@ -256,7 +257,6 @@ describe("SeriesManager", () => {
         },
         labels: null,
         locale: "en",
-        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -276,6 +276,7 @@ describe("SeriesManager", () => {
   it("carries the label the URL names when the labels cannot be read", async () => {
     await renderServerComponent(
       await SeriesManager({
+        now,
         canEdit: true,
         filters: {
           ageRating: "",
@@ -285,7 +286,6 @@ describe("SeriesManager", () => {
         },
         labels: null,
         locale: "en",
-        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -319,11 +319,11 @@ describe("SeriesManager", () => {
     async ({ expected, isPublished, publishedAt }) => {
       await renderServerComponent(
         await SeriesManager({
+          now,
           canEdit: true,
           filters: { ageRating: "", labelId: "", status: "", token: "" },
           labels: [],
           locale: "en",
-          now,
           pageSize: 20,
           series: [{ ...series, isPublished, publishedAt }],
           timeZone: "UTC",

@@ -152,9 +152,9 @@ const listEpisodeCampaignPricesForTenant = async (
         const response = await apiClient.series.listEpisodeCampaignPrices(
           {
             limit,
+            token,
             scope: { case: "episodeId", value: input.episodeId },
             tenant: { tenantId: input.tenantId },
-            token,
           },
           withServiceHeaders()
         );

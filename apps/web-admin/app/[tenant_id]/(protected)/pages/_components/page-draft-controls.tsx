@@ -83,8 +83,6 @@ const PageDraft = ({
 
   const value = useMemo<PageDraftContextValue>(
     () => ({
-      compareVersionId,
-      loadedBody,
       onCompareVersionChange: setCompareVersionId,
       onLoadVersion: (versionId) => {
         const version = versions.find((entry) => entry.id === versionId);
@@ -116,6 +114,8 @@ const PageDraft = ({
           setCompareVersionId(fallback?.id ?? "");
         }
       },
+      compareVersionId,
+      loadedBody,
       publishedVersionId,
       saving,
       selectedVersionId,

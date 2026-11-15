@@ -83,8 +83,8 @@ const SeriesPagination = ({
           previousToken
             ? searchPageHref({
                 filters,
-                kind: "series",
                 query,
+                kind: "series",
                 token: previousToken,
               })
             : ""
@@ -99,8 +99,8 @@ const SeriesPagination = ({
           nextToken
             ? searchPageHref({
                 filters,
-                kind: "series",
                 query,
+                kind: "series",
                 token: nextToken,
               })
             : ""
@@ -140,10 +140,10 @@ export const SeriesResults = async ({
     genrePublicId: filters.genre,
     hasFreeEpisodes: filters.free,
     limit: overview ? SERIES_OVERVIEW_SIZE : SERIES_PAGE_SIZE,
-    locale,
     order: filters.order || undefined,
-    query,
     status: filters.status || undefined,
+    locale,
+    query,
     token,
   });
 
@@ -210,7 +210,7 @@ export const SeriesResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref({ filters, kind: "series", query })}
+              href={searchPageHref({ filters, query, kind: "series" })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="storefront.search.series_first_page" />

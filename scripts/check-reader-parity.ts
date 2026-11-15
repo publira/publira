@@ -296,13 +296,13 @@ const takeInventory = async (): Promise<Inventory> => {
   );
 
   return {
+    webRoutes,
     mobileRpcs: new Set(
       mobileSources
         .flatMap((source) => methodsIn(source, MOBILE_RPC))
         .filter((method) => rpcs.has(method))
     ),
     mobileTests: testSources.join("\n"),
-    webRoutes,
     webRpcs: new Set(
       webSources.flatMap((source) => webCallsIn(source, services, rpcs))
     ),

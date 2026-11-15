@@ -68,10 +68,10 @@ export const getPublishedLabelDetail = async (
     response = await apiClient.catalog.getPublishedLabelDetail({
       limit,
       locale,
+      token,
       publicId: normalizedLabelId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
-      token,
     });
   } catch (error) {
     if (isMissingResourceRpcError(error)) {

@@ -147,7 +147,7 @@ const readStatement = async (props: StatementPageProps) => {
     return { message: result.message, ok: false as const };
   }
 
-  return { ok: true as const, request, value: result.value };
+  return { request, ok: true as const, value: result.value };
 };
 
 const StatementAuthor = async (props: StatementPageProps) => {

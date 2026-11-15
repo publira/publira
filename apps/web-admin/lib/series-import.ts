@@ -86,6 +86,7 @@ const resolveSeries = (
 
   return createSeries(
     {
+      tenantId,
       ageRating: DEFAULT_SERIES_AGE_RATING,
       availability: DEFAULT_SURFACE_AVAILABILITY,
       bundleDiscountPercent: 0,
@@ -103,7 +104,6 @@ const resolveSeries = (
       status: DEFAULT_SERIES_STATUS,
       synopsis: target.synopsis,
       tagNames: [],
-      tenantId,
       title: target.title,
       translationLocale: target.locale,
     },
@@ -130,8 +130,8 @@ const importEpisode = async (
   const { currency, locale, t, tenantId, translationLocale, zip } = context;
 
   let row: SeriesImportRow = {
-    pageCount: episode.pages.length,
     position,
+    pageCount: episode.pages.length,
     status: "failed",
     title: episode.title,
   };
@@ -140,7 +140,6 @@ const importEpisode = async (
     const created = await createEpisode(
       {
         availability: "",
-        currency,
         previewPageCount: 0,
         price: episode.price,
         publishAt: "",
@@ -149,8 +148,9 @@ const importEpisode = async (
         rentalPeriodHours: 0,
         rentalPrice: 0,
         seriesId: series.id,
-        tenantId,
         title: episode.title,
+        currency,
+        tenantId,
         translationLocale,
       },
       locale
@@ -253,8 +253,8 @@ export const runSeriesImport = async (
 
     if (stopped) {
       rows.push({
-        pageCount: episode.pages.length,
         position,
+        pageCount: episode.pages.length,
         status: "not_started",
         title: episode.title,
       });
@@ -269,8 +269,8 @@ export const runSeriesImport = async (
   }
 
   return {
-    ok: true as const,
     rows,
+    ok: true as const,
     seriesPublicId: series.publicId,
   };
 };

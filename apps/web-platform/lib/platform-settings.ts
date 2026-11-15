@@ -126,8 +126,8 @@ const getPlatformSettingsForLocale = async (
 
     return {
       defaultCurrency,
-      defaultCurrencyLocked: response.settings?.defaultCurrencyLocked ?? false,
       defaultLocale,
+      defaultCurrencyLocked: response.settings?.defaultCurrencyLocked ?? false,
       defaultTimezone:
         response.settings?.defaultTimezone.trim() || DEFAULT_TIME_ZONE,
       ok: true,
@@ -254,9 +254,9 @@ const readStoredPlatformSettings = async (
   }
 
   return {
-    defaultCurrency,
     defaultCurrencyLocked: current.settings?.defaultCurrencyLocked ?? false,
     defaultLocale: parsedLocale,
+    defaultCurrency,
     defaultTimezone,
     revision,
   };
@@ -290,8 +290,8 @@ export const updatePlatformDefaultTimezone = async (
 
     const response = await apiClient.settings.updatePlatformSettings(
       {
-        defaultLocale: stored.defaultLocale,
         defaultTimezone,
+        defaultLocale: stored.defaultLocale,
         expectedRevision: stored.revision,
       },
       buildSessionHeaders(sessionId)

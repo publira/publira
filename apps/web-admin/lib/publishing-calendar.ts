@@ -74,9 +74,9 @@ const listEpisodePublicationsForTenant = async (
         const response = await apiClient.series.listEpisodesByPublicationDate(
           {
             endDate: input.endDate,
-            limit,
             startDate: input.startDate,
             tenant: { tenantId: input.tenantId },
+            limit,
             token,
           },
           withServiceHeaders()

@@ -185,10 +185,10 @@ const EpisodeReactionLogin = ({
 
   const face = useMemo(
     (): EpisodeReactionFace => ({
+      ratingCount,
       error: null,
       fillRatio: 0,
       mode: "single",
-      ratingCount,
       score: 0,
     }),
     [ratingCount]
@@ -248,9 +248,9 @@ const EpisodeReactionForm = ({
 
   const face = useMemo(
     (): EpisodeReactionFace => ({
+      mode,
       error: state && !state.ok ? state.message : null,
       fillRatio: reactionFillRatio(optimistic.score, mode),
-      mode,
       ratingCount: optimistic.ratingCount,
       score: optimistic.score,
     }),

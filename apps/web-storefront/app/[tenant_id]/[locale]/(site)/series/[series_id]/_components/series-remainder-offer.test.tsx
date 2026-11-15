@@ -55,8 +55,8 @@ const renderOffer = async (sales = SELLING) =>
   render(
     <div>
       {await SeriesRemainderOffer({
-        locale: "en",
         sales,
+        locale: "en",
         seriesId: "SERIES_ID",
         seriesPublicId: "SERIES_001",
         tenantId: "TENANT_001",

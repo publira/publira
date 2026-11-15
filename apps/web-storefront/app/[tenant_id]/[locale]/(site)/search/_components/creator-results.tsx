@@ -70,7 +70,7 @@ const CreatorPagination = ({
       <ListPagination.Step
         href={
           previousToken
-            ? searchPageHref({ kind: "creators", query, token: previousToken })
+            ? searchPageHref({ query, kind: "creators", token: previousToken })
             : ""
         }
       >
@@ -81,7 +81,7 @@ const CreatorPagination = ({
       <ListPagination.Step
         href={
           nextToken
-            ? searchPageHref({ kind: "creators", query, token: nextToken })
+            ? searchPageHref({ query, kind: "creators", token: nextToken })
             : ""
         }
       >

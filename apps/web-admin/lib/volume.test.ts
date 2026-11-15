@@ -385,8 +385,8 @@ describe("setVolumeBookstoreLinks", () => {
         "en"
       )
     ).resolves.toEqual({
-      fieldErrors: { "bookstore_links[1].url": message },
       message,
+      fieldErrors: { "bookstore_links[1].url": message },
       ok: false,
     });
   });

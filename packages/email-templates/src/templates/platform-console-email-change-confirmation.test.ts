@@ -68,10 +68,10 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "platform_console_email_change_confirmation",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -98,10 +98,10 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
     const result = await renderEmail({
       data,
+      timeZone,
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "platform_console_email_change_confirmation",
-      timeZone,
     });
 
     expect(result.ok).toBe(true);
@@ -126,16 +126,16 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
     const toCurrent = await renderEmail({
       data,
-      locale: "en",
       messages,
+      locale: "en",
       template: "platform_console_email_change_confirmation",
       timeZone: "UTC",
     });
 
     const toNew = await renderEmail({
+      messages,
       data: { ...data, recipient_kind: "new_email" },
       locale: "en",
-      messages,
       template: "platform_console_email_change_confirmation",
       timeZone: "UTC",
     });

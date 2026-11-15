@@ -139,8 +139,8 @@ const getTenantCommentSettingsForSession = async (
     }
 
     return {
-      autoHideReportThreshold: response.autoHideReportThreshold,
       commentMode,
+      autoHideReportThreshold: response.autoHideReportThreshold,
       ok: true,
     };
   } catch (error) {

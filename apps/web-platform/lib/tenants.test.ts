@@ -46,9 +46,9 @@ const createListTenantsResponse = ({
     timezone?: string;
   })[];
 }): ListTenantsResponse => ({
-  $typeName: "publira.platform.v1.ListTenantsResponse",
   nextToken,
   previousToken,
+  $typeName: "publira.platform.v1.ListTenantsResponse",
   tenants: tenants.map(({ timezone = "", ...tenant }) => ({
     $typeName: "publira.platform.v1.Tenant",
     timezone,
@@ -593,7 +593,7 @@ describe("createPlatformTenant", () => {
     });
 
     expect(mockListTenantMembers).toHaveBeenCalledWith(
-      { limit: 20, tenantId, token: "" },
+      { tenantId, limit: 20, token: "" },
       serviceHeaders
     );
   });
@@ -850,8 +850,8 @@ describe("tenant admin invitations", () => {
 
     expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
       {
-        limit: 20,
         tenantId,
+        limit: 20,
         token: "",
       },
       serviceHeaders
@@ -867,8 +867,8 @@ describe("tenant admin invitations", () => {
 
     await expect(
       listPlatformTenantAdminInvitations({
-        limit: 50,
         tenantId,
+        limit: 50,
         token: "current-page",
       })
     ).resolves.toEqual({
@@ -880,8 +880,8 @@ describe("tenant admin invitations", () => {
 
     expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
       {
-        limit: 50,
         tenantId,
+        limit: 50,
         token: "current-page",
       },
       serviceHeaders

@@ -128,8 +128,8 @@ export const updateOperatorRoleAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformOperatorRole({
       locale,
-      operatorId: id,
       role,
+      operatorId: id,
     })
   );
 

@@ -63,9 +63,9 @@ vi.mock("@publira/ui-components/qr-code", () => ({
 }));
 
 const challenge = (kind: "enroll" | "verify") => ({
+  kind,
   challengeToken: "challenge-token",
   expiresAt: Temporal.Now.instant().add({ seconds: 300 }).toString(),
-  kind,
   nextPath: "/tenants",
 });
 

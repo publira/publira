@@ -92,8 +92,8 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, "/readers");
 
       await expectDocsScreenshot(page, {
-        element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
+        element: [docsScreenHeader(page), page.getByRole("row").last()],
         page: "console/readers/accounts",
         subject: "list",
       });
@@ -103,11 +103,11 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, `/readers/${READER}`);
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           docsSection(page, t("admin.readers.account_title")),
         ],
-        locale,
         page: "console/readers/accounts",
         subject: "reader",
       });
@@ -132,8 +132,8 @@ for (const locale of DOCS_LOCALES) {
         .click();
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("alertdialog"),
         locale,
+        element: page.getByRole("alertdialog"),
         page: "console/readers/accounts",
         subject: "two-step-remove",
       });
@@ -149,11 +149,11 @@ for (const locale of DOCS_LOCALES) {
       );
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           docsSection(page, t("admin.comments.reports.title")),
         ],
-        locale,
         page: "console/readers/comments",
         subject: "reports",
       });
@@ -172,13 +172,13 @@ for (const locale of DOCS_LOCALES) {
       );
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           page.getByText(
             docsTextPattern(locale, "admin.comments.filter.description")
           ),
           docsSection(page, t("admin.comments.list_title")),
         ],
-        locale,
         page: "console/readers/comments",
         subject: "list",
       });
@@ -194,8 +194,8 @@ for (const locale of DOCS_LOCALES) {
       );
 
       await expectDocsScreenshot(page, {
-        element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
+        element: [docsScreenHeader(page), page.getByRole("row").last()],
         page: "console/readers/contact-messages",
         subject: "list",
       });
@@ -214,11 +214,11 @@ for (const locale of DOCS_LOCALES) {
       );
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           page.getByRole("main").locator("section").last(),
         ],
-        locale,
         page: "console/readers/contact-messages",
         subject: "message",
       });
@@ -228,8 +228,8 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, "/access-tickets");
 
       await expectDocsScreenshot(page, {
-        element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
+        element: [docsScreenHeader(page), page.getByRole("row").last()],
         page: "console/readers/access-tickets",
         subject: "list",
       });
@@ -239,13 +239,13 @@ for (const locale of DOCS_LOCALES) {
       await openScreen(page, consoleSessions, locale, "/access-tickets/new");
 
       await expectDocsScreenshot(page, {
+        locale,
         element: [
           docsScreenHeader(page),
           page.getByRole("button", {
             name: t("admin.access_tickets.form.submit"),
           }),
         ],
-        locale,
         page: "console/readers/access-tickets",
         subject: "issue-form",
       });

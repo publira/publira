@@ -77,11 +77,11 @@ export const buildAuthorizationUrl = ({
   const url = new URL(AUTHORIZATION_ENDPOINTS[provider]);
   url.search = new URLSearchParams({
     client_id: clientId,
-    nonce,
     redirect_uri: redirectUri,
     response_mode: "form_post",
     response_type: provider === "apple" ? "code id_token" : "id_token",
     scope: provider === "apple" ? "name email" : "openid email profile",
+    nonce,
     state,
   }).toString();
 

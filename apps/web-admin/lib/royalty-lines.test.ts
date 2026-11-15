@@ -10,19 +10,19 @@ const line = (
   payoutAmount: bigint,
   source: RoyaltyLine["source"] = "sale"
 ): RoyaltyLine => ({
-  adjustedPeriod: "",
   creatorName,
   creatorPublicId,
-  episodeTitle: `Episode ${lineNumber}`,
-  grossAmount: 5000n,
   lineNumber,
   payoutAmount,
+  source,
+  adjustedPeriod: "",
+  episodeTitle: `Episode ${lineNumber}`,
+  grossAmount: 5000n,
   refundedAmount: 0n,
   roleName: "",
   saleCount: 10,
   seriesTitle: "Series A",
   shareBps: 3000,
-  source,
   taxAmount: null,
   taxRateBps: null,
 });

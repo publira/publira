@@ -238,8 +238,8 @@ const listAllLabelsForTenant = async (
         const response = await apiClient.label.listLabels(
           {
             limit,
-            tenant: { tenantId },
             token,
+            tenant: { tenantId },
           },
           withServiceHeaders()
         );

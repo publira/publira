@@ -106,10 +106,10 @@ for (const locale of DOCS_LOCALES) {
       expect(await turnToEndPage(page, control)).toBe(true);
 
       await expectDocsScreenshot(page, {
+        locale,
         element: page.getByRole("region", {
           name: t("storefront.episode.viewer.end_page"),
         }),
-        locale,
         page: PAGE,
         subject: "tip-control",
       });
@@ -117,8 +117,8 @@ for (const locale of DOCS_LOCALES) {
       await control.click();
 
       await expectDocsScreenshot(page, {
-        element: page.getByRole("dialog"),
         locale,
+        element: page.getByRole("dialog"),
         page: PAGE,
         subject: "tip-dialog",
       });
@@ -128,8 +128,8 @@ for (const locale of DOCS_LOCALES) {
       await openAs(page, EPISODE_RENTALS_READERS.tipper, locale, "/my/library");
 
       await expectDocsScreenshot(page, {
-        element: docsSection(page, t("storefront.library.history_heading")),
         locale,
+        element: docsSection(page, t("storefront.library.history_heading")),
         page: PAGE,
         subject: "tip-purchase-history",
       });
@@ -174,10 +174,10 @@ test.describe("web-storefront payment provider documentation screenshots", () =>
       await expect(page.getByRole("radio", { name: "PAY.JP" })).toBeChecked();
 
       await expectDocsScreenshot(page, {
+        locale,
         element: page.getByRole("region", {
           name: t("storefront.episode.body_label"),
         }),
-        locale,
         page: PAGE,
         subject: "provider-choice",
       });

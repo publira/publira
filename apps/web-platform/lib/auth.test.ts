@@ -86,8 +86,8 @@ describe("loginPlatform", () => {
     async (kind, challengeKind) => {
       mockLogin.mockResolvedValueOnce({
         mfaChallenge: {
-          expiresAt: "2026-03-22T00:05:00Z",
           kind,
+          expiresAt: "2026-03-22T00:05:00Z",
           token: " challenge-token ",
         },
       });
