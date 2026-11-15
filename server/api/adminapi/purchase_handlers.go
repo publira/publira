@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentrefund"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -710,6 +711,20 @@ func (s *adminServer) recordStaffRefundOutcome(ctx context.Context, refund staff
 	})
 }
 
+// sendStaffRefund asks the provider for req while no other refund of the
+// payment is at the provider, so that a request that finds the purchase
+// marked already, and sends the same key again, waits for the one that marked
+// it rather than overlapping it.
+func (s *adminServer) sendStaffRefund(ctx context.Context, refund staffRefund, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
+	return paymentrefund.Send(ctx, s.beginTenantTx, refund.tenantID, refund.provider, credentials, req)
+}
+
+// staffRefundNotSent answers a refund that never reached the provider because
+// the payment could not be locked against another refund of it.
+func (s *adminServer) staffRefundNotSent(ctx context.Context, refund staffRefund, err error) error {
+	return s.internalDBError(ctx, "failed to lock the payment of a staff refund", err, "tenant_id", refund.tenantID.String(), "purchase_id", refund.row.ID.String())
+}
+
 // staffRefundError answers a request to the provider that did not refund
 // anything, logging it, and reports whether the provider refused it.
 func (s *adminServer) staffRefundError(ctx context.Context, refund staffRefund, err error) (bool, error) {
@@ -812,10 +827,16 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 		return nil
 	}
 
-	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+	refunded, err := s.sendStaffRefund(ctx, refund, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
 		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 	})
+	if errors.Is(err, paymentrefund.ErrNotSent) {
+		if liftErr := liftRevocation(false); liftErr != nil {
+			return liftErr
+		}
+		return s.staffRefundNotSent(ctx, refund, err)
+	}
 	if err := s.followStaffRefund(ctx, refund, err); err != nil {
 		return err
 	}
@@ -909,11 +930,16 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 		return nil
 	}
 
-	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+	refunded, err := s.sendStaffRefund(ctx, refund, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
 		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 		Amount:         amount,
 	})
+	if errors.Is(err, paymentrefund.ErrNotSent) {
+		// Nothing reached the provider, and the mark stays for a retry to
+		// send the refund under the same key.
+		return s.staffRefundNotSent(ctx, refund, err)
+	}
 	if err := s.followStaffRefund(ctx, refund, err); err != nil {
 		return err
 	}
