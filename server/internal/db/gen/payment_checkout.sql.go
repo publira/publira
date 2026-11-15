@@ -19,7 +19,7 @@ SELECT
     purchase,
     request,
     payment_id,
-    (last_started_at <= now() - make_interval(secs => $1::double precision))::boolean AS closed
+    payment_checkout_closed(last_started_at, $1::double precision)::boolean AS closed
 FROM payment_checkouts
 WHERE tenant_id = $2
     AND provider = $3
@@ -159,7 +159,7 @@ func (q *Queries) GetReaderPaymentHistory(ctx context.Context, arg GetReaderPaym
 }
 
 const IsPaymentCheckoutClosed = `-- name: IsPaymentCheckoutClosed :one
-SELECT (last_started_at <= now() - make_interval(secs => $1::double precision))::boolean AS closed
+SELECT payment_checkout_closed(last_started_at, $1::double precision)::boolean AS closed
 FROM payment_checkouts
 WHERE tenant_id = $2
     AND provider = $3
@@ -174,8 +174,7 @@ type IsPaymentCheckoutClosedParams struct {
 }
 
 // Whether lifetime_seconds have passed since the checkout was last started,
-// after which the provider takes no payment of it: a retry may be what made
-// the provider's checkout, so its last start bounds when it can be paid.
+// after which the provider takes no payment of it.
 func (q *Queries) IsPaymentCheckoutClosed(ctx context.Context, arg IsPaymentCheckoutClosedParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, IsPaymentCheckoutClosed,
 		arg.LifetimeSeconds,
@@ -300,31 +299,43 @@ func (q *Queries) ListPaymentCheckouts(ctx context.Context, arg ListPaymentCheck
 }
 
 const LockPaymentCheckout = `-- name: LockPaymentCheckout :one
-SELECT purchase, payment_id
+SELECT
+    purchase,
+    payment_id,
+    payment_checkout_closed(last_started_at, $1::double precision)::boolean AS closed
 FROM payment_checkouts
-WHERE tenant_id = $1
-    AND provider = $2
-    AND checkout_id = $3
+WHERE tenant_id = $2
+    AND provider = $3
+    AND checkout_id = $4
 FOR UPDATE
 `
 
 type LockPaymentCheckoutParams struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	Provider   string    `json:"provider"`
-	CheckoutID string    `json:"checkout_id"`
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	CheckoutID      string    `json:"checkout_id"`
 }
 
 type LockPaymentCheckoutRow struct {
 	Purchase  json.RawMessage `json:"purchase"`
 	PaymentID sql.NullString  `json:"payment_id"`
+	Closed    bool            `json:"closed"`
 }
 
 // Holds the checkout while a payment completes it, so that the page and the
-// provider's notification completing it at once capture the payment once.
+// provider's notification completing it at once capture the payment once,
+// with whether lifetime_seconds have passed since it was last started, after
+// which no payment of it is captured.
 func (q *Queries) LockPaymentCheckout(ctx context.Context, arg LockPaymentCheckoutParams) (LockPaymentCheckoutRow, error) {
-	row := q.db.QueryRowContext(ctx, LockPaymentCheckout, arg.TenantID, arg.Provider, arg.CheckoutID)
+	row := q.db.QueryRowContext(ctx, LockPaymentCheckout,
+		arg.LifetimeSeconds,
+		arg.TenantID,
+		arg.Provider,
+		arg.CheckoutID,
+	)
 	var i LockPaymentCheckoutRow
-	err := row.Scan(&i.Purchase, &i.PaymentID)
+	err := row.Scan(&i.Purchase, &i.PaymentID, &i.Closed)
 	return i, err
 }
 

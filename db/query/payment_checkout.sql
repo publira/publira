@@ -49,9 +49,8 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- name: IsPaymentCheckoutClosed :one
 -- Whether lifetime_seconds have passed since the checkout was last started,
--- after which the provider takes no payment of it: a retry may be what made
--- the provider's checkout, so its last start bounds when it can be paid.
-SELECT (last_started_at <= now() - make_interval(secs => sqlc.arg('lifetime_seconds')::double precision))::boolean AS closed
+-- after which the provider takes no payment of it.
+SELECT payment_checkout_closed(last_started_at, sqlc.arg('lifetime_seconds')::double precision)::boolean AS closed
 FROM payment_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')
@@ -65,7 +64,7 @@ SELECT
     purchase,
     request,
     payment_id,
-    (last_started_at <= now() - make_interval(secs => sqlc.arg('lifetime_seconds')::double precision))::boolean AS closed
+    payment_checkout_closed(last_started_at, sqlc.arg('lifetime_seconds')::double precision)::boolean AS closed
 FROM payment_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')
@@ -73,8 +72,13 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- name: LockPaymentCheckout :one
 -- Holds the checkout while a payment completes it, so that the page and the
--- provider's notification completing it at once capture the payment once.
-SELECT purchase, payment_id
+-- provider's notification completing it at once capture the payment once,
+-- with whether lifetime_seconds have passed since it was last started, after
+-- which no payment of it is captured.
+SELECT
+    purchase,
+    payment_id,
+    payment_checkout_closed(last_started_at, sqlc.arg('lifetime_seconds')::double precision)::boolean AS closed
 FROM payment_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')

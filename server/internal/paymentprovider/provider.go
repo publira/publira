@@ -655,12 +655,14 @@ type Provider interface {
 // storefront page that runs its script. The page reads what to hand the
 // script from the server, which answers it from CheckoutScript, and hands the
 // payment the script authorized back to the server, which completes the
-// checkout with it through CompleteCheckout and keeps the payment's id beside
-// the stored checkout, handing it back to [Provider.ListTransactions] as
-// [StartedCheckout.PaymentID]. Its [Provider.ParseNotification] answers
-// [CheckoutAuthorized] for a payment its script authorized, which the server
-// completes the same way, and never [PurchaseCompleted]: that is what
-// CompleteCheckout answers once the payment is captured.
+// checkout with it through CompleteCheckout while the checkout's
+// [Declaration.CheckoutLifetime] has not passed since it was last started,
+// and keeps the payment's id beside the stored checkout, handing it back to
+// [Provider.ListTransactions] as [StartedCheckout.PaymentID]. Its
+// [Provider.ParseNotification] answers [CheckoutAuthorized] for a payment its
+// script authorized, which the server completes the same way, and never
+// [PurchaseCompleted]: that is what CompleteCheckout answers once the payment
+// is captured.
 //
 // A checkout of such a provider is no checkout of the provider's until its
 // script makes a payment of it, so there is nothing to read back before the

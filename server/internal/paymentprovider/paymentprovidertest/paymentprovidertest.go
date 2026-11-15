@@ -1853,7 +1853,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 // run in the reader's browser: the storefront page reads the checkout the
 // server started, and the payment the script authorized completes it once,
 // whether the page or the provider's notification reports it first, and only
-// when it is the checkout's.
+// when it is the checkout's and the checkout's lifetime has not passed.
 func runBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, newTenant func(*testing.T, paymentprovider.Credentials) Tenant, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
@@ -1983,6 +1983,24 @@ func runBrowserCheckout(t *testing.T, fixture BrowserCheckoutFixture, newTenant 
 					t.Fatalf("captures = %d, want 0", got)
 				}
 			})
+		}
+	})
+
+	t.Run("a payment authorized once the checkout's lifetime has passed records nothing and captures nothing", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		checkout, payload, headers := authorized(t, tenant, "browser_lapsed", nil)
+		tenant.LapseCheckout(t, checkout.CheckoutID)
+		if err := tenant.CompleteBrowserCheckout(t, checkout.CheckoutID, checkout.PaymentID); err == nil {
+			t.Fatal("the page completed a checkout past its lifetime")
+		}
+		if err := tenant.Deliver(t, payload, headers); err == nil {
+			t.Fatal("the notification completed a checkout past its lifetime")
+		}
+		if got := tenant.Purchases(t); got != 0 {
+			t.Fatalf("purchases = %d, want 0", got)
+		}
+		if got := fixture.Captures(t, credentials, checkout.PaymentID); got != 0 {
+			t.Fatalf("captures = %d, want 0", got)
 		}
 	})
 
