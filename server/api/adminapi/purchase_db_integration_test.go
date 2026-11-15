@@ -41,8 +41,16 @@ type purchaseFixture struct {
 func newPurchaseFixture(t *testing.T) *purchaseFixture {
 	t.Helper()
 
+	return newPurchaseFixtureWith(t, func(provider paymentprovider.Provider) paymentprovider.Provider { return provider })
+}
+
+// newPurchaseFixtureWith is newPurchaseFixture with the Stripe provider the
+// server registers replaced by what wrap makes of it.
+func newPurchaseFixtureWith(t *testing.T, wrap func(paymentprovider.Provider) paymentprovider.Provider) *purchaseFixture {
+	t.Helper()
+
 	api := stripetest.NewAPI(t)
-	env := newAdminDBEnvWithPaymentProviders(t, paymentprovider.NewRegistry(stripe.New(stripe.WithAPIURL(api.URL()))))
+	env := newAdminDBEnvWithPaymentProviders(t, paymentprovider.NewRegistry(wrap(stripe.New(stripe.WithAPIURL(api.URL())))))
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAADMIN01", "admin@tenant-a.example.com")
 	f := &purchaseFixture{env: env, stripe: api, admin: admin}
 	f.seriesA = env.PG.SeedSeries(t, admin.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A", Published: true})

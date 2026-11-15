@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentrefund"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -1711,11 +1712,15 @@ func (s *apiServer) refundCheckoutOfDeletedEpisode(
 		s.logger.ErrorContext(ctx, "a checkout of a deleted episode names no payment to refund", logArgs...)
 		return nil
 	}
-	refunded, err := provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+	// Each redelivery of the notification asks again, and one that arrives
+	// while an earlier one is still at the provider waits for its answer.
+	refunded, err := paymentrefund.Send(ctx, s.beginTenantTx, tenantID, provider, credentials, paymentprovider.RefundRequest{
 		PaymentID:      event.PaymentID,
 		IdempotencyKey: paymentprovider.UnrecordedCheckoutRefundKey(event.CheckoutID),
 	})
 	switch {
+	case errors.Is(err, paymentrefund.ErrNotSent):
+		return s.internalDBError(ctx, "failed to lock the payment of a checkout of a deleted episode", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 	case errors.Is(err, paymentprovider.ErrRefundRefused):
 		// A redelivery would be refused the same way. The payment is left for
 		// staff to hand back in the provider's dashboard, and a reconciliation

@@ -405,6 +405,14 @@ type RefundRequest struct {
 	PaymentID string
 	// IdempotencyKey is the same for every attempt to refund the same
 	// purchase, so that a retried request refunds nothing twice.
+	//
+	// The server never has two calls of [Provider.Refund] for one payment in
+	// flight at once, across every replica of every process: a call starts
+	// only once the one before it has returned or its context has ended. A
+	// provider whose API takes no idempotency key honours this one by
+	// recording it on the refund it asks for and, before asking for another,
+	// reading the payment's refunds for one under the key, which no
+	// overlapping call can have asked for in the meantime.
 	IdempotencyKey string
 	// Amount is what to refund, in the minor unit of the payment's currency,
 	// or zero for whatever of the payment has not been refunded yet.

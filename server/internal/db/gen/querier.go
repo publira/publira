@@ -3981,6 +3981,10 @@ type Querier interface {
 	// Holds the checkout while a payment completes it, so that the page and the
 	// provider's notification completing it at once capture the payment once.
 	LockPaymentCheckout(ctx context.Context, arg LockPaymentCheckoutParams) (LockPaymentCheckoutRow, error)
+	// Holds, for the rest of the caller's transaction, the one refund of a payment
+	// that may be at its provider, so that a refund of the same payment from any
+	// other process waits until this one has been answered.
+	LockPaymentRefund(ctx context.Context, arg LockPaymentRefundParams) error
 	// Reads the settings row for update. A save takes this lock first, so the
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.

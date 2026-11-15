@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -433,4 +435,98 @@ func TestDBRefundPurchaseInPartKeepsWaitingThroughAnotherRefund(t *testing.T) {
 	if keys := f.refundKeys("pi_part_dashboard"); len(keys) != 1 {
 		t.Fatalf("idempotency keys = %v, want the one attempt's", keys)
 	}
+}
+
+// keylessRefunds stands in for a provider whose API takes no idempotency key,
+// as Paidy's does not: it remembers the key of each refund it made, reads that
+// record before asking for another, and asks the API under a key of its own
+// each time. Between the read and the request it waits for a second refund to
+// arrive, for at most overlapWindow, so that two refunds the server lets
+// overlap both read no refund and both ask for one.
+type keylessRefunds struct {
+	paymentprovider.Provider
+
+	mu       sync.Mutex
+	made     map[string]bool
+	calls    int
+	entered  chan struct{}
+	overlap  chan struct{}
+	overlaps sync.Once
+}
+
+const overlapWindow = time.Second
+
+func newKeylessRefunds(provider paymentprovider.Provider) *keylessRefunds {
+	return &keylessRefunds{
+		Provider: provider,
+		made:     make(map[string]bool),
+		entered:  make(chan struct{}, 2),
+		overlap:  make(chan struct{}),
+	}
+}
+
+func (p *keylessRefunds) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
+	p.mu.Lock()
+	p.calls++
+	call, made := p.calls, p.made[req.IdempotencyKey]
+	p.mu.Unlock()
+	p.entered <- struct{}{}
+	if call == 2 {
+		p.overlaps.Do(func() { close(p.overlap) })
+	}
+	if made {
+		return true, nil
+	}
+	select {
+	case <-p.overlap:
+	case <-time.After(overlapWindow):
+	}
+	key := req.IdempotencyKey
+	req.IdempotencyKey = fmt.Sprintf("%s/%d", key, call)
+	refunded, err := p.Provider.Refund(ctx, credentials, req)
+	if err == nil && refunded {
+		p.mu.Lock()
+		p.made[key] = true
+		p.mu.Unlock()
+	}
+	return refunded, err
+}
+
+// A request for a refund in part that finds the purchase marked by another
+// still at the provider is sent under the same key, and a provider that takes
+// no key can only tell the two apart if the second waits for the first. Both
+// requests succeed, and the amount goes back once.
+func TestDBRefundPurchaseInPartRefundsOnceThroughAProviderThatTakesNoKey(t *testing.T) {
+	t.Parallel()
+
+	var provider *keylessRefunds
+	f := newPurchaseFixtureWith(t, func(inner paymentprovider.Provider) paymentprovider.Provider {
+		provider = newKeylessRefunds(inner)
+		return provider
+	})
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_keyless"})
+
+	results := make(chan error, 2)
+	refund := func() {
+		_, err := f.refundInPart(purchaseID, 200)
+		results <- err
+	}
+	go refund()
+	// The second request is sent once the first has marked the purchase and
+	// reached the provider, so that it is a retry of the first.
+	<-provider.entered
+	go refund()
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatalf("RefundPurchaseInPart: %v", err)
+		}
+	}
+
+	if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_keyless"); got != 200 {
+		t.Fatalf("refunded total = %d, want 200 back once", got)
+	}
+	if got := f.get(t, purchaseID); got.RefundRequestedAmount != 200 {
+		t.Fatalf("purchase = %+v, want 200 requested", got)
+	}
+	f.assertRefundEntries(t, purchaseID, 1, 1, 0)
 }
