@@ -895,6 +895,10 @@ type Querier interface {
 	// press that added points to a reader's score of an episode, which is
 	// rating_count there, and the points it added are rating_sum.
 	GetAudienceTotals(ctx context.Context, arg GetAudienceTotalsParams) (GetAudienceTotalsRow, error)
+	// The checkout a storefront page runs a provider's script for, with whether
+	// lifetime_seconds have passed since it was last started, after which the
+	// page starts no payment of it.
+	GetBrowserPaymentCheckout(ctx context.Context, arg GetBrowserPaymentCheckoutParams) (GetBrowserPaymentCheckoutRow, error)
 	GetCampaignBannerByIDForTenant(ctx context.Context, arg GetCampaignBannerByIDForTenantParams) (GetCampaignBannerByIDForTenantRow, error)
 	GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error)
 	// What the OpenSearch catalog index is written from: the outbox handler reads
@@ -1363,6 +1367,13 @@ type Querier interface {
 	// nothing a reader could be shown to agree to. No row where the tenant has no
 	// config.
 	GetReaderLegalPageAgreements(ctx context.Context, arg GetReaderLegalPageAgreementsParams) (GetReaderLegalPageAgreementsRow, error)
+	// What the reader has paid the tenant in currency, as a provider that judges
+	// a buyer by their history with the merchant is told it: how many payments,
+	// their total less what was refunded of them, and the latest of them. Test
+	// payments took no money, so they are left out. A reader who has paid
+	// nothing has no latest payment, and its columns then hold the time they
+	// registered and zero.
+	GetReaderPaymentHistory(ctx context.Context, arg GetReaderPaymentHistoryParams) (GetReaderPaymentHistoryRow, error)
 	// Reader reports on episode comments, and the open-report counter they keep on
 	// the comment they are about.
 	//
@@ -2054,6 +2065,9 @@ type Querier interface {
 	// the earliest the provider could have made it, after which the provider may
 	// answer its id with a checkout that can no longer be paid.
 	IsPaymentCheckoutLapsed(ctx context.Context, arg IsPaymentCheckoutLapsedParams) (bool, error)
+	// Keeps the payment that completed the checkout. A checkout is completed by
+	// one payment, so a payment already kept is never replaced.
+	KeepPaymentCheckoutPayment(ctx context.Context, arg KeepPaymentCheckoutPaymentParams) error
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
@@ -2920,8 +2934,8 @@ type Querier interface {
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]ListPagesForTenantDescRow, error)
 	// The checkouts first started before started_to and last started at or after
 	// started_from, which are every checkout started in between, however many
-	// times a request started it.
-	ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentCheckoutIDsParams) ([]string, error)
+	// times a request started it, each with the payment kept as its completion.
+	ListPaymentCheckouts(ctx context.Context, arg ListPaymentCheckoutsParams) ([]ListPaymentCheckoutsRow, error)
 	// Admin ListPaymentReconciliationFindings is (occurred_at, id) ASC, the order
 	// the lines happened in. Forward uses the ASC query; backward uses DESC, and
 	// the handler flips its rows back. A NULL kind or is_test is no filter.
@@ -3964,6 +3978,9 @@ type Querier interface {
 	// updates its row, so either one in progress is waited for here and is seen by
 	// the check, and either one that arrives later waits and then fails.
 	LockPageVersionsForDeletion(ctx context.Context, arg LockPageVersionsForDeletionParams) error
+	// Holds the checkout while a payment completes it, so that the page and the
+	// provider's notification completing it at once capture the payment once.
+	LockPaymentCheckout(ctx context.Context, arg LockPaymentCheckoutParams) (LockPaymentCheckoutRow, error)
 	// Reads the settings row for update. A save takes this lock first, so the
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.

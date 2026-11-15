@@ -51,21 +51,22 @@ type providerSource struct {
 	provider    paymentprovider.Provider
 	credentials paymentprovider.Credentials
 	// checkouts lists the checkouts started through a provider that declares
-	// stored checkouts, from its checkout lifetime before from up to to, which
-	// such a provider reads the payment of each of in place of a list of its
-	// own. It is nil for every other provider.
-	checkouts func(ctx context.Context, from, to time.Time) ([]string, error)
+	// stored checkouts, from its checkout lifetime before from up to to, each
+	// with the payment kept as its completion, which such a provider reads
+	// the payment of each of in place of a list of its own. It is nil for
+	// every other provider.
+	checkouts func(ctx context.Context, from, to time.Time) ([]paymentprovider.StartedCheckout, error)
 }
 
 func (s providerSource) records(ctx context.Context, from, to time.Time, _ []Purchase) ([]Record, error) {
-	var checkoutIDs []string
+	var checkouts []paymentprovider.StartedCheckout
 	if s.checkouts != nil {
 		var err error
-		if checkoutIDs, err = s.checkouts(ctx, from, to); err != nil {
+		if checkouts, err = s.checkouts(ctx, from, to); err != nil {
 			return nil, fmt.Errorf("list stored checkouts: %w", err)
 		}
 	}
-	transactions, err := s.provider.ListTransactions(ctx, s.credentials, from, to, checkoutIDs)
+	transactions, err := s.provider.ListTransactions(ctx, s.credentials, from, to, checkouts)
 	if errors.Is(err, paymentprovider.ErrCredentialsRefused) {
 		return nil, fmt.Errorf("%w: %v", ErrCredentials, err)
 	}

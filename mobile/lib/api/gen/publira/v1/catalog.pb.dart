@@ -10623,6 +10623,379 @@ class ProcessPaymentWebhookResponse extends $pb.GeneratedMessage {
   static ProcessPaymentWebhookResponse? _defaultInstance;
 }
 
+/// Reads what the storefront page of a checkout that runs in the reader's
+/// browser hands the payment provider's script: the page at
+/// `/pay/{provider}/{checkout_id}` that a checkout RPC answered as its
+/// `checkout_url` for a provider whose payments only its own script on the
+/// merchant's page can create. The page is reached by the checkout's id alone,
+/// without the reader's session, since the app opens a checkout in the system
+/// browser, where the reader may not be signed in.
+///
+/// A provider the tenant holds no checkout of under `checkout_id`, and one
+/// whose checkouts do not run in the browser, are not_found; a checkout that
+/// can no longer be paid, one already paid, and a provider the tenant can no
+/// longer take payments through are failed_precondition.
+class GetBrowserCheckoutRequest extends $pb.GeneratedMessage {
+  factory GetBrowserCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? provider,
+    $core.String? checkoutId,
+  }) {
+    final result = GetBrowserCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (provider != null) result.provider = provider;
+    if (checkoutId != null) result.checkoutId = checkoutId;
+    return result;
+  }
+
+  GetBrowserCheckoutRequest._();
+
+  factory GetBrowserCheckoutRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBrowserCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory GetBrowserCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBrowserCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBrowserCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetBrowserCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'provider')
+    ..aOS(3, _omitFieldNames ? '' : 'checkoutId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBrowserCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBrowserCheckoutRequest copyWith(
+          void Function(GetBrowserCheckoutRequest) updates) =>
+      super.copyWith((message) => updates(message as GetBrowserCheckoutRequest))
+          as GetBrowserCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBrowserCheckoutRequest() / GetBrowserCheckoutRequest.new instead')
+  static GetBrowserCheckoutRequest create() => GetBrowserCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetBrowserCheckoutRequest._();
+  @$core.override
+  GetBrowserCheckoutRequest createEmptyInstance() =>
+      GetBrowserCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetBrowserCheckoutRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBrowserCheckoutRequest>(
+          GetBrowserCheckoutRequest.$_createMessage);
+  static GetBrowserCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The id of the provider, such as `paidy`.
+  @$pb.TagNumber(2)
+  $core.String get provider => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set provider($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProvider() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProvider() => $_clearField(2);
+
+  /// The checkout's id, as the page's URL names it.
+  @$pb.TagNumber(3)
+  $core.String get checkoutId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set checkoutId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCheckoutId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCheckoutId() => $_clearField(3);
+}
+
+class GetBrowserCheckoutResponse extends $pb.GeneratedMessage {
+  factory GetBrowserCheckoutResponse({
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? credentials,
+    $core.String? payload,
+    $core.String? successUrl,
+    $core.String? cancelUrl,
+  }) {
+    final result = GetBrowserCheckoutResponse._();
+    if (credentials != null) result.credentials.addEntries(credentials);
+    if (payload != null) result.payload = payload;
+    if (successUrl != null) result.successUrl = successUrl;
+    if (cancelUrl != null) result.cancelUrl = cancelUrl;
+    return result;
+  }
+
+  GetBrowserCheckoutResponse._();
+
+  factory GetBrowserCheckoutResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBrowserCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory GetBrowserCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBrowserCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBrowserCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetBrowserCheckoutResponse.$_createMessage)
+    ..m<$core.String, $core.String>(1, _omitFieldNames ? '' : 'credentials',
+        entryClassName: 'GetBrowserCheckoutResponse.CredentialsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('publira.v1'))
+    ..aOS(2, _omitFieldNames ? '' : 'payload')
+    ..aOS(3, _omitFieldNames ? '' : 'successUrl')
+    ..aOS(4, _omitFieldNames ? '' : 'cancelUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBrowserCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBrowserCheckoutResponse copyWith(
+          void Function(GetBrowserCheckoutResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetBrowserCheckoutResponse))
+          as GetBrowserCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBrowserCheckoutResponse() / GetBrowserCheckoutResponse.new instead')
+  static GetBrowserCheckoutResponse create() => GetBrowserCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetBrowserCheckoutResponse._();
+  @$core.override
+  GetBrowserCheckoutResponse createEmptyInstance() =>
+      GetBrowserCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetBrowserCheckoutResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBrowserCheckoutResponse>(
+          GetBrowserCheckoutResponse.$_createMessage);
+  static GetBrowserCheckoutResponse? _defaultInstance;
+
+  /// The tenant's values of the provider's public credential fields, keyed by
+  /// field name, which configure the script.
+  @$pb.TagNumber(1)
+  $pb.PbMap<$core.String, $core.String> get credentials => $_getMap(0);
+
+  /// What the script is launched with: a JSON object in the provider's own
+  /// shape, which the page passes on beside what it asks the reader for. It
+  /// names the checkout, so that the payment the script makes names it back.
+  @$pb.TagNumber(2)
+  $core.String get payload => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set payload($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPayload() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPayload() => $_clearField(2);
+
+  /// Where the page sends the reader once the script has authorized a
+  /// payment, and once it has closed without one.
+  @$pb.TagNumber(3)
+  $core.String get successUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set successUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSuccessUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSuccessUrl() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get cancelUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set cancelUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCancelUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCancelUrl() => $_clearField(4);
+}
+
+/// Completes the checkout `checkout_id` with the payment `payment_id` the
+/// provider's script answered on its storefront page, which GetBrowserCheckout
+/// describes, without the reader's session. The server reads the payment from
+/// the provider, refuses one that is not the checkout's, and captures it
+/// before recording the purchase, so that the purchase is recorded once the
+/// money is committed. A checkout completed already with the same payment,
+/// as the provider's notification of the authorization may complete it first,
+/// succeeds without capturing or recording anything twice.
+///
+/// A provider the tenant holds no checkout of under `checkout_id`, and one
+/// whose checkouts do not run in the browser, are not_found; a payment that is
+/// not the checkout's, one the provider's account does not hold, one whose
+/// amount, currency, or checkout differs from the checkout's, and a second
+/// payment of a checkout already paid are invalid_argument; a provider the
+/// tenant can no longer take payments through is failed_precondition.
+class CompleteBrowserCheckoutRequest extends $pb.GeneratedMessage {
+  factory CompleteBrowserCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? provider,
+    $core.String? checkoutId,
+    $core.String? paymentId,
+  }) {
+    final result = CompleteBrowserCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (provider != null) result.provider = provider;
+    if (checkoutId != null) result.checkoutId = checkoutId;
+    if (paymentId != null) result.paymentId = paymentId;
+    return result;
+  }
+
+  CompleteBrowserCheckoutRequest._();
+
+  factory CompleteBrowserCheckoutRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CompleteBrowserCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory CompleteBrowserCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CompleteBrowserCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CompleteBrowserCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: CompleteBrowserCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'provider')
+    ..aOS(3, _omitFieldNames ? '' : 'checkoutId')
+    ..aOS(4, _omitFieldNames ? '' : 'paymentId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CompleteBrowserCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CompleteBrowserCheckoutRequest copyWith(
+          void Function(CompleteBrowserCheckoutRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as CompleteBrowserCheckoutRequest))
+          as CompleteBrowserCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CompleteBrowserCheckoutRequest() / CompleteBrowserCheckoutRequest.new instead')
+  static CompleteBrowserCheckoutRequest create() =>
+      CompleteBrowserCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CompleteBrowserCheckoutRequest._();
+  @$core.override
+  CompleteBrowserCheckoutRequest createEmptyInstance() =>
+      CompleteBrowserCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CompleteBrowserCheckoutRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CompleteBrowserCheckoutRequest>(
+          CompleteBrowserCheckoutRequest.$_createMessage);
+  static CompleteBrowserCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The id of the provider, such as `paidy`.
+  @$pb.TagNumber(2)
+  $core.String get provider => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set provider($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProvider() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProvider() => $_clearField(2);
+
+  /// The checkout's id, as the page's URL names it.
+  @$pb.TagNumber(3)
+  $core.String get checkoutId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set checkoutId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCheckoutId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCheckoutId() => $_clearField(3);
+
+  /// The provider's id of the payment the script answered.
+  @$pb.TagNumber(4)
+  $core.String get paymentId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set paymentId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPaymentId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPaymentId() => $_clearField(4);
+}
+
+class CompleteBrowserCheckoutResponse extends $pb.GeneratedMessage {
+  factory CompleteBrowserCheckoutResponse() =>
+      CompleteBrowserCheckoutResponse._();
+
+  CompleteBrowserCheckoutResponse._();
+
+  factory CompleteBrowserCheckoutResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CompleteBrowserCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory CompleteBrowserCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CompleteBrowserCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CompleteBrowserCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: CompleteBrowserCheckoutResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CompleteBrowserCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CompleteBrowserCheckoutResponse copyWith(
+          void Function(CompleteBrowserCheckoutResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as CompleteBrowserCheckoutResponse))
+          as CompleteBrowserCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CompleteBrowserCheckoutResponse() / CompleteBrowserCheckoutResponse.new instead')
+  static CompleteBrowserCheckoutResponse create() =>
+      CompleteBrowserCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CompleteBrowserCheckoutResponse._();
+  @$core.override
+  CompleteBrowserCheckoutResponse createEmptyInstance() =>
+      CompleteBrowserCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CompleteBrowserCheckoutResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CompleteBrowserCheckoutResponse>(
+          CompleteBrowserCheckoutResponse.$_createMessage);
+  static CompleteBrowserCheckoutResponse? _defaultInstance;
+}
+
 /// Opens a purchase through the App Store's or Google Play's in-app purchase,
 /// for a tenant whose app sells through the store. The app buys `product_id`
 /// with `intent_id` as the transaction's account token (`appAccountToken` on
@@ -13018,6 +13391,18 @@ class PurchaseServiceApi {
           $pb.ClientContext? ctx, ProcessPaymentWebhookRequest request) =>
       _client.invoke<ProcessPaymentWebhookResponse>(ctx, 'PurchaseService',
           'ProcessPaymentWebhook', request, ProcessPaymentWebhookResponse());
+  $async.Future<GetBrowserCheckoutResponse> getBrowserCheckout(
+          $pb.ClientContext? ctx, GetBrowserCheckoutRequest request) =>
+      _client.invoke<GetBrowserCheckoutResponse>(ctx, 'PurchaseService',
+          'GetBrowserCheckout', request, GetBrowserCheckoutResponse());
+  $async.Future<CompleteBrowserCheckoutResponse> completeBrowserCheckout(
+          $pb.ClientContext? ctx, CompleteBrowserCheckoutRequest request) =>
+      _client.invoke<CompleteBrowserCheckoutResponse>(
+          ctx,
+          'PurchaseService',
+          'CompleteBrowserCheckout',
+          request,
+          CompleteBrowserCheckoutResponse());
   $async.Future<StartStorePurchaseResponse> startStorePurchase(
           $pb.ClientContext? ctx, StartStorePurchaseRequest request) =>
       _client.invoke<StartStorePurchaseResponse>(ctx, 'PurchaseService',

@@ -7,11 +7,58 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+const GetBrowserPaymentCheckout = `-- name: GetBrowserPaymentCheckout :one
+SELECT
+    purchase,
+    request,
+    payment_id,
+    (last_started_at <= now() - make_interval(secs => $1::double precision))::boolean AS closed
+FROM payment_checkouts
+WHERE tenant_id = $2
+    AND provider = $3
+    AND checkout_id = $4
+`
+
+type GetBrowserPaymentCheckoutParams struct {
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	CheckoutID      string    `json:"checkout_id"`
+}
+
+type GetBrowserPaymentCheckoutRow struct {
+	Purchase  json.RawMessage  `json:"purchase"`
+	Request   *json.RawMessage `json:"request"`
+	PaymentID sql.NullString   `json:"payment_id"`
+	Closed    bool             `json:"closed"`
+}
+
+// The checkout a storefront page runs a provider's script for, with whether
+// lifetime_seconds have passed since it was last started, after which the
+// page starts no payment of it.
+func (q *Queries) GetBrowserPaymentCheckout(ctx context.Context, arg GetBrowserPaymentCheckoutParams) (GetBrowserPaymentCheckoutRow, error) {
+	row := q.db.QueryRowContext(ctx, GetBrowserPaymentCheckout,
+		arg.LifetimeSeconds,
+		arg.TenantID,
+		arg.Provider,
+		arg.CheckoutID,
+	)
+	var i GetBrowserPaymentCheckoutRow
+	err := row.Scan(
+		&i.Purchase,
+		&i.Request,
+		&i.PaymentID,
+		&i.Closed,
+	)
+	return i, err
+}
 
 const GetPaymentCheckoutPurchase = `-- name: GetPaymentCheckoutPurchase :one
 SELECT purchase
@@ -32,6 +79,74 @@ func (q *Queries) GetPaymentCheckoutPurchase(ctx context.Context, arg GetPayment
 	var purchase json.RawMessage
 	err := row.Scan(&purchase)
 	return purchase, err
+}
+
+const GetReaderPaymentHistory = `-- name: GetReaderPaymentHistory :one
+SELECT
+    u.public_id,
+    u.created_at AS registered_at,
+    totals.payments,
+    totals.amount_paid,
+    coalesce(latest.purchased_at, u.created_at)::timestamptz AS last_paid_at,
+    coalesce(latest.price_at_purchase, 0)::bigint AS last_amount
+FROM users AS u
+CROSS JOIN LATERAL (
+    SELECT
+        count(*)::bigint AS payments,
+        coalesce(sum(p.price_at_purchase - coalesce(p.refunded_amount, 0)), 0)::bigint AS amount_paid
+    FROM purchases AS p
+    WHERE p.tenant_id = u.tenant_id
+        AND p.user_id = u.id
+        AND p.currency = $1
+        AND NOT p.is_test
+) AS totals
+LEFT JOIN LATERAL (
+    SELECT p.purchased_at, p.price_at_purchase
+    FROM purchases AS p
+    WHERE p.tenant_id = u.tenant_id
+        AND p.user_id = u.id
+        AND p.currency = $1
+        AND NOT p.is_test
+    ORDER BY p.purchased_at DESC, p.id DESC
+    LIMIT 1
+) AS latest ON true
+WHERE u.tenant_id = $2
+    AND u.id = $3
+`
+
+type GetReaderPaymentHistoryParams struct {
+	Currency string        `json:"currency"`
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	UserID   uuid.UUID     `json:"user_id"`
+}
+
+type GetReaderPaymentHistoryRow struct {
+	PublicID     string    `json:"public_id"`
+	RegisteredAt time.Time `json:"registered_at"`
+	Payments     int64     `json:"payments"`
+	AmountPaid   int64     `json:"amount_paid"`
+	LastPaidAt   time.Time `json:"last_paid_at"`
+	LastAmount   int64     `json:"last_amount"`
+}
+
+// What the reader has paid the tenant in currency, as a provider that judges
+// a buyer by their history with the merchant is told it: how many payments,
+// their total less what was refunded of them, and the latest of them. Test
+// payments took no money, so they are left out. A reader who has paid
+// nothing has no latest payment, and its columns then hold the time they
+// registered and zero.
+func (q *Queries) GetReaderPaymentHistory(ctx context.Context, arg GetReaderPaymentHistoryParams) (GetReaderPaymentHistoryRow, error) {
+	row := q.db.QueryRowContext(ctx, GetReaderPaymentHistory, arg.Currency, arg.TenantID, arg.UserID)
+	var i GetReaderPaymentHistoryRow
+	err := row.Scan(
+		&i.PublicID,
+		&i.RegisteredAt,
+		&i.Payments,
+		&i.AmountPaid,
+		&i.LastPaidAt,
+		&i.LastAmount,
+	)
+	return i, err
 }
 
 const IsPaymentCheckoutClosed = `-- name: IsPaymentCheckoutClosed :one
@@ -94,8 +209,36 @@ func (q *Queries) IsPaymentCheckoutLapsed(ctx context.Context, arg IsPaymentChec
 	return lapsed, err
 }
 
-const ListPaymentCheckoutIDs = `-- name: ListPaymentCheckoutIDs :many
-SELECT checkout_id
+const KeepPaymentCheckoutPayment = `-- name: KeepPaymentCheckoutPayment :exec
+UPDATE payment_checkouts
+SET payment_id = $1
+WHERE tenant_id = $2
+    AND provider = $3
+    AND checkout_id = $4
+    AND payment_id IS NULL
+`
+
+type KeepPaymentCheckoutPaymentParams struct {
+	PaymentID  sql.NullString `json:"payment_id"`
+	TenantID   uuid.UUID      `json:"tenant_id"`
+	Provider   string         `json:"provider"`
+	CheckoutID string         `json:"checkout_id"`
+}
+
+// Keeps the payment that completed the checkout. A checkout is completed by
+// one payment, so a payment already kept is never replaced.
+func (q *Queries) KeepPaymentCheckoutPayment(ctx context.Context, arg KeepPaymentCheckoutPaymentParams) error {
+	_, err := q.db.ExecContext(ctx, KeepPaymentCheckoutPayment,
+		arg.PaymentID,
+		arg.TenantID,
+		arg.Provider,
+		arg.CheckoutID,
+	)
+	return err
+}
+
+const ListPaymentCheckouts = `-- name: ListPaymentCheckouts :many
+SELECT checkout_id, payment_id
 FROM payment_checkouts
 WHERE tenant_id = $1
     AND provider = $2
@@ -104,18 +247,23 @@ WHERE tenant_id = $1
 ORDER BY created_at, checkout_id
 `
 
-type ListPaymentCheckoutIDsParams struct {
+type ListPaymentCheckoutsParams struct {
 	TenantID    uuid.UUID `json:"tenant_id"`
 	Provider    string    `json:"provider"`
 	StartedFrom time.Time `json:"started_from"`
 	StartedTo   time.Time `json:"started_to"`
 }
 
+type ListPaymentCheckoutsRow struct {
+	CheckoutID string         `json:"checkout_id"`
+	PaymentID  sql.NullString `json:"payment_id"`
+}
+
 // The checkouts first started before started_to and last started at or after
 // started_from, which are every checkout started in between, however many
-// times a request started it.
-func (q *Queries) ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentCheckoutIDsParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, ListPaymentCheckoutIDs,
+// times a request started it, each with the payment kept as its completion.
+func (q *Queries) ListPaymentCheckouts(ctx context.Context, arg ListPaymentCheckoutsParams) ([]ListPaymentCheckoutsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPaymentCheckouts,
 		arg.TenantID,
 		arg.Provider,
 		arg.StartedFrom,
@@ -125,13 +273,13 @@ func (q *Queries) ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentChe
 		return nil, err
 	}
 	defer rows.Close()
-	var items []string
+	var items []ListPaymentCheckoutsRow
 	for rows.Next() {
-		var checkout_id string
-		if err := rows.Scan(&checkout_id); err != nil {
+		var i ListPaymentCheckoutsRow
+		if err := rows.Scan(&i.CheckoutID, &i.PaymentID); err != nil {
 			return nil, err
 		}
-		items = append(items, checkout_id)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -142,28 +290,60 @@ func (q *Queries) ListPaymentCheckoutIDs(ctx context.Context, arg ListPaymentChe
 	return items, nil
 }
 
+const LockPaymentCheckout = `-- name: LockPaymentCheckout :one
+SELECT purchase, payment_id
+FROM payment_checkouts
+WHERE tenant_id = $1
+    AND provider = $2
+    AND checkout_id = $3
+FOR UPDATE
+`
+
+type LockPaymentCheckoutParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	Provider   string    `json:"provider"`
+	CheckoutID string    `json:"checkout_id"`
+}
+
+type LockPaymentCheckoutRow struct {
+	Purchase  json.RawMessage `json:"purchase"`
+	PaymentID sql.NullString  `json:"payment_id"`
+}
+
+// Holds the checkout while a payment completes it, so that the page and the
+// provider's notification completing it at once capture the payment once.
+func (q *Queries) LockPaymentCheckout(ctx context.Context, arg LockPaymentCheckoutParams) (LockPaymentCheckoutRow, error) {
+	row := q.db.QueryRowContext(ctx, LockPaymentCheckout, arg.TenantID, arg.Provider, arg.CheckoutID)
+	var i LockPaymentCheckoutRow
+	err := row.Scan(&i.Purchase, &i.PaymentID)
+	return i, err
+}
+
 const RecordPaymentCheckout = `-- name: RecordPaymentCheckout :exec
 INSERT INTO payment_checkouts (
     tenant_id,
     provider,
     checkout_id,
-    purchase
+    purchase,
+    request
 )
 VALUES (
     $1,
     $2,
     $3,
-    $4
+    $4,
+    $5
 )
 ON CONFLICT (tenant_id, provider, checkout_id) DO UPDATE
 SET last_started_at = now()
 `
 
 type RecordPaymentCheckoutParams struct {
-	TenantID   uuid.UUID       `json:"tenant_id"`
-	Provider   string          `json:"provider"`
-	CheckoutID string          `json:"checkout_id"`
-	Purchase   json.RawMessage `json:"purchase"`
+	TenantID   uuid.UUID        `json:"tenant_id"`
+	Provider   string           `json:"provider"`
+	CheckoutID string           `json:"checkout_id"`
+	Purchase   json.RawMessage  `json:"purchase"`
+	Request    *json.RawMessage `json:"request"`
 }
 
 // A retried request names the same checkout with the same purchase, so the
@@ -174,6 +354,7 @@ func (q *Queries) RecordPaymentCheckout(ctx context.Context, arg RecordPaymentCh
 		arg.Provider,
 		arg.CheckoutID,
 		arg.Purchase,
+		arg.Request,
 	)
 	return err
 }

@@ -232,13 +232,21 @@ func sourceFor(ctx context.Context, deps Deps, queries *dbmodels.Queries, run db
 		}
 		source := providerSource{provider: provider, credentials: credentials}
 		if declaration := provider.Declaration(); declaration.StoredCheckouts {
-			source.checkouts = func(ctx context.Context, from, to time.Time) ([]string, error) {
-				return queries.ListPaymentCheckoutIDs(ctx, dbmodels.ListPaymentCheckoutIDsParams{
+			source.checkouts = func(ctx context.Context, from, to time.Time) ([]paymentprovider.StartedCheckout, error) {
+				rows, err := queries.ListPaymentCheckouts(ctx, dbmodels.ListPaymentCheckoutsParams{
 					TenantID:    run.TenantID,
 					Provider:    run.Provider.String,
 					StartedFrom: from.Add(-declaration.CheckoutLifetime),
 					StartedTo:   to,
 				})
+				if err != nil {
+					return nil, err
+				}
+				checkouts := make([]paymentprovider.StartedCheckout, 0, len(rows))
+				for _, row := range rows {
+					checkouts = append(checkouts, paymentprovider.StartedCheckout{CheckoutID: row.CheckoutID, PaymentID: row.PaymentID.String})
+				}
+				return checkouts, nil
 			}
 		}
 		return source, true, nil

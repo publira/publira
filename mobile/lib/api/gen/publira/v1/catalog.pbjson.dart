@@ -3384,6 +3384,101 @@ const ProcessPaymentWebhookResponse$json = {
 final $typed_data.Uint8List processPaymentWebhookResponseDescriptor =
     $convert.base64Decode('Ch1Qcm9jZXNzUGF5bWVudFdlYmhvb2tSZXNwb25zZQ==');
 
+@$core.Deprecated('Use getBrowserCheckoutRequestDescriptor instead')
+const GetBrowserCheckoutRequest$json = {
+  '1': 'GetBrowserCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'provider', '3': 2, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'checkout_id', '3': 3, '4': 1, '5': 9, '10': 'checkoutId'},
+  ],
+};
+
+/// Descriptor for `GetBrowserCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBrowserCheckoutRequestDescriptor = $convert.base64Decode(
+    'ChlHZXRCcm93c2VyQ2hlY2tvdXRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
+    'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhoKCHByb3ZpZGVyGAIgASgJUghwcm92aWRl'
+    'chIfCgtjaGVja291dF9pZBgDIAEoCVIKY2hlY2tvdXRJZA==');
+
+@$core.Deprecated('Use getBrowserCheckoutResponseDescriptor instead')
+const GetBrowserCheckoutResponse$json = {
+  '1': 'GetBrowserCheckoutResponse',
+  '2': [
+    {
+      '1': 'credentials',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.GetBrowserCheckoutResponse.CredentialsEntry',
+      '10': 'credentials'
+    },
+    {'1': 'payload', '3': 2, '4': 1, '5': 9, '10': 'payload'},
+    {'1': 'success_url', '3': 3, '4': 1, '5': 9, '10': 'successUrl'},
+    {'1': 'cancel_url', '3': 4, '4': 1, '5': 9, '10': 'cancelUrl'},
+  ],
+  '3': [GetBrowserCheckoutResponse_CredentialsEntry$json],
+};
+
+@$core.Deprecated('Use getBrowserCheckoutResponseDescriptor instead')
+const GetBrowserCheckoutResponse_CredentialsEntry$json = {
+  '1': 'CredentialsEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `GetBrowserCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBrowserCheckoutResponseDescriptor = $convert.base64Decode(
+    'ChpHZXRCcm93c2VyQ2hlY2tvdXRSZXNwb25zZRJZCgtjcmVkZW50aWFscxgBIAMoCzI3LnB1Ym'
+    'xpcmEudjEuR2V0QnJvd3NlckNoZWNrb3V0UmVzcG9uc2UuQ3JlZGVudGlhbHNFbnRyeVILY3Jl'
+    'ZGVudGlhbHMSGAoHcGF5bG9hZBgCIAEoCVIHcGF5bG9hZBIfCgtzdWNjZXNzX3VybBgDIAEoCV'
+    'IKc3VjY2Vzc1VybBIdCgpjYW5jZWxfdXJsGAQgASgJUgljYW5jZWxVcmwaPgoQQ3JlZGVudGlh'
+    'bHNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+
+@$core.Deprecated('Use completeBrowserCheckoutRequestDescriptor instead')
+const CompleteBrowserCheckoutRequest$json = {
+  '1': 'CompleteBrowserCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'provider', '3': 2, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'checkout_id', '3': 3, '4': 1, '5': 9, '10': 'checkoutId'},
+    {'1': 'payment_id', '3': 4, '4': 1, '5': 9, '10': 'paymentId'},
+  ],
+};
+
+/// Descriptor for `CompleteBrowserCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List completeBrowserCheckoutRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5Db21wbGV0ZUJyb3dzZXJDaGVja291dFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibG'
+        'lyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSGgoIcHJvdmlkZXIYAiABKAlSCHBy'
+        'b3ZpZGVyEh8KC2NoZWNrb3V0X2lkGAMgASgJUgpjaGVja291dElkEh0KCnBheW1lbnRfaWQYBC'
+        'ABKAlSCXBheW1lbnRJZA==');
+
+@$core.Deprecated('Use completeBrowserCheckoutResponseDescriptor instead')
+const CompleteBrowserCheckoutResponse$json = {
+  '1': 'CompleteBrowserCheckoutResponse',
+};
+
+/// Descriptor for `CompleteBrowserCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List completeBrowserCheckoutResponseDescriptor =
+    $convert.base64Decode('Ch9Db21wbGV0ZUJyb3dzZXJDaGVja291dFJlc3BvbnNl');
+
 @$core.Deprecated('Use startStorePurchaseRequestDescriptor instead')
 const StartStorePurchaseRequest$json = {
   '1': 'StartStorePurchaseRequest',
@@ -4406,6 +4501,16 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '3': '.publira.v1.ProcessPaymentWebhookResponse'
     },
     {
+      '1': 'GetBrowserCheckout',
+      '2': '.publira.v1.GetBrowserCheckoutRequest',
+      '3': '.publira.v1.GetBrowserCheckoutResponse'
+    },
+    {
+      '1': 'CompleteBrowserCheckout',
+      '2': '.publira.v1.CompleteBrowserCheckoutRequest',
+      '3': '.publira.v1.CompleteBrowserCheckoutResponse'
+    },
+    {
       '1': 'StartStorePurchase',
       '2': '.publira.v1.StartStorePurchaseRequest',
       '3': '.publira.v1.StartStorePurchaseResponse'
@@ -4477,6 +4582,14 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       ProcessPaymentWebhookRequest_HeadersEntry$json,
   '.publira.v1.ProcessPaymentWebhookResponse':
       ProcessPaymentWebhookResponse$json,
+  '.publira.v1.GetBrowserCheckoutRequest': GetBrowserCheckoutRequest$json,
+  '.publira.v1.GetBrowserCheckoutResponse': GetBrowserCheckoutResponse$json,
+  '.publira.v1.GetBrowserCheckoutResponse.CredentialsEntry':
+      GetBrowserCheckoutResponse_CredentialsEntry$json,
+  '.publira.v1.CompleteBrowserCheckoutRequest':
+      CompleteBrowserCheckoutRequest$json,
+  '.publira.v1.CompleteBrowserCheckoutResponse':
+      CompleteBrowserCheckoutResponse$json,
   '.publira.v1.StartStorePurchaseRequest': StartStorePurchaseRequest$json,
   '.publira.v1.StartStorePurchaseResponse': StartStorePurchaseResponse$json,
   '.publira.v1.PreviewPromotionCodeRequest': PreviewPromotionCodeRequest$json,
@@ -4513,20 +4626,24 @@ final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'EudjEuTGlzdE15UHVyY2hhc2VzUmVxdWVzdBojLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2Vz'
     'UmVzcG9uc2USbAoVUHJvY2Vzc1BheW1lbnRXZWJob29rEigucHVibGlyYS52MS5Qcm9jZXNzUG'
     'F5bWVudFdlYmhvb2tSZXF1ZXN0GikucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tS'
-    'ZXNwb25zZRJjChJTdGFydFN0b3JlUHVyY2hhc2USJS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdX'
-    'JjaGFzZVJlcXVlc3QaJi5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlc3BvbnNlEmkK'
-    'FFByZXZpZXdQcm9tb3Rpb25Db2RlEicucHVibGlyYS52MS5QcmV2aWV3UHJvbW90aW9uQ29kZV'
-    'JlcXVlc3QaKC5wdWJsaXJhLnYxLlByZXZpZXdQcm9tb3Rpb25Db2RlUmVzcG9uc2USaQoUQ29u'
-    'ZmlybVN0b3JlUHVyY2hhc2USJy5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVxdW'
-    'VzdBooLnB1YmxpcmEudjEuQ29uZmlybVN0b3JlUHVyY2hhc2VSZXNwb25zZRJ+ChtQcm9jZXNz'
-    'QXBwU3RvcmVOb3RpZmljYXRpb24SLi5wdWJsaXJhLnYxLlByb2Nlc3NBcHBTdG9yZU5vdGlmaW'
-    'NhdGlvblJlcXVlc3QaLy5wdWJsaXJhLnYxLlByb2Nlc3NBcHBTdG9yZU5vdGlmaWNhdGlvblJl'
-    'c3BvbnNlEoQBCh1Qcm9jZXNzR29vZ2xlUGxheU5vdGlmaWNhdGlvbhIwLnB1YmxpcmEudjEuUH'
-    'JvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5Qcm9jZXNz'
-    'R29vZ2xlUGxheU5vdGlmaWNhdGlvblJlc3BvbnNlEl0KEFN0YXJ0VGlwQ2hlY2tvdXQSIy5wdW'
-    'JsaXJhLnYxLlN0YXJ0VGlwQ2hlY2tvdXRSZXF1ZXN0GiQucHVibGlyYS52MS5TdGFydFRpcENo'
-    'ZWNrb3V0UmVzcG9uc2USVAoNU3RhcnRTdG9yZVRpcBIgLnB1YmxpcmEudjEuU3RhcnRTdG9yZV'
-    'RpcFJlcXVlc3QaIS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVUaXBSZXNwb25zZQ==');
+    'ZXNwb25zZRJjChJHZXRCcm93c2VyQ2hlY2tvdXQSJS5wdWJsaXJhLnYxLkdldEJyb3dzZXJDaG'
+    'Vja291dFJlcXVlc3QaJi5wdWJsaXJhLnYxLkdldEJyb3dzZXJDaGVja291dFJlc3BvbnNlEnIK'
+    'F0NvbXBsZXRlQnJvd3NlckNoZWNrb3V0EioucHVibGlyYS52MS5Db21wbGV0ZUJyb3dzZXJDaG'
+    'Vja291dFJlcXVlc3QaKy5wdWJsaXJhLnYxLkNvbXBsZXRlQnJvd3NlckNoZWNrb3V0UmVzcG9u'
+    'c2USYwoSU3RhcnRTdG9yZVB1cmNoYXNlEiUucHVibGlyYS52MS5TdGFydFN0b3JlUHVyY2hhc2'
+    'VSZXF1ZXN0GiYucHVibGlyYS52MS5TdGFydFN0b3JlUHVyY2hhc2VSZXNwb25zZRJpChRQcmV2'
+    'aWV3UHJvbW90aW9uQ29kZRInLnB1YmxpcmEudjEuUHJldmlld1Byb21vdGlvbkNvZGVSZXF1ZX'
+    'N0GigucHVibGlyYS52MS5QcmV2aWV3UHJvbW90aW9uQ29kZVJlc3BvbnNlEmkKFENvbmZpcm1T'
+    'dG9yZVB1cmNoYXNlEicucHVibGlyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZVJlcXVlc3QaKC'
+    '5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJvY2Vzc0FwcFN0'
+    'b3JlTm90aWZpY2F0aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb2'
+    '5SZXF1ZXN0Gi8ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXNwb25z'
+    'ZRKEAQodUHJvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb24SMC5wdWJsaXJhLnYxLlByb2Nlc3'
+    'NHb29nbGVQbGF5Tm90aWZpY2F0aW9uUmVxdWVzdBoxLnB1YmxpcmEudjEuUHJvY2Vzc0dvb2ds'
+    'ZVBsYXlOb3RpZmljYXRpb25SZXNwb25zZRJdChBTdGFydFRpcENoZWNrb3V0EiMucHVibGlyYS'
+    '52MS5TdGFydFRpcENoZWNrb3V0UmVxdWVzdBokLnB1YmxpcmEudjEuU3RhcnRUaXBDaGVja291'
+    'dFJlc3BvbnNlElQKDVN0YXJ0U3RvcmVUaXASIC5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVUaXBSZX'
+    'F1ZXN0GiEucHVibGlyYS52MS5TdGFydFN0b3JlVGlwUmVzcG9uc2U=');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

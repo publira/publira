@@ -1975,6 +1975,67 @@ message ProcessPaymentWebhookRequest {
 
 message ProcessPaymentWebhookResponse {}
 
+// Reads what the storefront page of a checkout that runs in the reader's
+// browser hands the payment provider's script: the page at
+// `/pay/{provider}/{checkout_id}` that a checkout RPC answered as its
+// `checkout_url` for a provider whose payments only its own script on the
+// merchant's page can create. The page is reached by the checkout's id alone,
+// without the reader's session, since the app opens a checkout in the system
+// browser, where the reader may not be signed in.
+//
+// A provider the tenant holds no checkout of under `checkout_id`, and one
+// whose checkouts do not run in the browser, are not_found; a checkout that
+// can no longer be paid, one already paid, and a provider the tenant can no
+// longer take payments through are failed_precondition.
+message GetBrowserCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The id of the provider, such as `paidy`.
+  string provider = 2;
+  // The checkout's id, as the page's URL names it.
+  string checkout_id = 3;
+}
+
+message GetBrowserCheckoutResponse {
+  // The tenant's values of the provider's public credential fields, keyed by
+  // field name, which configure the script.
+  map<string, string> credentials = 1;
+  // What the script is launched with: a JSON object in the provider's own
+  // shape, which the page passes on beside what it asks the reader for. It
+  // names the checkout, so that the payment the script makes names it back.
+  string payload = 2;
+  // Where the page sends the reader once the script has authorized a
+  // payment, and once it has closed without one.
+  string success_url = 3;
+  string cancel_url = 4;
+}
+
+// Completes the checkout `checkout_id` with the payment `payment_id` the
+// provider's script answered on its storefront page, which GetBrowserCheckout
+// describes, without the reader's session. The server reads the payment from
+// the provider, refuses one that is not the checkout's, and captures it
+// before recording the purchase, so that the purchase is recorded once the
+// money is committed. A checkout completed already with the same payment,
+// as the provider's notification of the authorization may complete it first,
+// succeeds without capturing or recording anything twice.
+//
+// A provider the tenant holds no checkout of under `checkout_id`, and one
+// whose checkouts do not run in the browser, are not_found; a payment that is
+// not the checkout's, one the provider's account does not hold, one whose
+// amount, currency, or checkout differs from the checkout's, and a second
+// payment of a checkout already paid are invalid_argument; a provider the
+// tenant can no longer take payments through is failed_precondition.
+message CompleteBrowserCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The id of the provider, such as `paidy`.
+  string provider = 2;
+  // The checkout's id, as the page's URL names it.
+  string checkout_id = 3;
+  // The provider's id of the payment the script answered.
+  string payment_id = 4;
+}
+
+message CompleteBrowserCheckoutResponse {}
+
 // The store an app buys through with the store's own in-app purchase.
 enum InAppPurchaseStore {
   IN_APP_PURCHASE_STORE_UNSPECIFIED = 0;
@@ -2313,6 +2374,8 @@ service PurchaseService {
   // Lists only the authenticated reader's purchases in the requested tenant.
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}
+  rpc GetBrowserCheckout(GetBrowserCheckoutRequest) returns (GetBrowserCheckoutResponse) {}
+  rpc CompleteBrowserCheckout(CompleteBrowserCheckoutRequest) returns (CompleteBrowserCheckoutResponse) {}
   rpc StartStorePurchase(StartStorePurchaseRequest) returns (StartStorePurchaseResponse) {}
   rpc PreviewPromotionCode(PreviewPromotionCodeRequest) returns (PreviewPromotionCodeResponse) {}
   rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}

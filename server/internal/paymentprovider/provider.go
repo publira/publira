@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -41,6 +42,13 @@ var ErrRefundRefused = errors.New("the payment provider refused the refund")
 // [CheckoutExpired] and starts the reader's checkout again under a new id.
 var ErrCheckoutExpired = errors.New("the checkout has expired")
 
+// ErrPaymentMismatch reports, from [BrowserCheckout.CompleteCheckout], a
+// payment the checkout it was handed cannot be completed with: one the
+// account does not hold under the credentials, one the provider's script did
+// not authorize, or one whose amount, currency, or checkout differs from the
+// stored checkout's. Nothing is captured for it.
+var ErrPaymentMismatch = errors.New("the payment is not one of the checkout's")
+
 // ErrRefundPending reports that a refund of a payment has been neither made
 // nor failed yet, so what a [RefundFollower]'s own notification of the
 // payment's refunds would say is not settled.
@@ -54,6 +62,8 @@ type Field struct {
 	Secret bool
 	// Public fields are handed to the reader's browser, as a publishable key
 	// is, so no field is both secret and public.
+	// [BrowserCheckout.CheckoutScript] answers them to the storefront page
+	// that runs the provider's script.
 	Public bool
 	// Required fields must be stored before the provider can take payments.
 	Required bool
@@ -80,6 +90,8 @@ type Declaration struct {
 	// again by the id [PurchaseCompleted.CheckoutID] and
 	// [CheckoutExpired.CheckoutID] name, so the provider answers those events
 	// with a Purchase that holds nothing but the Currency the payment names.
+	// A [BrowserCheckout] declares it, since its storefront page reads the
+	// checkout back by that id.
 	StoredCheckouts bool
 	// PaymentsByCheckout is set by a provider that declares StoredCheckouts
 	// and names each payment by the [CheckoutRequest.CheckoutID] its checkout
@@ -364,6 +376,18 @@ type CheckoutRequest struct {
 	// It is empty for every other provider, which names its checkouts itself,
 	// and is left out of the encoding an idempotency key is made from.
 	CheckoutID string `json:",omitzero"`
+	// PageURL is, for a [BrowserCheckout], the storefront page that runs the
+	// provider's script for the checkout CheckoutID names, at
+	// [BrowserCheckoutPath] on the tenant's site, which StartCheckout answers.
+	// It is empty for every other provider, and is left out of the encoding an
+	// idempotency key is made from.
+	PageURL string `json:",omitzero"`
+}
+
+// BrowserCheckoutPath answers the path on a tenant's storefront of the page
+// that runs the script of the provider id names for the checkout checkoutID.
+func BrowserCheckoutPath(id, checkoutID string) string {
+	return "/pay/" + id + "/" + checkoutID
 }
 
 // StoredCheckoutID answers the [CheckoutRequest.CheckoutID] of the checkout
@@ -388,8 +412,8 @@ type RefundRequest struct {
 }
 
 // Event is what a notification means to the purchase flow: one of
-// [PurchaseCompleted], [Refunded], [RefundFailed], [Disputed],
-// [DisputeLost], [CheckoutExpired], [SubscriptionChanged],
+// [PurchaseCompleted], [CheckoutAuthorized], [Refunded], [RefundFailed],
+// [Disputed], [DisputeLost], [CheckoutExpired], [SubscriptionChanged],
 // [SubscriptionPaid], [SubscriptionPaymentFailed], or [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
@@ -431,6 +455,22 @@ type PurchaseCompleted struct {
 	// that mode. Such a purchase opens the episode, but no money reached the
 	// tenant, so royalty statements and the daily stats leave it out.
 	Test bool
+}
+
+// CheckoutAuthorized reports a payment the script of a [BrowserCheckout]
+// authorized for a checkout, captured or not. The server completes the
+// checkout with it through [BrowserCheckout.CompleteCheckout], as it
+// completes the one the storefront page hands it, so a reader who closed the
+// page before it reported the payment still has it recorded, and a payment
+// both report is captured and recorded once.
+type CheckoutAuthorized struct {
+	ID string
+	// CheckoutID is the [CheckoutRequest.CheckoutID] the payment names, as the
+	// page handed it to the script. It is the provider's word for it, which
+	// CompleteCheckout holds against the stored checkout.
+	CheckoutID string
+	// PaymentID is the provider's id of the payment.
+	PaymentID string
 }
 
 // Refunded reports the amount refunded so far on one payment.
@@ -494,21 +534,23 @@ type Ignored struct {
 	Type string
 }
 
-func (e PurchaseCompleted) NotificationID() string { return e.ID }
-func (e Refunded) NotificationID() string          { return e.ID }
-func (e RefundFailed) NotificationID() string      { return e.ID }
-func (e Disputed) NotificationID() string          { return e.ID }
-func (e DisputeLost) NotificationID() string       { return e.ID }
-func (e CheckoutExpired) NotificationID() string   { return e.ID }
-func (e Ignored) NotificationID() string           { return e.ID }
+func (e PurchaseCompleted) NotificationID() string  { return e.ID }
+func (e CheckoutAuthorized) NotificationID() string { return e.ID }
+func (e Refunded) NotificationID() string           { return e.ID }
+func (e RefundFailed) NotificationID() string       { return e.ID }
+func (e Disputed) NotificationID() string           { return e.ID }
+func (e DisputeLost) NotificationID() string        { return e.ID }
+func (e CheckoutExpired) NotificationID() string    { return e.ID }
+func (e Ignored) NotificationID() string            { return e.ID }
 
-func (PurchaseCompleted) isEvent() {}
-func (Refunded) isEvent()          {}
-func (RefundFailed) isEvent()      {}
-func (Disputed) isEvent()          {}
-func (DisputeLost) isEvent()       {}
-func (CheckoutExpired) isEvent()   {}
-func (Ignored) isEvent()           {}
+func (PurchaseCompleted) isEvent()  {}
+func (CheckoutAuthorized) isEvent() {}
+func (Refunded) isEvent()           {}
+func (RefundFailed) isEvent()       {}
+func (Disputed) isEvent()           {}
+func (DisputeLost) isEvent()        {}
+func (CheckoutExpired) isEvent()    {}
+func (Ignored) isEvent()            {}
 
 // Transaction is one payment the provider took, as [Provider.ListTransactions]
 // reads it from the provider's own records.
@@ -531,10 +573,24 @@ type Transaction struct {
 	Created time.Time
 }
 
+// StartedCheckout is one checkout the server started through a provider that
+// declares [Declaration.StoredCheckouts], as [Provider.ListTransactions] is
+// handed it.
+type StartedCheckout struct {
+	// CheckoutID is the [CheckoutRequest.CheckoutID] it was started under.
+	CheckoutID string
+	// PaymentID is, for a [BrowserCheckout], the provider's id of the payment
+	// that completed the checkout, which the server keeps beside it once
+	// [BrowserCheckout.CompleteCheckout] has answered it, and empty until
+	// then. It is empty for every other provider.
+	PaymentID string
+}
+
 // Provider is one web payment provider.
 type Provider interface {
 	Declaration() Declaration
-	// StartCheckout answers the URL the reader is sent to in order to pay.
+	// StartCheckout answers the URL the reader is sent to in order to pay,
+	// which for a [BrowserCheckout] is [CheckoutRequest.PageURL].
 	// A provider that declares [Declaration.StoredCheckouts] answers
 	// [ErrCheckoutExpired] instead for a [CheckoutRequest.CheckoutID] whose
 	// checkout it made before and can no longer be paid.
@@ -569,13 +625,111 @@ type Provider interface {
 	// records and changes none of them. It answers [ErrCredentialsRefused] for
 	// credentials the provider will not answer.
 	//
-	// checkoutIDs are, for a provider that declares
-	// [Declaration.StoredCheckouts], the [CheckoutRequest.CheckoutID] of every
-	// checkout the server started, or started again for a retried request,
-	// through it under the credentials from [Declaration.CheckoutLifetime]
-	// before from up to to, so that a provider whose API lists no payments
-	// reads the payment of each. Every other provider is handed none.
-	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time, checkoutIDs []string) ([]Transaction, error)
+	// checkouts are, for a provider that declares
+	// [Declaration.StoredCheckouts], every checkout the server started, or
+	// started again for a retried request, through it under the credentials
+	// from [Declaration.CheckoutLifetime] before from up to to, so that a
+	// provider whose API lists no payments reads the payment of each: by its
+	// [StartedCheckout.CheckoutID], or for a [BrowserCheckout] by its
+	// [StartedCheckout.PaymentID], skipping one that names none. Every other
+	// provider is handed none.
+	ListTransactions(ctx context.Context, credentials Credentials, from, to time.Time, checkouts []StartedCheckout) ([]Transaction, error)
+}
+
+// BrowserCheckout is implemented, beside [Provider], by a provider whose
+// payments only the reader's browser can create, through the provider's own
+// script on a page of the merchant's, and whose API answers no page to send
+// the reader to. Such a provider declares [Declaration.StoredCheckouts],
+// names its payments by ids of its own, which its API reads them by and by
+// nothing else, and lists no payments.
+//
+// Its [Provider.StartCheckout] answers [CheckoutRequest.PageURL], the
+// storefront page that runs its script. The page reads what to hand the
+// script from the server, which answers it from CheckoutScript, and hands the
+// payment the script authorized back to the server, which completes the
+// checkout with it through CompleteCheckout and keeps the payment's id beside
+// the stored checkout, handing it back to [Provider.ListTransactions] as
+// [StartedCheckout.PaymentID]. Its [Provider.ParseNotification] answers
+// [CheckoutAuthorized] for a payment its script authorized, which the server
+// completes the same way, and never [PurchaseCompleted]: that is what
+// CompleteCheckout answers once the payment is captured.
+//
+// A checkout of such a provider is no checkout of the provider's until its
+// script makes a payment of it, so there is nothing to read back before the
+// page or a notification names the payment, and it is no [CheckoutFollower].
+type BrowserCheckout interface {
+	// CheckoutScript answers what the storefront page hands the provider's
+	// script to start the payment of checkout by the reader buyer describes,
+	// under the tenant's credentials. It sends no request to the provider.
+	CheckoutScript(credentials Credentials, checkout StoredCheckout, buyer Buyer) (Script, error)
+	// CompleteCheckout reads the payment paymentID names under credentials
+	// and answers it as the [PurchaseCompleted] of checkout, capturing it
+	// first when the script only authorized it, so that the money is
+	// committed once it answers. A payment it captured before is answered
+	// without being captured again. It answers [ErrPaymentMismatch], having
+	// captured nothing, for a payment the account does not hold under the
+	// credentials, one the script did not authorize, and one whose amount,
+	// currency, or checkout differs from checkout's. The event's ID is left
+	// empty, for the server to fill in with whatever reported the payment.
+	CompleteCheckout(ctx context.Context, credentials Credentials, checkout StoredCheckout, paymentID string) (PurchaseCompleted, error)
+}
+
+// StoredCheckout is a checkout the server wrote down before it started it
+// through a [BrowserCheckout], as it reads the checkout back.
+type StoredCheckout struct {
+	// CheckoutID is the [CheckoutRequest.CheckoutID] it was started under.
+	CheckoutID string
+	// Purchase is what the checkout sells, and Purchase.Price and
+	// Purchase.Currency what it charges.
+	Purchase Purchase
+	// LineItemName, LineItems, and Discount are those of the
+	// [CheckoutRequest] it was started with.
+	LineItemName string
+	LineItems    []LineItem
+	Discount     *Discount
+}
+
+// Buyer is what the server holds of the reader a [BrowserCheckout]'s
+// checkout is for, which a provider that judges a buyer by their history with
+// the merchant hands its script.
+type Buyer struct {
+	// ID is the reader's public id.
+	ID string
+	// RegisteredAt is when the reader's account was made.
+	RegisteredAt time.Time
+	// Payments counts the payments the reader has made the tenant in the
+	// checkout's currency, and AmountPaid is what they took, less what was
+	// refunded of them, in its minor unit. Test payments are left out.
+	Payments   int64
+	AmountPaid int64
+	// LastPaidAt and LastAmount are when the latest of those payments was made
+	// and what it took, and zero when there is none.
+	LastPaidAt time.Time
+	LastAmount int64
+}
+
+// Script is what the storefront page hands a [BrowserCheckout]'s script.
+type Script struct {
+	// Credentials are the tenant's values of the provider's [Field.Public]
+	// fields, keyed by [Field.Name], which configure the script.
+	Credentials map[string]string
+	// Payload is what the script is launched with: a JSON object in the
+	// provider's own shape, which the page passes on as it is beside what it
+	// asks the reader for. It names the checkout's id, so that the payment the
+	// script makes names it back.
+	Payload json.RawMessage
+}
+
+// PublicCredentials answers the values of credentials of the [Field.Public]
+// fields d declares, which a [BrowserCheckout] answers in [Script.Credentials].
+func (d Declaration) PublicCredentials(credentials Credentials) map[string]string {
+	public := make(map[string]string)
+	for _, field := range d.Fields {
+		if value := credentials[field.Name]; field.Public && value != "" {
+			public[field.Name] = value
+		}
+	}
+	return public
 }
 
 // RefundFollower is implemented, beside [Provider], by a provider that sends
@@ -598,10 +752,10 @@ type RefundFollower interface {
 }
 
 // CheckoutFollower is implemented, beside [Provider], by a provider that
-// declares [Declaration.StoredCheckouts] and may notify a checkout's payment
-// once and never again, so that a notification the server could not take
-// loses the payment. The server reads the payment of each checkout it starts
-// through such a provider back itself, by handing
+// declares [Declaration.StoredCheckouts], is no [BrowserCheckout], and may
+// notify a checkout's payment once and never again, so that a notification
+// the server could not take loses the payment. The server reads the payment
+// of each checkout it starts through such a provider back itself, by handing
 // [Provider.ParseNotification] the notification CheckoutNotification answers,
 // until the checkout is paid or [Declaration.CheckoutLifetime] has passed
 // since it was last started. The provider's notifications carry no
