@@ -15,8 +15,8 @@ import (
 // through that provider, as well as test payments and payments in another
 // currency, and counts what was refunded off what was paid.
 func TestReaderPaymentHistoryLeavesOutTheProvidersOwnPayments(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
