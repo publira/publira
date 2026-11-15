@@ -430,6 +430,24 @@ void main() {
       expect(platform.bought, isEmpty);
     });
 
+    testWidgets('has the reader choose the provider after the amount', (
+      tester,
+    ) async {
+      purchases.providers = fakeTwoPaymentProviders;
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+
+      await give(tester, 1000);
+      expect(purchases.tipCheckouts, isEmpty);
+      await tester.tap(find.byKey(const ValueKey('payment-provider-stripe')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('payment-provider-continue')));
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(purchases.tipCheckouts, ['$episodeInternalId:1000']);
+      expect(purchases.checkoutProviders, ['stripe']);
+    });
+
     testWidgets('thanks the reader the browser hands back', (tester) async {
       await pumpApp(
         tester,

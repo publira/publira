@@ -888,8 +888,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       listPrice: discounted
           ? messages.formatPrice(quote.listPrice, currency)
           : null,
-      start: (repository, _) =>
-          repository.startVolumeCheckout(volume.id, promotionCode: code),
+      start: (repository, _, provider) => repository.startVolumeCheckout(
+        volume.id,
+        promotionCode: code,
+        provider: provider,
+      ),
       onRefused: _reloadPurchase,
       onOpened: _checkoutOpened,
       lock: _volumePaymentLock,
@@ -973,10 +976,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     count: remainder.episodeCount,
                     price: price,
                   ),
-            start: (repository, locale) =>
+            start: (repository, locale, provider) =>
                 repository.startSeriesRemainderCheckout(
                   widget.detail.series.internalId,
                   locale: locale,
+                  provider: provider,
                 ),
             onRefused: _reloadPurchase,
             onOpened: _checkoutOpened,

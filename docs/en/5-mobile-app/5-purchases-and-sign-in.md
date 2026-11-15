@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-11-05
+updated: 2026-11-15
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
@@ -19,6 +19,8 @@ Under **Payments** › **Payment methods**, two settings decide what the app off
 A rented episode is offered both ways on **Web checkout**, as on the site: **Buy for** the price and **Rent for** the rental period at the rental price, and the episode list names both prices. **In-app purchase** sells the permanent copy alone, so the app offers no rental there. Either way, **Purchases** in the app marks a rental as one and shows the time it has left.
 
 A series' volumes and the rest of a series are sold through **Web checkout** too, as on the site. The series screen lists each volume on sale with its cover, how many episodes it holds, its price, and **Buy volume**, and above the episode list offers **Buy remaining episodes** for every episode the reader does not own yet, less the series' bundle discount. Both open the site's checkout in the phone's browser and bring the reader back to the series, which says the payment is being confirmed until it is. Neither has a store product, so with **In-app purchase** the app names each volume as sold on the website and does not offer the rest of the series. **Purchases** lists a volume and the rest of a series as purchases of their own, and opens the series from either.
+
+A tenant with more than one payment provider **Ready** has the reader choose which one to pay through on **Web checkout**, as on the site, which [Buying and reading](../4-console/4-selling-episodes.md#buying-and-reading) describes. **Buy for**, **Rent for**, **Buy volume**, **Buy remaining episodes**, and a tip amount each open **Pay with** first, which lists those providers in the order of their cards under **Payment settings**, each by its name and what it takes: **Cards** for PAY.JP, and **Cards and more** for Stripe. **Go to the payment page** opens the checkout of the provider chosen in the phone's browser. The app remembers the choice on the phone, apart from the one the site remembers in the browser, so the reader's next purchase in the app starts on the same provider, and on the first until they have chosen one. A tenant with one provider asks nothing, and neither does **In-app purchase**, where the store takes the payment.
 
 A signed-in reader can enter one of the tenant's promotion codes on a locked episode and above the volumes, as [Entering a code in the app](../4-console/4-selling-episodes.md#entering-a-code-in-the-app) describes. With **In-app purchase**, a code works only at a price the store has a product for.
 

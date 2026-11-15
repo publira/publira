@@ -7478,6 +7478,14 @@
       "confirming": "決済を確認しています。購入が反映されると本文を表示します。",
       "included_in_plan": "プランに含まれています",
       "not_sold_in_app": "現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。",
+      "payment_provider": {
+        "continue": "決済ページへ進む",
+        "label": "支払い方法",
+        "methods": {
+          "payjp": "カード",
+          "stripe": "カードなど"
+        }
+      },
       "plan_billing_day": ".input {$count :integer}\n.match $count\n1 {{1日ごとに{$price}}}\n* {{{$count}日ごとに{$price}}}",
       "plan_billing_month": ".input {$count :integer}\n.match $count\n1 {{月額{$price}}}\n* {{{$count}か月ごとに{$price}}}",
       "plan_billing_week": ".input {$count :integer}\n.match $count\n1 {{1週間ごとに{$price}}}\n* {{{$count}週間ごとに{$price}}}",

@@ -8,6 +8,7 @@ import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/models/tenant_invoice.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/purchase/store_subscriber.dart';
 
@@ -115,6 +116,19 @@ enum PromotionCodeSaleRefusal {
   /// The surface does not sell the sale, the reader holds what it would open,
   /// or their account is linked to an Author it credits.
   notOffered,
+}
+
+/// A web payment provider a reader can pay the tenant through, as
+/// `publira.v1.TenantPaymentProvider` names it.
+class PaymentProvider {
+  const PaymentProvider({required this.id, required this.displayName});
+
+  /// The id a checkout names it by in its `provider`, such as `stripe`.
+  final String id;
+
+  /// The name the tenant's site shows it under, its [id] where the API
+  /// answered none.
+  final String displayName;
 }
 
 /// What a promotion code makes of one sale, as `publira.v1.PromotionCodeQuote`
@@ -392,6 +406,15 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<List<SubscriptionPlan>> subscriptionPlans();
 
+  /// The web payment providers a reader can pay the tenant through now, in the
+  /// order the tenant added them. A checkout through the web names one of them
+  /// as its `provider`, which it leaves empty where there is no more than one
+  /// to choose from. A server of the previous release lists none, and sends
+  /// every checkout to the one provider it sells through.
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error.
+  Future<List<PaymentProvider>> paymentProviders();
+
   /// Whether the tenant holds a promotion code a reader could enter now or
   /// once it starts, which is when a purchase offers a field for one.
   ///
@@ -448,11 +471,16 @@ abstract class PurchaseRepository {
   /// there is nothing to pay for, [PurchaseFailureKind.notSold] for a rental
   /// of an episode that is not rented, and a `promotionCode` kind when the
   /// code is refused.
+  ///
+  /// [provider], one of [paymentProviders], is the provider the reader chose
+  /// to pay through, and empty where there was no choice to make. Every other
+  /// checkout through the web takes it the same way.
   Future<Uri> startEpisodeCheckout(
     String episodeInternalId, {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
     String promotionCode = '',
+    String provider = '',
   });
 
   /// The checkout page the signed-in reader pays for the volume
@@ -467,6 +495,7 @@ abstract class PurchaseRepository {
   Future<Uri> startVolumeCheckout(
     String volumeInternalId, {
     String promotionCode = '',
+    String provider = '',
   });
 
   /// The checkout page the signed-in reader pays for every episode of the
@@ -481,6 +510,7 @@ abstract class PurchaseRepository {
   Future<Uri> startSeriesRemainderCheckout(
     String seriesInternalId, {
     required String locale,
+    String provider = '',
   });
 
   /// The checkout page the signed-in reader gives the Authors of the episode
@@ -495,6 +525,7 @@ abstract class PurchaseRepository {
     String episodeInternalId, {
     required int amount,
     required String locale,
+    String provider = '',
   });
 
   /// Opens a tip of [amount] to the Authors of the episode
@@ -594,13 +625,15 @@ abstract class PurchaseRepository {
   });
 }
 
-/// Looks up the [PurchaseRepository], [CheckoutLauncher], [StorePurchaser],
-/// and [StoreSubscriber] installed by [PubliraApp].
+/// Looks up the [PurchaseRepository], [CheckoutLauncher],
+/// [PaymentProviderChoiceStore], [StorePurchaser], and [StoreSubscriber]
+/// installed by [PubliraApp].
 class PurchaseScope extends InheritedWidget {
   const PurchaseScope({
     super.key,
     this.repository,
     this.launcher,
+    required this.paymentProviderChoice,
     this.storePurchaser,
     this.storeSubscriber,
     required super.child,
@@ -608,6 +641,9 @@ class PurchaseScope extends InheritedWidget {
 
   final PurchaseRepository? repository;
   final CheckoutLauncher? launcher;
+
+  /// The provider the reader last paid through on the web.
+  final PaymentProviderChoiceStore paymentProviderChoice;
 
   /// `null` on a device with no store to buy through, which a tenant on the
   /// store route offers no purchase on.
@@ -636,6 +672,7 @@ class PurchaseScope extends InheritedWidget {
   bool updateShouldNotify(PurchaseScope oldWidget) =>
       repository != oldWidget.repository ||
       launcher != oldWidget.launcher ||
+      paymentProviderChoice != oldWidget.paymentProviderChoice ||
       storePurchaser != oldWidget.storePurchaser ||
       storeSubscriber != oldWidget.storeSubscriber;
 }

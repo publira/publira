@@ -1145,6 +1145,11 @@ class ConnectFixtureServer {
   /// What `GetTenant` answers for `accepts_payments`.
   bool acceptsPayments;
 
+  /// What `GetTenant` answers for `payment_providers`. With more than one, a
+  /// checkout through the web that names none of them is refused with
+  /// `invalid_argument`, as the API refuses it.
+  List<pb.TenantPaymentProvider> paymentProviders = [];
+
   /// What `GetTenant` answers for `currency`, and what every purchase it
   /// lists was paid in.
   String currency;
@@ -1180,14 +1185,22 @@ class ConnectFixtureServer {
   /// start with, so a test can fail one.
   int checkoutStatus;
 
-  /// The Stripe page `StartEpisodeCheckout` answers for [episodePublicId].
-  static Uri checkoutUrlFor(String episodePublicId) =>
-      Uri.parse('https://checkout.stripe.test/c/pay/$episodePublicId');
+  /// The page of [provider] `StartEpisodeCheckout` answers for
+  /// [episodePublicId], and the one a checkout naming no provider goes to.
+  static Uri checkoutUrlFor(
+    String episodePublicId, {
+    String provider = 'stripe',
+  }) => Uri.parse('https://checkout.$provider.test/c/pay/$episodePublicId');
 
-  /// The Stripe page `StartTipCheckout` answers for a tip of [amount] to the
-  /// Authors of [episodePublicId].
-  static Uri tipCheckoutUrlFor(String episodePublicId, int amount) =>
-      Uri.parse('https://checkout.stripe.test/c/tip/$episodePublicId/$amount');
+  /// The page of [provider] `StartTipCheckout` answers for a tip of [amount]
+  /// to the Authors of [episodePublicId].
+  static Uri tipCheckoutUrlFor(
+    String episodePublicId,
+    int amount, {
+    String provider = 'stripe',
+  }) => Uri.parse(
+    'https://checkout.$provider.test/c/tip/$episodePublicId/$amount',
+  );
 
   /// The intent `StartStoreTip` opens.
   static const storeTipIntentId = '018f0e90-1000-7000-8000-000000000002';
@@ -2402,6 +2415,7 @@ class ConnectFixtureServer {
           timezone: tenantTimeZone,
           // The wire format omits a false.
           acceptsPayments: acceptsPayments ? true : null,
+          paymentProviders: paymentProviders,
           acceptsPromotionCodes: acceptsPromotionCodes ? true : null,
           currency: currency,
           invoice: invoice,
@@ -2565,8 +2579,12 @@ class ConnectFixtureServer {
       final body = recorded.decode(pb.StartVolumeCheckoutRequest());
       await _writeBundleCheckout(
         request,
+        body.provider,
         () => pb.StartVolumeCheckoutResponse(
-          checkoutUrl: checkoutUrlFor(body.volumeId).toString(),
+          checkoutUrl: checkoutUrlFor(
+            body.volumeId,
+            provider: _providerOf(body.provider),
+          ).toString(),
         ),
       );
       return;
@@ -2576,8 +2594,12 @@ class ConnectFixtureServer {
       final body = recorded.decode(pb.StartSeriesRemainderCheckoutRequest());
       await _writeBundleCheckout(
         request,
+        body.provider,
         () => pb.StartSeriesRemainderCheckoutResponse(
-          checkoutUrl: checkoutUrlFor(body.seriesId).toString(),
+          checkoutUrl: checkoutUrlFor(
+            body.seriesId,
+            provider: _providerOf(body.provider),
+          ).toString(),
         ),
       );
       return;
@@ -2627,8 +2649,10 @@ class ConnectFixtureServer {
           checkoutUrl: tipCheckoutUrlFor(
             publicIdOf(body.episodeId),
             body.amount,
+            provider: _providerOf(body.provider),
           ).toString(),
         ),
+        provider: body.provider,
       );
       return;
     }
@@ -3011,9 +3035,11 @@ class ConnectFixtureServer {
   /// member, refused with [bundleCheckoutRefusal] when a test sets one.
   Future<void> _writeBundleCheckout(
     HttpRequest request,
+    String provider,
     GeneratedMessage Function() answer,
   ) async {
-    if (!await _writeUnlessAuthorized(request)) {
+    if (!await _writeUnlessAuthorized(request) ||
+        !await _writeUnlessProviderNamed(request, provider)) {
       return;
     }
     final refusal = bundleCheckoutRefusal;
@@ -3032,13 +3058,44 @@ class ConnectFixtureServer {
     await _writeMessage(request, answer());
   }
 
+  /// The provider a checkout naming [provider] pays through: the one it
+  /// names, or Stripe, the one a tenant of [paymentProviders] alone or none
+  /// sells through.
+  static String _providerOf(String provider) =>
+      provider.isEmpty ? 'stripe' : provider;
+
+  /// Answers `invalid_argument` for a checkout through the web that names no
+  /// provider where [paymentProviders] lists more than one to choose from, or
+  /// names one it does not list, as the API does; `true` when it wrote
+  /// nothing.
+  Future<bool> _writeUnlessProviderNamed(
+    HttpRequest request,
+    String provider,
+  ) async {
+    final named = provider.isEmpty
+        ? paymentProviders.length < 2
+        : paymentProviders.isEmpty ||
+              paymentProviders.any((listed) => listed.id == provider);
+    if (named) {
+      return true;
+    }
+    await _writeError(
+      request,
+      HttpStatus.badRequest,
+      'invalid_argument',
+      'provider must name one of the tenant\'s payment providers',
+    );
+    return false;
+  }
+
   /// A checkout for the signed-in member, refused the way the API refuses
   /// one for an episode they already hold.
   Future<void> _writeCheckout(
     HttpRequest request,
     pb.StartEpisodeCheckoutRequest body,
   ) async {
-    if (!await _writeUnlessAuthorized(request)) {
+    if (!await _writeUnlessAuthorized(request) ||
+        !await _writeUnlessProviderNamed(request, body.provider)) {
       return;
     }
     final episodeId = publicIdOf(body.episodeId);
@@ -3073,7 +3130,10 @@ class ConnectFixtureServer {
     await _writeMessage(
       request,
       pb.StartEpisodeCheckoutResponse(
-        checkoutUrl: checkoutUrlFor(episodeId).toString(),
+        checkoutUrl: checkoutUrlFor(
+          episodeId,
+          provider: _providerOf(body.provider),
+        ).toString(),
       ),
     );
   }
@@ -3238,11 +3298,16 @@ class ConnectFixtureServer {
   /// An intent, or the confirmation of a transaction, for the signed-in
   /// member.
   /// A tip for the signed-in member, refused with [tipStatus].
+  /// A tip for the signed-in member. [provider] is the one a tip through the
+  /// web names, and `null` for one through the store, which names none.
   Future<void> _writeTip(
     HttpRequest request,
-    GeneratedMessage Function() answer,
-  ) async {
-    if (!await _writeUnlessAuthorized(request)) {
+    GeneratedMessage Function() answer, {
+    String? provider,
+  }) async {
+    if (!await _writeUnlessAuthorized(request) ||
+        (provider != null &&
+            !await _writeUnlessProviderNamed(request, provider))) {
       return;
     }
     if (tipStatus != HttpStatus.ok) {

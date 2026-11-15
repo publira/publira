@@ -34,6 +34,7 @@ import 'package:publira/content_views/http_content_view_repository.dart';
 import 'package:publira/links/external_browser.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/file_offline_library.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
@@ -324,6 +325,7 @@ void main() {
           ),
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
+          paymentProviderChoice: MemoryPaymentProviderChoiceStore(),
           anonymousIds: MemoryAnonymousIdStore(),
           offline: offline,
         ),
@@ -1261,6 +1263,57 @@ void main() {
         expect(
           server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.client,
           pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a reader picks the payment provider before buying an episode', (
+      tester,
+    ) async {
+      server
+        ..acceptsPayments = true
+        ..entitledEpisodes = const {}
+        ..paymentProviders = [
+          pb.TenantPaymentProvider(id: 'stripe', displayName: 'Stripe'),
+          pb.TenantPaymentProvider(id: 'payjp', displayName: 'PAY.JP'),
+        ];
+      final launcher = FakeCheckoutLauncher();
+      await withFailureScreenshot(tester, 'fixture-provider-choice', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+          session: memberSession(),
+          checkoutLauncher: launcher,
+        );
+        final buy = find.byKey(
+          const ValueKey('episode-buy-${ConnectFixtureServer.paidEpisodeId}'),
+        );
+        await pumpUntilRouteSettled(tester, buy);
+
+        await tapReachable(tester, buy);
+        final payjp = find.byKey(const ValueKey('payment-provider-payjp'));
+        await pumpUntilFound(tester, payjp);
+        await tester.pumpAndSettle();
+        await tester.tap(payjp);
+        await tester.pump();
+        await tester.tap(
+          find.byKey(const ValueKey('payment-provider-continue')),
+        );
+        await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+        expect(launcher.opened, [
+          ConnectFixtureServer.checkoutUrlFor(
+            ConnectFixtureServer.paidEpisodeId,
+            provider: 'payjp',
+          ),
+        ]);
+        expect(
+          server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.provider,
+          'payjp',
         );
         await pumpUntilNoPendingFrameCallbacks(tester);
       });

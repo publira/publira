@@ -8,6 +8,13 @@ import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 
+/// A tenant that sells through PAY.JP and Stripe, in that order, which has a
+/// reader choose between them before a checkout through the web.
+const fakeTwoPaymentProviders = [
+  PaymentProvider(id: 'payjp', displayName: 'PAY.JP'),
+  PaymentProvider(id: 'stripe', displayName: 'Stripe'),
+];
+
 /// In-memory [PurchaseRepository] for widget tests.
 class FakePurchaseRepository implements PurchaseRepository {
   FakePurchaseRepository({
@@ -151,6 +158,13 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// What [acceptsPromotionCodes] answers.
   bool promotionCodes = false;
 
+  /// What [paymentProviders] answers.
+  List<PaymentProvider> providers = const [];
+
+  /// The provider every checkout through the web named, in order, whichever
+  /// it was for.
+  final List<String> checkoutProviders = <String>[];
+
   /// What [previewPromotionCode] answers for each sale, a sale missing from
   /// it answered as not applying.
   Map<PromotionCodeSale, PromotionCodeQuote> promotionQuotes = const {};
@@ -193,6 +207,9 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<bool> acceptsPromotionCodes() async => promotionCodes;
+
+  @override
+  Future<List<PaymentProvider>> paymentProviders() async => providers;
 
   @override
   Future<List<PromotionCodeQuote>> previewPromotionCode(
@@ -288,8 +305,10 @@ class FakePurchaseRepository implements PurchaseRepository {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
     String promotionCode = '',
+    String provider = '',
   }) async {
     checkouts.add(episodeInternalId);
+    checkoutProviders.add(provider);
     checkoutLocales.add(locale);
     checkoutKinds.add(kind);
     checkoutPromotionCodes.add(promotionCode);
@@ -320,8 +339,10 @@ class FakePurchaseRepository implements PurchaseRepository {
   Future<Uri> startVolumeCheckout(
     String volumeInternalId, {
     String promotionCode = '',
+    String provider = '',
   }) async {
     volumeCheckouts.add(volumeInternalId);
+    checkoutProviders.add(provider);
     volumePromotionCodes.add(promotionCode);
     final failure = bundleCheckoutFailure;
     if (failure != null) {
@@ -334,8 +355,10 @@ class FakePurchaseRepository implements PurchaseRepository {
   Future<Uri> startSeriesRemainderCheckout(
     String seriesInternalId, {
     required String locale,
+    String provider = '',
   }) async {
     remainderCheckouts.add(seriesInternalId);
+    checkoutProviders.add(provider);
     remainderCheckoutLocales.add(locale);
     final failure = bundleCheckoutFailure;
     if (failure != null) {
@@ -390,8 +413,10 @@ class FakePurchaseRepository implements PurchaseRepository {
     String episodeInternalId, {
     required int amount,
     required String locale,
+    String provider = '',
   }) async {
     tipCheckouts.add('$episodeInternalId:$amount');
+    checkoutProviders.add(provider);
     tipCheckoutLocales.add(locale);
     final failure = tipCheckoutFailure;
     if (failure != null) {

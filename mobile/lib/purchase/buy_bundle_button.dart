@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/payment_lock.dart';
+import 'package:publira/purchase/payment_provider_choice.dart';
 import 'package:publira/purchase/promotion_code.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -14,6 +15,9 @@ import 'package:publira/typography/autospaced_text.dart';
 /// Buys several episodes in one checkout — a volume, or the rest of a series —
 /// through the web checkout handed to the system browser. Neither has a store
 /// product, so a tenant that sells through the store offers neither.
+///
+/// Where the tenant sells through more than one payment provider, the reader
+/// chooses one in [choosePaymentProvider]'s sheet first.
 ///
 /// A guest is sent to sign in first and comes back to the screen that sent
 /// them, because a purchase is bought by an account. The return from the
@@ -34,8 +38,13 @@ class BuyBundleButton extends StatefulWidget {
   /// beside the button.
   final String label;
 
-  /// Starts the checkout for the reader in `locale` and answers its page.
-  final Future<Uri> Function(PurchaseRepository repository, String locale)
+  /// Starts the checkout for the reader in `locale`, through `provider` as
+  /// [PurchaseRepository.startEpisodeCheckout] takes it, and answers its page.
+  final Future<Uri> Function(
+    PurchaseRepository repository,
+    String locale,
+    String provider,
+  )
   start;
 
   /// The API answered that there is nothing to sell any more: the reader
@@ -88,7 +97,16 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
       _starting = true;
     });
     try {
-      final url = await widget.start(purchase.repository!, locale);
+      final repository = purchase.repository!;
+      final provider = await choosePaymentProvider(
+        context,
+        repository: repository,
+        choice: purchase.paymentProviderChoice,
+      );
+      if (provider == null) {
+        return;
+      }
+      final url = await widget.start(repository, locale, provider);
       if (!await purchase.launcher!.open(url)) {
         report(messages.purchaseStartFailed);
       } else if (mounted) {

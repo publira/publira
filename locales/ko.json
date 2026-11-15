@@ -7478,6 +7478,14 @@
       "confirming": "결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.",
       "included_in_plan": "플랜에 포함됨",
       "not_sold_in_app": "지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "payment_provider": {
+        "continue": "결제 페이지로 이동",
+        "label": "결제 수단",
+        "methods": {
+          "payjp": "카드",
+          "stripe": "카드 등"
+        }
+      },
       "plan_billing_day": ".input {$count :integer}\n.match $count\n1 {{1일마다 {$price}}}\n* {{{$count}일마다 {$price}}}",
       "plan_billing_month": ".input {$count :integer}\n.match $count\n1 {{월 {$price}}}\n* {{{$count}개월마다 {$price}}}",
       "plan_billing_week": ".input {$count :integer}\n.match $count\n1 {{1주마다 {$price}}}\n* {{{$count}주마다 {$price}}}",
