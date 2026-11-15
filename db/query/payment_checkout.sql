@@ -95,9 +95,10 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- What the reader has paid the tenant in currency, as a provider that judges
 -- a buyer by their history with the merchant is told it: how many payments,
 -- their total less what was refunded of them, and the latest of them. Test
--- payments took no money, so they are left out. A reader who has paid
--- nothing has no latest payment, and its columns then hold the time they
--- registered and zero.
+-- payments took no money, so they are left out, and so are the payments made
+-- through the provider being told, which holds those itself and asks for the
+-- rest. A reader who has paid nothing has no latest payment, and its columns
+-- then hold the time they registered and zero.
 SELECT
     u.public_id,
     u.created_at AS registered_at,
@@ -115,6 +116,7 @@ CROSS JOIN LATERAL (
         AND p.user_id = u.id
         AND p.currency = sqlc.arg('currency')
         AND NOT p.is_test
+        AND p.provider IS DISTINCT FROM sqlc.arg('provider')::text
 ) AS totals
 LEFT JOIN LATERAL (
     SELECT p.purchased_at, p.price_at_purchase
@@ -123,6 +125,7 @@ LEFT JOIN LATERAL (
         AND p.user_id = u.id
         AND p.currency = sqlc.arg('currency')
         AND NOT p.is_test
+        AND p.provider IS DISTINCT FROM sqlc.arg('provider')::text
     ORDER BY p.purchased_at DESC, p.id DESC
     LIMIT 1
 ) AS latest ON true
