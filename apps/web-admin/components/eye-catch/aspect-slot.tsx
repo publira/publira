@@ -10,14 +10,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import {
-  createContext,
-  use,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, use, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { useClientMessages } from "#components/client-message";
@@ -29,6 +22,7 @@ import {
 import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
+import { useObjectUrl } from "#lib/use-object-url";
 
 import type { EyeCatchAspect } from "./aspects";
 import { eyeCatchAspectClassName, eyeCatchAspectName } from "./aspects";
@@ -76,27 +70,23 @@ const EyeCatchAspectSlot = ({
   /** The image the ratio holds now, empty while it has none. */
   currentUrl: string;
 }) => {
-  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  const {
+    clear: clearPreview,
+    show: showPreview,
+    url: localPreviewUrl,
+  } = useObjectUrl();
+
   /** The picked file's own size, and the part of it the editor framed. */
   const [source, setSource] = useState<CropSource | null>(null);
   const [crop, setCrop] = useState<CropRect | null>(null);
   const [isFraming, setIsFraming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(
-    () => () => {
-      if (localPreviewUrl) {
-        URL.revokeObjectURL(localPreviewUrl);
-      }
-    },
-    [localPreviewUrl]
-  );
-
   // The preview stands in for the file only while it is being chosen. Once
   // the upload returns the ratio's own image is the truth, and a preview left
   // set would outrank it: the page redraws the slot without remounting it.
   ActionForm.useSettled(() => {
-    setLocalPreviewUrl("");
+    clearPreview();
     setSource(null);
     setCrop(null);
     setIsFraming(false);
@@ -110,6 +100,7 @@ const EyeCatchAspectSlot = ({
       fileInputRef,
       isFraming,
       localPreviewUrl,
+      source,
       onCropChange: setCrop,
       /**
        * The frame starts where the API would have cut on its own, so an editor
@@ -134,22 +125,15 @@ const EyeCatchAspectSlot = ({
           return;
         }
 
-        setLocalPreviewUrl((current) => {
-          if (current) {
-            URL.revokeObjectURL(current);
-          }
-
-          return URL.createObjectURL(file);
-        });
+        showPreview(file);
         // Both belong to the file that was just replaced. The new one reports
         // its own size when it is decoded, and the frame is derived from that.
         setSource(null);
         setCrop(null);
         setIsFraming(true);
       },
-      source,
     }),
-    [aspect, crop, currentUrl, isFraming, localPreviewUrl, source]
+    [aspect, crop, currentUrl, isFraming, localPreviewUrl, showPreview, source]
   );
 
   return (

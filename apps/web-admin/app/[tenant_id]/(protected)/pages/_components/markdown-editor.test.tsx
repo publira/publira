@@ -135,6 +135,34 @@ describe("MarkdownEditor", () => {
     expect(postedBody()).toBe("Read the [terms](https://example.com/terms).");
   });
 
+  it("applies the address on Enter, but not on the Enter that confirms an IME candidate", async () => {
+    const { editor } = await renderEditor("Read the terms.");
+
+    // "terms", counted from the start of the paragraph.
+    await act(() => {
+      editor.commands.setTextSelection({ from: 10, to: 15 });
+    });
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    });
+    const address = await screen.findByRole("textbox", { name: "Link URL" });
+    fireEvent.change(address, {
+      target: { value: "https://example.com/terms" },
+    });
+
+    await act(() => {
+      fireEvent.keyDown(address, { isComposing: true, key: "Enter" });
+    });
+
+    expect(postedBody()).toBe("Read the terms.");
+
+    await act(() => {
+      fireEvent.keyDown(address, { key: "Enter" });
+    });
+
+    expect(postedBody()).toBe("Read the [terms](https://example.com/terms).");
+  });
+
   it("keeps a table and a task list it has no button for", async () => {
     const { editor } = await renderEditor(
       "| Name | Value |\n| --- | --- |\n| a | 1 |\n\n- [x] done\n"

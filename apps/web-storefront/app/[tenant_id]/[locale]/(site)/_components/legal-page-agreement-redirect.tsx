@@ -57,13 +57,13 @@ export const LegalPageAgreementRedirect = ({
 
     checkedPage.current = page;
 
-    const cleanup = new AbortController();
+    let cancelled = false;
 
     const ask = async () => {
       try {
         const owed = await check();
 
-        if (!cleanup.signal.aborted) {
+        if (!cancelled) {
           setAnswer({ exemptPaths: owed, page });
         }
       } catch {
@@ -78,7 +78,7 @@ export const LegalPageAgreementRedirect = ({
     // agree again on an answer from before, and the layout shown again asks
     // afresh rather than taking the reader to have agreed.
     return () => {
-      cleanup.abort();
+      cancelled = true;
       checkedPage.current = null;
       setAnswer(null);
     };
@@ -95,8 +95,8 @@ export const LegalPageAgreementRedirect = ({
 
   const target = owed
     ? legalPageAgreementRedirect({
-        agreementPath,
         exemptPaths: owed,
+        agreementPath,
         pathname,
         search,
       })

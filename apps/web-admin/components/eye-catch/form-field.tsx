@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ChangeEventHandler } from "react";
 import { useFormStatus } from "react-dom";
+
+import { useObjectUrl } from "#lib/use-object-url";
 
 import { EyeCatchImageField } from "./image-field";
 import type { EyeCatchVariantItem } from "./types";
@@ -31,7 +33,7 @@ export const EyeCatchFormField = ({
 }: EyeCatchFormFieldProps) => {
   const { pending } = useFormStatus();
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  const { show: showPreview, url: localPreviewUrl } = useObjectUrl();
 
   const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
     null
@@ -39,35 +41,23 @@ export const EyeCatchFormField = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(
-    () => () => {
-      if (localPreviewUrl) {
-        URL.revokeObjectURL(localPreviewUrl);
-      }
-    },
-    [localPreviewUrl]
-  );
-
   const handleVariantImageClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
 
   const handleImageFileChange = useCallback<
     ChangeEventHandler<HTMLInputElement>
-  >((event) => {
-    const file = event.currentTarget.files?.[0];
+  >(
+    (event) => {
+      const file = event.currentTarget.files?.[0];
 
-    if (file) {
-      setLocalPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-
-        return URL.createObjectURL(file);
-      });
-      setClearEyeCatchImage(false);
-    }
-  }, []);
+      if (file) {
+        showPreview(file);
+        setClearEyeCatchImage(false);
+      }
+    },
+    [showPreview]
+  );
 
   const handleDeleteToggle = useCallback(() => {
     setClearEyeCatchImage((current) => !current);
