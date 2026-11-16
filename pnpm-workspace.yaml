@@ -34,7 +34,7 @@ catalog:
   "@types/react-dom": 19.3.0
   fflate: 0.8.3
   jose: 6.2.17
-  jsdom: 31.0.0
+  jsdom: 31.0.1
   lru-cache: 11.5.3
   next: 16.4.6
   oxlint: 1.93.0
