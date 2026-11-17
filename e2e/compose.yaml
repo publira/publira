@@ -45,7 +45,7 @@ services:
   #
   # No volume, unlike the dev stack's: a run starts from an empty mailbox.
   mailpit:
-    image: axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
+    image: axllent/mailpit:v1.34.0@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e
     labels: *run-dir-label
     ports:
       # SMTP intake and the web UI / API.
