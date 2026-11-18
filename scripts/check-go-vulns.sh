@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # renovate: datasource=go depName=golang.org/x/vuln
-GOVULNCHECK_VERSION=v1.9.0
+GOVULNCHECK_VERSION=v1.10.0
 
 base="${1:-}"
 repo_root="$(git rev-parse --show-toplevel)"
