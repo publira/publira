@@ -4,15 +4,11 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
-import { getTenantId } from "#lib/tenant-id";
+import { getMessages } from "#lib/get-messages";
 
 /** Resolves the catalog itself: its placeholder needs a string rather than a node. */
 export const NameField = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return (
     <Field.Root>
