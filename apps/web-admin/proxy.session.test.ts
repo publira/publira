@@ -93,7 +93,9 @@ describe("web-admin proxy session handling", () => {
       request("https://admin.example.com/series?token=abc", cookie)
     );
 
-    expect(response.headers.get("x-middleware-rewrite")).toContain(TENANT_ID);
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      `https://admin.example.com/${TENANT_ID}/en/series?token=abc`
+    );
     expect(
       response.headers.get(`x-middleware-request-${RETURN_TO_HEADER_NAME}`)
     ).toBe("/series?token=abc");
@@ -112,6 +114,42 @@ describe("web-admin proxy session handling", () => {
       `https://admin.example.com/${TENANT_ID}/.well-known/change-password`
     );
     expect(deletedCookieNames(response)).not.toContain(COOKIE_NAME);
+  });
+
+  it.each([
+    { path: "/", rewrite: `/${TENANT_ID}/en` },
+    // The path never selects the language: a locale in front of it is part of
+    // the path, which then matches no route.
+    { path: "/ja/series", rewrite: `/${TENANT_ID}/en/ja/series` },
+  ])(
+    "rewrites $path onto the tenant's default locale",
+    async ({ path, rewrite }) => {
+      const cookie = await activeCookie();
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        request(`https://admin.example.com${path}`, cookie)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://admin.example.com${rewrite}`
+      );
+    }
+  );
+
+  // A Route Handler cannot read `next/root-params`, so it lives outside the
+  // `[locale]` segment.
+  it("rewrites a protected Route Handler onto the tenant alone", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://admin.example.com/api/v1/purchases/csv", cookie)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      `https://admin.example.com/${TENANT_ID}/api/v1/purchases/csv`
+    );
   });
 
   it("keeps a signed-in session through a suspension, answering the page that says the console is unavailable", async () => {

@@ -23,7 +23,7 @@ import type {
  * the browser hydrates, so the copy is there on the first client render and no
  * catalog is loaded in the browser. Missing the provider is a wiring bug rather
  * than a case to fall back from — a component rendered outside one has no
- * locale to answer in. `app/[tenant_id]/error.tsx`, which renders above the
+ * locale to answer in. `app/[tenant_id]/[locale]/error.tsx`, which renders above the
  * layout that places the provider, uses `<ErrorBoundaryMessage>` instead.
  */
 export const useClientMessages = (): AdminClientMessageAccessor => {

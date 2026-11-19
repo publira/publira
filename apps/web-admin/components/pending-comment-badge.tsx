@@ -1,5 +1,5 @@
 import { countPendingComments } from "#lib/comment";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getAdminLocale, loadAdminMessages } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -18,7 +18,7 @@ import { getTenantId } from "#lib/tenant-id";
  */
 export const PendingCommentBadge = async () => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const locale = await getAdminLocale(tenantId);
 
   const [result] = await Promise.all([
     countPendingComments(tenantId, locale),

@@ -4,12 +4,8 @@ import type { ReactNode } from "react";
 import { getLocale } from "#lib/locale";
 import { loadAdminClientMessages } from "#lib/messages";
 import type { AdminClientMessages } from "#lib/messages";
-import { getTenantId } from "#lib/tenant-id";
 
 import { AdminLocaleContextProvider } from "./admin-locale-context";
-
-const readRequestLocale = async (): Promise<Locale> =>
-  getLocale(await getTenantId());
 
 const readRequestMessages = async (
   locale: Promise<Locale>
@@ -26,7 +22,7 @@ const readRequestMessages = async (
  * on every console route.
  */
 export const AdminLocaleProvider = ({ children }: { children: ReactNode }) => {
-  const locale = readRequestLocale();
+  const locale = getLocale();
 
   return (
     <AdminLocaleContextProvider

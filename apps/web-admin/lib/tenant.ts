@@ -42,14 +42,14 @@ const tenantCache = new LRUCache<string, TenantRouting>({
  * The tenant behind the request's Host, with the display language it saved.
  *
  * The locale rides along because this is the one tenant read the console makes
- * on every request without a session: the proxy hands it to the browser
- * (`@publira/utils/resolved-locale`), which is how `<html lang>` and the client
- * error boundary come to name the tenant's language rather than the visitor's.
- * The console screens resolve the same setting for themselves through
- * `lib/public-api.ts`, so nothing downstream reads the published copy back —
- * which is what keeps the cache below harmless. A saved default that changes
- * reaches the copy on screen at once, through the `tenant:<id>:site` tag the
- * admin API revalidates, and reaches `<html lang>` within this TTL.
+ * on every request without a session. The proxy rewrites a page request from
+ * an operator who chose no language onto it as the `[locale]` segment, and it
+ * hands it to the browser (`@publira/utils/resolved-locale`), which is how
+ * `<html lang>` and the client error boundary come to name the tenant's
+ * language rather than the visitor's. A saved default that changes therefore
+ * reaches both within this TTL; the reads that still resolve the setting for
+ * themselves through `lib/public-api.ts` see it at once, through the
+ * `tenant:<id>:site` tag the admin API revalidates.
  */
 export const resolveTenantRouting = async (
   domainCandidates: readonly string[]

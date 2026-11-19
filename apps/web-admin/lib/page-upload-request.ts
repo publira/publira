@@ -9,7 +9,7 @@ import { getAdminCurrentUser, isTenantEditorRole } from "#lib/admin-auth";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
-import { getLocale } from "#lib/locale";
+import { getAdminLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
 import type { SeriesImportResponse } from "#lib/series-import-manifest";
@@ -121,7 +121,7 @@ export const readPageUploadForm = async (
   }
 
   const [locale, operator] = await Promise.all([
-    getLocale(tenantId),
+    getAdminLocale(tenantId),
     getAdminCurrentUser(tenantId),
   ]);
 

@@ -1,7 +1,6 @@
 import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
-import { getTenantId } from "./tenant-id";
 
 /**
  * The catalog accessor for this request's locale.
@@ -20,22 +19,18 @@ import { getTenantId } from "./tenant-id";
  * `<Message>` behind its own `<Suspense>`, so the card, the inputs, and the
  * buttons around it stay in the static shell.
  *
- * The tenant comes from the root segment, the way `<Message>` reads it, because
- * an operator who has never picked a language reads the console in the tenant's
- * stored default. That is also why this module is separate from `lib/locale.ts`
- * and why nothing in a Server Action imports it: `next/root-params` is
- * unavailable there, so an Action takes the tenant id from the form and calls
- * `getActionMessages` instead.
+ * The locale comes from the `[locale]` root segment, so resolving it reads no
+ * cookie and the value is already part of every cache key downstream; the
+ * `import()` of the catalog is what suspends. A Server Action has no root
+ * parameters — it takes the tenant id from the form and calls
+ * `getActionMessages` instead, as does any code that is handed a locale through
+ * `getMessagesFor`.
  *
- * **Inside `<Suspense>` only, and never from a `"use cache"` scope.** Resolving
- * the locale reads the `publira_locale` cookie, so this carries the same rule
- * `getLocale` does: a read above a boundary costs the route its static shell,
- * and a read inside a cache scope bakes one request's language into the entry.
- * Code that is handed a locale instead calls `getMessagesFor`.
+ * This module reads `next/root-params`, so it is server-only. A Client
+ * Component resolves its copy through `<ClientMessage>` or `useClientMessages()`.
  */
 export const getMessages = async (): Promise<AdminMessageAccessor> => {
-  const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const locale = await getLocale();
 
   return getMessagesFor(locale);
 };

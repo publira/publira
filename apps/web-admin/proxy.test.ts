@@ -27,6 +27,20 @@ const resolvedLocaleCookie = (response: {
     .getSetCookie()
     .find((value) => value.startsWith(`${RESOLVED_LOCALE_COOKIE}=`));
 
+const rewriteOf = async (path: string, cookie?: string) => {
+  const { NextRequest } = await import("next/server");
+  const { proxy } = await import("./proxy");
+
+  const response = await proxy(
+    new NextRequest(
+      `https://admin.example.com${path}`,
+      cookie === undefined ? {} : { headers: { cookie } }
+    )
+  );
+
+  return { response, rewrite: response.headers.get("x-middleware-rewrite") };
+};
+
 describe("web-admin proxy", () => {
   it.each(["/series", "/.well-known/change-password"])(
     "returns 404 for %s on an unregistered domain",
@@ -256,11 +270,13 @@ describe("web-admin proxy", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      new NextRequest("https://admin.example.com/login")
+      new NextRequest("https://admin.example.com/login", {
+        headers: { cookie: "publira_locale=en" },
+      })
     );
 
-    expect(response.headers.get("x-middleware-rewrite")).toContain(
-      "/tenant_001"
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://admin.example.com/tenant_001/en/login"
     );
     expect(resolvedLocaleCookie(response)).toBeUndefined();
   });
@@ -304,6 +320,76 @@ describe("web-admin proxy", () => {
 
     expect(response.status).toBe(503);
     expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
+  describe("the [locale] segment", () => {
+    it.each([
+      { path: "/login", rewrite: "/tenant_001/en/login" },
+      {
+        path: "/forgot-password?x=1",
+        rewrite: "/tenant_001/en/forgot-password?x=1",
+      },
+    ])(
+      "rewrites $path onto the locale the operator chose",
+      async ({ path, rewrite }) => {
+        const result = await rewriteOf(path, "publira_locale=en");
+
+        expect(result.rewrite).toBe(`https://admin.example.com${rewrite}`);
+      }
+    );
+
+    it.each([
+      { cookie: undefined, title: "no cookie" },
+      { cookie: "publira_locale=fr", title: "an unsupported cookie" },
+    ])(
+      "falls through to the tenant's stored default for $title",
+      async ({ cookie }) => {
+        const result = await rewriteOf("/login", cookie);
+
+        expect(result.rewrite).toBe(
+          "https://admin.example.com/tenant_001/ja/login"
+        );
+      }
+    );
+
+    it.each(["/theme.css", "/.well-known/change-password"])(
+      "rewrites the Route Handler %s onto the tenant alone",
+      async (path) => {
+        const result = await rewriteOf(path, "publira_locale=en");
+
+        expect(result.rewrite).toBe(
+          `https://admin.example.com/tenant_001${path}`
+        );
+      }
+    );
+
+    /**
+     * The tenant answered with a language this build has no catalog for, and
+     * the operator chose none: a console rendered anyway would be in a language
+     * nobody chose.
+     */
+    it("answers 503 for a page neither the cookie nor the tenant names a language for", async () => {
+      mockResolveTenantRouting.mockResolvedValue({
+        defaultLocale: null,
+        tenantId: "tenant_001",
+      });
+
+      const { response, rewrite } = await rewriteOf("/login");
+
+      expect(response.status).toBe(503);
+      expect(rewrite).toBeNull();
+    });
+
+    it("still serves a Route Handler when no language can be named", async () => {
+      mockResolveTenantRouting.mockResolvedValue({
+        defaultLocale: null,
+        tenantId: "tenant_001",
+      });
+
+      const { rewrite } = await rewriteOf("/theme.css");
+
+      expect(rewrite).toBe("https://admin.example.com/tenant_001/theme.css");
+    });
   });
 
   it("keeps the revalidation path out of the proxy matcher", async () => {

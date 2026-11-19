@@ -8,14 +8,14 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 
-import { READER_STATUSES } from "../app/[tenant_id]/(protected)/readers/reader-types";
+import { READER_STATUSES } from "../app/[tenant_id]/[locale]/(protected)/readers/reader-types";
 import type {
   GetReaderResult,
   ListReadersResult,
   ReaderDetail,
   ReaderItem,
   ReaderStatus,
-} from "../app/[tenant_id]/(protected)/readers/reader-types";
+} from "../app/[tenant_id]/[locale]/(protected)/readers/reader-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,

@@ -1,16 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetLocale, mockGetTenantId, mockVerifyAdminSession } = vi.hoisted(
-  () => ({
-    mockGetLocale: vi.fn(),
+const { mockGetAdminLocale, mockGetTenantId, mockVerifyAdminSession } =
+  vi.hoisted(() => ({
+    mockGetAdminLocale: vi.fn(),
     mockGetTenantId: vi.fn(),
     mockVerifyAdminSession: vi.fn(),
-  })
-);
+  }));
 
 vi.mock("./tenant-id", () => ({ getTenantId: mockGetTenantId }));
 
-vi.mock("./locale", () => ({ getLocale: mockGetLocale }));
+vi.mock("./locale", () => ({ getAdminLocale: mockGetAdminLocale }));
 
 vi.mock("./auth-session", () => ({
   verifyAdminSession: mockVerifyAdminSession,
@@ -19,7 +18,7 @@ vi.mock("./auth-session", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetTenantId.mockResolvedValue("TENANT001");
-  mockGetLocale.mockResolvedValue("en");
+  mockGetAdminLocale.mockResolvedValue("en");
   mockVerifyAdminSession.mockResolvedValue({
     name: "Example Operator",
     publicId: "USER001",
@@ -36,20 +35,20 @@ describe("verifyAdminPageSession", () => {
       tenantId: "TENANT001",
     });
     expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
-    expect(mockGetLocale).toHaveBeenCalledWith("TENANT001");
+    expect(mockGetAdminLocale).toHaveBeenCalledWith("TENANT001");
   });
 
   it("sends a rejected session to the login even when the locale cannot be read either", async () => {
     const redirect = new Error("NEXT_REDIRECT");
     mockVerifyAdminSession.mockRejectedValueOnce(redirect);
-    mockGetLocale.mockRejectedValueOnce(
+    mockGetAdminLocale.mockRejectedValueOnce(
       new Error("tenant default locale is unavailable")
     );
 
     const { verifyAdminPageSession } = await import("./admin-page-session");
 
     await expect(verifyAdminPageSession()).rejects.toBe(redirect);
-    expect(mockGetLocale).not.toHaveBeenCalled();
+    expect(mockGetAdminLocale).not.toHaveBeenCalled();
   });
 
   it("lets the login redirect through", async () => {

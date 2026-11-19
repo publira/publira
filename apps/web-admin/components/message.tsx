@@ -13,14 +13,10 @@ interface MessageProps {
 /**
  * One catalog string, resolved inside the caller's Suspense boundary.
  *
- * Keeping the locale read here lets pages retain their static structure while
- * the request-time cookie and catalog are loading.
- *
- * An operator who has never picked a language reads the console in the
- * tenant's default locale, the same as the header and the notification bell,
- * so this resolves the tenant the ordinary way. A segment that names no tenant
- * has no default to read and no language to render this string in, and
- * `getTenantId()` answers that with the 404 the route was heading for anyway.
+ * Loading the catalog is what suspends, so the caller wraps this in the
+ * `<Suspense>` whose fallback stands in for that one string. Every boundary
+ * reads the same `[locale]` root parameter and the same cached module, so the
+ * count of them costs a page nothing.
  */
 export const Message = async ({ message, values }: MessageProps) => {
   const t = await getMessages();

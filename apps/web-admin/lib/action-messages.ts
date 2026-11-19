@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 
 import { isFormText } from "./form-schemas";
-import { getLocale } from "./locale";
+import { getAdminLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 
@@ -9,7 +9,7 @@ import type { AdminMessageAccessor } from "./messages";
  * The UI locale a Server Action's response should be worded in.
  *
  * `next/root-params` is unavailable in a Server Action, so the tenant id
- * travels in the form. `getLocale` validates it before it reaches any API;
+ * travels in the form. `getAdminLocale` validates it before it reaches any API;
  * each Action still validates the complete form independently before mutating
  * data.
  *
@@ -24,7 +24,7 @@ export const getActionLocale = (formData: FormData): Promise<Locale> => {
     throw new TypeError("tenant_id is missing from the submitted form");
   }
 
-  return getLocale(tenantId);
+  return getAdminLocale(tenantId);
 };
 
 /**

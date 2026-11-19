@@ -31,7 +31,7 @@ vi.mock("#lib/tenant", () => ({
   resolveTenantRouting: mockResolveTenantRouting,
 }));
 
-vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
+vi.mock("#lib/locale", () => ({ getAdminLocale: () => Promise.resolve("en") }));
 
 vi.mock("#lib/admin-auth", async (importOriginal) => ({
   ...(await importOriginal<typeof AdminAuthModule>()),

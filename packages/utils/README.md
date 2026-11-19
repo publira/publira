@@ -170,7 +170,7 @@ const filters = filtersSchema.parse(await searchParams);
 
 `searchParamStringArray()` is the multi-value form, and `searchParamBoolean()` reads a checkbox. `searchParamDate` checks calendar validity through `Temporal`.
 
-A real example: [web-admin's audit log filters](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
+A real example: [web-admin's audit log filters](../../apps/web-admin/app/%5Btenant_id%5D/%5Blocale%5D/%28protected%29/audit-logs/_lib/search-params.ts)
 
 ### Dynamic route segments (`params`)
 

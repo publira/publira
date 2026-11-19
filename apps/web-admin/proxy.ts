@@ -1,3 +1,4 @@
+import { LOCALE_COOKIE_NAME, parseLocaleCookie } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
 import { isHealthProbePath } from "@publira/utils/health";
@@ -20,10 +21,12 @@ import {
 } from "./lib/admin-auth-shared";
 import { resolveTenantRouting, SUSPENDED_TENANT } from "./lib/tenant";
 
+const CHANGE_PASSWORD_PATH = "/.well-known/change-password";
+
 const PUBLIC_PATHS = new Set([
   // A password manager opens it signed in or not, and it only redirects to
   // `/forgot-password`, which is public too.
-  "/.well-known/change-password",
+  CHANGE_PASSWORD_PATH,
   "/accept-invite",
   "/confirm-email",
   "/confirm-password",
@@ -62,6 +65,30 @@ const suspendedConsoleResponse = (request: NextRequest): NextResponse => {
     title: sharedMessage("admin.errors.suspended_title", locale),
   });
 };
+
+/**
+ * Whether `pathname` is answered by a Route Handler under `app/[tenant_id]/`
+ * rather than by a page under `app/[tenant_id]/[locale]/`. A Route Handler
+ * cannot read `next/root-params`, so these are the requests the proxy rewrites
+ * onto the tenant alone instead of onto a locale as well.
+ */
+const isRouteHandlerPath = (pathname: string): boolean =>
+  pathname === CHANGE_PASSWORD_PATH ||
+  pathname === "/theme.css" ||
+  pathname.startsWith("/api/");
+
+/**
+ * The locale a page request is rendered in, in the order `getAdminLocale()` in
+ * `lib/locale.ts` resolves it: a supported `publira_locale` cookie, then the
+ * tenant's stored default. `null` when neither names a language this build
+ * serves a catalog for.
+ */
+const resolveRequestLocale = (
+  request: NextRequest,
+  defaultLocale: Locale | null
+): Locale | null =>
+  parseLocaleCookie(request.cookies.get(LOCALE_COOKIE_NAME)?.value) ??
+  defaultLocale;
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
@@ -120,8 +147,30 @@ export const proxy = async (request: NextRequest) => {
   const withLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, defaultLocale ?? "none");
 
+  // Every page lives under the `[locale]` root segment, and the URL never names
+  // it: the request is rewritten onto the locale resolved here, so a Server
+  // Component reads it as a root parameter. A path that already starts with a
+  // locale is rewritten like any other and matches nothing, so the path never
+  // selects the language. Redirects keep naming the public paths.
   const rewriteUrl = request.nextUrl.clone();
-  rewriteUrl.pathname = `/${tenantId}${pathname}`;
+
+  if (isRouteHandlerPath(pathname)) {
+    rewriteUrl.pathname = `/${tenantId}${pathname}`;
+  } else {
+    const locale = resolveRequestLocale(request, defaultLocale);
+
+    // A page neither the operator nor the tenant names a language for has no
+    // language to render in: the tenant's stored default is a code this build
+    // serves no catalog for. It ends here, the way the storefront's proxy ends
+    // it, rather than rendering the console in a language nobody chose.
+    if (!locale) {
+      return withLocale(serviceUnavailableResponse());
+    }
+
+    rewriteUrl.pathname = `/${tenantId}/${locale}${
+      pathname === "/" ? "" : pathname
+    }`;
+  }
 
   const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());

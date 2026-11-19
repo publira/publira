@@ -1,0 +1,386 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import { LinkButton } from "@publira/ui-components/button";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
+import * as PaginationFooter from "#components/pagination-controls";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  hasCursorPageLinks,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
+import { listEpisodes } from "#lib/episode";
+import { getAdminLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
+import { getSeries } from "#lib/series";
+import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
+import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+
+import { SeriesImportDialog } from "../../_components/series-import-dialog";
+import { EpisodeCampaignPricesDialog } from "./_components/episode-campaign-prices-dialog";
+import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
+import { EpisodeFreeWindowsDialog } from "./_components/episode-free-windows-dialog";
+import { EpisodeSelectionProvider } from "./_components/episode-selection";
+import { EpisodesSortableList } from "./_components/episodes-sortable-list";
+import {
+  createSeriesCampaignPricesAction,
+  createSeriesFreeWindowsAction,
+  reorderEpisodesAction,
+} from "./_lib/actions";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const tenantId = await getTenantId();
+  const locale = await getAdminLocale(tenantId);
+  const t = await getMessagesFor(locale);
+
+  return { title: t("admin.series.episodes.title") };
+};
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_id", "series_id");
+
+type SeriesEpisodesPageProps =
+  PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes">;
+
+const SeriesEpisodesHeaderSkeleton = () => (
+  <>
+    <ConsolePage.Heading>
+      <ConsolePage.Context>
+        <SkeletonLine className="h-4 w-40" />
+      </ConsolePage.Context>
+      <ConsolePage.Title>
+        <SkeletonLine className="h-7 w-48" />
+      </ConsolePage.Title>
+      <ConsolePage.Description>
+        <SkeletonLine className="h-4 w-72" />
+      </ConsolePage.Description>
+    </ConsolePage.Heading>
+    <ConsolePage.Actions>
+      <div className="flex flex-wrap gap-2">
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+      </div>
+    </ConsolePage.Actions>
+  </>
+);
+
+const SeriesEpisodesListSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-6 w-48" />
+    <SkeletonLine className="h-4 w-72" />
+    <Skeleton className="h-16" />
+    <Skeleton className="h-16" />
+  </div>
+);
+
+/**
+ * The bulk actions write on the series by its ID, so they wait for the series
+ * read and stay out while that read fails.
+ */
+const SeriesEpisodeBulkActions = async ({
+  params,
+}: Pick<SeriesEpisodesPageProps, "params">) => {
+  const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  guardPlaceholder(series_id);
+
+  const [seriesResult, timeZone, currency] = await Promise.all([
+    getSeries({ publicId: series_id }),
+    getTenantDisplayTimeZone(tenantId),
+    getTenantCurrency(tenantId),
+  ]);
+
+  if (!seriesResult.ok) {
+    return null;
+  }
+
+  // A price entered in no currency is a number nobody can read, so the actions
+  // that take one stay out while the currency cannot be read.
+  return (
+    <>
+      <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
+      <EpisodeFreeWindowsDialog
+        action={createSeriesFreeWindowsAction}
+        seriesId={seriesResult.series.id}
+        timeZone={timeZone}
+      />
+      {currency ? (
+        <EpisodeCampaignPricesDialog
+          action={createSeriesCampaignPricesAction}
+          currency={currency}
+          key={currency}
+          seriesId={seriesResult.series.id}
+          timeZone={timeZone}
+        />
+      ) : null}
+      {currency ? (
+        <SeriesImportDialog
+          currency={currency}
+          seriesPublicId={seriesResult.series.publicId}
+        />
+      ) : null}
+    </>
+  );
+};
+
+const SeriesEpisodesChrome = async ({
+  params,
+}: Pick<SeriesEpisodesPageProps, "params">) => {
+  const { series_id } = await params;
+  guardPlaceholder(series_id);
+
+  return (
+    <>
+      <ConsolePage.Heading>
+        <ConsolePage.Context>{`Series ${series_id}`}</ConsolePage.Context>
+        <ConsolePage.Title>
+          <Message message="admin.series.episodes.list_title" />
+        </ConsolePage.Title>
+        <ConsolePage.Description>
+          <Message message="admin.series.episodes.list_description" />
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
+        <div className="flex flex-wrap gap-2">
+          <Suspense fallback={null}>
+            <TenantEditorOnly>
+              <LinkButton
+                render={<Link href={`/series/${series_id}/episodes/new`} />}
+              >
+                <Message message="admin.series.episodes.new_action" />
+              </LinkButton>
+              <SeriesEpisodeBulkActions params={params} />
+            </TenantEditorOnly>
+          </Suspense>
+          <LinkButton
+            render={<Link href={`/series/${series_id}`} />}
+            variant="outline"
+          >
+            <Message message="admin.series.episodes.back_to_series" />
+          </LinkButton>
+        </div>
+      </ConsolePage.Actions>
+    </>
+  );
+};
+
+const SeriesEpisodesData = async ({
+  params,
+  searchParams,
+}: SeriesEpisodesPageProps) => {
+  const [{ series_id }, sp, tenantId] = await Promise.all([
+    params,
+    searchParams,
+    getTenantId(),
+  ]);
+
+  guardPlaceholder(series_id);
+
+  const { token } = parseCursorSearchParams(sp);
+  const locale = await getAdminLocale(tenantId);
+
+  const [
+    seriesResult,
+    timeZone,
+    t,
+    canEdit,
+    currency,
+    episodeReviewSettingsResult,
+  ] = await Promise.all([
+    getSeries({ publicId: series_id }),
+    getTenantDisplayTimeZone(tenantId),
+    getMessagesFor(locale),
+    isSignedInTenantEditor(tenantId),
+    getTenantCurrency(tenantId),
+    getTenantEpisodeReviewSettings(tenantId, locale),
+  ]);
+
+  await redirectToLoginIfSessionRejected(episodeReviewSettingsResult);
+
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Message message="admin.series.episodes.list_error" />
+          </SectionError.Title>
+          <SectionError.Description>
+            {seriesResult.message}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
+
+  const result = await listEpisodes({
+    seriesId: seriesResult.series.id,
+    token,
+  });
+
+  const pageHrefs = cursorPageHrefs(result);
+  const hasPageLinks = hasCursorPageLinks(pageHrefs);
+
+  if (!result.ok) {
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Message message="admin.series.episodes.list_error" />
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
+
+  if (result.episodes.length === 0) {
+    return (
+      <>
+        <CursorPageEmptyState
+          hasPageLinks={hasPageLinks}
+          itemLabel={t("admin.series.episodes.title")}
+        >
+          <EmptyState.Heading>
+            <EmptyState.Title>
+              {t("admin.series.episodes.empty_title")}
+            </EmptyState.Title>
+            <EmptyState.Description>
+              <Message message="admin.series.episodes.empty_description" />
+            </EmptyState.Description>
+          </EmptyState.Heading>
+          {canEdit ? (
+            <EmptyState.Actions>
+              <LinkButton
+                render={<Link href={`/series/${series_id}/episodes/new`} />}
+              >
+                <Message message="admin.series.episodes.create_action" />
+              </LinkButton>
+            </EmptyState.Actions>
+          ) : null}
+        </CursorPageEmptyState>
+        {hasPageLinks ? (
+          <PaginationFooter.Root>
+            <PaginationFooter.Description>
+              {t("admin.series.episodes.pagination_description", {
+                count: DEFAULT_PAGE_SIZE,
+              })}
+            </PaginationFooter.Description>
+            <PaginationFooter.Controls
+              {...pageHrefs}
+              aria-label={t("admin.series.episodes.pagination_aria")}
+            />
+          </PaginationFooter.Root>
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-3">
+        {canEdit ? (
+          <p className="text-xs text-muted-foreground">
+            <Message message="admin.series.episodes.drag_description" />
+            {hasPageLinks ? (
+              <Message message="admin.series.episodes.drag_page_description" />
+            ) : null}
+          </p>
+        ) : null}
+        <EpisodesSortableList
+          canEdit={canEdit}
+          currency={currency}
+          episodes={result.episodes}
+          reorderAction={reorderEpisodesAction}
+          // Only to mark the rows waiting on review, so a read that failed
+          // leaves them unmarked rather than the list unreadable.
+          reviewRequired={
+            episodeReviewSettingsResult.ok &&
+            episodeReviewSettingsResult.episodeReviewRequired
+          }
+          seriesAvailability={seriesResult.series.availability}
+          seriesId={seriesResult.series.id}
+          seriesPublicId={series_id}
+          timeZone={timeZone}
+        />
+      </div>
+      <PaginationFooter.Root>
+        <PaginationFooter.Description>
+          {t("admin.series.episodes.pagination_description", {
+            count: DEFAULT_PAGE_SIZE,
+          })}
+        </PaginationFooter.Description>
+        <PaginationFooter.Controls
+          {...pageHrefs}
+          aria-label={t("admin.series.episodes.pagination_aria")}
+        />
+      </PaginationFooter.Root>
+    </>
+  );
+};
+
+const SeriesEpisodesPage = ({
+  params,
+  searchParams,
+}: SeriesEpisodesPageProps) => (
+  <EpisodeSelectionProvider>
+    <ConsolePage.Root>
+      <ConsolePage.Header>
+        <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
+          <SeriesEpisodesChrome params={params} />
+        </Suspense>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
+        <FlashToast
+          keyName="reordered"
+          message="admin.series.episodes.reordered"
+        />
+        <FlashToast
+          keyName="reorder_error"
+          message="admin.series.episodes.reorder_error"
+        />
+        <FlashToast
+          keyName="deleted"
+          message="admin.series.episodes.delete.deleted"
+          valueParams={{ title: "deleted_title" }}
+        />
+        {/*
+          A failed read hands back an empty `episodes`, so the empty state
+          has to stay behind `result.ok`. Otherwise the screen says the list
+          could not be displayed and that nothing is registered at once, and
+          offers a create button for a list nobody managed to read.
+        */}
+        <Suspense fallback={<SeriesEpisodesListSkeleton />}>
+          <SeriesEpisodesData params={params} searchParams={searchParams} />
+        </Suspense>
+      </ConsolePage.Content>
+    </ConsolePage.Root>
+  </EpisodeSelectionProvider>
+);
+
+export default SeriesEpisodesPage;

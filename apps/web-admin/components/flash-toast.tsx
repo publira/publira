@@ -1,5 +1,6 @@
 "use client";
 
+import { toConsolePathname } from "@publira/layouts/navigation";
 import * as Toast from "@publira/ui-components/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -36,7 +37,10 @@ const FlashToastEffect = ({
   valueParams = noValueParams,
 }: FlashToastProps) => {
   const t = useClientMessages();
-  const pathname = usePathname();
+  // A prerendered shell reports the path `proxy.ts` rewrote the request onto,
+  // with the tenant id and the locale in front, and neither is part of the URL
+  // the operator is on.
+  const pathname = toConsolePathname(usePathname());
   const router = useRouter();
   const searchParams = useSearchParams();
 

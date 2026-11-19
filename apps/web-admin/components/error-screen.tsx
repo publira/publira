@@ -32,7 +32,7 @@ interface ErrorScreenProps {
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
  *
- * Every string is a child the boundary writes, because `app/[tenant_id]/error.tsx`
+ * Every string is a child the boundary writes, because `app/[tenant_id]/[locale]/error.tsx`
  * sits above the provider `<ClientMessage>` reads and resolves its copy another way.
  *
  * ```tsx
