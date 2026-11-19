@@ -14,15 +14,14 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type { PlatformDashboardRecentEvent } from "#lib/dashboard";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
 import { SetupStatusSection } from "./_components/setup-status";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.dashboard.title") };
 };
@@ -134,7 +133,7 @@ const DashboardContent = async () => {
   // Timestamps follow the platform default time zone, not the host's or the
   // browser's, so every operator reads the same wall clock.
   const [locale, result, timeZone] = await Promise.all([
-    getPlatformLocale(),
+    getLocale(),
     getPlatformDashboardSummary({ recentEventsLimit }),
     getPlatformDisplayTimeZone(),
   ]);
