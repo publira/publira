@@ -204,6 +204,13 @@ const lastPageOnScreen = async (page: Page): Promise<number> =>
 const endPage = (page: Page) =>
   page.getByRole("region", { exact: true, name: "The end" });
 
+/**
+ * The next-episode button on the page after the last one. Its name is the
+ * button's own; the episode's number, price, and title describe it.
+ */
+const nextEpisodeButton = (page: Page) =>
+  endPage(page).getByRole("link", { exact: true, name: "Next episode" });
+
 /** The reading history section of `/my`, which names itself as a landmark. */
 const readingHistory = (page: Page) =>
   page.getByRole("region", { name: "Reading history" });
@@ -772,14 +779,20 @@ test.describe("web-storefront episode reading", () => {
       "nothing over the pages links out of the episode; only the row under the reader does"
     ).toHaveCount(1);
 
-    const nextEpisode = endPage(page).getByRole("link", {
-      name: NEXT_EPISODE_TITLE,
-    });
+    const nextEpisode = nextEpisodeButton(page);
+
+    await expect(
+      nextEpisode,
+      "the page after the last one is not offered before the pages are read"
+    ).toHaveCount(0);
 
     expect(
       await turnToEndPage(page, nextEpisode),
       "the page after the last one offers the next episode"
     ).toBe(true);
+    await expect(nextEpisode).toHaveAccessibleDescription(
+      new RegExp(NEXT_EPISODE_TITLE, "u")
+    );
     await expect(nextEpisode).toHaveAttribute(
       "href",
       storefrontPath(NEXT_EPISODE_PATH)
@@ -798,9 +811,7 @@ test.describe("web-storefront episode reading", () => {
     await page.goto(storefrontPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
-    const nextEpisode = endPage(page).getByRole("link", {
-      name: NEXT_EPISODE_TITLE,
-    });
+    const nextEpisode = nextEpisodeButton(page);
 
     expect(
       await turnToEndPage(page, nextEpisode),
@@ -924,9 +935,9 @@ test.describe("web-storefront episode reading", () => {
       "the page after the last one offers the free episode"
     ).toBe(true);
     await expect(
-      endPage(page).getByRole("link", { name: PAID_NEXT_EPISODE.title }),
-      "under the next episode, which stays the reading action"
-    ).toBeVisible();
+      nextEpisodeButton(page),
+      "beside the next episode, which stays the reading action"
+    ).toHaveAccessibleDescription(new RegExp(PAID_NEXT_EPISODE.title, "u"));
     await expect(nextFreeEpisode).toHaveAttribute(
       "href",
       storefrontPath(LATER_FREE_EPISODE.path)

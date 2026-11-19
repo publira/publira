@@ -34,11 +34,11 @@ vi.mock("#components/locale-context", () => ({
   useTenantDefaultLocale: () => "en",
 }));
 
+// Every attribute passes through, as `next/link` passes it to its `<a>`: the
+// next-episode button names what describes it with `aria-describedby`.
 vi.mock("next/link", () => ({
-  default: ({ children, className, href }: React.ComponentProps<"a">) => (
-    <a className={className} href={href}>
-      {children}
-    </a>
+  default: ({ children, ...props }: React.ComponentProps<"a">) => (
+    <a {...props}>{children}</a>
   ),
 }));
 
@@ -109,17 +109,35 @@ const renderOffer = async (
     })
   );
 
+/**
+ * What describes the next-episode button: the episode's number, price, and
+ * title, which sit over the button rather than inside it.
+ */
+const nextEpisodeFacts = (): HTMLElement => {
+  const link = screen.getByRole("link", { name: "Next episode" });
+  const factsId = link.getAttribute("aria-describedby") ?? "";
+
+  const facts = document.querySelector<HTMLElement>(`[id="${factsId}"]`);
+
+  if (!facts) {
+    throw new Error("the next-episode button names nothing that describes it");
+  }
+
+  return facts;
+};
+
 describe("EpisodeNextEpisodeOffer", () => {
   it("links to the next episode with its number, title, and price", async () => {
     await renderOffer(nextEpisode);
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
+    const link = screen.getByRole("link", { name: "Next episode" });
     expect(link.getAttribute("href")).toBe(
       "/series/SERIES_001/episodes/EPISODE_003"
     );
-    expect(link.textContent).toContain("Episode 3");
-    expect(link.textContent).toContain("Third light");
-    expect(link.textContent).toContain("Free");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("Episode 3");
+    expect(facts.textContent).toContain("Third light");
+    expect(facts.textContent).toContain("Free");
     expect(
       screen.queryByRole("heading", { name: "You are up to date" }),
       "a reader with an episode still to read has not caught up"
@@ -129,9 +147,9 @@ describe("EpisodeNextEpisodeOffer", () => {
   it("names the price of a paid next episode", async () => {
     await renderOffer({ ...nextEpisode, isFree: false, price: 500 });
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
-    expect(link.textContent).toContain("¥500");
-    expect(link.textContent).not.toContain("Free");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("¥500");
+    expect(facts.textContent).not.toContain("Free");
   });
 
   it("quotes the campaign price open on the next episode beside its own, and until when", async () => {
@@ -142,10 +160,10 @@ describe("EpisodeNextEpisodeOffer", () => {
       price: 500,
     });
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
-    expect(link.textContent).toContain("¥300");
-    expect(link.querySelector("s")?.textContent).toContain("¥500");
-    expect(link.textContent).toContain("Sale until Sun, Oct 11, 11:59 PM");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("¥300");
+    expect(facts.querySelector("s")?.textContent).toContain("¥500");
+    expect(facts.textContent).toContain("Sale until Sun, Oct 11, 11:59 PM");
   });
 
   it("says a paid next episode sold in the app alone is sold there, not its price", async () => {
@@ -156,9 +174,9 @@ describe("EpisodeNextEpisodeOffer", () => {
       purchaseSurface: "app",
     });
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
-    expect(link.textContent).toContain("Sold in the app");
-    expect(link.textContent).not.toContain("¥500");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("Sold in the app");
+    expect(facts.textContent).not.toContain("¥500");
   });
 
   it("names the price of a paid next episode sold on the web", async () => {
@@ -169,24 +187,24 @@ describe("EpisodeNextEpisodeOffer", () => {
       purchaseSurface: "web",
     });
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
-    expect(link.textContent).toContain("¥500");
-    expect(link.textContent).not.toContain("Sold in the app");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("¥500");
+    expect(facts.textContent).not.toContain("Sold in the app");
   });
 
   it("calls a free next episode free wherever it is sold", async () => {
     await renderOffer({ ...nextEpisode, purchaseSurface: "app" });
 
-    const link = screen.getByRole("link", { name: /Next episode/u });
-    expect(link.textContent).toContain("Free");
-    expect(link.textContent).not.toContain("Sold in the app");
+    const facts = nextEpisodeFacts();
+    expect(facts.textContent).toContain("Free");
+    expect(facts.textContent).not.toContain("Sold in the app");
   });
 
   it("offers a later free episode under a paid next one, which stays the reading action", async () => {
     await renderOffer(paidNextEpisode, laterFreeEpisode);
 
     expect(
-      screen.getByRole("link", { name: /Next episode/u }).getAttribute("href")
+      screen.getByRole("link", { name: "Next episode" }).getAttribute("href")
     ).toBe("/series/SERIES_001/episodes/EPISODE_003");
     expect(
       screen

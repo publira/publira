@@ -9,7 +9,6 @@ import {
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
-  NEXT_EPISODE_TITLE,
   VIEWER_EPISODE_PATH,
   episodePageLabel,
 } from "../src/scenarios/viewer-pages";
@@ -82,7 +81,8 @@ test.describe("web-storefront creator's own episode", () => {
     );
 
     const nextEpisode = endPage(page).getByRole("link", {
-      name: NEXT_EPISODE_TITLE,
+      exact: true,
+      name: "Next episode",
     });
 
     expect(
