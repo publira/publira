@@ -19,7 +19,7 @@ const NOT_FOUND_LOCALE: Locale = "en";
  * resources under a signed-in operator session and keeps the console chrome.
  *
  * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
- * tokens are imported here because this file bypasses `app/layout.tsx`.
+ * tokens are imported here because this file bypasses `app/[locale]/layout.tsx`.
  *
  * The link back is styled from `buttonVariants` rather than rendered as
  * `LinkButton`, which is a client component: this document is static and has

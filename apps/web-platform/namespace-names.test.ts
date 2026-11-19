@@ -2,13 +2,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import * as MfaSettingsOutcome from "./app/(protected)/account/_components/mfa-settings-outcome";
-import * as SmtpPassword from "./app/(protected)/services/email/_components/smtp-password";
-import * as SmtpTest from "./app/(protected)/services/email/_components/smtp-test";
-import * as TenantMemberRemovals from "./app/(protected)/tenants/[tenant_id]/members/_components/tenant-member-removals";
-import * as TenantMemberRoleDialog from "./app/(protected)/tenants/[tenant_id]/members/_components/tenant-member-role-dialog";
-import * as MfaEnrollSteps from "./app/mfa/_components/mfa-enroll-steps";
-import * as MfaVerifySteps from "./app/mfa/_components/mfa-verify-steps";
+import * as MfaSettingsOutcome from "./app/[locale]/(protected)/account/_components/mfa-settings-outcome";
+import * as SmtpPassword from "./app/[locale]/(protected)/services/email/_components/smtp-password";
+import * as SmtpTest from "./app/[locale]/(protected)/services/email/_components/smtp-test";
+import * as TenantMemberRemovals from "./app/[locale]/(protected)/tenants/[tenant_id]/members/_components/tenant-member-removals";
+import * as TenantMemberRoleDialog from "./app/[locale]/(protected)/tenants/[tenant_id]/members/_components/tenant-member-role-dialog";
+import * as MfaEnrollSteps from "./app/[locale]/mfa/_components/mfa-enroll-steps";
+import * as MfaVerifySteps from "./app/[locale]/mfa/_components/mfa-verify-steps";
 import * as DangerConfirmButton from "./components/danger-confirm-button";
 import * as ErrorScreen from "./components/error-screen";
 import * as MfaEnrollment from "./components/mfa-enrollment";

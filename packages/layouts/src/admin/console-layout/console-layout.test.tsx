@@ -215,6 +215,11 @@ describe("Sidebar navigation active item", () => {
       current: "/tenants",
       title: "reads the same item as current before and after a tenant rewrite",
     },
+    {
+      browserPath: "/ja/tenants/new",
+      current: "/tenants/new",
+      title: "reads the same item as current before and after a locale rewrite",
+    },
   ])("$title", ({ browserPath, current }) => {
     pathname.mockReturnValue(browserPath);
 

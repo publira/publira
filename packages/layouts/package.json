@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@publira/i18n": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*"

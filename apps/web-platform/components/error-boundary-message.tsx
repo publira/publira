@@ -2,37 +2,15 @@
 
 import {
   bindMessages,
-  LOCALE_COOKIE_NAME,
   negotiateInitialLocale,
   parseLocale,
-  parseLocaleCookie,
-  RESOLVED_LOCALE_COOKIE_NAME,
 } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
+import { readCookieLocale } from "#lib/document-locale";
 import { loadPlatformMessages } from "#lib/messages";
 import type { PlatformMessageKey, PlatformMessages } from "#lib/messages";
-
-const readCookie = (name: string): string => {
-  if (typeof document === "undefined") {
-    return "";
-  }
-
-  const match = document.cookie.match(
-    new RegExp(`(?:^|; )${name}=([^;]*)`, "u")
-  );
-
-  if (!match?.[1]) {
-    return "";
-  }
-
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-};
 
 /**
  * The locale this chunk renders in, from the browser alone.
@@ -55,8 +33,7 @@ const readClientLocale = (): Locale => {
   }
 
   return (
-    parseLocaleCookie(readCookie(LOCALE_COOKIE_NAME)) ??
-    parseLocaleCookie(readCookie(RESOLVED_LOCALE_COOKIE_NAME)) ??
+    readCookieLocale() ??
     parseLocale(document.documentElement.lang) ??
     negotiateInitialLocale(navigator.languages.join(","))
   );

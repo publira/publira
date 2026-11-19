@@ -10,7 +10,7 @@ The cross-tenant operations console for platform operators. Its responsibilities
 - There is no `/logout` route. Signing out goes through the header's Server Action only
 - Session cookie: `publira_web_platform_auth`
 - Roles: `platform_super_admin`, `platform_operator`, `platform_auditor` (`server/internal/auth/roles.go`; their permissions are in `server/cmd/publira/README.md`)
-- Screens are guarded in `(protected)/layout.tsx`
+- Screens are guarded in `app/[locale]/(protected)/layout.tsx`
 
 ### Shared layout (app shell)
 
@@ -21,22 +21,23 @@ The cross-tenant operations console for platform operators. Its responsibilities
 
 ### UI locale
 
-The locale is never in the URL. It lives in the `publira_locale` cookie, and resolves cookie → the saved platform default locale.
+The locale is never in the URL. It lives in the `publira_locale` cookie, and resolves cookie → the saved platform default locale → `Accept-Language` before setup has saved one. `proxy.ts` resolves it on every page request and rewrites the request onto the `app/[locale]/` root segment, so the URLs an operator sees carry no locale, and one that starts with a locale answers 404. The Route Handlers (`app/api/`, `app/.well-known/change-password/`) and the health probes stay at the root of `app/` and are not rewritten.
 
 | Part | Where it lives |
 | --- | --- |
-| The resolved locale | `getPlatformLocale()` in `lib/locale.ts`, and the cookie options the switcher writes with |
+| The locale a page renders in | `getLocale()` in `lib/locale.ts`, the `[locale]` root parameter |
+| The locale where there is no root parameter | `getPlatformLocale()` in `lib/locale.ts`, from the cookie, for the Server Actions and the `api/v1/audit-logs/csv` Route Handler, and the cookie options the switcher writes with |
 | The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/general` |
 | The locale a screen with nothing saved yet opens on | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`, over the request's `Accept-Language` |
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
-| One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/setup/_components/` for `/setup` |
-| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/layout.tsx`, loaded by `loadPlatformClientMessages(locale)` |
-| One string in a route-level `error.tsx` | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/error.tsx` and `app/(protected)/error.tsx` |
-| `<html lang>` | The inline `<head>` script in `app/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
+| One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/[locale]/setup/_components/` for `/setup` |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/[locale]/layout.tsx`, loaded by `loadPlatformClientMessages(locale)` |
+| One string in a route-level `error.tsx` | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/[locale]/error.tsx` and `app/[locale]/(protected)/error.tsx` |
+| `<html lang>` | The inline `<head>` script in `app/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx`, which applies it again when a change of language remounts that layout |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
-An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`.
+An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`; `components/locale-switcher-root.tsx` refreshes the route once it settles, which sends the screen back through `proxy.ts` on the new cookie.
 
 A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector, beside the languages the new tenant's site offers (`_components/tenant-locales-fields.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
 
@@ -89,6 +90,6 @@ A password that is accepted but still owes a second factor earns a short-lived c
 | The challenge and its `publira_web_platform_mfa` cookie | `lib/mfa-challenge.ts` |
 | The session cookie both sign-in steps write | `lib/platform-session-cookie.ts` |
 | The console's MFA RPCs | `lib/platform-mfa.ts` |
-| The `verify` and `enroll` screens | `app/mfa/` |
-| The operator's own factor | `app/(protected)/account/_components/mfa-settings-card.tsx` |
+| The `verify` and `enroll` screens | `app/[locale]/mfa/` |
+| The operator's own factor | `app/[locale]/(protected)/account/_components/mfa-settings-card.tsx` |
 | The enrollment QR code | `components/mfa-enrollment-secret.tsx`, drawn by `@publira/ui-components/qr-code` |

@@ -12,7 +12,7 @@ import type {
   CountUnreadNotificationsResult,
   ListNotificationsResult,
   NotificationItem,
-} from "../app/(protected)/notifications/notification-types";
+} from "../app/[locale]/(protected)/notifications/notification-types";
 import {
   apiClient,
   buildSessionHeaders,

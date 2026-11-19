@@ -495,11 +495,11 @@ The proxy answers before any page renders, so a proxy that rejects is a bare `50
 | App | What the proxy reads | While the API is down |
 | --- | --- | --- |
 | `web-admin` / `web-storefront` | `resolveTenantId()` | An in-process LRU keeps serving the hosts it has already resolved; a host it cannot resolve gets `503` + `Retry-After` from the proxy's own `try` / `catch` |
-| `web-platform` | `resolveSetupState()` | Routing continues on the last state the platform API confirmed, so a protected path reaches the page and `app/error.tsx` renders the failure. The saved default locale it also carries follows the same rule, so that screen keeps the console's language |
+| `web-platform` | `resolveSetupState()` | Routing continues on the last state the platform API confirmed, so a protected path reaches the page and `app/[locale]/error.tsx` renders the failure. The saved default locale it also carries follows the same rule, so the request is still rewritten onto the console's language and that screen keeps it |
 
 Two rules follow:
 
-- **Answer the paths that must survive an outage above the read.** `isHealthProbePath()` and `/setup` return before any RPC is attempted, so a probe never reports the API's health as its own.
+- **Answer the paths that must survive an outage above the read, or from a read that cannot fail.** `isHealthProbePath()` returns before any RPC is attempted, so a probe never reports the API's health as its own. `web-platform`'s `/setup` renders in a locale, so it waits for `resolveSetupState()`, which never throws and is the reason the setup form still opens while the API is down.
 - **Never fall back to a value that changes what the operator is asked to do.** "Setup is not completed" during an outage re-opens the bootstrap form on a platform that was set up long ago. The fallback is the state the API last confirmed, and a fixed default only where it has never confirmed one.
 
 No lint covers this. The `*.error-boundary` e2e specs measure it: each stops `publira server` and asserts the app answers `200` with its own error screen instead of a bare 500.
@@ -517,18 +517,20 @@ So a path that cannot resolve a locale **fails** — a type error at the call si
 | Locale parsing, catalog loading, `{$name}` interpolation | `@publira/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `bindMessages`) |
 | One string, where a node cannot go | The app's `getMessages()` in `lib/get-messages.ts`, or `getMessagesFor(locale)` in `lib/messages.ts` |
 | The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
-| Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-storefront` |
+| Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`, which `web-platform`'s proxy rewrites onto the `[locale]` root segment; the URL's `locale` segment in `web-storefront` |
 | What a missing cookie falls through to | The stored default: the platform's in `web-platform`, the tenant's in `web-admin`. A read that fails is reported, not replaced |
 | How the browser learns that default | The `publira_resolved_locale` cookie the proxy publishes — in `web-storefront` too, where an unprefixed URL is the tenant's default. It is all `<html lang>` and a client error boundary have to go on |
 
 The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
 - **A message is a MessageFormat 2 message.** Interpolation is `{$name}`, a literal brace is `\{` / `\}`, and a literal backslash is `\\` — the Unicode standard's syntax ([UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html)), parsed and formatted by the `messageformat` package rather than by anything hand-written here. Copy that depends on a count selects its variant in the message with `.input {$count :integer}` and `.match`, never by choosing between keys in code, and the count is passed as a number for `:integer` / `:number` to write out. Dates are formatted by `@publira/utils` with the resolved time zone and passed in already rendered. Full rules, including the functions the catalog allows: `locales/README.md`
-- **`cookies()` inside `<Suspense>` only.** Under Cache Components a locale read above a boundary costs that route its static shell. Keep the read in the app's `lib/locale.ts` (`getPlatformLocale()` / `getLocale()`), and call it from a component that sits inside a boundary
+- **`cookies()` inside `<Suspense>` only.** Under Cache Components a locale read above a boundary costs that route its static shell. Keep the read in the app's `lib/locale.ts` (`getPlatformLocale()` in `web-platform`, `getLocale()` in `web-admin`), and call it from a component that sits inside a boundary
 - **Never read the locale inside `"use cache"`.** Pass it in as an argument so it becomes part of the cache key
 - **Waiting on a message means `Suspense` + `Skeleton`.** The static shell is locale-independent
 - **Never build an `import()` path with a template string.** Write one static path per locale (`loadMessages`'s importers)
 - **Cookie apps resolve cookie → stored console default.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. Both consoles resolve that default without a session — `web-admin` from the public `GetTenant`, `web-platform` from `CheckSetupStatus`, which reports the saved language beside the setup state — so a login screen renders in the same language the signed-in console does. Only a platform that has saved nothing yet negotiates from `Accept-Language`: a statement about the visitor, made where there is no stored answer to state instead. A read that cannot answer is a failure — `web-admin` throws, `web-platform` keeps the last language its API confirmed — never a fixed language stood in for it
+
+- **`web-platform` routes the cookie onto a `[locale]` root segment.** Its pages live under `app/[locale]/`, and `proxy.ts` rewrites every page request from `{path}` onto `/{locale}{path}`, resolving the locale in the order above: a supported cookie, then the saved default `resolveSetupState()` carries, and `Accept-Language` only while nothing is saved. The URL never names the locale. A path that already starts with one is rewritten like any other and matches no route, and every redirect names the public, unprefixed path. A Server Component reads the answer with `getLocale()` (`next/root-params`, `notFound()` on an unsupported value), which reads no cookie, needs no `<Suspense>` of its own, and may be called inside `"use cache"`; `getMessages()`, `<Message>`, and `PlatformMessagesProvider` resolve from it. A Route Handler cannot read a root parameter, so the Route Handlers stay at the root of `app/` and the proxy lets them through unrewritten; they and the Server Actions resolve the locale from the cookie with `getPlatformLocale()`. In a prerendered shell `usePathname()` reports the rewritten path, so `toConsolePathname` in `@publira/layouts` drops a leading locale the way it drops `web-admin`'s tenant id
 
 ### Localizing a screen
 
@@ -569,7 +571,7 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 1. Every root layout stays synchronous and renders **no** `lang` at all, with `suppressHydrationWarning`. A document that reaches the browser before a locale has been resolved names no language rather than guessing: a wrong `lang` tells a screen reader to pronounce the page in a language it is not written in, which is worse for that reader than an absent one
 2. `<head>` carries an inline script, a constant of `@publira/i18n`. `LOCALE_LANG_SCRIPT` in the cookie consoles applies the first supported locale it finds in the order the server resolves them: `publira_locale`, the reader's own choice, then `publira_resolved_locale`. `PATH_LOCALE_LANG_SCRIPT` in `web-storefront` reads the URL's own locale segment first and `publira_resolved_locale` only for the unprefixed path that serves the tenant's default. Anything else leaves what the server rendered alone
 3. The proxy publishes `publira_resolved_locale` — the stored default it read to route the request anyway. All three do this through `@publira/utils/resolved-locale`: `web-platform` from its `CheckSetupStatus` read, `web-admin` and `web-storefront` from the Host-to-tenant resolution that carries the tenant's saved language. The cookie is a copy of a server-resolved value, never a choice, so a chosen cookie always wins and no server path reads it back. It is also what a **client** error boundary resolves its copy from: that boundary renders when the API holding the setting is unreachable, so without the cookie it would word an outage from `Accept-Language` instead of in the language the site is served in
-4. The script runs once per document, so every app writes `document.documentElement.lang` itself for whatever changes the language without loading one. A cookie console's switcher does it **after its Action resolves** — writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails. In `web-storefront` the switcher is a `next/link`, so the choice is a client-side navigation: React re-renders the attribute-less root element and takes the attribute away with it, and a click handler would be overwritten by the very render that follows it. `<DocumentLocale>` sits under `<LocaleProvider>` in the `(site)` and `(auth)` layouts and synchronizes the attribute from an Effect, which runs after that commit
+4. The script runs once per document, so every app writes `document.documentElement.lang` itself for whatever changes the language without loading one. A cookie console's switcher does it **after its Action resolves** — writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails. In `web-storefront` the switcher is a `next/link`, so the choice is a client-side navigation: React re-renders the attribute-less root element and takes the attribute away with it, and a click handler would be overwritten by the very render that follows it. `<DocumentLocale>` sits under `<LocaleProvider>` in the `(site)` and `(auth)` layouts and synchronizes the attribute from an Effect, which runs after that commit. `web-platform` has the same problem for the one change that swaps its root parameter: switching the language mounts the root layout afresh, which clears the attribute the switcher had just written, so `<DocumentLocale>` in `app/[locale]/layout.tsx` applies the script's own rule to the cookies again from an Effect when the layout mounts
 
 That fourth piece is why the chosen cookie is not `httpOnly`, and neither is the resolved one — the scripts and the error boundaries read both from `document.cookie`. `instant = false` is not an option here (see **Never use `instant = false`**).
 
@@ -581,7 +583,7 @@ The switcher writes the cookie from a Server Action. Never write `document.cooki
 
 Worked examples:
 
-- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language switcher in the console header (`components/locale-switcher.tsx`)
+- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language switcher in the console header (`components/locale-switcher.tsx`). The screen the Action re-renders in its own round trip was routed onto the `[locale]` segment the old cookie named, so `components/locale-switcher-root.tsx` refreshes the route once the Action settles: the refresh goes back through the proxy on the new cookie, and since only the root parameter's value changes, the router swaps the screen in place rather than reloading the document
 - `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the Display language switcher in the console header (`components/locale-switcher.tsx`)
 
 ### A URL-locale app (`web-storefront`)
@@ -700,7 +702,7 @@ All three apps enable `experimental.globalNotFound` and ship `app/global-not-fou
 | --- | --- |
 | URL matches no route at all | `app/global-not-found.tsx` — full HTML document, **no** app layout, **no** tenant RPC |
 | `notFound()` for a missing / invisible resource under a resolved tenant or session | Segment `not-found.tsx` inside `(site)` / `(protected)` — keeps site or console chrome |
-| Browser `/favicon.ico` and `_next/*` | `proxy.ts` matcher exclusions (skip tenant / auth work). A non-UUID segment that still reaches the tree is rejected by `isTenantIdFormat` / `getTenantId()` |
+| Browser `/favicon.ico` and `_next/*` | `proxy.ts` matcher exclusions (skip tenant / auth work), except `/favicon.ico` in the consoles, whose proxies answer it 404 because unrewritten it would reach the `[tenant_id]` or `[locale]` segment. A non-UUID segment that still reaches the tree is rejected by `isTenantIdFormat` / `getTenantId()` |
 
 `global-not-found.tsx` bypasses every layout, so it must import `globals.css` (and any fonts it needs) itself. Do **not** link tenant `/theme.css` there: there is no tenant context on an unmatched URL; brand defaults from `@publira/brand` are the intended look.
 
@@ -710,7 +712,7 @@ The flag is still under `experimental` in Next.js (introduced in 15.4). If it is
 
 1. Drop or rename the flag in each app's `next.config.ts`.
 2. Keep or delete `app/global-not-found.tsx` to match the then-current Next.js file convention (`node_modules/next/dist/docs/` for that app's Next version).
-3. Re-check that URLs which match no route still return 404 **without** entering `app/[tenant_id]/layout.tsx` on `web-storefront` / `web-admin` (those apps have no root layout above the dynamic segment — that is why this file exists).
+3. Re-check that URLs which match no route still return 404 **without** entering `app/[tenant_id]/layout.tsx` on `web-storefront` / `web-admin`, or `app/[locale]/layout.tsx` on `web-platform` (none of the apps has a root layout above its dynamic segment — that is why this file exists).
 
 Until the flag stabilises, do not build alternative "fake root layout" 404 schemes for the same job.
 

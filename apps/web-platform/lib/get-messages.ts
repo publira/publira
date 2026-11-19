@@ -1,4 +1,4 @@
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { PlatformMessageAccessor } from "./messages";
 
@@ -19,14 +19,17 @@ import type { PlatformMessageAccessor } from "./messages";
  * `<Message>` behind its own `<Suspense>`, so the card, the inputs, and the
  * buttons around it stay in the static shell.
  *
- * **Inside `<Suspense>` only, and never from a `"use cache"` scope.** Resolving
- * the locale reads the `publira_locale` cookie, so this carries the same rule
- * `getPlatformLocale` does: a read above a boundary costs the route its static
- * shell, and a read inside a cache scope bakes one request's language into the
- * entry. Code that is handed a locale instead calls `getMessagesFor`.
+ * The locale comes from the `[locale]` root segment, so resolving it reads no
+ * cookie and the value is already part of every cache key downstream; the
+ * `import()` of the catalog is what suspends. A Server Action has no root
+ * parameters — it resolves its locale with `getPlatformLocale()` and calls
+ * `getMessagesFor` instead, as does any code that is handed a locale.
+ *
+ * This module reads `next/root-params`, so it is server-only. A Client
+ * Component resolves its copy through `<ClientMessage>` or `useClientMessages()`.
  */
 export const getMessages = async (): Promise<PlatformMessageAccessor> => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   return getMessagesFor(locale);
 };

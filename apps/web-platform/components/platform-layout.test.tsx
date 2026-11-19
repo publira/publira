@@ -55,6 +55,7 @@ vi.mock("./message", () => ({
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
   usePathname: () => "/tenants/new",
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("next/link", () => ({

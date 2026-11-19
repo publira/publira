@@ -17,8 +17,9 @@ const setupApiUnavailableMessage =
  *
  * The console reads its operator in `(protected)/layout.tsx`, which sits above
  * `(protected)/error.tsx`, so a platform API outage is caught by
- * `app/error.tsx` and the screen renders with no console chrome around it —
- * the same shape `admin.error-boundary.spec.ts` asserts for `web-admin`.
+ * `app/[locale]/error.tsx` and the screen renders with no console chrome
+ * around it — the same shape `admin.error-boundary.spec.ts` asserts for
+ * `web-admin`.
  *
  * Reaching that boundary at all depends on the proxy, which is why the login
  * screen is measured here too. The proxy resolves the setup state on every

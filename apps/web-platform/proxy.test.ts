@@ -19,6 +19,10 @@ vi.mock("./lib/setup", () => ({
 
 const RESOLVED_LOCALE_COOKIE = "publira_resolved_locale";
 
+/** Where the proxy rewrote the request to, or `null` for one it did not. */
+const rewrittenTo = (response: { headers: Headers }): string | null =>
+  response.headers.get("x-middleware-rewrite");
+
 const resolvedLocaleCookie = (response: {
   headers: Headers;
 }): string | undefined =>
@@ -235,6 +239,142 @@ describe("web-platform proxy", () => {
 
     expect(resolvedLocaleCookie(response)).toBeUndefined();
     expect(mockResolveSetupState).not.toHaveBeenCalled();
+  });
+
+  describe("the [locale] root segment", () => {
+    it("rewrites a page onto the saved default locale when no language was chosen", async () => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/login?next=%2Ftenants")
+      );
+
+      expect(rewrittenTo(response)).toBe(
+        "https://platform.example.com/ja/login?next=%2Ftenants"
+      );
+    });
+
+    it("rewrites onto the language the operator chose over the saved default", async () => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/login", {
+          headers: { cookie: "publira_locale=en" },
+        })
+      );
+
+      expect(rewrittenTo(response)).toBe(
+        "https://platform.example.com/en/login"
+      );
+    });
+
+    it("falls through to the saved default for a cookie that names no supported locale", async () => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/login", {
+          headers: { cookie: "publira_locale=fr" },
+        })
+      );
+
+      expect(rewrittenTo(response)).toBe(
+        "https://platform.example.com/ja/login"
+      );
+    });
+
+    /**
+     * Only a platform that has saved nothing yet asks the browser: the
+     * operator about to choose the platform's language is the one person the
+     * header says anything about.
+     */
+    it("negotiates from Accept-Language before setup has saved a language", async () => {
+      mockResolveSetupState.mockResolvedValue({
+        completed: false,
+        defaultLocale: "none",
+      });
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/setup", {
+          headers: { "accept-language": "ja,en;q=0.5" },
+        })
+      );
+
+      expect(rewrittenTo(response)).toBe(
+        "https://platform.example.com/ja/setup"
+      );
+    });
+
+    // `resolveSetupState()` keeps the last confirmed default through an
+    // outage, and says "unknown" only for a process that never had an answer.
+    it("still answers /setup while the platform API has never answered", async () => {
+      mockResolveSetupState.mockResolvedValue({
+        completed: true,
+        defaultLocale: "unknown",
+      });
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/setup")
+      );
+
+      expect(response.headers.get("location")).toBeNull();
+      expect(rewrittenTo(response)).toBe(
+        "https://platform.example.com/en/setup"
+      );
+    });
+
+    // No locale-prefixed path is public, so a signed-out request for one is
+    // sent to sign-in like any other unknown path; the redirect names the
+    // public path, never the rewritten one.
+    it("treats a path that starts with a locale as any other protected path", async () => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/en/login")
+      );
+
+      expect(response.headers.get("location")).toBe(
+        "https://platform.example.com/login?next=%2Fen%2Flogin"
+      );
+    });
+
+    it("lets a Route Handler through on the path it arrived on", async () => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest(
+          "https://platform.example.com/.well-known/change-password",
+          { headers: { cookie: "publira_locale=en" } }
+        )
+      );
+
+      expect(rewrittenTo(response)).toBeNull();
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    });
+
+    it("answers /favicon.ico without letting it reach the locale segment", async () => {
+      const { config, proxy } = await import("./proxy");
+      const { NextRequest } = await import("next/server");
+
+      expect(
+        unstable_doesMiddlewareMatch({ config, url: "/favicon.ico" })
+      ).toBe(true);
+
+      const response = await proxy(
+        new NextRequest("https://platform.example.com/favicon.ico")
+      );
+
+      expect(response.status).toBe(404);
+      expect(mockResolveSetupState).not.toHaveBeenCalled();
+    });
   });
 
   it("excludes revalidation paths from the proxy matcher", async () => {
