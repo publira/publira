@@ -10,17 +10,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.auth.login.title") };
 };
@@ -38,17 +35,44 @@ interface LoginPageProps {
 }
 
 const LoginPageFallback = () => (
-  <>
-    <AuthScreen.Body>
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-9 w-32" />
-    </AuthScreen.Body>
-    <AuthScreen.Footer>
-      <SkeletonLine className="h-4 w-36" />
-    </AuthScreen.Footer>
-  </>
+  <AuthScreen.Body>
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-9 w-32" />
+  </AuthScreen.Body>
 );
+
+const FORGOT_PASSWORD_PATH = "/forgot-password";
+
+const ForgotPasswordLink = ({ href }: { href: string }) => (
+  <Link className="text-primary underline underline-offset-4" href={href}>
+    <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+      <Message message="admin.auth.login.forgot_password" />
+    </Suspense>
+  </Link>
+);
+
+/**
+ * The reset link, carrying the address the query arrived with.
+ *
+ * Only the `href` waits for the query: the boundary around this falls back to
+ * the same link without the address, so the link's copy is in the static shell.
+ */
+const ForgotPasswordLinkForQuery = async ({
+  searchParams,
+}: Pick<LoginPageProps, "searchParams">) => {
+  const { defaultEmail } = parseLoginSearchParams(await searchParams);
+
+  return (
+    <ForgotPasswordLink
+      href={
+        defaultEmail
+          ? `${FORGOT_PASSWORD_PATH}?${new URLSearchParams({ email: defaultEmail }).toString()}`
+          : FORGOT_PASSWORD_PATH
+      }
+    />
+  );
+};
 
 const LoginPageContent = async ({
   searchParams,
@@ -64,111 +88,92 @@ const LoginPageContent = async ({
     sessionRevoked,
   } = parseLoginSearchParams(await searchParams);
 
-  const forgotPasswordHref = defaultEmail
-    ? `/forgot-password?${new URLSearchParams({ email: defaultEmail }).toString()}`
-    : "/forgot-password";
-
   return (
-    <>
-      <AuthScreen.Body>
-        <form action={loginAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="next" type="hidden" value={nextPath} />
+    <AuthScreen.Body>
+      <form action={loginAction} className="grid gap-4">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="next" type="hidden" value={nextPath} />
 
-          <Field.Root>
-            <Field.Label required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="admin.auth.fields.email_label" />
-              </Suspense>
-            </Field.Label>
-            <Field.Content>
-              <Input
-                autoComplete="email"
-                defaultValue={defaultEmail}
-                name="email"
-                placeholder="admin@example.com"
+        <Field.Root>
+          <Field.Label required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.auth.fields.email_label" />
+            </Suspense>
+          </Field.Label>
+          <Field.Content>
+            <Input
+              autoComplete="email"
+              defaultValue={defaultEmail}
+              name="email"
+              placeholder="admin@example.com"
+              required
+              type="email"
+            />
+          </Field.Content>
+        </Field.Root>
+
+        <Field.Root>
+          <Field.Label required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.auth.fields.password_label" />
+            </Suspense>
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
+                autoComplete="current-password"
+                name="password"
+                placeholder="••••••••"
                 required
-                type="email"
               />
-            </Field.Content>
-          </Field.Root>
+              <PasswordInput.Toggle>
+                <Suspense fallback={null}>
+                  <Message message="admin.common.show_password" />
+                </Suspense>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
-          <Field.Root>
-            <Field.Label required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.auth.fields.password_label" />
-              </Suspense>
-            </Field.Label>
-            <Field.Content>
-              <PasswordInput.Root>
-                <PasswordInput.Control
-                  autoComplete="current-password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                />
-                <PasswordInput.Toggle>
-                  <Suspense fallback={null}>
-                    <Message message="admin.common.show_password" />
-                  </Suspense>
-                </PasswordInput.Toggle>
-              </PasswordInput.Root>
-            </Field.Content>
-          </Field.Root>
-
-          {invitedDone ? (
-            <FormMessage variant="success">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="admin.auth.login.invited_done" />
-              </Suspense>
-            </FormMessage>
-          ) : null}
-
-          {passwordResetDone ? (
-            <FormMessage variant="success">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="admin.auth.login.reset_done" />
-              </Suspense>
-            </FormMessage>
-          ) : null}
-
-          {sessionRevoked ? (
-            <FormMessage variant="destructive">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="admin.auth.login.session_revoked" />
-              </Suspense>
-            </FormMessage>
-          ) : null}
-
-          {errorMessage ? (
-            <FormMessage variant="destructive">{errorMessage}</FormMessage>
-          ) : null}
-
-          <Button className="justify-self-start" type="submit">
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="admin.auth.login.submit" />
+        {invitedDone ? (
+          <FormMessage variant="success">
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.invited_done" />
             </Suspense>
-          </Button>
-        </form>
-      </AuthScreen.Body>
+          </FormMessage>
+        ) : null}
 
-      <AuthScreen.Footer>
-        <p>
-          <Link
-            className="text-primary underline underline-offset-4"
-            href={forgotPasswordHref}
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-              <Message message="admin.auth.login.forgot_password" />
+        {passwordResetDone ? (
+          <FormMessage variant="success">
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.reset_done" />
             </Suspense>
-          </Link>
-        </p>
-      </AuthScreen.Footer>
-    </>
+          </FormMessage>
+        ) : null}
+
+        {sessionRevoked ? (
+          <FormMessage variant="destructive">
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.login.session_revoked" />
+            </Suspense>
+          </FormMessage>
+        ) : null}
+
+        {errorMessage ? (
+          <FormMessage variant="destructive">{errorMessage}</FormMessage>
+        ) : null}
+
+        <Button className="justify-self-start" type="submit">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.auth.login.submit" />
+          </Suspense>
+        </Button>
+      </form>
+    </AuthScreen.Body>
   );
 };
 
-const LoginPage = (props: LoginPageProps) => (
+const LoginPage = ({ searchParams }: LoginPageProps) => (
   <AuthScreen.Root>
     <AuthScreen.Main>
       <AuthScreen.Header>
@@ -181,8 +186,18 @@ const LoginPage = (props: LoginPageProps) => (
       </AuthScreen.Header>
 
       <Suspense fallback={<LoginPageFallback />}>
-        <LoginPageContent {...props} />
+        <LoginPageContent searchParams={searchParams} />
       </Suspense>
+
+      <AuthScreen.Footer>
+        <p>
+          <Suspense
+            fallback={<ForgotPasswordLink href={FORGOT_PASSWORD_PATH} />}
+          >
+            <ForgotPasswordLinkForQuery searchParams={searchParams} />
+          </Suspense>
+        </p>
+      </AuthScreen.Footer>
     </AuthScreen.Main>
 
     <AuthScreen.Panel>

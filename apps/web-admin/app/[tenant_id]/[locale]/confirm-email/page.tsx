@@ -8,16 +8,13 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { confirmAdminEmailChange } from "#lib/admin-auth";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.auth.confirm_email.title") };
 };

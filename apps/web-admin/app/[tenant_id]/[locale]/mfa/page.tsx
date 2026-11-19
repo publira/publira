@@ -7,8 +7,7 @@ import { Suspense } from "react";
 import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { readStoredMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -16,9 +15,7 @@ import { MfaEnrollFlow } from "./_components/mfa-enroll-flow";
 import { MfaVerifyForm } from "./_components/mfa-verify-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.auth.mfa.title") };
 };
