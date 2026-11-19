@@ -27,6 +27,7 @@ import type {
 import { getLocale } from "#lib/locale";
 
 import { episodePath } from "../_lib/episode-path";
+import { laterFreeEpisode } from "../_lib/next-free-episode";
 
 /**
  * Three covers, one row on a phone. The panel sits under the pages a reader
@@ -35,12 +36,12 @@ import { episodePath } from "../_lib/episode-path";
 const RELATED_SERIES_COUNT = 3;
 
 /**
- * One of the episodes either side of this one, as a row of the same shape the
- * series page lists episodes in: the work's artwork, the number, the title,
- * and what it costs.
+ * One of the episodes either side of this one, or the next free one, as a row
+ * of the same shape the series page lists episodes in: the work's artwork,
+ * the number, the title, and what it costs.
  *
  * Episodes carry no artwork of their own anywhere in the data model, so every
- * row shows the series' eye-catch; what tells the two rows apart is the
+ * row shows the series' eye-catch; what tells the rows apart is the
  * `EpisodeNeighborDirection` above the title.
  */
 const EpisodeNeighborRow = ({
@@ -113,18 +114,23 @@ const EpisodeNeighborDirection = ({ children }: { children: ReactNode }) => (
 
 /**
  * What the reader is offered once the pages run out: the episodes either side
- * of this one, and — at the end of the series — the news that there is none
- * after it and the control that asks to be told when there is.
+ * of this one, the first later one they can read for free where the next one
+ * is paid, and — at the end of the series — the news that there is none after
+ * it and the control that asks to be told when there is.
  *
  * It is an ordinary element under the reader rather than an extra page inside
  * it, so the page count the viewer reports and the last page the read beacon
  * watches for are the ones the episode actually has. That also keeps it out of
  * the locked body: an episode nobody may read still ends somewhere, and the
  * series is still the way on from it.
+ *
+ * The free row is drawn under a locked episode as well, where the gate already
+ * links to the same episode, so the list reads the same wherever it is drawn.
  */
 export const EpisodeEndPanel = async ({
   episode,
   nextEpisode,
+  nextFreeEpisode,
   previousEpisode,
   sales,
   series,
@@ -136,6 +142,11 @@ export const EpisodeEndPanel = async ({
   episode: EpisodeDetail;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
+  /**
+   * The first later episode every reader may open, as `GetEpisodeDetail`
+   * names it; absent when none is.
+   */
+  nextFreeEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
   /** Where the tenant can sell an episode right now. */
@@ -157,6 +168,8 @@ export const EpisodeEndPanel = async ({
   const locale = await getLocale();
 
   const returnTo = episodePath(series.publicId, episode.publicId);
+
+  const freeEpisode = laterFreeEpisode(nextEpisode, nextFreeEpisode);
 
   return (
     <div className="grid gap-10">
@@ -207,6 +220,21 @@ export const EpisodeEndPanel = async ({
                 <EpisodeNeighborDirection>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="storefront.episode.navigation.next" />
+                  </Suspense>
+                </EpisodeNeighborDirection>
+              </EpisodeNeighborRow>
+            ) : null}
+            {freeEpisode ? (
+              <EpisodeNeighborRow
+                sales={sales}
+                episode={freeEpisode}
+                locale={locale}
+                series={series}
+                timeZone={timeZone}
+              >
+                <EpisodeNeighborDirection>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="storefront.episode.navigation.next_free" />
                   </Suspense>
                 </EpisodeNeighborDirection>
               </EpisodeNeighborRow>

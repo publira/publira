@@ -6147,6 +6147,7 @@
       "end": {
         "back_to_series": "시리즈로 돌아가기",
         "more_episodes": "다른 에피소드",
+        "next_free_episode": "{$number}화 무료로 읽기",
         "up_to_date_description": "“{$title}”에는 아직 다음 에피소드가 없습니다. 팔로우하면 다음 화가 올라올 때 알려드립니다.",
         "up_to_date_title": "최신 에피소드까지 읽었습니다"
       },
@@ -6188,6 +6189,7 @@
       "navigation": {
         "next": "다음 에피소드",
         "next_hint": "키를 한 번 더 누르면 다음 에피소드를 엽니다.",
+        "next_free": "다음 무료 에피소드",
         "previous": "이전 에피소드",
         "previous_hint": "키를 한 번 더 누르면 이전 에피소드를 엽니다."
       },

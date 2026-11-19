@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -16,19 +16,28 @@ import type { EpisodeNeighborItem, EpisodeSeriesSummary } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 
 import { episodePath } from "../_lib/episode-path";
+import { laterFreeEpisode } from "../_lib/next-free-episode";
 
 /**
  * The next episode, offered on the page after the last one as the reading
  * action: the facts the row under the reader gives, over a button the same
  * size as the other controls on this page.
  *
- * The whole block is one link, so the artwork and the title open the episode
- * as the button does. On the last published episode the button stays,
- * disabled but focusable, and says below it that the reader has caught up.
+ * The button is the block's one link to the episode, its hit area stretched
+ * over the whole block, so the artwork and the title open the episode as the
+ * button does and the facts above it describe the link rather than repeating
+ * it. On the last published episode the button stays, disabled but focusable,
+ * and says below it that the reader has caught up.
+ *
+ * Where the next episode is paid and a later one is free, a second button
+ * beside it opens that one, so a reader who would rather not buy is not sent
+ * back to the series page to find it. It is outlined rather than filled: the
+ * next episode stays the reading action, the one filled button the page has.
  */
 export const EpisodeNextEpisodeOffer = async ({
   episodePublicId,
   nextEpisode,
+  nextFreeEpisode,
   sales,
   series,
   tenantId,
@@ -37,6 +46,11 @@ export const EpisodeNextEpisodeOffer = async ({
   episodePublicId: string;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
+  /**
+   * The first later episode every reader may open, as `GetEpisodeDetail`
+   * names it; absent when none is.
+   */
+  nextFreeEpisode?: EpisodeNeighborItem;
   /** Where the tenant can sell an episode right now. */
   sales: TenantSales;
   series: EpisodeSeriesSummary;
@@ -88,19 +102,20 @@ export const EpisodeNextEpisodeOffer = async ({
 
   const locale = await getLocale();
 
+  const freeEpisode = laterFreeEpisode(nextEpisode, nextFreeEpisode);
+
+  const factsId = `next-episode-${nextEpisode.publicId}`;
+
   return (
-    <LocaleLink
-      className="group grid w-full max-w-64 justify-items-center gap-3 text-center"
-      href={episodePath(series.publicId, nextEpisode.publicId)}
-    >
+    <div className="group relative grid w-full max-w-sm justify-items-center gap-3 text-center">
       <EyeCatchFrame
         alt=""
-        className="aspect-16/9 w-full rounded-surface"
+        className="aspect-16/9 w-full max-w-64 rounded-surface"
         preferredType="landscape"
         sizes="256px"
         variants={series.eyeCatchImageVariants}
       />
-      <span className="grid gap-1">
+      <span className="grid max-w-64 gap-1" id={factsId}>
         <span className="flex justify-center gap-3 text-sm text-muted-foreground tabular-nums">
           <span>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -125,11 +140,42 @@ export const EpisodeNextEpisodeOffer = async ({
           {nextEpisode.title}
         </span>
       </span>
-      <span className={buttonVariants({ variant: "secondary" })}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-          <Message message="storefront.episode.navigation.next" />
-        </Suspense>
+      <span className="flex flex-wrap justify-center gap-3">
+        <LinkButton
+          aria-describedby={factsId}
+          className="after:absolute after:inset-0"
+          render={
+            <LocaleLink
+              href={episodePath(series.publicId, nextEpisode.publicId)}
+            />
+          }
+          variant="secondary"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="storefront.episode.navigation.next" />
+          </Suspense>
+        </LinkButton>
+        {freeEpisode ? (
+          // Positioned, so it sits above the next episode's stretched hit area
+          // rather than under it.
+          <LinkButton
+            className="relative"
+            render={
+              <LocaleLink
+                href={episodePath(series.publicId, freeEpisode.publicId)}
+              />
+            }
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message
+                message="storefront.episode.end.next_free_episode"
+                values={{ number: freeEpisode.orderIndex }}
+              />
+            </Suspense>
+          </LinkButton>
+        ) : null}
       </span>
-    </LocaleLink>
+    </div>
   );
 };
