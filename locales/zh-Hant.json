@@ -7753,6 +7753,7 @@
       },
       "creator_access": "您作為作者可以閱讀本章",
       "end": {
+        "next_free_episode": "免費閱讀第{$number}章",
         "up_next": "接下來",
         "up_to_date_description": "《{$title}》還沒有下一章。",
         "up_to_date_title": "已看到最新一章"

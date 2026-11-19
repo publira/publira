@@ -1094,6 +1094,48 @@ void main() {
     await pumpUntilNoPendingFrameCallbacks(tester);
   });
 
+  final nextFree = find.byKey(const ValueKey('episode-end-next-free'));
+
+  /// The neighbour the read of the fixture episode [episodeId] would name,
+  /// priced at [price] and paid when that is not 0.
+  EpisodeNeighbor neighborOf(String episodeId, {int price = 0}) {
+    final episode = catalog.episodes[episodeKey(seriesId, episodeId)]!.episode;
+    return EpisodeNeighbor(
+      id: episode.id,
+      title: episode.title,
+      orderIndex: episode.orderIndex,
+      price: price,
+      isFree: price == 0,
+    );
+  }
+
+  /// The fixture body of [episodeId] read as followed by [next], with
+  /// [nextFree] as the first free episode after it.
+  void followEpisode(
+    String episodeId, {
+    required EpisodeNeighbor next,
+    required EpisodeNeighbor nextFree,
+  }) {
+    final key = episodeKey(seriesId, episodeId);
+    final detail = catalog.episodes[key]!;
+    catalog.episodes[key] = EpisodeDetail(
+      episode: detail.episode,
+      seriesId: detail.seriesId,
+      seriesTitle: detail.seriesTitle,
+      access: detail.access,
+      images: detail.images,
+      previewImages: detail.previewImages,
+      previewPages: detail.previewPages,
+      previousEpisode: detail.previousEpisode,
+      nextEpisode: next,
+      nextFreeEpisode: nextFree,
+      imageRequestHeaders: detail.imageRequestHeaders,
+      creators: detail.creators,
+      readingDirection: detail.readingDirection,
+      spreadStartIndex: detail.spreadStartIndex,
+    );
+  }
+
   testWidgets('turning past the last page offers the next episode', (
     tester,
   ) async {
@@ -1104,6 +1146,8 @@ void main() {
     expect(find.text('Up next'), findsOneWidget);
     expect(find.text('${fixtureSeries.first.title} #2'), findsOneWidget);
     expect(find.text('Free'), findsOneWidget);
+    // The next episode is the free one after this, so it is offered once.
+    expect(nextFree, findsNothing);
     // The panel is not a page of the episode, so the counter still names the
     // last one the reader read.
     expect(find.text('3 / 3'), findsOneWidget);
@@ -1120,7 +1164,53 @@ void main() {
 
     expect(find.text('¥500'), findsOneWidget);
     expect(find.text('Free'), findsNothing);
+    // No episode after the paid one is free, so there is nothing else to take.
+    expect(nextFree, findsNothing);
+    expect(find.textContaining('for free'), findsNothing);
     await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
+  testWidgets('a paid next episode is offered beside a later free one', (
+    tester,
+  ) async {
+    followEpisode(
+      episodeId,
+      next: neighborOf('$seriesId-ep-2', price: 300),
+      nextFree: neighborOf('$seriesId-ep-4'),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+    await turnToEnd(tester);
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('episode-end-next')),
+        matching: find.text('¥300'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: nextFree,
+        matching: find.text('Read episode 4 for free'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(nextFree);
+    // Episode 3 is the first free one in the list after episode 1; the read
+    // naming episode 4 is what the offer follows.
+    await pumpUntilTrue(
+      tester,
+      () =>
+          router.state.uri.path ==
+          AppRoutes.episodeViewerPath(seriesId, '$seriesId-ep-4'),
+      description: 'the free episode to open',
+    );
+    await pumpUntilRouteSettled(tester, pageView);
+
+    expect(find.text('${fixtureSeries.first.title} #4'), findsOneWidget);
+    expect(find.text('1 / 3'), findsOneWidget);
   });
 
   testWidgets('the last episode of a series says the reader is up to date', (
