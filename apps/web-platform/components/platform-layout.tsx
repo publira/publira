@@ -7,11 +7,12 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { getMessages } from "#lib/get-messages";
 import { getMessagesFor } from "#lib/messages";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
-import { getPlatformLocale } from "../lib/locale";
+import { getLocale } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
 import {
   countUnreadNotifications,
@@ -37,7 +38,7 @@ export const PlatformUser = async () => {
     redirect("/login");
   }
 
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
 
   return (
@@ -80,7 +81,7 @@ export const PlatformUser = async () => {
 };
 
 export const PlatformNotificationBell = async () => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [list, unread, t] = await Promise.all([
     listNotifications(locale, { limit: notificationMenuLimit }),
@@ -175,8 +176,7 @@ export const PlatformNotificationBell = async () => {
 };
 
 const PlatformMobileNavigation = async () => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return (
     <>

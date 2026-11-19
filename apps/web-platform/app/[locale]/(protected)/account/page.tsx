@@ -7,16 +7,14 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getPlatformMfaStatus } from "#lib/platform-mfa";
 
 import { EmailChangeForm } from "./_components/email-change-form";
 import { MfaSettingsCard } from "./_components/mfa-settings-card";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.settings.account_title") };
 };

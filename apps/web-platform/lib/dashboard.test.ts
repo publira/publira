@@ -10,13 +10,13 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockGetDashboardSummary,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetDashboardSummary: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockVerifyPlatformSession: vi.fn(),
 }));
 
@@ -30,7 +30,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -48,7 +48,7 @@ vi.mock("./api-client", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",
@@ -134,7 +134,7 @@ describe("getPlatformDashboardSummary", () => {
   });
 
   it("words a failure in the operator's locale, so ja is Japanese", async () => {
-    mockGetPlatformLocale.mockResolvedValueOnce("ja");
+    mockGetLocale.mockResolvedValueOnce("ja");
     mockGetDashboardSummary.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );

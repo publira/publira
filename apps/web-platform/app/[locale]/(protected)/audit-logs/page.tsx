@@ -34,8 +34,9 @@ import type {
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getMessages } from "#lib/get-messages";
 import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { searchTestFailureMessage } from "#lib/search-settings";
@@ -56,8 +57,7 @@ import { resolveAuditLogTenantFilter } from "./_lib/tenant-filter";
 import type { AuditLogTenantFilter } from "./_lib/tenant-filter";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.audit.title") };
 };
@@ -148,7 +148,7 @@ const AuditLogsTenantFilter = async ({
   removeHref: string;
   tenantFilter: Exclude<AuditLogTenantFilter, { kind: "none" }>;
 }) => {
-  const t = await getMessagesFor(await getPlatformLocale());
+  const t = await getMessages();
 
   return (
     <p className="flex h-10 max-w-full items-center gap-1 rounded-control bg-muted px-3 text-sm">
@@ -177,7 +177,7 @@ const AuditLogsFilters = async ({
   hasFilter: boolean;
   tenantFilter: AuditLogTenantFilter;
 }) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, actionItems] = await Promise.all([
     getMessagesFor(locale),
@@ -264,7 +264,7 @@ const AuditLogsPagination = async ({
   previousHref?: string;
   result: ListPlatformAuditLogsResult;
 }) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, summaryText] = await Promise.all([
     getMessagesFor(locale),
@@ -454,10 +454,7 @@ const AuditLogsTableBody = async ({
 const AuditLogsContent = async ({
   searchParams,
 }: Pick<AuditLogsPageProps, "searchParams">) => {
-  const [search, locale] = await Promise.all([
-    searchParams,
-    getPlatformLocale(),
-  ]);
+  const [search, locale] = await Promise.all([searchParams, getLocale()]);
 
   const actionItems = await getAuditActionOptions(locale);
 

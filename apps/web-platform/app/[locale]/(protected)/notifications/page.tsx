@@ -7,8 +7,8 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
@@ -19,8 +19,7 @@ import {
 } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.notifications.title") };
 };
@@ -31,7 +30,7 @@ const NotificationManagerData = async ({
   searchParams,
 }: Pick<NotificationsPageProps, "searchParams">) => {
   const { token } = parseNotificationsSearchParams(await searchParams);
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(locale, { token }),

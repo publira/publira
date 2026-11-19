@@ -9,7 +9,7 @@ import {
   withServiceHeaders,
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export interface PlatformDashboardRecentEvent {
@@ -104,7 +104,7 @@ export const getPlatformDashboardSummary = async (
   await verifyPlatformSession();
 
   return getPlatformDashboardSummaryForLocale(
-    await getPlatformLocale(),
+    await getLocale(),
     normalizeRecentEventsLimit(input.recentEventsLimit)
   );
 };

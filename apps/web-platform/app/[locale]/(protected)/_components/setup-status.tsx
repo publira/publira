@@ -16,7 +16,7 @@ import {
   webPushConfigurationState,
 } from "#lib/configuration-status";
 import { getPlatformEmailSettings } from "#lib/email-settings";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import {
   getPlatformPolicy,
   getPlatformRetentionDefaults,
@@ -304,7 +304,7 @@ const SearchRow = async () => {
 };
 
 const WebPushRow = async () => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const result = await getPlatformWebPushSettings(locale);
   await redirectToLoginIfSessionRejected(result);
 

@@ -12,7 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
-import { getPlatformLocale } from "../lib/locale";
+import { getLocale } from "../lib/locale";
 import {
   countUnreadNotifications,
   listNotifications,
@@ -34,7 +34,7 @@ vi.mock("../lib/auth-session", () => ({
 }));
 
 vi.mock("../lib/locale", () => ({
-  getPlatformLocale: vi.fn(() => Promise.resolve("en")),
+  getLocale: vi.fn(() => Promise.resolve("en")),
   loadPlatformMessages: (locale: Locale) =>
     Promise.resolve(sharedCatalog(locale)),
 }));
@@ -72,7 +72,7 @@ afterEach(() => {
 
 describe("PlatformLayout", () => {
   beforeEach(() => {
-    vi.mocked(getPlatformLocale).mockResolvedValue("en");
+    vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(getPlatformCurrentOperator).mockResolvedValue({
       ok: true,
       operator: {
@@ -160,7 +160,7 @@ describe("PlatformUser", () => {
   ] as const)(
     "interpolates the name into the account menu aria-label in locale=%s",
     async (locale, expected) => {
-      vi.mocked(getPlatformLocale).mockResolvedValue(locale);
+      vi.mocked(getLocale).mockResolvedValue(locale);
       vi.mocked(getPlatformCurrentOperator).mockResolvedValue({
         ok: true,
         operator: {
@@ -184,7 +184,7 @@ describe("PlatformLocaleSwitcher", () => {
   ] as const)(
     "names the display-language control in locale=%s",
     async (locale, expected) => {
-      vi.mocked(getPlatformLocale).mockResolvedValue(locale);
+      vi.mocked(getLocale).mockResolvedValue(locale);
 
       render(await PlatformLocaleSwitcher());
 
@@ -195,7 +195,7 @@ describe("PlatformLocaleSwitcher", () => {
 
 describe("PlatformNotificationBell", () => {
   it("shows the five most recent notifications in the menu and links to the notification list", async () => {
-    vi.mocked(getPlatformLocale).mockResolvedValue("en");
+    vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(countUnreadNotifications).mockResolvedValue({
       ok: true,
       unreadCount: 1,

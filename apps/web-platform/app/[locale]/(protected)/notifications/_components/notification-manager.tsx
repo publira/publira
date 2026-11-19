@@ -10,7 +10,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 import { defaultNotificationsPageSize } from "../_lib/search-params";
@@ -200,7 +200,7 @@ export const NotificationManager = async ({
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
   const hasPageLinks = Boolean(previousHref || nextHref);
 
