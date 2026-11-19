@@ -137,10 +137,22 @@ const previousEpisode: EpisodeNeighborItem = {
   title: "First light",
 };
 
+/** A later episode of the series that is free, past a paid next one. */
+const laterFreeEpisode: EpisodeNeighborItem = {
+  isFree: true,
+  orderIndex: 5,
+  price: 0,
+  publicId: "EPISODE_005",
+  purchaseSurface: "all",
+  title: "Fifth light",
+};
+
 const renderPanel = async ({
+  freeNeighbor,
   neighbor,
   previousNeighbor,
 }: {
+  freeNeighbor?: EpisodeNeighborItem;
   neighbor?: EpisodeNeighborItem;
   previousNeighbor?: EpisodeNeighborItem;
 } = {}) =>
@@ -149,6 +161,7 @@ const renderPanel = async ({
       episode,
       series,
       nextEpisode: neighbor,
+      nextFreeEpisode: freeNeighbor,
       previousEpisode: previousNeighbor,
       sales: {
         app: true,
@@ -183,6 +196,41 @@ describe("EpisodeEndPanel", () => {
     ).toBe("/series/SERIES_001/episodes/EPISODE_001");
     expect(screen.getByText("Episode 3")).toBeDefined();
     expect(screen.getByText("Episode 1")).toBeDefined();
+  });
+
+  it("lists a later free episode after a paid next one, under a direction of its own", async () => {
+    await renderPanel({
+      freeNeighbor: laterFreeEpisode,
+      neighbor: { ...nextEpisode, isFree: false, price: 500 },
+      previousNeighbor: previousEpisode,
+    });
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.textContent).toContain("Next episode");
+    expect(rows[1]?.textContent).toContain("Third light");
+    expect(rows[2]?.textContent).toContain("Next free episode");
+    expect(rows[2]?.textContent).toContain("Episode 5");
+    expect(rows[2]?.textContent).toContain("Free");
+    expect(
+      screen.getByRole("link", { name: /Fifth light/u }).getAttribute("href")
+    ).toBe("/series/SERIES_001/episodes/EPISODE_005");
+  });
+
+  it("lists the next episode once when it is itself the next free one", async () => {
+    await renderPanel({ freeNeighbor: nextEpisode, neighbor: nextEpisode });
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText("Next free episode")).toBeNull();
+  });
+
+  it("adds no row when no later episode is free", async () => {
+    await renderPanel({
+      neighbor: { ...nextEpisode, isFree: false, price: 500 },
+    });
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText("Next free episode")).toBeNull();
   });
 
   it("offers to pass this episode on, whichever episode it is", async () => {

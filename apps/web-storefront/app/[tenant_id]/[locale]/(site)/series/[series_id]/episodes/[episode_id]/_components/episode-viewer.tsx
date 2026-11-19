@@ -59,6 +59,7 @@ export const EpisodeViewer = async ({
   episode,
   images,
   nextEpisode,
+  nextFreeEpisode,
   previousEpisode,
   renewPageUrls,
   sales,
@@ -74,6 +75,8 @@ export const EpisodeViewer = async ({
   images: EpisodeImageItem[];
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
+  /** The first later episode every reader may open; absent when none is. */
+  nextFreeEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
   /** Reads the pages' URLs again; see `EpisodeComicViewer`. */
@@ -178,6 +181,7 @@ export const EpisodeViewer = async ({
               sales={sales}
               episodePublicId={episode.publicId}
               nextEpisode={nextEpisode}
+              nextFreeEpisode={nextFreeEpisode}
               series={series}
               tenantId={tenantId}
               timeZone={timeZone}

@@ -573,6 +573,7 @@ const EpisodeContent = async (
                 sales={sales}
                 episode={episode}
                 nextEpisode={nextEpisode}
+                nextFreeEpisode={nextFreeEpisode}
                 previousEpisode={previousEpisode}
                 series={series}
                 shareText={shareText(t, locale, series.title, workCredits)}

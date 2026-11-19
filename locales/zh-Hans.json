@@ -6147,6 +6147,7 @@
       "end": {
         "back_to_series": "返回系列",
         "more_episodes": "更多章节",
+        "next_free_episode": "免费阅读第{$number}章",
         "up_to_date_description": "《{$title}》还没有下一章。关注该系列，新章节发布时即可收到通知。",
         "up_to_date_title": "已看到最新一章"
       },
@@ -6188,6 +6189,7 @@
       "navigation": {
         "next": "下一章",
         "next_hint": "再次按下该键即可打开下一章。",
+        "next_free": "下一个免费章节",
         "previous": "上一章",
         "previous_hint": "再次按下该键即可打开上一章。"
       },

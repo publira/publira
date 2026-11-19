@@ -6147,6 +6147,7 @@
       "end": {
         "back_to_series": "Back to the series",
         "more_episodes": "More episodes",
+        "next_free_episode": "Read episode {$number} for free",
         "up_to_date_description": "“{$title}” has no episode after this one yet. Follow the series to hear when the next one arrives.",
         "up_to_date_title": "You are up to date"
       },
@@ -6188,6 +6189,7 @@
       "navigation": {
         "next": "Next episode",
         "next_hint": "Press the key again to open the next episode.",
+        "next_free": "Next free episode",
         "previous": "Previous episode",
         "previous_hint": "Press the key again to open the previous episode."
       },

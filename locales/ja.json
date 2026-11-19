@@ -6147,6 +6147,7 @@
       "end": {
         "back_to_series": "シリーズに戻る",
         "more_episodes": "ほかのエピソード",
+        "next_free_episode": "第{$number}話を無料で読む",
         "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません。フォローすると次の更新をお知らせします。",
         "up_to_date_title": "最新のエピソードまで読み終えました"
       },
@@ -6188,6 +6189,7 @@
       "navigation": {
         "next": "次のエピソード",
         "next_hint": "もう一度キーを押すと次のエピソードを開きます。",
+        "next_free": "次の無料エピソード",
         "previous": "前のエピソード",
         "previous_hint": "もう一度キーを押すと前のエピソードを開きます。"
       },

@@ -71,12 +71,32 @@ const nextEpisode: EpisodeNeighborItem = {
   title: "Third light",
 };
 
-const renderOffer = async (neighbor?: EpisodeNeighborItem) =>
+/** A later episode of the series that is free, past a paid next one. */
+const laterFreeEpisode: EpisodeNeighborItem = {
+  isFree: true,
+  orderIndex: 5,
+  price: 0,
+  publicId: "EPISODE_005",
+  purchaseSurface: "all",
+  title: "Fifth light",
+};
+
+const paidNextEpisode: EpisodeNeighborItem = {
+  ...nextEpisode,
+  isFree: false,
+  price: 500,
+};
+
+const renderOffer = async (
+  neighbor?: EpisodeNeighborItem,
+  freeNeighbor?: EpisodeNeighborItem
+) =>
   render(
     await EpisodeNextEpisodeOffer({
       series,
       episodePublicId: "EPISODE_002",
       nextEpisode: neighbor,
+      nextFreeEpisode: freeNeighbor,
       sales: {
         app: true,
         currency: "JPY",
@@ -160,6 +180,34 @@ describe("EpisodeNextEpisodeOffer", () => {
     const link = screen.getByRole("link", { name: /Next episode/u });
     expect(link.textContent).toContain("Free");
     expect(link.textContent).not.toContain("Sold in the app");
+  });
+
+  it("offers a later free episode under a paid next one, which stays the reading action", async () => {
+    await renderOffer(paidNextEpisode, laterFreeEpisode);
+
+    expect(
+      screen.getByRole("link", { name: /Next episode/u }).getAttribute("href")
+    ).toBe("/series/SERIES_001/episodes/EPISODE_003");
+    expect(
+      screen
+        .getByRole("link", { name: "Read episode 5 for free" })
+        .getAttribute("href")
+    ).toBe("/series/SERIES_001/episodes/EPISODE_005");
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+  });
+
+  it("makes one offer when the next episode is itself the next free one", async () => {
+    await renderOffer(nextEpisode, nextEpisode);
+
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /for free/u })).toBeNull();
+  });
+
+  it("makes one offer when no later episode is free", async () => {
+    await renderOffer(paidNextEpisode);
+
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /for free/u })).toBeNull();
   });
 
   it("keeps the control on the last episode, disabled but still focusable", async () => {

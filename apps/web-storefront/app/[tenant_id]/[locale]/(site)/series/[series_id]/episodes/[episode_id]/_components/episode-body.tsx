@@ -141,7 +141,11 @@ export const EpisodeBody = async ({
   labelPublicId: string;
   /** Absent at the ends of the series; the viewer's own chrome links to them. */
   nextEpisode?: EpisodeNeighborItem;
-  /** What the gate offers instead of a locked body, when there is one. */
+  /**
+   * The first later episode every reader may open: what the gate offers
+   * instead of a locked body, and what the viewer's end offers beside a paid
+   * next episode.
+   */
   nextFreeEpisode?: EpisodeNeighborItem;
   /** The providers the site's checkout pays through. */
   paymentProviders: readonly PaymentProviderOption[];
@@ -181,6 +185,7 @@ export const EpisodeBody = async ({
         episode={episode}
         images={images}
         nextEpisode={nextEpisode}
+        nextFreeEpisode={nextFreeEpisode}
         previousEpisode={previousEpisode}
         series={series}
         timeZone={timeZone}
@@ -301,6 +306,7 @@ export const EpisodeBody = async ({
         episode={episode}
         images={viewer.value.images}
         nextEpisode={nextEpisode}
+        nextFreeEpisode={nextFreeEpisode}
         previousEpisode={previousEpisode}
         renewPageUrls={
           // Only an entitled body's media token runs out while the episode is

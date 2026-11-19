@@ -1,7 +1,7 @@
 import type { Locator, Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { querySql, runSql } from "../src/db";
+import { applyScenarioSql, querySql, runSql } from "../src/db";
 import {
   revalidateStorefrontTags,
   tenantSeriesDetailTag,
@@ -10,6 +10,13 @@ import {
 import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import {
+  FINISHED_FREE_EPISODE,
+  LATER_FREE_EPISODE,
+  NEXT_FREE_EPISODE_SCENARIO,
+  NEXT_FREE_EPISODE_SERIES,
+  PAID_NEXT_EPISODE,
+} from "../src/scenarios/next-free-episode";
 import {
   FREE_LAST_EPISODE_PATH,
   FREE_LAST_EPISODE_SERIES_TITLE,
@@ -864,6 +871,73 @@ test.describe("web-storefront episode reading", () => {
     await expect(
       page.getByText("This episode is paid"),
       "the gate still decides who reads a paid body"
+    ).toBeVisible();
+  });
+
+  test("a free episode before a paid one also offers the next free episode, from both ends of the reader", async ({
+    page,
+  }) => {
+    // The scenario prices two episodes of the series, a write no app saw, so
+    // the series' cached reads are dropped the way the console's save drops
+    // them. Revalidation marks an entry stale rather than dropping it, so the
+    // loads that follow may still be the all-free series'.
+    applyScenarioSql(NEXT_FREE_EPISODE_SCENARIO);
+    await revalidateStorefrontTags([
+      tenantSeriesDetailTag(SEED_TENANT_ID),
+      tenantSeriesTag(SEED_TENANT_ID, NEXT_FREE_EPISODE_SERIES.publicId),
+    ]);
+
+    const freeRow = page.getByRole("link", {
+      name: LATER_FREE_EPISODE.title,
+    });
+
+    await expect
+      .poll(
+        async () => {
+          await page.goto(storefrontPath(FINISHED_FREE_EPISODE.path));
+
+          return await freeRow.count();
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+
+    await expect(
+      freeRow,
+      "More episodes lists the free one under a direction of its own"
+    ).toContainText("Next free episode");
+    await expect(freeRow).toHaveAttribute(
+      "href",
+      storefrontPath(LATER_FREE_EPISODE.path)
+    );
+    await expect(
+      page.getByRole("link", { name: PAID_NEXT_EPISODE.title }),
+      "beside the next episode, which keeps its price"
+    ).toContainText(PAID_NEXT_EPISODE.priceLabel);
+
+    const nextFreeEpisode = endPage(page).getByRole("link", {
+      name: `Read episode ${LATER_FREE_EPISODE.number} for free`,
+    });
+
+    expect(
+      await turnToEndPage(page, nextFreeEpisode),
+      "the page after the last one offers the free episode"
+    ).toBe(true);
+    await expect(
+      endPage(page).getByRole("link", { name: PAID_NEXT_EPISODE.title }),
+      "under the next episode, which stays the reading action"
+    ).toBeVisible();
+    await expect(nextFreeEpisode).toHaveAttribute(
+      "href",
+      storefrontPath(LATER_FREE_EPISODE.path)
+    );
+    await nextFreeEpisode.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`${LATER_FREE_EPISODE.path}$`, "u")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: LATER_FREE_EPISODE.title })
     ).toBeVisible();
   });
 
