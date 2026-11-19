@@ -112,10 +112,10 @@ export interface SetupState {
  * is unreachable.
  *
  * A proxy that rejects answers a bare `500` for every path it matches: no page
- * renders, so neither `app/error.tsx` nor `global-error.tsx` is reached, and
- * the console cannot even show its login screen. Routing therefore falls back
- * to the last state the API confirmed, the same shape `web-admin` uses to keep
- * serving on its cached tenant resolution.
+ * renders, so neither `app/[locale]/error.tsx` nor `global-error.tsx` is
+ * reached, and the console cannot even show its login screen. Routing therefore
+ * falls back to the last state the API confirmed, the same shape `web-admin`
+ * uses to keep serving on its cached tenant resolution.
  *
  * A process that has never had an answer falls back to "completed", so the
  * outage sends the operator to `/login` rather than re-opening the setup form

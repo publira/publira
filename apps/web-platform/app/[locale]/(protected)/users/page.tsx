@@ -1,0 +1,634 @@
+import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import { Badge } from "@publira/ui-components/badge";
+import { Button, LinkButton } from "@publira/ui-components/button";
+import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
+import * as SectionError from "@publira/ui-components/section-error";
+import { Select } from "@publira/ui-components/select";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import * as Table from "@publira/ui-components/table";
+import {
+  endOfDayIsoString,
+  formatDate,
+  startOfDayIsoString,
+} from "@publira/utils";
+import type { Metadata } from "next";
+import Form from "next/form";
+import Link from "next/link";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { PaginationControls } from "#components/pagination-controls";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import type { GetPlatformTenantResult } from "#lib/tenants";
+import { getPlatformTenant } from "#lib/tenants";
+import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
+import {
+  listPlatformEndUsers,
+  searchPlatformTenantFilterOptions,
+} from "#lib/users";
+import type {
+  ListPlatformEndUsersResult,
+  PlatformEndUserSummary,
+  PlatformTenantFilterOption,
+  SearchPlatformTenantFilterOptionsResult,
+} from "#lib/users";
+
+import { emptyListCause } from "./_lib/empty-list";
+import type { EmptyListCause } from "./_lib/empty-list";
+import { buildUsersPath, parseUsersFilters } from "./_lib/search-params";
+import type { UsersFilters } from "./_lib/search-params";
+import { resolveTenantFilter, resolvedTenantId } from "./_lib/tenant-filter";
+import type { TenantFilterResolution } from "./_lib/tenant-filter";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const t = await getMessagesFor(locale);
+
+  return { title: t("platform.users.title") };
+};
+
+const UsersTableSkeleton = () => (
+  <div className="grid gap-4">
+    <div className="flex flex-wrap gap-3">
+      <Skeleton className="h-10 w-64" />
+      <Skeleton className="h-10 w-44" />
+      <Skeleton className="h-10 w-56" />
+      <Skeleton className="h-10 w-44" />
+      <Skeleton className="h-10 w-44" />
+    </div>
+    <Table.Skeleton />
+  </div>
+);
+
+/**
+ * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
+ * calendar day has to be pinned to a zone before it can become an RFC3339
+ * instant. The zone is the platform default, the same one the console
+ * formats its timestamps with, so a filtered day matches what the screens show
+ * regardless of the browser's zone. Tenant zones are a separate concern.
+ */
+const createdRangeStart = (
+  date: string,
+  timeZone: string
+): string | undefined => startOfDayIsoString(date, timeZone) || undefined;
+
+const createdRangeEnd = (date: string, timeZone: string): string | undefined =>
+  endOfDayIsoString(date, timeZone) || undefined;
+
+type UsersPageProps = PageProps<"/[locale]/users">;
+
+interface TenantFilterMessage {
+  text: string;
+  variant: "destructive" | "info";
+}
+
+const emptyTenantSearch = {
+  hasMore: false,
+  ok: true,
+  tenants: [],
+} as const satisfies SearchPlatformTenantFilterOptionsResult;
+
+/** No tenant filter is selected, so there is no tenant to read. */
+const emptySelectedTenant = {
+  ok: true,
+  tenant: null,
+} as const satisfies GetPlatformTenantResult;
+
+const emptyUsersListResult = {
+  nextToken: "",
+  ok: true as const,
+  previousToken: "",
+  users: [],
+} satisfies ListPlatformEndUsersResult;
+
+interface UsersPageHrefs {
+  nextHref?: string;
+  previousHref?: string;
+}
+
+const buildUsersPageHrefs = (
+  filters: UsersFilters,
+  result: ListPlatformEndUsersResult,
+  skip: boolean
+): UsersPageHrefs => {
+  if (skip) {
+    return {};
+  }
+
+  return {
+    nextHref: result.nextToken
+      ? buildUsersPath({ ...filters, token: result.nextToken })
+      : undefined,
+    previousHref: result.previousToken
+      ? buildUsersPath({ ...filters, token: result.previousToken })
+      : undefined,
+  };
+};
+
+const buildSummaryText = async (
+  result: ListPlatformEndUsersResult,
+  usersLength: number,
+  locale: Locale
+): Promise<string> => {
+  if (!result.ok) {
+    return "-";
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t("platform.users.showing", { count: String(usersLength) });
+};
+
+const emptyListMessageKeys = {
+  email: "platform.users.empty_email",
+  filtered: "platform.users.empty_filtered",
+  none: "platform.users.empty",
+} as const satisfies Record<EmptyListCause, string>;
+
+const buildEmptyMessage = async (
+  cause: EmptyListCause,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return t(emptyListMessageKeys[cause]);
+};
+
+const buildTenantFilterItems = ({
+  selectedName,
+  tenantId,
+  tenantQuery,
+  tenantSearch,
+}: {
+  selectedName: string;
+  tenantId: string;
+  tenantQuery: string;
+  tenantSearch: SearchPlatformTenantFilterOptionsResult;
+}): PlatformTenantFilterOption[] => {
+  if (tenantQuery && tenantSearch.ok) {
+    return tenantSearch.tenants;
+  }
+
+  if (tenantId) {
+    return [
+      {
+        name: selectedName || tenantId,
+        publicId: tenantId,
+      },
+    ];
+  }
+
+  return [];
+};
+
+const buildTenantFilterMessages = async ({
+  locale,
+  resolution,
+  tenantQuery,
+  tenantSearch,
+}: {
+  locale: Locale;
+  resolution: TenantFilterResolution;
+  tenantQuery: string;
+  tenantSearch: SearchPlatformTenantFilterOptionsResult;
+}): Promise<TenantFilterMessage[]> => {
+  if (!tenantQuery) {
+    return [];
+  }
+
+  if (!tenantSearch.ok) {
+    return [{ text: tenantSearch.message, variant: "destructive" }];
+  }
+
+  const t = await getMessagesFor(locale);
+  const filterMessages: TenantFilterMessage[] = [];
+
+  if (resolution.kind === "none") {
+    filterMessages.push({
+      text: t("platform.users.tenant_none"),
+      variant: "info",
+    });
+  } else if (resolution.kind === "ambiguous") {
+    filterMessages.push({
+      text: t("platform.users.tenant_ambiguous"),
+      variant: "info",
+    });
+  }
+
+  if (tenantSearch.hasMore) {
+    filterMessages.push({
+      text: t("platform.users.tenant_more"),
+      variant: "info",
+    });
+  }
+
+  return filterMessages;
+};
+
+const shouldListUsers = (resolution: TenantFilterResolution): boolean =>
+  resolution.kind === "resolved" || resolution.kind === "unselected";
+
+const UsersFilterForm = async ({
+  filters,
+  hasFilter,
+  tenantItems,
+  tenantId,
+  tenantMessages,
+}: {
+  filters: UsersFilters;
+  hasFilter: boolean;
+  tenantItems: PlatformTenantFilterOption[];
+  tenantId: string;
+  tenantMessages: TenantFilterMessage[];
+}) => {
+  const t = await getMessagesFor(await getPlatformLocale());
+
+  return (
+    <div className="grid gap-3">
+      <Form
+        action="/users"
+        className="flex flex-wrap gap-3"
+        key={`${filters.email}::${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
+      >
+        <Input
+          aria-label={t("platform.common.email")}
+          autoComplete="off"
+          className="w-64"
+          defaultValue={filters.email}
+          name="email"
+          placeholder={t("platform.users.search_email_placeholder")}
+          type="email"
+        />
+        <Select
+          className="w-44"
+          defaultValue={filters.status || undefined}
+          items={[
+            {
+              label: t("platform.common.account_status.active"),
+              value: "active",
+            },
+            {
+              label: t("platform.common.account_status.suspended"),
+              value: "suspended",
+            },
+          ]}
+          name="status"
+          placeholder={t("platform.users.all_statuses")}
+        />
+        <Input
+          aria-label={t("platform.users.search_tenant")}
+          className="w-56"
+          defaultValue={filters.tenantQuery}
+          name="tenant_q"
+          placeholder={t("platform.users.search_tenant_placeholder")}
+          type="search"
+        />
+        {tenantItems.length > 0 ? (
+          <Select
+            className="w-56"
+            defaultValue={tenantId || undefined}
+            items={tenantItems.map((tenant) => ({
+              label: tenant.name,
+              value: tenant.publicId,
+            }))}
+            name="tenant_id"
+            placeholder={t("platform.users.select_tenant")}
+          />
+        ) : null}
+        <Input
+          className="w-44"
+          defaultValue={filters.createdFrom}
+          name="created_from"
+          type="date"
+        />
+        <Input
+          className="w-44"
+          defaultValue={filters.createdTo}
+          name="created_to"
+          type="date"
+        />
+        <Select
+          className="w-32"
+          defaultValue={String(filters.limit)}
+          items={[
+            {
+              label: t("platform.users.page_size_10"),
+              value: "10",
+            },
+            {
+              label: t("platform.users.page_size_20"),
+              value: "20",
+            },
+            {
+              label: t("platform.users.page_size_50"),
+              value: "50",
+            },
+          ]}
+          name="limit"
+          placeholder={t("platform.users.page_size_20")}
+        />
+        <Button type="submit">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.common.filter" />
+          </Suspense>
+        </Button>
+        {hasFilter ? (
+          <Link
+            className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+            href="/users"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.clear" />
+            </Suspense>
+          </Link>
+        ) : null}
+      </Form>
+      {tenantMessages.map((message) => (
+        <FormMessage key={message.text} variant={message.variant}>
+          {message.text}
+        </FormMessage>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * One user's status, as its own async component: the label is a string the
+ * catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+const EndUserStatusCell = async ({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status: string;
+}) => await getEndUserStatusLabel(status, locale);
+
+const UsersTableSection = async ({
+  emptyCause,
+  hideEmptyMessage = false,
+  locale,
+  result,
+  timeZone,
+  users,
+}: {
+  emptyCause: EmptyListCause;
+  hideEmptyMessage?: boolean;
+  locale: Locale;
+  result: ListPlatformEndUsersResult;
+  timeZone: string;
+  users: PlatformEndUserSummary[];
+}) => {
+  const t = await getMessagesFor(locale);
+
+  return (
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_name" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_tenant" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-44">
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_created" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-32">
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_status" />
+            </Suspense>
+          </Table.Head>
+          <Table.Head className="w-28" />
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {result.ok && users.length === 0 && !hideEmptyMessage ? (
+          <Table.Row>
+            <Table.Cell className="text-muted-foreground" colSpan={5}>
+              {await buildEmptyMessage(emptyCause, locale)}
+            </Table.Cell>
+          </Table.Row>
+        ) : null}
+        {result.ok
+          ? users.map((user) => (
+              <Table.Row key={user.publicId}>
+                <Table.Cell className="font-medium">
+                  {user.name || t("platform.common.unset")}
+                </Table.Cell>
+                <Table.Cell>
+                  {user.primaryTenantPublicId ? (
+                    <Link
+                      className="underline-offset-4 hover:underline"
+                      href={`/tenants/${user.primaryTenantPublicId}`}
+                    >
+                      {user.primaryTenantName || user.primaryTenantPublicId}
+                    </Link>
+                  ) : (
+                    t("platform.users.no_tenant")
+                  )}
+                </Table.Cell>
+                <Table.Cell>
+                  {formatDate(user.createdAt, {
+                    fallback: t("platform.common.unset"),
+                    locale,
+                    timeZone,
+                  })}
+                </Table.Cell>
+                <Table.Cell>
+                  <Badge
+                    tone={getEndUserStatusTone(user.status)}
+                    variant="outline"
+                  >
+                    <EndUserStatusCell locale={locale} status={user.status} />
+                  </Badge>
+                </Table.Cell>
+                <Table.Cell>
+                  <LinkButton
+                    render={<Link href={`/users/${user.publicId}`} />}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.common.detail" />
+                    </Suspense>
+                  </LinkButton>
+                </Table.Cell>
+              </Table.Row>
+            ))
+          : null}
+      </Table.Body>
+    </Table.Root>
+  );
+};
+
+const UsersContent = async ({
+  searchParams,
+}: Pick<UsersPageProps, "searchParams">) => {
+  const [rawSearchParams, locale] = await Promise.all([
+    searchParams,
+    getPlatformLocale(),
+  ]);
+
+  const filters = parseUsersFilters(rawSearchParams);
+
+  const [t, tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    filters.tenantQuery
+      ? searchPlatformTenantFilterOptions(filters.tenantQuery)
+      : Promise.resolve(emptyTenantSearch),
+    filters.tenantId
+      ? getPlatformTenant(filters.tenantId)
+      : Promise.resolve(emptySelectedTenant),
+    getPlatformDisplayTimeZone(),
+  ]);
+
+  const selectedTenant = selectedTenantResult.ok
+    ? selectedTenantResult.tenant
+    : null;
+
+  const tenantItems = buildTenantFilterItems({
+    selectedName: selectedTenant?.name.trim() ?? "",
+    tenantId: filters.tenantId,
+    tenantQuery: filters.tenantQuery,
+    tenantSearch,
+  });
+
+  const resolution = resolveTenantFilter({
+    matches: tenantItems,
+    searchOk: tenantSearch.ok,
+    tenantId: filters.tenantId,
+    tenantQuery: filters.tenantQuery,
+  });
+
+  const tenantId = resolvedTenantId(resolution);
+  const pendingTenantPick = !shouldListUsers(resolution);
+
+  const listFilters = {
+    ...filters,
+    tenantId,
+  };
+
+  const tenantMessages = await buildTenantFilterMessages({
+    locale,
+    resolution,
+    tenantSearch,
+    tenantQuery: filters.tenantQuery,
+  });
+
+  const result = pendingTenantPick
+    ? emptyUsersListResult
+    : await listPlatformEndUsers({
+        createdAfter: createdRangeStart(filters.createdFrom, timeZone),
+        createdBefore: createdRangeEnd(filters.createdTo, timeZone),
+        email: filters.email || undefined,
+        limit: filters.limit,
+        status: filters.status || undefined,
+        tenantId: tenantId || undefined,
+        token: filters.token || undefined,
+      });
+
+  const users = result.ok ? result.users : [];
+
+  const emptyCause = emptyListCause(filters, tenantId);
+
+  const { nextHref, previousHref } = buildUsersPageHrefs(
+    listFilters,
+    result,
+    pendingTenantPick
+  );
+
+  return (
+    <div className="grid gap-4">
+      <UsersFilterForm
+        filters={filters}
+        hasFilter={emptyCause !== "none"}
+        tenantId={tenantId}
+        tenantItems={tenantItems}
+        tenantMessages={tenantMessages}
+      />
+
+      {result.ok ? null : (
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.users.load_failed" />
+              </Suspense>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
+      )}
+
+      <UsersTableSection
+        emptyCause={emptyCause}
+        hideEmptyMessage={pendingTenantPick}
+        locale={locale}
+        result={result}
+        timeZone={timeZone}
+        users={users}
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {pendingTenantPick
+            ? "-"
+            : await buildSummaryText(result, users.length, locale)}
+        </p>
+        <PaginationControls
+          aria-label={t("platform.users.pagination_aria")}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      </div>
+    </div>
+  );
+};
+
+const UsersPage = ({ searchParams }: UsersPageProps) => (
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
+          <Suspense fallback={<SkeletonLine className="h-8 w-36" />}>
+            <Message message="platform.users.title" />
+          </Suspense>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.users.page_description" />
+          </Suspense>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.users.load_failed" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<UsersTableSkeleton />}>
+          <UsersContent searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
+);
+
+export default UsersPage;

@@ -386,7 +386,7 @@ jobs:
               - 'e2e/tests/catalog.search.spec.ts'
               - 'e2e/tests/platform.search-settings.spec.ts'
               # The Platform Console screen the settings spec drives.
-              - 'apps/web-platform/app/(protected)/services/search/**'
+              - 'apps/web-platform/app/\[locale\]/\(protected\)/services/search/**'
               - 'apps/web-platform/lib/search-settings*.ts'
               # What the spec reads: its helpers and fixtures, and the seed
               # its OpenSearch-only cases search for, which the ordinary run

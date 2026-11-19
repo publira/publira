@@ -1,5 +1,13 @@
+import {
+  isLocale,
+  LOCALE_COOKIE_NAME,
+  negotiateInitialLocale,
+  parseLocaleCookie,
+} from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { isHealthProbePath } from "@publira/utils/health";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
+import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -34,6 +42,42 @@ const PUBLIC_PATHS = new Set([
   "/setup",
 ]);
 
+/**
+ * Whether `pathname` is answered by a Route Handler at the root of `app/`
+ * rather than by a page under `app/[locale]/`. A Route Handler cannot read
+ * `next/root-params`, so these are the requests the proxy lets through on the
+ * path they arrived on instead of rewriting them onto a locale.
+ */
+const isRouteHandlerPath = (pathname: string): boolean =>
+  pathname === CHANGE_PASSWORD_PATH || pathname.startsWith("/api/");
+
+/**
+ * The locale a page request is rendered in, in the order `getPlatformLocale()`
+ * in `lib/locale.ts` resolves it: a supported `publira_locale` cookie, then the
+ * default language saved on General, which `resolveSetupState()` keeps at the
+ * last confirmed value through an outage, and `Accept-Language` only while the
+ * platform has saved nothing this build renders, which is the state before
+ * setup.
+ */
+const resolveRequestLocale = (
+  request: NextRequest,
+  savedLocale: ResolvedLocaleState
+): Locale => {
+  const chosen = parseLocaleCookie(
+    request.cookies.get(LOCALE_COOKIE_NAME)?.value
+  );
+
+  if (chosen) {
+    return chosen;
+  }
+
+  if (isLocale(savedLocale)) {
+    return savedLocale;
+  }
+
+  return negotiateInitialLocale(request.headers.get("accept-language"));
+};
+
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
@@ -47,8 +91,12 @@ export const proxy = async (request: NextRequest) => {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  if (pathname === "/setup") {
-    return NextResponse.next();
+  // The console ships no favicon, and a path the matcher skipped would still
+  // reach the app router unrewritten — where `/[locale]` is the one route that
+  // matches it, with `favicon.ico` standing in for the locale. Every browser
+  // asks for it on every page, so it is answered here instead.
+  if (pathname === "/favicon.ico") {
+    return new NextResponse("Not Found", { status: 404 });
   }
 
   // The saved default locale rides along on the read the routing decision needs
@@ -60,6 +108,28 @@ export const proxy = async (request: NextRequest) => {
 
   const withLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, defaultLocale);
+
+  // Every page lives under the `[locale]` root segment, and the URL never names
+  // it: the request is rewritten onto the locale resolved here, so a Server
+  // Component reads it as a root parameter. A path that already starts with a
+  // locale is rewritten like any other and matches nothing, so the path never
+  // selects the language. Redirects keep naming the public, unprefixed paths.
+  const localizedUrl = request.nextUrl.clone();
+  localizedUrl.pathname = `/${resolveRequestLocale(request, defaultLocale)}${
+    pathname === "/" ? "" : pathname
+  }`;
+
+  const pass = (init?: { request: { headers: Headers } }) =>
+    isRouteHandlerPath(pathname)
+      ? NextResponse.next(init)
+      : NextResponse.rewrite(localizedUrl, init);
+
+  // The setup screen renders in a locale too, so it waits for the read above.
+  // `resolveSetupState()` never throws, so the screen is still answered while
+  // the API is unreachable.
+  if (pathname === "/setup") {
+    return withLocale(pass());
+  }
 
   if (
     !setupCompleted &&
@@ -75,7 +145,7 @@ export const proxy = async (request: NextRequest) => {
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
 
   if (PUBLIC_PATHS.has(pathname)) {
-    const response = NextResponse.next();
+    const response = pass();
 
     // The API rejected this session while a page was rendering, where the
     // cookie cannot be touched. Clearing it here is what keeps the console from
@@ -97,9 +167,7 @@ export const proxy = async (request: NextRequest) => {
       buildReturnToPath(request.nextUrl)
     );
 
-    return withLocale(
-      NextResponse.next({ request: { headers: requestHeaders } })
-    );
+    return withLocale(pass({ request: { headers: requestHeaders } }));
   }
 
   const response = setupCompleted
@@ -116,7 +184,5 @@ export const proxy = async (request: NextRequest) => {
 };
 
 export const config = {
-  matcher: [
-    "/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image).*)"],
 };

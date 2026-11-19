@@ -9,8 +9,8 @@ import type { Metadata } from "next";
  * only change this console needs. The console belongs to no tenant, so unlike
  * the storefront it has no tenant icon to prefer.
  *
- * Every document declares them: `app/layout.tsx` and `app/global-not-found.tsx`,
- * which bypasses that layout.
+ * Every document declares them: `app/[locale]/layout.tsx` and
+ * `app/global-not-found.tsx`, which bypasses that layout.
  */
 export const platformIcons = {
   apple: [{ sizes: "180x180", type: "image/png", url: appleIcon.src }],

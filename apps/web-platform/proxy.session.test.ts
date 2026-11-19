@@ -130,6 +130,70 @@ describe("web-platform proxy session handling", () => {
     ).toBe("/tenants?token=abc");
   });
 
+  it("rewrites a protected page onto the locale and keeps the public path as the return path", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://platform.example.com/tenants?token=abc", cookie)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://platform.example.com/ja/tenants?token=abc"
+    );
+    expect(
+      response.headers.get(`x-middleware-request-${RETURN_TO_HEADER_NAME}`)
+    ).toBe("/tenants?token=abc");
+  });
+
+  it("rewrites the dashboard onto the bare locale segment", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://platform.example.com/", cookie)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://platform.example.com/ja"
+    );
+  });
+
+  /**
+   * The path never selects the language: a URL that already starts with a
+   * locale is rewritten like any other, so it lands under a second locale
+   * segment that matches no route and answers 404.
+   */
+  it("rewrites a path that starts with a locale like any other", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://platform.example.com/en/tenants", cookie)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://platform.example.com/ja/en/tenants"
+    );
+  });
+
+  // A Route Handler cannot read `next/root-params`, so it stays at the root of
+  // `app/` and the request reaches it on the path it arrived on.
+  it("lets a signed-in request through to the audit log export unrewritten", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://platform.example.com/api/v1/audit-logs/csv", cookie)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(
+      response.headers.get(`x-middleware-request-${RETURN_TO_HEADER_NAME}`)
+    ).toBe("/api/v1/audit-logs/csv");
+  });
+
   it("lets a valid cookie through to /.well-known/change-password and keeps it", async () => {
     const cookie = await activeCookie();
     const { proxy } = await import("./proxy");

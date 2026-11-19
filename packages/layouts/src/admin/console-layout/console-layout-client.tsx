@@ -186,8 +186,9 @@ const ConsoleSidebarNavigationLink = ({
 /**
  * The console shell cannot read the URL it is serving, so which item is current
  * is decided in the browser, from `usePathname()` normalised through
- * {@link toConsolePathname} — which erases the tenant id `web-admin`'s proxy
- * rewrites in, so the answer does not change when the shell hydrates.
+ * {@link toConsolePathname} — which erases the tenant id and the locale the
+ * consoles' proxies rewrite in, so the answer does not change when the shell
+ * hydrates.
  */
 const ConsoleSidebarNavigationCurrentLink = ({
   children,

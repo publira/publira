@@ -1,0 +1,46 @@
+"use client";
+
+import * as LocaleSwitcher from "@publira/ui-components/locale-switcher";
+import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
+
+import { setPlatformLocaleAction } from "#lib/locale-action";
+import { LOCALE_FIELD_NAME } from "#lib/locale-shared";
+
+interface PlatformLocaleSwitcherRootProps {
+  children: ReactNode;
+  currentLocale: string;
+}
+
+/**
+ * The switcher's root, with the step the Action cannot take itself.
+ *
+ * The Action writes the cookie, but the tree it re-renders in the same round
+ * trip was routed onto the `[locale]` segment the old cookie named, so that
+ * answer is still in the old language. Refreshing once the Action has settled
+ * sends the current URL through `proxy.ts` again, which rewrites it onto the
+ * new locale. Only the root parameter's value changes, so the router keeps the
+ * same root layout and swaps the screen in place rather than reloading the
+ * document.
+ */
+export const PlatformLocaleSwitcherRoot = ({
+  children,
+  currentLocale,
+}: PlatformLocaleSwitcherRootProps) => {
+  const router = useRouter();
+
+  const switchLocale = async (formData: FormData) => {
+    await setPlatformLocaleAction(formData);
+    router.refresh();
+  };
+
+  return (
+    <LocaleSwitcher.Root
+      action={switchLocale}
+      currentLocale={currentLocale}
+      fieldName={LOCALE_FIELD_NAME}
+    >
+      {children}
+    </LocaleSwitcher.Root>
+  );
+};

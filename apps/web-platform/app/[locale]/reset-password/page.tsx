@@ -1,0 +1,38 @@
+import * as AuthScreen from "@publira/layouts/auth-screen";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
+
+import { ResetPasswordForm } from "./_components/reset-password-form";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getMessages();
+
+  return { title: t("platform.auth.reset_password.title") };
+};
+
+const ResetPasswordPage = () => (
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password.description" />
+          </Suspense>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
+
+      <ResetPasswordForm />
+    </AuthScreen.Main>
+
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
+);
+
+export default ResetPasswordPage;

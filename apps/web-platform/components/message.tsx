@@ -13,9 +13,8 @@ export interface MessageProps {
 /**
  * One catalog string.
  *
- * Resolving the locale is request-time work, so this is what suspends, and the
- * caller wraps it in the `<Suspense>` whose fallback stands in for that one
- * string:
+ * Loading the catalog is what suspends, so the caller wraps this in the
+ * `<Suspense>` whose fallback stands in for that one string:
  *
  * ```tsx
  * <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -26,8 +25,8 @@ export interface MessageProps {
  * The alternative — an async section that awaits the catalog and then renders a
  * whole screen — takes the surrounding structure down with it: the inputs, the
  * card, and the buttons all wait on a message they do not depend on. Every
- * boundary reads the same request-scoped locale and the same cached module, so
- * the count of them costs a page nothing.
+ * boundary reads the same `[locale]` root parameter and the same cached
+ * module, so the count of them costs a page nothing.
  */
 export const Message = async ({ message, values }: MessageProps) => {
   const t = await getMessages();

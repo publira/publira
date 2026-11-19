@@ -2,9 +2,8 @@ import { getLocaleLabel, getLocales } from "@publira/i18n";
 import * as LocaleSwitcher from "@publira/ui-components/locale-switcher";
 
 import { getPlatformLocale } from "../lib/locale";
-import { setPlatformLocaleAction } from "../lib/locale-action";
-import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
 import { getMessagesFor } from "../lib/messages";
+import { PlatformLocaleSwitcherRoot } from "./locale-switcher-root";
 
 /** Header display-language control backed by the existing locale cookie. */
 export const PlatformLocaleSwitcher = async () => {
@@ -13,11 +12,7 @@ export const PlatformLocaleSwitcher = async () => {
   const label = t("locale.label");
 
   return (
-    <LocaleSwitcher.Root
-      action={setPlatformLocaleAction}
-      currentLocale={locale}
-      fieldName={LOCALE_FIELD_NAME}
-    >
+    <PlatformLocaleSwitcherRoot currentLocale={locale}>
       <LocaleSwitcher.Trigger aria-label={label} />
       <LocaleSwitcher.Content>
         <LocaleSwitcher.Title>{label}</LocaleSwitcher.Title>
@@ -29,6 +24,6 @@ export const PlatformLocaleSwitcher = async () => {
           ))}
         </LocaleSwitcher.Options>
       </LocaleSwitcher.Content>
-    </LocaleSwitcher.Root>
+    </PlatformLocaleSwitcherRoot>
   );
 };

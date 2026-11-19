@@ -1,15 +1,21 @@
 /**
  * UI locale for web-platform.
  *
- * The console has no dynamic segment, so the locale is not in the URL: it lives
- * in the `publira_locale` cookie. When that cookie is missing, the platform
- * default language saved on the General settings screen answers instead.
- * `cookies()` is a request-time read, so every caller of
- * {@link getPlatformLocale} must sit inside a `<Suspense>` boundary — reading
- * it above one would leave the route with no static shell under Cache
- * Components. `<html lang>` is handled separately, by the inline script in
- * `app/layout.tsx` (see `LOCALE_LANG_SCRIPT`), over the cookies `proxy.ts`
- * publishes (`@publira/utils/resolved-locale`).
+ * The console's URLs name no locale: the operator's choice lives in the
+ * `publira_locale` cookie, and when that cookie is missing the platform default
+ * language saved on the General settings screen answers instead. `proxy.ts`
+ * resolves the two on every page request and rewrites it onto the `[locale]`
+ * root segment, so a Server Component reads the answer from the URL it was
+ * routed to, through {@link getLocale}.
+ *
+ * {@link getPlatformLocale} resolves the same answer from the cookie, for what
+ * has no root parameter to read: a Server Action, and the
+ * `api/v1/audit-logs/csv` Route Handler. `cookies()` is a request-time read, so
+ * a Server Component that still calls it must sit inside a `<Suspense>`
+ * boundary — reading it above one would leave the route with no static shell
+ * under Cache Components. `<html lang>` is handled separately, by the inline
+ * script in `app/[locale]/layout.tsx` (see `LOCALE_LANG_SCRIPT`), over the
+ * cookies `proxy.ts` publishes (`@publira/utils/resolved-locale`).
  */
 
 import {
@@ -20,6 +26,8 @@ import {
 } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cookies, headers } from "next/headers";
+import { notFound } from "next/navigation";
+import { locale as rootLocale } from "next/root-params";
 
 import { readSetupDefaultLocale } from "./setup-status";
 
@@ -123,4 +131,29 @@ export const getPlatformLocale = async (): Promise<Locale> => {
   }
 
   return getPlatformDisplayLocale();
+};
+
+/**
+ * The locale this request is rendered in, from the `[locale]` root segment
+ * `proxy.ts` rewrote it onto.
+ *
+ * Resolving it costs nothing and the value is part of the route, so it is
+ * already in every cache key below it: a `"use cache"` scope may call this
+ * directly, and a Server Component that does needs no `<Suspense>` for it.
+ *
+ * An unsupported segment is a 404. The proxy only ever writes a supported
+ * locale in front of a path, so the only way to arrive here with anything else
+ * is a URL that does not exist.
+ *
+ * Note: `next/root-params` is not available in Server Actions or Route
+ * Handlers; those resolve the locale with {@link getPlatformLocale}.
+ */
+export const getLocale = async (): Promise<Locale> => {
+  const value = await rootLocale();
+
+  if (!isLocale(value)) {
+    notFound();
+  }
+
+  return value;
 };
