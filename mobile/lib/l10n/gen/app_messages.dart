@@ -4672,6 +4672,11 @@ final class AppMessages {
     return _format('mobile.viewer.creator_access');
   }
 
+  /// `mobile.viewer.end.next_free_episode`
+  String viewerEndNextFreeEpisode({required String number}) {
+    return _format('mobile.viewer.end.next_free_episode', {'number': number});
+  }
+
   /// `mobile.viewer.end.up_next`
   String get viewerEndUpNext {
     return _format('mobile.viewer.end.up_next');
@@ -5879,6 +5884,7 @@ const _jaSources = <String, String>{
   'mobile.viewer.capture_notice.body_unnamed': 'このページは個人で楽しむ範囲でご利用ください。',
   'mobile.viewer.capture_notice.dismiss': '閉じる',
   'mobile.viewer.creator_access': '著者として閲覧できます',
+  'mobile.viewer.end.next_free_episode': '第{\$number}話を無料で読む',
   'mobile.viewer.end.up_next': '次のエピソード',
   'mobile.viewer.end.up_to_date_description': '「{\$title}」にはこの先のエピソードがまだありません',
   'mobile.viewer.end.up_to_date_title': '最新のエピソードまで読み終えました',
@@ -7120,6 +7126,7 @@ const _enSources = <String, String>{
       'These pages are for your personal use only.',
   'mobile.viewer.capture_notice.dismiss': 'Close',
   'mobile.viewer.creator_access': 'Open to you as its author',
+  'mobile.viewer.end.next_free_episode': 'Read episode {\$number} for free',
   'mobile.viewer.end.up_next': 'Up next',
   'mobile.viewer.end.up_to_date_description':
       '“{\$title}” has no episode after this one yet.',
@@ -8194,6 +8201,7 @@ const _koSources = <String, String>{
   'mobile.viewer.capture_notice.body_unnamed': '이 페이지는 개인적인 용도로만 이용해 주세요.',
   'mobile.viewer.capture_notice.dismiss': '닫기',
   'mobile.viewer.creator_access': '작가로서 열람할 수 있습니다',
+  'mobile.viewer.end.next_free_episode': '{\$number}화 무료로 읽기',
   'mobile.viewer.end.up_next': '다음 에피소드',
   'mobile.viewer.end.up_to_date_description': '“{\$title}”에는 아직 다음 에피소드가 없습니다',
   'mobile.viewer.end.up_to_date_title': '최신 에피소드까지 읽었습니다',
@@ -9162,6 +9170,7 @@ const _zhHansSources = <String, String>{
   'mobile.viewer.capture_notice.body_unnamed': '本页面仅限个人使用。',
   'mobile.viewer.capture_notice.dismiss': '关闭',
   'mobile.viewer.creator_access': '您作为作者可以阅读本章',
+  'mobile.viewer.end.next_free_episode': '免费阅读第{\$number}章',
   'mobile.viewer.end.up_next': '接下来',
   'mobile.viewer.end.up_to_date_description': '《{\$title}》还没有下一章。',
   'mobile.viewer.end.up_to_date_title': '已看到最新一章',
@@ -10125,6 +10134,7 @@ const _zhHantSources = <String, String>{
   'mobile.viewer.capture_notice.body_unnamed': '本頁面僅限個人使用。',
   'mobile.viewer.capture_notice.dismiss': '關閉',
   'mobile.viewer.creator_access': '您作為作者可以閱讀本章',
+  'mobile.viewer.end.next_free_episode': '免費閱讀第{\$number}章',
   'mobile.viewer.end.up_next': '接下來',
   'mobile.viewer.end.up_to_date_description': '《{\$title}》還沒有下一章。',
   'mobile.viewer.end.up_to_date_title': '已看到最新一章',

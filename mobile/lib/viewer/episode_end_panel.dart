@@ -11,9 +11,10 @@ import 'package:publira/viewer/episode_reaction_control.dart';
 import 'package:publira/viewer/episode_reader.dart';
 
 /// What the reader is offered once the pages run out: the next episode
-/// `GetEpisodeDetail` names, with what it costs, or, after the last published
-/// episode of a series, the news that there is none yet, a tip to the
-/// episode's Authors where the tenant takes one, and the way back to the
+/// `GetEpisodeDetail` names, with what it costs, and the first free episode
+/// after this one where that is a different episode, or, after the last
+/// published episode of a series, the news that there is none yet, a tip to
+/// the episode's Authors where the tenant takes one, and the way back to the
 /// series either way.
 ///
 /// It is a screen of the reader past the last page rather than a page of the
@@ -70,6 +71,14 @@ class EpisodeEndPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final next = detail.nextEpisode;
+    // The free episode is the way on for a reader who would rather not buy the
+    // next one, so it is offered only when it is not that episode. It is the
+    // one the read names, never one picked out of the episode list, because
+    // only the read knows which free windows are open.
+    final nextFree = switch (detail.nextFreeEpisode) {
+      final free? when free.id != next?.id => free,
+      _ => null,
+    };
     // A purchase, the reader's own credit, and a plan open the body alike, so
     // the author and the subscriber are told which this is.
     final access = switch (detail.entitlementSource) {
@@ -113,6 +122,24 @@ class EpisodeEndPanel extends StatelessWidget {
                 taxIncluded: taxIncluded,
                 onOpen: () => onOpenNext(next),
               ),
+            if (nextFree != null) ...[
+              const SizedBox(height: 12),
+              // The card stays the reading action; this is the way around it.
+              OutlinedButton(
+                key: const ValueKey('episode-end-next-free'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white24),
+                ),
+                onPressed: () => onOpenNext(nextFree),
+                child: AutospacedText(
+                  messages.viewerEndNextFreeEpisode(
+                    number: messages.formatInteger(nextFree.orderIndex),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             if (access case (final key, final text)) ...[
               AutospacedText(

@@ -7753,6 +7753,7 @@
       },
       "creator_access": "著者として閲覧できます",
       "end": {
+        "next_free_episode": "第{$number}話を無料で読む",
         "up_next": "次のエピソード",
         "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません",
         "up_to_date_title": "最新のエピソードまで読み終えました"

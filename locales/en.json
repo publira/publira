@@ -7753,6 +7753,7 @@
       },
       "creator_access": "Open to you as its author",
       "end": {
+        "next_free_episode": "Read episode {$number} for free",
         "up_next": "Up next",
         "up_to_date_description": "“{$title}” has no episode after this one yet.",
         "up_to_date_title": "You are up to date"
