@@ -78,7 +78,7 @@ services:
 
   redis:
     # Valkey is Redis-protocol compatible; keep PUBLIRA_REDIS_URL as redis://...
-    image: valkey/valkey:9.2.0-alpine3.24@sha256:4d67e1af80c653bd46c0bbe8de438c81a6535ab5a39b22f2100028f314005663
+    image: valkey/valkey:9.2.0-alpine3.24@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
     labels: *run-dir-label
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
