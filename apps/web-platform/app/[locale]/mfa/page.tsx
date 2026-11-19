@@ -6,16 +6,14 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/auth-shared";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { readStoredMfaChallenge } from "#lib/mfa-challenge";
 
 import { MfaEnrollFlow } from "./_components/mfa-enroll-flow";
 import { MfaVerifyForm } from "./_components/mfa-verify-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.auth.mfa.title") };
 };
