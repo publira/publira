@@ -5,16 +5,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { getMessagesFor } from "#lib/messages";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 import { isSetupCompleted } from "#lib/setup";
 
 import { SetupForm } from "./_components/setup-form";
-import { SetupMessage } from "./_components/setup-message";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getInitialLocaleCandidate();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.auth.setup.title") };
 };
@@ -27,7 +25,7 @@ const SetupContent = async () => {
     return (
       <FormMessage variant="destructive">
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <SetupMessage message="platform.auth.setup.api_unavailable" />
+          <Message message="platform.auth.setup.api_unavailable" />
         </Suspense>
       </FormMessage>
     );
@@ -41,7 +39,7 @@ const SetupContent = async () => {
     <>
       <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <SetupMessage message="platform.auth.setup.description" />
+          <Message message="platform.auth.setup.description" />
         </Suspense>
       </AuthScreen.Note>
 
@@ -70,7 +68,7 @@ const SetupPage = () => (
         <AuthScreen.Title>Publira</AuthScreen.Title>
         <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <SetupMessage message="platform.auth.setup.title" />
+            <Message message="platform.auth.setup.title" />
           </Suspense>
         </AuthScreen.Tagline>
       </AuthScreen.Header>

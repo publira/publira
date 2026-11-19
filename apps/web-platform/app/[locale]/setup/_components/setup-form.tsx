@@ -10,25 +10,25 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { CurrencyCombobox } from "#components/currency-combobox";
+import { Message } from "#components/message";
 import { currencyItems } from "#lib/currency-items";
+import { getMessages } from "#lib/get-messages";
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { getMessagesFor } from "#lib/messages";
+import { getLocale } from "#lib/locale";
 import { getPlatformCurrencyForSetup } from "#lib/platform-settings";
 
 import { setupAction } from "../_lib/actions";
-import { SetupMessage } from "./setup-message";
 import { SetupTimezoneCombobox } from "./setup-timezone-combobox";
 
 export const SetupForm = async () => {
-  // Nothing is stored yet, so the header decides both the language this screen
-  // renders in and which option opens selected. The saved value is whatever the
-  // operator submits from this list.
-  const [initialDefaultLocale, storedCurrency] = await Promise.all([
+  // Nothing is stored yet, so the header decides which option opens selected.
+  // The saved value is whatever the operator submits from this list.
+  const [locale, t, initialDefaultLocale, storedCurrency] = await Promise.all([
+    getLocale(),
+    getMessages(),
     getInitialLocaleCandidate(),
     getPlatformCurrencyForSetup(),
   ]);
-
-  const t = await getMessagesFor(initialDefaultLocale);
 
   // The currency starts on the one `publiractl setup` saved, so confirming
   // the form keeps it; on a platform with no settings, the operator chooses
@@ -50,7 +50,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <SetupMessage message="platform.auth.setup.name_label" />
+            <Message message="platform.auth.setup.name_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -67,7 +67,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <SetupMessage message="platform.auth.fields.email_label" />
+            <Message message="platform.auth.fields.email_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -84,7 +84,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <SetupMessage message="platform.auth.fields.password_label" />
+            <Message message="platform.auth.fields.password_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -97,7 +97,7 @@ export const SetupForm = async () => {
             />
             <PasswordInput.Toggle>
               <Suspense fallback={null}>
-                <SetupMessage message="platform.common.show_password" />
+                <Message message="platform.common.show_password" />
               </Suspense>
             </PasswordInput.Toggle>
           </PasswordInput.Root>
@@ -107,7 +107,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-            <SetupMessage message="platform.auth.setup.confirm_password_label" />
+            <Message message="platform.auth.setup.confirm_password_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -120,7 +120,7 @@ export const SetupForm = async () => {
             />
             <PasswordInput.Toggle>
               <Suspense fallback={null}>
-                <SetupMessage message="platform.common.show_password" />
+                <Message message="platform.common.show_password" />
               </Suspense>
             </PasswordInput.Toggle>
           </PasswordInput.Root>
@@ -130,7 +130,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <SetupMessage message="platform.auth.setup.default_locale_label" />
+            <Message message="platform.auth.setup.default_locale_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -142,7 +142,7 @@ export const SetupForm = async () => {
           />
           <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <SetupMessage message="platform.auth.setup.default_locale_help" />
+              <Message message="platform.auth.setup.default_locale_help" />
             </Suspense>
           </Field.Description>
         </Field.Content>
@@ -151,7 +151,7 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <SetupMessage message="platform.auth.setup.default_timezone_label" />
+            <Message message="platform.auth.setup.default_timezone_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
@@ -159,7 +159,7 @@ export const SetupForm = async () => {
             <Combobox.Popup>
               <Combobox.Empty>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <SetupMessage message="platform.auth.setup.default_timezone_empty" />
+                  <Message message="platform.auth.setup.default_timezone_empty" />
                 </Suspense>
               </Combobox.Empty>
               <Combobox.Items />
@@ -167,7 +167,7 @@ export const SetupForm = async () => {
           </SetupTimezoneCombobox>
           <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <SetupMessage message="platform.auth.setup.default_timezone_help" />
+              <Message message="platform.auth.setup.default_timezone_help" />
             </Suspense>
           </Field.Description>
         </Field.Content>
@@ -176,24 +176,21 @@ export const SetupForm = async () => {
       <Field.Root>
         <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <SetupMessage message="platform.auth.setup.default_currency_label" />
+            <Message message="platform.auth.setup.default_currency_label" />
           </Suspense>
         </Field.Label>
         <Field.Content>
           <CurrencyCombobox
             disabled={currencyLocked || currencyUnread}
             initialCurrency={savedCurrency?.defaultCurrency ?? ""}
-            items={currencyItems(
-              initialDefaultLocale,
-              savedCurrency?.defaultCurrency
-            )}
+            items={currencyItems(locale, savedCurrency?.defaultCurrency)}
             name="default_currency"
             placeholder={t("platform.auth.setup.default_currency_placeholder")}
           >
             <Combobox.Popup>
               <Combobox.Empty>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <SetupMessage message="platform.auth.setup.default_currency_empty" />
+                  <Message message="platform.auth.setup.default_currency_empty" />
                 </Suspense>
               </Combobox.Empty>
               <Combobox.Items />
@@ -202,16 +199,16 @@ export const SetupForm = async () => {
           <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               {currencyLocked ? (
-                <SetupMessage message="platform.auth.setup.default_currency_locked" />
+                <Message message="platform.auth.setup.default_currency_locked" />
               ) : (
-                <SetupMessage message="platform.auth.setup.default_currency_help" />
+                <Message message="platform.auth.setup.default_currency_help" />
               )}
             </Suspense>
           </Field.Description>
           {currencyUnread ? (
             <FormMessage variant="destructive">
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <SetupMessage message="platform.auth.setup.default_currency_load_failed" />
+                <Message message="platform.auth.setup.default_currency_load_failed" />
               </Suspense>
             </FormMessage>
           ) : null}
@@ -220,7 +217,7 @@ export const SetupForm = async () => {
 
       <ActionForm.Submit className="mt-2 w-full">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <SetupMessage message="platform.auth.setup.submit" />
+          <Message message="platform.auth.setup.submit" />
         </Suspense>
       </ActionForm.Submit>
     </ActionForm.Root>

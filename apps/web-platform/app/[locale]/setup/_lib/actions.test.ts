@@ -4,12 +4,14 @@ const {
   mockAssertSameOrigin,
   mockCreateInitialUser,
   mockGetInitialLocaleCandidate,
+  mockLocaleCookie,
   mockRedirect,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateInitialUser: vi.fn(),
   mockGetInitialLocaleCandidate: vi.fn(),
+  mockLocaleCookie: vi.fn<() => string | undefined>(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
@@ -19,6 +21,18 @@ const {
 vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
+
+vi.mock("next/headers", () => ({
+  cookies: () =>
+    Promise.resolve({
+      get: (name: string) => {
+        const value =
+          name === "publira_locale" ? mockLocaleCookie() : undefined;
+
+        return value === undefined ? undefined : { name, value };
+      },
+    }),
+}));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
@@ -65,6 +79,7 @@ describe("setupAction", () => {
     // operator's pick, and the header only decided which option opened
     // selected.
     mockGetInitialLocaleCandidate.mockResolvedValue("ja");
+    mockLocaleCookie.mockReturnValue(undefined);
   });
 
   it("saves the locale chosen on the form rather than the negotiated one", async () => {
@@ -207,6 +222,38 @@ describe("setupAction", () => {
 
     expect(result?.ok).toBe(false);
     expect(mockCreateInitialUser).not.toHaveBeenCalled();
+  });
+
+  it("words its failures in the language a supported locale cookie chose", async () => {
+    mockLocaleCookie.mockReturnValue("en");
+    mockCreateInitialUser.mockResolvedValueOnce({
+      message: "Setup failed.",
+      ok: false,
+    });
+
+    const { setupAction } = await import("./actions");
+
+    await setupAction(null, setupFormData());
+
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" })
+    );
+  });
+
+  it("words its failures in the negotiated language when the locale cookie names none this build serves", async () => {
+    mockLocaleCookie.mockReturnValue("fr");
+    mockCreateInitialUser.mockResolvedValueOnce({
+      message: "Setup failed.",
+      ok: false,
+    });
+
+    const { setupAction } = await import("./actions");
+
+    await setupAction(null, setupFormData());
+
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "ja" })
+    );
   });
 
   it("sends an already-completed setup to the sign-in screen", async () => {

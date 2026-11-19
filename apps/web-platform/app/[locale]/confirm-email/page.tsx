@@ -7,8 +7,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
@@ -17,8 +16,7 @@ const CONFIRM_EMAIL_LINK_CLASS_NAME = cn(
 );
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.auth.confirm_email.title") };
 };

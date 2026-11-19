@@ -1,12 +1,17 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import { getLocales } from "@publira/i18n";
+import {
+  getLocales,
+  LOCALE_COOKIE_NAME,
+  parseLocaleCookie,
+} from "@publira/i18n";
 import type * as ActionForm from "@publira/ui-components/action-form";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -68,14 +73,29 @@ const setupFormSchema = async (locale: Locale) => {
     });
 };
 
+/**
+ * The locale the screen this was submitted from rendered in, so the failure
+ * copy comes back in the same language. With no default saved yet, `proxy.ts`
+ * routed that screen on a supported `publira_locale` cookie and then on
+ * `Accept-Language`, and this reads the same two in the same order. Not
+ * `getPlatformLocale()`: it falls back to the last default this process
+ * confirmed, which outlives a platform emptied back to before setup.
+ */
+const resolveSetupScreenLocale = async (): Promise<Locale> => {
+  const cookieStore = await cookies();
+
+  return (
+    parseLocaleCookie(cookieStore.get(LOCALE_COOKIE_NAME)?.value) ??
+    getInitialLocaleCandidate()
+  );
+};
+
 export const setupAction = async (
   _prevState: ActionForm.State,
   formData: FormData
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
-  // The screen this was submitted from renders in the negotiated locale, so
-  // the failure copy has to come back in the same language.
-  const locale = await getInitialLocaleCandidate();
+  const locale = await resolveSetupScreenLocale();
 
   const schema = await setupFormSchema(locale);
 

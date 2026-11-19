@@ -23,8 +23,14 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => (message: string) => message,
 }));
 
-vi.mock("./setup-message", () => ({
-  SetupMessage: ({ message }: { message: string }) => message,
+vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve((message: string) => message),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: string }) => message,
 }));
 
 const currencyInput = () =>

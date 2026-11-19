@@ -62,9 +62,9 @@ const restoreOperators = async (): Promise<void> => {
 
 for (const locale of DOCS_LOCALES) {
   test.describe(() => {
-    // No operator has chosen a language yet, so the screen's copy follows the
-    // browser's `Accept-Language`; the `publira_locale` cookie still names the
-    // document's `lang`.
+    // The screen's copy follows the `publira_locale` cookie, and the default
+    // language selector, with nothing saved yet, opens on the browser's
+    // `Accept-Language`, so the picture asks for the same language through both.
     test.use({ locale });
 
     test(`the initial setup screen in ${locale}`, async ({ page }) => {

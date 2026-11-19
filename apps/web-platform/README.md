@@ -28,10 +28,10 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | The locale a page renders in | `getLocale()` in `lib/locale.ts`, the `[locale]` root parameter |
 | The locale where there is no root parameter | `getPlatformLocale()` in `lib/locale.ts`, from the cookie, for the Server Actions and the `api/v1/audit-logs/csv` Route Handler, and the cookie options the switcher writes with |
 | The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/general` |
-| The locale a screen with nothing saved yet opens on | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`, over the request's `Accept-Language` |
+| `Accept-Language`, where nothing is saved yet | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`: the option the default-language selectors on `/setup` and Create tenant open on, and the locale the setup Action words its failures in when no supported `publira_locale` cookie is set |
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
-| One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/[locale]/setup/_components/` for `/setup` |
+| One string on the server | `<Message>` in `components/message.tsx` |
 | One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/[locale]/layout.tsx`, loaded by `loadPlatformClientMessages(locale)` |
 | One string in a route-level `error.tsx` | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/[locale]/error.tsx` and `app/[locale]/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx`, which applies it again when a change of language remounts that layout |
