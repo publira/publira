@@ -1,0 +1,109 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import * as Table from "@publira/ui-components/table";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import { listAnnouncements } from "#lib/announcement";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
+import { getAdminLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+
+import { AnnouncementManager } from "./_components/announcement-manager";
+
+type AnnouncementsPageProps = PageProps<"/[tenant_id]/[locale]/announcements">;
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const tenantId = await getTenantId();
+  const locale = await getAdminLocale(tenantId);
+  const t = await getMessagesFor(locale);
+
+  return { title: t("admin.announcements.title") };
+};
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_id");
+
+const AnnouncementManagerData = async ({
+  searchParams,
+}: Pick<AnnouncementsPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const locale = await getAdminLocale(tenantId);
+
+  const [listResult, timeZone, canEdit] = await Promise.all([
+    listAnnouncements(tenantId, locale, { token }),
+    getTenantDisplayTimeZone(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
+
+  await redirectToLoginIfSessionRejected(listResult);
+
+  return (
+    <AnnouncementManager
+      canEdit={canEdit}
+      {...cursorPageHrefs(listResult)}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      announcements={listResult.announcements}
+      locale={locale}
+      pageSize={DEFAULT_PAGE_SIZE}
+      tenantId={tenantId}
+      timeZone={timeZone}
+    />
+  );
+};
+
+const AnnouncementsPage = ({ searchParams }: AnnouncementsPageProps) => (
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+            <Message message="admin.announcements.title" />
+          </Suspense>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.announcements.page_description" />
+          </Suspense>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <ConsolePage.Actions>
+            <LinkButton
+              render={<Link href="/announcements/new" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.announcements.new_action" />
+              </Suspense>
+            </LinkButton>
+          </ConsolePage.Actions>
+        </TenantEditorOnly>
+      </Suspense>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
+      <Suspense fallback={<Table.Skeleton />}>
+        <AnnouncementManagerData searchParams={searchParams} />
+      </Suspense>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
+);
+
+export default AnnouncementsPage;

@@ -21,7 +21,7 @@ import type {
   AnnouncementItem,
   AnnouncementTranslationInput,
   ListAnnouncementsResult,
-} from "../app/[tenant_id]/(protected)/announcements/announcement-types";
+} from "../app/[tenant_id]/[locale]/(protected)/announcements/announcement-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,

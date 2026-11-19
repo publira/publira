@@ -1,20 +1,22 @@
 /**
  * UI locale for web-admin.
  *
- * The console rewrites onto `/[tenant_id]/...` and never puts the locale in
- * the URL: it lives in the `publira_locale` cookie, the same name and parser
- * as web-platform. When that cookie is missing, the request falls through to
- * the tenant's stored default locale — read from the public
- * `GetTenant`, so the login screen and every other unauthenticated screen
- * resolve the same value the signed-in console does. Nothing here names a
- * language of its own: a tenant whose default cannot be read is an outage the
- * screen reports, not a reason to pick one.
+ * The console's URLs name no locale: the operator's choice lives in the
+ * `publira_locale` cookie, the same name and parser as web-platform, and when
+ * that cookie is missing the tenant's stored default locale answers instead.
+ * `proxy.ts` resolves the two on every page request and rewrites it onto the
+ * `[locale]` root segment below `[tenant_id]`, so a Server Component reads the
+ * answer from the URL it was routed to, through {@link getLocale}.
  *
- * `cookies()` is a request-time read, so every caller of {@link getLocale}
- * must sit inside a `<Suspense>` boundary — reading it in
- * `app/[tenant_id]/layout.tsx` would leave the tenant tree without a static
- * shell under Cache Components. `<html lang>` is handled separately, by the
- * inline script in that layout (see `LOCALE_LANG_SCRIPT`).
+ * {@link getAdminLocale} resolves the same answer from the cookie and the
+ * public `GetTenant`, for what has no root parameter to read: a Server Action
+ * and a Route Handler. Nothing here names a language of its own: a tenant
+ * whose default cannot be read is an outage the screen reports, not a reason
+ * to pick one. `cookies()` is a request-time read, so a Server Component that
+ * still calls it must sit inside a `<Suspense>` boundary — reading it above
+ * one would leave the route with no static shell under Cache Components.
+ * `<html lang>` is handled separately, by the inline script in
+ * `app/[tenant_id]/[locale]/layout.tsx` (see `LOCALE_LANG_SCRIPT`).
  */
 
 import {
@@ -24,6 +26,8 @@ import {
 } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
+import { locale as rootLocale } from "next/root-params";
 
 import { getTenantDisplayLocale } from "./public-api";
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -59,7 +63,7 @@ export const adminLocaleCookieOptions = {
 };
 
 /**
- * The locale this request should render in.
+ * The locale this request should render in, from the cookie.
  *
  * Resolution is cookie → the tenant's stored default locale. A set, supported
  * cookie always wins, including when it is `ja`; only an unset or unsupported
@@ -70,17 +74,17 @@ export const adminLocaleCookieOptions = {
  * console cannot read, throws: rendering the operator a console in a language
  * nobody chose would hide the failure behind chrome that looks like it worked.
  *
- * `tenantId` is the caller's to supply, because where it comes from differs:
- * a Server Component reads the `tenant_id` root parameter (`getTenantId()`),
- * and a Server Action, which has no root parameters, takes it from the form
- * (`getActionLocale`). Keeping `next/root-params` out of this module is what
- * lets both use it.
+ * It is the same answer `proxy.ts` rewrote the request onto, so a Server
+ * Component reads {@link getLocale} instead. `tenantId` is the caller's to
+ * supply, because where it comes from differs: a Server Component reads the
+ * `tenant_id` root parameter (`getTenantId()`), and a Server Action, which has
+ * no root parameters, takes it from the form (`getActionLocale`).
  *
  * **Inside `<Suspense>` only.** Never call this from a `"use cache"` scope
  * either — pass the resolved locale in as an argument instead, so it becomes
  * part of the cache key.
  */
-export const getLocale = async (tenantId: string): Promise<Locale> => {
+export const getAdminLocale = async (tenantId: string): Promise<Locale> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
 
@@ -99,4 +103,29 @@ export const getLocale = async (tenantId: string): Promise<Locale> => {
   }
 
   return getTenantDisplayLocale(normalizedTenantId);
+};
+
+/**
+ * The locale this request is rendered in, from the `[locale]` root segment
+ * `proxy.ts` rewrote it onto.
+ *
+ * Resolving it costs nothing and the value is part of the route, so it is
+ * already in every cache key below it: a `"use cache"` scope may call this
+ * directly, and a Server Component that does needs no `<Suspense>` for it.
+ *
+ * An unsupported segment is a 404. The proxy only ever writes a supported
+ * locale below the tenant id, so the only way to arrive here with anything
+ * else is a URL that does not exist.
+ *
+ * Note: `next/root-params` is not available in Server Actions or Route
+ * Handlers; those resolve the locale with {@link getAdminLocale}.
+ */
+export const getLocale = async (): Promise<Locale> => {
+  const value = await rootLocale();
+
+  if (!isLocale(value)) {
+    notFound();
+  }
+
+  return value;
 };

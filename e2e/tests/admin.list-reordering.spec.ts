@@ -66,9 +66,15 @@ const imageSizesInOrder = async (page: Page): Promise<string[]> => {
  * The status region dnd-kit writes each drag event into. The screen holds
  * other status regions, so it is found by the one attribute dnd-kit gives it
  * alone.
+ *
+ * It is the last one in the document. dnd-kit appends its region to `<body>`
+ * and removes it from an insertion effect's cleanup, which does not run while
+ * the router keeps a screen it left in a hidden `<Activity>`, so that screen's
+ * region stays behind, no longer written to, after a navigation — and a change
+ * of language is one, onto another `[locale]` segment.
  */
 const announcement = (page: Page): Locator =>
-  page.locator('[role="status"][id^="dnd-kit-announcement"]');
+  page.locator('[role="status"][id^="dnd-kit-announcement"]').last();
 
 /** The role names, in the order the author roles page lists them. */
 const creatorRoleNamesInOrder = async (page: Page): Promise<string[]> => {

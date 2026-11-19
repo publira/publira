@@ -20,8 +20,8 @@ import type {
   GetContactMessageResult,
   ListContactMessageAssigneesResult,
   ListContactMessagesResult,
-} from "../app/[tenant_id]/(protected)/contact-messages/contact-message-types";
-import { CONTACT_MESSAGE_STATUSES } from "../app/[tenant_id]/(protected)/contact-messages/contact-message-types";
+} from "../app/[tenant_id]/[locale]/(protected)/contact-messages/contact-message-types";
+import { CONTACT_MESSAGE_STATUSES } from "../app/[tenant_id]/[locale]/(protected)/contact-messages/contact-message-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,

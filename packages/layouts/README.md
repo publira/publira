@@ -40,7 +40,7 @@ The `AuthScreen` namespace: `Root`, `Main`, `Panel`, `Pattern`, `Header`, `Title
 The helpers, as plain named exports:
 
 - `isCurrentPath(pathname, href, allHrefs?)`: whether a navigation link is the current one — `href` is the pathname or a prefix of it, unless another of `allHrefs` is a longer prefix, in which case that more specific item owns the active state
-- `toConsolePathname(pathname)`: the path a console's navigation hrefs are written against, from a value read out of `usePathname()`. It drops the `[tenant_id]` segment `web-admin`'s proxy rewrites in front of every path, so the item that renders as current is the same before and after hydration
+- `toConsolePathname(pathname)`: the path a console's navigation hrefs are written against, from a value read out of `usePathname()`. It drops the `[tenant_id]` segment `web-admin`'s proxy rewrites in front of every path and the `[locale]` segment both consoles' proxies rewrite in after it, so the item that renders as current is the same before and after hydration
 
 ### `styles.css`
 

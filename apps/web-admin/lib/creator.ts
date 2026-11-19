@@ -20,7 +20,7 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
-import type { ReaderItem } from "../app/[tenant_id]/(protected)/readers/reader-types";
+import type { ReaderItem } from "../app/[tenant_id]/[locale]/(protected)/readers/reader-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,

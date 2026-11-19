@@ -12,7 +12,7 @@ import type {
   CountUnreadNotificationsResult,
   ListNotificationsResult,
   NotificationItem,
-} from "../app/[tenant_id]/(protected)/notifications/notification-types";
+} from "../app/[tenant_id]/[locale]/(protected)/notifications/notification-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,

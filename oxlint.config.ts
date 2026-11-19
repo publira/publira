@@ -80,11 +80,15 @@ export default defineConfig({
        * its own arguments only, and that code reaches `next/*`, the session,
        * and the API client by importing them. No parameter is left for a test
        * to hand it a fake through, so replacing the module is the only seam.
-       * `web-platform`'s Vitest setup stands in for `next/root-params`, a
+       * The consoles' Vitest setups stand in for `next/root-params`, a
        * placeholder the Next.js compiler replaces and that throws when anything
        * else imports it, for every test at once.
        */
-      files: ["**/*.test.{ts,tsx}", "apps/web-platform/vitest.setup.ts"],
+      files: [
+        "**/*.test.{ts,tsx}",
+        "apps/web-admin/vitest.setup.ts",
+        "apps/web-platform/vitest.setup.ts",
+      ],
       rules: {
         "anti-slop/no-module-mocking": "off",
       },
@@ -211,13 +215,14 @@ export default defineConfig({
       /**
        * A client error boundary resolves its locale from `document.cookie` —
        * the API holding the setting is unreachable by the time it renders, so
-       * there is nothing else left to read — and so does `web-platform`'s
+       * there is nothing else left to read — and so does each console's
        * `<DocumentLocale>`, which reapplies the `<head>` script's rule over the
        * same cookies. Each test has to put the cookies there the way a browser
        * would; a cookie library would only be testing itself.
        */
       files: [
         "apps/*/components/error-boundary-message.test.tsx",
+        "apps/web-admin/components/document-locale.test.tsx",
         "apps/web-platform/components/document-locale.test.tsx",
       ],
       rules: {
@@ -240,17 +245,17 @@ export default defineConfig({
        * request-derived value reaches either, and the script writes an
        * attribute rather than markup. See AGENTS.md "UI locale".
        *
-       * `web-platform` rewrites onto `/[locale]/...` and `web-admin` onto
-       * `/[tenant_id]/...`, so each document lives one directory deep, at
-       * `app/[locale]/layout.tsx` and `app/[tenant_id]/layout.tsx`, which `*`
-       * matches without also covering `(protected)/layout.tsx`.
-       * `web-storefront` adds the locale segment below the tenant, which puts
-       * its own document one directory deeper still, above the `(site)` and
-       * `(auth)` layouts.
+       * `web-platform` rewrites onto `/[locale]/...`, so its document lives
+       * one directory deep, at `app/[locale]/layout.tsx`, which `*` matches
+       * without also covering `(protected)/layout.tsx`. `web-admin` and
+       * `web-storefront` put the locale segment below the tenant, which puts
+       * their documents one directory deeper, at
+       * `app/[tenant_id]/[locale]/layout.tsx`, above the `(protected)`,
+       * `(site)`, and `(auth)` layouts.
        */
       files: [
         "apps/web-platform/app/*/layout.tsx",
-        "apps/web-admin/app/*/layout.tsx",
+        "apps/web-admin/app/*/*/layout.tsx",
         "apps/web-storefront/app/*/*/layout.tsx",
       ],
       rules: {
@@ -308,7 +313,7 @@ export default defineConfig({
        */
       files: [
         "apps/web-platform/app/*/layout.tsx",
-        "apps/web-admin/app/*/layout.tsx",
+        "apps/web-admin/app/*/*/layout.tsx",
         "apps/web-storefront/app/*/*/layout.tsx",
       ],
       rules: {

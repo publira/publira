@@ -1,0 +1,295 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
+import { LinkButton } from "@publira/ui-components/button";
+import * as SectionError from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { z } from "zod";
+
+import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
+import { FlashToast } from "#components/flash-toast";
+import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  TenantAdminOnly,
+  TenantEditorFieldset,
+} from "#components/tenant-role-gate";
+import { parseEditTab } from "#lib/edit-tab-search-params";
+import { getLabel } from "#lib/label";
+import { getAdminLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getTenantId } from "#lib/tenant-id";
+
+import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
+import { LabelForm } from "../_components/label-form";
+import { LabelTabNav } from "../_components/label-tab-nav";
+import {
+  deleteLabelAction,
+  updateLabelAction,
+  updateLabelEyeCatchAction,
+  uploadLabelEyeCatchAspectImageAction,
+} from "../_lib/actions";
+import { LabelDeleteDialog } from "./_components/label-delete-dialog";
+
+interface EditLabelPageProps {
+  params: Promise<{
+    label_id: string;
+    tenant_id: string;
+  }>;
+  searchParams: Promise<{
+    tab?: string;
+  }>;
+}
+
+const editLabelParamsSchema = z.object({
+  label_id: routeParamString(),
+});
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const tenantId = await getTenantId();
+  const locale = await getAdminLocale(tenantId);
+  const t = await getMessagesFor(locale);
+
+  return { title: t("admin.labels.edit_title") };
+};
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_id", "label_id");
+
+const EditLabelFormSkeleton = () => (
+  <div className="grid gap-4">
+    <Skeleton className="h-20" />
+    <Skeleton className="ml-auto h-10 w-36" />
+  </div>
+);
+
+const resolveActiveTab = async (
+  searchParams: EditLabelPageProps["searchParams"]
+): Promise<"basic" | "eye-catch"> => parseEditTab(await searchParams);
+
+const EditLabelTitle = async ({
+  searchParams,
+}: Pick<EditLabelPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.labels.eye_catch_title" />
+  ) : (
+    <Message message="admin.labels.edit_title" />
+  );
+};
+
+const EditLabelDescription = async ({
+  searchParams,
+}: Pick<EditLabelPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.labels.eye_catch_description" />
+  ) : (
+    <Message message="admin.labels.edit_description" />
+  );
+};
+
+const EditLabelTabNav = async ({
+  params,
+  searchParams,
+}: EditLabelPageProps) => {
+  const [rawParams, activeTab] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+  ]);
+
+  const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+
+  if (!parsedParams) {
+    notFound();
+  }
+
+  const { label_id: labelPublicId } = parsedParams;
+
+  return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
+};
+
+/** Deleting the label, for a Tenant admin alone: the API refuses anyone else. */
+const LabelDeleteSection = ({
+  labelId,
+  labelPublicId,
+  name,
+  tenantId,
+}: {
+  labelId: string;
+  labelPublicId: string;
+  name: string;
+  tenantId: string;
+}) => (
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
+          <Message message="admin.labels.delete.title" />
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
+          <Message message="admin.labels.delete.description" />
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+      <ConsoleSection.Actions>
+        <LabelDeleteDialog
+          action={deleteLabelAction}
+          // A rename remounts the dialog with the name it now has to match.
+          key={`${labelPublicId}:delete:${name}`}
+          labelId={labelId}
+          labelPublicId={labelPublicId}
+          name={name}
+          tenantId={tenantId}
+        />
+      </ConsoleSection.Actions>
+    </ConsoleSection.Header>
+  </ConsoleSection.Root>
+);
+
+const EditLabelFormData = async ({
+  params,
+  searchParams,
+}: EditLabelPageProps) => {
+  const [rawParams, activeTab, tenantId] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+    getTenantId(),
+  ]);
+
+  const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+
+  if (!parsedParams) {
+    notFound();
+  }
+
+  const { label_id: labelPublicId } = parsedParams;
+
+  const result = await getLabel({ publicId: labelPublicId });
+
+  if (!result.ok) {
+    if (result.notFound) {
+      // Missing, or another tenant's label — never told apart. Renders
+      // `(protected)/not-found.tsx` inside the console chrome.
+      notFound();
+    }
+
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Message message="admin.labels.detail_error" />
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
+          <LinkButton render={<Link href="/labels" />} variant="outline">
+            <Message message="admin.labels.back_to_list" />
+          </LinkButton>
+        </SectionError.Actions>
+      </SectionError.Root>
+    );
+  }
+
+  if (activeTab === "eye-catch") {
+    return (
+      // Both cards hold the picked file and the chosen ratio in local state,
+      // so the tab is keyed by the label it belongs to: moving to another
+      // label remounts it rather than leaving that state behind.
+      <div className="grid gap-6" key={result.label.publicId}>
+        <LabelEyeCatchForm
+          action={updateLabelEyeCatchAction}
+          initialLabel={result.label}
+          tenantId={tenantId}
+        />
+        <EyeCatchAspectImages
+          id={result.label.id}
+          entity="label"
+          tenantId={tenantId}
+          uploadAction={uploadLabelEyeCatchAspectImageAction}
+          variants={result.label.eyeCatchImageVariants}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6">
+      <LabelForm
+        action={updateLabelAction}
+        initialLabel={result.label}
+        key={result.label.publicId}
+        mode="update"
+        tenantId={tenantId}
+      />
+      <Suspense fallback={null}>
+        <TenantAdminOnly>
+          <LabelDeleteSection
+            labelId={result.label.id}
+            labelPublicId={result.label.publicId}
+            name={result.label.name}
+            tenantId={tenantId}
+          />
+        </TenantAdminOnly>
+      </Suspense>
+    </div>
+  );
+};
+
+const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
+          <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
+            <EditLabelTitle searchParams={searchParams} />
+          </Suspense>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <EditLabelDescription searchParams={searchParams} />
+          </Suspense>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
+        <LinkButton render={<Link href="/labels" />} variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.labels.back_to_list" />
+          </Suspense>
+        </LinkButton>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
+      <FlashToast message="admin.labels.created" />
+      <div className="grid gap-6">
+        <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
+          <EditLabelTabNav params={params} searchParams={searchParams} />
+        </Suspense>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.labels.detail_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<EditLabelFormSkeleton />}>
+            <TenantEditorFieldset>
+              <EditLabelFormData params={params} searchParams={searchParams} />
+            </TenantEditorFieldset>
+          </Suspense>
+        </SectionErrorBoundary>
+      </div>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
+);
+
+export default EditLabelPage;

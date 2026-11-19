@@ -37,8 +37,9 @@ test.describe("web-admin display language", () => {
 
     await switchConsoleLocale(page, "English", "日本語");
 
-    // Same round trip: the Server Action answers with the re-rendered screen,
-    // and the control sets `<html lang>` itself because the shell is static.
+    // The switcher refreshes the route once the Action settles, which routes
+    // the screen onto the new locale without a reload by the operator, and
+    // the control sets `<html lang>` itself because the shell is static.
     await expect(
       page.getByRole("heading", { level: 1, name: "設定" })
     ).toBeVisible();
@@ -59,6 +60,29 @@ test.describe("web-admin display language", () => {
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
     expect(await storedLocaleCookie(page)).toBe("en");
+  });
+
+  // The proxy writes the locale in front of the path itself, so one the
+  // operator types there is part of the path and matches no screen.
+  test("a URL that starts with a locale is not a route and changes no language", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    const response = await page.goto(adminUrl("/ja/settings"));
+
+    expect(response?.status()).toBe(404);
+    expect(await storedLocaleCookie(page)).toBeUndefined();
+
+    await page.goto(adminUrl("/settings"));
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
   });
 
   // Every locale of `locales/index.json` reaches the console the same way, so

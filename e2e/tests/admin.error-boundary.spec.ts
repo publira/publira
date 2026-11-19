@@ -15,7 +15,7 @@ import { WEB_ADMIN_BASE_URL } from "../src/urls";
  * Which boundary catches it differs from web-storefront, and that is the point
  * of asserting it here. The console chrome `(protected)/layout.tsx` renders
  * reads the session and tenant, so an admin API outage fails that layout —
- * above `(protected)/error.tsx` — and `app/[tenant_id]/error.tsx` takes over
+ * above `(protected)/error.tsx` — and `app/[tenant_id]/[locale]/error.tsx` takes over
  * with no console chrome around it. A failure inside a page instead is caught
  * by the `SectionErrorBoundary` around that section, which
  * `admin.publish-flow.spec.ts` exercises as part of the normal flows.

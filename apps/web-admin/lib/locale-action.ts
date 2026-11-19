@@ -14,13 +14,15 @@ const localeFormSchema = z.object({
 });
 
 /**
- * Persist the chosen UI locale and re-render the current screen.
+ * Persist the chosen UI locale.
  *
- * Next.js returns the updated UI in the same round trip as the `Set-Cookie`,
- * so nothing here needs to revalidate: the reads that depend on the locale are
- * request-time reads inside `<Suspense>`, not cache entries. `<html lang>` is
- * the one thing the re-render leaves alone — it is rendered statically — so the
- * switcher sets that attribute in its own click handler.
+ * The screen this Action re-renders in its own round trip was routed onto the
+ * `[locale]` segment the old cookie named, so it is still in the old language;
+ * `AdminLocaleSwitcherRoot` refreshes the route once this settles, which sends
+ * it through `proxy.ts` on the new cookie. Nothing here needs to revalidate: no
+ * cache entry depends on the cookie. `<html lang>` is the one thing neither
+ * render touches — it is written by the `<head>` script — so the switcher sets
+ * that attribute in its own handler.
  *
  * An unknown value is dropped rather than reported. The switcher offers exactly
  * the supported locales, so the only way to submit anything else is a forged

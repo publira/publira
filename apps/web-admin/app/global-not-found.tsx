@@ -11,7 +11,7 @@ const NOT_FOUND_LOCALE: Locale = "en";
 
 /**
  * App-wide 404 for URLs that match no route at all. Next.js skips the normal
- * layout tree (including `app/[tenant_id]/layout.tsx`) and renders this full
+ * layout tree (including `app/[tenant_id]/[locale]/layout.tsx`) and renders this full
  * HTML document directly, so no tenant RPC runs here.
  *
  * Contrast with `(protected)/not-found.tsx`, which handles `notFound()` for

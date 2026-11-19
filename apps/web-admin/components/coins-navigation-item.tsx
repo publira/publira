@@ -4,7 +4,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { getCoinSettings } from "#lib/coins";
-import { getLocale } from "#lib/locale";
+import { getAdminLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { Message } from "./message";
@@ -15,7 +15,7 @@ import { Message } from "./message";
  */
 export const CoinsNavigationItem = async () => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const locale = await getAdminLocale(tenantId);
   let allowed = false;
 
   try {

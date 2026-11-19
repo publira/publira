@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 
 import { verifyAdminSession } from "./auth-session";
-import { getLocale } from "./locale";
+import { getAdminLocale } from "./locale";
 import { getTenantId } from "./tenant-id";
 
 /** The tenant a Server Component renders for, and the language it renders in. */
@@ -28,5 +28,5 @@ export const verifyAdminPageSession = async (): Promise<AdminPageSession> => {
   // error screen instead of the login redirect.
   await verifyAdminSession(tenantId);
 
-  return { locale: await getLocale(tenantId), tenantId };
+  return { locale: await getAdminLocale(tenantId), tenantId };
 };

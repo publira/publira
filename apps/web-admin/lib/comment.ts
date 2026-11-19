@@ -9,7 +9,7 @@ import type { Locale } from "@publira/i18n";
 import {
   COMMENT_REPORT_STATUSES,
   COMMENT_STATUSES,
-} from "../app/[tenant_id]/(protected)/comments/comment-types";
+} from "../app/[tenant_id]/[locale]/(protected)/comments/comment-types";
 import type {
   CommentCreator,
   CommentHiddenReason,
@@ -22,7 +22,7 @@ import type {
   CountPendingCommentsResult,
   ListCommentReportsResult,
   ListCommentsResult,
-} from "../app/[tenant_id]/(protected)/comments/comment-types";
+} from "../app/[tenant_id]/[locale]/(protected)/comments/comment-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
