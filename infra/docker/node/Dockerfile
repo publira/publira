@@ -41,7 +41,7 @@ WORKDIR /app
 FROM base AS prepare
 
 # renovate: datasource=npm depName=turbo versioning=semver
-ARG TURBO_VERSION=2.11.12
+ARG TURBO_VERSION=2.11.13
 
 RUN npm install --global "turbo@${TURBO_VERSION}"
 
