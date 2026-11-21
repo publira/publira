@@ -19,16 +19,14 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
 import { pendingEpisodeReviewState } from "#lib/episode-review-state";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantEpisodeReviewSettings } from "#lib/tenant-episode-review-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.dashboard.title") };
 };
@@ -152,9 +150,7 @@ const DashboardSkeleton = () => (
 );
 
 const DashboardContent = async () => {
-  const tenantId = await getTenantId();
-
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [timeZone, result, reviewSettingsResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),

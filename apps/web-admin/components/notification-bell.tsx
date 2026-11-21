@@ -2,7 +2,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
@@ -35,8 +35,7 @@ const notificationMenuLimit = 5;
  * caller wraps this in a `<Suspense>` with `NotificationBell.Skeleton`.
  */
 const NotificationBell = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [list, unread, t] = await Promise.all([
     listNotifications(tenantId, locale, { limit: notificationMenuLimit }),

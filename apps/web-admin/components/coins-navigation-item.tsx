@@ -4,7 +4,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { getCoinSettings } from "#lib/coins";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { Message } from "./message";
@@ -14,8 +14,7 @@ import { Message } from "./message";
  * issue coins: until it does, nothing on that screen could take effect.
  */
 export const CoinsNavigationItem = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   let allowed = false;
 
   try {

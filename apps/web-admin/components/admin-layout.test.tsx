@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import type * as AdminAuthModule from "../lib/admin-auth";
 import { verifyAdminSession } from "../lib/auth-session";
-import { getAdminLocale } from "../lib/locale";
+import { getLocale } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
 import { getTenantName } from "../lib/public-api";
 import { renderServerComponent } from "../lib/render-server-component";
@@ -64,7 +64,7 @@ vi.mock("../lib/auth-session", () => ({
 }));
 
 vi.mock("../lib/locale", () => ({
-  getAdminLocale: vi.fn(() => Promise.resolve("ja")),
+  getLocale: vi.fn(() => Promise.resolve("ja")),
   loadAdminMessages: (locale: Locale) => Promise.resolve(sharedCatalog(locale)),
 }));
 
@@ -136,7 +136,7 @@ const renderTenantChrome = async () =>
 
 describe("AdminLayout", () => {
   beforeEach(() => {
-    vi.mocked(getAdminLocale).mockResolvedValue("en");
+    vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(verifyAdminSession).mockResolvedValue(operator);
     // The members link in the navigation reads the operator's role itself.
     vi.mocked(getAdminCurrentUser).mockResolvedValue({
@@ -262,7 +262,7 @@ describe("AdminUser", () => {
   ] as const)(
     "interpolates the name into the aria-label of the account menu in %s",
     async (locale, expected) => {
-      vi.mocked(getAdminLocale).mockResolvedValue(locale);
+      vi.mocked(getLocale).mockResolvedValue(locale);
       vi.mocked(verifyAdminSession).mockResolvedValue(operator);
 
       render(await AdminUser());
@@ -272,7 +272,7 @@ describe("AdminUser", () => {
   );
 
   it("verifies the session against the tenant the console is serving", async () => {
-    vi.mocked(getAdminLocale).mockResolvedValue("en");
+    vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(verifyAdminSession).mockResolvedValue(operator);
 
     // `keyof` a function type names none of its methods, so `spyOn` reaches
@@ -301,7 +301,7 @@ describe("AdminLocaleSwitcher", () => {
   ] as const)(
     "names the display-language control in %s",
     async (locale, expected) => {
-      vi.mocked(getAdminLocale).mockResolvedValue(locale);
+      vi.mocked(getLocale).mockResolvedValue(locale);
 
       render(await AdminLocaleSwitcher());
 

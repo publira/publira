@@ -41,7 +41,7 @@ vi.mock("#components/client-message", () => ({
 }));
 
 vi.mock("#lib/locale", () => ({
-  getAdminLocale: () => Promise.resolve("en"),
+  getLocale: () => Promise.resolve("en"),
   loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 

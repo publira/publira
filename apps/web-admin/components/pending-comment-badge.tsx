@@ -1,5 +1,5 @@
 import { countPendingComments } from "#lib/comment";
-import { getAdminLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -17,8 +17,7 @@ import { getTenantId } from "#lib/tenant-id";
  * screen reader nothing and an `aria-label` cannot stream in as a node.
  */
 export const PendingCommentBadge = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [result] = await Promise.all([
     countPendingComments(tenantId, locale),

@@ -1,7 +1,5 @@
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import type { TenantBrandingImageVariant } from "#lib/tenant-branding-image";
-import { getTenantId } from "#lib/tenant-id";
 
 import { TenantBrandLogo } from "./tenant-brand-logo";
 
@@ -24,9 +22,7 @@ export const AdminBrandLogo = async ({
   tenantName: string;
   variant: TenantBrandingImageVariant;
 }) => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return (
     <TenantBrandLogo
