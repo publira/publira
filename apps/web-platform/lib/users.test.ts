@@ -13,7 +13,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockGetEndUser,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockGetTenant,
   mockListEndUsers,
   mockListTenants,
@@ -22,7 +22,7 @@ const {
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetEndUser: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListEndUsers: vi.fn(),
   mockListTenants: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -66,7 +66,7 @@ const serviceHeaders = {
 /** What every test starts from: a confirmed operator reading in English. */
 const resetMocks = () => {
   vi.resetAllMocks();
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",

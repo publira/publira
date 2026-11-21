@@ -16,6 +16,7 @@ import {
   createPlatformTenant,
   deletePlatformTenant,
   getPlatformTenant,
+  getPlatformTenantForCookieLocale,
   listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
   listPlatformTenants,
@@ -64,6 +65,7 @@ const {
   mockCreateTenant,
   mockCreateTenantAdminInvitation,
   mockDeleteTenant,
+  mockGetLocale,
   mockGetPlatformLocale,
   mockGetTenant,
   mockListTenantAdminInvitations,
@@ -89,6 +91,7 @@ const {
   mockCreateTenant: vi.fn(),
   mockCreateTenantAdminInvitation: vi.fn(),
   mockDeleteTenant: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListOperators: vi.fn(),
@@ -116,6 +119,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
+  getLocale: mockGetLocale,
   getPlatformLocale: mockGetPlatformLocale,
 }));
 
@@ -161,6 +165,7 @@ beforeEach(() => {
   mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }));
+  mockGetLocale.mockResolvedValue("en");
   mockGetPlatformLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
@@ -547,6 +552,22 @@ describe("createPlatformTenant", () => {
 
     await expect(getPlatformTenant("tenant_bluemaple")).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+
+  it("words a Route Handler's failure in the cookie locale", async () => {
+    mockGetLocale.mockResolvedValue("en");
+    mockGetPlatformLocale.mockResolvedValue("ja");
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(
+      getPlatformTenantForCookieLocale("tenant_bluemaple")
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
   });

@@ -5,7 +5,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleSelectItems } from "#lib/operator-labels";
 
@@ -22,7 +22,7 @@ export const OperatorRoleForm = async ({
   operatorId: string;
   operatorPublicId: string;
 }) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, roleItems] = await Promise.all([
     getMessagesFor(locale),

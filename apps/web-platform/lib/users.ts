@@ -17,7 +17,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import { platformTenantsCacheTag } from "./tenants";
 
@@ -222,7 +222,7 @@ export const listPlatformEndUsers = async (
 ): Promise<ListPlatformEndUsersResult> => {
   await verifyPlatformSession();
 
-  return listPlatformEndUsersForLocale(await getPlatformLocale(), {
+  return listPlatformEndUsersForLocale(await getLocale(), {
     createdAfter: input.createdAfter ?? "",
     createdBefore: input.createdBefore ?? "",
     email: input.email?.trim() ?? "",
@@ -334,7 +334,7 @@ export const searchPlatformTenantFilterOptions = async (
   }
 
   return searchPlatformTenantFilterOptionsForLocale(
-    await getPlatformLocale(),
+    await getLocale(),
     normalized
   );
 };
@@ -392,10 +392,7 @@ export const getPlatformEndUser = async (
     return { ok: true, user: null };
   }
 
-  return getPlatformEndUserForLocale(
-    await getPlatformLocale(),
-    normalizedPublicId
-  );
+  return getPlatformEndUserForLocale(await getLocale(), normalizedPublicId);
 };
 
 export const suspendPlatformEndUser = async (

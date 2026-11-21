@@ -15,8 +15,8 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
   getPlatformTenant,
@@ -44,8 +44,7 @@ const tenantMembersParamsSchema = z.object({
 export const generateMetadata = async ({
   params,
 }: TenantMembersPageProps): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   const parsedParams = parseRouteParams(
     tenantMembersParamsSchema,
@@ -122,7 +121,7 @@ const TenantMembersContent = async ({
   const pageFilters = parseMemberInvitationFilters(await searchParams);
 
   const [locale, tenantResult, timeZone] = await Promise.all([
-    getPlatformLocale(),
+    getLocale(),
     getPlatformTenant(tenantId),
     getPlatformDisplayTimeZone(),
   ]);

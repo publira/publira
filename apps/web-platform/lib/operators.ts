@@ -18,7 +18,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
@@ -155,7 +155,7 @@ export const listPlatformOperators = async (
   await verifyPlatformSession();
 
   return listPlatformOperatorsForLocale(
-    await getPlatformLocale(),
+    await getLocale(),
     input.limit ?? 20,
     input.token ?? ""
   );
@@ -311,10 +311,7 @@ export const getPlatformOperator = async (
     return { ok: true, operator: null };
   }
 
-  return getPlatformOperatorForLocale(
-    await getPlatformLocale(),
-    parsed.data.publicId
-  );
+  return getPlatformOperatorForLocale(await getLocale(), parsed.data.publicId);
 };
 
 export interface UpdatePlatformOperatorRoleInput {

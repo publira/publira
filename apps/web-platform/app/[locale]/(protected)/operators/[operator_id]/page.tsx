@@ -20,7 +20,8 @@ import { z } from "zod";
 import * as DangerConfirmButton from "#components/danger-confirm-button";
 import { Message } from "#components/message";
 import { verifyPlatformSession } from "#lib/auth-session";
-import { getPlatformLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
   getOperatorRoleCardDescription,
@@ -39,8 +40,7 @@ import {
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.operators.detail_metadata") };
 };
@@ -112,7 +112,7 @@ const OperatorDetailContent = async ({
 
   const { operator_id: operatorPublicId } = parsedParams;
 
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, operatorResult, currentOperator, timeZone] = await Promise.all([
     getMessagesFor(locale),
