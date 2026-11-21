@@ -21,7 +21,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale, getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { PlatformMessageAccessor } from "./messages";
 
@@ -239,7 +239,7 @@ export const listPlatformTenants = async (
 ): Promise<ListPlatformTenantsResult> => {
   await verifyPlatformSession();
 
-  return listPlatformTenantsForLocale(await getPlatformLocale(), {
+  return listPlatformTenantsForLocale(await getLocale(), {
     limit: input.limit ?? 20,
     name: input.name ?? "",
     status: input.status ?? "",
@@ -324,13 +324,12 @@ const getPlatformTenantForLocale = async (
 };
 
 /**
- * Resolves the tenant a URL names by its public ID. Everything else about the
- * tenant is addressed by the internal ID this returns.
- *
- * Read with the service credential, like {@link listPlatformTenants}.
+ * The session check and the public-ID normalization shared by
+ * {@link getPlatformTenant} and {@link getPlatformTenantForCookieLocale}.
  */
-export const getPlatformTenant = async (
-  publicId: string
+const readPlatformTenant = async (
+  publicId: string,
+  locale: Locale
 ): Promise<GetPlatformTenantResult> => {
   await verifyPlatformSession();
 
@@ -340,8 +339,31 @@ export const getPlatformTenant = async (
     return { ok: true, tenant: null };
   }
 
-  return getPlatformTenantForLocale(await getPlatformLocale(), normalized);
+  return getPlatformTenantForLocale(locale, normalized);
 };
+
+/**
+ * Resolves the tenant a URL names by its public ID. Everything else about the
+ * tenant is addressed by the internal ID this returns.
+ *
+ * Read with the service credential, like {@link listPlatformTenants}. The
+ * locale is the `[locale]` root segment, which keys the cached error copy.
+ */
+export const getPlatformTenant = async (
+  publicId: string
+): Promise<GetPlatformTenantResult> =>
+  readPlatformTenant(publicId, await getLocale());
+
+/**
+ * {@link getPlatformTenant} for the audit-log CSV Route Handler.
+ *
+ * A Route Handler cannot read the `[locale]` root parameter, so the cached
+ * error copy follows the cookie instead.
+ */
+export const getPlatformTenantForCookieLocale = async (
+  publicId: string
+): Promise<GetPlatformTenantResult> =>
+  readPlatformTenant(publicId, await getPlatformLocale());
 
 export interface ListPlatformTenantMembersInput {
   limit?: number;
@@ -431,7 +453,7 @@ export const listPlatformTenantMembers = async (
 ): Promise<ListPlatformTenantMembersResult> => {
   await verifyPlatformSession();
 
-  return listPlatformTenantMembersForLocale(await getPlatformLocale(), {
+  return listPlatformTenantMembersForLocale(await getLocale(), {
     limit: input.limit ?? 20,
     tenantId: input.tenantId.trim(),
     token: input.token ?? "",
@@ -758,14 +780,11 @@ export const listPlatformTenantAdminInvitations = async (
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   await verifyPlatformSession();
 
-  return listPlatformTenantAdminInvitationsForLocale(
-    await getPlatformLocale(),
-    {
-      limit: input.limit ?? 20,
-      tenantId: input.tenantId.trim(),
-      token: input.token ?? "",
-    }
-  );
+  return listPlatformTenantAdminInvitationsForLocale(await getLocale(), {
+    limit: input.limit ?? 20,
+    tenantId: input.tenantId.trim(),
+    token: input.token ?? "",
+  });
 };
 
 export const createPlatformTenantAdminInvitation = async (

@@ -21,7 +21,8 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getPlatformLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import type { GetPlatformTenantResult } from "#lib/tenants";
@@ -46,8 +47,7 @@ import { resolveTenantFilter, resolvedTenantId } from "./_lib/tenant-filter";
 import type { TenantFilterResolution } from "./_lib/tenant-filter";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.users.title") };
 };
@@ -246,7 +246,7 @@ const UsersFilterForm = async ({
   tenantId: string;
   tenantMessages: TenantFilterMessage[];
 }) => {
-  const t = await getMessagesFor(await getPlatformLocale());
+  const t = await getMessages();
 
   return (
     <div className="grid gap-3">
@@ -478,7 +478,7 @@ const UsersContent = async ({
 }: Pick<UsersPageProps, "searchParams">) => {
   const [rawSearchParams, locale] = await Promise.all([
     searchParams,
-    getPlatformLocale(),
+    getLocale(),
   ]);
 
   const filters = parseUsersFilters(rawSearchParams);

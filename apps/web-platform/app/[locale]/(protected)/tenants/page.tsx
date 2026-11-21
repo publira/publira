@@ -16,7 +16,8 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getPlatformLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
@@ -25,8 +26,7 @@ import { listPlatformTenants } from "#lib/tenants";
 import { buildTenantsPath, parseTenantFilters } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.tenants.title") };
 };
@@ -68,7 +68,7 @@ type TenantsPageProps = PageProps<"/[locale]/tenants">;
 const TenantsContent = async ({
   searchParams,
 }: Pick<TenantsPageProps, "searchParams">) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const filters = parseTenantFilters(await searchParams, allowedStatusValues);
 
   const [t, result, timeZone] = await Promise.all([

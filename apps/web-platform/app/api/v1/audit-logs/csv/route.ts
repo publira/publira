@@ -9,7 +9,7 @@ import { z } from "zod";
 import { buildAuditLogsPath, exportPlatformAuditLogs } from "#lib/audit-logs";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { buildLoginPath } from "#lib/auth-shared";
-import { getPlatformTenant } from "#lib/tenants";
+import { getPlatformTenantForCookieLocale } from "#lib/tenants";
 
 /**
  * Both days are required: the screen's link always spells out the period it
@@ -65,7 +65,9 @@ export const GET = async (request: Request) => {
       redirect(loginPath);
     }
 
-    const tenant = await getPlatformTenant(filters.tenantPublicId);
+    const tenant = await getPlatformTenantForCookieLocale(
+      filters.tenantPublicId
+    );
 
     if (!(tenant.ok && tenant.tenant)) {
       return notFound();

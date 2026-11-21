@@ -30,7 +30,7 @@ vi.mock("#lib/auth", () => ({
 }));
 
 vi.mock("#lib/tenants", () => ({
-  getPlatformTenant: mockGetPlatformTenant,
+  getPlatformTenantForCookieLocale: mockGetPlatformTenant,
 }));
 
 vi.mock("next/cache", () => ({

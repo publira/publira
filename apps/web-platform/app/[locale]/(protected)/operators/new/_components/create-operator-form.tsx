@@ -8,14 +8,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleSelectItems } from "#lib/operator-labels";
 
 import { createOperatorAction } from "../_lib/actions";
 
 export const CreateOperatorForm = async () => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, roleItems] = await Promise.all([
     getMessagesFor(locale),

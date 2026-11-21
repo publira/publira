@@ -25,7 +25,8 @@ import { ImageDomainPreview } from "#components/image-domain-preview";
 import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { verifyPlatformSession } from "#lib/auth-session";
-import { getPlatformLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { isPlatformSuperAdmin } from "#lib/roles";
@@ -55,8 +56,7 @@ const tenantDetailParamsSchema = z.object({
 export const generateMetadata = async ({
   params,
 }: TenantDetailPageProps): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
   const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
 
   if (!parsedParams) {
@@ -215,7 +215,7 @@ const TenantDetailContent = async ({
   }
 
   const { tenant_id: tenantId } = parsedParams;
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
 
   const [t, tenantResult, timeZone, currentOperator] = await Promise.all([
     getMessagesFor(locale),

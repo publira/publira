@@ -12,7 +12,8 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getPlatformLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
   getOperatorRoleLabel,
@@ -26,8 +27,7 @@ import {
 } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.operators.title") };
 };
@@ -61,7 +61,7 @@ const OperatorsContent = async ({
   searchParams,
 }: Pick<OperatorsPageProps, "searchParams">) => {
   const [locale, rawSearchParams] = await Promise.all([
-    getPlatformLocale(),
+    getLocale(),
     searchParams,
   ]);
 

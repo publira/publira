@@ -57,14 +57,14 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockGetOperator,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockListOperators,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetOperator: vi.fn<GetOperatorMethod>(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockListOperators: vi.fn<ListOperatorsMethod>(),
   mockVerifyPlatformSession: vi.fn(),
 }));
@@ -79,7 +79,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -99,7 +99,7 @@ const serviceHeaders = { headers: { Authorization: "Bearer service-token" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",
