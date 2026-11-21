@@ -22,7 +22,7 @@
     "@publira/utils": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-email": "6.11.14",
+    "react-email": "6.11.16",
     "zod": "catalog:"
   },
   "devDependencies": {
