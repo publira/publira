@@ -7,12 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminBrandLogo } from "./admin-brand-logo";
 
 vi.mock("#lib/locale", () => ({
-  getAdminLocale: () => Promise.resolve("en"),
+  getLocale: () => Promise.resolve("en"),
   loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
-}));
-
-vi.mock("#lib/tenant-id", () => ({
-  getTenantId: () => Promise.resolve("tenant-1"),
 }));
 
 vi.mock("./tenant-brand-logo", () => ({

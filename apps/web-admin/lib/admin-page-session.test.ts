@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAdminLocale, mockGetTenantId, mockVerifyAdminSession } =
-  vi.hoisted(() => ({
-    mockGetAdminLocale: vi.fn(),
+const { mockGetLocale, mockGetTenantId, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockGetLocale: vi.fn(),
     mockGetTenantId: vi.fn(),
     mockVerifyAdminSession: vi.fn(),
-  }));
+  })
+);
 
 vi.mock("./tenant-id", () => ({ getTenantId: mockGetTenantId }));
 
-vi.mock("./locale", () => ({ getAdminLocale: mockGetAdminLocale }));
+vi.mock("./locale", () => ({ getLocale: mockGetLocale }));
 
 vi.mock("./auth-session", () => ({
   verifyAdminSession: mockVerifyAdminSession,
@@ -18,7 +19,7 @@ vi.mock("./auth-session", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetTenantId.mockResolvedValue("TENANT001");
-  mockGetAdminLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyAdminSession.mockResolvedValue({
     name: "Example Operator",
     publicId: "USER001",
@@ -35,20 +36,18 @@ describe("verifyAdminPageSession", () => {
       tenantId: "TENANT001",
     });
     expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
-    expect(mockGetAdminLocale).toHaveBeenCalledWith("TENANT001");
+    expect(mockGetLocale).toHaveBeenCalledOnce();
   });
 
   it("sends a rejected session to the login even when the locale cannot be read either", async () => {
     const redirect = new Error("NEXT_REDIRECT");
     mockVerifyAdminSession.mockRejectedValueOnce(redirect);
-    mockGetAdminLocale.mockRejectedValueOnce(
-      new Error("tenant default locale is unavailable")
-    );
+    mockGetLocale.mockRejectedValueOnce(new Error("not a locale"));
 
     const { verifyAdminPageSession } = await import("./admin-page-session");
 
     await expect(verifyAdminPageSession()).rejects.toBe(redirect);
-    expect(mockGetAdminLocale).not.toHaveBeenCalled();
+    expect(mockGetLocale).not.toHaveBeenCalled();
   });
 
   it("lets the login redirect through", async () => {

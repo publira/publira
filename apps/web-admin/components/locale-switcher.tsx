@@ -1,14 +1,13 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
 import * as LocaleSwitcher from "@publira/ui-components/locale-switcher";
 
-import { getAdminLocale } from "../lib/locale";
+import { getLocale } from "../lib/locale";
 import { getMessagesFor } from "../lib/messages";
-import { getTenantId } from "../lib/tenant-id";
 import { AdminLocaleSwitcherRoot } from "./locale-switcher-root";
 
 /** Header display-language control backed by the existing locale cookie. */
 export const AdminLocaleSwitcher = async () => {
-  const locale = await getAdminLocale(await getTenantId());
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
   const label = t("locale.label");
 

@@ -12,8 +12,8 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -23,9 +23,7 @@ import { NotificationManager } from "./_components/notification-manager";
 type NotificationsPageProps = PageProps<"/[tenant_id]/[locale]/notifications">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.notifications.title") };
 };
@@ -36,9 +34,13 @@ export const generateStaticParams = () =>
 const NotificationManagerData = async ({
   searchParams,
 }: Pick<NotificationsPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const { token } = parseCursorSearchParams(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(tenantId, locale, { token }),

@@ -7,7 +7,8 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 import { verifyAdminSession } from "../lib/auth-session";
@@ -42,8 +43,7 @@ const getConsoleTenantName = async (): Promise<string> => {
 };
 
 const getConsoleLogo = async (): Promise<TenantBrandingImageVariant | null> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   return tenantBrandingVariant(await getTenantThemeLogo(tenantId, locale));
 };
@@ -60,7 +60,7 @@ export const AdminUser = async () => {
   const tenantId = await getTenantId();
   const user = await verifyAdminSession(tenantId);
 
-  const locale = await getAdminLocale(tenantId);
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
 
   return (
@@ -99,8 +99,7 @@ export const AdminUser = async () => {
 };
 
 const AdminMobileNavigation = async () => {
-  const locale = await getAdminLocale(await getTenantId());
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return (
     <>
