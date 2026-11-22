@@ -17,7 +17,7 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import {
@@ -41,7 +41,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
   const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     isSignedInTenantAdmin(tenantId),
   ]);
 
@@ -62,7 +62,7 @@ const MemberListData = async ({
   const pageParams = parseMembersSearchParams(sp);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -92,7 +92,7 @@ const InvitationListData = async ({
   const pageParams = parseMembersSearchParams(sp);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

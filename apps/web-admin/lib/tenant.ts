@@ -33,10 +33,40 @@ export interface TenantRouting {
  */
 export const SUSPENDED_TENANT = "suspended";
 
-const tenantCache = new LRUCache<string, TenantRouting>({
-  max: 500,
-  ttl: 300_000,
-});
+const tenantRoutingCacheKey = Symbol.for("publira.web-admin.tenant-routing");
+
+/**
+ * The Host resolutions `proxy.ts` rewrites from.
+ *
+ * The proxy and the Server Action that saves the languages are compiled into
+ * separate bundles of one process. The cache lives on `globalThis`, so the
+ * save drops the entries the proxy reads.
+ */
+const tenantRoutingCache = (): LRUCache<string, TenantRouting> => {
+  // SAFETY: the property is this module's own cache, created below when absent.
+  const host = globalThis as typeof globalThis &
+    Record<symbol, LRUCache<string, TenantRouting> | undefined>;
+
+  const existing = host[tenantRoutingCacheKey];
+
+  if (existing) {
+    return existing;
+  }
+
+  const created = new LRUCache<string, TenantRouting>({
+    max: 500,
+    ttl: 300_000,
+  });
+
+  host[tenantRoutingCacheKey] = created;
+
+  return created;
+};
+
+/** Drops every cached Host resolution. */
+export const clearTenantRoutingCache = (): void => {
+  tenantRoutingCache().clear();
+};
 
 /**
  * The tenant behind the request's Host, with the display language it saved.
@@ -46,10 +76,11 @@ const tenantCache = new LRUCache<string, TenantRouting>({
  * an operator who chose no language onto it as the `[locale]` segment, and it
  * hands it to the browser (`@publira/utils/resolved-locale`), which is how
  * `<html lang>` and the client error boundary come to name the tenant's
- * language rather than the visitor's. A saved default that changes therefore
- * reaches both within this TTL; the reads that still resolve the setting for
- * themselves through `lib/public-api.ts` see it at once, through the
- * `tenant:<id>:site` tag the admin API revalidates.
+ * language rather than the visitor's. Saving the languages calls
+ * {@link forgetTenantRouting}, so the next request reads the new default at
+ * once. Any other change reaches a request within this TTL. Reads through
+ * `lib/public-api.ts` see a saved default at once, through the
+ * `tenant:<id>:site` tag.
  */
 export const resolveTenantRouting = async (
   domainCandidates: readonly string[]
@@ -58,8 +89,9 @@ export const resolveTenantRouting = async (
     return { defaultLocale: null, tenantId: null };
   }
 
+  const cache = tenantRoutingCache();
   const cacheKey = domainCandidates.join("\0");
-  const cached = tenantCache.get(cacheKey);
+  const cached = cache.get(cacheKey);
 
   if (cached !== undefined) {
     return cached;
@@ -75,7 +107,7 @@ export const resolveTenantRouting = async (
       tenantId: response.tenantId?.trim() || null,
     };
 
-    tenantCache.set(cacheKey, routing);
+    cache.set(cacheKey, routing);
 
     return routing;
   } catch (error) {
@@ -83,7 +115,7 @@ export const resolveTenantRouting = async (
     // must not pin every request on this host to 404 for the whole TTL.
     if (isMissingResourceRpcError(error)) {
       const missing: TenantRouting = { defaultLocale: null, tenantId: null };
-      tenantCache.set(cacheKey, missing);
+      cache.set(cacheKey, missing);
 
       return missing;
     }
@@ -93,5 +125,29 @@ export const resolveTenantRouting = async (
     }
 
     throw error;
+  }
+};
+
+/**
+ * Drops the cached Host resolution for one tenant.
+ *
+ * `proxy.ts` rewrites a request with no display-language cookie onto the
+ * default this cache holds, and it keeps that answer for the cache's TTL.
+ * Saving the languages drops the entry, so the refresh that follows is
+ * rewritten onto the default just saved.
+ */
+export const forgetTenantRouting = (tenantId: string): void => {
+  const normalized = tenantId.trim();
+
+  if (normalized.length === 0) {
+    return;
+  }
+
+  const cache = tenantRoutingCache();
+
+  for (const [key, routing] of cache.entries()) {
+    if (routing.tenantId === normalized) {
+      cache.delete(key);
+    }
   }
 };

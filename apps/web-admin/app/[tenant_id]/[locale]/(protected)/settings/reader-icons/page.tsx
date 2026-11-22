@@ -9,8 +9,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import {
   getTenantReaderIconPolicy,
   listReaderIconPresets,
@@ -22,9 +22,7 @@ import { ReaderIconPolicyForm } from "./_components/reader-icon-policy-form";
 import { ReaderIconPresetGallery } from "./_components/reader-icon-preset-gallery";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.settings.reader_icons_title") };
 };
@@ -49,8 +47,7 @@ const ReaderIconSettingsSkeleton = () => (
 );
 
 const ReaderIconSettings = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [policyResult, presetsResult, currentUserResult] = await Promise.all([
     getTenantReaderIconPolicy(tenantId, locale),

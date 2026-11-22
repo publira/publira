@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
+import { expectDocumentLocale, storedLocaleCookie } from "../src/locale";
 import {
   TENANT_LANGUAGES_ADMIN,
   TENANT_LANGUAGES_PAGE,
@@ -153,5 +154,38 @@ test.describe("admin tenant languages", () => {
     await expect(
       seriesTitle(TENANT_LANGUAGES_SERIES.japaneseTitle)
     ).toHaveCount(0);
+  });
+
+  test("saving the default language re-renders this screen in it when no display language is stored", async ({
+    page,
+  }) => {
+    await page.context().clearCookies({ name: "publira_locale" });
+    await page.goto(adminUrl("/settings"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+    expect(await storedLocaleCookie(page)).toBeUndefined();
+
+    await chooseDefaultLanguage(page, "日本語");
+    await page.getByRole("button", { name: "Save the languages" }).click();
+
+    // The operator chose no display language, so the screen that saved the
+    // setting is the first one the new default applies to.
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible({ timeout: 30_000 });
+    await expectDocumentLocale(page, "日本語");
+    expect(await storedLocaleCookie(page)).toBeUndefined();
+
+    await page.getByRole("combobox", { name: /^既定言語/u }).click();
+    await page.getByRole("option", { exact: true, name: "English" }).click();
+    await page.getByRole("button", { name: "言語を保存" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible({ timeout: 30_000 });
+    await expectDocumentLocale(page, "English");
+    expect(await storedLocaleCookie(page)).toBeUndefined();
   });
 });

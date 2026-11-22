@@ -9,8 +9,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantCommunityLimitSettings } from "#lib/tenant-community-limits";
 import type { TenantCommunityLimits } from "#lib/tenant-community-limits";
 import { getTenantId } from "#lib/tenant-id";
@@ -22,9 +22,7 @@ import { TenantCommunityLimitsForm } from "./_components/tenant-community-limits
 import { TenantRetentionSettingsForm } from "./_components/tenant-retention-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.settings.policy_title") };
 };
@@ -71,8 +69,7 @@ const PolicyFormsSkeleton = () => (
 );
 
 const PolicyForms = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [communityResult, retentionResult, currentUserResult] =
     await Promise.all([

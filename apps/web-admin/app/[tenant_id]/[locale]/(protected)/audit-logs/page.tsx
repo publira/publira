@@ -26,7 +26,7 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { resolveExportPeriod } from "#lib/export-period";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
@@ -51,7 +51,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
   const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     isSignedInTenantAdmin(tenantId),
   ]);
 
@@ -106,7 +106,7 @@ const AuditLogsContent = async ({
 }: Pick<AuditLogsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAuditLogFilters(sp, allowedActionValues);
-  const locale = await getAdminLocale(tenantId);
+  const locale = await getLocale();
 
   const [t, result, actorCandidatesResult, timeZone] = await Promise.all([
     getMessagesFor(locale),
