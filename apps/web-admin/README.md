@@ -27,8 +27,8 @@ The locale is never in the URL the operator sees. It lives in the `publira_local
 | The catalog | `loadAdminMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md) |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one, `getActionMessages(formData)` in `lib/action-messages.ts` inside a Server Action |
 | One string on the server | `<Message>` in `components/message.tsx` |
-| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `admin` namespace `AdminLocaleProvider` (`components/admin-locale-provider.tsx`) reads for the request with `loadAdminClientMessages(locale)`; `useAdminLocale()` in `components/admin-locale-context.tsx` for the locale itself |
-| One string above that layout | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/[tenant_id]/[locale]/error.tsx` |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `admin` namespace `AdminLocaleProvider` (`components/admin-locale-provider.tsx`) carries from `app/[tenant_id]/[locale]/layout.tsx`, loaded by `loadAdminClientMessages(locale)`; `useAdminLocale()` in `components/admin-locale-context.tsx` for the locale itself |
+| One string in a route-level `error.tsx` | `<ClientMessage>` in `components/client-message.tsx`, over `AdminLocaleProvider` in `app/[tenant_id]/[locale]/layout.tsx`, for `app/[tenant_id]/[locale]/error.tsx` and `app/[tenant_id]/[locale]/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[tenant_id]/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx` when a change of language remounts that layout |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 

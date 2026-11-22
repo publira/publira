@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getMessages } from "#lib/get-messages";
@@ -77,12 +76,9 @@ const MfaPage = () => (
         </AuthScreen.Tagline>
       </AuthScreen.Header>
 
-      {/* The passkey forms word what the browser refused on the client. */}
-      <AdminLocaleProvider>
-        <Suspense fallback={<MfaPageFallback />}>
-          <MfaPageContent />
-        </Suspense>
-      </AdminLocaleProvider>
+      <Suspense fallback={<MfaPageFallback />}>
+        <MfaPageContent />
+      </Suspense>
     </AuthScreen.Main>
 
     <AuthScreen.Panel>

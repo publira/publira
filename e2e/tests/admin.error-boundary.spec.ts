@@ -27,13 +27,17 @@ test.describe("web-admin console error boundary", () => {
   // that stop the API: one process serves all three namespaces.
   test.describe.configure({ mode: "serial" });
 
-  // The browser asks for English for this whole file, and every screen below is
-  // asserted in Japanese: that is the language this tenant saved
-  // (`db/seeds/dev/001_tenant_users.sql`), and none of them may swap it for the
-  // visitor's. The error screen is the case that needed work — it is
-  // client-rendered, so the outage that brings it up takes the saved default
-  // out of reach — and it reaches that language through the
-  // `publira_resolved_locale` cookie the proxy publishes on every response.
+  // The browser asks for English for this whole file. The console screens are
+  // asserted in English, because that is the language this tenant saved
+  // (`db/seeds/dev/001_tenant_users.sql`) and none of them may swap it for the
+  // visitor's.
+  //
+  // The error screen reads `AdminLocaleProvider`. The provider follows the
+  // `[locale]` segment `proxy.ts` rewrote the request onto, and that read needs
+  // nothing from the admin API, so the catalog is in the response and the
+  // browser does not fetch one. While the API is down the proxy keeps the
+  // language it already resolved for the tenant, which is the language the
+  // screen renders in.
   test.use({ locale: "en-US" });
 
   test.afterAll(() => {
@@ -61,9 +65,9 @@ test.describe("web-admin console error boundary", () => {
 
       // Not a bare 500: the console answers with its own error screen.
       expect(response?.status(), await page.content()).toBe(200);
-      // The admin API is what holds the saved language, and it is down: the
-      // error screen words itself from the cookie the proxy left behind rather
-      // than from the English this browser asks for.
+      // The proxy rewrote this request onto the language the tenant saved.
+      // The error screen reads that segment through the provider, so the copy
+      // stays in that language while the API is down.
       await expect(
         page.getByRole("heading", {
           name: "Could not display the admin console",

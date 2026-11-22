@@ -32,8 +32,9 @@ interface ErrorScreenProps {
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
  *
- * Every string is a child the boundary writes, because `app/[tenant_id]/[locale]/error.tsx`
- * sits above the provider `<ClientMessage>` reads and resolves its copy another way.
+ * Every string is a child the boundary writes. The root layout's
+ * `AdminLocaleProvider` carries the catalog of the `[locale]` root
+ * parameter, and the boundary reads it through `<ClientMessage>`.
  *
  * ```tsx
  * <ErrorScreen.Root digest={error.digest} retry={retry}>
