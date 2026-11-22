@@ -17,8 +17,8 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorManager } from "./_components/creator-manager";
@@ -26,9 +26,7 @@ import { CreatorManager } from "./_components/creator-manager";
 type CreatorPageProps = PageProps<"/[tenant_id]/[locale]/creators">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.creators.title") };
 };
@@ -39,11 +37,15 @@ export const generateStaticParams = () =>
 const CreatorManagerData = async ({
   searchParams,
 }: Pick<CreatorPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const { token } = parseCursorSearchParams(sp);
 
-  const [locale, listResult, canEdit] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [listResult, canEdit] = await Promise.all([
     listCreators({ token }),
     isSignedInTenantEditor(tenantId),
   ]);

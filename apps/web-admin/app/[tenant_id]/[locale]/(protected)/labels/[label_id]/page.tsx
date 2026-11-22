@@ -23,9 +23,8 @@ import {
   TenantEditorFieldset,
 } from "#components/tenant-role-gate";
 import { parseEditTab } from "#lib/edit-tab-search-params";
+import { getMessages } from "#lib/get-messages";
 import { getLabel } from "#lib/label";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
@@ -54,9 +53,7 @@ const editLabelParamsSchema = z.object({
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.labels.edit_title") };
 };
