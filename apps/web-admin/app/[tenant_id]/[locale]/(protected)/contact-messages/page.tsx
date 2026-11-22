@@ -18,8 +18,8 @@ import {
 } from "#lib/auth-session";
 import { listContactMessages } from "#lib/contact-message";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -35,12 +35,10 @@ type ContactMessagesPageProps =
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -73,9 +71,13 @@ const contactMessagePageHref = (
 const ContactMessagesContent = async ({
   searchParams,
 }: Pick<ContactMessagesPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const filters = parseContactMessageFilters(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [result, timeZone] = await Promise.all([
     listContactMessages(tenantId, locale, {

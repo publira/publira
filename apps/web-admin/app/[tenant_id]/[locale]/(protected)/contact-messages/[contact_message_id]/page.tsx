@@ -30,10 +30,10 @@ import {
   getContactMessage,
   listContactMessageAssignees,
 } from "#lib/contact-message";
+import { getMessages } from "#lib/get-messages";
 import { getTenantInboundEmailReadiness } from "#lib/inbound-email-settings";
 import type { TenantInboundEmailReadinessResult } from "#lib/inbound-email-settings";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -49,12 +49,10 @@ type ContactMessageDetailPageProps =
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -90,17 +88,17 @@ const DetailSkeleton = () => (
 const ContactMessageDetailContent = async ({
   params,
 }: Pick<ContactMessageDetailPageProps, "params">) => {
-  const parsedParams = parseRouteParams(
-    contactMessageParamsSchema,
-    await params
-  );
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
+
+  const parsedParams = parseRouteParams(contactMessageParamsSchema, rawParams);
 
   if (!parsedParams) {
     notFound();
   }
-
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
 
   const [
     result,
