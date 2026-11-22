@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
 import { Suspense } from "react";
 
+import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { DocumentLocale } from "#components/document-locale";
 import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
@@ -106,7 +107,7 @@ const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
     </head>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
       <DocumentLocale />
-      {children}
+      <AdminLocaleProvider>{children}</AdminLocaleProvider>
       <OfflineNotice>
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="admin.shell.offline" />
