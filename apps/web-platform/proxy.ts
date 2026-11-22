@@ -1,13 +1,10 @@
+import { isLocale, negotiateInitialLocale } from "@publira/i18n";
 import {
-  isLocale,
-  LOCALE_COOKIE_NAME,
-  negotiateInitialLocale,
-  parseLocaleCookie,
-} from "@publira/i18n";
-import type { Locale } from "@publira/i18n";
+  consoleLocalePathname,
+  consoleRequestLocale,
+} from "@publira/locale/console-locale";
 import { isHealthProbePath } from "@publira/utils/health";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
-import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -51,33 +48,6 @@ const PUBLIC_PATHS = new Set([
 const isRouteHandlerPath = (pathname: string): boolean =>
   pathname === CHANGE_PASSWORD_PATH || pathname.startsWith("/api/");
 
-/**
- * The locale a page request is rendered in, in the order `getPlatformLocale()`
- * in `lib/locale.ts` resolves it: a supported `publira_locale` cookie, then the
- * default language saved on General, which `resolveSetupState()` keeps at the
- * last confirmed value through an outage, and `Accept-Language` only while the
- * platform has saved nothing this build renders, which is the state before
- * setup.
- */
-const resolveRequestLocale = (
-  request: NextRequest,
-  savedLocale: ResolvedLocaleState
-): Locale => {
-  const chosen = parseLocaleCookie(
-    request.cookies.get(LOCALE_COOKIE_NAME)?.value
-  );
-
-  if (chosen) {
-    return chosen;
-  }
-
-  if (isLocale(savedLocale)) {
-    return savedLocale;
-  }
-
-  return negotiateInitialLocale(request.headers.get("accept-language"));
-};
-
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
@@ -114,10 +84,19 @@ export const proxy = async (request: NextRequest) => {
   // Component reads it as a root parameter. A path that already starts with a
   // locale is rewritten like any other and matches nothing, so the path never
   // selects the language. Redirects keep naming the public, unprefixed paths.
+  // Cookie, then the saved default `resolveSetupState()` carries, and
+  // `Accept-Language` only while nothing is saved — the order
+  // `getPlatformLocale()` resolves. The saved value stays in this file: an
+  // outage keeps the last language the API confirmed.
+  const storedDefault = isLocale(defaultLocale)
+    ? defaultLocale
+    : negotiateInitialLocale(request.headers.get("accept-language"));
+
   const localizedUrl = request.nextUrl.clone();
-  localizedUrl.pathname = `/${resolveRequestLocale(request, defaultLocale)}${
-    pathname === "/" ? "" : pathname
-  }`;
+  localizedUrl.pathname = consoleLocalePathname(
+    pathname,
+    consoleRequestLocale(request, storedDefault)
+  );
 
   const pass = (init?: { request: { headers: Headers } }) =>
     isRouteHandlerPath(pathname)

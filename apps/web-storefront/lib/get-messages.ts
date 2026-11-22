@@ -1,5 +1,7 @@
+import { createGetMessages } from "@publira/locale/get-messages";
+
 import { getLocale } from "./locale";
-import { getMessagesFor } from "./messages";
+import { loadStorefrontMessages } from "./messages";
 import type { StorefrontMessageAccessor } from "./messages";
 
 /**
@@ -28,8 +30,5 @@ import type { StorefrontMessageAccessor } from "./messages";
  * This module reads `next/root-params`, so it is server-only. A Client
  * Component resolves its copy through `<ClientMessage>` or `useClientMessages()`.
  */
-export const getMessages = async (): Promise<StorefrontMessageAccessor> => {
-  const locale = await getLocale();
-
-  return getMessagesFor(locale);
-};
+export const getMessages: () => Promise<StorefrontMessageAccessor> =
+  createGetMessages(loadStorefrontMessages, getLocale);

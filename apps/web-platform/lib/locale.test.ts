@@ -190,18 +190,4 @@ describe("web-platform locale", () => {
       expect(en.locale.label).toBe("Display language");
     });
   });
-
-  describe("platformLocaleCookieOptions", () => {
-    it("is a long-lived, root-scoped, lax cookie the inline script can read", async () => {
-      const { platformLocaleCookieOptions } = await importLocale();
-
-      expect(platformLocaleCookieOptions).toMatchObject({
-        // The `<html lang>` script reads it from `document.cookie`.
-        httpOnly: false,
-        maxAge: 31_536_000,
-        path: "/",
-        sameSite: "lax",
-      });
-    });
-  });
 });

@@ -1,4 +1,5 @@
-import { getLocales, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { generateLocaleStaticParams } from "@publira/locale/static-params";
 import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
@@ -26,10 +27,9 @@ import "../../globals.css";
  * chose; the URL never names it.
  */
 export const generateStaticParams = () =>
-  getLocales().map((locale) => ({
-    locale,
+  generateLocaleStaticParams({
     tenant_id: STATIC_PARAM_PLACEHOLDER,
-  }));
+  });
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();

@@ -62,6 +62,10 @@ const listRow = (page: Page, text: string): Locator =>
  * how far down a seeded reader sits depends on how many ran before this one.
  * Each page is a fresh load rather than a click, so the page left behind is
  * not still mounted beside the one searched.
+ *
+ * The page title and the list are separate Suspense boundaries. The title can
+ * be on screen while the table is still the skeleton, and that skeleton has
+ * no pager, so the pager is what says the list has resolved.
  */
 const showUserRow = async (
   page: Page,
@@ -69,18 +73,16 @@ const showUserRow = async (
   name: string
 ): Promise<boolean> => {
   await page.goto(platformUrl(path));
-  await page
-    .getByRole("heading", { level: 1, name: "Users" })
-    .waitFor({ state: "visible" });
+
+  const pager = page.getByRole("navigation", { name: "User list pagination" });
+  await expect(pager).toBeVisible();
 
   if ((await listRow(page, name).count()) > 0) {
     return true;
   }
 
-  const next = page
-    .getByRole("navigation", { name: "User list pagination" })
-    .getByRole("link", { name: "Next" });
-
+  await expect(pager.getByText("Next", { exact: true })).toBeVisible();
+  const next = pager.getByRole("link", { name: "Next" });
   const nextPath =
     (await next.count()) > 0 ? await next.getAttribute("href") : null;
 

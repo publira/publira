@@ -1,17 +1,8 @@
 "use server";
 
-import { getLocales, LOCALE_COOKIE_NAME } from "@publira/i18n";
-import { toFormDataInput } from "@publira/utils/form-data";
-import { cookies } from "next/headers";
-import { z } from "zod";
+import { persistLocaleChoice } from "@publira/locale/locale-cookie";
 
 import { assertSameOrigin } from "./csrf";
-import { adminLocaleCookieOptions } from "./locale";
-import { LOCALE_FIELD_NAME } from "./locale-shared";
-
-const localeFormSchema = z.object({
-  locale: z.enum(getLocales()),
-});
 
 /**
  * Persist the chosen UI locale.
@@ -32,21 +23,5 @@ export const setAdminLocaleAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-
-  const parsed = localeFormSchema.safeParse(
-    toFormDataInput(formData, {
-      locale: { kind: "value", name: LOCALE_FIELD_NAME },
-    })
-  );
-
-  if (!parsed.success) {
-    return;
-  }
-
-  const cookieStore = await cookies();
-  cookieStore.set(
-    LOCALE_COOKIE_NAME,
-    parsed.data.locale,
-    adminLocaleCookieOptions
-  );
+  await persistLocaleChoice(formData);
 };

@@ -16,20 +16,20 @@ A public URL carries no locale prefix in the tenant's default locale (`/series/S
 
 | Where the locale is read | How |
 | --- | --- |
-| Server Component | `getLocale()` in `lib/locale.ts` |
+| Server Component | `getLocale()` in `lib/locale.ts`, re-exported from `@publira/locale` |
 | Client Component | `useLocale()` in `components/locale-context.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` and the locales it offers as `useTenantSupportedLocales()` |
 | Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field in `components/locale-field.tsx` |
 | Server-side, the tenant's stored default | `getTenantDefaultLocale()` in `lib/tenant.ts` |
 | Server-side, the locales the tenant offers | `getTenantSupportedLocales()` in `lib/tenant.ts` |
 | The document element (`<html lang>`) | `PATH_LOCALE_LANG_SCRIPT` from `@publira/i18n` on a document load, then `<DocumentLocale>` in `components/document-locale.tsx` across client-side navigations |
 
-The tenant id travels the same way: `getTenantId()` in `lib/tenant-id.ts`, `useTenantId()` in `lib/use-tenant-id.ts`, and `<TenantIdField />` in `components/tenant-id-field.tsx`.
+The tenant id travels the same way: `getTenantId()` in `lib/tenant-id.ts`, `useTenantId()` in `lib/use-tenant-id.ts`, and `<TenantIdField />` in `components/tenant-id-field.tsx`. The root layout's `generateStaticParams` is `generateLocaleStaticParams` from `@publira/locale`: one shell per registry locale, beside the tenant placeholder.
 
 In-app links carry the prefix through `<LocaleLink>` in `components/locale-link.tsx`, or through `withLocalePrefix()` in `lib/locale-path.ts` where a bare href is handed to a shared component. The header's language switcher is `components/locale-switcher.tsx`.
 
 ### Screen copy
 
-Reader-facing copy comes from `storefront.*` in the repo-root [`locales/{locale}.json`](../../locales/README.md). `loadStorefrontMessages(locale)` in `lib/messages.ts` loads the catalog, `<Message>` in `components/message.tsx` renders one string on the server, and `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx` render one in a Client Component, from the `storefront` namespace `<StorefrontMessagesProvider>` in `components/storefront-messages-provider.tsx` carries. The root layout places that provider, so every route and both error boundaries read from it. A value that has to be a string — `aria-label`, `placeholder`, `generateMetadata`'s `title` — comes from an accessor bound to the locale rather than from the catalog: `getMessages()` in `lib/get-messages.ts` resolves the request's locale and answers one, and `getMessagesFor(locale)` in `lib/messages.ts` answers the same for a caller that already holds a locale.
+Reader-facing copy comes from `storefront.*` in the repo-root [`locales/{locale}.json`](../../locales/README.md). `loadStorefrontMessages(locale)` in `lib/messages.ts` loads the catalog. `<Message>` in `components/message.tsx` (`createMessage` from `@publira/locale`) renders one string on the server, and `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx` render one in a Client Component, from the `storefront` namespace `<StorefrontMessagesProvider>` carries. The provider is `@publira/locale`'s, bound in `components/storefront-messages-provider.tsx`; the root layout places it, so every route and both error boundaries read from it. A value that has to be a string — `aria-label`, `placeholder`, `generateMetadata`'s `title` — comes from an accessor bound to the locale rather than from the catalog: `getMessages()` in `lib/get-messages.ts` (`createGetMessages` from `@publira/locale`) resolves the request's locale and answers one, and `getMessagesFor(locale)` in `lib/messages.ts` answers the same for a caller that already holds a locale.
 
 Series titles, synopses, episode bodies, and the contents of a published page are written by the tenant and are not translated. They stay as written whatever the locale. The stand-in label for a tenant with no name set comes from `getTenantSiteLabel(tenantId, locale)` in `lib/tenant.ts`.
 

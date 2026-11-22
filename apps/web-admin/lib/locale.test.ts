@@ -155,18 +155,4 @@ describe("web-admin locale", () => {
       }
     );
   });
-
-  describe("adminLocaleCookieOptions", () => {
-    it("is a long-lived, root-scoped, lax cookie the inline script can read", async () => {
-      const { adminLocaleCookieOptions } = await importLocale();
-
-      expect(adminLocaleCookieOptions).toMatchObject({
-        // The `<html lang>` script reads it from `document.cookie`.
-        httpOnly: false,
-        maxAge: 31_536_000,
-        path: "/",
-        sameSite: "lax",
-      });
-    });
-  });
 });

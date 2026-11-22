@@ -4,7 +4,7 @@ The package that reads the repository-root [`locales/`](../../locales) catalogs 
 
 The catalog itself — the file format, the MessageFormat 2 syntax and catalog policy the leaves are written to, and how keys are organized — is documented in [`locales/README.md`](../../locales/README.md). This package is the reader: it parses a locale, loads the catalog for it, and formats one message.
 
-Nothing here reads request state. `cookies()`, `headers()`, and `next/root-params` stay in the app, which resolves the locale and passes it in as an argument, so every function is safe to call from a `"use cache"` scope — the cache key is the locale, not a cookie.
+Nothing here reads request state. `cookies()`, `headers()`, and `next/root-params` stay out of this package. An app, or `@publira/locale` for the `[locale]` root segment, resolves the locale and passes it in as an argument, so every function is safe to call from a `"use cache"` scope — the cache key is the locale, not a cookie.
 
 ## Subpaths
 

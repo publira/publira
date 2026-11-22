@@ -1,16 +1,29 @@
 "use client";
 
-import { createContext } from "react";
+import {
+  ClientMessagesBundleProvider,
+  createClientMessages,
+} from "@publira/locale/client-messages";
 import type { ReactNode } from "react";
 
-import type { StorefrontClientMessages } from "#lib/messages";
+import type {
+  StorefrontClientCatalog,
+  StorefrontClientMessages,
+} from "#lib/messages";
 
 /**
  * The request's catalog as the read that resolves it, so the provider renders
  * in the static shell and only a component that names a string waits.
  */
-export const StorefrontMessagesContext =
-  createContext<Promise<StorefrontClientMessages> | null>(null);
+const { ClientMessage, Provider, useClientMessages } =
+  createClientMessages<StorefrontClientCatalog>(
+    "StorefrontMessagesProvider is required."
+  );
+
+export { ClientMessage, useClientMessages };
+
+/** The provider `StorefrontMessagesProvider` places. Tests pass the bundle. */
+export const StorefrontCatalogProvider = Provider;
 
 export const StorefrontMessagesContextProvider = ({
   children,
@@ -19,7 +32,7 @@ export const StorefrontMessagesContextProvider = ({
   children: ReactNode;
   messages: Promise<StorefrontClientMessages>;
 }) => (
-  <StorefrontMessagesContext value={messages}>
+  <ClientMessagesBundleProvider Provider={Provider} messages={messages}>
     {children}
-  </StorefrontMessagesContext>
+  </ClientMessagesBundleProvider>
 );

@@ -1,13 +1,16 @@
-import type { ReactNode } from "react";
+import type { Locale } from "@publira/i18n";
+import { createLocaleMessagesProvider } from "@publira/locale/messages-provider";
 
-import { getLocale } from "#lib/locale";
 import { loadPlatformClientMessages } from "#lib/messages";
-import type { PlatformClientMessages } from "#lib/messages";
+import type { PlatformClientCatalog } from "#lib/messages";
 
-import { PlatformMessagesContextProvider } from "./platform-messages-context";
+import { PlatformCatalogProvider } from "./platform-messages-context";
 
-const loadRequestMessages = async (): Promise<PlatformClientMessages> =>
-  loadPlatformClientMessages(await getLocale());
+const loadCatalog = async (locale: Locale): Promise<PlatformClientCatalog> => {
+  const loaded = await loadPlatformClientMessages(locale);
+
+  return loaded.catalog;
+};
 
 /**
  * Carries the catalog of the request's locale to the Client Components below,
@@ -19,12 +22,7 @@ const loadRequestMessages = async (): Promise<PlatformClientMessages> =>
  * unresolved, and the wait lands on the component that names a string rather
  * than on every route.
  */
-export const PlatformMessagesProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
-  <PlatformMessagesContextProvider messages={loadRequestMessages()}>
-    {children}
-  </PlatformMessagesContextProvider>
+export const PlatformMessagesProvider = createLocaleMessagesProvider(
+  PlatformCatalogProvider,
+  loadCatalog
 );

@@ -1,7 +1,5 @@
-import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { notFound } from "next/navigation";
-import { locale as rootLocale } from "next/root-params";
+import { getLocale as getRootLocale } from "@publira/locale/root-locale";
 
 import { withLocalePrefix } from "./locale-path";
 import {
@@ -36,15 +34,7 @@ export { tenantLocalePath } from "./tenant-locale-path";
  * Handlers. Actions take the locale as a bound argument or a form field; see
  * `lib/locale-form.ts`.
  */
-export const getLocale = async (): Promise<Locale> => {
-  const value = await rootLocale();
-
-  if (!isLocale(value)) {
-    notFound();
-  }
-
-  return value;
-};
+export const getLocale = getRootLocale;
 
 /**
  * The tenant's stored default locale for this request, as a read rather than

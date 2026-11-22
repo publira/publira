@@ -1,4 +1,5 @@
 import type { MessageValues } from "@publira/i18n";
+import { createMessage } from "@publira/locale/message";
 
 import { getMessages } from "#lib/get-messages";
 import type { PlatformMessageKey } from "#lib/messages";
@@ -28,8 +29,4 @@ export interface MessageProps {
  * boundary reads the same `[locale]` root parameter and the same cached
  * module, so the count of them costs a page nothing.
  */
-export const Message = async ({ message, values }: MessageProps) => {
-  const t = await getMessages();
-
-  return t(message, values);
-};
+export const Message = createMessage<PlatformMessageKey>(getMessages);

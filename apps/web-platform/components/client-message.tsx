@@ -1,16 +1,5 @@
 "use client";
 
-import { bindMessages } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
-import { use } from "react";
-
-import type {
-  PlatformClientMessageAccessor,
-  PlatformClientMessageKey,
-} from "#lib/messages";
-
-import { PlatformMessagesContext } from "./platform-messages-context";
-
 /**
  * The accessor a Client Component resolves its copy through, bound to the
  * catalog `PlatformMessagesProvider` carries.
@@ -21,27 +10,4 @@ import { PlatformMessagesContext } from "./platform-messages-context";
  * catalog is loaded in the browser. A route-level `error.tsx` reads it the
  * same way: the provider sits in the root layout, above both boundaries.
  */
-export const useClientMessages = (): PlatformClientMessageAccessor => {
-  const messages = use(PlatformMessagesContext);
-
-  if (messages === null) {
-    throw new Error("PlatformMessagesProvider is required.");
-  }
-
-  const { catalog, locale } = use(messages);
-
-  return bindMessages(catalog, locale);
-};
-
-/** One catalog string rendered by a Client Component. */
-export const ClientMessage = ({
-  message,
-  values,
-}: {
-  message: PlatformClientMessageKey;
-  values?: MessageValues;
-}) => {
-  const t = useClientMessages();
-
-  return t(message, values);
-};
+export { ClientMessage, useClientMessages } from "./platform-messages-context";

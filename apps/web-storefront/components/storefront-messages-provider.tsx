@@ -1,13 +1,18 @@
-import type { ReactNode } from "react";
+import type { Locale } from "@publira/i18n";
+import { createLocaleMessagesProvider } from "@publira/locale/messages-provider";
 
-import { getLocale } from "#lib/locale";
 import { loadStorefrontClientMessages } from "#lib/messages";
-import type { StorefrontClientMessages } from "#lib/messages";
+import type { StorefrontClientCatalog } from "#lib/messages";
 
-import { StorefrontMessagesContextProvider } from "./storefront-messages-context";
+import { StorefrontCatalogProvider } from "./storefront-messages-context";
 
-const loadRequestMessages = async (): Promise<StorefrontClientMessages> =>
-  loadStorefrontClientMessages(await getLocale());
+const loadCatalog = async (
+  locale: Locale
+): Promise<StorefrontClientCatalog> => {
+  const loaded = await loadStorefrontClientMessages(locale);
+
+  return loaded.catalog;
+};
 
 /**
  * Carries the catalog of the request's locale to the Client Components below,
@@ -18,12 +23,7 @@ const loadRequestMessages = async (): Promise<StorefrontClientMessages> =>
  * takes no props and awaits nothing, so that layout still reads nothing: the
  * read starts here and is handed down unresolved.
  */
-export const StorefrontMessagesProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
-  <StorefrontMessagesContextProvider messages={loadRequestMessages()}>
-    {children}
-  </StorefrontMessagesContextProvider>
+export const StorefrontMessagesProvider = createLocaleMessagesProvider(
+  StorefrontCatalogProvider,
+  loadCatalog
 );

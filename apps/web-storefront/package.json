@@ -37,6 +37,7 @@
     "@publira/i18n": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
+    "@publira/locale": "workspace:*",
     "@publira/next-cache-handlers": "catalog:",
     "@publira/tracing": "workspace:*",
     "@publira/ui-components": "workspace:*",

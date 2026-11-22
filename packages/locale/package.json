@@ -1,0 +1,79 @@
+{
+  "name": "@publira/locale",
+  "version": "0.7.1",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    "./root-locale": {
+      "types": "./dist/root-locale.d.mts",
+      "default": "./dist/root-locale.mjs"
+    },
+    "./get-messages": {
+      "types": "./dist/get-messages.d.mts",
+      "default": "./dist/get-messages.mjs"
+    },
+    "./message": {
+      "types": "./dist/message.d.mts",
+      "default": "./dist/message.mjs"
+    },
+    "./client-messages": {
+      "types": "./dist/client-messages.d.mts",
+      "default": "./dist/client-messages.mjs"
+    },
+    "./messages-provider": {
+      "types": "./dist/messages-provider.d.mts",
+      "default": "./dist/messages-provider.mjs"
+    },
+    "./locale-field": {
+      "types": "./dist/locale-field.d.mts",
+      "default": "./dist/locale-field.mjs"
+    },
+    "./locale-cookie": {
+      "types": "./dist/locale-cookie.d.mts",
+      "default": "./dist/locale-cookie.mjs"
+    },
+    "./console-locale": {
+      "types": "./dist/console-locale.d.mts",
+      "default": "./dist/console-locale.mjs"
+    },
+    "./static-params": {
+      "types": "./dist/static-params.d.mts",
+      "default": "./dist/static-params.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown && node scripts/check-dist.mjs",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@publira/i18n": "workspace:*",
+    "@publira/utils": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@publira/tsdown-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^16.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.4.3"
+  }
+}
