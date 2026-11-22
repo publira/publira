@@ -15,7 +15,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
   emptyTenantPaymentSettings,
@@ -44,12 +45,10 @@ import { TenantTipSettingsForm } from "./_components/tenant-tip-settings-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -88,8 +87,7 @@ const SettingsPaymentSingleProviderForm = async ({
   providersErrorMessage?: string;
   webhookOrigin?: string;
 }) => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const paymentSettingsResult = await getTenantPaymentSettings(
     tenantId,
@@ -120,8 +118,7 @@ const SettingsPaymentSingleProviderForm = async ({
 };
 
 const SettingsPaymentForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [heldResult, providersResult, currentUserResult, tenantResult] =
     await Promise.all([
@@ -198,8 +195,7 @@ const SettingsPurchaseFormSkeleton = () => (
 );
 
 const SettingsPurchaseForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [purchaseSettingsResult, currentUserResult] = await Promise.all([
     getTenantPurchaseSettings(tenantId, locale),
@@ -241,8 +237,7 @@ const SettingsStorePaymentFormSkeleton = () => (
 );
 
 const SettingsStorePaymentForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [storeSettingsResult, currentUserResult, tenantResult] =
     await Promise.all([
@@ -295,8 +290,7 @@ const SettingsTipFormSkeleton = () => (
 );
 
 const SettingsTipForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [purchaseSettingsResult, currentUserResult, currency, t] =
     await Promise.all([
@@ -347,8 +341,7 @@ const StoreProductsSkeleton = () => (
 );
 
 const StoreProducts = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const result = await listTenantStoreProducts(tenantId, locale);
 
   await redirectToLoginIfSessionRejected(result);

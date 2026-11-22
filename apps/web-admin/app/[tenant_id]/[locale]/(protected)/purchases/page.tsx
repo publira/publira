@@ -20,7 +20,8 @@ import {
 } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { resolveExportPeriod } from "#lib/export-period";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listPaymentProviders } from "#lib/payment-settings";
 import { listPurchases } from "#lib/purchase";
@@ -42,12 +43,10 @@ type PurchasesPageProps = PageProps<"/[tenant_id]/[locale]/purchases">;
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin ? t("admin.purchases.title") : t("admin.not_found.title"),
@@ -71,7 +70,7 @@ const PurchasesContent = async ({
   const filters = parsePurchaseFilters(sp);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
