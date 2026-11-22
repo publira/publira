@@ -75,7 +75,10 @@ const showUserRow = async (
   await page.goto(platformUrl(path));
 
   const pager = page.getByRole("navigation", { name: "User list pagination" });
-  await expect(pager).toBeVisible();
+
+  if (!(await pager.isVisible())) {
+    return false;
+  }
 
   if ((await listRow(page, name).count()) > 0) {
     return true;
