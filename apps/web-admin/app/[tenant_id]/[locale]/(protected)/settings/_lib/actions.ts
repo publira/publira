@@ -507,10 +507,9 @@ export const updateTenantLocalesAction = async (
   }
 
   // The settings screen, the page editor's language tabs, and cookie-less
-  // `getAdminLocale()` read the languages through a private cache, so without
-  // this the operator would keep seeing the previous values in the same
-  // session. The proxy keeps its own copy of the default, which a request
-  // with no display-language cookie is rewritten onto, so that copy goes too.
+  // `getAdminLocale()` read the languages through a private cache. The proxy
+  // holds the default a request with no display-language cookie is rewritten
+  // onto, and every process drops a copy it read before this tag moved.
   updateTag(tenantSiteCacheTag(tenantId));
   forgetTenantRouting(tenantId);
   // The genre list names each genre in the default locale, and the catalog

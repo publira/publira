@@ -4,9 +4,11 @@ import {
 } from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { readTagRevalidatedAt } from "@publira/next-cache-handlers/tags";
 import { LRUCache } from "lru-cache";
 
 import { apiClient } from "./api";
+import { tenantSiteCacheTag } from "./public-api";
 
 /**
  * What the Host resolves to, as `proxy.ts` uses it.
@@ -35,6 +37,12 @@ export const SUSPENDED_TENANT = "suspended";
 
 const tenantRoutingCacheKey = Symbol.for("publira.web-admin.tenant-routing");
 
+interface TenantRoutingEntry {
+  /** When the lookup that produced `routing` started (ms since the epoch). */
+  readAt: number;
+  routing: TenantRouting;
+}
+
 /**
  * The Host resolutions `proxy.ts` rewrites from.
  *
@@ -42,10 +50,10 @@ const tenantRoutingCacheKey = Symbol.for("publira.web-admin.tenant-routing");
  * separate bundles of one process. The cache lives on `globalThis`, so the
  * save drops the entries the proxy reads.
  */
-const tenantRoutingCache = (): LRUCache<string, TenantRouting> => {
+const tenantRoutingCache = (): LRUCache<string, TenantRoutingEntry> => {
   // SAFETY: the property is this module's own cache, created below when absent.
   const host = globalThis as typeof globalThis &
-    Record<symbol, LRUCache<string, TenantRouting> | undefined>;
+    Record<symbol, LRUCache<string, TenantRoutingEntry> | undefined>;
 
   const existing = host[tenantRoutingCacheKey];
 
@@ -53,7 +61,7 @@ const tenantRoutingCache = (): LRUCache<string, TenantRouting> => {
     return existing;
   }
 
-  const created = new LRUCache<string, TenantRouting>({
+  const created = new LRUCache<string, TenantRoutingEntry>({
     max: 500,
     ttl: 300_000,
   });
@@ -76,11 +84,13 @@ export const clearTenantRoutingCache = (): void => {
  * an operator who chose no language onto it as the `[locale]` segment, and it
  * hands it to the browser (`@publira/utils/resolved-locale`), which is how
  * `<html lang>` and the client error boundary come to name the tenant's
- * language rather than the visitor's. Saving the languages calls
- * {@link forgetTenantRouting}, so the next request reads the new default at
- * once. Any other change reaches a request within this TTL. Reads through
- * `lib/public-api.ts` see a saved default at once, through the
- * `tenant:<id>:site` tag.
+ * language rather than the visitor's. A held answer is read again once
+ * `tenant:<id>:site` — the tag saving the languages revalidates — was
+ * revalidated after the lookup. Every process reads that time from the shared
+ * Redis, so a save reaches a replica that did not handle it. When Redis cannot
+ * be read, this TTL bounds how stale the answer gets. An unknown host has no
+ * tag and waits out the TTL. {@link forgetTenantRouting} drops this process's
+ * copy at once.
  */
 export const resolveTenantRouting = async (
   domainCandidates: readonly string[]
@@ -93,9 +103,11 @@ export const resolveTenantRouting = async (
   const cacheKey = domainCandidates.join("\0");
   const cached = cache.get(cacheKey);
 
-  if (cached !== undefined) {
-    return cached;
+  if (cached !== undefined && (await isCurrentRouting(cached))) {
+    return cached.routing;
   }
+
+  const readAt = Temporal.Now.instant().epochMilliseconds;
 
   try {
     const response = await apiClient.auth.getTenantByDomain({
@@ -107,7 +119,7 @@ export const resolveTenantRouting = async (
       tenantId: response.tenantId?.trim() || null,
     };
 
-    cache.set(cacheKey, routing);
+    cache.set(cacheKey, { readAt, routing });
 
     return routing;
   } catch (error) {
@@ -115,7 +127,7 @@ export const resolveTenantRouting = async (
     // must not pin every request on this host to 404 for the whole TTL.
     if (isMissingResourceRpcError(error)) {
       const missing: TenantRouting = { defaultLocale: null, tenantId: null };
-      cache.set(cacheKey, missing);
+      cache.set(cacheKey, { readAt, routing: missing });
 
       return missing;
     }
@@ -124,17 +136,41 @@ export const resolveTenantRouting = async (
       return SUSPENDED_TENANT;
     }
 
+    // A held tenant whose tag moved keeps serving what was read rather than
+    // taking the host down until the API answers again.
+    if (cached?.routing.tenantId) {
+      return cached.routing;
+    }
+
     throw error;
   }
 };
 
 /**
- * Drops the cached Host resolution for one tenant.
+ * A held routing is current until `tenant:<id>:site` is revalidated after the
+ * lookup that produced it. `undefined` is a Redis that cannot be read.
+ */
+const isCurrentRouting = async ({
+  readAt,
+  routing,
+}: TenantRoutingEntry): Promise<boolean> => {
+  if (!routing.tenantId) {
+    return true;
+  }
+
+  const revalidatedAt = await readTagRevalidatedAt(
+    tenantSiteCacheTag(routing.tenantId)
+  );
+
+  return revalidatedAt === undefined || readAt > revalidatedAt;
+};
+
+/**
+ * Drops this process's cached Host resolution for one tenant.
  *
- * `proxy.ts` rewrites a request with no display-language cookie onto the
- * default this cache holds, and it keeps that answer for the cache's TTL.
- * Saving the languages drops the entry, so the refresh that follows is
- * rewritten onto the default just saved.
+ * Every process drops a copy it read before `tenant:<id>:site` was
+ * revalidated. Saving the languages updates that tag, and this drops the copy
+ * in the process that handled the save without waiting for the next read.
  */
 export const forgetTenantRouting = (tenantId: string): void => {
   const normalized = tenantId.trim();
@@ -145,8 +181,8 @@ export const forgetTenantRouting = (tenantId: string): void => {
 
   const cache = tenantRoutingCache();
 
-  for (const [key, routing] of cache.entries()) {
-    if (routing.tenantId === normalized) {
+  for (const [key, entry] of cache.entries()) {
+    if (entry.routing.tenantId === normalized) {
       cache.delete(key);
     }
   }
