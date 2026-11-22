@@ -2,11 +2,9 @@
 
 import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { Suspense } from "react";
 
-import { ErrorBoundaryMessage } from "#components/error-boundary-message";
+import { ClientMessage } from "#components/client-message";
 import * as ErrorScreen from "#components/error-screen";
 
 /**
@@ -14,7 +12,7 @@ import * as ErrorScreen from "#components/error-screen";
  * layouts under `(protected)` but not `(protected)/layout.tsx` itself, so the
  * sidebar and header keep rendering here; a failure raised while rendering that
  * layout — `PlatformUser` / `getPlatformCurrentOperator()` — falls through to
- * `app/error.tsx`.
+ * `app/[locale]/error.tsx`.
  *
  * ## Which boundary takes an unclassifiable RPC error
  *
@@ -39,13 +37,9 @@ import * as ErrorScreen from "#components/error-screen";
  *
  * No `<main>` here: `ConsoleLayout.Main` already provides one.
  *
- * Each string sits behind its own `<Suspense>` because
- * `<ErrorBoundaryMessage>` suspends while it loads the catalog, and an error
- * boundary cannot rely on finding a boundary above it to absorb that — the
- * neighbouring `app/error.tsx` has none at all, and a suspend with no fallback
- * to flush cuts the response short after the 200 is committed. The
- * `<Suspense>` also keeps the sizing of each fallback visible next to the
- * string it stands in for.
+ * The root layout places `<PlatformMessagesProvider>` above this boundary, so
+ * the copy is the catalog of the `[locale]` root parameter and needs no
+ * `<Suspense>`. The browser loads no catalog of its own.
  *
  * The response status stays 200 for the same reason a `notFound()` does — see
  * `not-found.tsx`.
@@ -61,33 +55,23 @@ const ConsoleError = ({
     <ConsolePage.Header>
       <ConsolePage.Heading>
         <ConsolePage.Title>
-          <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
-            <ErrorBoundaryMessage message="platform.errors.console_title" />
-          </Suspense>
+          <ClientMessage message="platform.errors.console_title" />
         </ConsolePage.Title>
         <ConsolePage.Description>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <ErrorBoundaryMessage message="platform.errors.console_description" />
-          </Suspense>
+          <ClientMessage message="platform.errors.console_description" />
         </ConsolePage.Description>
       </ConsolePage.Heading>
       <ConsolePage.Actions>
         <ErrorScreen.Retry>
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <ErrorBoundaryMessage message="platform.common.retry" />
-          </Suspense>
+          <ClientMessage message="platform.common.retry" />
         </ErrorScreen.Retry>
         <LinkButton render={<Link href="/" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-            <ErrorBoundaryMessage message="platform.common.back_to_dashboard" />
-          </Suspense>
+          <ClientMessage message="platform.common.back_to_dashboard" />
         </LinkButton>
       </ConsolePage.Actions>
     </ConsolePage.Header>
     <ErrorScreen.Digest>
-      <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-        <ErrorBoundaryMessage message="platform.common.error_id" />
-      </Suspense>
+      <ClientMessage message="platform.common.error_id" />
     </ErrorScreen.Digest>
   </ErrorScreen.Root>
 );

@@ -33,7 +33,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
 | One string on the server | `<Message>` in `components/message.tsx` |
 | One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/[locale]/layout.tsx`, loaded by `loadPlatformClientMessages(locale)` |
-| One string in a route-level `error.tsx` | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/[locale]/error.tsx` and `app/[locale]/(protected)/error.tsx` |
+| One string in a route-level `error.tsx` | `<ClientMessage>` in `components/client-message.tsx`, over `PlatformMessagesProvider` in `app/[locale]/layout.tsx`, for `app/[locale]/error.tsx` and `app/[locale]/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx`, which applies it again when a change of language remounts that layout |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
