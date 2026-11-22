@@ -33,7 +33,7 @@ vi.mock("#lib/subscription-plan", () => ({
   listSubscriptionPlanNames: mockListSubscriptionPlanNames,
 }));
 
-vi.mock("#lib/locale", () => ({ getAdminLocale: () => Promise.resolve("en") }));
+vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>

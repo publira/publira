@@ -19,8 +19,8 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { listPages } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -30,9 +30,7 @@ import { PageManager } from "./_components/page-manager";
 type PagesPageProps = PageProps<"/[tenant_id]/[locale]/pages">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.pages.title") };
 };
@@ -43,9 +41,13 @@ export const generateStaticParams = () =>
 const PageManagerData = async ({
   searchParams,
 }: Pick<PagesPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const { token } = parseCursorSearchParams(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [listResult, timeZone, canEdit] = await Promise.all([
     listPages(tenantId, locale, { token }),

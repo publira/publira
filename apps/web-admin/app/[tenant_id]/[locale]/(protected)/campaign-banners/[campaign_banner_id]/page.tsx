@@ -21,8 +21,8 @@ import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCampaignBanner } from "#lib/campaign-banner";
 import { parseEditTab } from "#lib/edit-tab-search-params";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -49,9 +49,7 @@ const editCampaignBannerParamsSchema = z.object({
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.campaign_banners.edit_title") };
 };
@@ -125,10 +123,11 @@ const EditCampaignBannerFormData = async ({
   params,
   searchParams,
 }: EditCampaignBannerPageProps) => {
-  const [rawParams, activeTab, tenantId] = await Promise.all([
+  const [rawParams, activeTab, tenantId, locale] = await Promise.all([
     params,
     resolveActiveTab(searchParams),
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(
@@ -139,8 +138,6 @@ const EditCampaignBannerFormData = async ({
   if (!parsedParams) {
     notFound();
   }
-
-  const locale = await getAdminLocale(tenantId);
 
   const [result, timeZone] = await Promise.all([
     getCampaignBanner(

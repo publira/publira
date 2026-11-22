@@ -10,8 +10,8 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantAdminFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantBrandMarks } from "#lib/brand-marks";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import {
@@ -26,9 +26,7 @@ import { TenantSignInImageForm } from "./_components/tenant-sign-in-image-form";
 import { ThemeSettingsForm } from "./_components/theme-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.branding.title") };
 };
@@ -54,8 +52,7 @@ const BrandingFormsSkeleton = () => (
 );
 
 const BrandingForms = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [themeResult, darkThemeResult, brandMarksResult, timeZone] =
     await Promise.all([

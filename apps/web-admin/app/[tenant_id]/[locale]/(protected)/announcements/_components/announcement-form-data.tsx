@@ -3,7 +3,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { listAllSeries } from "#lib/series";
 import { listSubscriptionPlanNames } from "#lib/subscription-plan";
 import { findTenantLocales } from "#lib/tenant-locales";
@@ -17,10 +17,7 @@ import { AnnouncementForm } from "./announcement-form";
 
 /** The plans a subscription condition can name, by name. */
 const readAudiencePlans = async (tenantId: string) => {
-  const result = await listSubscriptionPlanNames(
-    tenantId,
-    await getAdminLocale(tenantId)
-  );
+  const result = await listSubscriptionPlanNames(tenantId, await getLocale());
 
   return result.ok
     ? { plans: result.plans }

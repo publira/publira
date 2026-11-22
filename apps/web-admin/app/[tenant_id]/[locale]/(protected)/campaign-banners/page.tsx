@@ -14,17 +14,15 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { listCampaignBanners } from "#lib/campaign-banner";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { CampaignBannerManager } from "./_components/campaign-banner-manager";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.campaign_banners.title") };
 };
@@ -33,8 +31,7 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const CampaignBannerManagerData = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [listResult, canEdit, timeZone] = await Promise.all([
     listCampaignBanners(tenantId, locale),
