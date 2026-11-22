@@ -15,8 +15,9 @@ import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { listGenres } from "#lib/genre";
+import { getMessages } from "#lib/get-messages";
 import { listAllLabels } from "#lib/label";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
@@ -30,12 +31,10 @@ import { createSeriesAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isEditor] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isEditor] = await Promise.all([
+    getMessages(),
     isSignedInTenantEditor(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isEditor ? t("admin.series.new_title") : t("admin.not_found.title"),
@@ -55,8 +54,7 @@ const NewSeriesFormSkeleton = () => (
 );
 
 const NewSeriesFormData = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [
     creatorsResult,

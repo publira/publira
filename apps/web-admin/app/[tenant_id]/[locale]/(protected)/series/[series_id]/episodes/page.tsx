@@ -28,7 +28,8 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listEpisodes } from "#lib/episode";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { getSeries } from "#lib/series";
@@ -49,9 +50,7 @@ import {
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.episodes.title") };
 };
@@ -190,16 +189,16 @@ const SeriesEpisodesData = async ({
   params,
   searchParams,
 }: SeriesEpisodesPageProps) => {
-  const [{ series_id }, sp, tenantId] = await Promise.all([
+  const [{ series_id }, sp, tenantId, locale] = await Promise.all([
     params,
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
 
   guardPlaceholder(series_id);
 
   const { token } = parseCursorSearchParams(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [
     seriesResult,

@@ -33,8 +33,9 @@ import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listGenres } from "#lib/genre";
+import { getMessages } from "#lib/get-messages";
 import { listAllLabels } from "#lib/label";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getSeries } from "#lib/series";
 import { getSeriesFreeAfterSettings } from "#lib/series-free-after";
@@ -69,9 +70,7 @@ import { SeriesTranslationDeleteButton } from "./_components/series-translation-
 import { SeriesWaitFreeForm } from "./_components/series-wait-free-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.edit_title") };
 };
@@ -372,10 +371,11 @@ const EditSeriesFormData = async ({
   params,
   searchParams,
 }: EditSeriesPageProps) => {
-  const [rawParams, activeTab, tenantId] = await Promise.all([
+  const [rawParams, activeTab, tenantId, locale] = await Promise.all([
     params,
     resolveActiveTab(searchParams),
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(editSeriesParamsSchema, rawParams);
@@ -389,8 +389,6 @@ const EditSeriesFormData = async ({
   if (activeTab === "eye-catch") {
     return <SeriesEyeCatchTabData seriesId={seriesId} tenantId={tenantId} />;
   }
-
-  const locale = await getAdminLocale(tenantId);
 
   const [
     result,

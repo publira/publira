@@ -21,7 +21,8 @@ import {
   isSignedInTenantEditor,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { getSeries } from "#lib/series";
@@ -33,9 +34,7 @@ import { VolumeCreateForm } from "./_components/volume-create-form";
 import { VolumeList } from "./_components/volume-list";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.volumes.title") };
 };
@@ -83,7 +82,7 @@ const SeriesVolumesData = async ({ params }: SeriesVolumesPageProps) => {
   ]);
 
   const [locale, seriesResult] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getSeries({ publicId: seriesPublicId }),
   ]);
 

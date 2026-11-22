@@ -20,8 +20,8 @@ import {
   isSignedInTenantEditor,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { getSeries } from "#lib/series";
@@ -35,12 +35,10 @@ import { createEpisodeAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isEditor] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isEditor] = await Promise.all([
+    getMessages(),
     isSignedInTenantEditor(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isEditor
@@ -96,12 +94,11 @@ const NewEpisodeActions = async ({
 const NewEpisodeFormData = async ({
   params,
 }: Pick<NewEpisodePageProps, "params">) => {
-  const [seriesId, tenantId] = await Promise.all([
+  const [seriesId, tenantId, locale] = await Promise.all([
     resolveSeriesId(params),
     getTenantId(),
+    getLocale(),
   ]);
-
-  const locale = await getAdminLocale(tenantId);
 
   const [timeZone, seriesResult, purchaseSettingsResult, currency] =
     await Promise.all([

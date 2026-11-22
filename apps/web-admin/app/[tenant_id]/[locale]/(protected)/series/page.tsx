@@ -12,9 +12,9 @@ import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
+import { getMessages } from "#lib/get-messages";
 import { listAllLabels } from "#lib/label";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getLocale } from "#lib/locale";
 import { getTenantCurrency } from "#lib/public-api";
 import { buildQueryString } from "#lib/query-string";
 import { listSeries } from "#lib/series";
@@ -28,9 +28,7 @@ import { parseSeriesFilters } from "./_lib/search-params";
 type SeriesPageProps = PageProps<"/[tenant_id]/[locale]/series">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.title") };
 };
@@ -51,22 +49,25 @@ const SeriesImportAction = async () => {
 const SeriesManagerData = async ({
   searchParams,
 }: Pick<SeriesPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const filters = parseSeriesFilters(sp);
 
-  const [locale, listResult, labelsResult, timeZone, canEdit] =
-    await Promise.all([
-      getAdminLocale(tenantId),
-      listSeries({
-        ageRating: filters.ageRating || undefined,
-        labelId: filters.labelId || undefined,
-        status: filters.status || undefined,
-        token: filters.token,
-      }),
-      listAllLabels(),
-      getTenantDisplayTimeZone(tenantId),
-      isSignedInTenantEditor(tenantId),
-    ]);
+  const [listResult, labelsResult, timeZone, canEdit] = await Promise.all([
+    listSeries({
+      ageRating: filters.ageRating || undefined,
+      labelId: filters.labelId || undefined,
+      status: filters.status || undefined,
+      token: filters.token,
+    }),
+    listAllLabels(),
+    getTenantDisplayTimeZone(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
 
   const pageHref = (token: string): string | undefined =>
     token
