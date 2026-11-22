@@ -6,8 +6,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { PlatformDefaultCurrencyForm } from "./_components/platform-default-currency-form";
@@ -15,8 +14,7 @@ import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.settings.general_title") };
 };

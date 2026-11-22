@@ -25,7 +25,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale, getPlatformLocale } from "./locale";
 import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
 import type {
@@ -516,20 +516,40 @@ const getPlatformSearchSettingsForLocale = async (
 };
 
 /**
+ * The session check shared by {@link getPlatformSearchSettingsForRootLocale}
+ * and {@link getPlatformSearchSettings}.
+ */
+const readPlatformSearchSettings = async (
+  locale: Locale
+): Promise<GetPlatformSearchSettingsResult> => {
+  await verifyPlatformSession();
+
+  return getPlatformSearchSettingsForLocale(locale);
+};
+
+/**
  * The search settings, for their screen and the setup checklist, together
  * with the configuration the search answers from and where a build of the
  * saved one stands. The password never leaves the API: the answer says only
  * whether one is set.
  *
  * Read with the service credential: the settings are the same for every
- * operator, so one entry serves all of them.
+ * operator, so one entry serves all of them. The locale is the `[locale]`
+ * root segment, which keys the cached error copy.
+ */
+export const getPlatformSearchSettingsForRootLocale =
+  async (): Promise<GetPlatformSearchSettingsResult> =>
+    readPlatformSearchSettings(await getLocale());
+
+/**
+ * {@link getPlatformSearchSettingsForRootLocale} for a Server Action.
+ *
+ * A Server Action cannot read the `[locale]` root parameter, so the cached
+ * error copy follows the cookie.
  */
 export const getPlatformSearchSettings =
-  async (): Promise<GetPlatformSearchSettingsResult> => {
-    await verifyPlatformSession();
-
-    return getPlatformSearchSettingsForLocale(await getPlatformLocale());
-  };
+  async (): Promise<GetPlatformSearchSettingsResult> =>
+    readPlatformSearchSettings(await getPlatformLocale());
 
 /**
  * Save the search settings. `expectedRevision` is the revision the screen was

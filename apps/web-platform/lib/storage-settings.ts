@@ -20,7 +20,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { PlatformStorageSettings } from "./storage-settings-shared";
@@ -272,7 +272,7 @@ export const getPlatformStorageSettings =
   async (): Promise<GetPlatformStorageSettingsResult> => {
     await verifyPlatformSession();
 
-    return getPlatformStorageSettingsForLocale(await getPlatformLocale());
+    return getPlatformStorageSettingsForLocale(await getLocale());
   };
 
 /**

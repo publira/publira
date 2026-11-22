@@ -20,7 +20,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export type GetPlatformSettingsResult =
@@ -163,7 +163,7 @@ export const getPlatformSettings =
   async (): Promise<GetPlatformSettingsResult> => {
     await verifyPlatformSession();
 
-    return getPlatformSettingsForLocale(await getPlatformLocale());
+    return getPlatformSettingsForLocale(await getLocale());
   };
 
 /**

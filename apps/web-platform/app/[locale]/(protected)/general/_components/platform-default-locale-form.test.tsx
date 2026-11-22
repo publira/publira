@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("#lib/locale", () => ({
-  getPlatformLocale: () => Promise.resolve("en"),
+  getLocale: () => Promise.resolve("en"),
   loadPlatformMessages: () => Promise.resolve(en),
 }));
 

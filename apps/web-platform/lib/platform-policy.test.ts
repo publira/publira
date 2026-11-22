@@ -22,7 +22,7 @@ import type {
 const {
   mockCacheLife,
   mockCacheTag,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockGetPlatformPolicy,
   mockGetPlatformRetentionDefaults,
   mockResolveAccessToken,
@@ -31,7 +31,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetPlatformPolicy: vi.fn(),
   mockGetPlatformRetentionDefaults: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -77,7 +77,7 @@ const droppedEntry = { expire: 0, revalidate: 0, stale: 0 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",
