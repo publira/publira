@@ -1,10 +1,8 @@
 "use client";
 
 import * as ConsolePage from "@publira/layouts/admin/console-page";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
 
-import { ErrorBoundaryMessage } from "#components/error-boundary-message";
+import { ClientMessage } from "#components/client-message";
 import * as ErrorScreen from "#components/error-screen";
 
 /**
@@ -15,22 +13,19 @@ import * as ErrorScreen from "#components/error-screen";
  *   and `getPlatformCurrentOperator()` are part of that layout's own tree, so
  *   they sit above the `(protected)` boundary;
  * - the pre-login routes (`/login`, `/setup`, `/reset-password`,
- *   `/confirm-email`, `/confirm-password`) that sit directly under `app/` with
- *   no group layout of their own.
+ *   `/confirm-email`, `/confirm-password`) that sit directly under `[locale]`
+ *   with no group layout of their own.
  *
  * Because the failing layout is what supplies the sidebar and header, this
- * screen renders bare inside `app/layout.tsx`, and the pre-login routes have no
- * chrome to keep in the first place.
+ * screen renders bare inside `app/[locale]/layout.tsx`, and the pre-login
+ * routes have no chrome to keep in the first place.
  *
- * A failure in `app/layout.tsx` itself is above this boundary; catching it
- * would need a `global-error.tsx`, which this app does not have.
- *
- * Sitting directly under the root layout is also why every string below has its
- * own `<Suspense>`: nothing above this boundary can absorb a suspend, and
- * `<ErrorBoundaryMessage>` suspends while it loads the catalog. Without a
- * fallback to flush, React cuts the response short after the 200 is already
- * committed and the operator gets the browser's own network-error page instead
- * of this screen.
+ * A failure in `app/[locale]/layout.tsx` itself is above this boundary;
+ * catching it would need a `global-error.tsx`, which this app does not have.
+ * That layout places `<PlatformMessagesProvider>`, so the copy here comes from
+ * the same catalog as every other screen. The read depends only on the
+ * `[locale]` root parameter, which is why the strings need no `<Suspense>` and
+ * the browser loads no catalog of its own.
  */
 const RootError = ({
   error,
@@ -46,28 +41,20 @@ const RootError = ({
       <ConsolePage.Header>
         <ConsolePage.Heading>
           <ConsolePage.Title>
-            <Suspense fallback={<SkeletonLine className="h-8 w-96" />}>
-              <ErrorBoundaryMessage message="platform.errors.root_title" />
-            </Suspense>
+            <ClientMessage message="platform.errors.root_title" />
           </ConsolePage.Title>
           <ConsolePage.Description>
-            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-              <ErrorBoundaryMessage message="platform.errors.root_description" />
-            </Suspense>
+            <ClientMessage message="platform.errors.root_description" />
           </ConsolePage.Description>
         </ConsolePage.Heading>
         <ConsolePage.Actions>
           <ErrorScreen.Retry>
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ErrorBoundaryMessage message="platform.common.retry" />
-            </Suspense>
+            <ClientMessage message="platform.common.retry" />
           </ErrorScreen.Retry>
         </ConsolePage.Actions>
       </ConsolePage.Header>
       <ErrorScreen.Digest>
-        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-          <ErrorBoundaryMessage message="platform.common.error_id" />
-        </Suspense>
+        <ClientMessage message="platform.common.error_id" />
       </ErrorScreen.Digest>
     </ErrorScreen.Root>
   </main>

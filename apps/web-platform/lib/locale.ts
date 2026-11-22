@@ -8,14 +8,14 @@
  * root segment, so a Server Component reads the answer from the URL it was
  * routed to, through {@link getLocale}.
  *
- * {@link getPlatformLocale} resolves the same answer from the cookie, for what
- * has no root parameter to read: a Server Action, and the
- * `api/v1/audit-logs/csv` Route Handler. `cookies()` is a request-time read, so
- * a Server Component that still calls it must sit inside a `<Suspense>`
- * boundary — reading it above one would leave the route with no static shell
- * under Cache Components. `<html lang>` is handled separately, by the inline
- * script in `app/[locale]/layout.tsx` (see `LOCALE_LANG_SCRIPT`), over the
- * cookies `proxy.ts` publishes (`@publira/utils/resolved-locale`).
+ * {@link getPlatformLocale} resolves the same answer from the cookie, and only
+ * where there is no root parameter to read: a Server Action, and the
+ * `api/v1/audit-logs/csv` Route Handler. A Server Component, a layout, and
+ * `generateMetadata` read {@link getLocale}. Calling {@link getPlatformLocale}
+ * from one of them reads `cookies()` and makes that route request-time.
+ * `<html lang>` is handled separately, by the inline script in
+ * `app/[locale]/layout.tsx` (see `LOCALE_LANG_SCRIPT`), over the cookies
+ * `proxy.ts` publishes (`@publira/utils/resolved-locale`).
  */
 
 import {
@@ -113,9 +113,12 @@ const getPlatformDisplayLocale = async (): Promise<Locale> => {
  * {@link getPlatformDisplayLocale} resolves without a session — on the login
  * screen as much as in the signed-in console.
  *
- * **Inside `<Suspense>` only.** Never call this from a `"use cache"` scope
- * either — pass the resolved locale in as an argument instead, so it becomes
- * part of the cache key.
+ * **Server Actions and Route Handlers only.** A page, a layout, and
+ * `generateMetadata` read {@link getLocale}. `cookies()` here is a
+ * request-time read, so calling this while rendering a page costs that route
+ * its static shell. Never call this from a `"use cache"` scope either — pass
+ * the resolved locale in as an argument instead, so it becomes part of the
+ * cache key.
  */
 export const getPlatformLocale = async (): Promise<Locale> => {
   const cookieStore = await cookies();

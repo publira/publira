@@ -27,15 +27,16 @@ const setupApiUnavailableMessage =
  * whole console before any page renders.
  *
  * The browser asks for English for this whole file. The console screens are
- * asserted in Japanese, because that is the language this platform saved
+ * asserted in English, because that is the language this platform saved
  * (`db/seeds/dev/001_tenant_users.sql`) and none of them may swap it for the
- * visitor's; `/setup` is asserted in English, because it runs before a language
- * has been saved and has nothing but `Accept-Language` to go on.
+ * visitor's; `/setup` is asserted in English too, because it runs before a
+ * language has been saved and has nothing but `Accept-Language` to go on.
  *
- * The error screen is the case that needed work — it is client-rendered, so the
- * outage that brings it up takes the saved default out of reach — and it
- * reaches that language now through the `publira_resolved_locale` cookie the
- * proxy publishes on every response.
+ * The error screen reads `PlatformMessagesProvider`. The provider follows the
+ * `[locale]` segment `proxy.ts` rewrote the request onto, and that read needs
+ * nothing from the platform API, so the catalog is in the response and the
+ * browser does not fetch one. While the API is down the proxy keeps the last
+ * language it confirmed, which is the language the screen renders in.
  */
 test.describe("web-platform console error boundary", () => {
   // Isolated project `platform-error-boundary` (see playwright.config.ts).
@@ -72,9 +73,9 @@ test.describe("web-platform console error boundary", () => {
       // Not a bare 500 from the proxy: the console answers with its own error
       // screen, which it only gets to render because routing survived.
       expect(response?.status(), await page.content()).toBe(200);
-      // The platform API is what holds the saved language, and it is down: the
-      // error screen words itself from the cookie the proxy left behind rather
-      // than from the English this browser asks for.
+      // The proxy rewrote this request onto the language the platform saved.
+      // The error screen reads that segment through the provider, so the copy
+      // stays in that language while the API is down.
       await expect(
         page.getByRole("heading", { name: rootErrorHeading })
       ).toBeVisible();
