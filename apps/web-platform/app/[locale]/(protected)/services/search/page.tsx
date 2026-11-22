@@ -5,11 +5,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
-  getPlatformSearchSettings,
+  getPlatformSearchSettingsForRootLocale,
   toPlatformSearchSettings,
 } from "#lib/search-settings";
 
@@ -18,8 +18,7 @@ import { SearchSettingsForm } from "./_components/search-settings-form";
 import { SearchStatus } from "./_components/search-status";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.search.page_title") };
 };
@@ -41,8 +40,8 @@ const SectionsSkeleton = () => (
 
 const SearchSettingsSections = async () => {
   const [result, locale, timeZone] = await Promise.all([
-    getPlatformSearchSettings(),
-    getPlatformLocale(),
+    getPlatformSearchSettingsForRootLocale(),
+    getLocale(),
     getPlatformDisplayTimeZone(),
   ]);
 

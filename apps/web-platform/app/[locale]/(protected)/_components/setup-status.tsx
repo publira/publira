@@ -22,7 +22,7 @@ import {
   getPlatformRetentionDefaults,
 } from "#lib/platform-policy";
 import { getPlatformSettings } from "#lib/platform-settings";
-import { getPlatformSearchSettings } from "#lib/search-settings";
+import { getPlatformSearchSettingsForRootLocale } from "#lib/search-settings";
 import { searchEngineName } from "#lib/search-settings-shared";
 import { getPlatformStorageSettings } from "#lib/storage-settings";
 import { getPlatformWebPushSettings } from "#lib/webpush-settings";
@@ -227,7 +227,7 @@ const StorageRow = async () => {
 };
 
 const SearchRow = async () => {
-  const result = await getPlatformSearchSettings();
+  const result = await getPlatformSearchSettingsForRootLocale();
 
   const name = (
     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>

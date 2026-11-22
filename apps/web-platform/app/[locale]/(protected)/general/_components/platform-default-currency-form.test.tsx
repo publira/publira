@@ -25,7 +25,7 @@ vi.mock("#components/message", () => ({
 }));
 
 vi.mock("#lib/locale", () => ({
-  getPlatformLocale: () => Promise.resolve("en"),
+  getLocale: () => Promise.resolve("en"),
   loadPlatformMessages: () => Promise.resolve(en),
 }));
 

@@ -19,7 +19,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockGetPlatformEmailSettings,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockResolveSessionId,
   mockSendPlatformSmtpTestEmail,
   mockUpdatePlatformEmailSettings,
@@ -28,7 +28,7 @@ const {
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformEmailSettings: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockSendPlatformSmtpTestEmail: vi.fn(),
   mockUpdatePlatformEmailSettings: vi.fn(),
@@ -45,7 +45,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -85,7 +85,7 @@ const smtpAuthenticationError = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",

@@ -24,7 +24,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export interface MinuteDay {
@@ -300,7 +300,7 @@ export const getPlatformPolicy = async (): Promise<
 > => {
   await verifyPlatformSession();
 
-  return getPlatformPolicyForLocale(await getPlatformLocale());
+  return getPlatformPolicyForLocale(await getLocale());
 };
 
 const getPlatformRetentionDefaultsForLocale = async (
@@ -335,7 +335,7 @@ export const getPlatformRetentionDefaults = async (): Promise<
 > => {
   await verifyPlatformSession();
 
-  return getPlatformRetentionDefaultsForLocale(await getPlatformLocale());
+  return getPlatformRetentionDefaultsForLocale(await getLocale());
 };
 
 /** The request field `UpdatePlatformPolicy` names when it refuses the requirement. */

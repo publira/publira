@@ -5,8 +5,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import {
   getPlatformStorageSettings,
   toPlatformStorageSettings,
@@ -15,8 +14,7 @@ import {
 import { StorageSettingsForm } from "./_components/storage-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.storage.page_title") };
 };

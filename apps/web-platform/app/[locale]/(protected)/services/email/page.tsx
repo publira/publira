@@ -7,8 +7,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { getPlatformEmailSettings } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 
 import { EmailSettingsForm } from "./_components/email-settings-form";
 import {
@@ -17,8 +16,7 @@ import {
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.settings.email_title") };
 };

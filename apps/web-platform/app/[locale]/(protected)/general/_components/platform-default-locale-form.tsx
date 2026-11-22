@@ -9,7 +9,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 import { updatePlatformDefaultLocaleAction } from "../_lib/actions";
@@ -23,7 +23,7 @@ export const PlatformDefaultLocaleForm = async ({
   initialDefaultLocale?: Locale;
   loadErrorMessage?: string;
 }) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
   const hasLoadError = Boolean(loadErrorMessage);
 

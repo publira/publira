@@ -22,7 +22,7 @@ import {
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
-import { getPlatformLocale } from "./locale";
+import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export {
@@ -194,7 +194,7 @@ export const getPlatformEmailSettings =
   async (): Promise<PlatformSmtpSettingsResult> => {
     await verifyPlatformSession();
 
-    return getPlatformEmailSettingsForLocale(await getPlatformLocale());
+    return getPlatformEmailSettingsForLocale(await getLocale());
   };
 
 export const updatePlatformEmailSettings = async (

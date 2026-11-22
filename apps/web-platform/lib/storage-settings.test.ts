@@ -17,7 +17,7 @@ import {
 const {
   mockCacheLife,
   mockCacheTag,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockGetPlatformStorageSettings,
   mockResolveSessionId,
   mockTestPlatformStorageConnection,
@@ -26,7 +26,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetPlatformStorageSettings: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockTestPlatformStorageConnection: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -90,7 +90,7 @@ const input: PlatformStorageInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
-  mockGetPlatformLocale.mockResolvedValue("en");
+  mockGetLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",

@@ -9,7 +9,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockCheckSetupStatusApi,
-  mockGetPlatformLocale,
+  mockGetLocale,
   mockGetPlatformSettingsApi,
   mockResolveAccessToken,
   mockUpdatePlatformSettingsApi,
@@ -18,7 +18,7 @@ const {
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCheckSetupStatusApi: vi.fn(),
-  mockGetPlatformLocale: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformSettingsApi: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
-  getPlatformLocale: mockGetPlatformLocale,
+  getLocale: mockGetLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -83,7 +83,7 @@ describe("platform-settings", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
-    mockGetPlatformLocale.mockResolvedValue("en");
+    mockGetLocale.mockResolvedValue("en");
     mockVerifyPlatformSession.mockResolvedValue({
       name: "Admin",
       publicId: "usr_1",
@@ -138,7 +138,7 @@ describe("platform-settings", () => {
   });
 
   it("words a failed read in the operator's locale, so ja is Japanese", async () => {
-    mockGetPlatformLocale.mockResolvedValue("ja");
+    mockGetLocale.mockResolvedValue("ja");
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "fr", defaultTimezone: "UTC" },
     });

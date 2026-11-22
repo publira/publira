@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPlatformSearchSettings,
+  getPlatformSearchSettingsForRootLocale,
   platformSearchSettingsCacheTag,
   searchTestFailureMessage,
   testPlatformSearchConnection,
@@ -18,6 +19,7 @@ import {
 const {
   mockCacheLife,
   mockCacheTag,
+  mockGetLocale,
   mockGetPlatformLocale,
   mockGetPlatformSearchSettings,
   mockResolveSessionId,
@@ -27,6 +29,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockGetLocale: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetPlatformSearchSettings: vi.fn(),
   mockResolveSessionId: vi.fn(),
@@ -45,6 +48,7 @@ vi.mock("./auth-session", () => ({
 }));
 
 vi.mock("./locale", () => ({
+  getLocale: mockGetLocale,
   getPlatformLocale: mockGetPlatformLocale,
 }));
 
@@ -99,6 +103,7 @@ const input: PlatformSearchInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
+  mockGetLocale.mockResolvedValue("en");
   mockGetPlatformLocale.mockResolvedValue("en");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
@@ -282,6 +287,28 @@ describe("getPlatformSearchSettings", () => {
     );
 
     await expect(getPlatformSearchSettings()).resolves.toMatchObject({
+      ok: false,
+    });
+  });
+
+  it("words a screen's failure in the root locale and an action's in the cookie locale", async () => {
+    mockGetLocale.mockResolvedValue("ja");
+    mockGetPlatformLocale.mockResolvedValue("en");
+    mockGetPlatformSearchSettings
+      .mockRejectedValueOnce(
+        new ConnectError("upstream down", Code.Unavailable)
+      )
+      .mockRejectedValueOnce(
+        new ConnectError("upstream down", Code.Unavailable)
+      );
+
+    await expect(getPlatformSearchSettingsForRootLocale()).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+    await expect(getPlatformSearchSettings()).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
   });

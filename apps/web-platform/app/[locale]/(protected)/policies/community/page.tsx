@@ -5,16 +5,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getPlatformPolicy } from "#lib/platform-policy";
 import type { PlatformCommunityLimits } from "#lib/platform-policy";
 
 import { CommunityLimitsForm } from "./_components/community-limits-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getPlatformLocale();
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("platform.policy.community.page_title") };
 };

@@ -9,7 +9,7 @@ import { Suspense } from "react";
 import { CurrencyCombobox } from "#components/currency-combobox";
 import { Message } from "#components/message";
 import { currencyItems } from "#lib/currency-items";
-import { getPlatformLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 import { updatePlatformDefaultCurrencyAction } from "../_lib/actions";
@@ -32,7 +32,7 @@ export const PlatformDefaultCurrencyForm = async ({
   loadErrorMessage,
   locked,
 }: PlatformDefaultCurrencyFormProps) => {
-  const locale = await getPlatformLocale();
+  const locale = await getLocale();
   const t = await getMessagesFor(locale);
   // A failed read has no stored currency to start on, and saving from that
   // state would write whatever the field showed over it.
