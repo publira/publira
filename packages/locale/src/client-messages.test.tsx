@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   ClientMessagesBundleProvider,
   createClientMessages,
+  splitClientMessages,
 } from "./client-messages";
 
 const catalog = {
@@ -107,5 +108,28 @@ describe("createClientMessages", () => {
     });
 
     expect(screen.getByText("Hello")).toBeDefined();
+  });
+
+  it("normalizes a pending Flight thenable before splitting it", async () => {
+    interface Bundle {
+      readonly catalog: typeof catalog;
+      readonly locale: Locale;
+    }
+
+    // oxlint-disable-next-line unicorn/no-thenable -- This regression test models a Flight thenable.
+    const thenMethod = "then";
+    // SAFETY: This object models a Flight thenable, which is not a native Promise.
+    const messages = Object.create(null) as Promise<Bundle>;
+    Object.defineProperty(messages, thenMethod, {
+      value: (resolve: (value: Bundle) => void) => {
+        queueMicrotask(() => resolve({ catalog, locale: "ja" }));
+      },
+    });
+    const reads = splitClientMessages(messages);
+
+    expect(reads.catalog).toBeInstanceOf(Promise);
+    expect(reads.locale).toBeInstanceOf(Promise);
+    await expect(reads.catalog).resolves.toEqual(catalog);
+    await expect(reads.locale).resolves.toBe("ja");
   });
 });

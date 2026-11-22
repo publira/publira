@@ -83,6 +83,7 @@ const showUserRow = async (
 
   await expect(pager.getByText("Next", { exact: true })).toBeVisible();
   const next = pager.getByRole("link", { name: "Next" });
+
   const nextPath =
     (await next.count()) > 0 ? await next.getAttribute("href") : null;
 

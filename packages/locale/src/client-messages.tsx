@@ -68,8 +68,8 @@ export const splitClientMessages = <TCatalog,>(
   }
 
   return {
-    catalog: messages.then((value) => value.catalog),
-    locale: messages.then((value) => value.locale),
+    catalog: Promise.resolve(messages).then((value) => value.catalog),
+    locale: Promise.resolve(messages).then((value) => value.locale),
   };
 };
 
