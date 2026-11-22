@@ -76,7 +76,9 @@ const showUserRow = async (
 
   const pager = page.getByRole("navigation", { name: "User list pagination" });
 
-  if (!(await pager.isVisible())) {
+  try {
+    await pager.waitFor({ state: "visible", timeout: 5000 });
+  } catch {
     return false;
   }
 
@@ -469,10 +471,11 @@ test.describe("platform operator management", () => {
     await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
     await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
 
-    expect(
-      await showUserRow(page, listPath, SEED_MEMBER.name),
-      `${SEED_MEMBER.name} is on no page of ${listPath}`
-    ).toBe(true);
+    await expect
+      .poll(() => showUserRow(page, listPath, SEED_MEMBER.name), {
+        message: `${SEED_MEMBER.name} is on no page of ${listPath}`,
+      })
+      .toBe(true);
     await expect(
       listRow(page, SEED_MEMBER.name).getByRole("link", {
         name: SEED_TENANT.name,
