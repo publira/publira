@@ -24,7 +24,8 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listEpisodeReadThrough, readThroughRate } from "#lib/engagement";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -33,9 +34,7 @@ import { formatCount } from "../_lib/format";
 type EpisodesPageProps = PageProps<"/[tenant_id]/[locale]/analytics/episodes">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.analytics.episodes.title") };
 };
@@ -122,9 +121,13 @@ const EpisodesSkeleton = () => (
 const EpisodesContent = async ({
   searchParams,
 }: Pick<EpisodesPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const { token } = parseCursorSearchParams(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [result, t] = await Promise.all([
     listEpisodeReadThrough(tenantId, locale, {
