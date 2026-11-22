@@ -44,7 +44,8 @@ import {
 import { listEpisodeCampaignPrices } from "#lib/episode-campaign-price";
 import { listEpisodeFreeWindows } from "#lib/episode-free-window";
 import { listEpisodeReviews } from "#lib/episode-review";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
@@ -103,9 +104,7 @@ import {
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.episodes.edit_title") };
 };
@@ -144,14 +143,17 @@ interface EditEpisodeContext {
 const resolveEditEpisodeContext = async (
   params: EditEpisodePageProps["params"]
 ): Promise<EditEpisodeContext> => {
-  const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const parsedParams = parseRouteParams(editEpisodeParamsSchema, rawParams);
 
   if (!parsedParams) {
     notFound();
   }
-
-  const locale = await getAdminLocale(tenantId);
 
   return {
     episodeId: parsedParams.episode_id,

@@ -20,7 +20,8 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllEpisodes } from "#lib/episode";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { getSeries } from "#lib/series";
@@ -34,9 +35,7 @@ import { VolumeEpisodesForm } from "./_components/volume-episodes-form";
 import { VolumeSaleForm } from "./_components/volume-sale-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.series.volumes.edit_title") };
 };
@@ -118,7 +117,7 @@ const EditVolumeData = async ({ params }: EditVolumePageProps) => {
     await Promise.all([resolveParams(params), getTenantId()]);
 
   const [locale, seriesResult] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getSeries({ publicId: seriesPublicId }),
   ]);
 

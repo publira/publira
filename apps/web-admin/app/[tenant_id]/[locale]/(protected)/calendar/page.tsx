@@ -13,8 +13,8 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { listEpisodePublications } from "#lib/publishing-calendar";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -32,9 +32,7 @@ import { parseCalendarSearchParams } from "./_lib/search-params";
 type CalendarPageProps = PageProps<"/[tenant_id]/[locale]/calendar">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.calendar.title") };
 };
@@ -63,7 +61,7 @@ const CalendarContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
