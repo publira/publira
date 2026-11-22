@@ -18,8 +18,8 @@ import {
   emptyTenantFcmSettings,
   getTenantFcmSettings,
 } from "#lib/fcm-settings";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -28,12 +28,10 @@ import { FcmCredentialsForm } from "./_components/fcm-credentials-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -60,7 +58,7 @@ const FcmCredentialsSection = async () => {
   const tenantId = await getTenantId();
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

@@ -18,8 +18,8 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { listWebhookDeliveries, listWebhookEndpoints } from "#lib/webhooks";
@@ -35,12 +35,10 @@ type ApiKeysAndWebhooksPageProps =
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -64,7 +62,7 @@ const ApiKeysContent = async () => {
   const tenantId = await getTenantId();
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -86,7 +84,7 @@ const WebhookEndpointsContent = async () => {
   const tenantId = await getTenantId();
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -111,7 +109,7 @@ const WebhookDeliveriesContent = async ({
   const filters = parseDeliveryFilters(sp);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
