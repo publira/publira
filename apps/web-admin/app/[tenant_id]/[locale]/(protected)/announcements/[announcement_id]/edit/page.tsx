@@ -23,8 +23,8 @@ import {
   isSignedInTenantEditor,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AnnouncementDeleteButton } from "../../_components/announcement-delete-button";
@@ -41,12 +41,10 @@ const editAnnouncementParamsSchema = z.object({
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isEditor] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isEditor] = await Promise.all([
+    getMessages(),
     isSignedInTenantEditor(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isEditor
@@ -70,7 +68,11 @@ const EditAnnouncementFormSkeleton = () => (
 const EditAnnouncementFormData = async ({
   params,
 }: Pick<EditAnnouncementPageProps, "params">) => {
-  const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   const parsedParams = parseRouteParams(
     editAnnouncementParamsSchema,
@@ -80,8 +82,6 @@ const EditAnnouncementFormData = async ({
   if (!parsedParams) {
     notFound();
   }
-
-  const locale = await getAdminLocale(tenantId);
 
   const result = await getAnnouncement(
     { announcementId: parsedParams.announcement_id, tenantId },

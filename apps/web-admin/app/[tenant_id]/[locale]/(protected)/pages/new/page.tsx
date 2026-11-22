@@ -12,8 +12,8 @@ import {
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLocales } from "#lib/tenant-locales";
 
@@ -23,12 +23,10 @@ import { createPageAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isEditor] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isEditor] = await Promise.all([
+    getMessages(),
     isSignedInTenantEditor(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isEditor ? t("admin.pages.new_title") : t("admin.not_found.title"),
@@ -47,8 +45,7 @@ const PageFormSkeleton = () => (
 );
 
 const NewPageFormData = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const localesResult = await getTenantLocales(tenantId, locale);
 
   return (

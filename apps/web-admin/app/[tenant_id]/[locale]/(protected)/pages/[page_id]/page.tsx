@@ -29,8 +29,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
@@ -75,9 +75,7 @@ const editPageSearchParamsSchema = z.object({
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.pages.edit_title") };
 };
@@ -138,7 +136,14 @@ const PageWorkspaceData = async ({
   params,
   searchParams,
 }: EditPagePageProps) => {
-  const parsedParams = parseRouteParams(editPageParamsSchema, await params);
+  const [rawParams, rawSearchParams, tenantId, locale] = await Promise.all([
+    params,
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
+  const parsedParams = parseRouteParams(editPageParamsSchema, rawParams);
 
   if (!parsedParams) {
     notFound();
@@ -147,10 +152,7 @@ const PageWorkspaceData = async ({
   const { page_id: pageId } = parsedParams;
 
   const requestedLocale =
-    editPageSearchParamsSchema.parse(await searchParams).locale || undefined;
-
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+    editPageSearchParamsSchema.parse(rawSearchParams).locale || undefined;
 
   const [translationsResult, tenantLocales] = await Promise.all([
     listPageTranslations({ pageId, tenantId }, locale),
@@ -276,15 +278,19 @@ const PageWorkspaceData = async ({
 const PageDeleteSection = async ({
   params,
 }: Pick<EditPagePageProps, "params">) => {
-  const parsedParams = parseRouteParams(editPageParamsSchema, await params);
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
+
+  const parsedParams = parseRouteParams(editPageParamsSchema, rawParams);
 
   if (!parsedParams) {
     return null;
   }
 
   const { page_id: pageId } = parsedParams;
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
 
   const [pageResult, translationsResult] = await Promise.all([
     getPage({ pageId, tenantId }, locale),

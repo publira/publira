@@ -12,8 +12,7 @@ import {
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -23,12 +22,10 @@ import { createCampaignBannerAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isEditor] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isEditor] = await Promise.all([
+    getMessages(),
     isSignedInTenantEditor(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isEditor
