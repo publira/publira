@@ -15,8 +15,8 @@ import {
 } from "#lib/auth-session";
 import { listCommentReports, listComments } from "#lib/comment";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -32,9 +32,7 @@ import { COMMENT_REPORT_STATUSES } from "./comment-types";
 type CommentsPageProps = PageProps<"/[tenant_id]/[locale]/comments">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.comments.title") };
 };
@@ -103,9 +101,13 @@ const reportStatusOptions = (
 const CommentsContent = async ({
   searchParams,
 }: Pick<CommentsPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const filters = parseCommentFilters(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [listResult, reportResult, timeZone, canModerate, canViewReaders] =
     await Promise.all([

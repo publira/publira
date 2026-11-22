@@ -29,8 +29,8 @@ import {
 } from "#lib/auth-session";
 import { listComments } from "#lib/comment";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { listPaymentProviders } from "#lib/payment-settings";
 import { listReaderPurchases } from "#lib/purchase";
 import { getReader } from "#lib/reader";
@@ -51,12 +51,10 @@ type ReaderDetailPageProps =
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -96,14 +94,17 @@ const ListSectionSkeleton = () => (
 const ReaderAccountContent = async ({
   params,
 }: Pick<ReaderDetailPageProps, "params">) => {
-  const parsedParams = parseRouteParams(readerParamsSchema, await params);
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
+
+  const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
 
   if (!parsedParams) {
     notFound();
   }
-
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
 
   const [result, timeZone] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
@@ -157,10 +158,11 @@ const ReaderPurchasesContent = async ({
   params,
   searchParams,
 }: Pick<ReaderDetailPageProps, "params" | "searchParams">) => {
-  const [rawParams, sp, tenantId] = await Promise.all([
+  const [rawParams, sp, tenantId, locale] = await Promise.all([
     params,
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
@@ -170,7 +172,6 @@ const ReaderPurchasesContent = async ({
   }
 
   const cursors = parseReaderPageCursors(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [readerResult, timeZone, providersResult] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
@@ -241,10 +242,11 @@ const ReaderTicketsContent = async ({
   params,
   searchParams,
 }: Pick<ReaderDetailPageProps, "params" | "searchParams">) => {
-  const [rawParams, sp, tenantId] = await Promise.all([
+  const [rawParams, sp, tenantId, locale] = await Promise.all([
     params,
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
@@ -254,7 +256,6 @@ const ReaderTicketsContent = async ({
   }
 
   const cursors = parseReaderPageCursors(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [readerResult, result, timeZone, seriesResult] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
@@ -314,10 +315,11 @@ const ReaderCommentsContent = async ({
   params,
   searchParams,
 }: Pick<ReaderDetailPageProps, "params" | "searchParams">) => {
-  const [rawParams, sp, tenantId] = await Promise.all([
+  const [rawParams, sp, tenantId, locale] = await Promise.all([
     params,
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
@@ -327,7 +329,6 @@ const ReaderCommentsContent = async ({
   }
 
   const cursors = parseReaderPageCursors(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [result, timeZone] = await Promise.all([
     listComments(tenantId, locale, {
