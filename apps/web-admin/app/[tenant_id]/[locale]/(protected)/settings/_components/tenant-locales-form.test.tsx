@@ -25,13 +25,17 @@ interface PendingSubmission {
   formData?: FormData;
 }
 
-const { save } = vi.hoisted(() => {
+const { refresh, save } = vi.hoisted(() => {
   const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantLocalesActionState>(),
   };
 
-  return { save: submission };
+  return { refresh: vi.fn(), save: submission };
 });
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
 
 vi.mock("../_lib/actions", () => ({
   updateTenantLocalesAction: (
@@ -63,6 +67,7 @@ const render = (ui: ReactNode) =>
 
 afterEach(() => {
   cleanup();
+  refresh.mockClear();
   // A submission left in flight would hold back the next test's transitions.
   save.current.resolve(null);
   save.current = Promise.withResolvers<TenantLocalesActionState>();
@@ -239,5 +244,47 @@ describe("TenantLocalesForm", () => {
       expect(trigger).toHaveProperty("disabled", true);
     });
     expect(isDisabled("ja")).toBe(true);
+  });
+
+  it("refreshes the route once the languages are saved", async () => {
+    render(
+      <TenantLocalesForm
+        canEdit
+        initialLocales={{ defaultLocale: "en", supportedLocales: ["ja", "en"] }}
+        tenantId="TENANT001"
+      />
+    );
+
+    await screen.findByLabelText("Default language");
+    fireEvent.click(saveButton());
+    save.current.resolve({
+      message: "The languages were saved.",
+      ok: true,
+    });
+
+    await screen.findByText("The languages were saved.");
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("leaves the route alone when the save is refused", async () => {
+    render(
+      <TenantLocalesForm
+        canEdit
+        initialLocales={{ defaultLocale: "en", supportedLocales: ["ja", "en"] }}
+        tenantId="TENANT001"
+      />
+    );
+
+    await screen.findByLabelText("Default language");
+    fireEvent.click(saveButton());
+    save.current.resolve({
+      message: "You do not have permission.",
+      ok: false,
+    });
+
+    await screen.findByText("You do not have permission.");
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

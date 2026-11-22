@@ -8,6 +8,7 @@ import { Message } from "#components/message";
 import type { TenantLocales } from "#lib/tenant-locales";
 
 import { updateTenantLocalesAction } from "../_lib/actions";
+import { DefaultLocaleSavedRefresh } from "./default-locale-saved-refresh";
 import { TenantLocalesFields } from "./tenant-locales-fields";
 
 interface TenantLocalesFormProps {
@@ -48,6 +49,7 @@ export const TenantLocalesForm = ({
         action={updateTenantLocalesAction}
         className="grid gap-4 sm:max-w-lg"
       >
+        <DefaultLocaleSavedRefresh />
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>

@@ -15,6 +15,7 @@ const {
   mockUpdateTenantSiteVerification,
   mockUpdateTenantTaxSettings,
   mockUpdateTenantTimezone,
+  mockForgetTenantRouting,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -30,6 +31,7 @@ const {
   mockUpdateTenantSiteVerification: vi.fn(),
   mockUpdateTenantTaxSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
+  mockForgetTenantRouting: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -85,6 +87,10 @@ vi.mock("#lib/site-settings", () => ({
   tenantSiteSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:site-settings`,
   updateTenantSiteSettings: mockUpdateTenantSiteSettings,
+}));
+
+vi.mock("#lib/tenant", () => ({
+  forgetTenantRouting: mockForgetTenantRouting,
 }));
 
 vi.mock("#lib/tenant-locales", () => ({
@@ -369,6 +375,9 @@ describe("updateTenantLocalesAction", () => {
       "series-list-TENANT001",
       "tenant:TENANT001:site",
     ]);
+    expect(mockForgetTenantRouting).toHaveBeenCalledExactlyOnceWith(
+      "TENANT001"
+    );
   });
 
   it.each([
@@ -396,6 +405,7 @@ describe("updateTenantLocalesAction", () => {
       });
       expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
       expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockForgetTenantRouting).not.toHaveBeenCalled();
     }
   );
 
@@ -416,6 +426,7 @@ describe("updateTenantLocalesAction", () => {
       ok: false,
     });
     expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
+    expect(mockForgetTenantRouting).not.toHaveBeenCalled();
   });
 
   // The form always sends the default among the languages offered, so a set
@@ -441,6 +452,7 @@ describe("updateTenantLocalesAction", () => {
     });
     expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockForgetTenantRouting).not.toHaveBeenCalled();
   });
 
   it("does not save when the tenant id is missing", async () => {
@@ -456,6 +468,7 @@ describe("updateTenantLocalesAction", () => {
       ok: false,
     });
     expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
+    expect(mockForgetTenantRouting).not.toHaveBeenCalled();
   });
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
@@ -480,6 +493,7 @@ describe("updateTenantLocalesAction", () => {
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockForgetTenantRouting).not.toHaveBeenCalled();
   });
 });
 

@@ -19,8 +19,8 @@ import {
   redirectToLoginIfSessionRejected,
   verifyAdminSession,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { listPublishedPages } from "#lib/page";
 import { getTenantSiteSettingsTabs } from "#lib/site-settings";
 import { getTenantAgeVerification } from "#lib/tenant-age-verification";
@@ -57,9 +57,7 @@ import { TenantTaxSettingsForm } from "./_components/tenant-tax-settings-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.settings.basic_title") };
 };
@@ -235,8 +233,7 @@ const taxSettingsFormState = (result: TenantTaxSettingsResult) =>
     : { loadErrorMessage: result.message };
 
 const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const currentUserPromise = verifyAdminSession(tenantId);
   const localesPromise = getTenantLocales(tenantId, locale);
 

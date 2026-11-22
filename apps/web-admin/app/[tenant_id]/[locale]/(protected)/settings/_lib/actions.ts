@@ -25,6 +25,7 @@ import {
   tenantSiteSettingsCacheTag,
   updateTenantSiteSettings,
 } from "#lib/site-settings";
+import { forgetTenantRouting } from "#lib/tenant";
 import {
   tenantAgeVerificationCacheTag,
   updateTenantAgeVerification,
@@ -506,10 +507,11 @@ export const updateTenantLocalesAction = async (
   }
 
   // The settings screen, the page editor's language tabs, and cookie-less
-  // `getAdminLocale()` read the languages through a private cache, so without
-  // this the operator would keep seeing the previous values in the same
-  // session.
+  // `getAdminLocale()` read the languages through a private cache. The proxy
+  // holds the default a request with no display-language cookie is rewritten
+  // onto, and every process drops a copy it read before this tag moved.
   updateTag(tenantSiteCacheTag(tenantId));
+  forgetTenantRouting(tenantId);
   // The genre list names each genre in the default locale, and the catalog
   // reads name each series and episode the same way, so a new default renames
   // them. The dashboard, the campaign prices, and the free windows are filed

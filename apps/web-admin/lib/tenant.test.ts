@@ -5,8 +5,11 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetTenantByDomain } = vi.hoisted(() => ({
+const { mockGetTenantByDomain, mockReadTagRevalidatedAt } = vi.hoisted(() => ({
   mockGetTenantByDomain: vi.fn(),
+  mockReadTagRevalidatedAt: vi.fn((): Promise<number | undefined> =>
+    Promise.resolve(0)
+  ),
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({
@@ -17,11 +20,20 @@ vi.mock("@publira/api-client/admin/client", () => ({
   }),
 }));
 
+vi.mock("@publira/next-cache-handlers/tags", () => ({
+  readTagRevalidatedAt: mockReadTagRevalidatedAt,
+}));
+
 describe("tenant", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
     vi.unstubAllEnvs();
+
+    const { clearTenantRoutingCache } = await import("./tenant");
+
+    clearTenantRoutingCache();
+    mockReadTagRevalidatedAt.mockImplementation(() => Promise.resolve(0));
   });
 
   it("resolves the tenantId from the admin domain candidates", async () => {
@@ -130,6 +142,178 @@ describe("tenant", () => {
 
     await expect(resolveTenantRouting(["admin.example.com"])).rejects.toThrow(
       "db timeout"
+    );
+  });
+
+  it("drops one tenant's cached routing so the next request reads the new default", async () => {
+    const saved = "018f0e6a-1000-7000-8000-000000000001";
+    const other = "018f0e6a-1000-7000-8000-000000000002";
+
+    mockGetTenantByDomain
+      .mockResolvedValueOnce({ defaultLocale: "en", tenantId: saved })
+      .mockResolvedValueOnce({ defaultLocale: "ja", tenantId: other })
+      .mockResolvedValueOnce({ defaultLocale: "ja", tenantId: saved });
+
+    const { forgetTenantRouting, resolveTenantRouting } =
+      await import("./tenant");
+
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId: saved });
+    await expect(
+      resolveTenantRouting(["admin.other.example"])
+    ).resolves.toMatchObject({ defaultLocale: "ja", tenantId: other });
+
+    // The first answer is what a later request would keep for the TTL.
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en" });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(2);
+
+    forgetTenantRouting(`  ${saved}  `);
+
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "ja", tenantId: saved });
+    await expect(
+      resolveTenantRouting(["admin.other.example"])
+    ).resolves.toMatchObject({ defaultLocale: "ja", tenantId: other });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps one cache for every copy of this module in the process", async () => {
+    const tenantId = "018f0e6a-1000-7000-8000-000000000001";
+
+    mockGetTenantByDomain
+      .mockResolvedValueOnce({ defaultLocale: "en", tenantId })
+      .mockResolvedValueOnce({ defaultLocale: "ja", tenantId });
+
+    const first = await import("./tenant");
+
+    await expect(
+      first.resolveTenantRouting(["admin.shared.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId });
+
+    vi.resetModules();
+
+    const second = await import("./tenant");
+
+    await expect(
+      second.resolveTenantRouting(["admin.shared.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(1);
+
+    second.forgetTenantRouting(tenantId);
+    vi.resetModules();
+
+    const third = await import("./tenant");
+
+    await expect(
+      third.resolveTenantRouting(["admin.shared.example"])
+    ).resolves.toMatchObject({ defaultLocale: "ja", tenantId });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads a held tenant again once its site tag is revalidated", async () => {
+    const tenantId = "018f0e6a-1000-7000-8000-000000000001";
+
+    mockGetTenantByDomain
+      .mockResolvedValueOnce({ defaultLocale: "en", tenantId })
+      .mockResolvedValueOnce({ defaultLocale: "ja", tenantId });
+
+    const { resolveTenantRouting } = await import("./tenant");
+
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId });
+
+    mockReadTagRevalidatedAt.mockResolvedValue(Number.MAX_SAFE_INTEGER);
+
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "ja", tenantId });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(2);
+    expect(mockReadTagRevalidatedAt).toHaveBeenCalledWith(
+      `tenant:${tenantId}:site`
+    );
+  });
+
+  it("keeps a held tenant when Redis cannot be read", async () => {
+    const tenantId = "018f0e6a-1000-7000-8000-000000000001";
+
+    mockGetTenantByDomain.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId,
+    });
+
+    const { resolveTenantRouting } = await import("./tenant");
+
+    await resolveTenantRouting(["admin.saved.example"]);
+    mockReadTagRevalidatedAt.mockResolvedValue(undefined);
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId });
+    expect(mockGetTenantByDomain).toHaveBeenCalledOnce();
+  });
+
+  it("holds an unknown host without asking about any tag", async () => {
+    mockGetTenantByDomain.mockRejectedValue(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
+
+    const { resolveTenantRouting } = await import("./tenant");
+
+    await resolveTenantRouting(["admin.unknown.example"]);
+    await resolveTenantRouting(["admin.unknown.example"]);
+
+    expect(mockGetTenantByDomain).toHaveBeenCalledOnce();
+    expect(mockReadTagRevalidatedAt).not.toHaveBeenCalled();
+  });
+
+  it("keeps serving a held tenant when the read its moved tag asks for fails", async () => {
+    const tenantId = "018f0e6a-1000-7000-8000-000000000001";
+
+    mockGetTenantByDomain
+      .mockResolvedValueOnce({ defaultLocale: "en", tenantId })
+      .mockRejectedValueOnce(new Error("upstream down"));
+
+    const { resolveTenantRouting } = await import("./tenant");
+
+    await resolveTenantRouting(["admin.saved.example"]);
+    mockReadTagRevalidatedAt.mockResolvedValue(Number.MAX_SAFE_INTEGER);
+
+    await expect(
+      resolveTenantRouting(["admin.saved.example"])
+    ).resolves.toMatchObject({ defaultLocale: "en", tenantId });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(2);
+  });
+
+  it("answers a suspension even while a tenant is held", async () => {
+    const tenantId = "018f0e6a-1000-7000-8000-000000000001";
+
+    mockGetTenantByDomain
+      .mockResolvedValueOnce({ defaultLocale: "en", tenantId })
+      .mockRejectedValueOnce(
+        new ConnectError(
+          "tenant is suspended",
+          Code.FailedPrecondition,
+          undefined,
+          [
+            {
+              desc: ErrorInfoSchema,
+              value: { domain: "publira", reason: "TENANT_SUSPENDED" },
+            },
+          ]
+        )
+      );
+
+    const { resolveTenantRouting, SUSPENDED_TENANT } = await import("./tenant");
+
+    await resolveTenantRouting(["admin.paused.example"]);
+    mockReadTagRevalidatedAt.mockResolvedValue(Number.MAX_SAFE_INTEGER);
+
+    await expect(resolveTenantRouting(["admin.paused.example"])).resolves.toBe(
+      SUSPENDED_TENANT
     );
   });
 });
