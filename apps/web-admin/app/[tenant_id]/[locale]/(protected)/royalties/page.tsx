@@ -20,8 +20,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import {
   getRoyaltyClosePolicy,
   listRoyaltyStatements,
@@ -46,12 +46,10 @@ type RoyaltiesPageProps = PageProps<"/[tenant_id]/[locale]/royalties">;
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin ? t("admin.royalties.title") : t("admin.not_found.title"),
@@ -162,9 +160,13 @@ const PreviewContent = ({
 const OpenMonthContent = async ({
   searchParams,
 }: Pick<RoyaltiesPageProps, "searchParams">) => {
-  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const [sp, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+
   const requested = parseOpenMonthSearchParams(sp).period;
-  const locale = await getAdminLocale(tenantId);
 
   const [timeZone, policyResult, latestResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),

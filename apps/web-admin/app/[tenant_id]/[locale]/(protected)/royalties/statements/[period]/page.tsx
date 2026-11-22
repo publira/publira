@@ -36,7 +36,8 @@ import {
   hasCursorPageLinks,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getRoyaltyStatement } from "#lib/royalties";
 import {
@@ -56,12 +57,10 @@ type RoyaltyStatementPageProps =
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -94,10 +93,11 @@ const StatementContent = async ({
   params,
   searchParams,
 }: Pick<RoyaltyStatementPageProps, "params" | "searchParams">) => {
-  const [rawParams, sp, tenantId] = await Promise.all([
+  const [rawParams, sp, tenantId, locale] = await Promise.all([
     params,
     searchParams,
     getTenantId(),
+    getLocale(),
   ]);
 
   const parsedParams = parseRouteParams(statementParamsSchema, rawParams);
@@ -107,7 +107,6 @@ const StatementContent = async ({
   }
 
   const { token } = parseCursorSearchParams(sp);
-  const locale = await getAdminLocale(tenantId);
 
   const [result, timeZone, t] = await Promise.all([
     getRoyaltyStatement(tenantId, locale, parsedParams.period, {

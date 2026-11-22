@@ -25,7 +25,8 @@ import { TenantAdminOnly } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisodeDropOff, statsCsvPath } from "#lib/engagement";
 import { getEpisode } from "#lib/episode";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
 import { getSeries } from "#lib/series";
@@ -53,9 +54,7 @@ type DropOffPageProps =
   PageProps<"/[tenant_id]/[locale]/analytics/episodes/[series_id]/[episode_id]">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.analytics.drop_off.title") };
 };
@@ -198,7 +197,7 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
   ]);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 

@@ -23,7 +23,8 @@ import {
 } from "#lib/auth-session";
 import { getRetentionCohorts, getSignUpFunnel } from "#lib/engagement";
 import type { RetentionCohortItem, SignUpFunnelItem } from "#lib/engagement";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
@@ -43,9 +44,7 @@ type CohortsPageProps = PageProps<"/[tenant_id]/[locale]/analytics/cohorts">;
 const PATH = "/analytics/cohorts";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.analytics.cohorts.title") };
 };
@@ -328,7 +327,7 @@ const CohortsContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
 
   const [locale, timeZone, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);

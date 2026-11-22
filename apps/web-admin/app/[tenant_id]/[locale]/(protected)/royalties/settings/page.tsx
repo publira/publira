@@ -17,8 +17,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getRoyaltyClosePolicy } from "#lib/royalties";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -27,12 +27,10 @@ import { RoyaltyCloseSettingsForm } from "./_components/royalty-close-settings-f
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -55,8 +53,7 @@ const RoyaltyCloseSettingsSkeleton = () => (
 );
 
 const RoyaltyCloseSettingsSection = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [policyResult, currentUserResult] = await Promise.all([
     getRoyaltyClosePolicy(tenantId, locale),

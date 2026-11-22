@@ -30,7 +30,8 @@ import type {
   RevenueStatsItem,
   RevenueStatsTotalsItem,
 } from "#lib/engagement";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
@@ -58,12 +59,10 @@ const PATH = "/analytics/revenue";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -387,7 +386,7 @@ const RevenueContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
 
   const [locale, timeZone] = await Promise.all([
-    getAdminLocale(tenantId),
+    getLocale(),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
