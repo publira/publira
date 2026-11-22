@@ -8,8 +8,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
@@ -17,9 +17,7 @@ import { AppLinksForm } from "./_components/app-links-form";
 import { updateAppLinksAction } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.integrations.app_links_title") };
 };
@@ -38,8 +36,7 @@ const AppLinksSkeleton = () => (
 );
 
 const AppLinksSection = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [result, currentUserResult] = await Promise.all([
     getTenantMobileAppAssociation(tenantId, locale),

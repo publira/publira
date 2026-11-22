@@ -17,12 +17,13 @@ import {
 } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
+import { getMessages } from "#lib/get-messages";
 import {
   emptyTenantInboundEmailSettings,
   getTenantInboundEmailSettings,
   listInboundEmailProviders,
 } from "#lib/inbound-email-settings";
-import { getAdminLocale } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { storefrontOrigin } from "#lib/storefront-url";
 import { getTenantForSession } from "#lib/tenant-detail";
@@ -34,12 +35,10 @@ import { TenantInboundEmailSettingsForm } from "./_components/tenant-inbound-ema
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -76,8 +75,7 @@ const SettingsEmailFormSkeleton = () => (
 );
 
 const SettingsEmailForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [emailSettingsResult, currentUserResult, tenantResult, t] =
     await Promise.all([
@@ -125,8 +123,7 @@ const SettingsInboundEmailFormSkeleton = () => (
 );
 
 const SettingsInboundEmailForm = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [settingsResult, providersResult, currentUserResult, tenantResult] =
     await Promise.all([

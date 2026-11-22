@@ -16,8 +16,8 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { getTenantEmailSender } from "#lib/email-settings";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import {
   appleAndroidCallbackUrl,
   signInCallbackUrl,
@@ -32,12 +32,10 @@ import { TenantSignInSettingsForm } from "./_components/tenant-sign-in-settings-
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -60,8 +58,7 @@ const SignInSettingsSkeleton = () => (
 );
 
 const SignInSettingsSection = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [
     result,
