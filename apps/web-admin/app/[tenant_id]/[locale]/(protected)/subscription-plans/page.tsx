@@ -16,8 +16,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { listSubscriptionPlans } from "#lib/subscription-plan";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -26,12 +26,10 @@ import { SubscriptionPlanList } from "./_components/subscription-plan-list";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -44,8 +42,7 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const SubscriptionPlanListData = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const listResult = await listSubscriptionPlans(tenantId, locale);
   await redirectToLoginIfSessionRejected(listResult);
 

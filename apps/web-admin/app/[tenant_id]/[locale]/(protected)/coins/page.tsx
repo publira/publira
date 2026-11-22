@@ -23,7 +23,8 @@ import {
   getCoinSettings,
   listCoinPacks,
 } from "#lib/coins";
-import { getAdminLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { findTenantLocales } from "#lib/tenant-locales";
@@ -35,12 +36,10 @@ import { CoinStatusSummary } from "./_components/coin-status";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin ? t("admin.coins.title") : t("admin.not_found.title"),
@@ -85,8 +84,7 @@ const CoinsLoadError = ({ message }: { message: string }) => (
 );
 
 const CoinsContent = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const [settingsResult, packsResult, tenantLocales, t] = await Promise.all([
     getCoinSettings(tenantId, locale),

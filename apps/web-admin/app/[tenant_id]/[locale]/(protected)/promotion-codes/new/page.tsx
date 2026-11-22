@@ -13,9 +13,8 @@ import {
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
 import { isSignedInTenantAdmin } from "#lib/auth-session";
+import { getMessages } from "#lib/get-messages";
 import { listAllLabels } from "#lib/label";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
@@ -27,12 +26,10 @@ import { createPromotionCodeAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin

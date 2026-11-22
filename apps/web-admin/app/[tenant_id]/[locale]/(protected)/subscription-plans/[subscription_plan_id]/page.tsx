@@ -25,8 +25,8 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getSubscriptionPlan } from "#lib/subscription-plan";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -50,12 +50,10 @@ const editSubscriptionPlanParamsSchema = z.object({
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
-  const [locale, isAdmin] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, isAdmin] = await Promise.all([
+    getMessages(),
     isSignedInTenantAdmin(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return {
     title: isAdmin
@@ -70,7 +68,11 @@ export const generateStaticParams = () =>
 const EditSubscriptionPlanContent = async ({
   params,
 }: Pick<EditSubscriptionPlanPageProps, "params">) => {
-  const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   const parsedParams = parseRouteParams(
     editSubscriptionPlanParamsSchema,
@@ -80,8 +82,6 @@ const EditSubscriptionPlanContent = async ({
   if (!parsedParams) {
     notFound();
   }
-
-  const locale = await getAdminLocale(tenantId);
 
   const result = await getSubscriptionPlan(
     { publicId: parsedParams.subscription_plan_id, tenantId },
