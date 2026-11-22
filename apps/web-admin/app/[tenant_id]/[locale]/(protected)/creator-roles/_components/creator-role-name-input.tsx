@@ -1,9 +1,7 @@
 import { Input } from "@publira/ui-components/input";
 
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "#lib/creator-roles-shared";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
-import { getTenantId } from "#lib/tenant-id";
+import { getMessages } from "#lib/get-messages";
 
 /**
  * The field a new role is named in.
@@ -13,9 +11,7 @@ import { getTenantId } from "#lib/tenant-id";
  * label, and the submit button around it stay in the static shell.
  */
 export const CreatorRoleNameInput = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return (
     <Input

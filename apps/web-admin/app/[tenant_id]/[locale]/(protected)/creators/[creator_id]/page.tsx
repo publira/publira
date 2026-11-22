@@ -30,8 +30,8 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -43,9 +43,7 @@ import { CreatorDeleteDialog } from "./_components/creator-delete-dialog";
 import { CREATOR_CREDITS_TITLE_ID } from "./_lib/creator-credits-anchor";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.creators.edit_title") };
 };
@@ -79,8 +77,7 @@ const EditCreatorFormData = async ({
 
   const { creator_id: creatorPublicId } = parsedParams;
 
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const result = await getCreator(
     {
@@ -145,8 +142,7 @@ const CreatorCreditsData = async ({
   }
 
   const { token } = parseCursorSearchParams(sp);
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const creator = await getCreator(
     { publicId: parsedParams.creator_id, tenantId },
@@ -196,7 +192,7 @@ const CreatorAccountsSection = async ({
     return null;
   }
 
-  const locale = await getAdminLocale(tenantId);
+  const locale = await getLocale();
 
   const [result, timeZone] = await Promise.all([
     getCreator({ publicId: parsedParams.creator_id, tenantId }, locale),
@@ -248,8 +244,7 @@ const CreatorDeleteSection = async ({
     return null;
   }
 
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
   const result = await getCreator(
     { publicId: parsedParams.creator_id, tenantId },

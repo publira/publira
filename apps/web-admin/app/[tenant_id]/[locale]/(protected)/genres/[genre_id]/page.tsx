@@ -19,8 +19,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getGenre } from "#lib/genre";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getTenantId } from "#lib/tenant-id";
 import { findTenantLocales } from "#lib/tenant-locales";
 
@@ -44,9 +43,7 @@ const editGenreParamsSchema = z.object({
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.genres.edit_title") };
 };
@@ -167,12 +164,10 @@ const EditGenreFormData = async ({
     );
   }
 
-  const [locale, tenantLocales] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [t, tenantLocales] = await Promise.all([
+    getMessages(),
     findTenantLocales(tenantId),
   ]);
-
-  const t = await getMessagesFor(locale);
 
   return (
     <GenreNamesForm

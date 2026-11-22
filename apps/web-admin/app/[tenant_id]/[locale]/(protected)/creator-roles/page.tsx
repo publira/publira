@@ -8,16 +8,13 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listCreatorRoles } from "#lib/creator-roles";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorRoleManager } from "./_components/creator-role-manager";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.creator_roles.title") };
 };

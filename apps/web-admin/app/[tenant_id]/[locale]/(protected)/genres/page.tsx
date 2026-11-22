@@ -9,17 +9,15 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listGenres } from "#lib/genre";
-import { getAdminLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 import { findTenantLocales } from "#lib/tenant-locales";
 
 import { GenreManager } from "./_components/genre-manager";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const locale = await getAdminLocale(tenantId);
-  const t = await getMessagesFor(locale);
+  const t = await getMessages();
 
   return { title: t("admin.genres.title") };
 };
@@ -41,10 +39,9 @@ const GenreManagerSkeleton = () => (
 );
 
 const GenreManagerData = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [locale, listResult, canEdit, tenantLocales] = await Promise.all([
-    getAdminLocale(tenantId),
+  const [listResult, canEdit, tenantLocales] = await Promise.all([
     listGenres(),
     isSignedInTenantEditor(tenantId),
     findTenantLocales(tenantId),
