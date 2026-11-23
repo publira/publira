@@ -1,52 +1,34 @@
 "use client";
 
-import type { Locale } from "@publira/i18n";
-import { createContext, use } from "react";
-import type { ReactNode } from "react";
+import { createClientMessages } from "@publira/locale/client-messages";
 
 import type { AdminClientMessages } from "#lib/messages";
 
 /**
- * The request's cookie-or-tenant locale as the read that resolves it, so the
- * provider renders in the static shell and only a component that needs the
- * locale waits.
+ * The request's locale and its catalog, as two reads, so the provider renders
+ * in the static shell and only a component that needs one of them waits.
  */
-export const AdminLocaleContext = createContext<Promise<Locale> | null>(null);
-
-/**
- * The catalog of that same locale, read on the server, so a Client Component's
- * copy is there on its first render instead of arriving after hydration.
- */
-export const AdminMessagesContext =
-  createContext<Promise<AdminClientMessages> | null>(null);
-
-export const AdminLocaleContextProvider = ({
-  children,
-  locale,
-  messages,
-}: {
-  children: ReactNode;
-  locale: Promise<Locale>;
-  messages: Promise<AdminClientMessages>;
-}) => (
-  <AdminLocaleContext value={locale}>
-    <AdminMessagesContext value={messages}>{children}</AdminMessagesContext>
-  </AdminLocaleContext>
+const {
+  ClientMessage,
+  Provider,
+  useClientLocale,
+  useClientMessages: useAdminClientMessages,
+} = createClientMessages<AdminClientMessages>(
+  "AdminLocaleProvider is required."
 );
+
+export const AdminLocaleContextProvider = Provider;
 
 /**
  * The console's UI locale in a Client Component.
  *
  * On the server this waits on the read under the boundary the surrounding
  * section already sits behind; the read has settled in the payload by the time
- * the browser hydrates, so it answers on the first client render.
+ * the browser hydrates, so it answers on the first client render. It does not
+ * wait on the catalog.
  */
-export const useAdminLocale = (): Locale => {
-  const locale = use(AdminLocaleContext);
+export const useAdminLocale = useClientLocale;
 
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+export { ClientMessage };
 
-  return use(locale);
-};
+export const useClientMessages = useAdminClientMessages;

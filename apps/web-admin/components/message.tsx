@@ -1,14 +1,9 @@
-import type { MessageValues } from "@publira/i18n";
+import { createMessage } from "@publira/locale/message";
 
 import { getMessages } from "#lib/get-messages";
-import type { AdminMessageKey } from "#lib/messages";
+import type { AdminMessageKey } from "#lib/locale";
 
 export type { AdminMessageKey } from "#lib/locale";
-
-interface MessageProps {
-  message: AdminMessageKey;
-  values?: MessageValues;
-}
 
 /**
  * One catalog string, resolved inside the caller's Suspense boundary.
@@ -18,8 +13,4 @@ interface MessageProps {
  * reads the same `[locale]` root parameter and the same cached module, so the
  * count of them costs a page nothing.
  */
-export const Message = async ({ message, values }: MessageProps) => {
-  const t = await getMessages();
-
-  return t(message, values);
-};
+export const Message = createMessage<AdminMessageKey>(getMessages);

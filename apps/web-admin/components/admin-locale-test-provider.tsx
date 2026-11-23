@@ -23,8 +23,8 @@ export const AdminLocaleTestProvider = ({
   locale: Locale;
 }) => (
   <AdminLocaleContextProvider
+    catalog={fulfilled(sharedCatalog(locale))}
     locale={fulfilled(locale)}
-    messages={fulfilled(sharedCatalog(locale))}
   >
     {children}
   </AdminLocaleContextProvider>

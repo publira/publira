@@ -1,4 +1,5 @@
-import { getLocales, PATH_LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { PATH_LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { generateLocaleStaticParams } from "@publira/locale/static-params";
 import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/next-static-params";
@@ -35,10 +36,9 @@ import "../../globals.css";
  * tenant does not offer to the unprefixed URL before any shell is served.
  */
 export const generateStaticParams = () =>
-  getLocales().map((locale) => ({
-    locale,
+  generateLocaleStaticParams({
     tenant_id: STATIC_PARAM_PLACEHOLDER,
-  }));
+  });
 
 /**
  * Icons live on the root layout rather than on `(site)`, so a reader sees the

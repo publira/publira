@@ -1,15 +1,8 @@
-import type { Locale } from "@publira/i18n";
-import type { ReactNode } from "react";
+import { createLocaleMessagesProvider } from "@publira/locale/messages-provider";
 
-import { getLocale } from "#lib/locale";
 import { loadAdminClientMessages } from "#lib/messages";
-import type { AdminClientMessages } from "#lib/messages";
 
 import { AdminLocaleContextProvider } from "./admin-locale-context";
-
-const readRequestMessages = async (
-  locale: Promise<Locale>
-): Promise<AdminClientMessages> => loadAdminClientMessages(await locale);
 
 /**
  * Carries the request's locale and its catalog to the Client Components below,
@@ -22,15 +15,7 @@ const readRequestMessages = async (
  * handed down unresolved, and the wait lands on the component that needs them
  * rather than on every route.
  */
-export const AdminLocaleProvider = ({ children }: { children: ReactNode }) => {
-  const locale = getLocale();
-
-  return (
-    <AdminLocaleContextProvider
-      locale={locale}
-      messages={readRequestMessages(locale)}
-    >
-      {children}
-    </AdminLocaleContextProvider>
-  );
-};
+export const AdminLocaleProvider = createLocaleMessagesProvider(
+  AdminLocaleContextProvider,
+  loadAdminClientMessages
+);

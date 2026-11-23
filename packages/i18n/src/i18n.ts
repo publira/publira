@@ -1,9 +1,10 @@
 /**
  * Locale parsing and message lookup.
  *
- * Apps resolve Cookie / `root-params` themselves and pass the value in. This
- * module never reads request state, so it is safe to call from `"use cache"`
- * (the cache key is the locale argument, not a cookie).
+ * Nothing here reads request state. The caller passes a locale in, so a
+ * `"use cache"` scope keys on that argument. `cookies()`, `headers()`, and
+ * `next/root-params` stay out of this package: an app, or `@publira/locale`
+ * for the `[locale]` root segment, resolves the locale and passes it in.
  *
  * Catalogs live at the repo-root `locales/*.json` so Go, Next.js, and Flutter
  * read the same files. Generated per-locale `import()` functions load the
@@ -376,8 +377,8 @@ export type MessageAccessor<TCatalog> = (
  * without the `string` escape hatch `getMessage` keeps for a runtime fallback,
  * so a key the catalog does not carry is also a type error at the call site.
  *
- * Apps do not call this directly: each has a `getMessages()` that resolves the
- * request's locale and answers the bound accessor.
+ * An app binds a catalog with this and returns the accessor from `getMessages()`
+ * or `getMessagesFor()`.
  */
 export const bindMessages =
   <TCatalog extends MessageTree>(

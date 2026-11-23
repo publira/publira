@@ -25,19 +25,19 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 
 | Part | Where it lives |
 | --- | --- |
-| The locale a page renders in | `getLocale()` in `lib/locale.ts`, the `[locale]` root parameter |
-| The locale where there is no root parameter | `getPlatformLocale()` in `lib/locale.ts`, from the cookie, for the Server Actions and the `api/v1/audit-logs/csv` Route Handler, and the cookie options the switcher writes with |
+| The locale a page renders in | `getLocale()` in `lib/locale.ts`, re-exported from `@publira/locale`, the `[locale]` root parameter |
+| The locale where there is no root parameter | `getPlatformLocale()` in `lib/locale.ts`, from the cookie, for the Server Actions and the `api/v1/audit-logs/csv` Route Handler |
 | The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/general` |
 | `Accept-Language`, where nothing is saved yet | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`: the option the default-language selectors on `/setup` and Create tenant open on, and the locale the setup Action words its failures in when no supported `publira_locale` cookie is set |
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
-| One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
-| One string on the server | `<Message>` in `components/message.tsx` |
-| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/[locale]/layout.tsx`, loaded by `loadPlatformClientMessages(locale)` |
+| One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` (`createGetMessages` from `@publira/locale`) for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
+| One string on the server | `<Message>` in `components/message.tsx` (`createMessage` from `@publira/locale`) |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `platform` namespace `PlatformMessagesProvider` carries. The provider is `@publira/locale`'s, bound in `components/platform-messages-provider.tsx` and placed by `app/[locale]/layout.tsx`. `loadPlatformClientMessages(locale)` loads the namespace |
 | One string in a route-level `error.tsx` | `<ClientMessage>` in `components/client-message.tsx`, over `PlatformMessagesProvider` in `app/[locale]/layout.tsx`, for `app/[locale]/error.tsx` and `app/[locale]/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx`, which applies it again when a change of language remounts that layout |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
-An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`; `components/locale-switcher-root.tsx` refreshes the route once it settles, which sends the screen back through `proxy.ts` on the new cookie.
+An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`, which checks the request's origin and calls `persistLocaleChoice` in `@publira/locale`. `components/locale-switcher-root.tsx` refreshes the route once it settles, which sends the screen back through `proxy.ts` on the new cookie. The root layout's `generateStaticParams` is `generateLocaleStaticParams` from `@publira/locale`, one shell per registry locale.
 
 A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector, beside the languages the new tenant's site offers (`_components/tenant-locales-fields.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
 

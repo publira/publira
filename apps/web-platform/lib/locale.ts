@@ -20,41 +20,21 @@
 
 import {
   isLocale,
-  LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
   negotiateInitialLocale,
 } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cookies, headers } from "next/headers";
-import { notFound } from "next/navigation";
-import { locale as rootLocale } from "next/root-params";
 
 import { readSetupDefaultLocale } from "./setup-status";
+
+export { getLocale } from "@publira/locale/root-locale";
 
 export {
   loadPlatformMessages,
   type PlatformMessageKey,
   type PlatformMessages,
 } from "./messages";
-
-/**
- * Options the locale cookie is written with, from the Server Action in
- * `lib/locale-action.ts`.
- *
- * `httpOnly` is deliberately off: the inline `<head>` script reads this cookie
- * to set `<html lang>` before the first paint, which it can only do from
- * `document.cookie`. The value is a two-letter UI preference chosen from a
- * fixed list — nothing an attacker gains by reading, and the server re-parses
- * it against {@link isLocale} on every request, so a hand-edited value is not
- * treated as a choice and the saved platform default is used instead.
- */
-export const platformLocaleCookieOptions = {
-  httpOnly: false as const,
-  maxAge: LOCALE_COOKIE_MAX_AGE,
-  path: "/" as const,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-};
 
 /**
  * The last locale {@link getPlatformDisplayLocale} resolved, for this server
@@ -134,29 +114,4 @@ export const getPlatformLocale = async (): Promise<Locale> => {
   }
 
   return getPlatformDisplayLocale();
-};
-
-/**
- * The locale this request is rendered in, from the `[locale]` root segment
- * `proxy.ts` rewrote it onto.
- *
- * Resolving it costs nothing and the value is part of the route, so it is
- * already in every cache key below it: a `"use cache"` scope may call this
- * directly, and a Server Component that does needs no `<Suspense>` for it.
- *
- * An unsupported segment is a 404. The proxy only ever writes a supported
- * locale in front of a path, so the only way to arrive here with anything else
- * is a URL that does not exist.
- *
- * Note: `next/root-params` is not available in Server Actions or Route
- * Handlers; those resolve the locale with {@link getPlatformLocale}.
- */
-export const getLocale = async (): Promise<Locale> => {
-  const value = await rootLocale();
-
-  if (!isLocale(value)) {
-    notFound();
-  }
-
-  return value;
 };

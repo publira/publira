@@ -1,4 +1,5 @@
 import type { MessageValues } from "@publira/i18n";
+import { createMessage } from "@publira/locale/message";
 
 import { getMessages } from "#lib/get-messages";
 import type { StorefrontMessageKey } from "#lib/messages";
@@ -25,8 +26,4 @@ export interface MessageProps {
  * whole screen — takes the surrounding structure down with it: the cards, the
  * headings, and the links all wait on a message they do not depend on.
  */
-export const Message = async ({ message, values }: MessageProps) => {
-  const t = await getMessages();
-
-  return t(message, values);
-};
+export const Message = createMessage<StorefrontMessageKey>(getMessages);

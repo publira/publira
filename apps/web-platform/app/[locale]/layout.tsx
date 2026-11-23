@@ -1,5 +1,6 @@
 import "../globals.css";
-import { getLocales, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { generateLocaleStaticParams } from "@publira/locale/static-params";
 import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -18,8 +19,7 @@ import { getMessages } from "#lib/get-messages";
  * and the saved platform default, and rewrites every page request onto the
  * one it chose; the URL never names it.
  */
-export const generateStaticParams = () =>
-  getLocales().map((locale) => ({ locale }));
+export const generateStaticParams = () => generateLocaleStaticParams();
 
 // Metadata is resolved in a pass of its own and streams into the document, so
 // this read stays out of every route's shell.

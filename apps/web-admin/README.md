@@ -20,19 +20,19 @@ The locale is never in the URL the operator sees. It lives in the `publira_local
 
 | Part | Where it lives |
 | --- | --- |
-| The locale a page renders in | `getLocale()` in `lib/locale.ts`, over the `[locale]` root parameter |
-| The same answer from the cookie, for a Server Action or a Route Handler | `getAdminLocale(tenantId)` in `lib/locale.ts`, and the cookie options the switcher writes with |
+| The locale a page renders in | `getLocale()` in `lib/locale.ts`, re-exported from `@publira/locale`, over the `[locale]` root parameter |
+| The same answer from the cookie, for a Server Action or a Route Handler | `getAdminLocale(tenantId)` in `lib/locale.ts` |
 | The tenant's stored default, without a session | `getTenantDisplayLocale()` in `lib/public-api.ts`, over the public `GetTenant` |
 | The tenant's stored default and the languages its site offers, as a setting to read and save | `lib/tenant-locales.ts`, behind the Languages card on `/settings`; the page editor's language tabs read the same set |
 | The catalog | `loadAdminMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md) |
-| One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one, `getActionMessages(formData)` in `lib/action-messages.ts` inside a Server Action |
-| One string on the server | `<Message>` in `components/message.tsx` |
-| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `admin` namespace `AdminLocaleProvider` (`components/admin-locale-provider.tsx`) carries from `app/[tenant_id]/[locale]/layout.tsx`, loaded by `loadAdminClientMessages(locale)`; `useAdminLocale()` in `components/admin-locale-context.tsx` for the locale itself |
+| One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` (`createGetMessages` from `@publira/locale`) for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one, `getActionMessages(formData)` in `lib/action-messages.ts` inside a Server Action |
+| One string on the server | `<Message>` in `components/message.tsx` (`createMessage` from `@publira/locale`) |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the `admin` namespace `AdminLocaleProvider` carries. The provider is `@publira/locale`'s, bound in `components/admin-locale-provider.tsx` and placed by `app/[tenant_id]/[locale]/layout.tsx`. `loadAdminClientMessages(locale)` loads the namespace. `useAdminLocale()` in `components/admin-locale-context.tsx` reads the locale without waiting on the catalog |
 | One string in a route-level `error.tsx` | `<ClientMessage>` in `components/client-message.tsx`, over `AdminLocaleProvider` in `app/[tenant_id]/[locale]/layout.tsx`, for `app/[tenant_id]/[locale]/error.tsx` and `app/[tenant_id]/[locale]/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[tenant_id]/[locale]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`), and `<DocumentLocale>` in `components/document-locale.tsx` when a change of language remounts that layout |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
-An individual operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setAdminLocaleAction` Server Action in `lib/locale-action.ts`; `components/locale-switcher-root.tsx` refreshes the route once it settles, so the screen is routed again on the new cookie.
+An individual operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setAdminLocaleAction` Server Action in `lib/locale-action.ts`, which checks the request's origin and calls `persistLocaleChoice` in `@publira/locale`. `components/locale-switcher-root.tsx` refreshes the route once it settles, so the screen is routed again on the new cookie. The root layout's `generateStaticParams` is `generateLocaleStaticParams` from `@publira/locale`: one shell per registry locale, beside the tenant placeholder.
 
 ## Development
 

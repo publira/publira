@@ -1,11 +1,11 @@
 "use client";
 
+import { LOCALE_FIELD_NAME } from "@publira/locale/locale-field";
 import * as LocaleSwitcher from "@publira/ui-components/locale-switcher";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { setPlatformLocaleAction } from "#lib/locale-action";
-import { LOCALE_FIELD_NAME } from "#lib/locale-shared";
 
 interface PlatformLocaleSwitcherRootProps {
   children: ReactNode;

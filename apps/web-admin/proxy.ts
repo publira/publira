@@ -1,6 +1,9 @@
-import { LOCALE_COOKIE_NAME, parseLocaleCookie } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
+import {
+  consoleLocalePathname,
+  consoleRequestLocale,
+} from "@publira/locale/console-locale";
 import { isHealthProbePath } from "@publira/utils/health";
 import { getTenantDomainCandidates } from "@publira/utils/request-host";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
@@ -77,19 +80,6 @@ const isRouteHandlerPath = (pathname: string): boolean =>
   pathname === "/theme.css" ||
   pathname.startsWith("/api/");
 
-/**
- * The locale a page request is rendered in, in the order `getAdminLocale()` in
- * `lib/locale.ts` resolves it: a supported `publira_locale` cookie, then the
- * tenant's stored default. `null` when neither names a language this build
- * serves a catalog for.
- */
-const resolveRequestLocale = (
-  request: NextRequest,
-  defaultLocale: Locale | null
-): Locale | null =>
-  parseLocaleCookie(request.cookies.get(LOCALE_COOKIE_NAME)?.value) ??
-  defaultLocale;
-
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
@@ -157,19 +147,17 @@ export const proxy = async (request: NextRequest) => {
   if (isRouteHandlerPath(pathname)) {
     rewriteUrl.pathname = `/${tenantId}${pathname}`;
   } else {
-    const locale = resolveRequestLocale(request, defaultLocale);
+    // Cookie, then the tenant's stored default — the order `getAdminLocale()`
+    // resolves. `null` when neither names a language this build serves a
+    // catalog for: the page ends here, rather than rendering in a language
+    // nobody chose.
+    const locale = consoleRequestLocale(request, defaultLocale);
 
-    // A page neither the operator nor the tenant names a language for has no
-    // language to render in: the tenant's stored default is a code this build
-    // serves no catalog for. It ends here, the way the storefront's proxy ends
-    // it, rather than rendering the console in a language nobody chose.
     if (!locale) {
       return withLocale(serviceUnavailableResponse());
     }
 
-    rewriteUrl.pathname = `/${tenantId}/${locale}${
-      pathname === "/" ? "" : pathname
-    }`;
+    rewriteUrl.pathname = consoleLocalePathname(pathname, locale, tenantId);
   }
 
   const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;

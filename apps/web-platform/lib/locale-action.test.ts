@@ -25,9 +25,9 @@ const formData = (values: Record<string, string>): FormData => {
 const importAction = () => import("./locale-action");
 
 const importOptions = async () => {
-  const localeModule = await import("./locale");
+  const { localeCookieOptions } = await import("@publira/locale/locale-cookie");
 
-  return localeModule.platformLocaleCookieOptions;
+  return localeCookieOptions;
 };
 
 describe("setPlatformLocaleAction", () => {

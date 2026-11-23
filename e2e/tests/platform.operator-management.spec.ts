@@ -62,6 +62,10 @@ const listRow = (page: Page, text: string): Locator =>
  * how far down a seeded reader sits depends on how many ran before this one.
  * Each page is a fresh load rather than a click, so the page left behind is
  * not still mounted beside the one searched.
+ *
+ * The page title and the list are separate Suspense boundaries. The title can
+ * be on screen while the table is still the skeleton, and that skeleton has
+ * no pager, so the pager is what says the list has resolved.
  */
 const showUserRow = async (
   page: Page,
@@ -69,17 +73,21 @@ const showUserRow = async (
   name: string
 ): Promise<boolean> => {
   await page.goto(platformUrl(path));
-  await page
-    .getByRole("heading", { level: 1, name: "Users" })
-    .waitFor({ state: "visible" });
+
+  const pager = page.getByRole("navigation", { name: "User list pagination" });
+
+  try {
+    await pager.waitFor({ state: "visible", timeout: 5000 });
+  } catch {
+    return false;
+  }
 
   if ((await listRow(page, name).count()) > 0) {
     return true;
   }
 
-  const next = page
-    .getByRole("navigation", { name: "User list pagination" })
-    .getByRole("link", { name: "Next" });
+  await expect(pager.getByText("Next", { exact: true })).toBeVisible();
+  const next = pager.getByRole("link", { name: "Next" });
 
   const nextPath =
     (await next.count()) > 0 ? await next.getAttribute("href") : null;
@@ -463,10 +471,11 @@ test.describe("platform operator management", () => {
     await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
     await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
 
-    expect(
-      await showUserRow(page, listPath, SEED_MEMBER.name),
-      `${SEED_MEMBER.name} is on no page of ${listPath}`
-    ).toBe(true);
+    await expect
+      .poll(() => showUserRow(page, listPath, SEED_MEMBER.name), {
+        message: `${SEED_MEMBER.name} is on no page of ${listPath}`,
+      })
+      .toBe(true);
     await expect(
       listRow(page, SEED_MEMBER.name).getByRole("link", {
         name: SEED_TENANT.name,
