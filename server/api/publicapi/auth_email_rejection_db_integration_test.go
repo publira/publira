@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -207,5 +208,85 @@ func TestDBRequestEmailChangeRefusesAnAddressTheTenantRefuses(t *testing.T) {
 
 	if err := requestChange("moved@tenant-a.example.com"); err != nil {
 		t.Fatalf("RequestEmailChange to an accepted address: %v", err)
+	}
+}
+
+// A provider sign-in that would open an account is refused for the address
+// CreateUser refuses, and only that one: the reader whose provider account is
+// linked, and the reader whose account holds a refused address, both sign in.
+func TestDBLoginWithIdTokenOpensNoAccountForAnAddressTheTenantRefuses(t *testing.T) {
+	t.Parallel()
+
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	linked := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "linked-subject", "linked@blocked.example", "nonce-linked"), "nonce-linked")
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@blocked.example", "Member")
+	env.refuseEmails(t, env.tenant.ID, false, "john@example.com", "blocked.example")
+
+	refused := []struct {
+		name     string
+		provider publirav1.IdentityProvider
+		token    func(t *testing.T, nonce string) string
+	}{
+		{name: "listed address through Google", provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, token: func(t *testing.T, nonce string) string {
+			return env.googleToken(t, "john-google", "John@Example.com", nonce)
+		}},
+		{name: "listed address under a tag through Apple", provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE, token: func(t *testing.T, nonce string) string {
+			return env.appleToken(t, "john-apple", "john+again@example.com", nonce)
+		}},
+		{name: "listed domain", provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, token: func(t *testing.T, nonce string) string {
+			return env.googleToken(t, "newcomer-google", "newcomer@mail.blocked.example", nonce)
+		}},
+	}
+	for i, tc := range refused {
+		nonce := fmt.Sprintf("nonce-refused-%d", i)
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := env.signIn(tc.provider, tc.token(t, nonce), nonce)
+			assertEmailRefused(t, err, "id_token", rpcerrors.FieldReasonEmailRefused)
+		})
+	}
+	if count := countRows(t, env.publicDBEnv, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); count != 2 {
+		t.Fatalf("accounts = %d, want only the linked reader and the member", count)
+	}
+	if count := countRows(t, env.publicDBEnv, `SELECT count(*) FROM user_identities WHERE tenant_id = $1`, env.tenant.ID); count != 1 {
+		t.Fatalf("linked provider accounts = %d, want only the one linked before the refusal", count)
+	}
+
+	again := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "linked-subject", "linked@blocked.example", "nonce-linked-2"), "nonce-linked-2")
+	if again.AccountCreated || again.User.PublicId != linked.User.PublicId {
+		t.Fatalf("linked sign-in = %+v, want the account opened before the refusal", again)
+	}
+	linking := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
+		env.appleToken(t, "member-subject", member.Email, "nonce-member"), "nonce-member")
+	if linking.AccountCreated || linking.User.PublicId != member.PublicID {
+		t.Fatalf("sign-in to the account holding the address = %+v, want %s", linking, member.PublicID)
+	}
+}
+
+func TestDBLoginWithIdTokenOpensNoAccountOnADisposableDomain(t *testing.T) {
+	t.Parallel()
+
+	list := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("throwaway.example\n"))
+	}))
+	t.Cleanup(list.Close)
+	env := newIdentityDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.DisposableEmailDomainsURL = list.URL
+	}), openMailGuard())
+	env.enableProviders(t)
+	env.refuseEmails(t, env.tenant.ID, true)
+
+	_, err := env.signIn(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "throwaway-subject", "reader@throwaway.example", "nonce-throwaway"), "nonce-throwaway")
+	assertEmailRefused(t, err, "id_token", rpcerrors.FieldReasonEmailDisposableDomain)
+	if count := countRows(t, env.publicDBEnv, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); count != 0 {
+		t.Fatalf("accounts = %d, want 0", count)
+	}
+
+	if resp := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "reader-subject", "reader@example.com", "nonce-reader"), "nonce-reader"); !resp.AccountCreated {
+		t.Fatal("account_created = false on a domain the list does not name, want true")
 	}
 }

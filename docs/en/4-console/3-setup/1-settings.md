@@ -2,7 +2,7 @@
 title: Settings
 description: Set the site's copy, time zone, languages, reader comments, review before publishing, author pages, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, search engine verification codes, and the tax and invoice details, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-11-04
+updated: 2026-11-24
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -138,7 +138,7 @@ Choose **Save the refused email addresses** to save. The list applies to the nex
 
 ![The Refused email addresses card: Refuse disposable email domains, a field for an address or a domain with Add an address or domain, and Save the refused email addresses.](./settings-refused-email-addresses.png)
 
-Sign-in with Apple or Google is never refused here, since the provider supplies the address. Only a Tenant admin can see this card's contents.
+A first sign-in with Apple or Google that would create an account with one of these addresses is refused too. A reader who already has an account keeps signing in with Apple or Google, whatever its address. Only a Tenant admin can see this card's contents.
 
 ### Crawler exclusions
 

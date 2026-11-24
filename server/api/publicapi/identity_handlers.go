@@ -327,6 +327,12 @@ func (s *apiServer) resolveSignIn(
 		if !signUp.Open {
 			return signInResult{}, signInRefusal{reason: "sign_up_closed", err: signupsettings.Refusal()}
 		}
+		// The address CreateUser would refuse opens no account here either.
+		// Asked before the consents, so a refused reader is not asked to agree
+		// to terms first.
+		if reason, err := s.refuseEmail(ctx, txq, tenant.ID, claims.Email, "id_token"); err != nil {
+			return signInResult{}, signInRefusal{reason: reason, err: err}
+		}
 		result.user, err = s.createAccountForIdentity(ctx, tx, txq, tenant, claims, msg)
 		if err != nil {
 			return signInResult{}, err

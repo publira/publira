@@ -378,6 +378,10 @@ class LoginWithIdTokenRequest extends $pb.GeneratedMessage {
   /// another sub-address tag (john+shop@ for john@, or the other way round) is
   /// failed_precondition: it neither opens a second account for that inbox nor
   /// links the one there, which the reader signs in to with its own address.
+  /// A token whose address no account holds and the tenant refuses is
+  /// invalid_argument on id_token, with the field violation reasons
+  /// CreateUserRequest.email gives, and opens no account; a token that matches
+  /// an account still signs in to it.
   @$pb.TagNumber(3)
   $core.String get idToken => $_getSZ(2);
   @$pb.TagNumber(3)

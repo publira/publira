@@ -3473,7 +3473,7 @@
       },
       "email_rejection": {
         "title": "不接受的电子邮件地址",
-        "description": "读者无法用于注册或更改为的电子邮件地址。使用Apple或Google登录不受影响，因为地址由提供方给出。",
+        "description": "读者无法用于注册或更改为的电子邮件地址。首次使用Apple或Google登录而创建账户时，同样会被拒绝。",
         "disposable_label": "不接受一次性邮箱域名",
         "disposable_description": "根据平台维护的列表，不接受一次性邮箱服务域名下的地址。",
         "disposable_unavailable": "平台尚未配置一次性域名列表，因此在配置之前此开关不起作用。",

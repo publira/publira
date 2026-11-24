@@ -406,7 +406,7 @@ func (s *apiServer) CreateUser(
 	// accounts already there is the address alone, or a sign-up could open an
 	// account per display name for one inbox.
 	email = address.Address
-	if reason, err := s.refuseEmail(ctx, tenant.ID, email, "email"); err != nil {
+	if reason, err := s.refuseEmail(ctx, s.queriesFor(ctx), tenant.ID, email, "email"); err != nil {
 		auth.AuditEvent(ctx, "signup", "failure", tenant.PublicID, "", reason)
 		return nil, err
 	}
@@ -497,9 +497,10 @@ func (s *apiServer) refuseClosedSignUp(ctx context.Context, tenantID uuid.UUID) 
 // the tenant does not accept it, with the audit reason to record, and a nil
 // error when it does. The refusal depends on the address alone, never on
 // whether it has an account, so a form that answers uniformly can still give
-// it: it tells the caller nothing about who is registered.
-func (s *apiServer) refuseEmail(ctx context.Context, tenantID uuid.UUID, address, field string) (string, error) {
-	verdict, err := emailrejection.Check(ctx, s.queriesFor(ctx), s.disposable, tenantID, address)
+// it: it tells the caller nothing about who is registered. q reads the
+// settings, so a caller holding a transaction checks inside it.
+func (s *apiServer) refuseEmail(ctx context.Context, q emailrejection.Querier, tenantID uuid.UUID, address, field string) (string, error) {
+	verdict, err := emailrejection.Check(ctx, q, s.disposable, tenantID, address)
 	if err != nil {
 		return "email_rejection_check_failed", s.internalDBError(ctx, "failed to check the address against the tenant's email rejection settings", err, "tenant_id", tenantID.String())
 	}
@@ -725,7 +726,7 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, "new email must be different from current email")
 	}
-	if reason, err := s.refuseEmail(ctx, tenant.ID, newEmail, "new_email"); err != nil {
+	if reason, err := s.refuseEmail(ctx, s.queriesFor(ctx), tenant.ID, newEmail, "new_email"); err != nil {
 		auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}

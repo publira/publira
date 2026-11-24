@@ -126,6 +126,10 @@ export type LoginWithIdTokenRequest = Message<"publira.v1.LoginWithIdTokenReques
    * another sub-address tag (john+shop@ for john@, or the other way round) is
    * failed_precondition: it neither opens a second account for that inbox nor
    * links the one there, which the reader signs in to with its own address.
+   * A token whose address no account holds and the tenant refuses is
+   * invalid_argument on id_token, with the field violation reasons
+   * CreateUserRequest.email gives, and opens no account; a token that matches
+   * an account still signs in to it.
    *
    * @generated from field: string id_token = 3;
    */

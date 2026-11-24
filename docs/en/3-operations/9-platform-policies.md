@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-11-06
+updated: 2026-11-24
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -154,7 +154,7 @@ A saved change reaches every running instance within ten seconds, without a rest
 
 The list is a plain-text file of one domain per line; blank lines and lines starting with `#` are ignored, which is the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) project's blocklist. A listed domain also covers its subdomains. Each instance reads the list when it is first needed and again an hour later. If a read fails, or the file has a line that is not a domain, the instance keeps using the last list it read and logs a warning; with no earlier list, it refuses nothing and tries again an hour later. A new URL is read on the next lookup after it is saved.
 
-Saving a list refuses nothing on its own. A tenant that wants disposable addresses refused turns on **Refuse disposable email domains** under **Refused email addresses** in its console's **Settings**, and from then on a reader cannot sign up with, or change their address to, an address on a listed domain. Sign-in with Apple or Google is not affected. When the platform has no list, that switch says it has no effect.
+Saving a list refuses nothing on its own. A tenant that wants disposable addresses refused turns on **Refuse disposable email domains** under **Refused email addresses** in its console's **Settings**, and from then on a reader cannot sign up with, or change their address to, an address on a listed domain, and a first sign-in with Apple or Google cannot create an account with one. When the platform has no list, that switch says it has no effect.
 
 ## Community
 

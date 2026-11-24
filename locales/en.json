@@ -3473,7 +3473,7 @@
       },
       "email_rejection": {
         "title": "Refused email addresses",
-        "description": "Addresses that readers cannot sign up with or change their email address to. Sign-in with Apple or Google is not affected, since the provider supplies the address.",
+        "description": "Addresses that readers cannot sign up with or change their email address to. A first sign-in with Apple or Google that would create an account with one is refused too.",
         "disposable_label": "Refuse disposable email domains",
         "disposable_description": "Refuses addresses on domains made for throwaway email, using the list the platform maintains.",
         "disposable_unavailable": "The platform has no disposable domain list configured, so this switch has no effect until one is.",

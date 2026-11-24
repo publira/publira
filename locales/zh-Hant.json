@@ -3473,7 +3473,7 @@
       },
       "email_rejection": {
         "title": "不接受的電子郵件地址",
-        "description": "讀者無法用於註冊或變更為的電子郵件地址。使用Apple或Google登入不受影響，因為地址由提供方給出。",
+        "description": "讀者無法用於註冊或變更為的電子郵件地址。首次透過Apple或Google登入而建立帳戶時，同樣會被拒絕。",
         "disposable_label": "不接受拋棄式信箱網域",
         "disposable_description": "根據平台維護的清單，不接受拋棄式信箱服務網域下的地址。",
         "disposable_unavailable": "平台尚未設定拋棄式網域清單，因此在設定之前此開關不會生效。",
