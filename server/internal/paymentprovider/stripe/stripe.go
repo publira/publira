@@ -423,10 +423,36 @@ func listError(err error) error {
 	return fmt.Errorf("list balance transactions: %w", err)
 }
 
+// readableReleaseTrains are the Stripe API release trains whose events this
+// package reads correctly: those whose payloads carry every field it reads
+// where it reads it. A webhook endpoint keeps the API version it was created
+// with, so the trains are checked here rather than left to stripe-go, which
+// accepts its own train alone and would refuse every tenant's notifications
+// on the day an update moves it to the next one.
+//
+// basil is the first: it moved an invoice's subscription under
+// invoice.parent.subscription_details, where the subscription events are read
+// from. A train is added once its changelog is checked against the fields this
+// package reads, and the Stripe section of the selling-episodes page names the
+// same trains to the tenant.
+var readableReleaseTrains = []string{"basil", "clover", "dahlia", "endive"}
+
+// releaseTrain answers the train of a Stripe API version, `2026-11-18.endive`
+// being one of endive, and empty for a version from before trains.
+func releaseTrain(apiVersion string) string {
+	_, train, _ := strings.Cut(apiVersion, ".")
+	return train
+}
+
 func (p *Provider) ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
-	event, err := webhook.ConstructEvent(payload, headers.Get(SignatureHeader), credentials[FieldWebhookSecret])
+	event, err := webhook.ConstructEventWithOptions(payload, headers.Get(SignatureHeader), credentials[FieldWebhookSecret], webhook.ConstructEventOptions{
+		IgnoreAPIVersionMismatch: true,
+	})
 	if err != nil {
 		return nil, paymentprovider.ErrInvalidSignature
+	}
+	if !slices.Contains(readableReleaseTrains, releaseTrain(event.APIVersion)) {
+		return nil, fmt.Errorf("%w: the event is of Stripe API version %q, which this integration does not read; stripe-go reads %q", paymentprovider.ErrMalformedNotification, event.APIVersion, stripego.APIVersion)
 	}
 	switch event.Type {
 	case stripego.EventTypeChargeRefunded:

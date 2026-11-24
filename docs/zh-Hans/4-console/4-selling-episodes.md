@@ -2,8 +2,8 @@
 title: 销售章节
 description: 为章节定价，记录其价格中包含的税费，通过Stripe、PAY.JP、PayPay或Paidy收款，选择章节的销售位置，并处理退款。
 published: 2026-11-03
-updated: 2026-11-15
-source_updated: 2026-11-15
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 要在网站上销售章节，需要三样东西彼此吻合：租户控制台中章节的价格、支付服务商的账户，以及支付服务商用来告知安装实例读者已付款的Webhook。向读者扣款的是支付服务商，但只有Webhook才会让章节可以阅读。因此三者中任何一个设置有误，都会出现收了读者的钱、章节却仍然锁定的情况。本页按设置顺序逐一说明这三项，最后通过一次测试购买来确认三者吻合。
@@ -140,7 +140,8 @@ source_updated: 2026-11-15
    - `refund.updated`
    - `charge.dispute.created`
    - `charge.dispute.closed`
-3. 打开该端点，复制其**signing secret**，它以`whsec_`开头。
+3. 将端点的**API version**选为名称以`.basil`、`.clover`、`.dahlia`或`.endive`结尾的版本，例如`2026-11-18.endive`。对于其他任何版本的通知，无论更早还是更晚，安装实例都会返回400，也不会因此打开章节。
+4. 打开该端点，复制其**signing secret**，它以`whsec_`开头。
 
 然后在控制台的**添加服务商**中：
 
@@ -230,7 +231,7 @@ Paidy让读者无需银行卡，只凭电子邮件地址和手机号码先买后
 | 状态 | 原因 | 处理方法 |
 | --- | --- | --- |
 | 2xx | 已接受。并非每个被接受的通知都会打开章节：对于便利店支付，Stripe会在读者付款之前发送`checkout.session.completed`，章节只有在付款后收到`checkout.session.async_payment_succeeded`时才会打开 | 在控制台中查看事件类型和付款状态。如果付款已完成而章节仍然锁定，读者可能是用另一个账户购买的。 |
-| 400 | 控制台中的签名密钥或webhook token与支付服务商的不一致 | 填写正在发送通知的那个端点的值。 |
+| 400 | 控制台中的签名密钥或webhook token与支付服务商的不一致，或者Stripe端点的API version不是[Stripe](#stripe)中列出的版本 | 填写正在发送通知的那个端点的值。如果Stripe端点的API version不同，请另外添加一个所列版本的端点来代替它，并填写其signing secret。 |
 | 404 | 路径中没有指明支付服务商 | 按控制台显示的URL原样登记。 |
 | 503 | URL指明的支付服务商不是**就绪**，或租户尚未添加它 | 完成上面的设置。支付服务商会重试投递。 |
 | 没有投递 | Webhook未登记，或登记在了另一种模式下 | 在密钥所属的模式下登记。 |

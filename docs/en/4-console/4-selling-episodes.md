@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, record the tax its price includes, take payment through Stripe, PAY.JP, PayPay, or Paidy, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -139,7 +139,8 @@ In the Stripe Dashboard:
    - `refund.updated`
    - `charge.dispute.created`
    - `charge.dispute.closed`
-3. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
+3. Choose the endpoint's **API version** from those the install reads: a version whose name ends in `.basil`, `.clover`, `.dahlia`, or `.endive`, such as `2026-11-18.endive`. The install answers a notification of any other version, earlier or later, with 400, and opens nothing with it.
+4. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
 
 Then in the console, under **Add a provider**:
 
@@ -229,7 +230,7 @@ The provider's dashboard lists each delivery to the webhook with the status the 
 | Status | Cause | What to do |
 | --- | --- | --- |
 | 2xx | Accepted. Not every accepted notification opens an episode: Stripe sends `checkout.session.completed` for a konbini payment before the reader pays, and the episode opens only with the `checkout.session.async_payment_succeeded` that follows the payment | Check the event type and the payment's status in the dashboard. If the payment is complete and the episode is still locked, the reader may have bought it on another account. |
-| 400 | The signing secret or webhook token in the console does not match the provider's | Enter the value from the endpoint the provider is sending from. |
+| 400 | The signing secret or webhook token in the console does not match the provider's, or the Stripe endpoint's API version is not one [Stripe](#stripe) names | Enter the value from the endpoint the provider is sending from. For a Stripe endpoint of another API version, add an endpoint of a version that is named in its place, and enter its signing secret. |
 | 404 | The path does not name a provider | Register the URL exactly as the console shows it. |
 | 503 | The provider the URL names is not **Ready**, or the tenant has not added it | Finish the setup above. The provider retries the delivery. |
 | No delivery | The webhook is not registered, or is registered for the other mode | Register it in the mode the keys belong to. |
