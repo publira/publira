@@ -13,6 +13,8 @@ export {
 
 /** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
 export const RPC_ERROR_REASON = {
+  accountSuspended: "ACCOUNT_SUSPENDED",
+  accountUnconfirmed: "ACCOUNT_UNCONFIRMED",
   archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",

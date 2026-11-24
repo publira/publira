@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, remove a two-step verification a member lost, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-11-12
+updated: 2026-11-24
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/6-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -46,7 +46,9 @@ An invitation is mailed to an address and makes it a Tenant admin when accepted.
 
 The invitee is mailed a link to the tenant's console, in the tenant's default language. On it they enter their **Full name** and a **Password**, choose **Accept invitation**, and sign in. The link is valid for 24 hours.
 
-An address that already belongs to a user of the tenant is not invited: it becomes a Tenant admin at once, and no mail is sent. This replaces any role it held before, so an Editor invited this way becomes a Tenant admin.
+An address that belongs to an active account of the tenant, whose owner has confirmed the address, is not invited: it becomes a Tenant admin at once, and no mail is sent. This replaces any role it held before, so an Editor invited this way becomes a Tenant admin.
+
+Any other account of the tenant is mailed the invitation, as a new address is. Until its address is confirmed, an account's password was chosen by whoever signed up with the address, who need not be its owner, so accepting the invitation replaces its name and password with the ones the invitee enters. A suspended account can accept only once it is no longer suspended.
 
 The invitation mail is sent by `publira worker`, from the tenant's own SMTP settings if it has saved some, and from the platform's otherwise. An install with no worker running creates the invitation and sends nothing.
 
@@ -74,7 +76,7 @@ A reader of the tenant can be given any of the three roles directly, without mai
 
 ![Add member: Email address to add, Role, and Add member.](./tenant-staff-add-member.png)
 
-This only works for an address that already has an account in the tenant; any other is refused. Someone without one signs up on the tenant's site first, or is invited as a Tenant admin. An account that already holds a role is changed with **Change role** instead.
+This only works for an address that already has an account in the tenant, active and with its address confirmed; any other is refused. Someone without one signs up on the tenant's site and confirms the address first, or is invited as a Tenant admin. An account whose address was never confirmed is refused too, because whoever signed up with the address chose its password: invite it instead, and accepting the invitation sets a new one. A suspended account is refused until it is no longer suspended. An account that already holds a role is changed with **Change role** instead.
 
 ### Creating an account without mail
 

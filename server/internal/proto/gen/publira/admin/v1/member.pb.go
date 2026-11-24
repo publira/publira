@@ -760,8 +760,10 @@ type CreateTenantAdminInvitationResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unset when role_granted_immediately is true.
 	Invitation *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
-	// True when the address already belongs to a user of the tenant, who is given
-	// the role on the spot instead of being mailed an invitation.
+	// True when the address belongs to an active user of the tenant whose owner
+	// confirmed it, who is given the role on the spot instead of being mailed an
+	// invitation. Any other account is mailed one: until its address is
+	// confirmed, its password was chosen by whoever signed up with the address.
 	RoleGrantedImmediately bool `protobuf:"varint,2,opt,name=role_granted_immediately,json=roleGrantedImmediately,proto3" json:"role_granted_immediately,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -814,6 +816,10 @@ func (x *CreateTenantAdminInvitationResponse) GetRoleGrantedImmediately() bool {
 // Gives a user the tenant already has a console role. An address with no
 // account in the tenant is refused with NOT_FOUND, and one whose user already
 // holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
+// An account that is suspended is refused with FAILED_PRECONDITION and the
+// ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+// address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+// invited instead.
 type AddTenantMemberRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

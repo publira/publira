@@ -87,6 +87,10 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonInvitationCanceled)
+	case errors.Is(err, tenantmembers.ErrAccountSuspended):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonAccountSuspended)
+	case errors.Is(err, tenantmembers.ErrAccountUnconfirmed):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonAccountUnconfirmed)
 	default:
 		return s.internalDBError(ctx, msg, err, keyvals...)
 	}

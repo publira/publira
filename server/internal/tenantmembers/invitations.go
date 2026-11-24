@@ -140,9 +140,13 @@ func (p InviteParams) normalize() (email, role string, err error) {
 	return email, role, nil
 }
 
-// Invite gives the address the role inside tx. An address that already
-// belongs to a user of the tenant is granted the role on the spot; any other
-// is sent an invitation, rearming the one it already has with this role.
+// Invite gives the address the role inside tx. An address that belongs to an
+// account of the tenant [grantable] accepts is granted the role on the spot;
+// any other is sent an invitation, rearming the one it already has with this
+// role. That includes an account whose address was never confirmed: whoever
+// typed the address into a sign-up form chose its password, so the role waits
+// for the link mailed to the address, which [ClaimInvited] hands the account
+// over on.
 //
 // A user granted tenant_admin on the spot loses any role they held, which can
 // only be a weaker one. Any other role is refused with [ErrAlreadyMember] when
@@ -162,8 +166,11 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	})
 	switch {
 	case err == nil:
-		if err := lockAdmins(ctx, tx, p.TenantID); err != nil {
+		if user, err = lockAccount(ctx, tx, p.TenantID, user.ID); err != nil {
 			return Invited{}, err
+		}
+		if !grantable(user) {
+			break
 		}
 		if role != auth.RoleTenantAdmin {
 			roles, err := q.ListTenantUserRoles(ctx, user.ID)
@@ -204,8 +211,7 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 }
 
 // IssueInvitation creates a new invitation granting role for an address that
-// has neither an account nor an invitation in the tenant, and queues its mail
-// on q.
+// has no invitation in the tenant, and queues its mail on q.
 func IssueInvitation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email, role string) (dbmodels.TenantAdminInvitation, error) {
 	token, err := newToken()
 	if err != nil {

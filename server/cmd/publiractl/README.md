@@ -460,11 +460,11 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again. A tenant being deleted is not resumed |
 | `tenant delete` | `DeleteTenant` | Marks a suspended tenant for deletion, once `--name` is the tenant's name exactly, and returns: the worker's [`erase-tenants`](#erase-tenants) erases it |
 | `tenant member list` | `ListTenantMembers` | Prints every user holding a console role |
-| `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `--user` (public ID) or `--email`, the `--role` |
+| `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `--user` (public ID) or `--email`, the `--role`. An account that is suspended, not active yet, or whose address was never confirmed is refused |
 | `tenant member update-role` | `UpdateTenantMemberRole` | Replaces the `--user`'s console role with `--role` |
 | `tenant member remove` | `RemoveTenantMember` | Takes every console role from the `--user`, who stays a user of the tenant |
 | `tenant member reset-mfa` | — | Removes the authenticator, every console passkey, every recovery code, and the count of refused attempts of a user of the tenant, named by `--user` (public ID) or `--email`, so they sign in with their password alone; refused for a user with neither an authenticator nor a console passkey. The passkeys the user signs in to the storefront with stay |
-| `tenant invite create` | `CreateTenantAdminInvitation` | Invites `--email` to administer the tenant; an address that already has an account is given `tenant_admin` at once |
+| `tenant invite create` | `CreateTenantAdminInvitation` | Invites `--email` to administer the tenant; an address whose account is active and confirmed is given `tenant_admin` at once, and any other is mailed the invitation |
 | `tenant invite list` | `ListTenantAdminInvitations` | Prints every invitation with its ID and status |
 | `tenant invite resend`, `tenant invite cancel` | `ResendTenantAdminInvitation`, `CancelTenantAdminInvitation` | Mails the invitation `--id` again with a new link, or withdraws it |
 | `tenant admin create` | — | Creates a console account for `--email` with `--name` and `--role` (`tenant_admin` unless given), its email already verified, and sends no mail |

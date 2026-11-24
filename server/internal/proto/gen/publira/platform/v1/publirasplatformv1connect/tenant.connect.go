@@ -234,6 +234,10 @@ type PlatformTenantServiceClient interface {
 	// is refunded.
 	DeleteTenant(context.Context, *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	// An account that is suspended is refused with failed_precondition and the
+	// ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+	// address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+	// invited instead.
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
@@ -305,6 +309,10 @@ type PlatformTenantServiceHandler interface {
 	// is refunded.
 	DeleteTenant(context.Context, *v1.DeleteTenantRequest) (*v1.DeleteTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	// An account that is suspended is refused with failed_precondition and the
+	// ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+	// address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+	// invited instead.
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)

@@ -413,7 +413,8 @@ func userByRef(ctx context.Context, q *dbmodels.Queries, tenantID, userID uuid.U
 
 // Add gives the user p names the role inside tx. A user who already holds a
 // console role is refused with [ErrAlreadyMember]: changing it is
-// [UpdateRole]'s.
+// [UpdateRole]'s. An account [grantable] does not accept is refused with
+// [ErrAccountSuspended] or [ErrAccountUnconfirmed].
 func Add(ctx context.Context, tx *sql.Tx, p AddParams) (Member, error) {
 	publicID, email, role, err := p.normalize()
 	if err != nil {
@@ -422,6 +423,13 @@ func Add(ctx context.Context, tx *sql.Tx, p AddParams) (Member, error) {
 	q := dbmodels.New(tx)
 	member, err := userByRef(ctx, q, p.TenantID, p.UserID, publicID, email)
 	if err != nil {
+		return Member{}, err
+	}
+	user, err := lockAccount(ctx, tx, p.TenantID, member.UserID)
+	if err != nil {
+		return Member{}, err
+	}
+	if err := refuseUngrantable(user); err != nil {
 		return Member{}, err
 	}
 
@@ -579,6 +587,48 @@ func AddressConfirmed(user dbmodels.User) bool {
 	return user.EmailVerifiedAt.Valid
 }
 
+// ErrAccountUnconfirmed refuses a console role given without an invitation to
+// an account [grantable] does not accept for a reason other than a suspension:
+// its address was never confirmed, or it is not active yet. Inviting the
+// address instead mails a link that hands the account to whoever follows it,
+// as [ClaimInvited] does.
+var ErrAccountUnconfirmed = errors.New("account address is not confirmed")
+
+// grantable reports whether user may be given a console role on an
+// administrator's word alone, without its owner following a link mailed to
+// its address: it is active, and [AddressConfirmed] holds. Any other account
+// is readied for the role by [ClaimInvited] when its invitation is accepted.
+func grantable(user dbmodels.User) bool {
+	return user.Status == "active" && AddressConfirmed(user)
+}
+
+// refuseUngrantable answers why user may not be given a console role without
+// an invitation, or nil when [grantable] accepts it.
+func refuseUngrantable(user dbmodels.User) error {
+	switch {
+	case grantable(user):
+		return nil
+	case user.Status == "suspended":
+		return ErrAccountSuspended
+	default:
+		return ErrAccountUnconfirmed
+	}
+}
+
+// lockAccount takes the tenant's administrator lock and then userID's row for
+// the rest of tx, in the order suspending a member takes them, so the two
+// cannot wait on each other, and reads the account as it stands under them.
+func lockAccount(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID) (dbmodels.User, error) {
+	if err := lockAdmins(ctx, tx, tenantID); err != nil {
+		return dbmodels.User{}, err
+	}
+	user, err := dbmodels.New(tx).GetUserByIDForUpdate(ctx, userID)
+	if err != nil {
+		return dbmodels.User{}, fmt.Errorf("lock user: %w", err)
+	}
+	return user, nil
+}
+
 // ClaimParams is an existing account of the tenant that accepting an
 // invitation hands to the invitee.
 type ClaimParams struct {
@@ -597,22 +647,19 @@ type ClaimParams struct {
 // as [AddressConfirmed] requires: Name and Password replace its own, the
 // address is marked confirmed, and anything signed for it before stops
 // working. The role itself is the caller's to grant.
-//
-// It takes the tenant's administrator lock before the account's row, in the
-// order suspending a member takes them, so the two cannot wait on each other.
 func ClaimInvited(ctx context.Context, tx *sql.Tx, p ClaimParams) (dbmodels.User, error) {
-	if err := lockAdmins(ctx, tx, p.TenantID); err != nil {
+	user, err := lockAccount(ctx, tx, p.TenantID, p.UserID)
+	if err != nil {
 		return dbmodels.User{}, err
 	}
-	q := dbmodels.New(tx)
-	user, err := q.GetUserByIDForUpdate(ctx, p.UserID)
-	if err != nil {
-		return dbmodels.User{}, fmt.Errorf("lock user: %w", err)
-	}
-	if user.Status == "suspended" {
-		return dbmodels.User{}, ErrAccountSuspended
+	switch err := refuseUngrantable(user); {
+	case err == nil:
+		return user, nil
+	case errors.Is(err, ErrAccountSuspended):
+		return dbmodels.User{}, err
 	}
 
+	q := dbmodels.New(tx)
 	if AddressConfirmed(user) {
 		if err := q.ActivateInactiveUserByID(ctx, user.ID); err != nil {
 			return dbmodels.User{}, fmt.Errorf("activate user: %w", err)

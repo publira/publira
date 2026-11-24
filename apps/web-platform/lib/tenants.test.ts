@@ -756,6 +756,33 @@ describe("createPlatformTenant", () => {
       ok: false,
     });
   });
+
+  it.each([
+    [
+      RPC_ERROR_REASON.accountUnconfirmed,
+      "This account's email address has not been confirmed, so it cannot be given a role directly. Invite the address instead.",
+    ],
+    [
+      RPC_ERROR_REASON.accountSuspended,
+      "This account is suspended, so it cannot be given a role.",
+    ],
+    ["SOME_OTHER_REASON", "Could not add the member. Please try again later."],
+  ])("explains a refusal with the reason %s", async (reason, message) => {
+    mockAddTenantMember.mockRejectedValueOnce(
+      new ConnectError("refused", Code.FailedPrecondition, undefined, [
+        { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+      ])
+    );
+
+    await expect(
+      addPlatformTenantMember({
+        email: "member@example.com",
+        locale: "en",
+        role: "tenant_admin",
+        tenantId,
+      })
+    ).resolves.toEqual({ message, ok: false });
+  });
 });
 
 describe("deletePlatformTenant", () => {

@@ -233,6 +233,9 @@ message CreateTenantAdminInvitationRequest {
 
 message CreateTenantAdminInvitationResponse {
   TenantAdminInvitation invitation = 1;
+  // True when the address belongs to an active user of the tenant whose owner
+  // confirmed it, who is given the role on the spot instead of being mailed an
+  // invitation.
   bool role_granted_immediately = 2;
 }
 
@@ -330,6 +333,10 @@ service PlatformTenantService {
   // is refunded.
   rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse) {}
   rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  // An account that is suspended is refused with failed_precondition and the
+  // ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+  // address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+  // invited instead.
   rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
   rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}

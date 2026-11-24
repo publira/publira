@@ -1597,9 +1597,12 @@ func (x *CreateTenantAdminInvitationRequest) GetTenantId() string {
 }
 
 type CreateTenantAdminInvitationResponse struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	Invitation             *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
-	RoleGrantedImmediately bool                   `protobuf:"varint,2,opt,name=role_granted_immediately,json=roleGrantedImmediately,proto3" json:"role_granted_immediately,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Invitation *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
+	// True when the address belongs to an active user of the tenant whose owner
+	// confirmed it, who is given the role on the spot instead of being mailed an
+	// invitation.
+	RoleGrantedImmediately bool `protobuf:"varint,2,opt,name=role_granted_immediately,json=roleGrantedImmediately,proto3" json:"role_granted_immediately,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }

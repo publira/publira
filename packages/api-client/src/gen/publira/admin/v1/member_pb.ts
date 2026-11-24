@@ -408,8 +408,10 @@ export type CreateTenantAdminInvitationResponse = Message<"publira.admin.v1.Crea
   invitation?: TenantAdminInvitation | undefined;
 
   /**
-   * True when the address already belongs to a user of the tenant, who is given
-   * the role on the spot instead of being mailed an invitation.
+   * True when the address belongs to an active user of the tenant whose owner
+   * confirmed it, who is given the role on the spot instead of being mailed an
+   * invitation. Any other account is mailed one: until its address is
+   * confirmed, its password was chosen by whoever signed up with the address.
    *
    * @generated from field: bool role_granted_immediately = 2;
    */
@@ -427,6 +429,10 @@ export const CreateTenantAdminInvitationResponseSchema: GenMessage<CreateTenantA
  * Gives a user the tenant already has a console role. An address with no
  * account in the tenant is refused with NOT_FOUND, and one whose user already
  * holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
+ * An account that is suspended is refused with FAILED_PRECONDITION and the
+ * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+ * address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+ * invited instead.
  *
  * @generated from message publira.admin.v1.AddTenantMemberRequest
  */

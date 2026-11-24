@@ -1,8 +1,10 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import type {
   Tenant,
@@ -1060,6 +1062,26 @@ export const updatePlatformTenant = async (
   }
 };
 
+/**
+ * Why an account was refused a role it would be given without an invitation:
+ * suspended, or with an address its owner never confirmed, which only an
+ * invitation hands over.
+ */
+const addMemberPreconditionMessage = (
+  cause: unknown,
+  t: PlatformMessageAccessor
+): string | undefined => {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.accountSuspended)) {
+    return t("platform.tenants.member_account_suspended");
+  }
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.accountUnconfirmed)) {
+    return t("platform.tenants.member_account_unconfirmed");
+  }
+
+  return undefined;
+};
+
 export const addPlatformTenantMember = async (
   input: AddPlatformTenantMemberInput
 ): Promise<AddPlatformTenantMemberResult> => {
@@ -1105,6 +1127,7 @@ export const addPlatformTenantMember = async (
         overrides: {
           conflict: t("platform.tenants.member_already_added"),
           "not-found": t("platform.tenants.user_not_found"),
+          precondition: addMemberPreconditionMessage(error, t),
         },
       }),
       ok: false,

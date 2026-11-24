@@ -17,6 +17,8 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantlock"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -429,6 +431,22 @@ func expectTenantMemberAuditLogInsert(mock sqlmock.Sqlmock, operatorID, tenantID
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
+// expectAccountLock expects the administrator lock and the account's row that
+// adding a member reads before granting, answering an account that is active
+// with a confirmed address.
+func expectAccountLock(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
+	mock.ExpectExec(regexp.QuoteMeta("SELECT set_config('lock_timeout', $1, true)")).
+		WithArgs(tenantlock.Timeout.String()).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")).
+		WithArgs("tenant-admins:" + tenantID.String()).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForUpdate)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
+			AddRow(userID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, now, int32(1), nil, nil, nil, nil))
+}
+
 func TestAddTenantMemberSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -446,6 +464,7 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 		WithArgs(targetUserID).
 		WillReturnRows(tenantUserRows(targetUserID, "USER000001", "Alice", "alice@example.com", "active", tenantID, now))
 
+	expectAccountLock(mock, tenantID, targetUserID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(targetUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
@@ -492,6 +511,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
 			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil, nil, nil, nil))
 
+	expectAccountLock(mock, tenantID, targetUserID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(targetUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
@@ -617,6 +637,7 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 		WithArgs(targetUserID).
 		WillReturnRows(tenantUserRows(targetUserID, "USER000001", "Alice", "alice@example.com", "active", tenantID, now))
 
+	expectAccountLock(mock, tenantID, targetUserID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(targetUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
@@ -631,6 +652,63 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 		t.Fatalf("AddTenantMember code = %v, want already_exists", connect.CodeOf(err))
 	}
 	assertOperatorHandlerExpectations(t, mock)
+}
+
+// An account that is suspended, or whose owner has not confirmed its address,
+// is refused with the reason the Platform Console explains it by, and nothing
+// is granted.
+func TestAddTenantMemberRefusesAnAccountItWouldNotGrantTo(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   string
+		verified bool
+		reason   string
+	}{
+		{name: "never confirmed", status: "inactive", reason: rpcerrors.ReasonAccountUnconfirmed},
+		{name: "suspended", status: "suspended", verified: true, reason: rpcerrors.ReasonAccountSuspended},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			targetUserID := uuid.Must(uuid.NewV7())
+			var verifiedAt any
+			if tt.verified {
+				verifiedAt = now
+			}
+
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
+					AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow, nil, nil))
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
+				WithArgs(targetUserID).
+				WillReturnRows(tenantUserRows(targetUserID, "USER000001", "Alice", "alice@example.com", tt.status, tenantID, now))
+			mock.ExpectExec(regexp.QuoteMeta("SELECT set_config('lock_timeout', $1, true)")).
+				WithArgs(tenantlock.Timeout.String()).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectExec(regexp.QuoteMeta("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")).
+				WithArgs("tenant-admins:" + tenantID.String()).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForUpdate)).
+				WithArgs(targetUserID).
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
+					AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, tt.status, tenantID, verifiedAt, int32(1), nil, nil, nil, nil))
+			mock.ExpectRollback()
+
+			_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.AddTenantMemberRequest{
+				TenantId: tenantID.String(),
+				UserId:   targetUserID.String(),
+				Role:     "tenant_admin",
+			})
+			if connect.CodeOf(err) != connect.CodeFailedPrecondition || mfaErrorReason(t, err) != tt.reason {
+				t.Fatalf("AddTenantMember err = %v, want failed_precondition %s", err, tt.reason)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
 }
 
 func TestUpdateTenantMemberRoleSuccess(t *testing.T) {

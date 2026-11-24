@@ -21,6 +21,12 @@ const (
 	// ErrorInfoDomain scopes ErrorInfo reasons emitted by Publira APIs.
 	ErrorInfoDomain = "publira"
 
+	// The refusals of giving a console role without an invitation to an
+	// account an administrator suspended, and to one whose owner has not
+	// confirmed its address or that is not active yet.
+	ReasonAccountSuspended   = "ACCOUNT_SUSPENDED"
+	ReasonAccountUnconfirmed = "ACCOUNT_UNCONFIRMED"
+
 	ReasonArchiveInvalidEPUB      = "ARCHIVE_INVALID_EPUB"
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"

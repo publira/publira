@@ -220,6 +220,10 @@ func (s *platformServer) tenantError(ctx context.Context, msg string, err error,
 		return connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationAccepted), errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
+	case errors.Is(err, tenantmembers.ErrAccountSuspended):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonAccountSuspended)
+	case errors.Is(err, tenantmembers.ErrAccountUnconfirmed):
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonAccountUnconfirmed)
 	case errors.Is(err, platformtenants.ErrNotSuspended):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonTenantNotSuspended)
 	case errors.Is(err, platformtenants.ErrDeleting):

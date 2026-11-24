@@ -8863,6 +8863,8 @@
       "members_list_failed": "无法加载成员。请稍后再试。",
       "members_list_title": "成员",
       "member_already_added": "该用户已经是成员。",
+      "member_account_suspended": "该账号已暂停，无法授予角色。",
+      "member_account_unconfirmed": "该账号的邮箱地址尚未确认，无法直接授予角色。请改为邀请该地址。",
       "member_not_found": "找不到该成员。",
       "member_role_update_failed": "无法变更角色。请稍后再试。",
       "members_load_failed": "无法显示成员管理",

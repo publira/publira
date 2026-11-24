@@ -775,6 +775,10 @@ export type CreateTenantAdminInvitationResponse = Message<"publira.platform.v1.C
   invitation?: TenantAdminInvitation | undefined;
 
   /**
+   * True when the address belongs to an active user of the tenant whose owner
+   * confirmed it, who is given the role on the spot instead of being mailed an
+   * invitation.
+   *
    * @generated from field: bool role_granted_immediately = 2;
    */
   roleGrantedImmediately: boolean;
@@ -1042,6 +1046,11 @@ export const PlatformTenantService: GenService<{
     output: typeof ListTenantMembersResponseSchema;
   },
   /**
+   * An account that is suspended is refused with failed_precondition and the
+   * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
+   * address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
+   * invited instead.
+   *
    * @generated from rpc publira.platform.v1.PlatformTenantService.AddTenantMember
    */
   addTenantMember: {

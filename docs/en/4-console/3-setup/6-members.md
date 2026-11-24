@@ -2,7 +2,7 @@
 title: Members
 description: Invite the publisher's staff to the console with the role each of them needs, change it, and remove them when they leave.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-11-24
 ---
 
 **Members**, under **Administration**, lists everyone who can sign in to this console, and is where a Tenant admin brings staff in, changes their roles, and takes them out again. Only a Tenant admin sees it.
@@ -24,7 +24,8 @@ A member of staff is an account on the tenant's site that also holds a console r
 Under **Invite a member**, enter the address in **Email address to invite**, choose its **Role**, and choose **Send invitation**. The role starts at **Editor**, so choose **Tenant admin** deliberately when that is what the person needs.
 
 - **An address with no account on the site** is mailed an invitation to the chosen role, in the tenant's default language. The link in it leads to this console, where the invitee enters their **Full name** and a **Password** and chooses **Accept invitation**. They then sign in with that role. The link is valid for 24 hours.
-- **An address that already has an account on the site** is given the role at once, and no mail is sent. An account that already holds a role can be made a Tenant admin this way, which replaces its role; for any other role the console refuses it and points to **Members**, where the role is changed as described below.
+- **An address that already has an account on the site**, active and with its address confirmed, is given the role at once, and no mail is sent. An account that already holds a role can be made a Tenant admin this way, which replaces its role; for any other role the console refuses it and points to **Members**, where the role is changed as described below.
+- **Any other account on the site**, such as one that signed up but never confirmed its address, is mailed an invitation, as an address with no account is. Until the address is confirmed, the account's password was chosen by whoever signed up with it, who need not be its owner, so accepting the invitation replaces the account's name and password with the ones the invitee enters.
 
 ![The Invite a member section: Email address to invite, Role set to Editor, and Send invitation.](./members-invite.png)
 
