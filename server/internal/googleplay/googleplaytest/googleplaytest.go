@@ -60,6 +60,9 @@ type Server struct {
 	orders map[string]map[string]any
 	// VoidedRequests records the query of every Voided Purchases request.
 	VoidedRequests []url.Values
+	// anyProduct answers purchases.products.get by the token alone, whatever
+	// product the path names.
+	anyProduct bool
 }
 
 // NewServer starts a server that answers the OAuth token exchange and the
@@ -93,6 +96,16 @@ func (s *Server) Put(t testing.TB, packageName, productID, token, fixture, accou
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.purchases[key(packageName, productID, token)] = purchase
+}
+
+// AnswerAnyProduct makes purchases.products.get answer the purchase a token
+// names whatever product the request path asks about, which is how a server
+// that trusts the path's product would be fooled if Google Play did not check
+// it.
+func (s *Server) AnswerAnyProduct() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.anyProduct = true
 }
 
 // PutSubscription stores the response named fixture as the subscription token
@@ -246,6 +259,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(order)
 		return
 	}
+	// /androidpublisher/v3/applications/{package}/purchases/productsv2/tokens/{token}
+	if len(parts) == 5 && parts[1] == "purchases" && parts[2] == "productsv2" && parts[3] == "tokens" {
+		s.serveProductV2(w, parts[0], parts[4])
+		return
+	}
 	// /androidpublisher/v3/applications/{package}/purchases/subscriptionsv2/tokens/{token}
 	if len(parts) == 5 && parts[1] == "purchases" && parts[2] == "subscriptionsv2" && parts[3] == "tokens" {
 		s.serveSubscription(w, parts[0], parts[4], "", false)
@@ -270,6 +288,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	purchase, ok := s.purchases[k]
+	if !ok && s.anyProduct {
+		_, purchase, ok = s.purchaseByToken(parts[0], token)
+	}
 	if !ok {
 		body, _ := recorded.ReadFile("testdata/not_found.json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -283,6 +304,90 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(purchase)
+}
+
+// purchaseByToken finds the one-time purchase token names in packageName,
+// and the product it was bought as. s.mu is held.
+func (s *Server) purchaseByToken(packageName, token string) (string, map[string]any, bool) {
+	for k, purchase := range s.purchases {
+		rest, ok := strings.CutPrefix(k, packageName+"/")
+		if !ok {
+			continue
+		}
+		if productID, ok := strings.CutSuffix(rest, "/"+token); ok && !strings.Contains(productID, "/") {
+			return productID, purchase, true
+		}
+	}
+	return "", nil, false
+}
+
+// serveProductV2 answers purchases.productsv2.get for the purchase token
+// names, shaped as the API reference documents ProductPurchaseV2 and built
+// from the recorded purchases.products.get response it was put as.
+func (s *Server) serveProductV2(w http.ResponseWriter, packageName, token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	productID, purchase, ok := s.purchaseByToken(packageName, token)
+	if !ok {
+		body, _ := recorded.ReadFile("testdata/not_found.json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write(body)
+		return
+	}
+	state := map[float64]string{
+		googleplay.PurchaseStatePurchased: googleplay.PurchaseStateV2Purchased,
+		googleplay.PurchaseStateCanceled:  googleplay.PurchaseStateV2Cancelled,
+		googleplay.PurchaseStatePending:   googleplay.PurchaseStateV2Pending,
+	}[toFloat(purchase["purchaseState"])]
+	consumption := "CONSUMPTION_STATE_YET_TO_BE_CONSUMED"
+	if toFloat(purchase["consumptionState"]) == googleplay.ConsumptionStateConsumed {
+		consumption = "CONSUMPTION_STATE_CONSUMED"
+	}
+	acknowledgement := "ACKNOWLEDGEMENT_STATE_PENDING"
+	if toFloat(purchase["acknowledgementState"]) == 1 {
+		acknowledgement = "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED"
+	}
+	response := map[string]any{
+		"kind": "androidpublisher#productPurchaseV2",
+		"productLineItem": []any{map[string]any{
+			"productId": productID,
+			"productOfferDetails": map[string]any{
+				"quantity":           1,
+				"refundableQuantity": 1,
+				"consumptionState":   consumption,
+			},
+		}},
+		"purchaseStateContext":        map[string]any{"purchaseState": state},
+		"obfuscatedExternalAccountId": purchase["obfuscatedExternalAccountId"],
+		"regionCode":                  purchase["regionCode"],
+		"acknowledgementState":        acknowledgement,
+	}
+	if orderID, ok := purchase["orderId"]; ok {
+		response["orderId"] = orderID
+	}
+	if millis, err := strconv.ParseInt(toString(purchase["purchaseTimeMillis"]), 10, 64); err == nil {
+		response["purchaseCompletionTime"] = time.UnixMilli(millis).UTC().Format(time.RFC3339Nano)
+	}
+	if purchaseType, ok := purchase["purchaseType"]; ok && toFloat(purchaseType) == googleplay.PurchaseTypeTest {
+		response["testPurchaseContext"] = map[string]any{"fopType": "TEST"}
+	}
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// toFloat reads a number a recorded response decoded to, or one a test set.
+func toFloat(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	}
+	return -1
+}
+
+func toString(v any) string {
+	s, _ := v.(string)
+	return s
 }
 
 // serveSubscription answers the subscription a token names, or acknowledges

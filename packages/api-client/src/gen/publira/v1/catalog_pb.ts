@@ -5131,9 +5131,10 @@ export type ConfirmStorePurchaseRequest = Message<"publira.v1.ConfirmStorePurcha
   transaction: string;
 
   /**
-   * IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as,
-   * which the Google Play Developer API looks a purchase up by. Unused for the
-   * App Store, whose signed transaction names its product.
+   * IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as.
+   * The purchase is looked up by the token alone and refused when Google Play
+   * says the token bought another product. Unused for the App Store, whose
+   * signed transaction names its product.
    *
    * @generated from field: string product_id = 4;
    */

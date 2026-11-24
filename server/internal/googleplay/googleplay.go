@@ -114,6 +114,57 @@ func (c *Client) GetProductPurchase(ctx context.Context, serviceAccountKey []byt
 	return purchase, nil
 }
 
+// Purchase states of a ProductPurchaseV2.
+const (
+	PurchaseStateV2Purchased = "PURCHASED"
+	PurchaseStateV2Cancelled = "CANCELLED"
+	PurchaseStateV2Pending   = "PENDING"
+)
+
+// ProductPurchaseV2 is the part of a ProductPurchaseV2 resource a purchase is
+// decided on. Unlike [ProductPurchase] it is looked up by the token alone, so
+// the products it names are the ones Google Play says the token bought rather
+// than the one the request asked about.
+type ProductPurchaseV2 struct {
+	ProductLineItems     []ProductLineItem `json:"productLineItem"`
+	PurchaseStateContext struct {
+		PurchaseState string `json:"purchaseState"`
+	} `json:"purchaseStateContext"`
+	// TestPurchaseContext is present on a license tester's purchase, which
+	// charged nobody.
+	TestPurchaseContext *struct{} `json:"testPurchaseContext"`
+	OrderID             string    `json:"orderId"`
+	// ObfuscatedExternalAccountID is the value the app set on the purchase,
+	// which is the intent the purchase was opened with.
+	ObfuscatedExternalAccountID string `json:"obfuscatedExternalAccountId"`
+}
+
+// ProductLineItem is one product a one-time purchase bought.
+type ProductLineItem struct {
+	ProductID string `json:"productId"`
+}
+
+// IsTest reports a license tester's purchase.
+func (p ProductPurchaseV2) IsTest() bool {
+	return p.TestPurchaseContext != nil
+}
+
+// GetProductPurchaseV2 answers the one-time purchase token was bought as, in
+// the app packageName.
+func (c *Client) GetProductPurchaseV2(ctx context.Context, serviceAccountKey []byte, packageName, token string) (ProductPurchaseV2, error) {
+	target := fmt.Sprintf("%s/androidpublisher/v3/applications/%s/purchases/productsv2/tokens/%s",
+		c.endpoint, url.PathEscape(packageName), url.PathEscape(token))
+	body, err := c.do(ctx, serviceAccountKey, http.MethodGet, target)
+	if err != nil {
+		return ProductPurchaseV2{}, err
+	}
+	var purchase ProductPurchaseV2
+	if err := json.Unmarshal(body, &purchase); err != nil {
+		return ProductPurchaseV2{}, fmt.Errorf("googleplay: decode product purchase: %w", err)
+	}
+	return purchase, nil
+}
+
 // ConsumeProductPurchase consumes a purchase, which also acknowledges it. A
 // consumable left unconsumed cannot be bought again, and one left
 // unacknowledged for three days is refunded by Google Play.

@@ -12164,9 +12164,10 @@ class ConfirmStorePurchaseRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearTransaction() => $_clearField(3);
 
-  /// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as,
-  /// which the Google Play Developer API looks a purchase up by. Unused for the
-  /// App Store, whose signed transaction names its product.
+  /// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as.
+  /// The purchase is looked up by the token alone and refused when Google Play
+  /// says the token bought another product. Unused for the App Store, whose
+  /// signed transaction names its product.
   @$pb.TagNumber(4)
   $core.String get productId => $_getSZ(3);
   @$pb.TagNumber(4)

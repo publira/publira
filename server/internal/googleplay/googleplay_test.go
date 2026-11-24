@@ -61,6 +61,54 @@ func TestGetProductPurchaseAnswersNotFoundForAnotherProduct(t *testing.T) {
 	}
 }
 
+func TestGetProductPurchaseV2NamesTheProductTheTokenBought(t *testing.T) {
+	server := googleplaytest.NewServer(t)
+	server.Put(t, packageName, productID, token, googleplaytest.Purchased, accountID)
+
+	got, err := server.Client().GetProductPurchaseV2(context.Background(), key(t), packageName, token)
+	if err != nil {
+		t.Fatalf("GetProductPurchaseV2: %v", err)
+	}
+	if got.PurchaseStateContext.PurchaseState != googleplay.PurchaseStateV2Purchased || got.ObfuscatedExternalAccountID != accountID || got.IsTest() {
+		t.Fatalf("GetProductPurchaseV2 = %+v, want a paid purchase for %s", got, accountID)
+	}
+	if len(got.ProductLineItems) != 1 || got.ProductLineItems[0].ProductID != productID {
+		t.Fatalf("line items = %+v, want one of %s", got.ProductLineItems, productID)
+	}
+}
+
+func TestGetProductPurchaseV2TellsALicenseTestersAndAPendingPurchase(t *testing.T) {
+	server := googleplaytest.NewServer(t)
+	server.Put(t, packageName, productID, token, googleplaytest.TestPurchase, accountID)
+	server.Put(t, packageName, productID, "pending-token", googleplaytest.Pending, accountID)
+	client := server.Client()
+
+	tester, err := client.GetProductPurchaseV2(context.Background(), key(t), packageName, token)
+	if err != nil {
+		t.Fatalf("GetProductPurchaseV2: %v", err)
+	}
+	if !tester.IsTest() {
+		t.Fatalf("GetProductPurchaseV2 = %+v, want a test purchase", tester)
+	}
+	pending, err := client.GetProductPurchaseV2(context.Background(), key(t), packageName, "pending-token")
+	if err != nil {
+		t.Fatalf("GetProductPurchaseV2: %v", err)
+	}
+	if pending.PurchaseStateContext.PurchaseState != googleplay.PurchaseStateV2Pending {
+		t.Fatalf("GetProductPurchaseV2 = %+v, want a pending purchase", pending)
+	}
+}
+
+func TestGetProductPurchaseV2AnswersNotFoundInAnotherApp(t *testing.T) {
+	server := googleplaytest.NewServer(t)
+	server.Put(t, packageName, productID, token, googleplaytest.Purchased, accountID)
+
+	_, err := server.Client().GetProductPurchaseV2(context.Background(), key(t), "com.example.another", token)
+	if !errors.Is(err, googleplay.ErrPurchaseNotFound) {
+		t.Fatalf("error = %v, want ErrPurchaseNotFound", err)
+	}
+}
+
 func TestConsumeProductPurchaseConsumesThePurchase(t *testing.T) {
 	server := googleplaytest.NewServer(t)
 	server.Put(t, packageName, productID, token, googleplaytest.Purchased, accountID)

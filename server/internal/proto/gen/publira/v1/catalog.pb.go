@@ -9463,9 +9463,10 @@ type ConfirmStorePurchaseRequest struct {
 	// IN_APP_PURCHASE_STORE_APP_STORE: the JWS signed transaction StoreKit 2
 	// reports. IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the purchase token.
 	Transaction string `protobuf:"bytes,3,opt,name=transaction,proto3" json:"transaction,omitempty"`
-	// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as,
-	// which the Google Play Developer API looks a purchase up by. Unused for the
-	// App Store, whose signed transaction names its product.
+	// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as.
+	// The purchase is looked up by the token alone and refused when Google Play
+	// says the token bought another product. Unused for the App Store, whose
+	// signed transaction names its product.
 	ProductId string `protobuf:"bytes,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// The reader's locale. Every series and episode title and synopsis in the
 	// answer is that of the translation in this locale, else the tenant's default

@@ -41,7 +41,7 @@ type appStoreTransactions interface {
 // googlePlayPurchases is the part of the Google Play Developer API a
 // confirmation asks.
 type googlePlayPurchases interface {
-	GetProductPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) (googleplay.ProductPurchase, error)
+	GetProductPurchaseV2(ctx context.Context, serviceAccountKey []byte, packageName, token string) (googleplay.ProductPurchaseV2, error)
 	GetSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, token string) (googleplay.SubscriptionPurchase, error)
 }
 
@@ -448,13 +448,16 @@ func (s *apiServer) verifyAppStoreTransaction(ctx context.Context, tenantID uuid
 
 // verifyGooglePlayPurchase asks Google Play for the purchase a token names.
 // The token is looked up in the tenant's own app, so a purchase made in
-// another app is one Google Play does not find.
+// another app is one Google Play does not find. It is looked up by the token
+// alone, and the product recorded is the one Google Play says the token
+// bought: productID is what the reader claims, and a claim Google Play does
+// not bear out is refused rather than compared with the intent.
 func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.UUID, productID, token string) (storeTransaction, error) {
 	credentials, err := s.appStores(ctx).LoadGooglePlayCredentials(ctx, tenantID)
 	if err != nil {
 		return storeTransaction{}, s.storeCredentialsError(ctx, tenantID, storeGooglePlay, err)
 	}
-	purchase, err := s.stores.googlePlay.GetProductPurchase(ctx, []byte(credentials.ServiceAccountKey), credentials.PackageName, productID, token)
+	purchase, err := s.stores.googlePlay.GetProductPurchaseV2(ctx, []byte(credentials.ServiceAccountKey), credentials.PackageName, token)
 	switch {
 	case errors.Is(err, googleplay.ErrPurchaseNotFound):
 		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "no such purchase is known to Google Play")
@@ -463,17 +466,26 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 	case err != nil:
 		return storeTransaction{}, s.storeUnavailableError(ctx, tenantID, storeGooglePlay, err)
 	}
-	switch purchase.PurchaseState {
-	case googleplay.PurchaseStatePurchased:
-	case googleplay.PurchaseStatePending:
+	switch purchase.PurchaseStateContext.PurchaseState {
+	case googleplay.PurchaseStateV2Purchased:
+	case googleplay.PurchaseStateV2Pending:
 		return storeTransaction{}, connect.NewError(connect.CodeFailedPrecondition, "the purchase is still pending")
 	default:
 		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "the purchase was canceled")
 	}
+	// An intent is for one product, so a token that bought several, or none
+	// Google Play names, is not the purchase of one.
+	if len(purchase.ProductLineItems) != 1 || purchase.ProductLineItems[0].ProductID == "" {
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "the purchase is not of one product")
+	}
+	bought := purchase.ProductLineItems[0].ProductID
+	if bought != productID {
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "the purchase is of another product")
+	}
 	return storeTransaction{
 		store:         storeGooglePlay,
 		transactionID: token,
-		productID:     productID,
+		productID:     bought,
 		accountToken:  purchase.ObfuscatedExternalAccountID,
 		isTest:        purchase.IsTest(),
 	}, nil

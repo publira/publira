@@ -695,6 +695,28 @@ func TestDBConfirmStorePurchaseRefusesAGooglePlayPurchaseItCannotRecord(t *testi
 	}
 }
 
+func TestDBConfirmStorePurchaseRecordsTheProductGooglePlaySaysTheTokenBought(t *testing.T) {
+	t.Parallel()
+
+	env := newStorePurchaseEnv(t)
+	intent := env.start(t, env.token)
+	// The reader bought the cheaper product with the intent of this one, and
+	// names this one: a Play API that looked the purchase up by the product in
+	// its path, without checking it against the token, would confirm it.
+	env.play.Put(t, storeTestPackageName, "episode_100", "cheaper-token", googleplaytest.Purchased, intent.IntentId)
+	env.play.AnswerAnyProduct()
+
+	if _, err := env.confirmGooglePlay(t, intent.ProductId, "cheaper-token"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ConfirmStorePurchase code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	if got := env.purchases(t); got != 0 {
+		t.Fatalf("purchases = %d, want 0", got)
+	}
+	if got := env.count(t, "SELECT count(*) FROM store_purchase_intents WHERE id = $1 AND consumed_at IS NULL", intent.IntentId); got != 1 {
+		t.Fatalf("unconsumed intents = %d, want the intent left for the purchase it was opened for", got)
+	}
+}
+
 func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
 	t.Parallel()
 
