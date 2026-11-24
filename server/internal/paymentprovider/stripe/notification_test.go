@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -340,4 +341,59 @@ func TestParseNotificationReadsACanceledRefundFromItsUpdate(t *testing.T) {
 func isIgnored(event paymentprovider.Event) bool {
 	_, ok := event.(paymentprovider.Ignored)
 	return ok
+}
+
+// A webhook endpoint keeps the API version it was created with, which need not
+// be the one stripe-go pins.
+func TestParseNotificationReadsTheAPIVersionsItCan(t *testing.T) {
+	purchase := paymentprovider.Purchase{
+		TenantID:  uuid.New(),
+		ReaderID:  uuid.New(),
+		EpisodeID: uuid.New(),
+		Kind:      paymentprovider.KindPurchase,
+		Price:     500,
+		Currency:  "JPY",
+	}
+	parseOfVersion := func(t *testing.T, apiVersion, secret string) (paymentprovider.Event, error) {
+		t.Helper()
+		payload, headers := stripetest.SignedEventOfVersion(t, testWebhookSecret, "checkout.session.completed", apiVersion, checkoutSession(purchase, nil))
+		return stripe.New().ParseNotification(t.Context(), payload, headers, paymentprovider.Credentials{
+			stripe.FieldWebhookSecret: secret,
+		})
+	}
+
+	for _, apiVersion := range []string{"2025-03-31.basil", "2025-09-30.clover", "2026-03-25.dahlia", stripego.APIVersion} {
+		t.Run("an event of "+apiVersion+" is read", func(t *testing.T) {
+			event, err := parseOfVersion(t, apiVersion, testWebhookSecret)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			if completed, ok := event.(paymentprovider.PurchaseCompleted); !ok || completed.Purchase != purchase {
+				t.Fatalf("event = %+v, want the purchase completed", event)
+			}
+		})
+	}
+
+	// Before basil an invoice names its subscription where this integration
+	// does not read it, and a train after the ones it reads may move anything.
+	for _, apiVersion := range []string{"2024-06-20", "2025-02-24.acacia", "2027-03-31.fig", "2026-11-18.preview"} {
+		t.Run("an event of "+apiVersion+" is refused as unreadable, not as unsigned", func(t *testing.T) {
+			_, err := parseOfVersion(t, apiVersion, testWebhookSecret)
+			if !errors.Is(err, paymentprovider.ErrMalformedNotification) || errors.Is(err, paymentprovider.ErrInvalidSignature) {
+				t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+			}
+			for _, version := range []string{apiVersion, stripego.APIVersion} {
+				if !strings.Contains(err.Error(), version) {
+					t.Fatalf("error %q does not name %s", err, version)
+				}
+			}
+		})
+	}
+
+	t.Run("an event of another version signed with another secret is refused as unsigned", func(t *testing.T) {
+		_, err := parseOfVersion(t, "2025-02-24.acacia", "whsec_SomeoneElse")
+		if !errors.Is(err, paymentprovider.ErrInvalidSignature) {
+			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
+		}
+	})
 }

@@ -37,10 +37,17 @@ var events embed.FS
 // webhookSecret now, and the headers Stripe would deliver it with.
 func SignedEvent(t testing.TB, webhookSecret, eventType string, object map[string]any) ([]byte, http.Header) {
 	t.Helper()
+	return SignedEventOfVersion(t, webhookSecret, eventType, stripego.APIVersion, object)
+}
+
+// SignedEventOfVersion answers what [SignedEvent] does for an event of the
+// Stripe API version apiVersion, as an endpoint created with it delivers.
+func SignedEventOfVersion(t testing.TB, webhookSecret, eventType, apiVersion string, object map[string]any) ([]byte, http.Header) {
+	t.Helper()
 	payload, err := json.Marshal(map[string]any{
 		"id":          "evt_test",
 		"object":      "event",
-		"api_version": stripego.APIVersion,
+		"api_version": apiVersion,
 		"type":        eventType,
 		"data":        map[string]any{"object": object},
 	})
@@ -1320,7 +1327,8 @@ func recordedEvent(t testing.TB, credentials paymentprovider.Credentials, name, 
 	if eventID != "" {
 		event["id"] = eventID
 	}
-	// Stripe refuses an event from an API version other than the library's.
+	// The recordings carry no API version, so they are delivered as of the
+	// one stripe-go pins.
 	event["api_version"] = stripego.APIVersion
 	payload, err := json.Marshal(event)
 	if err != nil {
