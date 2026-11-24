@@ -47,7 +47,7 @@ require (
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/term v0.48.0
 	golang.org/x/text v0.44.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261118221215-c8830f628b3f
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261123191846-1e707ab9fbc2
 	google.golang.org/protobuf v1.36.12
 	manael.org/x/manael/v3 v3.2.0
 )
