@@ -22,7 +22,7 @@ require (
 	github.com/kaptinlin/messageformat-go v0.8.6
 	github.com/lib/pq v1.12.3
 	github.com/moby/moby/api v1.57.0
-	github.com/opensearch-project/opensearch-go/v5 v5.2.0
+	github.com/opensearch-project/opensearch-go/v5 v5.2.1
 	github.com/payjp/payjpv2-go v0.0.0-20261030083240-4b295d8f3306
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0
@@ -165,7 +165,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.11.1 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
