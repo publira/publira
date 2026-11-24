@@ -2,8 +2,8 @@
 title: 모니터링
 description: /livez와 /readyz로 모든 프로세스를 확인하는 방법, 알림을 걸 만한 로그 줄과 메트릭, OpenTelemetry 메트릭과 트레이스를 켜는 방법을 설명합니다.
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 설치 환경은 네 가지 방법으로 상태를 알려 줍니다. 모든 프로세스가 활성 상태 확인과 준비 상태 확인에 응답하고, `publira server`와 `publira worker`는 구조화된 로그를 쓰며, 같은 두 프로세스는 켜면 OpenTelemetry 메트릭을 내보내고, `email-renderer`를 제외한 모든 프로세스는 OpenTelemetry 트레이스를 내보낼 수 있습니다. 이 페이지에서는 각각이 무엇을 보고하는지, 오케스트레이터와 알림 시스템에 어떻게 연결하는지, 무엇에 알림을 걸 만한지 설명합니다. 이를 받는 모니터링 시스템은 직접 선택하며, 이 페이지는 설치 환경이 보내는 것만 다룹니다.
@@ -76,13 +76,13 @@ ECS에서는 서비스가 헬스 체크에 실패한 태스크를 교체하므�
 `publira server`, `publira worker`, `publiractl`은 로그를 표준 출력에 한 줄에 레코드 하나씩, 기본적으로 `key=value` 쌍으로 씁니다.
 
 ```text
-time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
+time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=16 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
 ```
 
 `PUBLIRA_LOG_FORMAT=json`을 설정하면 각 레코드가 같은 키를 가진 JSON 객체 하나가 되므로, 로그 수집기가 별도의 파싱 규칙 없이 읽을 수 있습니다.
 
 ```jsonl
-{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":16,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
 ```
 
 모든 레코드에는 `time`, `level`(`DEBUG`, `INFO`, `WARN`, `ERROR`), `msg`가 있습니다. 트레이스되고 있는 요청이나 작업을 처리하는 중에 기록된 레코드에는 `trace_id`와 `span_id`도 있으며, 이를 따라가면 트레이싱 백엔드에서 그 트레이스를 찾을 수 있습니다. 나머지는 무엇이 기록했는지에 따라 다릅니다. 아웃박스의 레코드는 항목을(`event_id`, `event_type`, `attempts`), 유지 관리 작업의 레코드는 실행을(`job_kind`, `job_id`, `attempt`) 나타내며, 실패에는 `error`가 붙습니다.
@@ -97,8 +97,8 @@ time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b
 
 | 레코드 | 프로세스 | 의미 |
 | --- | --- | --- |
-| `outbox event dead` | `publira worker` | 메일, 푸시 알림, 캐시 재검증이 완전히 포기되었습니다. 어느 것인지는 `event_type`이 알려 주며, 그 영향은 [아웃박스](./10-scheduled-jobs.md#포기된-항목-확인)에서 설명합니다 |
-| `outbox event retry scheduled`의 반복 | `publira worker` | 항목을 보내는 대상(SMTP 서버, `email-renderer`, 웹 앱)이 실패하고 있습니다. 항목은 dead가 되기 전까지 약 9분 동안 다시 시도됩니다 |
+| `outbox event dead` | `publira worker` | 메일, 푸시 알림, 캐시 재검증이 포기되었습니다. 어느 것인지는 `event_type`이 알려 주며, 그 영향과 다시 보내는 방법은 [아웃박스](./10-scheduled-jobs.md#포기된-항목-확인)에서 설명합니다 |
+| `outbox event retry scheduled`의 반복 | `publira worker` | 항목을 보내는 대상(SMTP 서버, `email-renderer`, 웹 앱)이 실패하고 있습니다. 항목은 dead가 되기 전까지 약 4시간 동안 다시 시도됩니다 |
 | `episode publish failed after all retries` | `publira worker` | 예약된 에피소드가 **예약됨** 상태로 남았습니다. [예약 공개](./10-scheduled-jobs.md#예약-공개)에서 설명하듯이 테넌트의 관리자와 모든 운영자에게도 알림이 갑니다 |
 | `auditlog: queue is full; dropping entry`, `auditlog: failed to persist; dropping entry` | `publira server` | 테넌트나 플랫폼의 감사 로그 항목을 잃었습니다 |
 | `readiness check failed` | `publira server`, `publira worker` | 이름이 표시된 확인 항목이 실패했습니다. 이유는 `error` 필드에 있습니다 |
@@ -126,7 +126,7 @@ time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b
 
 | 메트릭 | 세는 것 | 지켜볼 것 |
 | --- | --- | --- |
-| `publira.outbox.events.dead` | 완전히 포기된 항목 | 조금이라도 늘어나는 것. 알림을 거세요 |
+| `publira.outbox.events.dead` | 포기된 항목 | 조금이라도 늘어나는 것. 알림을 거세요 |
 | `publira.outbox.events.retry` | 다시 시도될 실패한 시도 | 계속 높은 비율. 그 `outbox.event_type`의 대상이 실패하고 있습니다 |
 | `publira.outbox.events.claimed` | 워커가 보내려고 항목을 가져간 횟수. 다시 시도되거나 재개된 항목은 다시 가져가며 다시 세므로, 모든 항목이 보내지더라도 `done`보다 빠르게 늘어납니다 | — |
 | `publira.outbox.events.done` | 보낸 항목 | — |

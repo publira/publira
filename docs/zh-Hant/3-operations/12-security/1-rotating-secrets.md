@@ -2,8 +2,8 @@
 title: 輪替密鑰
 description: 替換安裝實例的密鑰加密金鑰、資料庫角色的密碼，以及其簽署金鑰和權杖，而不遺失它們所保護的內容。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 這些程序用來替換[每個密鑰可以放在哪裡](./index.md#每個密鑰可以放在哪裡)所列的每個密鑰。請在需要之前先閱讀——每項程序在平靜的日子執行，都比在事故當下執行容易。
@@ -143,7 +143,7 @@ docker compose up -d
 
 ### 快取重新驗證權杖
 
-`publira server`和`publira worker`會在每個捨棄Web應用程式快取頁面的請求中傳送它，而每個Web應用程式都會拒絕權杖與自己不符的請求。在兩邊不一致期間，每次捨棄都會以`401`被拒絕，worker會以`outbox event retry scheduled`搭配`revalidate endpoint returned status=401`記錄每次嘗試。worker會持續嘗試每次捨棄約九分鐘，因此只要在這段時間內以新權杖重新啟動所有處理程序，就不會遺失任何東西；用完嘗試次數的捨棄會讓它所指定的頁面維持原狀，如[排程工作與維護工作](../10-scheduled-jobs.md#查看被放棄的項目)所述。
+`publira server`和`publira worker`會在每個捨棄Web應用程式快取頁面的請求中傳送它，而每個Web應用程式都會拒絕權杖與自己不符的請求。在兩邊不一致期間，每次捨棄都會以`401`被拒絕，worker會以`outbox event retry scheduled`搭配`revalidate endpoint returned status=401`記錄每次嘗試。worker會持續嘗試每次捨棄約四小時，因此只要在這段時間內以新權杖重新啟動所有處理程序，就不會遺失任何東西；用完嘗試次數的捨棄會讓它所指定的頁面維持原狀，直到它被重新排入佇列為止，如[排程工作與維護工作](../10-scheduled-jobs.md#查看被放棄的項目)所述。
 
 ### Web服務權杖
 

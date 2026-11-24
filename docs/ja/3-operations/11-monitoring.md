@@ -2,8 +2,8 @@
 title: 監視
 description: /livezと/readyzによる各プロセスの監視、アラートを設定すべきログとメトリクス、OpenTelemetryのメトリクスとトレースの有効化を説明します。
 published: 2026-10-29
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 Publiraは、次の4つの方法で稼働状況を知らせます。
@@ -85,13 +85,13 @@ ECSでは、サービスのタスクのヘルスチェックはすべてliveness
 `publira server`、`publira worker`、`publiractl`は、ログを1行に1レコードずつ標準出力に書き出します。既定の形式は`key=value`です。
 
 ```text
-time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
+time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=16 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
 ```
 
 `PUBLIRA_LOG_FORMAT=json`を設定すると、各レコードは同じ項目を持つ1つのJSONオブジェクトになります。ログの収集基盤は、解析のルールを用意しなくてもそのまま読み込めます。
 
 ```jsonl
-{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":16,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
 ```
 
 どのレコードにも`time`、`level` (`DEBUG`、`INFO`、`WARN`、`ERROR`のいずれか)、`msg`があります。トレース対象のリクエストやジョブの処理中に出力されたレコードには`trace_id`と`span_id`も付くので、トレースのバックエンドで該当のトレースをたどれます。それ以外の項目は出力元によって異なります。アウトボックスのレコードには対象のエントリー (`event_id`、`event_type`、`attempts`) が、メンテナンスジョブのレコードには実行 (`job_kind`、`job_id`、`attempt`) が示され、失敗には`error`が付きます。
@@ -106,8 +106,8 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 
 | レコード | プロセス | 意味 |
 | --- | --- | --- |
-| `outbox event dead` | `publira worker` | メール、プッシュ通知、キャッシュの再検証のいずれかが完全に断念されました。どれなのかは`event_type`でわかります。影響は[断念されたエントリーの確認](./10-scheduled-jobs.md#断念されたエントリーの確認)を参照してください |
-| `outbox event retry scheduled`の繰り返し | `publira worker` | エントリーの送信先 (SMTPサーバー、`email-renderer`、Webアプリ) で障害が起きています。エントリーはおよそ9分間再試行されたあと、deadになります |
+| `outbox event dead` | `publira worker` | メール、プッシュ通知、キャッシュの再検証のいずれかが断念されました。どれなのかは`event_type`でわかります。影響と送り直す方法は[断念されたエントリーの確認](./10-scheduled-jobs.md#断念されたエントリーの確認)を参照してください |
+| `outbox event retry scheduled`の繰り返し | `publira worker` | エントリーの送信先 (SMTPサーバー、`email-renderer`、Webアプリ) で障害が起きています。エントリーはおよそ4時間再試行されたあと、deadになります |
 | `episode publish failed after all retries` | `publira worker` | 予約したエピソードが**予約済み**のまま残りました。[予約公開](./10-scheduled-jobs.md#予約公開)で説明しているとおり、テナントの管理者とすべてのオペレーターにも通知されます |
 | `auditlog: queue is full; dropping entry`、`auditlog: failed to persist; dropping entry` | `publira server` | テナントまたはプラットフォームの監査ログのエントリーが失われました |
 | `readiness check failed` | `publira server`、`publira worker` | 示されたチェックが失敗しました。理由は`error`フィールドでわかります |
@@ -135,7 +135,7 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 
 | メトリクス | 数えるもの | 見るべき点 |
 | --- | --- | --- |
-| `publira.outbox.events.dead` | 完全に断念されたエントリー | 1件でも増えたら問題です。アラートを設定してください |
+| `publira.outbox.events.dead` | 断念されたエントリー | 1件でも増えたら問題です。アラートを設定してください |
 | `publira.outbox.events.retry` | 失敗して、再試行が予定された試行 | 高い頻度が続く場合は、その`outbox.event_type`の送信先で障害が起きています |
 | `publira.outbox.events.claimed` | ワーカーが送信のためにエントリーを取り出した回数。再試行や再開でエントリーを取り出すたびにもう一度数えるので、すべてのエントリーが送れていても`done`より速く増えます | — |
 | `publira.outbox.events.done` | 送信できたエントリー | — |

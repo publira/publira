@@ -1928,9 +1928,10 @@ type Querier interface {
 	// those keys on the event types below so a processed row keeps neither
 	// a usable secret nor the form's contents. Other event types keep
 	// payload.token, if they have one. Keep this list in
-	// sync with MarkOutboxEventDone, MarkOutboxEventDead, and both halves
+	// sync with MarkOutboxEventDone, MarkOutboxEventDead, both halves
 	// of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
-	// list, RecoverStaleProcessingAuthMailOutboxEvents selects it). The
+	// list, RecoverStaleProcessingAuthMailOutboxEvents selects it), and
+	// RequeueDeadOutboxEvents, which leaves these types dead. The
 	// terminal-token data migration covers the types that existed when it
 	// ran:
 	//   admin_email_change_confirmation_email
@@ -2385,6 +2386,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
 	ListDailyRebuildProgress(ctx context.Context) ([]ListDailyRebuildProgressRow, error)
+	// The dead events, newest first, with the public ID of the tenant each
+	// belongs to, for an operator choosing what to requeue. Every filter is
+	// optional; one left NULL matches every row.
+	ListDeadOutboxEvents(ctx context.Context, arg ListDeadOutboxEventsParams) ([]ListDeadOutboxEventsRow, error)
 	// Every rule that is on, for the worker's pass. The pass reads each one again
 	// under the series lock before it writes, so a rule turned off after this
 	// listing writes nothing.
@@ -4357,8 +4362,11 @@ type Querier interface {
 	// event types are left alone. The plaintext window is the
 	// pending/processing lifetime. Retries keep the token so a later
 	// attempt can still send the mail, so that window is the retry budget
-	// (ten attempts, delays doubling from 1s and capped at 1h). A worker
-	// that dies mid-attempt records no failure, so
+	// (sixteen attempts by default, delays doubling from 1s and capped at
+	// 1h, about four hours), or the token's own lifetime where that is
+	// shorter: a handler that finds the token expired finishes the event
+	// without sending it. A worker that dies mid-attempt records no
+	// failure, so
 	// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 	// the same budget and every window ends here.
 	//
@@ -4819,6 +4827,20 @@ type Querier interface {
 	// commits, something revoked the purchase, or the amount no longer leaves part
 	// of the price unrefunded.
 	RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (int32, error)
+	// Return dead events to the queue on an operator's word, once whatever
+	// failed them has been fixed. Each starts on the whole retry budget
+	// again and is due at once; last_error stays until the next attempt
+	// replaces it or the event finishes. Every filter is optional, as in
+	// ListDeadOutboxEvents.
+	//
+	// Two kinds stay dead. The auth-mail and request types lost their token
+	// and the form's contents on the update that killed them, so there is
+	// nothing left to send: the reader asks for a new mail. A
+	// webhook_delivery is resent by the tenant's own console
+	// (ResendWebhookDelivery), which queues a new event and keeps the
+	// delivery's record of the attempts; requeuing the dead one beside it
+	// would send the same delivery twice.
+	RequeueDeadOutboxEvents(ctx context.Context, arg RequeueDeadOutboxEventsParams) ([]OutboxEvent, error)
 	// Owes a dead delivery again, keeping the attempts made so far.
 	ResendWebhookDelivery(ctx context.Context, arg ResendWebhookDeliveryParams) error
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error

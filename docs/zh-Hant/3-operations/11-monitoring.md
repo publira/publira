@@ -2,8 +2,8 @@
 title: 監控
 description: 以/livez和/readyz探測每個處理程序、值得設定警示的日誌行與指標，以及開啟OpenTelemetry指標與追蹤。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 安裝實例會以四種方式告訴您它的狀況：每個處理程序都會回應存活檢查和就緒檢查，`publira server`和`publira worker`會寫入結構化日誌，這兩者在您開啟後也會匯出OpenTelemetry指標，而除了`email-renderer`以外的每個處理程序都可以匯出OpenTelemetry追蹤。本頁說明它們各自回報什麼、如何將它們接到協調器和警示系統，以及什麼值得設定警示。由哪個監控系統接收它們由您決定；本頁只說明安裝實例會傳送什麼。
@@ -76,13 +76,13 @@ readinessProbe:
 `publira server`、`publira worker`和`publiractl`會將日誌寫入標準輸出，每行一筆記錄，預設為`key=value`配對的形式：
 
 ```text
-time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
+time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=16 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
 ```
 
 設定`PUBLIRA_LOG_FORMAT=json`時，每筆記錄會改為帶有相同鍵的單一JSON物件，日誌收集器無須自訂剖析規則即可讀取：
 
 ```jsonl
-{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":10,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
+{"time":"2026-10-07T09:41:03.402Z","level":"ERROR","msg":"outbox event dead","event_id":"0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80","event_type":"contact_message_reply_email","idempotency_key":"…","attempts":16,"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","error":"dial tcp: connection refused"}
 ```
 
 每筆記錄都有`time`、`level`（`DEBUG`、`INFO`、`WARN`或`ERROR`）和`msg`。在處理受追蹤的請求或工作時記錄的記錄，還會有`trace_id`和`span_id`，可藉此在追蹤後端中找到該追蹤。其餘內容取決於記錄者：outbox的記錄會指出項目（`event_id`、`event_type`、`attempts`），維護工作的記錄會指出執行（`job_kind`、`job_id`、`attempt`），而失敗則會帶有`error`。
@@ -97,8 +97,8 @@ Web應用程式和`email-renderer`則會寫入Next.js和Node.js本身的純文�
 
 | 記錄 | 處理程序 | 意義 |
 | --- | --- | --- |
-| `outbox event dead` | `publira worker` | 郵件、推播通知或快取重新驗證已被永久放棄。`event_type`指出是哪一種；[outbox](./10-scheduled-jobs.md#查看被放棄的項目)說明其代價 |
-| `outbox event retry scheduled`，重複出現 | `publira worker` | 項目的傳送目的地——SMTP伺服器、`email-renderer`、Web應用程式——正在失敗。它們會在大約九分鐘內被重試，之後變成dead |
+| `outbox event dead` | `publira worker` | 郵件、推播通知或快取重新驗證已被放棄。`event_type`指出是哪一種；[outbox](./10-scheduled-jobs.md#查看被放棄的項目)說明其代價，以及如何再次傳送 |
+| `outbox event retry scheduled`，重複出現 | `publira worker` | 項目的傳送目的地——SMTP伺服器、`email-renderer`、Web應用程式——正在失敗。它們會在大約四小時內被重試，之後變成dead |
 | `episode publish failed after all retries` | `publira worker` | 預約的章節仍維持**已預約**。租戶的管理員和每位營運人員也會收到通知，如[預約發布](./10-scheduled-jobs.md#預約發布)所述 |
 | `auditlog: queue is full; dropping entry`、`auditlog: failed to persist; dropping entry` | `publira server` | 租戶或平台稽核記錄中的一筆項目遺失了 |
 | `readiness check failed` | `publira server`、`publira worker` | 它所指出的檢查失敗了；`error`欄位說明原因 |
@@ -126,7 +126,7 @@ worker的指標追蹤的是outbox，所有郵件、推播通知、快取重新�
 
 | 指標 | 計算的內容 | 觀察重點 |
 | --- | --- | --- |
-| `publira.outbox.events.dead` | 被永久放棄的項目 | 任何增加。請對它設定警示 |
+| `publira.outbox.events.dead` | 被放棄的項目 | 任何增加。請對它設定警示 |
 | `publira.outbox.events.retry` | 將會再次嘗試的失敗嘗試 | 持續偏高的速率：該`outbox.event_type`的目的地正在失敗 |
 | `publira.outbox.events.claimed` | worker接手項目準備傳送的次數。被重試或繼續處理的項目會再次被接手並再次計算，因此即使每個項目都已傳送，它的增長也會快於`done` | — |
 | `publira.outbox.events.done` | 已傳送的項目 | — |

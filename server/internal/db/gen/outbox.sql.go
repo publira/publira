@@ -210,9 +210,10 @@ type InsertOutboxEventParams struct {
 // those keys on the event types below so a processed row keeps neither
 // a usable secret nor the form's contents. Other event types keep
 // payload.token, if they have one. Keep this list in
-// sync with MarkOutboxEventDone, MarkOutboxEventDead, and both halves
+// sync with MarkOutboxEventDone, MarkOutboxEventDead, both halves
 // of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
-// list, RecoverStaleProcessingAuthMailOutboxEvents selects it). The
+// list, RecoverStaleProcessingAuthMailOutboxEvents selects it), and
+// RequeueDeadOutboxEvents, which leaves these types dead. The
 // terminal-token data migration covers the types that existed when it
 // ran:
 //
@@ -266,6 +267,81 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.ProgressCursor,
 	)
 	return i, err
+}
+
+const ListDeadOutboxEvents = `-- name: ListDeadOutboxEvents :many
+SELECT
+    o.id,
+    o.event_type,
+    t.public_id AS tenant_public_id,
+    o.attempts,
+    o.last_error,
+    o.created_at,
+    o.updated_at
+FROM outbox_events AS o
+LEFT JOIN tenants AS t ON t.id = o.tenant_id
+WHERE o.status = 'dead'
+    AND ($1::uuid IS NULL OR o.id = $1)
+    AND ($2::text IS NULL OR o.event_type = $2)
+    AND ($3::uuid IS NULL OR o.tenant_id = $3)
+ORDER BY o.updated_at DESC, o.id DESC
+LIMIT $4
+`
+
+type ListDeadOutboxEventsParams struct {
+	ID        uuid.NullUUID  `json:"id"`
+	EventType sql.NullString `json:"event_type"`
+	TenantID  uuid.NullUUID  `json:"tenant_id"`
+	Limit     int32          `json:"limit"`
+}
+
+type ListDeadOutboxEventsRow struct {
+	ID             uuid.UUID      `json:"id"`
+	EventType      string         `json:"event_type"`
+	TenantPublicID sql.NullString `json:"tenant_public_id"`
+	Attempts       int32          `json:"attempts"`
+	LastError      sql.NullString `json:"last_error"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+}
+
+// The dead events, newest first, with the public ID of the tenant each
+// belongs to, for an operator choosing what to requeue. Every filter is
+// optional; one left NULL matches every row.
+func (q *Queries) ListDeadOutboxEvents(ctx context.Context, arg ListDeadOutboxEventsParams) ([]ListDeadOutboxEventsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListDeadOutboxEvents,
+		arg.ID,
+		arg.EventType,
+		arg.TenantID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDeadOutboxEventsRow
+	for rows.Next() {
+		var i ListDeadOutboxEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventType,
+			&i.TenantPublicID,
+			&i.Attempts,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const MarkOutboxEventDead = `-- name: MarkOutboxEventDead :one
@@ -365,8 +441,11 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // event types are left alone. The plaintext window is the
 // pending/processing lifetime. Retries keep the token so a later
 // attempt can still send the mail, so that window is the retry budget
-// (ten attempts, delays doubling from 1s and capped at 1h). A worker
-// that dies mid-attempt records no failure, so
+// (sixteen attempts by default, delays doubling from 1s and capped at
+// 1h, about four hours), or the token's own lifetime where that is
+// shorter: a handler that finds the token expired finishes the event
+// without sending it. A worker that dies mid-attempt records no
+// failure, so
 // RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 // the same budget and every window ends here.
 //
@@ -616,6 +695,91 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // these rows no retry budget.
 func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error) {
 	rows, err := q.db.QueryContext(ctx, RecoverStaleProcessingOutboxEvents, staleBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.EventType,
+			&i.Payload,
+			&i.IdempotencyKey,
+			&i.Status,
+			&i.Attempts,
+			&i.AvailableAt,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProgressCursor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const RequeueDeadOutboxEvents = `-- name: RequeueDeadOutboxEvents :many
+UPDATE outbox_events
+SET
+    status = 'pending',
+    attempts = 0,
+    available_at = NOW(),
+    updated_at = NOW()
+WHERE status = 'dead'
+    AND ($1::uuid IS NULL OR id = $1)
+    AND ($2::text IS NULL OR event_type = $2)
+    AND ($3::uuid IS NULL OR tenant_id = $3)
+    AND event_type NOT IN (
+        'admin_email_change_confirmation_email',
+        'admin_password_reset_email',
+        'admin_password_reset_request',
+        'platform_email_change_confirmation_email',
+        'platform_password_reset_email',
+        'platform_password_reset_request',
+        'reader_email_change_confirmation_email',
+        'reader_email_verification_email',
+        'reader_email_verification_request',
+        'reader_password_reset_email',
+        'reader_password_reset_request',
+        'reader_signup_request',
+        'tenant_admin_invitation_email',
+        'webhook_delivery'
+    )
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
+`
+
+type RequeueDeadOutboxEventsParams struct {
+	ID        uuid.NullUUID  `json:"id"`
+	EventType sql.NullString `json:"event_type"`
+	TenantID  uuid.NullUUID  `json:"tenant_id"`
+}
+
+// Return dead events to the queue on an operator's word, once whatever
+// failed them has been fixed. Each starts on the whole retry budget
+// again and is due at once; last_error stays until the next attempt
+// replaces it or the event finishes. Every filter is optional, as in
+// ListDeadOutboxEvents.
+//
+// Two kinds stay dead. The auth-mail and request types lost their token
+// and the form's contents on the update that killed them, so there is
+// nothing left to send: the reader asks for a new mail. A
+// webhook_delivery is resent by the tenant's own console
+// (ResendWebhookDelivery), which queues a new event and keeps the
+// delivery's record of the attempts; requeuing the dead one beside it
+// would send the same delivery twice.
+func (q *Queries) RequeueDeadOutboxEvents(ctx context.Context, arg RequeueDeadOutboxEventsParams) ([]OutboxEvent, error) {
+	rows, err := q.db.QueryContext(ctx, RequeueDeadOutboxEvents, arg.ID, arg.EventType, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}

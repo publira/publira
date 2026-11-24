@@ -64,13 +64,9 @@ func NewGooglePlaySubscriptionAcknowledgeHandler(cfg GooglePlayHandlerConfig) Ha
 			return Permanent(errors.New("google play subscription payload names no subscription"))
 		}
 
-		// A tenant that switched Google Play off or broke its key is retried
-		// rather than dropped, as a consume is: the reader paid, and the
-		// subscription is refunded unless someone restores the credentials
-		// before the three days are out.
 		credentials, err := paymentsettings.NewAppStores(dbmodels.New(cfg.DB), cfg.Encryptor).LoadGooglePlayCredentials(ctx, tenantID)
 		if err != nil {
-			return fmt.Errorf("load google play credentials: %w", err)
+			return googlePlayCredentialsError(event, err)
 		}
 		key := []byte(credentials.ServiceAccountKey)
 

@@ -28,6 +28,13 @@ const EventTypeAppleSignInCodeExchange = "apple_sign_in_code_exchange"
 // because the row that held it is deleted in the transaction that queues it.
 const EventTypeAppleSignInTokenRevoke = "apple_sign_in_token_revoke"
 
+// AppleSignInTokenRevokeMaxAttempts is the retry budget the worker registers
+// the revocation with. Apple sets it no deadline, but it is owed to a reader
+// who has left, and nothing queues it again once it is given up, so it keeps
+// trying through a day of Apple's token endpoint failing rather than the hours
+// the default budget spans.
+var AppleSignInTokenRevokeMaxAttempts = AttemptsWithin(24 * time.Hour)
+
 // AppleSignInCodeExchangePayload names the link the refresh token is kept on,
 // and carries the code as a secretcrypto envelope.
 type AppleSignInCodeExchangePayload struct {
@@ -211,10 +218,14 @@ func NewAppleSignInTokenRevokeHandler(cfg AppleSignInHandlerConfig) Handler {
 		if err != nil {
 			return Permanent(fmt.Errorf("open the apple refresh token: %w", err))
 		}
-		// A tenant without its key is retried rather than dropped: the
-		// revocation is owed to the reader, and a restored key can still pay it.
+		// A tenant without a usable key waits for one without spending an
+		// attempt: the revocation is owed to the reader, and a restored key can
+		// still pay it. A database that did not answer is an ordinary failure.
 		creds, err := settings.LoadAppleCredentials(ctx, tenantID)
 		if err != nil {
+			if isUnusableAppleKey(err) {
+				return Blocked(fmt.Errorf("load the apple sign-in key: %w", err))
+			}
 			return fmt.Errorf("load the apple sign-in key: %w", err)
 		}
 		err = cfg.Tokens.RevokeRefreshToken(ctx, creds, payload.ClientID, refreshToken)

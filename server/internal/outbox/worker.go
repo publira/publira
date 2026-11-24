@@ -65,7 +65,7 @@ func tracer() trace.Tracer {
 }
 
 // Config tunes the resident worker. Zero values become the defaults of
-// 2s drain, 10 attempts, and 15m stale reclaim.
+// 2s drain, [DefaultMaxAttempts] attempts, and 15m stale reclaim.
 type Config struct {
 	Logger *slog.Logger
 	// Handlers maps event_type to work. Nil becomes [DefaultRegistry].

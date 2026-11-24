@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -22,6 +23,16 @@ import (
 // three days, and a consumable nobody consumed cannot be bought again: the
 // next episode at the same price would be refused as already owned.
 const EventTypeGooglePlayPurchaseConsume = "google_play_purchase_consume"
+
+// GooglePlayDeadline is how long after a purchase Google Play waits for it to
+// be acknowledged, or consumed, before it refunds it.
+const GooglePlayDeadline = 72 * time.Hour
+
+// GooglePlayMaxAttempts is the retry budget the worker registers the consume
+// and acknowledge events with: they keep trying for as long as Google Play
+// keeps the purchase, where the default budget would give up on one hours into
+// an outage of the Developer API.
+var GooglePlayMaxAttempts = AttemptsWithin(GooglePlayDeadline)
 
 // GooglePlayPurchaseConsumePayload names the purchase by what the Developer
 // API looks it up by.
@@ -69,12 +80,9 @@ func NewGooglePlayPurchaseConsumeHandler(cfg GooglePlayHandlerConfig) Handler {
 			return Permanent(errors.New("google play purchase payload names no purchase"))
 		}
 
-		// A tenant that switched Google Play off or broke its key is retried
-		// rather than dropped: the reader paid, and the purchase is refunded
-		// unless someone restores the credentials before the three days are out.
 		credentials, err := paymentsettings.NewAppStores(dbmodels.New(cfg.DB), cfg.Encryptor).LoadGooglePlayCredentials(ctx, tenantID)
 		if err != nil {
-			return fmt.Errorf("load google play credentials: %w", err)
+			return googlePlayCredentialsError(event, err)
 		}
 		key := []byte(credentials.ServiceAccountKey)
 
@@ -106,4 +114,22 @@ func NewGooglePlayPurchaseConsumeHandler(cfg GooglePlayHandlerConfig) Handler {
 		}
 		return nil
 	}
+}
+
+// googlePlayCredentialsError answers a failure to load the tenant's Google Play
+// credentials. A store the tenant switched off, or a key that does not
+// decrypt, is the tenant's or the operator's to restore, and the reader has
+// paid, so the event waits for it without spending an attempt. Once
+// [GooglePlayDeadline] has passed since the event was queued, Google Play has
+// refunded the purchase and there is nothing left to settle. Anything else,
+// such as a database that did not answer, is an ordinary failure.
+func googlePlayCredentialsError(event dbmodels.OutboxEvent, err error) error {
+	err = fmt.Errorf("load google play credentials: %w", err)
+	if !errors.Is(err, paymentsettings.ErrStoreNotReady) && !paymentsettings.IsUnavailable(err) {
+		return err
+	}
+	if time.Since(event.CreatedAt) >= GooglePlayDeadline {
+		return Permanent(err)
+	}
+	return Blocked(err)
 }

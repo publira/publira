@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/tickerjobs"
 )
 
@@ -168,6 +169,38 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 	for _, eventType := range others {
 		if cfg.Handlers.IsMessage(eventType) {
 			t.Errorf("%s is dropped for a suspended tenant, want it run", eventType)
+		}
+	}
+}
+
+// An event type owed by a deadline, or sent to a server someone else runs,
+// keeps a budget of its own in place of PUBLIRA_OUTBOX_MAX_ATTEMPTS, and every
+// other type takes the configured one. Which types have one is a decision about
+// how long each outage is waited out, so it is pinned here.
+func TestWorkerRetryBudgets(t *testing.T) {
+	cfg := workerConfig(slog.Default(), nil,
+		outbox.EmailHandlerConfig{}, outbox.PushHandlerConfig{}, outbox.StaffNotificationHandlerConfig{},
+		outbox.AnnouncementNotificationHandlerConfig{}, outbox.EpisodePublishedNotificationHandlerConfig{},
+		outbox.CommentApprovedNotificationHandlerConfig{},
+		outbox.DataExportReadyNotificationHandlerConfig{},
+		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
+		outbox.SubscriptionCancelHandlerConfig{},
+		nil, nil, nil, nil)
+
+	const configured = 7
+	budgets := map[string]int{
+		outbox.EventTypeGooglePlayPurchaseConsume:         outbox.GooglePlayMaxAttempts,
+		outbox.EventTypeGooglePlaySubscriptionAcknowledge: outbox.GooglePlayMaxAttempts,
+		outbox.EventTypeAppleSignInTokenRevoke:            outbox.AppleSignInTokenRevokeMaxAttempts,
+		outbox.EventTypeWebhookDelivery:                   tenantwebhooks.MaxAttempts,
+		outbox.EventTypeAppleSignInCodeExchange:           configured,
+		outbox.EventTypeReaderPasswordResetEmail:          configured,
+		outbox.EventTypePurchaseReceipt:                   configured,
+		outbox.EventTypeNextCacheRevalidation:             configured,
+	}
+	for eventType, want := range budgets {
+		if got := cfg.Handlers.MaxAttempts(eventType, configured); got != want {
+			t.Errorf("%s has a budget of %d attempts, want %d", eventType, got, want)
 		}
 	}
 }

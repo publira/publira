@@ -9,9 +9,10 @@
 -- those keys on the event types below so a processed row keeps neither
 -- a usable secret nor the form's contents. Other event types keep
 -- payload.token, if they have one. Keep this list in
--- sync with MarkOutboxEventDone, MarkOutboxEventDead, and both halves
+-- sync with MarkOutboxEventDone, MarkOutboxEventDead, both halves
 -- of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
--- list, RecoverStaleProcessingAuthMailOutboxEvents selects it). The
+-- list, RecoverStaleProcessingAuthMailOutboxEvents selects it), and
+-- RequeueDeadOutboxEvents, which leaves these types dead. The
 -- terminal-token data migration covers the types that existed when it
 -- ran:
 --   admin_email_change_confirmation_email
@@ -98,8 +99,11 @@ RETURNING o.*;
 -- event types are left alone. The plaintext window is the
 -- pending/processing lifetime. Retries keep the token so a later
 -- attempt can still send the mail, so that window is the retry budget
--- (ten attempts, delays doubling from 1s and capped at 1h). A worker
--- that dies mid-attempt records no failure, so
+-- (sixteen attempts by default, delays doubling from 1s and capped at
+-- 1h, about four hours), or the token's own lifetime where that is
+-- shorter: a handler that finds the token expired finishes the event
+-- without sending it. A worker that dies mid-attempt records no
+-- failure, so
 -- RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 -- the same budget and every window ends here.
 --
@@ -320,5 +324,68 @@ WHERE status = 'processing'
         'reader_password_reset_request',
         'reader_signup_request',
         'tenant_admin_invitation_email'
+    )
+RETURNING *;
+
+-- The dead events, newest first, with the public ID of the tenant each
+-- belongs to, for an operator choosing what to requeue. Every filter is
+-- optional; one left NULL matches every row.
+-- name: ListDeadOutboxEvents :many
+SELECT
+    o.id,
+    o.event_type,
+    t.public_id AS tenant_public_id,
+    o.attempts,
+    o.last_error,
+    o.created_at,
+    o.updated_at
+FROM outbox_events AS o
+LEFT JOIN tenants AS t ON t.id = o.tenant_id
+WHERE o.status = 'dead'
+    AND (sqlc.narg('id')::uuid IS NULL OR o.id = sqlc.narg('id'))
+    AND (sqlc.narg('event_type')::text IS NULL OR o.event_type = sqlc.narg('event_type'))
+    AND (sqlc.narg('tenant_id')::uuid IS NULL OR o.tenant_id = sqlc.narg('tenant_id'))
+ORDER BY o.updated_at DESC, o.id DESC
+LIMIT sqlc.arg('limit');
+
+-- Return dead events to the queue on an operator's word, once whatever
+-- failed them has been fixed. Each starts on the whole retry budget
+-- again and is due at once; last_error stays until the next attempt
+-- replaces it or the event finishes. Every filter is optional, as in
+-- ListDeadOutboxEvents.
+--
+-- Two kinds stay dead. The auth-mail and request types lost their token
+-- and the form's contents on the update that killed them, so there is
+-- nothing left to send: the reader asks for a new mail. A
+-- webhook_delivery is resent by the tenant's own console
+-- (ResendWebhookDelivery), which queues a new event and keeps the
+-- delivery's record of the attempts; requeuing the dead one beside it
+-- would send the same delivery twice.
+-- name: RequeueDeadOutboxEvents :many
+UPDATE outbox_events
+SET
+    status = 'pending',
+    attempts = 0,
+    available_at = NOW(),
+    updated_at = NOW()
+WHERE status = 'dead'
+    AND (sqlc.narg('id')::uuid IS NULL OR id = sqlc.narg('id'))
+    AND (sqlc.narg('event_type')::text IS NULL OR event_type = sqlc.narg('event_type'))
+    AND (sqlc.narg('tenant_id')::uuid IS NULL OR tenant_id = sqlc.narg('tenant_id'))
+    AND event_type NOT IN (
+        'admin_email_change_confirmation_email',
+        'admin_password_reset_email',
+        'admin_password_reset_request',
+        'platform_email_change_confirmation_email',
+        'platform_password_reset_email',
+        'platform_password_reset_request',
+        'reader_email_change_confirmation_email',
+        'reader_email_verification_email',
+        'reader_email_verification_request',
+        'reader_password_reset_email',
+        'reader_password_reset_request',
+        'reader_signup_request',
+        'tenant_admin_invitation_email',
+        'webhook_delivery'
     )
 RETURNING *;

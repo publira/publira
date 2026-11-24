@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-11-09
+updated: 2026-11-24
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -158,14 +158,15 @@ The waiting interval is what keeps a restart or a deploy from being a sweep of e
 
 Every side effect a request leaves for later — a mail, a push notification, the drop of a cached page, an index update for the search engine — is written to the outbox in the same transaction as the change that caused it. So a change is never saved without its side effect, and the worker sends the entry within a few seconds.
 
-An entry that fails is tried again, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, the entry is given up for good: it becomes **dead**, and nothing sends it again. An entry that can never succeed, such as a mail to an account that was deleted, is given up at once. An entry of a kind the worker does not know has not failed: during an upgrade it is one only the new release writes, so the worker leaves it for a worker of the new release, looking at it again every minute, and gives it up only a day after it was written. What failing means depends on the entry:
+An entry that fails is tried again, waiting twice as long after each failure: one second, then two, then four, up to an hour between attempts. After the sixteenth failed attempt, about four hours after the first, the entry is given up: it becomes **dead**, and the worker does not send it again on its own. An entry that can never succeed, such as a mail to an account that was deleted, is given up at once. An entry of a kind the worker does not know has not failed: during an upgrade it is one only the new release writes, so the worker leaves it for a worker of the new release, looking at it again every minute, and gives it up only a day after it was written. What failing means depends on the entry:
 
 - **Mail** fails while the SMTP server, or `email-renderer` once it is on, refuses or cannot be reached, as [Email](./6-email.md#the-mail-the-install-sends) describes.
 - **A push notification** to a phone is skipped rather than failed while the tenant has no Firebase credentials saved, so it is not retried once they are. Browser notifications are sent only once Web Push is turned on, as [Web Push](./8-web-push.md) describes.
 - **A cache revalidation** fails while a web app is down. A worker without `PUBLIRA_REVALIDATE_TOKEN` fails every drop `publira server` or `publiractl` recorded, on every attempt; the drops of its own jobs it does not record at all, as [Free reading periods](#free-reading-periods-and-other-cached-pages) describes.
 - **A webhook delivery**, of `event_type` `webhook_delivery`, sends one event to an endpoint a Tenant admin saved, as [API keys and webhooks](../4-console/10-api-keys-and-webhooks.md#retries-and-resending) describes. It fails while that endpoint is down or answers anything but `2xx`, and is given up at once when it answers another `4xx` but `408` and `429`, or its host resolves to a private, loopback, link-local, or shared address. The endpoint is a server the tenant runs, so a failing delivery is the tenant's to fix rather than the install's. A delivery whose endpoint's signing secret no key in `PUBLIRA_SECRET_ENCRYPTION_KEYS` opens waits, without spending an attempt, until the key is back or the secret is rotated.
+- **A Google Play purchase or subscription** made in the app is acknowledged through the Google Play Developer API, and Google Play refunds one nobody acknowledged within three days. The acknowledgement fails while that API is down, and keeps being tried for those three days. While the tenant's Google Play store is switched off, or its key cannot be decrypted, it waits without spending an attempt, until the three days are out.
 
-`PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling, up to an hour between attempts, so a few more attempts let an entry outlast a much longer outage. A webhook delivery has a budget of its own of 20 attempts, about eight hours, whatever `PUBLIRA_OUTBOX_MAX_ATTEMPTS` says, since the server it goes to may be down for longer than an install's own services.
+`PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling up to an hour between attempts, so each attempt past the sixteenth lets an entry outlast an hour more of an outage. A webhook delivery has a budget of its own of 20 attempts, about eight hours, and a Google Play acknowledgement one that lasts the three days, whatever `PUBLIRA_OUTBOX_MAX_ATTEMPTS` says: the server a webhook goes to may be down for longer than an install's own services, and a Google Play purchase has a deadline.
 
 The worker sends webhook deliveries over HTTPS to whatever host and port each endpoint names, so an install that restricts the worker's outbound traffic has to allow them for webhooks to arrive.
 
@@ -181,12 +182,22 @@ ORDER BY updated_at DESC
 LIMIT 20;
 ```
 
-A dead entry cannot be sent again, but for a webhook delivery. What it costs depends on its `event_type`:
+`publiractl outbox list` prints the same entries with the tenant each belongs to. Once whatever failed them is fixed, `publiractl outbox requeue` puts dead entries back in the queue with their attempts back to zero, and the worker sends them within a few seconds. Name them by ID with `--event`, by kind with `--type`, or by tenant with `--tenant`, or give `--all` to requeue every dead entry:
 
-- **A mail** never arrives. A reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
-- **A push notification** never arrives, and the notification stays in the reader's list on the site and in the app.
+```bash
+publiractl outbox list
+publiractl outbox requeue --type contact_message_reply_email
+```
+
+Run it with the image of the release the install runs, with `PUBLIRA_PLATFORM_DB_URL` set to the `publira_platform` connection. A requeued entry is sent as late as the outage made it: a mail about a comment arrives hours after the comment was written. The flags and what each command prints are in the [`publiractl outbox` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#outbox).
+
+What a dead entry costs until it is requeued depends on its `event_type`:
+
+- **A mail** does not arrive. A password reset, a confirmation mail, and an administrator invitation cannot be requeued, because the entry no longer holds the mail's link: a reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
+- **A push notification** does not arrive, and the notification stays in the reader's list on the site and in the app.
 - **A cache revalidation** leaves the pages it named showing what they showed before, until the next change to the same thing drops them again or their cache runs out.
-- **A webhook delivery** is listed as **Dead** on the tenant console's **API keys and webhooks**, where a Tenant admin resends it once the endpoint is fixed.
+- **A Google Play acknowledgement** leaves the purchase to be refunded by Google Play at the end of its three days.
+- **A webhook delivery** is not requeued here. It is listed as **Dead** on the tenant console's **API keys and webhooks**, where a Tenant admin resends it once the endpoint is fixed.
 
 ## Running a job by hand
 

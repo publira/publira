@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `env` writes the `.env` of a deployment with every secret generated, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `operator` lets a Platform Console operator who lost their two-step verification sign in again, `platform` saves the platform's default locale, the time zone new tenants start on, and the currency a tenant with no payment settings sells in, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `env` writes the `.env` of a deployment with every secret generated, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `operator` lets a Platform Console operator who lost their two-step verification sign in again, `outbox` lists the outbox events the worker gave up on and returns them to its queue, `platform` saves the platform's default locale, the time zone new tenants start on, and the currency a tenant with no payment settings sells in, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -171,6 +171,33 @@ go -C server run ./cmd/publiractl operator reset-mfa --email operator@example.co
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+
+## outbox
+
+Lists the outbox events [`publira worker`](../publira/README.md#publira-worker) gave up on, and returns them to its queue once whatever failed them is fixed. The worker never revives a `dead` event on its own, so after an outage that outlasted an event's retry budget — an SMTP server, a store's API — this is what sends the mail or settles the purchase it held.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl outbox list
+go -C server run ./cmd/publiractl outbox list --type contact_message_reply_email --tenant comics.example.com
+go -C server run ./cmd/publiractl outbox requeue --event 0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80
+go -C server run ./cmd/publiractl outbox requeue --type purchase_receipt
+```
+
+| Command | What it does |
+| --- | --- |
+| `outbox list` | Prints the dead events, newest first, with the tenant each belongs to (`-` for a platform event), the attempts it spent, when it was written and when it died, and the start of its last error. `--limit` caps how many, 100 when left out |
+| `outbox requeue` | Returns the dead events its flags name to `pending`, each due at once and with its attempts set back to `0`, so it starts on the whole retry budget again, and prints each one it requeued. It refuses to run with no flag; `--all` requeues every dead event, and is refused beside another flag |
+
+Both take the same flags, which combine: `--event` names one event by its ID, `--type` every event of an `event_type`, and `--tenant` every event of a tenant, by public ID or domain.
+
+Two kinds of event stay dead, and `outbox requeue` skips them. The auth mail and the form requests — the `*_password_reset_*`, `*_email_change_confirmation_email`, `*_email_verification_*`, `reader_signup_request`, and `tenant_admin_invitation_email` types — dropped the token or the form's contents from their payload when they died, so there is nothing left to send: the reader asks for a new mail, and an invitation is resent. A `webhook_delivery` is resent by a Tenant admin from the console instead, which keeps the delivery's record of its attempts. `--event` naming either kind, an event that is not dead, or no event exits `1` saying which.
+
+A requeued event of a suspended tenant's mail or push is dropped by the worker rather than sent, as any other is. The commands file nothing in `platform_audit_logs`.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection, which reads and writes the outbox across every tenant. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## platform
 
