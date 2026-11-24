@@ -16,6 +16,8 @@ vi.mock("./api-client", () => ({
   apiClient: {
     catalog: { getSeriesEpisodeAccess: mockGetSeriesEpisodeAccess },
   },
+  buildClientAddressHeaders: () =>
+    Promise.resolve({ headers: { Forwarded: "for=198.51.100.7" } }),
   buildSessionHeaders: (accessToken: string) => ({
     headers: { Authorization: `Bearer ${accessToken}` },
   }),
@@ -81,7 +83,7 @@ describe("getMySeriesPurchaseState", () => {
     });
   });
 
-  it("asks about a guest without a session, who is quoted the whole series", async () => {
+  it("asks about a guest without a session but with their address, and quotes them the whole series", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     mockGetSeriesEpisodeAccess.mockResolvedValueOnce({
       episodes: [
@@ -96,7 +98,9 @@ describe("getMySeriesPurchaseState", () => {
 
     const result = await getMySeriesPurchaseState(TENANT_ID, SERIES_ID, "en");
 
-    expect(mockGetSeriesEpisodeAccess.mock.calls[0]?.[1]).toBeUndefined();
+    expect(mockGetSeriesEpisodeAccess.mock.calls[0]?.[1]).toEqual({
+      headers: { Forwarded: "for=198.51.100.7" },
+    });
     expect(result).toMatchObject({
       ok: true,
       remainder: { discountPercent: 0, episodeCount: 1, price: 300 },

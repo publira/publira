@@ -91,8 +91,9 @@ func EdgeReadLimits() ReadLimits {
 
 // readHeadroom is how far past the edge the default read limits reach. The
 // server counts more than the edge sees: the calls web-storefront makes for a
-// signed-in reader carry the reader's address, and arrive on top of what the
-// reader asked the edge for directly.
+// signed-in reader, and the uncached ones it makes for a guest, carry the
+// reader's address, and arrive on top of what the reader asked the edge for
+// directly.
 const readHeadroom = 2
 
 // CommunityLimits are the reader-facing limits a tenant starts from. Each one

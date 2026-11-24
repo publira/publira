@@ -2,7 +2,7 @@
 title: Rate limits
 description: Which requests to limit per client in front of an install, which never to limit, and how to write the limits as AWS WAF, Cloud Armor, or Cloudflare rules, or in the proxy you run.
 published: 2026-10-30
-updated: 2026-10-31
+updated: 2026-11-24
 ---
 
 `publira server` limits what it can tell apart: password attempts, the mail it sends, and each reader action, such as posting a comment or using a wait-for-free ticket, as [Rate limits](../9-platform-policies.md#rate-limits) describes. It limits anonymous reads too, but only loosely, as [What publira server limits itself](#what-publira-server-limits-itself) describes: under that limit, one client can still fetch every page of every free episode, or run the search until the database falls behind, and the first sign of it is `/readyz` failing. Those requests have to be limited per client in front of it as well: by a managed WAF or CDN, or by the proxy at the edge.
@@ -61,13 +61,15 @@ Behind the edge, `publira server` keeps a limit of its own on the same reads, so
 
 A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit applies whatever the edge allows, so an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Raise the server's limit along with it: it is part of the [platform policy](../9-platform-policies.md#anonymous-reads), and the Platform Console's **Security** page or the flags above change it. A saved change reaches every instance within ten seconds, without a restart. A value below the least one, which is what the sample configurations admit in 10 seconds, is refused naming its field or its flag, so that the edge stays the first to refuse a reader. Readers behind one address share the server's limit as they share the edge's.
 
-The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server, so `web-storefront` limits that page itself, as [What web-storefront limits itself](#what-web-storefront-limits-itself) describes. The console hosts, the webhooks, and the health checks are not counted either.
+The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server, so `web-storefront` limits that page itself, as [What web-storefront limits itself](#what-web-storefront-limits-itself) describes. A call `web-storefront` makes for one reader outside its cache, such as for a signed-in reader or to record a page view, carries that reader's address and is counted as theirs. The console hosts, the webhooks, and the health checks are not counted either.
 
 ## What web-storefront limits itself
 
 `web-storefront` limits the site's search page, `/search` or `/<locale>/search`, per reader's address, which it finds in the forwarded headers the way `publira server` does. It allows 80 requests in 10 seconds, twice the 10-second column of the table above, so that a reader behind an edge with the limits above is refused by the edge first, and answers a request past it with `429` and a `Retry-After` header naming the wait. Every instance of `web-storefront` counts a reader together through the Valkey or Redis its `PUBLIRA_REDIS_URL` names, which is the server's. Without that variable, and while that server cannot be reached, each instance counts on its own, so the limit loosens to one per instance rather than going away. A page published at `/search` in place of the search page is counted the same way.
 
-This limit has no setting. An edge allowance for the search page raised past it, for readers who share one address, admits requests `web-storefront` then refuses.
+It limits the page view a detail page records as it opens, sent to `/api/v1/views`, in the same way, at 30 requests in 10 seconds per reader's address. The edge does not limit that path. A view refused for its rate is not counted, and the page it came from is not affected. Readers behind one address, such as a carrier's NAT, share the allowance, so on an install whose readers do, some of their views go uncounted.
+
+Neither limit has a setting. An edge allowance for the search page raised past it, for readers who share one address, admits requests `web-storefront` then refuses.
 
 ## Distributed denial of service
 

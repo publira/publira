@@ -4,7 +4,11 @@ import { profileCookieName } from "@publira/web-session/cookie-name";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
-import { apiClient, resolveAccessToken } from "./api-client";
+import {
+  apiClient,
+  buildClientAddressHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 /** Detail pages this app records a soft page view for. */
 export const contentViewKinds = ["episode", "series"] as const;
@@ -122,6 +126,11 @@ const resolveAnonymousViewActorId = async (): Promise<string> => {
  * the identifier it minted would ride back on a `Set-Cookie` addressed to the
  * API's host, which the reader never talks to, so every later beacon would open
  * another single-use actor.
+ *
+ * The anonymous call carries the reader's address as well, which a call with a
+ * session gets from the client's interceptor, so that `publira server` charges
+ * it to the reader's own read allowance. Without it the call reaches the API
+ * as one of this app's own, which no allowance counts.
  */
 const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
   const accessToken = await resolveAccessToken();
@@ -130,8 +139,14 @@ const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
     return { Authorization: `Bearer ${accessToken}` };
   }
 
+  const [{ headers: clientAddress }, actorId] = await Promise.all([
+    buildClientAddressHeaders(),
+    resolveAnonymousViewActorId(),
+  ]);
+
   return {
-    Cookie: `${API_ANONYMOUS_ID_COOKIE_NAME}=${await resolveAnonymousViewActorId()}`,
+    ...clientAddress,
+    Cookie: `${API_ANONYMOUS_ID_COOKIE_NAME}=${actorId}`,
   };
 };
 

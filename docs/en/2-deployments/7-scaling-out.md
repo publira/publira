@@ -2,7 +2,7 @@
 title: Scaling out
 description: What to run more of when an install outgrows what it started on, what every copy has to share, and the parts that do not scale out.
 published: 2026-10-22
-updated: 2026-11-09
+updated: 2026-11-24
 ---
 
 An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads and the worker's daily rebuilds move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
@@ -25,7 +25,7 @@ Before any process runs a second copy, every process that uses Valkey, or any Re
 | What | Kept by | Without a shared Valkey |
 | --- | --- | --- |
 | The rate limit counters: the reader write limits, the step-up password limit, and the mail limits | `publira server` | Each copy counts on its own, so a reader whose requests are spread across three copies gets three times the limit. [Where the counts are kept](../3-operations/9-platform-policies.md#where-the-counts-are-kept) has the details |
-| The search page's rate limit counters | `web-storefront` | Each copy counts on its own, so a reader whose search page requests are spread across three copies gets three times the limit |
+| The rate limit counters of the search page and the page views | `web-storefront` | Each copy counts on its own, so a reader whose requests are spread across three copies gets three times the limit |
 | The converted images | `publira server` | Each copy keeps the images it converted in its own memory, so every copy converts the same image again |
 | The pages and data the web apps cache | `web-storefront`, `web-admin`, `web-platform` | Nothing a web app renders is cached: every request renders its page again and calls `publira server` for everything on it |
 

@@ -2,8 +2,8 @@
 title: 横向扩展
 description: 当安装实例超出最初的规模时应增加哪些进程、所有副本必须共享什么，以及哪些部分无法横向扩展。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 安装实例变慢或即将增长时，要增加的是它已经在运行的进程：为繁忙的进程增加副本，按所响应的流量拆分`publira server`，按所做的工作拆分`publira worker`。本页说明哪些进程可以运行多个副本以及在此之前必须准备好什么、安装实例的负载落在哪里、`publira server`可以拆分到什么程度、`publira worker`如何拆分、随着副本增加数据库必须能接受什么、读者的目录读取和worker进程的每日重建如何转到数据库的只读副本上，以及哪些部分无论增加多少副本都无法缓解。本页适用于任何平台：[Kubernetes](./5-kubernetes/index.md)和[Fargate上的Amazon ECS](./6-ecs-fargate/index.md)给出了清单和命令。
@@ -26,7 +26,7 @@ source_updated: 2026-11-09
 | 内容 | 由谁保存 | 没有共享的Valkey时 |
 | --- | --- | --- |
 | 速率限制计数器：读者写入限制、二次验证密码限制和邮件限制 | `publira server` | 每个副本各自计数，因此请求分散到三个副本的读者会得到三倍的限额。详情见[计数保存的位置](../3-operations/9-platform-policies.md#计数保存的位置) |
-| 搜索页面的速率限制计数器 | `web-storefront` | 每个副本各自计数，因此搜索页面请求分散到三个副本的读者会得到三倍的限额 |
+| 搜索页面和浏览记录的速率限制计数器 | `web-storefront` | 每个副本各自计数，因此请求分散到三个副本的读者会得到三倍的限额 |
 | 转换后的图片 | `publira server` | 每个副本把自己转换的图片保存在自己的内存中，因此每个副本都会再次转换同一张图片 |
 | Web应用缓存的页面和数据 | `web-storefront`、`web-admin`、`web-platform` | Web应用渲染的任何内容都不会被缓存：每个请求都会重新渲染页面，并为页面上的所有内容调用`publira server` |
 

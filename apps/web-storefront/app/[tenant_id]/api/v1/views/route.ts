@@ -1,10 +1,14 @@
+import { getClientAddress } from "@publira/utils/client-address";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { tenantIdSchema } from "#lib/auth-input";
 import { isSameOriginRequest } from "#lib/csrf";
 import { recordIdSchema } from "#lib/record-id";
+import { createViewBeaconLimiter } from "#lib/view-beacon-rate-limit";
 import { contentViewKinds, recordContentView } from "#lib/view-events";
+
+const chargeViewBeacon = createViewBeaconLimiter();
 
 const viewPathSchema = z.object({ tenantId: tenantIdSchema });
 
@@ -14,6 +18,38 @@ const viewBodySchema = z.object({
 });
 
 const noContent = () => new NextResponse(null, { status: 204 });
+
+/**
+ * The `429` for a client past the view beacon's allowance, or `null` for one
+ * within it. Every request for the path is counted, whatever it carries. A
+ * client is the reader's address as the forwarded headers name it, the way the
+ * search page counts one; a setting the address cannot be read with, such as a
+ * malformed `PUBLIRA_TRUSTED_PROXIES`, answers `500`.
+ */
+const refuseOverLimit = async (
+  request: Request
+): Promise<NextResponse | null> => {
+  let client: string;
+
+  try {
+    client = getClientAddress(request.headers) ?? "";
+  } catch (error) {
+    console.error("[web-storefront] cannot resolve the client address", error);
+
+    return new NextResponse(null, { status: 500 });
+  }
+
+  const decision = await chargeViewBeacon(client);
+
+  if (decision.allowed) {
+    return null;
+  }
+
+  return new NextResponse(null, {
+    headers: { "Retry-After": String(decision.retryAfterSeconds) },
+    status: 429,
+  });
+};
 
 /**
  * The reader's own page view, sent by `navigator.sendBeacon` from the detail
@@ -32,11 +68,21 @@ const noContent = () => new NextResponse(null, { status: 204 });
  *
  * The same-origin check applies here. The beacon carries the reader's cookies,
  * so without it any page on the web could file views against this tenant.
+ *
+ * Each client's beacons are limited before anything else is read: one without
+ * the actor cookie files a new viewer, so without the limit one client could
+ * add viewers to any page as fast as it can send.
  */
 export const POST = async (
   request: Request,
   { params }: RouteContext<"/[tenant_id]/api/v1/views">
 ) => {
+  const refused = await refuseOverLimit(request);
+
+  if (refused) {
+    return refused;
+  }
+
   if (!isSameOriginRequest(request.headers)) {
     return new NextResponse(null, { status: 403 });
   }

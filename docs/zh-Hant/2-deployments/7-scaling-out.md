@@ -2,8 +2,8 @@
 title: 水平擴展
 description: 安裝實例超出起初的規模時該多執行哪些處理程序、每個副本必須共用什麼，以及哪些部分無法水平擴展。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 安裝實例變慢或即將成長時，要增加的是它原本就在執行的處理程序：繁忙的處理程序多執行幾個副本，`publira server`依其回應的流量拆分，`publira worker`依其負責的工作拆分。本頁說明哪些處理程序可以執行多個副本、在那之前必須先準備好什麼、安裝實例的負載落在哪裡、`publira server`可以拆分到什麼程度、`publira worker`如何拆分、副本增加時資料庫必須能接受什麼、如何把讀者的目錄讀取與worker處理程序的每日重建移到資料庫的複本上，以及哪些部分無論增加多少副本都無法減輕負擔。本頁適用於任何平台，[Kubernetes](./5-kubernetes/index.md)與[在AWS Fargate上執行Amazon ECS](./6-ecs-fargate/index.md)頁面備有對應的資訊清單與指令。
@@ -26,7 +26,7 @@ source_updated: 2026-11-09
 | 內容 | 保存者 | 沒有共用的Valkey時 |
 | --- | --- | --- |
 | 速率限制計數器：讀者的寫入限制、step-up密碼限制與郵件限制 | `publira server` | 每個副本各自計數，因此請求分散到三個副本的讀者會得到三倍的限制。詳見[次數保存的位置](../3-operations/9-platform-policies.md#次數保存的位置) |
-| 搜尋頁面的速率限制計數器 | `web-storefront` | 每個副本各自計數，因此搜尋頁面請求分散到三個副本的讀者會得到三倍的限制 |
+| 搜尋頁面和瀏覽紀錄的速率限制計數器 | `web-storefront` | 每個副本各自計數，因此請求分散到三個副本的讀者會得到三倍的限制 |
 | 轉換後的圖片 | `publira server` | 每個副本把自己轉換的圖片保存在自己的記憶體中，因此每個副本都會重新轉換同一張圖片 |
 | Web應用程式快取的頁面與資料 | `web-storefront`、`web-admin`、`web-platform` | Web應用程式算繪的內容都不會被快取：每個請求都會重新算繪頁面，並為頁面上的所有內容呼叫`publira server` |
 

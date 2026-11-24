@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as GoogleTagGatewayModule from "./lib/google-tag-gateway";
-import type { SearchPageDecision } from "./lib/search-page-rate-limit";
+import type { RateLimitDecision } from "./lib/request-rate-limit";
 
 const {
   mockChargeSearchPage,
@@ -14,8 +14,7 @@ const {
   mockResolvePublishedPageSlugs,
   mockResolveTenant,
 } = vi.hoisted(() => ({
-  mockChargeSearchPage:
-    vi.fn<(client: string) => Promise<SearchPageDecision>>(),
+  mockChargeSearchPage: vi.fn<(client: string) => Promise<RateLimitDecision>>(),
   mockForwardToGoogleTagGateway: vi.fn(),
   mockResolveGoogleTagGateway: vi.fn(),
   mockResolvePublishedPageSlugs:

@@ -10,6 +10,7 @@ import { cache } from "react";
 
 import {
   apiClient,
+  buildClientAddressHeaders,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
@@ -88,6 +89,11 @@ const nothingToSell: SeriesPurchaseStateResult = {
  * series as a reader who holds nothing; a session the API rejects is answered
  * the same way. A series taken down since the page was read sells nothing.
  *
+ * A guest's call carries their address, which a call with a session gets from
+ * the client's interceptor, so that `publira server` charges it to the guest's
+ * own read allowance: without it, it reaches the API as one of this app's own,
+ * which no allowance counts.
+ *
  * Uncached. The purchase is recorded by the payment provider's notification
  * rather than by an Action this app runs, so there is no moment at which a
  * stored answer could be dropped, and a reader coming back from the checkout
@@ -107,7 +113,9 @@ export const getMySeriesPurchaseState = cache(
     try {
       const response = await apiClient.catalog.getSeriesEpisodeAccess(
         { seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
-        sessionId ? buildSessionHeaders(sessionId) : undefined
+        sessionId
+          ? buildSessionHeaders(sessionId)
+          : await buildClientAddressHeaders()
       );
 
       return {

@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRecordContentView } = vi.hoisted(() => ({
+import type { RateLimitDecision } from "#lib/request-rate-limit";
+
+const { mockChargeViewBeacon, mockRecordContentView } = vi.hoisted(() => ({
+  mockChargeViewBeacon: vi.fn<(client: string) => Promise<RateLimitDecision>>(),
   mockRecordContentView: vi.fn(),
+}));
+
+vi.mock("#lib/view-beacon-rate-limit", () => ({
+  createViewBeaconLimiter: () => mockChargeViewBeacon,
 }));
 
 vi.mock("#lib/view-events", () => ({
@@ -18,7 +25,10 @@ const SAME_ORIGIN_HEADERS = {
   origin: "https://shop.example.test",
 };
 
-const rawBeacon = (body: string, headers = SAME_ORIGIN_HEADERS) =>
+const rawBeacon = (
+  body: string,
+  headers: Record<string, string> = SAME_ORIGIN_HEADERS
+) =>
   new Request("https://shop.example.test/api/v1/views", {
     body,
     headers,
@@ -27,7 +37,7 @@ const rawBeacon = (body: string, headers = SAME_ORIGIN_HEADERS) =>
 
 const beacon = (
   view: { id: string; kind: string },
-  headers = SAME_ORIGIN_HEADERS
+  headers: Record<string, string> = SAME_ORIGIN_HEADERS
 ) => rawBeacon(JSON.stringify(view), headers);
 
 const params = (tenantId = TENANT_ID) => ({
@@ -36,7 +46,52 @@ const params = (tenantId = TENANT_ID) => ({
 
 describe("POST /api/v1/views", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    mockChargeViewBeacon.mockResolvedValue({ allowed: true });
     mockRecordContentView.mockReturnValue(Promise.resolve());
+  });
+
+  it("charges the beacon to the reader's address the forwarded headers name", async () => {
+    await POST(
+      beacon(
+        { id: "e0000000-0000-4000-8000-000000000001", kind: "episode" },
+        { ...SAME_ORIGIN_HEADERS, "x-forwarded-for": "198.51.100.7, 10.0.0.2" }
+      ),
+      params()
+    );
+
+    expect(mockChargeViewBeacon).toHaveBeenCalledWith("198.51.100.7");
+  });
+
+  it("answers 429 with the wait and records nothing for a client past its allowance", async () => {
+    mockChargeViewBeacon.mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 4,
+    });
+
+    const response = await POST(
+      beacon({ id: "e0000000-0000-4000-8000-000000000001", kind: "episode" }),
+      params()
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("4");
+    expect(mockRecordContentView).not.toHaveBeenCalled();
+  });
+
+  it("answers 500 and records nothing when the trusted proxies cannot be read", async () => {
+    vi.stubEnv("PUBLIRA_TRUSTED_PROXIES", "not-an-address");
+    vi.spyOn(console, "error").mockImplementation(() => null);
+
+    const response = await POST(
+      beacon({ id: "e0000000-0000-4000-8000-000000000001", kind: "episode" }),
+      params()
+    );
+
+    expect(response.status).toBe(500);
+    expect(mockChargeViewBeacon).not.toHaveBeenCalled();
+    expect(mockRecordContentView).not.toHaveBeenCalled();
   });
 
   it("accepts a same-origin beacon and takes the tenant from the path", async () => {

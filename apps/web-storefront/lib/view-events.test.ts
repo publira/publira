@@ -21,9 +21,12 @@ vi.mock("./api-client", () => ({
       recordContentView: mockRecordContentView,
     },
   },
+  buildClientAddressHeaders: () =>
+    Promise.resolve({ headers: { Forwarded: CLIENT_FORWARDED } }),
   resolveAccessToken: mockResolveAccessToken,
 }));
 
+const CLIENT_FORWARDED = "for=198.51.100.7";
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STORED_ACTOR_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
@@ -60,7 +63,7 @@ describe("recordContentView", () => {
     mockRecordContentView.mockResolvedValue({});
   });
 
-  it("mints an actor for a signed-out reader, stores it, and forwards it", async () => {
+  it("mints an actor for a signed-out reader, stores it, and forwards it with the reader's address", async () => {
     const set = cookieStore();
 
     await recordContentView({
@@ -89,7 +92,12 @@ describe("recordContentView", () => {
         },
         tenant: { tenantId: TENANT_ID },
       },
-      { headers: { Cookie: `publira_aid=${written.value}` } }
+      {
+        headers: {
+          Cookie: `publira_aid=${written.value}`,
+          Forwarded: CLIENT_FORWARDED,
+        },
+      }
     );
   });
 
@@ -112,7 +120,12 @@ describe("recordContentView", () => {
         },
         tenant: { tenantId: TENANT_ID },
       },
-      { headers: { Cookie: `publira_aid=${STORED_ACTOR_ID}` } }
+      {
+        headers: {
+          Cookie: `publira_aid=${STORED_ACTOR_ID}`,
+          Forwarded: CLIENT_FORWARDED,
+        },
+      }
     );
   });
 
