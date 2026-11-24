@@ -28,6 +28,11 @@ const (
 // tenant hold more than one provider.
 const beforePaymentProvidersVersion = 20261112153026
 
+// beforeRetiredProviderOldPathSaveVersion is the migration before the one
+// that keeps a retired provider's credentials through the previous release's
+// saves.
+const beforeRetiredProviderOldPathSaveVersion = 20261115140920
+
 func stripeProvider(enabled bool) paymentsettings.ProviderInput {
 	update := stripeUpdate(integrationSecretKey, integrationWebhookSecret)
 	return paymentsettings.ProviderInput{Provider: update.Provider, Enabled: enabled, Currency: "JPY", Fields: update.Fields}
@@ -556,5 +561,57 @@ func TestPaymentProvidersMigrationCopiesTheTenantsProvider(t *testing.T) {
 	}
 	if currency, err := store.Currency(ctx, tenant.ID); err != nil || currency != "JPY" {
 		t.Fatalf("Currency = %q, %v; want JPY kept", currency, err)
+	}
+}
+
+// A tenant whose every provider was retired before the upgrade has a settings
+// row that shows nothing stored, and the migration shows the provider's
+// credentials there, so the previous release's next save keeps them.
+func TestRetiredProviderMigrationShowsTheRetiredProvidersCredentials(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	pg.MigrateTo(t, beforeRetiredProviderOldPathSaveVersion)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenantOnOlderSchema(t, "PAYMIGRET001", "pay-migrate-retired.example.com", "Pay Migrate Retired")
+	mgr := integrationEncryptor(t)
+	secretEncrypted, err := mgr.EncryptString(integrationSecretKey)
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	webhookEncrypted, err := mgr.EncryptString(integrationWebhookSecret)
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	for _, statement := range []struct {
+		query string
+		args  []any
+	}{
+		{`INSERT INTO tenant_payment_config (tenant_id, provider, enabled, currency) VALUES ($1, 'stripe', false, 'JPY')`, []any{tenant.ID}},
+		{`UPDATE tenant_payment_providers
+			SET enabled = true,
+				credentials_encrypted = jsonb_build_object('secret_key', $2::text, 'webhook_secret', $3::text),
+				credential_hints = jsonb_build_object('secret_key', $4::text, 'webhook_secret', $5::text)
+			WHERE tenant_id = $1`, []any{tenant.ID, secretEncrypted, webhookEncrypted, paymentsettings.MaskSecret(integrationSecretKey), paymentsettings.MaskSecret(integrationWebhookSecret)}},
+		{`UPDATE tenant_payment_providers SET retired_at = now() WHERE tenant_id = $1`, []any{tenant.ID}},
+	} {
+		if _, err := pg.DB.ExecContext(ctx, statement.query, statement.args...); err != nil {
+			t.Fatalf("set up the retired provider on the older schema: %v", err)
+		}
+	}
+	if _, _, hint := configProvider(t, ctx, pg.DB, tenant.ID); hint != "" {
+		t.Fatalf("the settings row before the migration shows secret key %q, want nothing stored", hint)
+	}
+
+	pg.MigrateUp(t)
+	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != stripe.ID || enabled || hint != paymentsettings.MaskSecret(integrationSecretKey) {
+		t.Fatalf("the previous release reads %s enabled %v hint %q, want Stripe off with its fields", provider, enabled, hint)
+	}
+
+	previousReleaseSave(t, ctx, pg.DB, tenant.ID, stripe.ID, false, nil)
+	store := newIntegrationStore(t, pg.DB, &bytes.Buffer{})
+	if credentials := loadRetired(t, ctx, store, tenant.ID, stripe.ID); credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+		t.Fatalf("the retired Stripe's credentials after the previous release's save = %v, want them kept", credentials)
 	}
 }

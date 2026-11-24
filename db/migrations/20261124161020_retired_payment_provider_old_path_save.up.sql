@@ -17,6 +17,9 @@
 -- - A save of a provider tenant_payment_config did not show adds the fields
 --   the previous release sent to the ones the provider has, where it replaced
 --   them, and tenant_payment_config is given the result.
+--
+-- The settings rows the replaced function left showing nothing stored are
+-- written again at the end.
 
 -- FUNCTION: tenant_payment_providers_write_config
 -- Writes the tenant's first provider that is not retired, the earliest added,
@@ -182,3 +185,20 @@ BEGIN
     RETURN NULL;
 END;
 $$;
+
+-- The settings row of a tenant whose every provider is retired still shows
+-- nothing stored, as the function replaced above left it, and a save of the
+-- provider it shows would now write that back over the provider's
+-- credentials. Touching the tenant's providers runs
+-- tenant_payment_providers_write_config, which shows the first of them with
+-- its credentials; the settings row it writes runs
+-- tenant_payment_config_write_providers one level deeper, which returns at
+-- once.
+UPDATE tenant_payment_providers AS provider
+SET updated_at = provider.updated_at
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_payment_providers AS selling
+        WHERE selling.tenant_id = provider.tenant_id
+            AND selling.retired_at IS NULL
+    );
