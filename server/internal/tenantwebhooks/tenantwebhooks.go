@@ -90,7 +90,7 @@ const OutboxEventType = "webhook_delivery"
 
 // MaxAttempts is how many attempts a delivery gets before it is given up. The
 // wait between two doubles from a second to the outbox's hour cap, so twenty
-// span about half a day, where the outbox's default budget spans minutes: an
+// span about eight hours, twice what the outbox's default budget does: an
 // endpoint the tenant runs may well be down for longer than that.
 const MaxAttempts = 20
 

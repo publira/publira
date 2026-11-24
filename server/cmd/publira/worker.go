@@ -526,11 +526,11 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, memberPush)
 	handlers.RegisterMessage(outbox.EventTypeAnnouncementPushNotification, memberPush)
 	googlePlayHandlers.Logger = logger
-	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
-	handlers.Register(outbox.EventTypeGooglePlaySubscriptionAcknowledge, outbox.NewGooglePlaySubscriptionAcknowledgeHandler(googlePlayHandlers))
+	handlers.RegisterWithAttempts(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers), outbox.GooglePlayMaxAttempts)
+	handlers.RegisterWithAttempts(outbox.EventTypeGooglePlaySubscriptionAcknowledge, outbox.NewGooglePlaySubscriptionAcknowledgeHandler(googlePlayHandlers), outbox.GooglePlayMaxAttempts)
 	appleSignInHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeAppleSignInCodeExchange, outbox.NewAppleSignInCodeExchangeHandler(appleSignInHandlers))
-	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
+	handlers.RegisterWithAttempts(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers), outbox.AppleSignInTokenRevokeMaxAttempts)
 	subscriptionCancelHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeSubscriptionCancel, outbox.NewSubscriptionCancelHandler(subscriptionCancelHandlers))
 	// A refund's follow-up reads the provider through the same settings a

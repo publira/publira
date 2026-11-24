@@ -2,7 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
-updated: 2026-10-22
+updated: 2026-11-24
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -21,9 +21,9 @@ Each mail is written in the tenant's default language, or for an operator in the
 
 The last three reach a reader the way their notification preferences choose: each kind of notification has its own email setting, on unless the reader turned it off, and only a confirmed address receives one. An announcement the tenant sends to everyone is mailed to every reader with a confirmed address whatever their settings, so a tenant with many readers sends that many mails at once through its SMTP account.
 
-The worker queues every mail and retries one it could not send, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, it gives the mail up for good, and nothing sends it again. An outage of the SMTP server longer than that, or of `email-renderer` once it is on, therefore loses the mail queued during it rather than delaying it. `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts; since the wait keeps doubling, up to an hour between attempts, a few more attempts cover a much longer outage.
+The worker queues every mail and retries one it could not send, waiting twice as long after each failure: one second, then two, then four, up to an hour between attempts. After the sixteenth failed attempt, about four hours after the first, it gives the mail up, and the worker does not send it again on its own. An outage of the SMTP server longer than that, or of `email-renderer` once it is on, therefore stops the mail queued during it rather than only delaying it. `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts; each one past the sixteenth adds an hour.
 
-Each mail given up on is logged by the worker as `outbox event dead`, and counted in the `publira.outbox.events.dead` metric when the worker exports OpenTelemetry metrics, so alert on either. The install cannot send such a mail again: a reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
+Each mail given up on is logged by the worker as `outbox event dead`, and counted in the `publira.outbox.events.dead` metric when the worker exports OpenTelemetry metrics, so alert on either. Once the SMTP server is back, `publiractl outbox requeue` sends those mails again, as [Seeing what was given up](./10-scheduled-jobs.md#seeing-what-was-given-up) describes. A password reset, a confirmation mail, and an administrator invitation cannot be sent again, because the mail no longer holds its link: a reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
 
 An install with no worker running sends no mail at all.
 

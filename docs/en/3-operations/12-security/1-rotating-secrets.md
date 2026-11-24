@@ -2,7 +2,7 @@
 title: Rotating secrets
 description: Replace an install's secret encryption keys, a database role's password, and its signing keys and tokens without losing what they protect.
 published: 2026-10-21
-updated: 2026-11-04
+updated: 2026-11-24
 ---
 
 These procedures replace each secret that [Where each secret may go](./index.md#where-each-secret-may-go) names. Read them before you need them — each is easier to run on a quiet day than during an incident.
@@ -142,7 +142,7 @@ The value has to be at least 32 bytes, and only its first 32 bytes are used, so 
 
 ### The cache revalidation token
 
-`publira server` and `publira worker` send it with every request to drop a web app's cached pages, and each web app refuses a request whose token does not match its own. While the two sides disagree, every drop is refused with `401`, and the worker logs each attempt as `outbox event retry scheduled` with `revalidate endpoint returned status=401`. The worker keeps trying each drop for about nine minutes, so restarting every process with the new token within that time loses nothing; a drop that runs out of attempts leaves the pages it named as they were, as [Scheduled and maintenance jobs](../10-scheduled-jobs.md#seeing-what-was-given-up) describes.
+`publira server` and `publira worker` send it with every request to drop a web app's cached pages, and each web app refuses a request whose token does not match its own. While the two sides disagree, every drop is refused with `401`, and the worker logs each attempt as `outbox event retry scheduled` with `revalidate endpoint returned status=401`. The worker keeps trying each drop for about four hours, so restarting every process with the new token within that time loses nothing; a drop that runs out of attempts leaves the pages it named as they were until it is requeued, as [Scheduled and maintenance jobs](../10-scheduled-jobs.md#seeing-what-was-given-up) describes.
 
 ### The web service token
 

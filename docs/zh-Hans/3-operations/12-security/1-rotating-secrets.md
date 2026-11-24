@@ -2,8 +2,8 @@
 title: 轮换密钥
 description: 替换安装实例的密钥加密密钥、数据库角色的密码以及签名密钥和令牌，同时不丢失它们所保护的内容。
 published: 2026-11-03
-updated: 2026-11-04
-source_updated: 2026-11-04
+updated: 2026-11-24
+source_updated: 2026-11-24
 ---
 
 这些步骤用于替换[每个密钥可以放在哪里](./index.md#每个密钥可以放在哪里)中列出的每个密钥。请在需要之前就读一遍——每个步骤在平静的日子里执行都比在事故中执行容易。
@@ -143,7 +143,7 @@ docker compose up -d
 
 ### 缓存重新验证令牌
 
-`publira server`和`publira worker`在每个丢弃Web应用缓存页面的请求中都会发送它，每个Web应用都会拒绝令牌与自身不一致的请求。在两边不一致期间，每次丢弃都会以`401`被拒绝，worker进程会将每次尝试记录为`outbox event retry scheduled`，并带有`revalidate endpoint returned status=401`。worker进程会对每次丢弃持续尝试约九分钟，因此只要在这段时间内以新令牌重启所有进程，就不会丢失任何内容；用完尝试次数的丢弃操作会让其指定的页面保持原样，详见[定时任务与维护任务](../10-scheduled-jobs.md#查看被放弃的内容)。
+`publira server`和`publira worker`在每个丢弃Web应用缓存页面的请求中都会发送它，每个Web应用都会拒绝令牌与自身不一致的请求。在两边不一致期间，每次丢弃都会以`401`被拒绝，worker进程会将每次尝试记录为`outbox event retry scheduled`，并带有`revalidate endpoint returned status=401`。worker进程会对每次丢弃持续尝试约四小时，因此只要在这段时间内以新令牌重启所有进程，就不会丢失任何内容；用完尝试次数的丢弃操作在被重新排队之前，会让其指定的页面保持原样，详见[定时任务与维护任务](../10-scheduled-jobs.md#查看被放弃的内容)。
 
 ### Web服务令牌
 

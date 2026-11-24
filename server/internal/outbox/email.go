@@ -25,15 +25,16 @@ type EmailHandlerConfig struct {
 	Renderer  emailrenderer.Renderer
 }
 
-// require reports a dependency the process was started without. It is a plain
-// error rather than a [Permanent] one, because an operator restoring the SMTP
-// client makes a pending event deliverable again.
+// require reports a dependency the process was started without. It is
+// [Blocked] rather than [Permanent], because an operator who starts the worker
+// with it makes a pending event deliverable again, and the event waits for that
+// without spending its budget.
 func (cfg EmailHandlerConfig) require(kind string) error {
 	switch {
 	case cfg.DB == nil:
-		return fmt.Errorf("%s handler database is not configured", kind)
+		return Blocked(fmt.Errorf("%s handler database is not configured", kind))
 	case cfg.Mailer == nil:
-		return fmt.Errorf("%s handler smtp sender is not configured", kind)
+		return Blocked(fmt.Errorf("%s handler smtp sender is not configured", kind))
 	default:
 		return nil
 	}

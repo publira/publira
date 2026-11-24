@@ -37,6 +37,7 @@ func acknowledgeEvent(t *testing.T, tenantID uuid.UUID) dbmodels.OutboxEvent {
 		TenantID:  uuid.NullUUID{UUID: tenantID, Valid: true},
 		EventType: outbox.EventTypeGooglePlaySubscriptionAcknowledge,
 		Payload:   payload,
+		CreatedAt: time.Now(),
 	}
 }
 
@@ -90,7 +91,9 @@ func TestGooglePlaySubscriptionAcknowledgeHandlerLeavesASubscriptionTheAppAcknow
 	}
 }
 
-func TestGooglePlaySubscriptionAcknowledgeHandlerRetriesWhileTheStoreIsOff(t *testing.T) {
+// A tenant that switched Google Play off is waited for, as it is for a
+// consume, until Google Play has refunded the subscription.
+func TestGooglePlaySubscriptionAcknowledgeHandlerWaitsWhileTheStoreIsOff(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	encryptor := newConsumeEncryptor(t)
@@ -103,9 +106,14 @@ func TestGooglePlaySubscriptionAcknowledgeHandlerRetriesWhileTheStoreIsOff(t *te
 		Encryptor: encryptor,
 		Purchases: play.Client(),
 	})
-	err := handler(context.Background(), acknowledgeEvent(t, tenantID))
-	if err == nil || outbox.IsPermanent(err) {
-		t.Fatalf("handler error = %v, want a retriable error", err)
+	event := acknowledgeEvent(t, tenantID)
+	err := handler(context.Background(), event)
+	if !outbox.IsBlocked(err) || outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a blocked error", err)
+	}
+	event.CreatedAt = time.Now().Add(-outbox.GooglePlayDeadline)
+	if err := handler(context.Background(), event); !outbox.IsPermanent(err) {
+		t.Fatalf("handler error past the deadline = %v, want a permanent error", err)
 	}
 	if got := play.Acknowledgments(consumePackageName, acknowledgeToken); got != 0 {
 		t.Fatalf("acknowledge requests = %d, want 0", got)

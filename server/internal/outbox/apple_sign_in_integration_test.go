@@ -139,6 +139,33 @@ func TestAppleTokenRevocationIsDoneForATokenAppleNoLongerKnows(t *testing.T) {
 	}
 }
 
+// A tenant that took its key away is waited for without spending the
+// revocation's budget, since the revocation is owed to the reader and a
+// restored key can still pay it.
+func TestAppleTokenRevocationWaitsForAKeyTheTenantRemoved(t *testing.T) {
+	f := newAppleSignInFixture(t)
+	if _, err := f.pg.DB.ExecContext(context.Background(), `DELETE FROM tenant_apple_sign_in_config WHERE tenant_id = $1`, f.tenantID); err != nil {
+		t.Fatalf("remove the apple sign-in settings: %v", err)
+	}
+	sealed, err := signin.Seal(f.encryptor, "owed-token")
+	if err != nil {
+		t.Fatalf("seal the token: %v", err)
+	}
+	event := f.event(t, outbox.EventTypeAppleSignInTokenRevoke, outbox.AppleSignInTokenRevokePayload{
+		TenantID:              f.tenantID.String(),
+		ClientID:              appleClientID,
+		RefreshTokenEncrypted: sealed,
+	})
+
+	err = outbox.NewAppleSignInTokenRevokeHandler(f.handlerConfig(t))(context.Background(), event)
+	if !outbox.IsBlocked(err) || !errors.Is(err, signin.ErrAppleNotConfigured) {
+		t.Fatalf("handle error = %v, want a blocked missing key", err)
+	}
+	if got := f.tokens.Revocations(); len(got) != 0 {
+		t.Fatalf("revocations = %+v, want none", got)
+	}
+}
+
 // The code is spent once Apple answers, so a token the link could not keep is
 // revoked rather than left for a retry that cannot get it back.
 func TestAppleCodeExchangeRevokesATokenItCouldNotStore(t *testing.T) {
