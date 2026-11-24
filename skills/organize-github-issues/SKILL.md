@@ -1,6 +1,6 @@
 ---
 name: organize-github-issues
-description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, Issue fields, labels, milestones, epics, Sub-issues, and dependency Relationships. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, or make GitHub work tracking easier to search and maintain.
+description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, Issue fields, labels, milestones, epics, Sub-issues, dependency Relationships, assignees, and statuses. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, start or stop work on an Issue (assigning it and setting its status to In progress), or make GitHub work tracking easier to search and maintain.
 ---
 
 # Organize GitHub Issues
@@ -132,6 +132,20 @@ When a feature is left to one client for any other reason, that client's Issue s
 6. Re-read the created Issue from GitHub and verify every value.
 
 Do not repeat structured metadata in the title or add hand-maintained `Parent`, `Priority`, or `Blocked by` sections when GitHub's native fields already represent it. Preserve useful historical prose during migrations; do not rewrite bodies solely for cosmetic uniformity.
+
+Leave an Issue you file for later, or for another session, unassigned and in the status GitHub gives it. Assign it and set its status only when the same session goes on to work on it, as described next.
+
+## [Start and stop work on an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/assigning-issues-and-pull-requests-to-other-github-users)
+
+The status is GitHub's [issue status](https://github.blog/changelog/2026-11-23-issue-statuses-and-repository-boards-are-in-public-preview/): Backlog, Todo, In progress, In review, Done, Not planned, or Duplicate. `gh` has no flag for it, so read and set it through GraphQL as [references/github-api.md](references/github-api.md) shows.
+
+1. Read the Issue's assignees and status. Stop and report when someone else is assigned or the status is In progress or In review.
+2. Assign the signed-in account with `gh issue edit NUMBER --add-assignee @me`.
+3. Set the status to In progress. Assigning a user moves the Issue to Todo, so do this after step 2.
+4. After the pull request that closes the Issue is open, read the status back. GitHub moves it to In review for an open pull request and leaves it In progress for a draft; set it yourself when it did not move.
+5. When the session ends without a pull request, remove the assignment with `--remove-assignee @me` and set the status back to the one read in step 1.
+
+Do not set Done to finish work: it closes the Issue before the change has landed, and merging the pull request closes it as Done anyway.
 
 ## Normalize a backlog
 

@@ -60,6 +60,19 @@ Enforced by `pnpm docs:check`, which `pnpm preflight` and the `Check` job run, f
 
 Authoring rules for the pages themselves, including when a change bumps a page's `updated` date: see [`docs/AGENTS.md`](docs/AGENTS.md).
 
+## Working on an Issue: assigned and In progress
+
+Work on an Issue shows on the Issue for as long as it lasts: whoever takes it on is among its assignees, and its status is **In progress**. That is how the Issue list, the issues dashboard, and a repository board grouped by status tell a contributor which Issues somebody is working on and who, and how one session tells that another has already started. An agent works as the account `gh` is signed in as, so that is the account it assigns.
+
+- Before starting, read the Issue's assignees and status. An Issue assigned to someone else, or already In progress or In review, is being worked on, by a contributor or by another session: report that and leave it alone rather than starting the same work twice.
+- On starting, assign yourself, then set the status to In progress. Assigning a user moves an Issue to Todo, so the status is set after the assignment, not before it.
+- Opening the pull request moves the status on by itself: an Issue that an open pull request will close is In review, and one whose pull request is a draft stays In progress. Read the status back once the pull request is open, and set it when it did not move.
+- Merging the pull request closes the Issue as Done; there is nothing to set.
+- A session that stops without a pull request removes its assignment and puts the status back to what it was before, so the Issue does not claim work nobody is doing.
+- An Issue filed during the work but not taken on in the same session, such as a follow-up or a prerequisite left to another session, is filed unassigned and in the status a new Issue gets, so whoever picks it up claims it.
+
+No check enforces this. `gh issue edit --add-assignee @me` sets the assignee, but `gh` has no flag for the status; the `organize-github-issues` skill has the GraphQL calls that read and set it.
+
 ## Git commits
 
 ### A change spanning the backend and the web apps: one stacked PR per layer
