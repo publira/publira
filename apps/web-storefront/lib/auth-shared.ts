@@ -1,5 +1,6 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { isSameOriginPath } from "@publira/utils";
 import {
   decryptSessionPayload,
   isSessionExpired,
@@ -32,12 +33,7 @@ export const getPublicSessionCacheTag = (cookieName: string): string =>
 export const sanitizeRedirectPath = (
   path: string | null | undefined
 ): string => {
-  if (!path || !path.startsWith("/")) {
-    return "/";
-  }
-
-  // Browsers can treat `/\evil.example` as the protocol-relative `//evil.example`.
-  if (path.startsWith("//") || path.startsWith("/\\")) {
+  if (!path || !isSameOriginPath(path)) {
     return "/";
   }
 
@@ -50,7 +46,12 @@ export const sanitizeRedirectPath = (
     return "/";
   }
 
-  return `${bare}${suffix}`;
+  const sanitized = `${bare}${suffix}`;
+
+  // Taking the locale segment off can leave a shape the first check never
+  // saw, such as `/\evil.example` out of `/en/\evil.example`, so the result is
+  // checked again rather than trusted for having passed once.
+  return isSameOriginPath(sanitized) ? sanitized : "/";
 };
 
 /**

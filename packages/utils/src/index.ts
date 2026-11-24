@@ -80,4 +80,6 @@ export {
   type ThemeContrastPair,
 } from "./theme-contrast";
 
+export { isSameOriginPath } from "./same-origin-path";
+
 export { isValidTimeZone, listSupportedTimeZones } from "./time-zone";

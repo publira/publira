@@ -16,6 +16,7 @@
 
 import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { isSameOriginPath } from "@publira/utils";
 
 import { isTenantIdFormat } from "./tenant-id-format";
 
@@ -36,8 +37,7 @@ const LOCALE_EXEMPT_TOP_LEVEL_SEGMENTS = new Set([
 ]);
 
 /** An href that leaves the app (or the document) keeps whatever it says. */
-const isExternalHref = (href: string): boolean =>
-  !href.startsWith("/") || href.startsWith("//");
+const isExternalHref = (href: string): boolean => !isSameOriginPath(href);
 
 const splitSegments = (pathname: string): string[] =>
   pathname.split("/").filter((segment) => segment.length > 0);

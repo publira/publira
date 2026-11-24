@@ -16,6 +16,7 @@ describe("toSafeOperatorLinkUrl", () => {
   it("refuses the shapes a browser reads as another origin or as code", () => {
     expect(toSafeOperatorLinkUrl("//evil.example")).toBeNull();
     expect(toSafeOperatorLinkUrl("/\\evil.example")).toBeNull();
+    expect(toSafeOperatorLinkUrl("/\t/evil.example")).toBeNull();
     expect(toSafeOperatorLinkUrl("mailto:ops@example.com")).toBeNull();
     // Assembled rather than written out, because `no-script-url` refuses the
     // literal even in the test that proves it is refused here too.

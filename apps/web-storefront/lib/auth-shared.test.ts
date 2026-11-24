@@ -53,6 +53,25 @@ describe("web-storefront auth-shared", () => {
     expect(sanitizeRedirectPath("/\\evil.example.com")).toBe("/");
   });
 
+  it("sanitizeRedirectPath refuses another origin uncovered by dropping the locale", () => {
+    expect(sanitizeRedirectPath("/en/\\evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/en/en/\\evil.example")).toBe("/");
+    // The login page and its Action each sanitize the value once.
+    expect(
+      sanitizeRedirectPath(sanitizeRedirectPath("/en/en/\\evil.example"))
+    ).toBe("/");
+  });
+
+  it("sanitizeRedirectPath refuses a control character a URL parser would drop", () => {
+    expect(sanitizeRedirectPath("/\t/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/en/\t/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/\n/evil.example")).toBe("/");
+  });
+
+  it("sanitizeRedirectPath keeps a backslash in the query", () => {
+    expect(sanitizeRedirectPath("/en/search?q=a\\b")).toBe("/search?q=a\\b");
+  });
+
   it("buildLoginPath sanitizes returnTo and adds a reason only when it expires", () => {
     expect(buildLoginPath("ja", "ja", "/settings")).toBe(
       "/login?returnTo=%2Fsettings"
