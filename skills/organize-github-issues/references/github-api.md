@@ -70,6 +70,53 @@ gh api --method POST \
 
 Use `PUT` only when intentionally replacing all field values.
 
+## Use GraphQL for the Issue status
+
+Issue statuses are in public preview, and neither `gh issue create` nor `gh issue edit` sets one. Read a repository's statuses, in display order, with their IDs:
+
+```bash
+gh api graphql -f owner=OWNER -f repo=REPO -f query='
+  query($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+      planningStatuses(first: 20) {
+        nodes { id name category { key state stateReason } }
+      }
+    }
+  }'
+```
+
+Select a status by its `name` rather than copying an ID into a script; the `category` says which ones close the Issue (`state: CLOSED`).
+
+Read an Issue's node ID, status, and assignees:
+
+```bash
+gh api graphql -f owner=OWNER -f repo=REPO -F number=NUMBER -f query='
+  query($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) {
+      issue(number: $number) {
+        id
+        status { name }
+        assignees(first: 10) { nodes { login } }
+      }
+    }
+  }'
+```
+
+`status` is `null` on an Issue that has never had one set.
+
+Set the status:
+
+```bash
+gh api graphql -f issue=ISSUE_NODE_ID -f status=STATUS_ID -f query='
+  mutation($issue: ID!, $status: ID!) {
+    setIssueStatus(input: { issueId: $issue, statusId: $status }) {
+      issue { status { name } }
+    }
+  }'
+```
+
+`setIssueStatus` closes or reopens the Issue when the status's category calls for it, and Duplicate also requires `duplicateIssueId`. When a field or the mutation is refused, read the current shape with an introspection query (`__type(name: "SetIssueStatusInput")`) before changing the call: the preview is subject to change.
+
 ## [Use the API for complete inventory](https://docs.github.com/en/rest/issues/issues)
 
 The API remains useful for repository-wide audits and machine-readable values:
