@@ -125,17 +125,19 @@ var (
 type AdminPaymentSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *v1.ListPaymentProvidersRequest) (*v1.ListPaymentProvidersResponse, error)
-	// The first provider the tenant holds that is not retired, replaced by
+	// The first provider the tenant holds that is not retired, or the first
+	// retired one, switched off, when every one is, replaced by
 	// ListTenantPaymentProviders.
 	//
 	// Minimum role: tenant_admin.
 	//
 	// Deprecated: do not use.
 	GetTenantPaymentSettings(context.Context, *v1.GetTenantPaymentSettingsRequest) (*v1.GetTenantPaymentSettingsResponse, error)
-	// Saves the first provider the tenant holds that is not retired, replaced
-	// by UpsertTenantPaymentProvider. Naming another provider puts it in the
-	// first one's place and deletes the first one's credentials, and leaves the
-	// tenant's other providers as they are.
+	// Saves the provider GetTenantPaymentSettings answers, replaced by
+	// UpsertTenantPaymentProvider. Naming another provider puts it in the first
+	// one's place and retires the first one, which keeps its credentials, and
+	// leaves the tenant's other providers as they are. A retired provider saved
+	// switched off stays retired.
 	//
 	// Minimum role: tenant_admin.
 	//
@@ -167,17 +169,19 @@ func NewAdminPaymentSettingsServiceClient(client *connect.Client) AdminPaymentSe
 type AdminPaymentSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *v1.ListPaymentProvidersRequest) (*v1.ListPaymentProvidersResponse, error)
-	// The first provider the tenant holds that is not retired, replaced by
+	// The first provider the tenant holds that is not retired, or the first
+	// retired one, switched off, when every one is, replaced by
 	// ListTenantPaymentProviders.
 	//
 	// Minimum role: tenant_admin.
 	//
 	// Deprecated: do not use.
 	GetTenantPaymentSettings(context.Context, *v1.GetTenantPaymentSettingsRequest) (*v1.GetTenantPaymentSettingsResponse, error)
-	// Saves the first provider the tenant holds that is not retired, replaced
-	// by UpsertTenantPaymentProvider. Naming another provider puts it in the
-	// first one's place and deletes the first one's credentials, and leaves the
-	// tenant's other providers as they are.
+	// Saves the provider GetTenantPaymentSettings answers, replaced by
+	// UpsertTenantPaymentProvider. Naming another provider puts it in the first
+	// one's place and retires the first one, which keeps its credentials, and
+	// leaves the tenant's other providers as they are. A retired provider saved
+	// switched off stays retired.
 	//
 	// Minimum role: tenant_admin.
 	//

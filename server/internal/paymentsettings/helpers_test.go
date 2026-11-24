@@ -104,8 +104,17 @@ func (m *memoryPaymentQueries) UpsertTenantPaymentConfig(_ context.Context, arg 
 		CreatedAt:            existing.CreatedAt,
 		UpdatedAt:            existing.UpdatedAt,
 	}
-	m.byTenant[arg.TenantID] = row
-	m.replaceFirstProvider(row)
+	// The trigger writes the provider's fields back after the row is
+	// returned, so the caller is answered what it sent.
+	shown := ""
+	if previous, ok := m.byTenant[arg.TenantID]; ok {
+		shown = previous.Provider
+	}
+	saved := m.replaceFirstProvider(row, shown)
+	stored := row
+	stored.CredentialsEncrypted = saved.CredentialsEncrypted
+	stored.CredentialHints = saved.CredentialHints
+	m.byTenant[arg.TenantID] = stored
 	return row, nil
 }
 
@@ -121,7 +130,7 @@ func (m *memoryPaymentQueries) SaveTenantCurrency(_ context.Context, arg dbmodel
 			CredentialHints:      json.RawMessage(`{}`),
 		}
 		m.byTenant[arg.TenantID] = row
-		m.replaceFirstProvider(row)
+		m.replaceFirstProvider(row, "")
 	}
 	row.Currency = arg.Currency
 	m.byTenant[arg.TenantID] = row
@@ -129,14 +138,17 @@ func (m *memoryPaymentQueries) SaveTenantCurrency(_ context.Context, arg dbmodel
 }
 
 // replaceFirstProvider is tenant_payment_config_write_providers: row's
-// provider takes the place of the first one that is not retired.
-func (m *memoryPaymentQueries) replaceFirstProvider(row dbmodels.TenantPaymentConfig) {
+// provider takes the place of the first one that is not retired, which is
+// retired when it is another, and answers the provider as saved. A retired
+// provider saved switched off stays retired and as on as it was. shown is the
+// provider the settings row showed before the write, whose fields row holds
+// in full.
+func (m *memoryPaymentQueries) replaceFirstProvider(row dbmodels.TenantPaymentConfig, shown string) dbmodels.TenantPaymentProvider {
 	held := m.providers[row.TenantID]
 	first := slices.IndexFunc(held, func(p dbmodels.TenantPaymentProvider) bool { return !p.RetiredAt.Valid })
 	if first >= 0 && held[first].Provider != row.Provider {
-		held = slices.Delete(held, first, first+1)
+		held[first].RetiredAt = sql.NullTime{Time: time.Now(), Valid: true}
 	}
-	at := slices.IndexFunc(held, func(p dbmodels.TenantPaymentProvider) bool { return p.Provider == row.Provider })
 	provider := dbmodels.TenantPaymentProvider{
 		ID:                   uuid.Must(uuid.NewV7()),
 		TenantID:             row.TenantID,
@@ -145,17 +157,52 @@ func (m *memoryPaymentQueries) replaceFirstProvider(row dbmodels.TenantPaymentCo
 		CredentialsEncrypted: row.CredentialsEncrypted,
 		CredentialHints:      row.CredentialHints,
 	}
-	switch {
-	case at >= 0:
+	if at := slices.IndexFunc(held, func(p dbmodels.TenantPaymentProvider) bool { return p.Provider == row.Provider }); at >= 0 {
 		provider.ID = held[at].ID
+		if !row.Enabled {
+			provider.Enabled = held[at].Enabled && held[at].RetiredAt.Valid
+			provider.RetiredAt = held[at].RetiredAt
+		}
+		if row.Provider != shown {
+			provider.CredentialsEncrypted = mergeObjects(held[at].CredentialsEncrypted, row.CredentialsEncrypted)
+			provider.CredentialHints = mergeObjects(held[at].CredentialHints, row.CredentialHints)
+		}
+		if first < 0 || at <= first {
+			held[at] = provider
+			m.providers[row.TenantID] = held
+			return provider
+		}
 		held = slices.Delete(held, at, at+1)
-		held = slices.Insert(held, 0, provider)
-	case first >= 0:
-		held = slices.Insert(held, min(first, len(held)), provider)
-	default:
+	}
+	if first >= 0 {
+		held = slices.Insert(held, first+1, provider)
+	} else {
 		held = append(held, provider)
 	}
 	m.providers[row.TenantID] = held
+	return provider
+}
+
+// shownProvider answers the index of the provider the settings row shows:
+// the first that is not retired, or the first retired one when every one is,
+// or -1 when there is none.
+func shownProvider(held []dbmodels.TenantPaymentProvider) int {
+	if first := slices.IndexFunc(held, func(p dbmodels.TenantPaymentProvider) bool { return !p.RetiredAt.Valid }); first >= 0 {
+		return first
+	}
+	if len(held) == 0 {
+		return -1
+	}
+	return 0
+}
+
+// mergeObjects is jsonb's ||: added's keys over stored's.
+func mergeObjects(stored, added json.RawMessage) json.RawMessage {
+	merged := map[string]json.RawMessage{}
+	_ = json.Unmarshal(stored, &merged)
+	_ = json.Unmarshal(added, &merged)
+	out, _ := json.Marshal(merged)
+	return out
 }
 
 // writeFirstProvider is tenant_payment_providers_write_config.
@@ -164,15 +211,15 @@ func (m *memoryPaymentQueries) writeFirstProvider(tenantID uuid.UUID) {
 	if !ok {
 		return
 	}
-	first := slices.IndexFunc(m.providers[tenantID], func(p dbmodels.TenantPaymentProvider) bool { return !p.RetiredAt.Valid })
-	if first < 0 {
+	held := m.providers[tenantID]
+	if at := shownProvider(held); at < 0 {
 		row.Enabled = false
 		row.CredentialsEncrypted = json.RawMessage(`{}`)
 		row.CredentialHints = json.RawMessage(`{}`)
 	} else {
-		provider := m.providers[tenantID][first]
+		provider := held[at]
 		row.Provider = provider.Provider
-		row.Enabled = provider.Enabled
+		row.Enabled = provider.Enabled && !provider.RetiredAt.Valid
 		row.CredentialsEncrypted = provider.CredentialsEncrypted
 		row.CredentialHints = provider.CredentialHints
 	}
