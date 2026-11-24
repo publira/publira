@@ -1860,6 +1860,7 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	h := &Handler{
 		cache:        newMemoryCache(time.Hour, defaultMemoryMaxBytes),
 		maxConverted: 8,
+		conversions:  newConversionSlots(),
 		logger:       slog.Default(),
 		proxy: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "image/webp")

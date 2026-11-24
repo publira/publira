@@ -175,6 +175,8 @@ type Handler struct {
 	cache        ImageCache
 	proxy        http.Handler
 	maxConverted int
+	// conversions holds one token per conversion running now.
+	conversions chan struct{}
 	// reads bounds how fast one client may fetch the images of a tenant's
 	// site and image hosts.
 	reads *readguard.Guard
@@ -210,6 +212,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 		tokens:       tokens,
 		cache:        newImageCacheFromEnv(logger),
 		maxConverted: defaultMaxConvertedBytes,
+		conversions:  newConversionSlots(),
 		reads:        reads,
 	}
 	origin, proxy, err := startOriginAndProxy(h)

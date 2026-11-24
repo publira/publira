@@ -86,7 +86,7 @@ These internal URLs are private network addresses, not the ones browsers use: th
 
 ### Image delivery
 
-After checking permissions, the image routes convert images to WebP / AVIF with Manael, resize them, cache the converted result, and return it. Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `fit` / `q` query parameters. The key of the intermediate cache is derived from the same inputs, so one converted rendition is shared by every host name of a tenant; encryption is applied to the response afterwards and never to what is cached. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
+After checking permissions, the image routes convert images to WebP / AVIF with Manael, resize them, cache the converted result, and return it. Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `q` query parameters; every resize is a `scale-down`, whatever `fit` names. The key of the intermediate cache is derived from the same inputs, so one converted rendition is shared by every host name of a tenant; encryption is applied to the response afterwards and never to what is cached. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
 
 #### Authorization for episode body images
 

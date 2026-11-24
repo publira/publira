@@ -365,7 +365,7 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 ## Image delivery (Manael)
 
-After checking permissions, the image routes of `publira server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
+After checking permissions, the image routes of `publira server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `q`. A resize never goes past the original's own size: whatever `fit` a request names, it is converted as `scale-down`, and a `w` or `h` above 16383, the longest side WebP encodes, is answered 400 without the original being read. At most one conversion per available CPU (`GOMAXPROCS`) runs at once, and a request beyond them waits for one to finish. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
 For episode body images on a tenant site, the cached converted plaintext is never returned as-is: the server encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon, logo, sign-in image, and brand marks, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
 

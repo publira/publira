@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,13 @@ const (
 	// defaultMaxConvertedBytes matches Manael's default upstream limit so a
 	// converted payload cannot grow past what we are willing to buffer.
 	defaultMaxConvertedBytes = 20 << 20
+	// maxResizeDimension is the largest w or h a request may ask for, and the
+	// largest side WebP can encode. Every resize is a scale-down
+	// (scaleDownOnly), so it never grows past the original's own size; the
+	// bound only refuses, before the original is read, a size no conversion
+	// could answer.
+	maxResizeDimension = 16383
+	resizeFitScaleDown = "scale-down"
 )
 
 var errConvertedTooLarge = errors.New("converted image exceeds size limit")
@@ -97,6 +105,8 @@ func startOriginAndProxy(h *Handler) (*http.Server, http.Handler, error) {
 		upstream,
 		manael.WithAVIFEnabled(true),
 		manael.WithResizeEnabled(true),
+		manael.WithMaxResizeWidth(maxResizeDimension),
+		manael.WithMaxResizeHeight(maxResizeDimension),
 	)
 	return origin, proxy, nil
 }
@@ -177,6 +187,7 @@ func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, ob
 }
 
 func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHost bool, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
+	r = scaleDownOnly(r)
 	storeVersion, ok := h.resolveStoreVersion(w, r, h.site(adminHost).Objects, objectKey)
 	if !ok {
 		return
@@ -193,7 +204,10 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHo
 		limit = defaultMaxConvertedBytes
 	}
 	rec := newLimitedRecorder(limit)
-	h.proxy.ServeHTTP(rec, rewriteOriginRequest(r, adminHost, objectKey, fallbackContentType))
+	if !h.convert(rec, rewriteOriginRequest(r, adminHost, objectKey, fallbackContentType)) {
+		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusServiceUnavailable, []byte("request canceled\n"))
+		return
+	}
 	if rec.overflow {
 		h.logger.Error("converted image exceeds size limit", "object_key", objectKey, "limit", limit)
 		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
@@ -227,6 +241,19 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHo
 	h.writeConvertedImage(w, contentType, cacheControl, "miss", rec.code, body, cipher, key)
 }
 
+// convert hands r to Manael once a conversion slot is free. It reports false,
+// having converted nothing, when r is canceled while it waits.
+func (h *Handler) convert(rec *limitedRecorder, r *http.Request) bool {
+	select {
+	case h.conversions <- struct{}{}:
+	case <-r.Context().Done():
+		return false
+	}
+	defer func() { <-h.conversions }()
+	h.proxy.ServeHTTP(rec, r)
+	return true
+}
+
 func (h *Handler) writeConvertedImage(w http.ResponseWriter, contentType, cacheControl, cacheStatus string, status int, body []byte, cipher *imageCipher, keyID string) {
 	if cipher == nil || status < http.StatusOK || status >= http.StatusMultipleChoices || len(body) == 0 {
 		writeImage(w, contentType, cacheControl, cacheStatus, status, body)
@@ -244,6 +271,39 @@ func (h *Handler) writeConvertedImage(w http.ResponseWriter, contentType, cacheC
 	w.Header().Set(imageKeyIDHeader, keyID)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	writeImage(w, "application/octet-stream", cacheControl, cacheStatus, status, encrypted)
+}
+
+// scaleDownOnly answers r as a request for fit=scale-down, whatever fit it
+// named. Manael's other fits enlarge: contain, which is also what no fit
+// means, scales a small original up to the box asked for, and cover scales it
+// up until it covers the box before cropping. Either turns a 512px logo asked
+// for at w=16000&h=16000 into a 256-megapixel conversion. scale-down never
+// answers with more than the original, and it is the fit the web apps and the
+// viewer ask for.
+func scaleDownOnly(r *http.Request) *http.Request {
+	q := r.URL.Query()
+	if q.Get("w") == "" && q.Get("h") == "" {
+		if !q.Has("fit") {
+			return r
+		}
+		q.Del("fit")
+	} else {
+		q.Set("fit", resizeFitScaleDown)
+	}
+	u := *r.URL
+	u.RawQuery = q.Encode()
+	out := r.Clone(r.Context())
+	out.URL = &u
+	return out
+}
+
+// newConversionSlots bounds how many conversions run at once. bimg runs
+// libvips on one thread per conversion unless VIPS_CONCURRENCY says
+// otherwise, so one slot per available CPU keeps every CPU busy; a request
+// beyond them waits for a slot rather than adding the memory of another
+// decoded image while adding no throughput.
+func newConversionSlots() chan struct{} {
+	return make(chan struct{}, runtime.GOMAXPROCS(0))
 }
 
 func rewriteOriginRequest(r *http.Request, adminHost bool, objectKey, contentType string) *http.Request {
