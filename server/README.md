@@ -693,6 +693,8 @@ There is a foundation for encrypting secrets at rest with AES-GCM. For now, set 
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS`
   - Format: `key-id-1:base64key,key-id-2:base64key`
   - `base64key` is a 16/24/32-byte AES key encoded in Base64 (standard or URL-safe)
+  - Each key-id appears once; a process refuses to start on a key-id given twice
+  - An error about a malformed entry names it by its position in the list and quotes no key
 - `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`
   - Names a key-id contained in `PUBLIRA_SECRET_ENCRYPTION_KEYS`
   - New encryptions use this key-id
