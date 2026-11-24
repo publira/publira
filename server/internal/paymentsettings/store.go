@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"slices"
 	"strings"
 
@@ -150,12 +149,13 @@ func (s *Store) Currency(ctx context.Context, tenantID uuid.UUID) (string, error
 	return TenantCurrency(ctx, s.queries, tenantID)
 }
 
-// Upsert saves the first provider tenantID holds that is not retired:
-// it encrypts replaced fields, persists the row, and records a tenant audit
+// Upsert saves the provider [Store.GetPublic] answers for tenantID: it
+// encrypts replaced fields, persists the row, and records a tenant audit
 // event naming the fields it touched. Naming another provider puts it in the
-// first one's place and clears the first one's fields, which the database
-// carries over to the tenant's providers, leaving the others as they are. The
-// returned view never includes ciphertext or a secret value.
+// first one's place, starting from the fields the tenant holds for it, and
+// retires the first one, which keeps its fields for what it already took; the
+// database carries this over to the tenant's providers and leaves the others
+// as they are. The returned view never includes ciphertext or a secret value.
 func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInput, audit AuditMeta) (PublicConfig, error) {
 	provider, ok := s.providers.Lookup(strings.TrimSpace(input.Provider))
 	if !ok {
@@ -190,17 +190,21 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 
 	stored := storedFields{encrypted: map[string]string{}, hints: map[string]string{}}
 	var touched []string
+	retiring := ""
 	if found && existing.Provider == declaration.ID {
 		if stored, err = decodeStoredFields(existing.CredentialsEncrypted, existing.CredentialHints); err != nil {
 			return PublicConfig{}, err
 		}
-	} else if found {
-		previous, err := decodeStoredFields(existing.CredentialsEncrypted, existing.CredentialHints)
-		if err != nil {
-			return PublicConfig{}, err
+	} else {
+		if found && slices.ContainsFunc(held, func(row dbmodels.TenantPaymentProvider) bool {
+			return row.Provider == existing.Provider && !row.RetiredAt.Valid
+		}) {
+			retiring = existing.Provider
 		}
-		for _, name := range slices.Sorted(maps.Keys(previous.encrypted)) {
-			touched = append(touched, existing.Provider+"."+name)
+		if at := slices.IndexFunc(held, func(row dbmodels.TenantPaymentProvider) bool { return row.Provider == declaration.ID }); at >= 0 {
+			if stored, err = decodeStoredFields(held[at].CredentialsEncrypted, held[at].CredentialHints); err != nil {
+				return PublicConfig{}, err
+			}
 		}
 	}
 
@@ -239,7 +243,11 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	if currencyChanged {
 		touched = append(touched, "currency")
 	}
-	s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, touchedReason(touched))
+	reason := touchedReason(touched)
+	if retiring != "" {
+		reason = strings.TrimSuffix("retired: "+retiring+"; "+reason, "; ")
+	}
+	s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, reason)
 	config := s.publicConfig(row, stored)
 	config.CurrencyLocked = locked
 	return config, nil

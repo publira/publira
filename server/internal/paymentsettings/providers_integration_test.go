@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -81,7 +82,7 @@ func retireLongAgo(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.
 
 // configProvider answers what the previous release reads as the tenant's one
 // provider.
-func configProvider(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID) (string, bool, string) {
+func configProvider(t *testing.T, ctx context.Context, db dbmodels.DBTX, tenantID uuid.UUID) (string, bool, string) {
 	t.Helper()
 	var provider, secretKey string
 	var enabled bool
@@ -321,19 +322,197 @@ func TestPreviousReleaseWritesReachTheTenantsProviders(t *testing.T) {
 		}
 
 		// The previous release switches its one provider to PAY.JP, which
-		// deletes Stripe's credentials in that release.
-		if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{Provider: payjp.ID, Enabled: false}, paymentsettings.AuditMeta{}); err != nil {
+		// retires Stripe and leaves PAY.JP the fields it has.
+		switched, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{Provider: payjp.ID, Enabled: false}, paymentsettings.AuditMeta{})
+		if err != nil {
 			t.Fatalf("switch to PAY.JP: %v", err)
+		}
+		if field, _ := switched.Field(payjp.FieldSecretKey); switched.Provider != payjp.ID || !field.Configured {
+			t.Fatalf("the switch answers %+v, want PAY.JP with the fields it has", switched)
 		}
 		held, err = store.Providers(ctx, tenant.ID)
 		if err != nil {
 			t.Fatalf("Providers: %v", err)
 		}
-		if !equalIDs(heldIDs(held), payjp.ID) {
-			t.Fatalf("held after the switch = %v, want PAY.JP in Stripe's place", heldIDs(held))
+		if !equalIDs(heldIDs(held), stripe.ID+" (retired)", payjp.ID) {
+			t.Fatalf("held after the switch = %v, want Stripe retired and PAY.JP in its place", heldIDs(held))
 		}
-		if config, _ := held.Lookup(payjp.ID); config.Enabled || len(config.Fields) == 0 || config.Fields[0].Configured {
-			t.Fatalf("PAY.JP after the switch = %+v, want it off with no field stored", config)
+		if config, _ := held.Lookup(payjp.ID); config.Enabled || len(config.Fields) == 0 || !config.Fields[0].Configured {
+			t.Fatalf("PAY.JP after the switch = %+v, want it off with its fields kept", config)
+		}
+	})
+}
+
+// previousReleaseSave saves the tenant's one provider the way the previous
+// release's paymentsettings.Store.Upsert does: it reads tenant_payment_config,
+// carries the stored fields over when provider is the one stored there and
+// starts from none when it is another, replaces the fields in typed, and
+// writes the row back whole, which a change of the currency alone does too.
+func previousReleaseSave(t *testing.T, ctx context.Context, conn dbmodels.DBTX, tenantID uuid.UUID, provider string, enabled bool, typed map[string]string) {
+	t.Helper()
+	queries := dbmodels.New(conn)
+	row, err := queries.GetTenantPaymentConfigByTenantID(ctx, tenantID)
+	if err != nil {
+		t.Fatalf("the previous release's read: %v", err)
+	}
+	encrypted := map[string]string{}
+	hints := map[string]string{}
+	if row.Provider == provider {
+		if err := json.Unmarshal(row.CredentialsEncrypted, &encrypted); err != nil {
+			t.Fatalf("decode stored credentials: %v", err)
+		}
+		if err := json.Unmarshal(row.CredentialHints, &hints); err != nil {
+			t.Fatalf("decode stored hints: %v", err)
+		}
+	}
+	mgr := integrationEncryptor(t)
+	for name, value := range typed {
+		envelope, err := mgr.EncryptString(value)
+		if err != nil {
+			t.Fatalf("EncryptString: %v", err)
+		}
+		encrypted[name] = envelope
+		hints[name] = paymentsettings.MaskSecret(value)
+	}
+	encryptedJSON, err := json.Marshal(encrypted)
+	if err != nil {
+		t.Fatalf("encode credentials: %v", err)
+	}
+	hintsJSON, err := json.Marshal(hints)
+	if err != nil {
+		t.Fatalf("encode hints: %v", err)
+	}
+	if _, err := queries.UpsertTenantPaymentConfig(ctx, dbmodels.UpsertTenantPaymentConfigParams{
+		TenantID: tenantID, Provider: provider, Enabled: enabled,
+		CredentialsEncrypted: encryptedJSON, CredentialHints: hintsJSON, Currency: row.Currency,
+	}); err != nil {
+		t.Fatalf("the previous release's save of %s: %v", provider, err)
+	}
+}
+
+// loadRetired answers the credentials of provider, which the tenant holds
+// retired, as the notification, the refund, and the reconciliation of what it
+// took load them.
+func loadRetired(t *testing.T, ctx context.Context, store *paymentsettings.Store, tenantID uuid.UUID, provider string) map[string]string {
+	t.Helper()
+	config, credentials, err := store.LoadProvider(ctx, tenantID, provider)
+	if err != nil {
+		t.Fatalf("LoadProvider of the retired %s: %v", provider, err)
+	}
+	if !config.Retired || config.Sells() {
+		t.Fatalf("%s = %+v, want it retired", provider, config)
+	}
+	return credentials
+}
+
+// The previous release shows a tenant whose providers are all retired the
+// first of them, switched off, and its saves leave that provider retired with
+// the credentials it serves what it took with, until a save switches it on.
+func TestPreviousReleaseSavesKeepARetiredProvidersCredentials(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	tenant := pg.SeedTenant(t, "PAYOLDRET001", "pay-old-retired.example.com", "Pay Old Retired")
+
+	withAdminTenant(t, pg, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		store := newIntegrationStore(t, conn, &bytes.Buffer{})
+		if _, err := store.UpsertProvider(ctx, tenant.ID, stripeProvider(true), paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("UpsertProvider stripe: %v", err)
+		}
+		if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
+			t.Fatalf("RemoveProvider stripe: retired %v, %v; want it retired", retired, err)
+		}
+		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != stripe.ID || enabled || hint != paymentsettings.MaskSecret(integrationSecretKey) {
+			t.Fatalf("the previous release reads %s enabled %v hint %q, want Stripe off with its fields", provider, enabled, hint)
+		}
+
+		for round := range 2 {
+			previousReleaseSave(t, ctx, conn, tenant.ID, stripe.ID, false, nil)
+			credentials := loadRetired(t, ctx, store, tenant.ID, stripe.ID)
+			if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+				t.Fatalf("round %d: the retired Stripe's credentials after the previous release's save = %v, want them kept", round, credentials)
+			}
+			// This release removing it again within the grace keeps it
+			// retired, and the previous release saves once more.
+			if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
+				t.Fatalf("round %d: RemoveProvider stripe again: retired %v, %v; want it kept retired", round, retired, err)
+			}
+		}
+
+		// Switched on, the previous release adds it back, with its fields.
+		previousReleaseSave(t, ctx, conn, tenant.ID, stripe.ID, true, nil)
+		config, credentials, err := store.LoadProvider(ctx, tenant.ID, stripe.ID)
+		if err != nil || !config.Sells() || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+			t.Fatalf("Stripe switched on by the previous release = %+v, %v; want it selling with its credentials", config, err)
+		}
+	})
+}
+
+// The previous release switching its one provider to another retires the
+// provider switched from, with its credentials, where that release deletes
+// them, and adds the fields typed in to the ones a provider the tenant holds
+// already has.
+func TestPreviousReleaseSwitchRetiresTheProviderSwitchedFrom(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	tenant := pg.SeedTenant(t, "PAYOLDSWT001", "pay-old-switch.example.com", "Pay Old Switch")
+
+	withAdminTenant(t, pg, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		store := newIntegrationStore(t, conn, &bytes.Buffer{})
+		if _, err := store.UpsertProvider(ctx, tenant.ID, stripeProvider(true), paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("UpsertProvider stripe: %v", err)
+		}
+
+		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, true, map[string]string{
+			payjp.FieldSecretKey:    integrationPayjpSecretKey,
+			payjp.FieldWebhookToken: integrationPayjpWebhookSecret,
+		})
+		held, err := store.Providers(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Providers: %v", err)
+		}
+		if !equalIDs(heldIDs(held), stripe.ID+" (retired)", payjp.ID) {
+			t.Fatalf("held after the switch to PAY.JP = %v, want Stripe retired beside it", heldIDs(held))
+		}
+		if credentials := loadRetired(t, ctx, store, tenant.ID, stripe.ID); credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+			t.Fatalf("the retired Stripe's credentials = %v, want them kept", credentials)
+		}
+		if config, credentials, err := store.LoadProvider(ctx, tenant.ID, payjp.ID); err != nil || !config.Sells() || credentials[payjp.FieldSecretKey] != integrationPayjpSecretKey {
+			t.Fatalf("PAY.JP after the switch = %+v, %v; want it selling with what was typed", config, err)
+		}
+
+		// This release adds Stripe back, which keeps the fields it has and
+		// makes it the first provider again, the one the previous release
+		// shows.
+		if _, err := store.UpsertProvider(ctx, tenant.ID, paymentsettings.ProviderInput{Provider: stripe.ID, Enabled: true}, paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("UpsertProvider adding stripe back: %v", err)
+		}
+		if provider, _, _ := configProvider(t, ctx, conn, tenant.ID); provider != stripe.ID {
+			t.Fatalf("the previous release reads %s, want Stripe added back", provider)
+		}
+
+		// Switching to PAY.JP again, the previous release sends only the
+		// token typed in, which is added to the secret key PAY.JP has.
+		const newWebhookToken = "whook_PayjpReplacedPlain"
+		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, false, map[string]string{payjp.FieldWebhookToken: newWebhookToken})
+		if credentials := loadRetired(t, ctx, store, tenant.ID, stripe.ID); credentials[stripe.FieldSecretKey] != integrationSecretKey {
+			t.Fatalf("Stripe retired a second time has %v, want its credentials kept", credentials)
+		}
+		held, err = store.Providers(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Providers: %v", err)
+		}
+		if !equalIDs(heldIDs(held), stripe.ID+" (retired)", payjp.ID) {
+			t.Fatalf("held after the second switch = %v, want Stripe retired beside PAY.JP", heldIDs(held))
+		}
+		if _, enabled, hint := configProvider(t, ctx, conn, tenant.ID); enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+			t.Fatalf("the previous release reads enabled %v secret key %q, want PAY.JP off with the secret key it has", enabled, hint)
+		}
+
+		// The previous release then carries every field PAY.JP has over.
+		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, true, nil)
+		config, credentials, err := store.LoadProvider(ctx, tenant.ID, payjp.ID)
+		if err != nil || !config.Sells() || credentials[payjp.FieldSecretKey] != integrationPayjpSecretKey || credentials[payjp.FieldWebhookToken] != newWebhookToken {
+			t.Fatalf("PAY.JP switched on = %+v, %v; want it selling with its secret key and the new token", config, err)
 		}
 	})
 }

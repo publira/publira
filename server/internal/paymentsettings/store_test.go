@@ -409,7 +409,7 @@ func TestStoreRefusesACurrencyChangeOnceTheTenantHasAPurchase(t *testing.T) {
 	}
 }
 
-func TestStoreSwitchingProviderClearsThePreviousFields(t *testing.T) {
+func TestStoreSwitchingProviderRetiresThePreviousOne(t *testing.T) {
 	queries := newMemoryPaymentQueries()
 	audit := &memoryAuditQueries{}
 	store := newTestStore(t, queries, audit, &bytes.Buffer{})
@@ -443,8 +443,9 @@ func TestStoreSwitchingProviderClearsThePreviousFields(t *testing.T) {
 	if _, _, err := store.LoadProvider(context.Background(), tenantID, cardProviderID); !errors.Is(err, ErrNotEnabled) {
 		t.Fatalf("LoadProvider after the switch: error = %v, want ErrNotEnabled", err)
 	}
-	if _, _, err := store.LoadProvider(context.Background(), tenantID, stripe.ID); !errors.Is(err, ErrProviderNotHeld) {
-		t.Fatalf("LoadProvider of the provider switched from: error = %v, want ErrProviderNotHeld", err)
+	previous, credentials, err := store.LoadProvider(context.Background(), tenantID, stripe.ID)
+	if err != nil || !previous.Retired || credentials[stripe.FieldSecretKey] != testSecretKey {
+		t.Fatalf("LoadProvider of the provider switched from = %+v, %v; want it retired with its credentials", previous, err)
 	}
 
 	ready, err := store.Upsert(context.Background(), tenantID, cardInput(true), meta)
@@ -456,8 +457,8 @@ func TestStoreSwitchingProviderClearsThePreviousFields(t *testing.T) {
 	}
 
 	entries := audit.snapshot()
-	if want := "fields: stripe.secret_key, stripe.webhook_secret"; len(entries) != 3 || entries[1].Reason.String != want {
-		t.Fatalf("audit entries = %+v, want the switch to name the cleared fields %q", entries, want)
+	if want := "retired: stripe"; len(entries) != 3 || entries[1].Reason.String != want {
+		t.Fatalf("audit entries = %+v, want the switch to name the retired provider %q", entries, want)
 	}
 }
 

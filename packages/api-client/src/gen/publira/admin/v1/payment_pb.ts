@@ -336,7 +336,8 @@ export type UpdateTenantPaymentSettingsRequest = Message<"publira.admin.v1.Updat
 
   /**
    * A registered provider id. Choosing a provider other than the stored one
-   * clears every field stored for the previous one.
+   * starts from the fields the tenant holds for it, none for a provider it
+   * does not hold, and retires the previous one.
    *
    * @generated from field: string provider = 2;
    */
@@ -1081,7 +1082,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof ListPaymentProvidersResponseSchema;
   },
   /**
-   * The first provider the tenant holds that is not retired, replaced by
+   * The first provider the tenant holds that is not retired, or the first
+   * retired one, switched off, when every one is, replaced by
    * ListTenantPaymentProviders.
    *
    * Minimum role: tenant_admin.
@@ -1095,10 +1097,11 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof GetTenantPaymentSettingsResponseSchema;
   },
   /**
-   * Saves the first provider the tenant holds that is not retired, replaced
-   * by UpsertTenantPaymentProvider. Naming another provider puts it in the
-   * first one's place and deletes the first one's credentials, and leaves the
-   * tenant's other providers as they are.
+   * Saves the provider GetTenantPaymentSettings answers, replaced by
+   * UpsertTenantPaymentProvider. Naming another provider puts it in the first
+   * one's place and retires the first one, which keeps its credentials, and
+   * leaves the tenant's other providers as they are. A retired provider saved
+   * switched off stays retired.
    *
    * Minimum role: tenant_admin.
    *

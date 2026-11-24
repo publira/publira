@@ -112,7 +112,8 @@ message UpdateTenantPaymentSettingsRequest {
 
   publira.types.v1.TenantContext tenant = 1;
   // A registered provider id. Choosing a provider other than the stored one
-  // clears every field stored for the previous one.
+  // starts from the fields the tenant holds for it, none for a provider it
+  // does not hold, and retires the previous one.
   string provider = 2;
   bool enabled = 3;
   repeated PaymentCredentialFieldUpdate fields = 8;
@@ -345,17 +346,19 @@ message ListTenantStoreProductsResponse {
 service AdminPaymentSettingsService {
   // Minimum role: tenant_admin.
   rpc ListPaymentProviders(ListPaymentProvidersRequest) returns (ListPaymentProvidersResponse) {}
-  // The first provider the tenant holds that is not retired, replaced by
+  // The first provider the tenant holds that is not retired, or the first
+  // retired one, switched off, when every one is, replaced by
   // ListTenantPaymentProviders.
   //
   // Minimum role: tenant_admin.
   rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {
     option deprecated = true;
   }
-  // Saves the first provider the tenant holds that is not retired, replaced
-  // by UpsertTenantPaymentProvider. Naming another provider puts it in the
-  // first one's place and deletes the first one's credentials, and leaves the
-  // tenant's other providers as they are.
+  // Saves the provider GetTenantPaymentSettings answers, replaced by
+  // UpsertTenantPaymentProvider. Naming another provider puts it in the first
+  // one's place and retires the first one, which keeps its credentials, and
+  // leaves the tenant's other providers as they are. A retired provider saved
+  // switched off stays retired.
   //
   // Minimum role: tenant_admin.
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {
