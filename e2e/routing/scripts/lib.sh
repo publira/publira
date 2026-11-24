@@ -496,6 +496,75 @@ assert_trace_context_stripped() {
   routing_log "ok: ${name} → ${want_backend}${want_path} without trace context"
 }
 
+# What a sample does with a request whose request line names a host other
+# than its Host header. Each routes by the request line's host, as HTTP/1.1
+# tells a server to, so it may hand the backend that host and no other:
+# Traefik and Caddy forward it, and nginx, which forwards the Host header
+# because it carries the port, answers 400 itself.
+case "${PUBLIRA_ROUTING_PROXY}" in
+  nginx) PUBLIRA_ROUTING_DISAGREEING_HOST=refused ;;
+  *) PUBLIRA_ROUTING_DISAGREEING_HOST=forwarded ;;
+esac
+
+# A request line in the absolute form, `GET http://<target_host><path>`, with
+# `header_host` in Host, or no Host at all over HTTP/1.0 when it is empty. When
+# the two name the same host the request is routed to `want_backend` like any
+# other; when they do not, it reaches `want_backend` under the request line's
+# host alone or is answered 400 by the edge, as
+# PUBLIRA_ROUTING_DISAGREEING_HOST says the sample does.
+assert_request_line_host() {
+  local name="$1" method="$2" target_host="$3" header_host="$4" path="$5" want_backend="$6"
+  local tmpfile code body actual_backend header value version_args=() request
+  local -a host_args
+
+  if [[ -n "${header_host}" ]]; then
+    host_args=(-H "Host: ${header_host}")
+  else
+    host_args=(-H "Host:")
+    version_args=(--http1.0)
+  fi
+  request="${method} http://${target_host}${path} Host='${header_host}'"
+
+  tmpfile="$(mktemp)"
+  code="$(
+    curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 5 \
+      ${version_args[@]+"${version_args[@]}"} \
+      -X "${method}" \
+      "${host_args[@]}" \
+      --request-target "http://${target_host}${path}" \
+      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2> /dev/null || true
+  )"
+  body="$(cat "${tmpfile}" 2> /dev/null || true)"
+  rm -f "${tmpfile}"
+  actual_backend="$(json_string_field "${body}" backend)"
+
+  if [[ "${header_host,,}" != "${target_host,,}" &&
+    "${PUBLIRA_ROUTING_DISAGREEING_HOST}" == refused ]]; then
+    if [[ -n "${actual_backend}" ]]; then
+      routing_fail "${name}: reached backend '${actual_backend}' (want none) ${request} body=${body}"
+    fi
+    if [[ "${code}" != "400" ]]; then
+      routing_fail "${name}: HTTP ${code} (want 400 from the edge) ${request} body=${body}"
+    fi
+    routing_log "ok: ${name} → refused by the edge"
+    return
+  fi
+
+  if [[ "${code}" != "200" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 200) ${request} body=${body}"
+  fi
+  if [[ "${actual_backend}" != "${want_backend}" ]]; then
+    routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') ${request} body=${body}"
+  fi
+  for header in Host X-Forwarded-Host; do
+    value="$(json_string_field "${body}" "${header,,}")"
+    if [[ "${value}" != "${target_host}" ]]; then
+      routing_fail "${name}: ${header} '${value}' (want '${target_host}', the host the request was routed by) ${request} body=${body}"
+    fi
+  done
+  routing_log "ok: ${name} → ${want_backend} under ${target_host}"
+}
+
 # The header each sample hands the client address over in. publira server
 # reads it from either: Traefik sets X-Forwarded-For itself and has no way to
 # compose Forwarded, while nginx and Caddy set Forwarded. The other header

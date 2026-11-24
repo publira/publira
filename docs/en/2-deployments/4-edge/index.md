@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-11-06
+updated: 2026-11-24
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -126,8 +126,9 @@ The web apps find the tenant, and check that a form was submitted from the tenan
 - **`Host` is passed on unchanged**, as [Routing](#routing) requires.
 - **`X-Forwarded-Host` is removed from requests from outside, or written by the edge** after anything the caller sent, naming the host the browser asked for.
 - **`Forwarded` carries no `host=` the caller wrote**: the edge removes the header or sets it itself, or `PUBLIRA_FORWARDED_HEADER_ENABLED` is `false`, as [The client address](#the-client-address) describes.
+- **The host the edge routed the request by is the one it passes on.** A request line can name a host itself, as in `GET http://admin.comics.example.com/ HTTP/1.1`, and HTTP/1.1 has a server take that host over `Host`. Pass that host on, or answer `400` when `Host` names another.
 
-An edge that passes a caller's `X-Forwarded-Host` on lets the caller have another tenant answer on a tenant's host name, and choose the host a form's origin is checked against.
+An edge that passes a caller's `X-Forwarded-Host` on lets the caller have another tenant answer on a tenant's host name, and choose the host a form's origin is checked against. One that routes by the request line's host and passes on a `Host` naming another lets a caller send a request for a tenant's site down its console host's route, past the rate limits the site's own host has, or hand a web app a host the edge serves for no tenant.
 
 ### Trace context
 

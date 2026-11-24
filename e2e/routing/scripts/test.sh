@@ -36,6 +36,21 @@ assert_unrouted "unlisted host on bare /rpc" GET unknown-tenant.localhost /rpc
 assert_unrouted "unlisted host on /api/v1" POST unknown-tenant.localhost /api/v1/revalidate
 assert_unrouted "unlisted host on /images" GET admin.example.com /images/cover
 
+# A request line in the absolute form names a host of its own, and HTTP/1.1
+# has a server route by it rather than by Host. The backend is then given that
+# host or nothing: a Host naming a tenant's site behind a console's request
+# line would otherwise be resolved with none of the site's rate limits, and a
+# Host in no list would reach a backend. One whose two hosts agree, and one in
+# capitals, are routed like any other.
+assert_request_line_host "absolute form agreeing with Host" GET admin.localhost:3080 admin.localhost:3080 /series web-admin
+assert_route "Host in capitals" GET Studio.Example.COM:3080 /series web-admin /series
+assert_request_line_host "console request line, site Host, public API" GET admin.localhost localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_request_line_host "console request line, site Host, search" GET studio.example.com reader.example.org "/rpc/${PUBLIRA_ROUTING_SEARCH_PROCEDURE}" api
+assert_request_line_host "platform request line, site Host, images" GET platform.localhost localhost /images/cover api
+assert_request_line_host "image host request line, console Host" GET pictures.example.net admin.localhost /images/cover api
+assert_request_line_host "site request line, Host in no list" GET localhost unknown-tenant.localhost / web-storefront
+assert_request_line_host "console request line, no Host" GET admin.localhost "" /series web-admin
+
 # The public API reaches the server :8000 with the path intact, on every listed
 # host: the server's own routes carry the prefix.
 assert_route "rpc keeps a procedure path" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"

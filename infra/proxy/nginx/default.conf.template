@@ -78,6 +78,21 @@ map $remote_addr $publira_forwarded {
     default "for=$remote_addr";
 }
 
+# 1 for a request whose Host header names a host other than the one that
+# selected its server block, which snippets/proxy-headers.conf answers with a
+# 400. A request line in the absolute form, `GET http://admin.example/ HTTP/1.1`,
+# selects the block by the host it names, as HTTP/1.1 tells a server to, and
+# leaves the Host header out of it, while snippets/proxy-headers.conf forwards
+# that header, because it is the one that carries the port. Left alone, a
+# client could hand a backend a host in no list, or have a tenant's site
+# resolved under a console block's rules, none of whose rate limits apply.
+# $host is the selecting host lowercased, without its port or a trailing dot,
+# so the match is case-insensitive and allows both.
+map "$host|$http_host" $publira_host_mismatch {
+    "~*^([^|]+)\|\1\.?(:[0-9]+)?$" 0;
+    default                         1;
+}
+
 # How many requests one client may send, as infra/proxy/README.md lists them:
 # each zone lets a client send its burst at once and refills at its rate, and
 # answers a request past that with a 429 of its own, which no backend sees.
