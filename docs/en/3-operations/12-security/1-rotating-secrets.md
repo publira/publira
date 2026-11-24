@@ -15,7 +15,7 @@ Every credential the install stores is sealed with the encryption keys, and each
 
 ### 1. Add the new key
 
-Generate a key and give it an ID the list does not hold yet, such as `k2`. Add it beside the old one, and leave the primary key as it is:
+Generate a key and give it an ID the list does not hold yet, such as `k2`; a process refuses to start when the list names an ID twice. Add it beside the old one, and leave the primary key as it is:
 
 ```text
 PUBLIRA_SECRET_ENCRYPTION_KEYS=k1:<old key>,k2:<new key>

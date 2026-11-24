@@ -58,37 +58,48 @@ func parseEncryption() (Encryption, error) {
 	}
 
 	keys := make(map[string][]byte)
-	entries := strings.Split(rawKeys, ",")
-	for _, entry := range entries {
+	positions := make(map[string]int)
+	for i, entry := range strings.Split(rawKeys, ",") {
+		position := i + 1
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
 			continue
 		}
 
-		parts := strings.SplitN(entry, ":", 2)
-		if len(parts) != 2 {
-			return Encryption{}, fmt.Errorf("invalid PUBLIRA_SECRET_ENCRYPTION_KEYS entry: %q", entry)
+		// An entry missing its key id or its key may be nothing but the key, so
+		// these errors name the entry by its position and quote none of it. The
+		// key id is quoted only once both halves are present.
+		keyID, encodedKey, found := strings.Cut(entry, ":")
+		if !found {
+			return Encryption{}, fmt.Errorf("entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS is not in key-id:base64key form", position)
+		}
+		keyID = strings.TrimSpace(keyID)
+		encodedKey = strings.TrimSpace(encodedKey)
+		if keyID == "" {
+			return Encryption{}, fmt.Errorf("entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS has no key id", position)
+		}
+		if encodedKey == "" {
+			return Encryption{}, fmt.Errorf("entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS has no key", position)
 		}
 
-		keyID := strings.TrimSpace(parts[0])
-		encodedKey := strings.TrimSpace(parts[1])
-		if keyID == "" || encodedKey == "" {
-			return Encryption{}, fmt.Errorf("invalid PUBLIRA_SECRET_ENCRYPTION_KEYS entry: %q", entry)
+		if previous, ok := positions[keyID]; ok {
+			return Encryption{}, fmt.Errorf("key id %q appears in both entry %d and entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS", keyID, previous, position)
 		}
 
 		decodedKey, err := base64.RawURLEncoding.DecodeString(encodedKey)
 		if err != nil {
 			decodedKey, err = base64.StdEncoding.DecodeString(encodedKey)
 			if err != nil {
-				return Encryption{}, fmt.Errorf("invalid base64 key for %q", keyID)
+				return Encryption{}, fmt.Errorf("invalid base64 key for %q in entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS", keyID, position)
 			}
 		}
 
 		keyLen := len(decodedKey)
 		if keyLen != 16 && keyLen != 24 && keyLen != 32 {
-			return Encryption{}, fmt.Errorf("invalid key length for %q: %d", keyID, keyLen)
+			return Encryption{}, fmt.Errorf("invalid key length for %q in entry %d of PUBLIRA_SECRET_ENCRYPTION_KEYS: %d", keyID, position, keyLen)
 		}
 		keys[keyID] = decodedKey
+		positions[keyID] = position
 	}
 
 	if len(keys) == 0 {
