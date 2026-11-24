@@ -336,8 +336,8 @@ export type UpdateTenantPaymentSettingsRequest = Message<"publira.admin.v1.Updat
 
   /**
    * A registered provider id. Choosing a provider other than the stored one
-   * starts from the fields the tenant holds for it, none for a provider it
-   * does not hold, and retires the previous one.
+   * adds the fields replaced to the ones the tenant holds for it, and retires
+   * the previous one.
    *
    * @generated from field: string provider = 2;
    */

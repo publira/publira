@@ -462,6 +462,39 @@ func TestStoreSwitchingProviderRetiresThePreviousOne(t *testing.T) {
 	}
 }
 
+// A switch to a provider the tenant holds already sends only the fields
+// replaced, as the previous release's console does, which are added to the
+// ones the provider has; a field cleared in the switch stays stored, and the
+// switch answers the fields as they are stored.
+func TestStoreSwitchingToAHeldProviderAddsToItsFields(t *testing.T) {
+	queries := newMemoryPaymentQueries()
+	store := newTestStore(t, queries, &memoryAuditQueries{}, &bytes.Buffer{})
+	tenantID := uuid.Must(uuid.NewV7())
+
+	if _, err := store.Upsert(context.Background(), tenantID, stripeInput(true), AuditMeta{}); err != nil {
+		t.Fatalf("Upsert stripe: %v", err)
+	}
+	if _, err := store.UpsertProvider(context.Background(), tenantID, ProviderInput{Provider: cardProviderID, Enabled: true, Fields: cardInput(true).Fields}, AuditMeta{}); err != nil {
+		t.Fatalf("UpsertProvider card: %v", err)
+	}
+
+	switched, err := store.Upsert(context.Background(), tenantID, UpdateInput{
+		Provider: cardProviderID,
+		Fields:   []FieldUpdate{{Name: cardShopID, Mode: secretupdate.Clear}},
+	}, AuditMeta{})
+	if err != nil {
+		t.Fatalf("Upsert switching to card: %v", err)
+	}
+	for _, name := range []string{cardSecretKey, cardPublishableKey, cardShopID} {
+		if !mustField(t, switched, name).Configured {
+			t.Fatalf("the switch answers %s unconfigured, want the field card has", name)
+		}
+	}
+	if encrypted, _ := storedMaps(t, queries, tenantID); encrypted[cardShopID] == "" {
+		t.Fatalf("stored fields after the switch = %v, want card's shop id kept", encrypted)
+	}
+}
+
 func TestStoreLoadProviderDecrypts(t *testing.T) {
 	store := newTestStore(t, newMemoryPaymentQueries(), &memoryAuditQueries{}, &bytes.Buffer{})
 	tenantID := uuid.Must(uuid.NewV7())

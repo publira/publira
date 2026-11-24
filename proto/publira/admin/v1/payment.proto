@@ -112,8 +112,8 @@ message UpdateTenantPaymentSettingsRequest {
 
   publira.types.v1.TenantContext tenant = 1;
   // A registered provider id. Choosing a provider other than the stored one
-  // starts from the fields the tenant holds for it, none for a provider it
-  // does not hold, and retires the previous one.
+  // adds the fields replaced to the ones the tenant holds for it, and retires
+  // the previous one.
   string provider = 2;
   bool enabled = 3;
   repeated PaymentCredentialFieldUpdate fields = 8;

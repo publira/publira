@@ -606,8 +606,8 @@ type UpdateTenantPaymentSettingsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// A registered provider id. Choosing a provider other than the stored one
-	// starts from the fields the tenant holds for it, none for a provider it
-	// does not hold, and retires the previous one.
+	// adds the fields replaced to the ones the tenant holds for it, and retires
+	// the previous one.
 	Provider string                          `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 	Enabled  bool                            `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	Fields   []*PaymentCredentialFieldUpdate `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
