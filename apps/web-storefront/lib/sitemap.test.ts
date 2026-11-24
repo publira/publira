@@ -642,38 +642,47 @@ describe("respondWithSitemap", () => {
 });
 
 describe("respondWithSitemapFile", () => {
-  it("answers one file of an indexed sitemap, with the index pages in the first alone", async () => {
+  it("answers the first file of an indexed sitemap with the index pages", async () => {
     answerPages(40);
 
-    const firstResponse = await respondWithSitemapFile({
+    const response = await respondWithSitemapFile({
       sitemap_id: "0.xml",
       tenant_id: TENANT_ID,
     });
 
-    const lastResponse = await respondWithSitemapFile({
+    const xml = await response.text();
+
+    expect(xml).toContain(`<loc>${ORIGIN}/</loc>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/series/S0-0</loc>`);
+  });
+
+  it("answers a later file of an indexed sitemap without the index pages", async () => {
+    answerPages(40);
+
+    const response = await respondWithSitemapFile({
       sitemap_id: "2.xml",
       tenant_id: TENANT_ID,
     });
 
-    const first = await firstResponse.text();
-    const last = await lastResponse.text();
+    const xml = await response.text();
 
-    expect(first).toContain(`<loc>${ORIGIN}/</loc>`);
-    expect(first).toContain(`<loc>${ORIGIN}/series/S0-0</loc>`);
-    expect(last).not.toContain(`<loc>${ORIGIN}/</loc>`);
-    expect(last).toContain(`<loc>${ORIGIN}/series/S39-0</loc>`);
-    expect(countOf(last, "<url>")).toBe(500 * LOCALE_COUNT);
+    expect(xml).not.toContain(`<loc>${ORIGIN}/</loc>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/series/S39-0</loc>`);
+    expect(countOf(xml, "<url>")).toBe(500 * LOCALE_COUNT);
   });
 
   it("reads a file from where it starts rather than through the files before it", async () => {
     answerPages(40);
-    await getSitemapFileTokens(TENANT_ID, ADDRESS);
-    mockListSitemapEntries.mockClear();
 
     await respondWithSitemapFile({ sitemap_id: "2.xml", tenant_id: TENANT_ID });
 
-    // Uncached in a unit test, the token walk reads every page again; the file
-    // itself then reads only its own page.
+    // Uncached in a unit test, the token walk reads the list from its start
+    // once; the file itself then reads only its own page.
+    const fromStart = mockListSitemapEntries.mock.calls.filter(
+      ([request]) => request.token === ""
+    );
+
+    expect(fromStart).toHaveLength(1);
     expect(mockListSitemapEntries.mock.calls.at(-1)).toStrictEqual([
       { limit: 500, tenant: { tenantId: TENANT_ID }, token: "p39" },
     ]);
