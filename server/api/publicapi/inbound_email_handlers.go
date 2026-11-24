@@ -38,6 +38,11 @@ const (
 	// References are looked up. A long thread names every mail before it, and
 	// the most recent ones are the ones that can name an entry.
 	maxInboundEmailThreadIDs = 50
+	// maxInboundEmailTextBytes bounds how much of a mail's text is read for
+	// its entry: as much of a text part as a raw-MIME provider reads, so a
+	// provider that posts the parsed text hands over no more. An entry keeps
+	// 4000 characters, so what lies past this is quoted history.
+	maxInboundEmailTextBytes = 1 << 20
 )
 
 func (s *apiServer) inboundEmailStore(ctx context.Context) *inboundemail.Store {
@@ -262,6 +267,13 @@ func (s *apiServer) matchInboundReply(
 // the quotation below it, or the whole text when it is nothing but a
 // quotation, cut to the length an entry holds. It reports whether it cut.
 func inboundReplyBody(text string) (string, bool) {
+	if len(text) > maxInboundEmailTextBytes {
+		end := maxInboundEmailTextBytes
+		for end > 0 && !utf8.RuneStart(text[end]) {
+			end--
+		}
+		text = text[:end]
+	}
 	text = strings.ToValidUTF8(strings.ReplaceAll(text, "\x00", ""), "�")
 	body := inboundprovider.StripQuoted(text)
 	if body == "" {

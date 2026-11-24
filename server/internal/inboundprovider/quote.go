@@ -2,6 +2,7 @@ package inboundprovider
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -30,6 +31,10 @@ func StripQuoted(text string) string {
 	text = strings.ReplaceAll(text, "\r", "\n")
 	lines := strings.Split(text, "\n")
 
+	// A quotation runs to the end when it starts below the last line the
+	// reader wrote. That line is found once, before the loop, so the time
+	// taken stays linear in the lines a mail of any length has.
+	lastOwn := lastUnquoted(lines)
 	cut := len(lines)
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -41,7 +46,7 @@ func StripQuoted(text string) string {
 			cut = i
 			break
 		}
-		if isQuoted(line) && quotedToEnd(lines, i) {
+		if isQuoted(line) && i > lastOwn {
 			cut = withoutAttribution(lines, i)
 			break
 		}
@@ -53,15 +58,16 @@ func isQuoted(line string) bool {
 	return strings.HasPrefix(strings.TrimLeft(line, " \t"), ">")
 }
 
-// quotedToEnd reports whether every line from start on is quoted or blank, so
-// that nothing the reader wrote follows the quotation.
-func quotedToEnd(lines []string, start int) bool {
-	for _, line := range lines[start:] {
+// lastUnquoted answers the index of the last line that is neither quoted nor
+// blank, or -1 when there is none: every line below it is part of the
+// quotation, if any, and nothing the reader wrote.
+func lastUnquoted(lines []string) int {
+	for i, line := range slices.Backward(lines) {
 		if strings.TrimSpace(line) != "" && !isQuoted(line) {
-			return false
+			return i
 		}
 	}
-	return true
+	return -1
 }
 
 // withoutAttribution answers where the reply ends when a quotation starts at

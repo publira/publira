@@ -35,3 +35,14 @@ func TestInboundReplyBody(t *testing.T) {
 		t.Fatalf("a long reply = %d characters, truncated %v", utf8.RuneCountInString(body), truncated)
 	}
 }
+
+// A provider that posts the parsed text can hand over far more than a raw
+// mail's text part holds. What lies past the bound is not read, so a line of
+// the reader's own there does not keep the quotation above it.
+func TestInboundReplyBodyReadsABoundedText(t *testing.T) {
+	quote := strings.Repeat("> We have restored your purchase.\n", maxInboundEmailTextBytes/32)
+	body, truncated := inboundReplyBody("It opens now.\n\n" + quote + "Thanks.")
+	if body != "It opens now." || truncated {
+		t.Fatalf("inboundReplyBody = (%q, %v), want (%q, false)", body, truncated, "It opens now.")
+	}
+}

@@ -1,6 +1,10 @@
 package inboundprovider
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestStripQuoted(t *testing.T) {
 	cases := []struct {
@@ -83,5 +87,22 @@ func TestStripQuotedRecognisesAJapaneseAttribution(t *testing.T) {
 	outlook := "直りました。\n\n________________________________\n差出人: Example <contact@reply.example.com>\n送信日時: 2026年10月5日 18:30"
 	if got := StripQuoted(outlook); got != "直りました。" {
 		t.Fatalf("StripQuoted = %q", got)
+	}
+}
+
+// A mail of quoted lines with one line of the reader's own at the end is
+// kept whole, and deciding so has to take time linear in its lines: a check
+// per line that rescans to the end takes hours on a mail this long.
+func TestStripQuotedTakesLinearTime(t *testing.T) {
+	text := strings.Repeat(">\n", 500_000) + "Thanks."
+	done := make(chan string, 1)
+	go func() { done <- StripQuoted(text) }()
+	select {
+	case got := <-done:
+		if got != strings.TrimSpace(text) {
+			t.Fatalf("StripQuoted dropped part of an interleaved reply: %d bytes of %d", len(got), len(text))
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("StripQuoted did not finish on 500,000 quoted lines within 10s")
 	}
 }
