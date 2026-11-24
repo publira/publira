@@ -38,6 +38,7 @@ import (
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -265,7 +266,7 @@ func (s *adminServer) authenticateSession(
 		}
 		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get session user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
-	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+	if user.Status != "active" || !tenantmembers.AddressConfirmed(user) || user.CredentialsVersion != claims.CredentialsVersion {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)

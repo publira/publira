@@ -131,6 +131,11 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	// Hands an account nobody had confirmed to the person who has just proved the
+	// address by following a link mailed to it. The name and the password are
+	// replaced with theirs: whoever set the old ones never proved the address was
+	// theirs, and could otherwise sign in beside its owner.
+	ClaimUnverifiedUserByID(ctx context.Context, arg ClaimUnverifiedUserByIDParams) (User, error)
 	// Takes up the oldest request no worker is building: one never claimed, or
 	// one whose claim is older than stale_before, which a worker that died
 	// mid-build left behind. A request whose account is gone is the purge's.

@@ -24,6 +24,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
@@ -179,6 +180,12 @@ func (s *adminServer) Login(
 	attempt.Verified(ctx)
 	if user.Status != "active" {
 		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "user_inactive")
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
+	}
+	// A password set before anyone proved the address is not the owner's to
+	// sign in with, whatever role the account has come to hold.
+	if !tenantmembers.AddressConfirmed(user) {
+		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
 	role, err := s.tenantRole(ctx, user.ID)

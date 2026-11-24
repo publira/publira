@@ -566,6 +566,83 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, p AccountParams) (Member, er
 	return Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Role: role, Status: user.Status, CreatedAt: user.CreatedAt}, nil
 }
 
+// ErrAccountSuspended refuses a console role to an account an administrator
+// suspended: the role would come with the account active again, which only
+// unsuspending it may do.
+var ErrAccountSuspended = errors.New("account is suspended")
+
+// AddressConfirmed reports whether the owner of user's address has proved it
+// is theirs. Until then the account's name and password were set by whoever
+// typed the address into a sign-up form, who need not be its owner, so neither
+// is trusted with a console role.
+func AddressConfirmed(user dbmodels.User) bool {
+	return user.EmailVerifiedAt.Valid
+}
+
+// ClaimParams is an existing account of the tenant that accepting an
+// invitation hands to the invitee.
+type ClaimParams struct {
+	TenantID uuid.UUID
+	UserID   uuid.UUID
+	// Name and Password replace the account's own when its address was never
+	// confirmed, and are required then. They are not read otherwise.
+	Name     string
+	Password string
+}
+
+// ClaimInvited readies an existing account for the console role an invitation
+// gives, inside tx, on the strength of the invitee having followed the link
+// mailed to its address. An account an administrator suspended is refused with
+// [ErrAccountSuspended]. One whose address was never confirmed is handed over
+// as [AddressConfirmed] requires: Name and Password replace its own, the
+// address is marked confirmed, and anything signed for it before stops
+// working. The role itself is the caller's to grant.
+//
+// It takes the tenant's administrator lock before the account's row, in the
+// order suspending a member takes them, so the two cannot wait on each other.
+func ClaimInvited(ctx context.Context, tx *sql.Tx, p ClaimParams) (dbmodels.User, error) {
+	if err := lockAdmins(ctx, tx, p.TenantID); err != nil {
+		return dbmodels.User{}, err
+	}
+	q := dbmodels.New(tx)
+	user, err := q.GetUserByIDForUpdate(ctx, p.UserID)
+	if err != nil {
+		return dbmodels.User{}, fmt.Errorf("lock user: %w", err)
+	}
+	if user.Status == "suspended" {
+		return dbmodels.User{}, ErrAccountSuspended
+	}
+
+	if AddressConfirmed(user) {
+		if err := q.ActivateInactiveUserByID(ctx, user.ID); err != nil {
+			return dbmodels.User{}, fmt.Errorf("activate user: %w", err)
+		}
+		user.Status = "active"
+		return user, nil
+	}
+
+	name := strings.TrimSpace(p.Name)
+	if name == "" {
+		return dbmodels.User{}, invalid(FieldName, ErrNameRequired)
+	}
+	if strings.TrimSpace(p.Password) == "" {
+		return dbmodels.User{}, invalid(FieldPassword, ErrPasswordRequired)
+	}
+	passwordHash, err := auth.HashPassword(p.Password)
+	if err != nil {
+		return dbmodels.User{}, fmt.Errorf("hash password: %w", err)
+	}
+	user, err = q.ClaimUnverifiedUserByID(ctx, dbmodels.ClaimUnverifiedUserByIDParams{
+		ID:           user.ID,
+		Name:         name,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
+	})
+	if err != nil {
+		return dbmodels.User{}, fmt.Errorf("claim unverified user: %w", err)
+	}
+	return user, nil
+}
+
 // FindByEmail reads the user of the tenant rawEmail names, with the console
 // role it holds or "" when it holds none, reporting whether there is one.
 func FindByEmail(ctx context.Context, q dbmodels.Querier, tenantID uuid.UUID, rawEmail string) (Member, bool, error) {

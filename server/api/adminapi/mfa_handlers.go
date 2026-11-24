@@ -405,7 +405,7 @@ func (s *adminServer) actorFromChallenge(
 		}
 		return mfaActor{}, s.internalDBError(ctx, "failed to get mfa challenge user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
-	if user.Status != "active" || user.CredentialsVersion != challenge.CredentialsVersion {
+	if user.Status != "active" || !tenantmembers.AddressConfirmed(user) || user.CredentialsVersion != challenge.CredentialsVersion {
 		return mfaActor{}, invalidSessionError()
 	}
 	role, err := s.tenantRole(ctx, user.ID)

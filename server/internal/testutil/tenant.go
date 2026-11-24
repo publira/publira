@@ -181,7 +181,7 @@ func (e *PostgresEnv) SeedEndUser(t *testing.T, tenantID uuid.UUID, publicID, em
 	t.Helper()
 
 	user := e.seedUser(t, tenantID, publicID, email, name)
-	e.markEndUserVerified(t, user.ID)
+	e.markUserVerified(t, user.ID)
 	return user
 }
 
@@ -203,7 +203,7 @@ func (e *PostgresEnv) SeedUnverifiedEndUser(t *testing.T, tenantID uuid.UUID, pu
 	return user
 }
 
-func (e *PostgresEnv) markEndUserVerified(t *testing.T, userID uuid.UUID) {
+func (e *PostgresEnv) markUserVerified(t *testing.T, userID uuid.UUID) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -216,12 +216,14 @@ func (e *PostgresEnv) markEndUserVerified(t *testing.T, userID uuid.UUID) {
 	}
 }
 
-// SeedTenantUser inserts an active user in the tenant and grants it one tenant
-// role (tenant_admin / tenant_editor / tenant_auditor).
+// SeedTenantUser inserts an active user in the tenant with a verified address,
+// the only shape the console lets sign in, and grants it one tenant role
+// (tenant_admin / tenant_editor / tenant_auditor).
 func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID, email, name, role string) TenantUser {
 	t.Helper()
 
 	user := e.seedUser(t, tenantID, publicID, email, name)
+	e.markUserVerified(t, user.ID)
 	e.SeedTenantUserRole(t, tenantID, user.ID, role)
 
 	user.Role = role

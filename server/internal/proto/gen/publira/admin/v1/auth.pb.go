@@ -2758,11 +2758,15 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) GetToken() string
 }
 
 type AdminAuthServiceGetTenantAdminInvitationStateResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	ExpiresAt     string                 `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	AccountExists bool                   `protobuf:"varint,4,opt,name=account_exists,json=accountExists,proto3" json:"account_exists,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Email     string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Status    string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	ExpiresAt string                 `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// Whether the address belongs to an account its owner can already sign in
+	// with. An account whose address was never confirmed answers false: its
+	// password was set by whoever signed up with the address, so accepting asks
+	// for a name and a password that replace its own.
+	AccountExists bool `protobuf:"varint,4,opt,name=account_exists,json=accountExists,proto3" json:"account_exists,omitempty"`
 	// The role accepting the invitation grants:
 	// tenant_admin | tenant_editor | tenant_auditor
 	Role          string `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
@@ -2836,11 +2840,13 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) GetRole() string
 }
 
 type AdminAuthServiceAcceptTenantAdminInvitationRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token  string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	// Required when the invitation's state answers account_exists false, and
+	// not read otherwise.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Password      string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

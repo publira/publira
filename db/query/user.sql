@@ -800,6 +800,24 @@ WHERE id = sqlc.arg('id')
     AND email_verified_at IS NULL
 RETURNING *;
 
+-- name: ClaimUnverifiedUserByID :one
+-- Hands an account nobody had confirmed to the person who has just proved the
+-- address by following a link mailed to it. The name and the password are
+-- replaced with theirs: whoever set the old ones never proved the address was
+-- theirs, and could otherwise sign in beside its owner.
+UPDATE users
+SET name = sqlc.arg('name'),
+    password_hash = sqlc.arg('password_hash'),
+    email_verified_at = NOW(),
+    status = CASE
+        WHEN status = 'inactive' THEN 'active'
+        ELSE status
+    END,
+    credentials_version = credentials_version + 1
+WHERE id = sqlc.arg('id')
+    AND email_verified_at IS NULL
+RETURNING *;
+
 -- name: DeleteUserByID :exec
 -- Hard delete. Related rows go with the user wherever the foreign key cascades.
 DELETE FROM users

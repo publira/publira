@@ -82,6 +82,53 @@ func (q *Queries) CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, 
 	return exists, err
 }
 
+const ClaimUnverifiedUserByID = `-- name: ClaimUnverifiedUserByID :one
+UPDATE users
+SET name = $1,
+    password_hash = $2,
+    email_verified_at = NOW(),
+    status = CASE
+        WHEN status = 'inactive' THEN 'active'
+        ELSE status
+    END,
+    credentials_version = credentials_version + 1
+WHERE id = $3
+    AND email_verified_at IS NULL
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+`
+
+type ClaimUnverifiedUserByIDParams struct {
+	Name         string         `json:"name"`
+	PasswordHash sql.NullString `json:"password_hash"`
+	ID           uuid.UUID      `json:"id"`
+}
+
+// Hands an account nobody had confirmed to the person who has just proved the
+// address by following a link mailed to it. The name and the password are
+// replaced with theirs: whoever set the old ones never proved the address was
+// theirs, and could otherwise sign in beside its owner.
+func (q *Queries) ClaimUnverifiedUserByID(ctx context.Context, arg ClaimUnverifiedUserByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, ClaimUnverifiedUserByID, arg.Name, arg.PasswordHash, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
+		&i.IconImageID,
+		&i.IconPresetID,
+		&i.LastLocale,
+	)
+	return i, err
+}
+
 const CountOtherActiveTenantAdmins = `-- name: CountOtherActiveTenantAdmins :one
 SELECT COUNT(*)::int
 FROM users u

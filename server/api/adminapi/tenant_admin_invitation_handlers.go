@@ -56,7 +56,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
 
-	_, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	user, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    invitation.Email,
 	})
@@ -65,10 +65,12 @@ func (s *adminServer) GetTenantAdminInvitationState(
 	}
 
 	return &publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse{
-		Email:         invitation.Email,
-		Status:        adminInvitationStatus(invitation, time.Now()),
-		ExpiresAt:     invitation.ExpiresAt.UTC().Format(time.RFC3339),
-		AccountExists: userErr == nil,
+		Email:     invitation.Email,
+		Status:    adminInvitationStatus(invitation, time.Now()),
+		ExpiresAt: invitation.ExpiresAt.UTC().Format(time.RFC3339),
+		// An account whose address was never confirmed answers as none, so the
+		// invitee is asked for the name and password that replace its own.
+		AccountExists: userErr == nil && tenantmembers.AddressConfirmed(user),
 		Role:          invitation.Role,
 	}, nil
 }
@@ -150,10 +152,19 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	case err != nil:
 		return nil, s.internalDBError(ctx, "failed to get invitation user", err, "tenant_id", tenant.ID.String())
 	default:
-		if user.Status != "active" {
-			if _, err := txq.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
-				return nil, s.internalDBError(ctx, "failed to activate invitation user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		if _, err := tenantmembers.ClaimInvited(ctx, tx, tenantmembers.ClaimParams{
+			TenantID: tenant.ID,
+			UserID:   user.ID,
+			Name:     req.Name,
+			Password: req.Password,
+		}); err != nil {
+			if errors.Is(err, tenantmembers.ErrAccountSuspended) {
+				return nil, connect.NewError(connect.CodePermissionDenied, "account is suspended")
 			}
+			if errors.Is(err, tenantmembers.ErrNameRequired) || errors.Is(err, tenantmembers.ErrPasswordRequired) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, "name and password are required")
+			}
+			return nil, s.internalDBError(ctx, "failed to claim invitation user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		// The account may have been given a role since it was invited, and
 		// accepting never lowers it: an invitation as an Editor taking the role

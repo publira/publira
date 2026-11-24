@@ -1239,6 +1239,11 @@ export type AdminAuthServiceGetTenantAdminInvitationStateResponse = Message<"pub
   expiresAt: string;
 
   /**
+   * Whether the address belongs to an account its owner can already sign in
+   * with. An account whose address was never confirmed answers false: its
+   * password was set by whoever signed up with the address, so accepting asks
+   * for a name and a password that replace its own.
+   *
    * @generated from field: bool account_exists = 4;
    */
   accountExists: boolean;
@@ -1274,6 +1279,9 @@ export type AdminAuthServiceAcceptTenantAdminInvitationRequest = Message<"publir
   token: string;
 
   /**
+   * Required when the invitation's state answers account_exists false, and
+   * not read otherwise.
+   *
    * @generated from field: string name = 3;
    */
   name: string;
