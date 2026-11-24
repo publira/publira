@@ -106,7 +106,11 @@ func (m *memoryPaymentQueries) UpsertTenantPaymentConfig(_ context.Context, arg 
 	}
 	// The trigger writes the provider's fields back after the row is
 	// returned, so the caller is answered what it sent.
-	saved := m.replaceFirstProvider(row)
+	shown := ""
+	if previous, ok := m.byTenant[arg.TenantID]; ok {
+		shown = previous.Provider
+	}
+	saved := m.replaceFirstProvider(row, shown)
 	stored := row
 	stored.CredentialsEncrypted = saved.CredentialsEncrypted
 	stored.CredentialHints = saved.CredentialHints
@@ -126,7 +130,7 @@ func (m *memoryPaymentQueries) SaveTenantCurrency(_ context.Context, arg dbmodel
 			CredentialHints:      json.RawMessage(`{}`),
 		}
 		m.byTenant[arg.TenantID] = row
-		m.replaceFirstProvider(row)
+		m.replaceFirstProvider(row, "")
 	}
 	row.Currency = arg.Currency
 	m.byTenant[arg.TenantID] = row
@@ -136,14 +140,12 @@ func (m *memoryPaymentQueries) SaveTenantCurrency(_ context.Context, arg dbmodel
 // replaceFirstProvider is tenant_payment_config_write_providers: row's
 // provider takes the place of the first one that is not retired, which is
 // retired when it is another, and answers the provider as saved. A retired
-// provider saved switched off stays retired and as on as it was.
-func (m *memoryPaymentQueries) replaceFirstProvider(row dbmodels.TenantPaymentConfig) dbmodels.TenantPaymentProvider {
+// provider saved switched off stays retired and as on as it was. shown is the
+// provider the settings row showed before the write, whose fields row holds
+// in full.
+func (m *memoryPaymentQueries) replaceFirstProvider(row dbmodels.TenantPaymentConfig, shown string) dbmodels.TenantPaymentProvider {
 	held := m.providers[row.TenantID]
 	first := slices.IndexFunc(held, func(p dbmodels.TenantPaymentProvider) bool { return !p.RetiredAt.Valid })
-	shown := ""
-	if at := shownProvider(held); at >= 0 {
-		shown = held[at].Provider
-	}
 	if first >= 0 && held[first].Provider != row.Provider {
 		held[first].RetiredAt = sql.NullTime{Time: time.Now(), Valid: true}
 	}

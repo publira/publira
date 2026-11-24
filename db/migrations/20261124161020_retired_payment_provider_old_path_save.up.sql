@@ -121,15 +121,11 @@ BEGIN
     ORDER BY created_at,
         id
     LIMIT 1;
-    -- The provider tenant_payment_providers_write_config chose to show.
-    SELECT provider
-    INTO shown_provider
-    FROM public.tenant_payment_providers
-    WHERE tenant_id = NEW.tenant_id
-    ORDER BY retired_at IS NOT NULL,
-        created_at,
-        id
-    LIMIT 1;
+    -- The provider the row showed before this write, the one the previous
+    -- release read the fields of. A row being added showed none.
+    IF TG_OP = 'UPDATE' THEN
+        shown_provider := OLD.provider;
+    END IF;
     IF first_provider IS NOT NULL AND first_provider <> NEW.provider THEN
         UPDATE public.tenant_payment_providers
         SET retired_at = now(),

@@ -351,9 +351,10 @@ func TestPreviousReleaseWritesReachTheTenantsProviders(t *testing.T) {
 // previousReleaseSave saves the tenant's one provider the way the previous
 // release's paymentsettings.Store.Upsert does: it reads tenant_payment_config,
 // carries the stored fields over when provider is the one stored there and
-// starts from none when it is another, replaces the fields in typed, and
-// writes the row back whole, which a change of the currency alone does too.
-func previousReleaseSave(t *testing.T, ctx context.Context, conn dbmodels.DBTX, tenantID uuid.UUID, provider string, enabled bool, typed map[string]string) {
+// starts from none when it is another, replaces the fields in typed, clears
+// the ones in cleared, and writes the row back whole, which a change of the
+// currency alone does too.
+func previousReleaseSave(t *testing.T, ctx context.Context, conn dbmodels.DBTX, tenantID uuid.UUID, provider string, enabled bool, typed map[string]string, cleared ...string) {
 	t.Helper()
 	queries := dbmodels.New(conn)
 	row, err := queries.GetTenantPaymentConfigByTenantID(ctx, tenantID)
@@ -378,6 +379,10 @@ func previousReleaseSave(t *testing.T, ctx context.Context, conn dbmodels.DBTX, 
 		}
 		encrypted[name] = envelope
 		hints[name] = paymentsettings.MaskSecret(value)
+	}
+	for _, name := range cleared {
+		delete(encrypted, name)
+		delete(hints, name)
 	}
 	encryptedJSON, err := json.Marshal(encrypted)
 	if err != nil {
@@ -562,6 +567,51 @@ func TestPaymentProvidersMigrationCopiesTheTenantsProvider(t *testing.T) {
 	if currency, err := store.Currency(ctx, tenant.ID); err != nil || currency != "JPY" {
 		t.Fatalf("Currency = %q, %v; want JPY kept", currency, err)
 	}
+}
+
+// Switched off to a retired provider, the previous release leaves it
+// retired, and the settings row goes on showing it, so the previous release's
+// next save of it is of every field it has and clears the one it leaves out.
+func TestPreviousReleaseSaveOfARetiredProviderSwitchedToClearsAField(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	tenant := pg.SeedTenant(t, "PAYOLDCLR001", "pay-old-clear.example.com", "Pay Old Clear")
+
+	withAdminTenant(t, pg, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		store := newIntegrationStore(t, conn, &bytes.Buffer{})
+		if _, err := store.UpsertProvider(ctx, tenant.ID, stripeProvider(true), paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("UpsertProvider stripe: %v", err)
+		}
+		if _, err := store.UpsertProvider(ctx, tenant.ID, payjpProvider(true), paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("UpsertProvider payjp: %v", err)
+		}
+		if _, retired, err := store.RemoveProvider(ctx, tenant.ID, payjp.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
+			t.Fatalf("RemoveProvider payjp: retired %v, %v; want it retired", retired, err)
+		}
+
+		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, false, nil)
+		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != payjp.ID || enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+			t.Fatalf("the previous release reads %s enabled %v hint %q, want PAY.JP off with its fields", provider, enabled, hint)
+		}
+
+		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, false, nil, payjp.FieldWebhookToken)
+		held, err := store.Held(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Held: %v", err)
+		}
+		for _, config := range held {
+			if config.Provider != payjp.ID {
+				continue
+			}
+			secretKey, _ := config.Field(payjp.FieldSecretKey)
+			token, _ := config.Field(payjp.FieldWebhookToken)
+			if !config.Retired || !secretKey.Configured || token.Configured {
+				t.Fatalf("PAY.JP after clearing its token = %+v, want it retired with its secret key and no token", config)
+			}
+			return
+		}
+		t.Fatalf("held = %+v, want PAY.JP among them", held)
+	})
 }
 
 // A tenant whose every provider was retired before the upgrade has a settings
