@@ -248,8 +248,8 @@ github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0o
 github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
 github.com/publira/epub v0.8.0 h1:2q09yGKe0AQpV2JH074T5hKccCfy9Kva+xqdY6rf6LY=
 github.com/publira/epub v0.8.0/go.mod h1:t6Swj2N4d1DsdPyF1YEg1XkZZX8lh62fMg58djI3Q9o=
-github.com/redis/go-redis/v9 v9.23.0 h1:/TTVdJa8BRNsybwwGGnmiYktHNlUXtbOQxlWpHBPL3s=
-github.com/redis/go-redis/v9 v9.23.0/go.mod h1:EWP2UUk+XDaI1s5nQB5mablZN6vccXlmBQTyfnF87D0=
+github.com/redis/go-redis/v9 v9.24.0 h1:X1AnQHWaSfMeggDQm7UFad1YwJmoZxVm5XkaP0kr6nQ=
+github.com/redis/go-redis/v9 v9.24.0/go.mod h1:ted97kpLnB4S2KJkTkw+7GzRjgkFnU909IIrksu+ut4=
 github.com/riverqueue/river v0.51.2 h1:lCFmF8zlKftfjDEW6zCtcRamXmCgOFk6XjeJ82gAEh8=
 github.com/riverqueue/river v0.51.2/go.mod h1:fhdjRpO2EmTPLEuCu+5RuBFjwDdpDEMclvvnNBcQm80=
 github.com/riverqueue/river/riverdriver v0.51.2 h1:hIDg+sRD7h3Xcjy2ozlbDBnjsyLVDbLnB2cWgTR1SoU=
