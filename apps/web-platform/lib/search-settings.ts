@@ -28,6 +28,7 @@ import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 import { getLocale, getPlatformLocale } from "./locale";
 import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
+import { SEARCH_PASSWORD_UNCHANGED } from "./search-settings-shared";
 import type {
   PlatformSearchBuildState,
   PlatformSearchEngine,
@@ -76,9 +77,10 @@ export type UpdatePlatformSearchSettingsResult =
       /**
        * The engine's or the server's reason for refusing the text analysis,
        * the shared definition or a language's own, set when the refusal names
-       * that field.
+       * that field, or the refusal to keep the stored password, in the form's
+       * words.
        */
-      fieldErrors?: { analysis?: string };
+      fieldErrors?: { analysis?: string; password?: string };
       message: string;
       ok: false;
     };
@@ -590,6 +592,24 @@ export const updatePlatformSearchSettings = async (
 
     return { ok: true, settings: toPlatformSearchSettings(response.settings) };
   } catch (error) {
+    // The form keeps the stored credential only as it was saved, and the
+    // server keeps the password only for the URL it was saved for, so a kept
+    // password refused is one saved for another URL.
+    if (
+      input.passwordUpdateMode === SEARCH_PASSWORD_UNCHANGED &&
+      rpcErrorHasFieldViolation(error, "password")
+    ) {
+      const t = await getMessagesFor(locale);
+
+      return {
+        fieldErrors: {
+          password: t("platform.search.credentials.password_url_changed"),
+        },
+        message: t("errors.validation"),
+        ok: false,
+      };
+    }
+
     return writeFailure(error, locale, "platform.search.save_failed", [
       "analysis",
       ...(input.localeAnalyses ?? []).map(

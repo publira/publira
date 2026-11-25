@@ -140,6 +140,11 @@ export type UpdateTenantEmailSettingsRequest = Message<"publira.admin.v1.UpdateT
   username: string;
 
   /**
+   * SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED keep the
+   * stored password, and only for the host, port, username, and encryption it
+   * was saved with; a save naming another one is refused with a violation of
+   * password until it states the password again or clears it.
+   *
    * @generated from field: publira.admin.v1.SecretUpdateMode password_update_mode = 6;
    */
   passwordUpdateMode: SecretUpdateMode;

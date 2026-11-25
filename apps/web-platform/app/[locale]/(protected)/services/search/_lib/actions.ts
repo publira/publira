@@ -80,7 +80,11 @@ export const updatePlatformSearchSettingsAction = async (
   );
 
   if (!result.ok) {
-    return { message: result.message, ok: false };
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
   }
 
   updateTag(platformSearchSettingsCacheTag);

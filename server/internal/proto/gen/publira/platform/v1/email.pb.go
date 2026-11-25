@@ -313,7 +313,11 @@ type UpdatePlatformEmailSettingsRequest struct {
 	// sends through without authenticating. A password is refused without one
 	// with INVALID_ARGUMENT naming this field, and a username is refused without
 	// a password, stored or given here.
-	Username           string           `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED keep the
+	// stored password, and only for the host, port, username, and encryption it
+	// was saved with; a save naming another one is refused with a violation of
+	// password until it states the password again or clears it.
 	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,4,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
 	Password           string           `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
 	Encryption         string           `protobuf:"bytes,6,opt,name=encryption,proto3" json:"encryption,omitempty"`

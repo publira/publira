@@ -396,7 +396,7 @@ func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSear
 	if err != nil {
 		return dbmodels.UpdatePlatformSearchConfigParams{}, err
 	}
-	encrypted, err := resolvePassword(settings.Username, p.SecretMode, p.Password, current, encryptor)
+	encrypted, err := resolvePassword(settings, p.SecretMode, p.Password, current, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSearchConfigParams{}, err
 	}
@@ -412,8 +412,12 @@ func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSear
 }
 
 // resolvePassword answers the ciphertext the password column holds after a
-// save: the one already there, a newly encrypted one, or nothing.
-func resolvePassword(username string, mode secretupdate.Mode, password string, current dbmodels.PlatformSearchConfig, encryptor SecretManager) (string, error) {
+// save of settings: the one already there, a newly encrypted one, or nothing.
+// The one already there is kept only for the URL and the username it was saved
+// with, so a save that moves the engine has to state the password again, and
+// is refused here otherwise, before any analysis is checked at the new URL.
+func resolvePassword(settings Settings, mode secretupdate.Mode, password string, current dbmodels.PlatformSearchConfig, encryptor SecretManager) (string, error) {
+	username := settings.Username
 	resolved, err := secretupdate.Resolve(mode, password, &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired})
 	if err != nil {
 		if errors.Is(err, secretupdate.ErrInvalidMode) {
@@ -434,13 +438,7 @@ func resolvePassword(username string, mode secretupdate.Mode, password string, c
 	case secretupdate.Clear:
 		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	case secretupdate.Unchanged:
-		if existing == "" {
-			return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
-		}
-		if username != current.Username.String {
-			return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrUsernameChanged}
-		}
-		return existing, nil
+		return keptPassword(settings, FromConfig(current).Settings, existing)
 	}
 	// The same password sent again keeps the stored ciphertext, so a form
 	// that always sends it does not move the revision.
@@ -456,6 +454,23 @@ func resolvePassword(username string, mode secretupdate.Mode, password string, c
 		return "", fmt.Errorf("encrypt the search engine password: %w", err)
 	}
 	return encrypted, nil
+}
+
+// keptPassword answers the stored ciphertext for settings that state no
+// password of their own. The stored password is a secret the settings RPCs
+// never answer with, so it is kept, and sent, only with the URL and the
+// username it was saved with.
+func keptPassword(settings, saved Settings, savedEncrypted string) (string, error) {
+	savedEncrypted = strings.TrimSpace(savedEncrypted)
+	switch {
+	case savedEncrypted == "":
+		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
+	case settings.Username != saved.Username:
+		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrUsernameChanged}
+	case settings.URL != saved.URL:
+		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrURLChanged}
+	}
+	return savedEncrypted, nil
 }
 
 func storedParams(row dbmodels.PlatformSearchConfig) dbmodels.UpdatePlatformSearchConfigParams {

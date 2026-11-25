@@ -47,7 +47,7 @@ Saving an engine does not move the search onto it at once. The index on the new 
 
 1. Choose **Search** under **Services** in the sidebar.
 2. Under **Engine**, choose **OpenSearch** or **Elasticsearch**, and enter its **URL** and, if you chose one, its **Index alias (optional)**.
-3. Under **Authentication**, choose **No authentication**, or **Username and password** and enter both.
+3. Under **Authentication**, choose **No authentication**, or **Username and password** and enter both. A saved password is kept only for the URL and the username it was saved for, so for another URL choose **Replace credentials** and enter both again.
 4. Choose **Test connection**, and save with **Save search settings** once it passes.
 
 ![Search engine with OpenSearch chosen: Engine, URL, Index alias (optional), Authentication, the connection test, and Save search settings.](./search-engine.png)
@@ -65,7 +65,7 @@ publiractl search test
 publiractl search show
 ```
 
-`search set` replaces every saved setting with the flags it is given, so name all of them each time; leaving `--username` out removes a saved password. With the same `--username` and no password, it keeps the saved password. `search show` prints the engine the search answers from, and a build that is under way or has failed.
+`search set` replaces every saved setting with the flags it is given, so name all of them each time; leaving `--username` out removes a saved password. With the same `--url` and `--username` and no password, it keeps the saved password; with any other, it is refused until the password is given. `search show` prints the engine the search answers from, and a build that is under way or has failed.
 
 ### How long it takes
 

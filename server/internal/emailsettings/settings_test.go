@@ -86,8 +86,73 @@ func TestResolvePasswordForTestWithNothingSaved(t *testing.T) {
 	}
 }
 
+// A save keeps the saved password only beside the server it was saved for. A
+// save that names another one has to state the password again or clear it.
+func TestEncryptUpdatedPasswordKeepsTheSavedPasswordOnlyForItsServer(t *testing.T) {
+	with := func(change func(*SMTPSettings)) SMTPSettings {
+		settings := savedServer
+		change(&settings)
+		return settings
+	}
+	elsewhere := with(func(s *SMTPSettings) { s.Host = "smtp.elsewhere.example" })
+	for _, tc := range []struct {
+		name     string
+		settings SMTPSettings
+		mode     secretupdate.Mode
+		password string
+		want     string
+		field    string
+		is       error
+	}{
+		{name: "the saved server", settings: savedServer, mode: secretupdate.Unchanged, want: encryptedSMTPPassword},
+		{name: "the saved server with no mode stated", settings: savedServer, mode: secretupdate.Unspecified, want: encryptedSMTPPassword},
+		{name: "the saved host in another case and padded", settings: with(func(s *SMTPSettings) { s.Host = " SMTP.Example.COM " }), mode: secretupdate.Unchanged, want: encryptedSMTPPassword},
+		{name: "another host", settings: elsewhere, mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "another host with no mode stated", settings: elsewhere, mode: secretupdate.Unspecified, field: FieldPassword, is: ErrServerChanged},
+		{name: "another port", settings: with(func(s *SMTPSettings) { s.Port = 2525 }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "another username", settings: with(func(s *SMTPSettings) { s.Username = "someone-else" }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "no encryption", settings: with(func(s *SMTPSettings) { s.Encryption = "none" }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "no username", settings: with(func(s *SMTPSettings) { s.Username = "" }), mode: secretupdate.Unchanged, field: FieldUsername, is: ErrPasswordWithoutUsername},
+		{name: "another host with the password stated", settings: elsewhere, mode: secretupdate.Replace, password: "its-own-password", want: "sealed:its-own-password"},
+		{name: "another host with the password cleared", settings: elsewhere, mode: secretupdate.Clear},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, has, err := EncryptUpdatedPassword(tc.settings, savedServer, encryptedSMTPPassword, tc.mode, tc.password, sealingSecretManager{})
+			if tc.is == nil {
+				if err != nil || got != tc.want || has != (tc.want != "") {
+					t.Fatalf("EncryptUpdatedPassword = %q, %v, %v; want %q", got, has, err, tc.want)
+				}
+				return
+			}
+			if got != "" || has || !errors.Is(err, tc.is) || fielderr.Field(err) != tc.field {
+				t.Fatalf("EncryptUpdatedPassword = %q, %v, %v on %q; want %v on %q", got, has, err, fielderr.Field(err), tc.is, tc.field)
+			}
+		})
+	}
+}
+
+// With no password saved there is nothing to keep, so a save of any server
+// holds none.
+func TestEncryptUpdatedPasswordWithNothingSaved(t *testing.T) {
+	elsewhere := savedServer
+	elsewhere.Host = "smtp.elsewhere.example"
+	if got, has, err := EncryptUpdatedPassword(elsewhere, SMTPSettings{}, "", secretupdate.Unchanged, "", nil); got != "" || has || err != nil {
+		t.Fatalf("EncryptUpdatedPassword = %q, %v, %v; want no password", got, has, err)
+	}
+}
+
+// sealingSecretManager seals a password as "sealed:" and the password, so a
+// test can tell a new ciphertext from the saved one.
+type sealingSecretManager struct{}
+
+func (sealingSecretManager) EncryptString(plaintext string) (string, error) {
+	return "sealed:" + plaintext, nil
+}
+
+func (sealingSecretManager) DecryptString(string) (string, error) { return "saved-password", nil }
+
 func TestEncryptUpdatedPasswordRefusesABlankReplacementAsAPassword(t *testing.T) {
-	_, _, err := EncryptUpdatedPassword(encryptedSMTPPassword, secretupdate.Replace, "   ", nil)
+	_, _, err := EncryptUpdatedPassword(savedServer, savedServer, encryptedSMTPPassword, secretupdate.Replace, "   ", nil)
 	if !errors.Is(err, ErrPasswordRequired) {
 		t.Fatalf("EncryptUpdatedPassword(replace, blank) error = %v, want ErrPasswordRequired", err)
 	}

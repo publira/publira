@@ -82,7 +82,8 @@ func settingsOf(config dbmodels.PlatformSmtpConfig, password string) emailsettin
 }
 
 // SaveParams replaces the saved settings. Settings.Password is ignored: the
-// password is PasswordMode applied to Password.
+// password is PasswordMode applied to Password, over the saved one, which is
+// kept only for the server it was saved for.
 type SaveParams struct {
 	Settings     emailsettings.SMTPSettings
 	PasswordMode secretupdate.Mode
@@ -158,7 +159,7 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor emailsettings.Sec
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
 			return dbmodels.PlatformSmtpConfig{}, false, ErrConflict
 		}
-		params, err := configParams(p, "", encryptor)
+		params, err := configParams(p, dbmodels.PlatformSmtpConfig{}, encryptor)
 		if err != nil {
 			return dbmodels.PlatformSmtpConfig{}, false, err
 		}
@@ -179,7 +180,7 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor emailsettings.Sec
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
 		return dbmodels.PlatformSmtpConfig{}, false, ErrConflict
 	}
-	params, err := configParams(p, current.PasswordEncrypted, encryptor)
+	params, err := configParams(p, current, encryptor)
 	if err != nil {
 		return dbmodels.PlatformSmtpConfig{}, false, err
 	}
@@ -206,11 +207,10 @@ func storedParams(config dbmodels.PlatformSmtpConfig) dbmodels.UpdatePlatformSMT
 }
 
 // configParams resolves the password the row ends up holding from the stored
-// ciphertext, which is empty when nothing is saved yet.
-func configParams(p SaveParams, existingPassword string, encryptor emailsettings.SecretManager) (dbmodels.UpdatePlatformSMTPConfigParams, error) {
-	decrypter, _ := encryptor.(secretupdate.Decrypter)
-	mode := secretupdate.KeepIfSame(p.PasswordMode, p.Password, existingPassword, decrypter)
-	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, mode, p.Password, encryptor)
+// row, which is the zero row when nothing is saved yet. The stored password is
+// kept only for the server it was saved for.
+func configParams(p SaveParams, current dbmodels.PlatformSmtpConfig, encryptor emailsettings.SecretManager) (dbmodels.UpdatePlatformSMTPConfigParams, error) {
+	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(p.Settings, settingsOf(current, ""), current.PasswordEncrypted, p.PasswordMode, p.Password, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSMTPConfigParams{}, passwordError(err)
 	}

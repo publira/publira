@@ -6,8 +6,12 @@ import (
 	"errors"
 	"log/slog"
 	"maps"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -480,6 +484,53 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 	}
 	if cleared.Username.Valid || cleared.PasswordEncrypted.Valid {
 		t.Fatalf("saved = %+v, want the credential cleared", cleared)
+	}
+}
+
+// The stored password is kept only for the URL and the username it was saved
+// with: a save that moves the engine and states no password is refused on the
+// password before the analysis it changes is checked against the new URL, so
+// nothing connects there, and the row is left as it was.
+func TestASaveThatMovesTheEngineKeepsTheStoredPassword(t *testing.T) {
+	e := newEnv(t)
+	db := e.pg.OpenPlatformDB(t)
+	ctx := context.Background()
+	save := func(p platformsearch.SaveParams) (dbmodels.PlatformSearchConfig, error) {
+		return platformsearch.Save(ctx, db, slog.Default(), e.secrets, auditlog.SystemPlatformActor, p)
+	}
+	withUser := platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: "https://search.example.com", Index: "publira-catalog", Username: "publira"}
+	saved, err := save(platformsearch.SaveParams{Settings: withUser, SecretMode: secretupdate.Replace, Password: "first-password"})
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	var connections atomic.Int32
+	elsewhere := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	elsewhere.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	elsewhere.StartTLS()
+	t.Cleanup(elsewhere.Close)
+	moved := withUser
+	moved.URL = elsewhere.URL
+
+	for _, mode := range []secretupdate.Mode{secretupdate.Unspecified, secretupdate.Unchanged} {
+		_, err := save(platformsearch.SaveParams{Settings: moved, SecretMode: mode, AnalysisMode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis})
+		if !errors.Is(err, platformsearch.ErrURLChanged) || fielderr.Field(err) != platformsearch.FieldPassword {
+			t.Fatalf("save of another URL, mode %d = %v on %q, want ErrURLChanged on password", mode, err, fielderr.Field(err))
+		}
+	}
+	if got := connections.Load(); got != 0 {
+		t.Fatalf("connections to the new URL = %d, want none", got)
+	}
+	row, _, err := platformsearch.Get(ctx, e.platform)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if row.Revision != saved.Revision || row.Url != saved.Url || row.PasswordEncrypted != saved.PasswordEncrypted {
+		t.Fatalf("stored row = revision %d at %q, want revision %d at %q left alone", row.Revision, row.Url.String, saved.Revision, saved.Url.String)
 	}
 }
 

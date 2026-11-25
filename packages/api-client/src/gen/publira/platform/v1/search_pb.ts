@@ -328,6 +328,11 @@ export type UpdatePlatformSearchSettingsRequest = Message<"publira.platform.v1.U
   username: string;
 
   /**
+   * SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED keep the
+   * stored password, and only for the url and the username it was saved with;
+   * a save naming another one is refused with a violation of password until it
+   * states the password again.
+   *
    * @generated from field: publira.platform.v1.SecretUpdateMode password_update_mode = 5;
    */
   passwordUpdateMode: SecretUpdateMode;

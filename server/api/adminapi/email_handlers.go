@@ -144,25 +144,27 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	if err != nil {
 		return nil, err
 	}
-	existingPassword := ""
-	if found && existing.PasswordEncrypted.Valid {
-		existingPassword = existing.PasswordEncrypted.String
-	}
-	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
-	}
-
 	settings := tenantEmailSettingsFromUpdateRequest(req)
 	if req.SmtpOverrideEnabled {
 		if err := emailsettings.Validate(settings, false); err != nil {
 			return nil, tenantEmailSettingsError(err)
 		}
+	} else {
+		settings = mergeTenantSettingsWithExisting(settings, existing, found)
+	}
+	// The stored password is kept beside the settings the row ends up holding,
+	// so it stays with the server it was saved for whether or not the override
+	// is on: one kept beside another host while the override is off would be
+	// sent there once it is turned on.
+	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(settings, savedTenantSMTPSettings(existing), existing.PasswordEncrypted.String, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
+	if err != nil {
+		return nil, tenantEmailSettingsError(err)
+	}
+	if req.SmtpOverrideEnabled {
 		if err := requireCredentialsTogether(settings, hasPassword); err != nil {
 			return nil, tenantEmailSettingsError(err)
 		}
 	} else {
-		settings = mergeTenantSettingsWithExisting(settings, existing, found)
 		if emailsettings.HasAnyValue(settings, hasPassword) {
 			if err := emailsettings.ValidateOptional(settings, hasPassword); err != nil {
 				return nil, tenantEmailSettingsError(err)
@@ -328,22 +330,12 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 		)
 	}
 
-	existing, found, err := s.loadTenantSMTPConfigByID(ctx, tenant.ID)
+	existing, _, err := s.loadTenantSMTPConfigByID(ctx, tenant.ID)
 	if err != nil {
 		return emailsettings.SMTPSettings{}, err
 	}
-	existingPassword := ""
-	if found && existing.PasswordEncrypted.Valid {
-		existingPassword = existing.PasswordEncrypted.String
-	}
 	stated := tenantEmailSettingsFromTestRequest(req, "")
-	saved := emailsettings.SMTPSettings{
-		Host:       existing.Host.String,
-		Port:       existing.Port.Int32,
-		Username:   existing.Username.String,
-		Encryption: existing.Encryption.String,
-	}
-	password, err := emailsettings.ResolvePasswordForTest(stated, saved, existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
+	password, err := emailsettings.ResolvePasswordForTest(stated, savedTenantSMTPSettings(existing), existing.PasswordEncrypted.String, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
 	if err != nil {
 		return emailsettings.SMTPSettings{}, tenantEmailSettingsError(err)
 	}
@@ -353,6 +345,17 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 		return emailsettings.SMTPSettings{}, tenantEmailSettingsError(err)
 	}
 	return settings, nil
+}
+
+// savedTenantSMTPSettings names the server the password stored in config was
+// saved for, and none when nothing is saved.
+func savedTenantSMTPSettings(config dbmodels.TenantSmtpConfig) emailsettings.SMTPSettings {
+	return emailsettings.SMTPSettings{
+		Host:       config.Host.String,
+		Port:       config.Port.Int32,
+		Username:   config.Username.String,
+		Encryption: config.Encryption.String,
+	}
 }
 
 // requireCredentialsTogether refuses an override whose username and the

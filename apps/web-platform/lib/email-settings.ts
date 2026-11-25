@@ -21,6 +21,7 @@ import {
 } from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { SECRET_UPDATE_MODE_UNCHANGED } from "./email-settings-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
 import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
@@ -72,7 +73,7 @@ export type PlatformSmtpSettingsResult =
        * What the save refused about one field, in the form's words. Only
        * {@link updatePlatformEmailSettings} sets it.
        */
-      fieldErrors?: { username?: string };
+      fieldErrors?: { password?: string; username?: string };
       message: string;
       ok: false;
     };
@@ -239,6 +240,22 @@ export const updatePlatformEmailSettings = async (
       return {
         fieldErrors: {
           username: t("platform.settings.username_required_with_password"),
+        },
+        message: t("errors.validation"),
+        ok: false,
+      };
+    }
+
+    // The form keeps the stored password only while it is not opened for
+    // editing, and the server keeps it only for the server it was saved for,
+    // so a kept password refused is one saved for another server.
+    if (
+      input.passwordUpdateMode === SECRET_UPDATE_MODE_UNCHANGED &&
+      rpcErrorHasFieldViolation(error, "password")
+    ) {
+      return {
+        fieldErrors: {
+          password: t("platform.settings.password_server_changed"),
         },
         message: t("errors.validation"),
         ok: false,

@@ -462,6 +462,37 @@ describe("updatePlatformSearchSettings with a text analysis", () => {
       ok: false,
     });
   });
+
+  it("puts a kept password refused for another URL on the password field", async () => {
+    mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
+      new ConnectError(
+        "the saved password belongs to another URL; give the password as well",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "password" }] },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      updatePlatformSearchSettings(
+        { ...input, url: "https://search.elsewhere.example" },
+        3n,
+        "en"
+      )
+    ).resolves.toEqual({
+      fieldErrors: {
+        password:
+          "The saved password is kept only for the URL it was saved for. To save another URL, choose Replace credentials and enter the username and the password again.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+  });
 });
 
 describe("updatePlatformSearchSettings with a language's own text analysis", () => {

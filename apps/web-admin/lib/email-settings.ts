@@ -20,6 +20,7 @@ import {
 import { apiClient, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
+import { SECRET_UPDATE_MODE_UNCHANGED } from "./email-settings-shared";
 import type { TenantSmtpSettings } from "./email-settings-shared";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
@@ -65,7 +66,7 @@ export type TenantSmtpSettingsResult =
        * What the save refused about one field, in the form's words. Only
        * {@link updateTenantEmailSettings} sets it.
        */
-      fieldErrors?: { username?: string };
+      fieldErrors?: { password?: string; username?: string };
       /**
        * The API rejected the session while reading the settings — the page
        * raises the login redirect. The update path throws instead, so only
@@ -333,6 +334,22 @@ export const updateTenantEmailSettings = async (
       return {
         fieldErrors: {
           username: t("admin.settings.email.username_required_with_password"),
+        },
+        message: t("errors.validation"),
+        ok: false,
+      };
+    }
+
+    // The form keeps the stored password only while it is not opened for
+    // editing, and the server keeps it only for the server it was saved for,
+    // so a kept password refused is one saved for another server.
+    if (
+      input.passwordUpdateMode === SECRET_UPDATE_MODE_UNCHANGED &&
+      rpcErrorHasFieldViolation(error, "password")
+    ) {
+      return {
+        fieldErrors: {
+          password: t("admin.settings.email.password_server_changed"),
         },
         message: t("errors.validation"),
         ok: false,

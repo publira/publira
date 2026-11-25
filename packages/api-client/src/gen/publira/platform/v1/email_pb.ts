@@ -123,6 +123,11 @@ export type UpdatePlatformEmailSettingsRequest = Message<"publira.platform.v1.Up
   username: string;
 
   /**
+   * SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED keep the
+   * stored password, and only for the host, port, username, and encryption it
+   * was saved with; a save naming another one is refused with a violation of
+   * password until it states the password again or clears it.
+   *
    * @generated from field: publira.platform.v1.SecretUpdateMode password_update_mode = 4;
    */
   passwordUpdateMode: SecretUpdateMode;

@@ -166,6 +166,7 @@ export const TenantEmailSettingsForm = ({
                       <Message message="admin.settings.email.password_change_cancel" />
                     </Suspense>
                   </SmtpPassword.Editor>
+                  <ActionForm.FieldError name="password" />
                   <SmtpPassword.Replacing>
                     <Field.Description>
                       <Suspense

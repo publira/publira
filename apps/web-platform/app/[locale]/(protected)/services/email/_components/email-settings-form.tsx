@@ -143,6 +143,7 @@ export const EmailSettingsForm = ({
                   <Message message="platform.settings.password_undo" />
                 </Suspense>
               </SmtpPassword.Editor>
+              <ActionForm.FieldError name="password" />
             </Field.Content>
             <SmtpPassword.Replacing>
               <Field.Description>

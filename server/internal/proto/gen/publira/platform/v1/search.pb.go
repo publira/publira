@@ -765,7 +765,11 @@ type UpdatePlatformSearchSettingsRequest struct {
 	// Sent together with password_update_mode: a username and its password are
 	// one credential, so a save leaves both or states both. Credentials need an
 	// https:// URL, over which they do not cross the network in cleartext.
-	Username           string           `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	Username string `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	// SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED keep the
+	// stored password, and only for the url and the username it was saved with;
+	// a save naming another one is refused with a violation of password until it
+	// states the password again.
 	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,5,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
 	Password           string           `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`
 	// Required: the revision the values in this request were derived from, as

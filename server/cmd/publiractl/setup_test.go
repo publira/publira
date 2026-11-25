@@ -515,6 +515,37 @@ func TestSetupRefusesAnSMTPPasswordWithoutAUsername(t *testing.T) {
 	}
 }
 
+// The stored SMTP password is kept only for the server it was saved for: a run
+// that names another host under the same username asks for the password
+// again, and saves and sends nothing without it.
+func TestSetupAsksForTheSMTPPasswordWhenTheServerMoves(t *testing.T) {
+	env := startSetupEnv(t)
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		`INSERT INTO platform_smtp_config (host, port, username, password_encrypted, encryption, from_address)
+		VALUES ('smtp.saved.example', $1, 'mailer', 'enc:v1:k1:nonce:ciphertext', 'none', 'no-reply@example.com')`,
+		env.smtp.Port,
+	); err != nil {
+		t.Fatalf("seed platform_smtp_config: %v", err)
+	}
+
+	var stderr bytes.Buffer
+	args := append(withoutFlags(env.everyFlag(t), "--smtp-password-file"), "--non-interactive", "--generate-admin-password")
+	code, _ := runSetup(t, pipedConsole("", &stderr), args...)
+	if code != 2 || !strings.Contains(stderr.String(), "--smtp-password-file, --smtp-password-stdin, or --smtp-password-env is required") {
+		t.Fatalf("exit code = %d, stderr = \n%s\nwant the SMTP password asked for", code, stderr.String())
+	}
+	var host string
+	if err := env.pg.DB.QueryRowContext(context.Background(), `SELECT host FROM platform_smtp_config`).Scan(&host); err != nil {
+		t.Fatalf("read platform_smtp_config: %v", err)
+	}
+	if host != "smtp.saved.example" {
+		t.Fatalf("saved host = %q, want the stored one left alone", host)
+	}
+	if logins, messages := env.smtp.Logins(), env.smtp.Messages(); len(logins) != 0 || len(messages) != 0 {
+		t.Fatalf("logins = %v, messages = %d; want the new server never reached", logins, len(messages))
+	}
+}
+
 // The stored search password is kept only for the engine it was saved for: a
 // run that moves the engine to another URL under the same username asks for
 // the password again, and saves nothing without it.
