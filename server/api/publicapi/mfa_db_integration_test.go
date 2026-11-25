@@ -10,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -33,14 +34,15 @@ type mfaDBEnv struct {
 
 func newMfaDBEnv(t *testing.T) *mfaDBEnv {
 	t.Helper()
-	return newMfaDBEnvWithGuards(t, openReaderGuards())
+	return newMfaDBEnvWithLoginGuard(t, openLoginGuard())
 }
 
-func newMfaDBEnvWithGuards(t *testing.T, guards readerGuards) *mfaDBEnv {
+func newMfaDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *mfaDBEnv {
 	t.Helper()
 	encryptor := newPublicTestEncryptor(t)
-	env := newPublicDBEnvConfigured(t, guards, openMailGuard(), func(api *apiServer, _ *sql.DB) {
+	env := newPublicDBEnvConfigured(t, openReaderGuards(), openMailGuard(), func(api *apiServer, _ *sql.DB) {
 		api.encryptor = encryptor
+		api.login = login
 	})
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "MFAREADERA01", "reader@tenant-a.example.com", "Reader")
@@ -229,9 +231,7 @@ func TestDBMfaWrongCodesLockTheAccountTheConsoleLocks(t *testing.T) {
 func TestDBMfaVerifySpendsThePasswordVerifications(t *testing.T) {
 	t.Parallel()
 
-	env := newMfaDBEnvWithGuards(t, guardsWith(func(p *platformpolicy.Policy) {
-		p.PasswordVerification = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 3}
-	}))
+	env := newMfaDBEnvWithLoginGuard(t, stepUpGuardWith(platformpolicy.MinuteDay{PerMinute: 3, PerDay: 3}))
 	secret, _ := env.enroll(t, env.reader)
 	login := env.login(t, env.reader)
 	challenge := challenged(t, login)

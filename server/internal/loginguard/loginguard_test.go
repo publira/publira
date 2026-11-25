@@ -255,3 +255,79 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 		t.Fatalf("Retry-After = %q, want the 30s left of the window", got)
 	}
 }
+
+// newStepUpGuard is a guard whose step-up allowance is perAccount.
+func newStepUpGuard(t *testing.T, perAccount platformpolicy.MinuteDay) *Guard {
+	t.Helper()
+
+	policy := platformpolicy.Defaults()
+	policy.PasswordVerification = perAccount
+	clock := &fakeClock{now: testStart}
+	limiter := ratelimit.NewWithClock(ratelimit.NewMemoryStoreWithClock(clock.Now), clock.Now)
+	return New(limiter, platformpolicy.Fixed(policy), slog.Default())
+}
+
+const (
+	testAccount      = "33333333-3333-4333-8333-333333333333"
+	testOtherAccount = "44444444-4444-4444-8444-444444444444"
+)
+
+func TestStepUpRefusesPastTheAccountAllowance(t *testing.T) {
+	const allowance = 3
+	guard := newStepUpGuard(t, platformpolicy.MinuteDay{PerMinute: allowance, PerDay: 100})
+
+	for attempt := 1; attempt <= allowance; attempt++ {
+		if err := guard.ChargeStepUp(callFrom(t, testSource), testScope, testAccount); err != nil {
+			t.Fatalf("attempt %d = %v, want the first %d allowed", attempt, err, allowance)
+		}
+	}
+	err := guard.ChargeStepUp(callFrom(t, testSource), testScope, testAccount)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("attempt %d code = %v, want resource_exhausted (err=%v)", allowance+1, connect.CodeOf(err), err)
+	}
+	// The allowance is the account's, so a second origin does not widen it.
+	if err := guard.ChargeStepUp(callFrom(t, testOtherSrc), testScope, testAccount); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the same account from another origin code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	// Nor is another account, or the same id in another scope, held back.
+	if err := guard.ChargeStepUp(callFrom(t, testSource), testScope, testOtherAccount); err != nil {
+		t.Fatalf("another account = %v, want it allowed", err)
+	}
+	if err := guard.ChargeStepUp(callFrom(t, testSource), testOtherScope, testAccount); err != nil {
+		t.Fatalf("the same id in another scope = %v, want it allowed", err)
+	}
+}
+
+// The step-up allowance and the sign-in allowance are two counts: a session
+// that guessed its way through one has not spent the other.
+func TestStepUpIsKeptApartFromSignIn(t *testing.T) {
+	guard := newStepUpGuard(t, platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1})
+
+	if err := guard.ChargeStepUp(callFrom(t, testSource), testScope, testAccount); err != nil {
+		t.Fatalf("the step-up check = %v, want it allowed", err)
+	}
+	if _, err := guard.Begin(callFrom(t, testSource), testScope, testAddress); err != nil {
+		t.Fatalf("a sign-in after the step-up allowance ran out = %v, want it allowed", err)
+	}
+}
+
+// Someone who mistyped their password and then got it right is not held back.
+func TestStepUpVerifiedClearsTheCount(t *testing.T) {
+	guard := newStepUpGuard(t, platformpolicy.MinuteDay{PerMinute: 3, PerDay: 3})
+
+	for typo := 1; typo <= 2; typo++ {
+		if err := guard.ChargeStepUp(callFrom(t, testSource), PlatformScope, testAccount); err != nil {
+			t.Fatalf("typo %d = %v, want it allowed", typo, err)
+		}
+	}
+	if err := guard.ChargeStepUp(callFrom(t, testSource), PlatformScope, testAccount); err != nil {
+		t.Fatalf("the right password on the last allowance = %v, want it allowed", err)
+	}
+	guard.ClearStepUp(callFrom(t, testSource), PlatformScope, testAccount)
+
+	for typo := 1; typo <= 3; typo++ {
+		if err := guard.ChargeStepUp(callFrom(t, testSource), PlatformScope, testAccount); err != nil {
+			t.Fatalf("typo %d after the right password = %v, want the count cleared", typo, err)
+		}
+	}
+}

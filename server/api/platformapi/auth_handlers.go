@@ -460,10 +460,18 @@ func (s *platformServer) RequestEmailChange(
 		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, "new email must be different from current email")
 	}
+	// Charged here rather than at the top: every check above refuses on what the
+	// caller typed instead of on the account's password, so none of them is a
+	// guess and none of them should cost an allowance.
+	if err := s.login.ChargeStepUp(ctx, loginguard.PlatformScope, platformUser.ID.String()); err != nil {
+		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "password_rate_limited")
+		return nil, err
+	}
 	if !auth.VerifyPassword(currentPassword, platformUser.PasswordHash) {
 		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
+	s.login.ClearStepUp(ctx, loginguard.PlatformScope, platformUser.ID.String())
 
 	_, err = s.queriesFor(ctx).GetPlatformUserByEmail(ctx, newEmail)
 	if err == nil {
@@ -515,6 +523,32 @@ func (s *platformServer) RequestEmailChange(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
+	// The delete below locks only the rows it finds, so two requests arriving at
+	// once each insert a token and leave two live links behind. Locking the
+	// account row orders them: the second one's statements then run on a
+	// snapshot that already holds the first one's token.
+	locked, err := txq.GetPlatformUserByIDForUpdate(ctx, platformUser.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "account_gone")
+			return nil, invalidSessionError()
+		}
+		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for an email change request", err, "platform_user_id", platformUser.ID.String())
+	}
+	// The password and the address above were checked against the row this
+	// request read before the transaction, and the lock is what makes those
+	// checks current. A password set while this request waited ends the session
+	// it came with, since every path that writes one bumps credentials_version.
+	if locked.CredentialsVersion != platformUser.CredentialsVersion {
+		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "stale_session")
+		return nil, invalidSessionError()
+	}
+	if !strings.EqualFold(currentEmail, locked.Email) {
+		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current email does not match")
+	}
+
 	if err := txq.DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
 		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
@@ -522,7 +556,7 @@ func (s *platformServer) RequestEmailChange(
 	if _, err := txq.CreatePlatformUserEmailChangeToken(ctx, dbmodels.CreatePlatformUserEmailChangeTokenParams{
 		ID:                    tokenID,
 		PlatformUserID:        platformUser.ID,
-		CurrentEmail:          platformUser.Email,
+		CurrentEmail:          locked.Email,
 		NewEmail:              newEmail,
 		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),

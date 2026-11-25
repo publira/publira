@@ -1299,6 +1299,7 @@ type Querier interface {
 	GetPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
+	GetPlatformUserByIDForUpdate(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error)
