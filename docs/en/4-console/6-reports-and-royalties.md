@@ -166,9 +166,9 @@ Only a Tenant admin can change a share. An Editor still corrects who a series or
 - Under **Authors**, on the series form and on an episode, each **Share of author** is shown but cannot be typed into, and an Author added with **Add author** is paid nothing. A credit paid a share keeps its Author and its role, and cannot be removed, since dropping it or putting someone else in its place would move what is paid. A credit paid nothing can be changed or removed as before.
 - **Credits** on the series' episode list offers **Add**, **Replace**, and **Remove**, without **Set share**. **Replace** and **Remove** are refused on a credit that is paid on any of the selected episodes, with a message that says so: leave those episodes out of the selection, or ask a Tenant admin.
 
-![The Authors field of a series form as an Editor sees it: Royalty Artist, paid 30%, with the Author, the role, and the remove button unavailable and the share read-only, Royalty Writer, paid nothing, whose Author and role can still be changed, Add author, and the note that only a tenant admin can change a share.](./reports-and-royalties-editor-series-authors.png)
+![The Authors field of a series form as an Editor sees it: Royalty Writer, paid nothing, whose Author and role can still be changed, and Royalty Artist, paid 30%, with the Author, the role, and the remove button unavailable, both shares read-only, the note that only a tenant admin can change a share, and Add author.](./reports-and-royalties-editor-series-authors.png)
 
-![The Authors section of an episode as an Editor sees it: Royalty Artist and Royalty Writer, both paid a share, with their Authors, roles, and remove buttons unavailable and their shares read-only, Add author, and Save authors.](./reports-and-royalties-editor-episode-authors.png)
+![The Authors section of an episode as an Editor sees it: Royalty Writer and Royalty Artist, both paid a share and marked Episode only, with their Authors, roles, and remove buttons unavailable and their shares read-only, the note that only a tenant admin can change a share, Add author, and Save authors.](./reports-and-royalties-editor-episode-authors.png)
 
 ![The Edit credits on selected episodes dialog as an Editor sees it: Add, Replace, and Remove under Operation, without Set share.](./reports-and-royalties-editor-bulk-credits.png)
 

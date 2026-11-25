@@ -167,9 +167,9 @@ source_updated: 2026-11-25
 - 在系列表单和章节的**作者**中，**作者1的分成**等字段会显示分成比例，但无法输入；通过**添加作者**添加的作者分成为0。有分成的署名不能更改作者和角色，也不能移除，因为移除它或换成他人会改变报酬。分成为0的署名仍可像以前一样更改或移除。
 - 系列章节列表上的**署名**提供**添加**、**替换**和**移除**，不提供**设置分成**。对于在所选任一章节上有报酬的署名，**替换**和**移除**会被拒绝，并显示说明原因的消息。请将这些章节从选择中移除，或请租户管理员处理。
 
-![编辑看到的系列表单的作者字段：分成为30%的Royalty Artist无法更改作者和角色，也无法使用移除按钮，分成为只读；没有分成的Royalty Writer仍可更改作者和角色；下方是添加作者，以及只有租户管理员才能变更分成的说明。](./reports-and-royalties-editor-series-authors.png)
+![编辑看到的系列表单的作者字段：没有分成的Royalty Writer仍可更改作者和角色，分成为30%的Royalty Artist无法更改作者和角色，也无法使用移除按钮，两者的分成均为只读；下方是只有租户管理员才能变更分成的说明，以及添加作者。](./reports-and-royalties-editor-series-authors.png)
 
-![编辑看到的章节作者部分：都有分成的Royalty Artist和Royalty Writer无法更改作者和角色，也无法使用移除按钮，分成为只读；下方是添加作者和保存作者。](./reports-and-royalties-editor-episode-authors.png)
+![编辑看到的章节作者部分：都有分成并标为“仅本章”的Royalty Writer和Royalty Artist无法更改作者和角色，也无法使用移除按钮，分成为只读；下方是只有租户管理员才能变更分成的说明，以及添加作者和保存作者。](./reports-and-royalties-editor-episode-authors.png)
 
 ![编辑看到的“编辑所选章节的署名”对话框：操作中有添加、替换和移除，没有设置分成。](./reports-and-royalties-editor-bulk-credits.png)
 

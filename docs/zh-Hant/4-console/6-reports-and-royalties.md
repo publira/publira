@@ -167,9 +167,9 @@ source_updated: 2026-11-25
 - 在系列表單與章節的**作者**中，「**作者1的分潤**」這類欄位會顯示分潤比例，但無法輸入；以**新增作者**加入的作者分潤為0。有分潤的署名無法變更作者與角色，也無法移除，因為移除它或改為他人會改變支付。分潤為0的署名仍可像以往一樣變更或移除。
 - 系列章節列表上的**署名**提供**新增**、**取代**與**移除**，不提供**設定分潤**。對於在所選任一章節上有支付的署名，**取代**與**移除**會被拒絕，並顯示說明原因的訊息。請將這些章節從選擇中移除，或請租戶管理員處理。
 
-![編輯看到的系列表單作者欄位：分潤為30%的Royalty Artist無法變更作者與角色，也無法使用移除按鈕，分潤為唯讀；沒有分潤的Royalty Writer仍可變更作者與角色；下方是新增作者，以及只有租戶管理員才能變更分潤的說明。](./reports-and-royalties-editor-series-authors.png)
+![編輯看到的系列表單作者欄位：沒有分潤的Royalty Writer仍可變更作者與角色，分潤為30%的Royalty Artist無法變更作者與角色，也無法使用移除按鈕，兩者的分潤皆為唯讀；下方是只有租戶管理員才能變更分潤的說明，以及新增作者。](./reports-and-royalties-editor-series-authors.png)
 
-![編輯看到的章節作者區塊：都有分潤的Royalty Artist與Royalty Writer無法變更作者與角色，也無法使用移除按鈕，分潤為唯讀；下方是新增作者與儲存作者。](./reports-and-royalties-editor-episode-authors.png)
+![編輯看到的章節作者區塊：都有分潤並標示為「僅本章」的Royalty Writer與Royalty Artist無法變更作者與角色，也無法使用移除按鈕，分潤為唯讀；下方是只有租戶管理員才能變更分潤的說明，以及新增作者與儲存作者。](./reports-and-royalties-editor-episode-authors.png)
 
 ![編輯看到的「編輯所選章節的署名」對話框：操作中有新增、取代與移除，沒有設定分潤。](./reports-and-royalties-editor-bulk-credits.png)
 
