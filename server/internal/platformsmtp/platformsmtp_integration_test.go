@@ -250,8 +250,9 @@ func TestAPasswordWithoutAUsernameIsRefusedOnTheUsername(t *testing.T) {
 // names another host, port, username, or encryption and states no password of
 // its own is refused on the password, and no server is dialled.
 func TestATestOfAnotherServerKeepsTheSavedPassword(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	encryptor := newEncryptor(t)
 	saved := testutil.StartSMTPServer(t)
