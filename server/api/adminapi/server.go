@@ -410,7 +410,7 @@ const (
 	// takes: a cover, a label's or genre's eye-catch, an author's icon, the
 	// tenant's icon, logo, sign-in image, or brand marks, a reader icon
 	// preset.
-	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, imageproc.SignInImageMaxBytes, creatorIconMaxUploadBytes, imageproc.UserIconMaxBytes)
+	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, imageproc.SignInImageMaxBytes, imageproc.CreatorIconMaxBytes, imageproc.UserIconMaxBytes)
 	// imageUploadReadMaxBytes is what a procedure that carries one image reads
 	// of a request: that image as the JSON encoding carries it, in base64 and
 	// a third larger than the binary one, and the fields sent beside it, which

@@ -26,6 +26,67 @@ const (
 	MaxPixels = 40_000_000
 )
 
+// ErrTooManyPixels marks an image whose declared dimensions exceed MaxPixels.
+// It is returned from the image's header alone, before a single pixel is
+// decoded.
+var ErrTooManyPixels = fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+
+// inspected is an upload that has passed the checks every Build function
+// makes before it decodes anything, together with the dimensions and format
+// its header declares.
+type inspected struct {
+	raw    []byte
+	config image.Config
+	format string
+}
+
+// inspect holds raw to the checks every upload is held to before decoding:
+// present, within maxBytes, an image/* content type (sniffed when
+// contentType is empty), a header image.DecodeConfig can read, positive
+// dimensions, and a pixel count within MaxPixels.
+//
+// The pixel count is what the byte cap cannot bound. A small PNG or WebP can
+// declare a canvas far larger than its file, and decoding allocates for the
+// declared canvas, so the count is checked from the header and the pixels are
+// only reached through the decode method of what this returns.
+func inspect(raw []byte, contentType string, maxBytes int) (inspected, error) {
+	if len(raw) == 0 {
+		return inspected{}, errors.New("image data is required")
+	}
+	if len(raw) > maxBytes {
+		return inspected{}, fmt.Errorf("image size exceeds %d bytes", maxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return inspected{}, errors.New("content_type must be image/*")
+	}
+
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return inspected{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return inspected{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return inspected{}, ErrTooManyPixels
+	}
+	return inspected{raw: raw, config: cfg, format: format}, nil
+}
+
+// decode decodes the pixels of an upload inspect has accepted.
+func (in inspected) decode() (image.Image, error) {
+	img, _, err := image.Decode(bytes.NewReader(in.raw))
+	if err != nil {
+		return nil, errors.New("image is not decodable")
+	}
+	return img, nil
+}
+
 // variantTargetWidths lists the widths, in pixels, the derived images are
 // generated at. A target width is skipped when the upload is no wider than it,
 // so a variant is never enlarged beyond its source.
@@ -58,31 +119,11 @@ type Variant struct {
 //   - the image is undecodable, has non-positive dimensions, or exceeds the
 //     pixel cap
 func BuildVariants(raw []byte, contentType string) ([]Variant, error) {
-	if len(raw) == 0 {
-		return nil, errors.New("image data is required")
-	}
-	if len(raw) > MaxUploadBytes {
-		return nil, fmt.Errorf("image size exceeds %d bytes", MaxUploadBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return nil, errors.New("content_type must be image/*")
-	}
-
-	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, MaxUploadBytes)
 	if err != nil {
-		return nil, errors.New("image is not decodable")
+		return nil, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return nil, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return nil, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
+	cfg, sourceFormat := in.config, in.format
 
 	outContentType, outExt := outputFormat(sourceFormat)
 	widths := selectWidths(cfg.Width)
@@ -99,11 +140,10 @@ func BuildVariants(raw []byte, contentType string) ([]Variant, error) {
 
 	var srcImg image.Image
 	if needsDecode {
-		decoded, _, decodeErr := image.Decode(bytes.NewReader(raw))
-		if decodeErr != nil {
-			return nil, errors.New("image is not decodable")
+		srcImg, err = in.decode()
+		if err != nil {
+			return nil, err
 		}
-		srcImg = decoded
 	}
 
 	variants := make([]Variant, 0, len(widths))
@@ -330,38 +370,13 @@ func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType str
 	if !ok {
 		return nil, fmt.Errorf("unknown eye_catch aspect ratio %q", variantType)
 	}
-	if len(raw) == 0 {
-		return nil, errors.New("image data is required")
-	}
-	if len(raw) > EyeCatchMaxBytes {
-		return nil, fmt.Errorf("image size exceeds %d bytes", EyeCatchMaxBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return nil, errors.New("content_type must be image/*")
-	}
-
-	// The declared dimensions are checked before decoding: the byte cap alone
-	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
-	// memory while it is being decoded.
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, EyeCatchMaxBytes)
 	if err != nil {
-		return nil, errors.New("image is not decodable")
+		return nil, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return nil, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return nil, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
-
-	src, srcFormat, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return nil, errors.New("image is not decodable")
+		return nil, err
 	}
 
 	region := src
@@ -384,7 +399,7 @@ func BuildEyeCatchAspectVariants(raw []byte, contentType string, variantType str
 		return nil, fmt.Errorf("%s image must be at least %dx%d after cropping to %d:%d", spec.ratio, aspect.MinWidth, aspect.MinHeight, spec.aspectW, spec.aspectH)
 	}
 
-	outContentType, outExt := outputFormat(srcFormat)
+	outContentType, outExt := outputFormat(in.format)
 
 	variants := make([]Variant, 0, len(spec.widthSteps))
 	for _, targetW := range spec.widthSteps {
@@ -501,38 +516,25 @@ func subImage(src image.Image, rect image.Rectangle) image.Image {
 //
 // Input validation:
 //   - within EyeCatchMaxBytes, image/* content_type
+//   - pixel count within MaxPixels
 //   - at least 2400x3200 px, the minimum stated against the 3:4 ratio
 //
 // It returns the portrait, square, landscape, and og ratios, each at several
 // widths, labelled "{ratio}_{width}w" (for example "portrait_1200w").
 func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
-	if len(raw) == 0 {
-		return nil, errors.New("image data is required")
-	}
-	if len(raw) > EyeCatchMaxBytes {
-		return nil, fmt.Errorf("image size exceeds %d bytes", EyeCatchMaxBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return nil, errors.New("content_type must be image/*")
-	}
-
-	src, srcFormat, err := image.Decode(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, EyeCatchMaxBytes)
 	if err != nil {
-		return nil, errors.New("image is not decodable")
+		return nil, err
 	}
-	bounds := src.Bounds()
-	srcW := bounds.Dx()
-	srcH := bounds.Dy()
-	if srcW < EyeCatchMinWidth || srcH < EyeCatchMinHeight {
+	if in.config.Width < EyeCatchMinWidth || in.config.Height < EyeCatchMinHeight {
 		return nil, fmt.Errorf("eye_catch image must be at least %dx%d", EyeCatchMinWidth, EyeCatchMinHeight)
 	}
+	src, err := in.decode()
+	if err != nil {
+		return nil, err
+	}
 
-	outContentType, outExt := outputFormat(srcFormat)
+	outContentType, outExt := outputFormat(in.format)
 
 	variants := make([]Variant, 0, 12)
 	for _, spec := range eyeCatchAspectSpecs {
@@ -598,38 +600,13 @@ const (
 // intact, and encoding it as JPEG would fill that transparency with a
 // background.
 func BuildIcon(raw []byte, contentType string) (Variant, error) {
-	if len(raw) == 0 {
-		return Variant{}, errors.New("image data is required")
-	}
-	if len(raw) > IconMaxBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", IconMaxBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return Variant{}, errors.New("content_type must be image/*")
-	}
-
-	// The declared dimensions are checked before decoding: the byte cap alone
-	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
-	// memory while it is being decoded.
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, IconMaxBytes)
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return Variant{}, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
-
-	src, _, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
 
 	cropped := centerCropToAspect(src, 1, 1)
@@ -683,38 +660,41 @@ const (
 // A JPEG upload stays JPEG and anything else is stored as PNG, so an icon
 // with transparency keeps it and a photograph is not stored losslessly.
 func BuildUserIcon(raw []byte, contentType string, crop *CropRect) (Variant, error) {
-	if len(raw) == 0 {
-		return Variant{}, errors.New("image data is required")
-	}
-	if len(raw) > UserIconMaxBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", UserIconMaxBytes)
-	}
+	return buildSquareIcon(raw, contentType, crop, UserIconMaxBytes, UserIconMinDimension, UserIconMaxDimension, "user icon")
+}
 
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return Variant{}, errors.New("content_type must be image/*")
-	}
+// CreatorIconMaxBytes, CreatorIconMinDimension, and CreatorIconMaxDimension
+// constrain the icon of an Author. The floor is the size the console asks
+// editors for; the ceiling bounds what one Author stores, as a reader's icon
+// is bounded, and image-server scales it further for each size a page asks
+// for.
+const (
+	CreatorIconMaxBytes     = 10 << 20
+	CreatorIconMinDimension = 256
+	CreatorIconMaxDimension = 512
+)
 
-	// The declared dimensions are checked before decoding: the byte cap alone
-	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
-	// memory while it is being decoded.
-	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+// BuildCreatorIcon derives the single variant an Author's icon is stored as.
+//
+// It cuts the square the way BuildUserIcon does, from the centre or from the
+// named rectangle, and holds the upload to the same checks against the
+// CreatorIcon limits. A JPEG upload stays JPEG and anything else is stored as
+// PNG.
+func BuildCreatorIcon(raw []byte, contentType string, crop *CropRect) (Variant, error) {
+	return buildSquareIcon(raw, contentType, crop, CreatorIconMaxBytes, CreatorIconMinDimension, CreatorIconMaxDimension, "creator icon")
+}
+
+// buildSquareIcon cuts and encodes a square icon the way BuildUserIcon
+// describes, against the given limits. name says which icon an encoding
+// error is about.
+func buildSquareIcon(raw []byte, contentType string, crop *CropRect, maxBytes, minDimension, maxDimension int, name string) (Variant, error) {
+	in, err := inspect(raw, contentType, maxBytes)
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return Variant{}, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
-
-	src, _, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
 	region := src
 	if crop != nil {
@@ -726,21 +706,21 @@ func BuildUserIcon(raw []byte, contentType string, crop *CropRect) (Variant, err
 
 	square := centerCropToAspect(region, 1, 1)
 	size := min(square.Bounds().Dx(), square.Bounds().Dy())
-	if size < UserIconMinDimension {
+	if size < minDimension {
 		if crop != nil {
-			return Variant{}, fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", ErrInvalidCrop, UserIconMinDimension, UserIconMinDimension)
+			return Variant{}, fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", ErrInvalidCrop, minDimension, minDimension)
 		}
-		return Variant{}, fmt.Errorf("icon image must be at least %dx%d", UserIconMinDimension, UserIconMinDimension)
+		return Variant{}, fmt.Errorf("icon image must be at least %dx%d", minDimension, minDimension)
 	}
-	size = min(size, UserIconMaxDimension)
+	size = min(size, maxDimension)
 
 	outContentType, outExt := "image/png", ".png"
-	if sourceFormatContentType(sourceFormat) == "image/jpeg" {
+	if sourceFormatContentType(in.format) == "image/jpeg" {
 		outContentType, outExt = "image/jpeg", ".jpg"
 	}
 	encoded, err := encode(square, size, size, outContentType)
 	if err != nil {
-		return Variant{}, fmt.Errorf("encode user icon: %w", err)
+		return Variant{}, fmt.Errorf("encode %s: %w", name, err)
 	}
 
 	return Variant{
@@ -796,41 +776,18 @@ func BuildBrandMark(raw []byte, contentType string, variantType string) (Variant
 // holding its shortest edge to minShortEdge, both on upload and after
 // scaling. name says which image an error is about.
 func buildLogoLike(raw []byte, contentType string, variantType string, name string, minShortEdge int) (Variant, error) {
-	if len(raw) == 0 {
-		return Variant{}, errors.New("image data is required")
-	}
-	if len(raw) > LogoMaxBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", LogoMaxBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return Variant{}, errors.New("content_type must be image/*")
-	}
-
-	// The declared dimensions are checked before decoding: the byte cap alone
-	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
-	// memory while it is being decoded.
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, LogoMaxBytes)
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return Variant{}, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
+	cfg := in.config
 	if cfg.Width < minShortEdge || cfg.Height < minShortEdge {
 		return Variant{}, fmt.Errorf("%s image must be at least %dx%d", name, minShortEdge, minShortEdge)
 	}
 
-	src, _, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
 
 	// The floor on the shortest edge applies after scaling too. Both edges can
@@ -884,46 +841,22 @@ const (
 // A JPEG upload stays JPEG and anything else is stored as PNG, so artwork with
 // transparency keeps it and a photograph is not stored losslessly.
 func BuildSignInImage(raw []byte, contentType string) (Variant, error) {
-	if len(raw) == 0 {
-		return Variant{}, errors.New("image data is required")
-	}
-	if len(raw) > SignInImageMaxBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", SignInImageMaxBytes)
-	}
-
-	ct := strings.TrimSpace(contentType)
-	if ct == "" {
-		ct = http.DetectContentType(raw)
-	}
-	if !strings.HasPrefix(ct, "image/") {
-		return Variant{}, errors.New("content_type must be image/*")
-	}
-
-	// The declared dimensions are checked before decoding: the byte cap alone
-	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
-	// memory while it is being decoded.
-	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+	in, err := inspect(raw, contentType, SignInImageMaxBytes)
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return Variant{}, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
-	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, SignInImageMaxDimension)
+	width, height := fitWithinLongestEdge(in.config.Width, in.config.Height, SignInImageMaxDimension)
 	if width < SignInImageMinDimension || height < SignInImageMinDimension {
 		return Variant{}, fmt.Errorf("sign-in image must be at least %dx%d after scaling to %dpx on its longest edge, got %dx%d", SignInImageMinDimension, SignInImageMinDimension, SignInImageMaxDimension, width, height)
 	}
 
-	src, _, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
 
 	outContentType, outExt := "image/png", ".png"
-	if sourceFormatContentType(sourceFormat) == "image/jpeg" {
+	if sourceFormatContentType(in.format) == "image/jpeg" {
 		outContentType, outExt = "image/jpeg", ".jpg"
 	}
 	encoded, err := encode(src, width, height, outContentType)

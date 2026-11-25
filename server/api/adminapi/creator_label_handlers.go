@@ -1,22 +1,16 @@
 package adminapi
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"image"
-	"image/draw"
-	"image/jpeg"
-	"image/png"
 	"net/http"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
-	_ "golang.org/x/image/webp"
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
@@ -33,12 +27,10 @@ import (
 )
 
 const (
-	creatorIconMaxUploadBytes = 10 << 20
-	creatorIconMinDimension   = 256
-	defaultCreatorPageSize    = int32(20)
-	maxCreatorPageSize        = int32(100)
-	defaultLabelPageSize      = int32(20)
-	maxLabelPageSize          = int32(100)
+	defaultCreatorPageSize = int32(20)
+	maxCreatorPageSize     = int32(100)
+	defaultLabelPageSize   = int32(20)
+	maxLabelPageSize       = int32(100)
 )
 
 type creatorPageRow struct {
@@ -134,7 +126,7 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 	if len(data) == 0 {
 		return nil, nil
 	}
-	if len(data) > creatorIconMaxUploadBytes {
+	if len(data) > imageproc.CreatorIconMaxBytes {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_data exceeds 10MB")
 	}
 
@@ -146,74 +138,11 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_content_type must be image/jpeg, image/png, or image/webp")
 	}
 
-	decoded, _, err := image.Decode(bytes.NewReader(data))
+	variant, err := imageproc.BuildCreatorIcon(data, normalizedContentType, crop)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_data is not decodable")
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
-	region := decoded
-	if crop != nil {
-		region, err = imageproc.CropImage(decoded, *crop)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
-		}
-	}
-	bounds := region.Bounds()
-	cropSize := bounds.Dx()
-	if bounds.Dy() < cropSize {
-		cropSize = bounds.Dy()
-	}
-	if cropSize < creatorIconMinDimension {
-		if crop != nil {
-			err := fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", imageproc.ErrInvalidCrop, creatorIconMinDimension, creatorIconMinDimension)
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
-		}
-		return nil, connect.NewError(connect.CodeInvalidArgument, "icon image must be at least 256x256")
-	}
-
-	origin := image.Point{
-		X: bounds.Min.X + (bounds.Dx()-cropSize)/2,
-		Y: bounds.Min.Y + (bounds.Dy()-cropSize)/2,
-	}
-	cropped := image.NewRGBA(image.Rect(0, 0, cropSize, cropSize))
-	draw.Draw(cropped, cropped.Bounds(), region, origin, draw.Src)
-
-	encodedContentType := normalizedContentType
-	var encoded bytes.Buffer
-	switch normalizedContentType {
-	case "image/jpeg":
-		if err := jpeg.Encode(&encoded, cropped, &jpeg.Options{Quality: 90}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
-		}
-	case "image/png":
-		if err := png.Encode(&encoded, cropped); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
-		}
-	default:
-		encodedContentType = "image/png"
-		if err := png.Encode(&encoded, cropped); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
-		}
-	}
-
-	return []imageproc.Variant{{
-		Label:       "original",
-		ContentType: encodedContentType,
-		Extension:   extensionFromContentType(encodedContentType),
-		Width:       cropSize,
-		Height:      cropSize,
-		Data:        encoded.Bytes(),
-	}}, nil
-}
-
-func extensionFromContentType(contentType string) string {
-	switch contentType {
-	case "image/png":
-		return ".png"
-	case "image/webp":
-		return ".webp"
-	default:
-		return ".jpg"
-	}
+	return []imageproc.Variant{variant}, nil
 }
 
 func (s *adminServer) labelPage(
