@@ -23,6 +23,6 @@
 #     -t publira/opensearch:local \
 #     .
 
-FROM opensearchproject/opensearch:3.10.0@sha256:02d6d6e40c820ae08233b60540aa5d3d9364d64e2dc724e38d6c8c794879b2a0
+FROM opensearchproject/opensearch:3.10.1@sha256:02358b2be62b268a404a54581184d027ac0dfa8f875be15fe4c4fa3f8884f464
 
 RUN bin/opensearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn
