@@ -8651,6 +8651,11 @@ class AuthServiceApi {
           $pb.ClientContext? ctx, ChangePasswordRequest request) =>
       _client.invoke<ChangePasswordResponse>(ctx, 'AuthService',
           'ChangePassword', request, ChangePasswordResponse());
+
+  /// Ends the session the request's access token holds: that token is refused
+  /// from then on, until it would have expired, while the account's other
+  /// sessions carry on. A request with no token, or with one that holds no
+  /// session any more, succeeds and ends nothing.
   $async.Future<LogoutResponse> logout(
           $pb.ClientContext? ctx, LogoutRequest request) =>
       _client.invoke<LogoutResponse>(

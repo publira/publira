@@ -450,12 +450,14 @@ GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stat
 GRANT SELECT ON platform_storage_config TO publira_public, publira_admin, publira_content_stats;
 
 -- The spent MFA challenge purge runs on the maintenance pool and drains the
--- platform console's spent challenges along with the tenant consoles'. A row
--- names only a token identifier, an operator's internal id, and two times, so
--- it is the one operator table that role may reach. The FOR UPDATE SKIP LOCKED
--- that keeps two runs off each other's rows needs UPDATE on at least one
--- column, so the grant names one and no more.
+-- platform console's spent challenges and signed-out sessions along with the
+-- tenant consoles'. A row of either names only a token identifier, an
+-- operator's internal id, and two times, so they are the operator tables that
+-- role may purge. The FOR UPDATE SKIP LOCKED that keeps two runs off each
+-- other's rows needs UPDATE on at least one column, so each grant names one
+-- and no more.
 GRANT SELECT, DELETE, UPDATE (used_at) ON platform_user_mfa_used_challenges TO publira_content_stats;
+GRANT SELECT, DELETE, UPDATE (signed_out_at) ON platform_user_signed_out_sessions TO publira_content_stats;
 
 -- The erasure of a tenant an operator asked to delete runs on the maintenance
 -- pool, and records its end where the request was recorded: an entry in the

@@ -89,6 +89,7 @@ func operatorTestColumns() []string {
 }
 
 func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
+	expectSessionNotSignedOut(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
@@ -205,6 +206,7 @@ func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantReque
 
 func expectIntegrationAuth(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
 	_ = tenantID
+	expectSessionNotSignedOut(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
@@ -319,4 +321,12 @@ func bearerHandlerContext(t *testing.T, token string) context.Context {
 	ctx, call := testutil.NewServerContext(t.Context())
 	call.RequestHeader().Set("Authorization", "Bearer "+token)
 	return ctx
+}
+
+// expectSessionNotSignedOut answers the session check's question whether the
+// token's session has signed out: it has not.
+func expectSessionNotSignedOut(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformUserSessionSignedOut)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 }

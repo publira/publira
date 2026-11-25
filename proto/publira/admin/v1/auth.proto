@@ -423,6 +423,10 @@ message AdminAuthServiceConfirmEmailChangeResponse {
 
 service AdminAuthService {
   rpc Login(AdminAuthServiceLoginRequest) returns (AdminAuthServiceLoginResponse) {}
+  // Ends the session the request's access token holds: that token is refused
+  // from then on, until it would have expired, while the account's other
+  // sessions carry on. A request with no token, or with one that holds no
+  // session any more, succeeds and ends nothing.
   rpc Logout(AdminAuthServiceLogoutRequest) returns (AdminAuthServiceLogoutResponse) {}
   rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
   rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}

@@ -243,11 +243,37 @@ func (s *adminServer) Logout(
 		auth.AuditEvent(ctx, "admin_logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	if _, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); ok {
-		auth.AuditEvent(ctx, "admin_logout", "success", tenant.PublicID, "", "client_logout")
-	} else {
+	headers := rpcmiddleware.RequestHeader(ctx)
+	if _, ok := auth.BearerTokenFromHeader(headers); !ok {
 		auth.AuditEvent(ctx, "admin_logout", "success", tenant.PublicID, "", "no_token")
+		return &publiraadminv1.AdminAuthServiceLogoutResponse{}, nil
 	}
+	session, claims, err := s.verifySession(ctx, req.Tenant, headers)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeUnauthenticated {
+			// Expired, signed out already, or never valid: there is no session
+			// left to end, and the caller drops its copy either way.
+			auth.AuditEvent(ctx, "admin_logout", "success", tenant.PublicID, "", "no_session")
+			return &publiraadminv1.AdminAuthServiceLogoutResponse{}, nil
+		}
+		auth.AuditEvent(ctx, "admin_logout", "failure", tenant.PublicID, "", "session_check_failed")
+		return nil, err
+	}
+	sessionID, expiresAt, ok := claims.SessionID()
+	if !ok {
+		auth.AuditEvent(ctx, "admin_logout", "success", tenant.PublicID, session.User.PublicID, "session_without_id")
+		return &publiraadminv1.AdminAuthServiceLogoutResponse{}, nil
+	}
+	if err := s.queriesFor(ctx).RecordUserSessionSignedOut(ctx, dbmodels.RecordUserSessionSignedOutParams{
+		Jti:       sessionID,
+		TenantID:  tenant.ID,
+		UserID:    session.User.ID,
+		ExpiresAt: expiresAt,
+	}); err != nil {
+		auth.AuditEvent(ctx, "admin_logout", "failure", tenant.PublicID, session.User.PublicID, "session_record_failed")
+		return nil, s.internalDBError(ctx, "failed to record the signed-out session", err, "tenant_id", tenant.ID.String(), "user_id", session.User.ID.String())
+	}
+	auth.AuditEvent(ctx, "admin_logout", "success", tenant.PublicID, session.User.PublicID, "session_ended")
 	return &publiraadminv1.AdminAuthServiceLogoutResponse{}, nil
 }
 

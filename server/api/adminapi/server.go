@@ -234,20 +234,40 @@ func (s *adminServer) authenticateSession(
 	tenantCtx *publirattypesv1.TenantContext,
 	headers *connect.Header,
 ) (rpcmiddleware.SessionContext, error) {
+	session, _, err := s.verifySession(ctx, tenantCtx, headers)
+	return session, err
+}
+
+// verifySession is authenticateSession with the claims of the token it
+// accepted, which Logout needs to name the session it ends.
+func (s *adminServer) verifySession(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers *connect.Header,
+) (rpcmiddleware.SessionContext, *auth.AccessTokenClaims, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, err
+		return rpcmiddleware.SessionContext{}, nil, err
 	}
 	rawToken, ok := auth.BearerTokenFromHeader(headers)
 	if !ok || s.tokens == nil {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	claims, err := s.tokens.Verify(rawToken, auth.AudienceAdmin)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	if claims.TenantID != "" && claims.TenantID != tenant.ID.String() {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
+	}
+	if sessionID, _, ok := claims.SessionID(); ok {
+		signedOut, err := s.queriesFor(ctx).UserSessionSignedOut(ctx, sessionID)
+		if err != nil {
+			return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to check whether the session signed out", err, "tenant_id", tenant.ID.String())
+		}
+		if signedOut {
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
+		}
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 		PublicID: claims.Subject,
@@ -255,36 +275,36 @@ func (s *adminServer) authenticateSession(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return rpcmiddleware.SessionContext{}, invalidSessionError()
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get session user by public id", err, "tenant_id", tenant.ID.String())
+		return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to get session user by public id", err, "tenant_id", tenant.ID.String())
 	}
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return rpcmiddleware.SessionContext{}, invalidSessionError()
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get session user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
+		return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to get session user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
 	if user.Status != "active" || !tenantmembers.AddressConfirmed(user) || user.CredentialsVersion != claims.CredentialsVersion {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to list session user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to list session user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	// The roles are read on every request rather than trusted from the token,
 	// so an account whose roles were all taken away loses the session it
 	// already holds instead of keeping it until the token expires.
 	if !auth.IsTenantStaff(roles) {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	tracing.SetEndUser(ctx, user.PublicID)
 	return rpcmiddleware.SessionContext{
 		Tenant: tenant,
 		User:   user,
 		Role:   auth.ResolveTenantRole(roles),
-	}, nil
+	}, claims, nil
 }
 
 // ServiceName is the service.name this namespace's spans carry. The three

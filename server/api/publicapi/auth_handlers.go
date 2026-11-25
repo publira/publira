@@ -83,20 +83,40 @@ func (s *apiServer) authenticateAccessToken(
 	tenantCtx *publirattypesv1.TenantContext,
 	headers *connect.Header,
 ) (rpcmiddleware.SessionContext, error) {
+	session, _, err := s.verifyAccessToken(ctx, tenantCtx, headers)
+	return session, err
+}
+
+// verifyAccessToken is authenticateAccessToken with the claims of the token it
+// accepted, which Logout needs to name the session it ends.
+func (s *apiServer) verifyAccessToken(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers *connect.Header,
+) (rpcmiddleware.SessionContext, *auth.AccessTokenClaims, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, err
+		return rpcmiddleware.SessionContext{}, nil, err
 	}
 	rawToken, ok := auth.BearerTokenFromHeader(headers)
 	if !ok || s.tokens == nil {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	claims, err := s.tokens.Verify(rawToken, auth.AudiencePublic)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	if claims.TenantID != "" && claims.TenantID != tenant.ID.String() {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
+	}
+	if sessionID, _, ok := claims.SessionID(); ok {
+		signedOut, err := s.queriesFor(ctx).UserSessionSignedOut(ctx, sessionID)
+		if err != nil {
+			return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to check whether the session signed out", err, "tenant_id", tenant.ID.String())
+		}
+		if signedOut {
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
+		}
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 		PublicID: claims.Subject,
@@ -104,26 +124,26 @@ func (s *apiServer) authenticateAccessToken(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return rpcmiddleware.SessionContext{}, invalidSessionError()
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get user by public id", err, "tenant_id", tenant.ID.String(), "public_id", claims.Subject)
+		return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to get user by public id", err, "tenant_id", tenant.ID.String(), "public_id", claims.Subject)
 	}
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return rpcmiddleware.SessionContext{}, invalidSessionError()
+			return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
+		return rpcmiddleware.SessionContext{}, nil, s.internalDBError(ctx, "failed to get user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
 	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, nil, invalidSessionError()
 	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, err
+		return rpcmiddleware.SessionContext{}, nil, err
 	}
 	tracing.SetEndUser(ctx, user.PublicID)
-	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, nil
+	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, claims, nil
 }
 
 func (s *apiServer) currentUserFromSession(
@@ -1284,12 +1304,37 @@ func (s *apiServer) Logout(
 		auth.AuditEvent(ctx, "logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	// Stateless JWT: client clears cookie. Logout is for audit only.
-	if _, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); ok {
-		auth.AuditEvent(ctx, "logout", "success", tenant.PublicID, "", "client_logout")
-	} else {
+	headers := rpcmiddleware.RequestHeader(ctx)
+	if _, ok := auth.BearerTokenFromHeader(headers); !ok {
 		auth.AuditEvent(ctx, "logout", "success", tenant.PublicID, "", "no_token")
+		return &publirav1.LogoutResponse{}, nil
 	}
+	session, claims, err := s.verifyAccessToken(ctx, req.Tenant, headers)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeUnauthenticated {
+			// Expired, signed out already, or never valid: there is no session
+			// left to end, and the caller drops its copy either way.
+			auth.AuditEvent(ctx, "logout", "success", tenant.PublicID, "", "no_session")
+			return &publirav1.LogoutResponse{}, nil
+		}
+		auth.AuditEvent(ctx, "logout", "failure", tenant.PublicID, "", "session_check_failed")
+		return nil, err
+	}
+	sessionID, expiresAt, ok := claims.SessionID()
+	if !ok {
+		auth.AuditEvent(ctx, "logout", "success", tenant.PublicID, session.User.PublicID, "session_without_id")
+		return &publirav1.LogoutResponse{}, nil
+	}
+	if err := s.queriesFor(ctx).RecordUserSessionSignedOut(ctx, dbmodels.RecordUserSessionSignedOutParams{
+		Jti:       sessionID,
+		TenantID:  tenant.ID,
+		UserID:    session.User.ID,
+		ExpiresAt: expiresAt,
+	}); err != nil {
+		auth.AuditEvent(ctx, "logout", "failure", tenant.PublicID, session.User.PublicID, "session_record_failed")
+		return nil, s.internalDBError(ctx, "failed to record the signed-out session", err, "tenant_id", tenant.ID.String(), "user_id", session.User.ID.String())
+	}
+	auth.AuditEvent(ctx, "logout", "success", tenant.PublicID, session.User.PublicID, "session_ended")
 	return &publirav1.LogoutResponse{}, nil
 }
 

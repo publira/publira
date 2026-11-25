@@ -56,34 +56,56 @@ func (s *platformServer) authenticatePlatformSession(
 	headers *connect.Header,
 ) (dbmodels.PlatformUser, dbmodels.PlatformUser, string, error) {
 	// First return value kept for call-site arity; use the user as both (session removed).
+	platformUser, resolvedRole, _, err := s.verifyPlatformSession(ctx, headers)
+	if err != nil {
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", err
+	}
+	return platformUser, platformUser, resolvedRole, nil
+}
+
+// verifyPlatformSession is authenticatePlatformSession with the claims of the
+// token it accepted, which Logout needs to name the session it ends.
+func (s *platformServer) verifyPlatformSession(
+	ctx context.Context,
+	headers *connect.Header,
+) (dbmodels.PlatformUser, string, *auth.AccessTokenClaims, error) {
 	rawToken, ok := auth.BearerTokenFromHeader(headers)
 	if !ok || s.tokens == nil {
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+		return dbmodels.PlatformUser{}, "", nil, invalidSessionError()
 	}
 	claims, err := s.tokens.Verify(rawToken, auth.AudiencePlatform)
 	if err != nil {
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+		return dbmodels.PlatformUser{}, "", nil, invalidSessionError()
+	}
+	if sessionID, _, ok := claims.SessionID(); ok {
+		signedOut, err := s.queriesFor(ctx).PlatformUserSessionSignedOut(ctx, sessionID)
+		if err != nil {
+			return dbmodels.PlatformUser{}, "", nil, s.internalDBError(ctx, "failed to check whether the session signed out", err)
+		}
+		if signedOut {
+			return dbmodels.PlatformUser{}, "", nil, invalidSessionError()
+		}
 	}
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByPublicID(ctx, claims.Subject)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+			return dbmodels.PlatformUser{}, "", nil, invalidSessionError()
 		}
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", s.internalDBError(ctx, "failed to get platform user by public id", err)
+		return dbmodels.PlatformUser{}, "", nil, s.internalDBError(ctx, "failed to get platform user by public id", err)
 	}
 	if platformUser.Status != "active" || platformUser.CredentialsVersion != claims.CredentialsVersion {
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+		return dbmodels.PlatformUser{}, "", nil, invalidSessionError()
 	}
 	roles, err := s.platformRoles(ctx, platformUser.ID)
 	if err != nil {
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", err
+		return dbmodels.PlatformUser{}, "", nil, err
 	}
 	resolvedRole := auth.ResolvePlatformRole(roles)
 	if !auth.IsPlatformRole(resolvedRole) {
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
+		return dbmodels.PlatformUser{}, "", nil, platformRoleRequiredError()
 	}
 	tracing.SetEndUser(ctx, platformUser.PublicID)
-	return platformUser, platformUser, resolvedRole, nil
+	return platformUser, resolvedRole, claims, nil
 }
 
 // The platform console's auth mail travels as outbox_events rows, rendered and
@@ -255,11 +277,38 @@ func (s *platformServer) Logout(
 	ctx context.Context,
 	req *publirasplatformv1.PlatformAuthServiceLogoutRequest,
 ) (*publirasplatformv1.PlatformAuthServiceLogoutResponse, error) {
-	if _, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); ok {
-		auth.AuditEvent(ctx, "platform_logout", "success", "", "", "client_logout")
-	} else {
+	headers := rpcmiddleware.RequestHeader(ctx)
+	if _, ok := auth.BearerTokenFromHeader(headers); !ok {
 		auth.AuditEvent(ctx, "platform_logout", "success", "", "", "no_token")
+		return &publirasplatformv1.PlatformAuthServiceLogoutResponse{}, nil
 	}
+	platformUser, _, claims, err := s.verifyPlatformSession(ctx, headers)
+	if err != nil {
+		switch connect.CodeOf(err) {
+		case connect.CodeUnauthenticated, connect.CodePermissionDenied:
+			// Expired, signed out already, never valid, or held by an account
+			// that is no longer an operator: there is no session left to end,
+			// and the caller drops its copy either way.
+			auth.AuditEvent(ctx, "platform_logout", "success", "", "", "no_session")
+			return &publirasplatformv1.PlatformAuthServiceLogoutResponse{}, nil
+		}
+		auth.AuditEvent(ctx, "platform_logout", "failure", "", "", "session_check_failed")
+		return nil, err
+	}
+	sessionID, expiresAt, ok := claims.SessionID()
+	if !ok {
+		auth.AuditEvent(ctx, "platform_logout", "success", "", platformUser.PublicID, "session_without_id")
+		return &publirasplatformv1.PlatformAuthServiceLogoutResponse{}, nil
+	}
+	if err := s.queriesFor(ctx).RecordPlatformUserSessionSignedOut(ctx, dbmodels.RecordPlatformUserSessionSignedOutParams{
+		Jti:            sessionID,
+		PlatformUserID: platformUser.ID,
+		ExpiresAt:      expiresAt,
+	}); err != nil {
+		auth.AuditEvent(ctx, "platform_logout", "failure", "", platformUser.PublicID, "session_record_failed")
+		return nil, s.internalDBError(ctx, "failed to record the signed-out session", err, "platform_user_id", platformUser.ID.String())
+	}
+	auth.AuditEvent(ctx, "platform_logout", "success", "", platformUser.PublicID, "session_ended")
 	return &publirasplatformv1.PlatformAuthServiceLogoutResponse{}, nil
 }
 

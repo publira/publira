@@ -264,7 +264,7 @@ The rebuild, purge, royalty close, and search index work runs here as well, on t
 | `maintenance.build_recommend_features` | Rebuilds the user and item recommend feature snapshots |
 | `maintenance.purge_content_events` | Deletes `content_events` rows past their retention window |
 | `maintenance.purge_ranking_snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
-| `maintenance.purge_mfa_challenges` | Deletes the spent MFA challenges whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
+| `maintenance.purge_mfa_challenges` | Deletes the spent MFA challenges and the signed-out sessions whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `maintenance.purge_withdrawn_comments` | Deletes the comments their authors withdrew past the retention window |
 | `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
 | `maintenance.purge_data_exports` | Deletes the readers' data downloads whose seven days are up, and those of deleted accounts, from the bucket and the database, and the archives a day old under `data-exports/` that no row names |
