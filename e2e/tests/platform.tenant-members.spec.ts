@@ -12,16 +12,20 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 const platformUrl = (pathname: string): string =>
   `${WEB_PLATFORM_BASE_URL}${pathname}`;
 
-/** A confirmed user of the tenant who holds no console role yet. */
+/**
+ * A confirmed user of the tenant who holds no console role yet, with a password
+ * its owner set, as a password reset leaves it, so the console gives it a role
+ * on the spot.
+ */
 const seedTenantUser = (
   tenantPublicId: string,
   userPublicId: string,
   email: string
 ): void => {
   runSql(`
-    INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at)
+    INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at, password_proven_at)
     SELECT uuidv7(), t.id, ${quoteSqlLiteral(userPublicId)}, ${quoteSqlLiteral(email)},
-      'unused', 'Members E2E Reader', 'active', NOW()
+      'unused', 'Members E2E Reader', 'active', NOW(), NOW()
     FROM tenants t
     WHERE t.public_id = ${quoteSqlLiteral(tenantPublicId)};
   `);

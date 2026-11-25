@@ -12,6 +12,10 @@
 --   tenant TmbrTNNTAAA1 (team.localhost / admin.team.localhost)
 --   admin  TmbrADMNAAA1 (team-admin@example.com)
 --   editor TmbrEDTRAAA1 (team-editor@example.com)
+--
+-- Both accounts carry password_proven_at, as the account an administrator
+-- created or an accepted invitation leaves, so the editor is one the console
+-- makes an admin on the spot rather than one it mails an invitation to.
 
 -- A tenant's audit entries hold its deletion back, so they go first.
 DELETE FROM audit_logs
@@ -55,7 +59,8 @@ INSERT INTO users (
     password_hash,
     name,
     status,
-    email_verified_at
+    email_verified_at,
+    password_proven_at
 )
 SELECT
     seed.id,
@@ -65,6 +70,7 @@ SELECT
     '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
     seed.name,
     'active',
+    NOW(),
     NOW()
 FROM (
     VALUES
