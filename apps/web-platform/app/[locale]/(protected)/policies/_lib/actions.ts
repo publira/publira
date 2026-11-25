@@ -62,6 +62,10 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.coinPaymentPerDay,
           perMinute: data.coinPaymentPerMinute,
         },
+        contentViewPerClient: {
+          perDay: data.contentViewPerClientPerDay,
+          perMinute: data.contentViewPerClientPerMinute,
+        },
         dataExport: {
           perDay: data.dataExportPerDay,
           perHour: data.dataExportPerHour,

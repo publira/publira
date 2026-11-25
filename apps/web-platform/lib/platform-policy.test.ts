@@ -172,6 +172,7 @@ describe("getPlatformPolicy", () => {
     mockGetPlatformPolicy.mockResolvedValueOnce({
       policy: {
         apiKeyRequest: { perDay: 90_000, perMinute: 500 },
+        contentViewPerClient: { perDay: 2000, perMinute: 40 },
         dataExport: { perDay: 3, perHour: 2 },
         promotionCodeAttempt: { perDay: 31, perMinute: 8 },
       },
@@ -182,6 +183,7 @@ describe("getPlatformPolicy", () => {
       values: {
         security: {
           apiKeyRequest: { perDay: 90_000, perMinute: 500 },
+          contentViewPerClient: { perDay: 2000, perMinute: 40 },
           dataExport: { perDay: 3, perHour: 2 },
           promotionCodeAttempt: { perDay: 31, perMinute: 8 },
         },
@@ -212,6 +214,7 @@ const securityValues: PlatformSecurityPolicy = {
   anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
   apiKeyRequest: { perDay: 100_000, perMinute: 600 },
   coinPayment: { perDay: 500, perMinute: 20 },
+  contentViewPerClient: { perDay: 3000, perMinute: 60 },
   dataExport: { perDay: 1, perHour: 1 },
   disposableEmailDomainsUrl: "",
   iconChange: { perDay: 20, perMinute: 5 },
@@ -243,6 +246,7 @@ const storedPolicy = {
     commentPost: { perDay: 100, perMinute: 10 },
     duplicateCommentWindowMinutes: 10,
   },
+  contentViewPerClient: { perDay: 2000, perMinute: 40 },
   dataExport: { perDay: 3, perHour: 2 },
   disposableEmailDomainsUrl: listUrl,
   iconChange: { perDay: 25, perMinute: 6 },
@@ -316,6 +320,7 @@ describe("savePlatformPolicy", () => {
         policy: expect.objectContaining({
           apiKeyRequest: storedPolicy.apiKeyRequest,
           coinPayment: storedPolicy.coinPayment,
+          contentViewPerClient: storedPolicy.contentViewPerClient,
           dataExport: storedPolicy.dataExport,
           iconChange: storedPolicy.iconChange,
           identityLink: storedPolicy.identityLink,
@@ -432,6 +437,7 @@ describe("savePlatformPolicy", () => {
         anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
         apiKeyRequest: { perDay: 100_000, perMinute: 600 },
         coinPayment: { perDay: 500, perMinute: 20 },
+        contentViewPerClient: { perDay: 3000, perMinute: 60 },
         dataExport: { perDay: 1, perHour: 1 },
         disposableEmailDomainsUrl: "",
         iconChange: { perDay: 20, perMinute: 5 },

@@ -18,6 +18,8 @@ const securityValues = {
   api_key_request_per_minute: "600",
   coin_payment_per_day: "500",
   coin_payment_per_minute: "20",
+  content_view_per_client_per_day: "3000",
+  content_view_per_client_per_minute: "60",
   data_export_per_day: "1",
   data_export_per_hour: "1",
   icon_change_per_day: "20",
@@ -195,6 +197,12 @@ describe("securityPolicyFormSchema", () => {
       field: "apiKeyRequest",
       name: "api_key_request",
       setting: "API key requests",
+      window: "Minute",
+    },
+    {
+      field: "contentViewPerClient",
+      name: "content_view_per_client",
+      setting: "Page views recorded",
       window: "Minute",
     },
   ])("the $setting limit", ({ field, name, setting, window }) => {

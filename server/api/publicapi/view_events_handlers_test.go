@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"testing"
 	"time"
@@ -15,7 +17,9 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -77,6 +81,9 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 
 	now := time.Now()
 	expectTenantLookup(mock, fixture.tenantID, "TENANT", now)
+	// The client's allowance is charged against the platform policy, which the
+	// test server reads once and keeps.
+	expectNoSavedPlatformPolicy(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
 		WithArgs("", fixture.tenantID, viewedEpisodeID, nil, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -141,9 +148,9 @@ func mintedAnonymousID(t *testing.T, header *connect.Header) uuid.UUID {
 		if cookie.Name != anonymousIDCookieName {
 			continue
 		}
-		id, err := uuid.Parse(cookie.Value)
-		if err != nil {
-			t.Fatalf("Set-Cookie %s = %q, want a UUID: %v", anonymousIDCookieName, cookie.Value, err)
+		id, ok := testutil.TokenManager().VerifyAnonymousID(cookie.Value)
+		if !ok {
+			t.Fatalf("Set-Cookie %s = %q, want an identifier this server signed", anonymousIDCookieName, cookie.Value)
 		}
 		return id
 	}
@@ -181,7 +188,7 @@ func TestRecordContentViewReusesTheAnonymousCookieItWasGiven(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	header := fixture.request(t, existing.String())
+	header := fixture.request(t, signedAnonymousID(existing))
 
 	// Re-issuing the cookie on every view would be harmless but pointless
 	// traffic; more importantly it must not replace a working identifier.
@@ -211,11 +218,96 @@ func TestRecordContentViewResolvesTheSeriesFromTheEpisodeRow(t *testing.T) {
 	assertPublicExpectations(t, fixture.mock)
 }
 
+// A cookie the server did not sign is a value the caller chose, and a caller
+// choosing a fresh one per request would be a new viewer every time, so it is
+// treated as absent: the view is filed under an identifier minted here, which
+// the response hands back.
+func TestRecordContentViewMintsAnActorForACookieItDidNotSign(t *testing.T) {
+	forged := uuid.Must(uuid.NewV7())
+	for name, cookie := range map[string]string{
+		"a bare UUID":                forged.String(),
+		"a MAC under another secret": auth.NewTokenManager([]byte("another-secret-of-at-least-32-bytes")).SignAnonymousID(forged),
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newContentViewFixture(t)
+			anonymousID := &capturedArg{}
+			fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
+				WithArgs(
+					sqlmock.AnyArg(), fixture.tenantID, nil, anonymousID,
+					fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+				).
+				WillReturnRows(sqlmock.NewRows(contentEventColumns()))
+
+			header := fixture.request(t, cookie)
+
+			recorded := anonymousID.uuid(t)
+			if recorded == forged {
+				t.Fatalf("recorded anonymous_id = %v, want the forged identifier refused", recorded)
+			}
+			if minted := mintedAnonymousID(t, header); recorded != minted {
+				t.Fatalf("recorded anonymous_id = %v, want the minted %v", recorded, minted)
+			}
+			assertPublicExpectations(t, fixture.mock)
+		})
+	}
+}
+
+// A client past its allowance records nothing, signed in or not, and is told
+// to come back later rather than handed an identifier it would spend on the
+// next refused call.
+func TestRecordContentViewRefusesAClientPastItsAllowance(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	policy := platformpolicy.Defaults()
+	policy.ContentViewPerClient = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	server := newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), readerGuards{
+		limiter: testutil.Limiter(),
+		policy:  platformpolicy.Fixed(policy),
+	}, nil, nil)
+	testServer := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(testServer.Close)
+	client := publirav1connect.NewContentViewServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
+		WithArgs(tenantID, seriesID, "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedSeriesViewEvent)).
+		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	recorded := forbidSeriesViewEventInsert(mock)
+
+	request := &publirav1.RecordContentViewRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Target: seriesViewTarget(seriesID.String()),
+	}
+	if _, err := client.RecordContentView(context.Background(), request); err != nil {
+		t.Fatalf("the first RecordContentView: %v", err)
+	}
+	respCtx, respCall := testutil.NewClientContext(context.Background())
+	_, err = client.RecordContentView(respCtx, request)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the second RecordContentView = %v, want resource_exhausted", err)
+	}
+	if recorded.value != nil {
+		t.Fatalf("recorded event id = %v, want a refused view to record nothing", recorded.value)
+	}
+	if got := respCall.ResponseHeader().Values("Set-Cookie"); len(got) != 0 {
+		t.Fatalf("Set-Cookie = %v, want no identifier minted for a refused view", got)
+	}
+}
+
 func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	expectNoSavedPlatformPolicy(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
 		WithArgs(tenantID, seriesID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
@@ -238,10 +330,10 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 
 // A bearer this server cannot verify leaves the view anonymous, and an
 // anonymous view with nothing to identify it is not recorded. web-storefront
-// sends the cookie or the bearer and never both, and it cannot relay the API's
-// Set-Cookie back to the reader, so minting here would open a fresh actor on
-// every beacon a stale session sends — the unbounded actor growth this RPC
-// exists to stop.
+// sends the cookie or the bearer and never both, and it keeps a minted
+// identifier only from a call it made without a bearer, so minting here would
+// open a fresh actor on every beacon a stale session sends — the unbounded
+// actor growth this RPC exists to stop.
 func TestRecordContentViewMintsNoActorForARejectedBearer(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	// authenticateAccessToken re-reads the tenant before it verifies the token.
@@ -277,7 +369,7 @@ func TestRecordContentViewFallsBackToTheCookieForARejectedBearer(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+existing.String())
+	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+signedAnonymousID(existing))
 	if _, err := fixture.client.RecordContentView(testutil.WithRequestHeader(ctx, "Authorization", "Bearer not-a-token"), newContentViewRequest(fixture.tenantID)); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -348,6 +440,7 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 			testServer, mock := newTestPublicServer(t)
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+			expectNoSavedPlatformPolicy(mock)
 			switch testCase.target.GetType() {
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 				if testCase.want == connect.CodeNotFound {

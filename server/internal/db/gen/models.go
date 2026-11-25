@@ -914,6 +914,8 @@ type PlatformPolicyConfig struct {
 	PromotionCodeAttemptLimitPerDay         int32     `json:"promotion_code_attempt_limit_per_day"`
 	ApiKeyRequestLimitPerMinute             int32     `json:"api_key_request_limit_per_minute"`
 	ApiKeyRequestLimitPerDay                int32     `json:"api_key_request_limit_per_day"`
+	ContentViewLimitPerClientPerMinute      int32     `json:"content_view_limit_per_client_per_minute"`
+	ContentViewLimitPerClientPerDay         int32     `json:"content_view_limit_per_client_per_day"`
 }
 
 type PlatformRetentionConfig struct {

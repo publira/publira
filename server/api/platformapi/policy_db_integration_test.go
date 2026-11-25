@@ -69,6 +69,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 30}
 	policy.PromotionCodeAttempt = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 20}
 	policy.APIKeyRequest = platformpolicy.MinuteDay{PerMinute: 300, PerDay: 50000}
+	policy.ContentViewPerClient = platformpolicy.MinuteDay{PerMinute: 30, PerDay: 1500}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.AnonymousReads = platformpolicy.ReadLimits{PublicAPI: 400, Search: 50, Images: 1500}
@@ -1362,5 +1363,63 @@ func TestDBPlatformPolicyRowWrittenWithoutTheAPIKeyRequestLimitReadsTheDefault(t
 	want.APIKeyRequest = platformpolicy.Defaults().APIKeyRequest
 	if got, _ := getPolicy(t, client, operator); got != want {
 		t.Fatalf("policy = %+v, want %+v with the default API key request limit", got, want)
+	}
+}
+
+// content_view_per_client reached the policy after the console screens that
+// save it as well, so an omitted one keeps what is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedContentViewLimit(t *testing.T) {
+	t.Parallel()
+
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.ContentViewPerClient = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without content_view_per_client: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.ContentViewPerClient = platformpolicy.Defaults().ContentViewPerClient
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default content view limit", got, want)
+	}
+
+	want.ContentViewPerClient = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 10}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with content_view_per_client: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored content view limit", got, want)
+	}
+}
+
+// The previous release's insert does not name the content view limits either.
+func TestDBPlatformPolicyRowWrittenWithoutTheContentViewLimitReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "content_view_limit_per_client_per_minute", "content_view_limit_per_client_per_day")
+
+	want := tightenedPolicy()
+	want.ContentViewPerClient = platformpolicy.Defaults().ContentViewPerClient
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default content view limit", got, want)
 	}
 }

@@ -19,12 +19,13 @@
 //   - episode_view and series_view are the soft PV that the public API's
 //     RecordContentView files when a reader opens a detail page. They mean the
 //     page was opened, not that its body was read. A signed-out reader is
-//     counted by the publira_aid cookie, a server-minted UUIDv7 and nothing
-//     else. Repeats inside a fixed 30-minute epoch bucket collapse on a
-//     partial unique index, a prefetch is not counted, and the payload is
-//     {"pv_kind":"soft"} with no IP address, user agent, or email address in
-//     it. A view is instrumentation, so a write that fails is logged and the
-//     RPC succeeds.
+//     counted by the publira_aid cookie, a server-minted UUIDv7 signed by the
+//     server and nothing else, and each client may file only as many views
+//     as the platform policy allows. Repeats inside a fixed 30-minute epoch
+//     bucket collapse on a partial unique index, a prefetch is not counted,
+//     and the payload is {"pv_kind":"soft"} with no IP address, user agent,
+//     or email address in it. A view is instrumentation, so a write that
+//     fails is logged and the RPC succeeds.
 //   - rating is one press of the rating control, filed by the public API's
 //     RateEpisode in the transaction that raises episode_ratings. It carries
 //     the points the press added rather than the score the reader now stands

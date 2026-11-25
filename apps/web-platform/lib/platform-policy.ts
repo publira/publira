@@ -48,6 +48,8 @@ export interface PlatformSecurityPolicy {
   anonymousReadLimits: ReadLimits;
   apiKeyRequest: MinuteDay;
   coinPayment: MinuteDay;
+  /** Page views one client may have recorded, signed in or not. */
+  contentViewPerClient: MinuteDay;
   dataExport: HourDay;
   /** Where the disposable email domain list is read from; empty for none. */
   disposableEmailDomainsUrl: string;
@@ -142,6 +144,7 @@ type RawPlatformPolicy = Pick<
   | "apiKeyRequest"
   | "coinPayment"
   | "communityLimitDefaults"
+  | "contentViewPerClient"
   | "dataExport"
   | "disposableEmailDomainsUrl"
   | "iconChange"
@@ -222,6 +225,7 @@ export const toPlatformPolicy = (
     ...toReaderLimits(policy),
     anonymousReadLimits: toReadLimits(policy?.anonymousReadLimits),
     apiKeyRequest: toMinuteDay(policy?.apiKeyRequest),
+    contentViewPerClient: toMinuteDay(policy?.contentViewPerClient),
     disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     loginAttemptsPerAccount: toMinuteDay(policy?.loginAttemptsPerAccount),
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),

@@ -7,12 +7,19 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func headerWith(key, value string) *connect.Header {
 	header := &connect.Header{}
 	header.Set(key, value)
 	return header
+}
+
+func signedAnonymousID(id uuid.UUID) string {
+	return testutil.TokenManager().SignAnonymousID(id)
 }
 
 func cookieHeader(value string) *connect.Header {
@@ -25,7 +32,7 @@ func TestResolveViewActorPrefersSignedInMember(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	cookieID := uuid.Must(uuid.NewV7())
 
-	actor, minted := resolveViewActor(uuid.NullUUID{UUID: userID, Valid: true}, cookieHeader(cookieID.String()))
+	actor, minted := resolveViewActor(testutil.TokenManager(), uuid.NullUUID{UUID: userID, Valid: true}, cookieHeader(signedAnonymousID(cookieID)))
 
 	if actor.userID.UUID != userID {
 		t.Fatalf("user_id = %v, want %v", actor.userID, userID)
@@ -43,7 +50,7 @@ func TestResolveViewActorPrefersSignedInMember(t *testing.T) {
 func TestResolveViewActorReusesExistingCookie(t *testing.T) {
 	cookieID := uuid.Must(uuid.NewV7())
 
-	actor, minted := resolveViewActor(uuid.NullUUID{}, cookieHeader(cookieID.String()))
+	actor, minted := resolveViewActor(testutil.TokenManager(), uuid.NullUUID{}, cookieHeader(signedAnonymousID(cookieID)))
 
 	if actor.anonymousID.UUID != cookieID {
 		t.Fatalf("anonymous_id = %v, want the cookie's %v", actor.anonymousID.UUID, cookieID)
@@ -66,11 +73,16 @@ func TestResolveViewActorMintsWhenCookieIsUnusable(t *testing.T) {
 		// rejected the same way a malformed one is rather than becoming an actor
 		// every anonymous reader shares.
 		{name: "nil-uuid", header: cookieHeader(uuid.Nil.String())},
+		{name: "signed-nil-uuid", header: cookieHeader(signedAnonymousID(uuid.Nil))},
+		// A bare UUID is what a caller would make up to count as a new viewer
+		// on every request, and what the cookie held before it was signed.
+		{name: "unsigned-uuid", header: cookieHeader(uuid.Must(uuid.NewV7()).String())},
+		{name: "signed-by-another-secret", header: cookieHeader(auth.NewTokenManager([]byte("another-secret-of-at-least-32-bytes")).SignAnonymousID(uuid.Must(uuid.NewV7())))},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actor, minted := resolveViewActor(uuid.NullUUID{}, tc.header)
+			actor, minted := resolveViewActor(testutil.TokenManager(), uuid.NullUUID{}, tc.header)
 
 			if !actor.anonymousID.Valid || actor.anonymousID.UUID == uuid.Nil {
 				t.Fatalf("anonymous_id = %v, want a freshly minted identifier", actor.anonymousID)
@@ -78,15 +90,28 @@ func TestResolveViewActorMintsWhenCookieIsUnusable(t *testing.T) {
 			if minted == nil {
 				t.Fatal("minted cookie = nil, want the identifier handed back to the reader")
 			}
-			if minted.Value != actor.anonymousID.UUID.String() {
-				t.Fatalf("cookie value = %q, want the recorded actor %q", minted.Value, actor.anonymousID.UUID)
+			if minted.Value != signedAnonymousID(actor.anonymousID.UUID) {
+				t.Fatalf("cookie value = %q, want the recorded actor %q signed", minted.Value, actor.anonymousID.UUID)
 			}
 		})
 	}
 }
 
+// Without the token secret nothing can be signed or verified, so a signed-out
+// reader cannot be told apart from the next one and no view is filed for them.
+func TestResolveViewActorRecordsNoAnonymousActorWithoutTokens(t *testing.T) {
+	actor, minted := resolveViewActor(nil, uuid.NullUUID{}, cookieHeader(signedAnonymousID(uuid.Must(uuid.NewV7()))))
+
+	if actor.resolved() {
+		t.Fatalf("actor = %+v, want none without a token manager", actor)
+	}
+	if minted != nil {
+		t.Fatalf("minted cookie = %v, want none without a token manager", minted)
+	}
+}
+
 func TestAnonymousIDCookieKeepsMinimalAttributes(t *testing.T) {
-	cookie := newAnonymousIDCookie(uuid.Must(uuid.NewV7()))
+	cookie := newAnonymousIDCookie(testutil.TokenManager(), uuid.Must(uuid.NewV7()))
 
 	if cookie.Name != "publira_aid" {
 		t.Fatalf("name = %q, want publira_aid", cookie.Name)

@@ -6360,11 +6360,18 @@ export const ContentViewService: GenService<{
    *
    * Optional authentication. A signed-in reader is attributed to their account
    * and everyone else to the publira_aid cookie, which is minted and returned
-   * in Set-Cookie when the request carries none. A bearer this server cannot
+   * in Set-Cookie when the request carries none. The cookie's value is opaque
+   * to the caller and signed by this server; one it did not sign is treated as
+   * absent and replaced, so a caller cannot make up a new viewer per request.
+   * A bearer this server cannot
    * verify does not fail the call: the view falls back to the cookie, and is
    * recorded only if one came with it, because minting an identifier for a
    * caller that presented a session of its own would open a new actor per
    * request.
+   *
+   * Every call spends the calling client's allowance, PlatformPolicy's
+   * content_view_per_client, signed in or not, and one past it is refused with
+   * RESOURCE_EXHAUSTED and records nothing.
    *
    * Cross-tenant, unpublished, and missing targets are all surfaced as
    * NotFound, matching FollowService and RatingService, so a view cannot be

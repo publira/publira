@@ -318,6 +318,24 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
           <PolicyLimitField
+            defaultValue={values.contentViewPerClient.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="content_view_per_client_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.content_view_per_client_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.contentViewPerClient.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="content_view_per_client_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.content_view_per_client_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
             defaultValue={values.apiKeyRequest.perMinute}
             disabled={Boolean(loadErrorMessage)}
             name="api_key_request_per_minute"

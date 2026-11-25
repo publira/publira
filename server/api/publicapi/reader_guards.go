@@ -129,6 +129,13 @@ const (
 	// reader's rows and store the result in the bucket, so it is counted in
 	// hours and days rather than minutes.
 	actionRequestDataExport readerAction = "data_export.request"
+	// A page view recorded by RecordContentView. A view needs no account, and
+	// a signed-out one files a new viewer whenever it carries no identifier,
+	// so the client holds the allowance whoever is signed in, and it is what
+	// bounds the views and the viewers one client can add to a tenant's
+	// rankings. It is the platform's limit alone: a tenant has no setting of
+	// its own for it.
+	actionRecordContentViewFromClient readerAction = "content_view.record.client"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -175,6 +182,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionStartPurchaseCheckout:          minuteDayRules(policy.PurchaseCheckout),
 		actionPreviewPromotionCode:           minuteDayRules(policy.PromotionCodeAttempt),
 		actionRequestDataExport:              hourDayRules(policy.DataExport),
+		actionRecordContentViewFromClient:    minuteDayRules(policy.ContentViewPerClient),
 	}
 }
 
@@ -308,11 +316,26 @@ func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction,
 	return s.chargeTenantAction(ctx, action, tenantID, clientActionSubject(action, client))
 }
 
+// chargePlatformClientAction is chargeClientAction for an action whose limit
+// only the platform sets. It reads no tenant override, so the charge costs the
+// request no query of its own.
+func (s *apiServer) chargePlatformClientAction(ctx context.Context, action readerAction) error {
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return err
+	}
+	return s.chargeAction(ctx, policy, action, clientActionSubject(action, clientip.FromContext(ctx)))
+}
+
 func (s *apiServer) chargeTenantAction(ctx context.Context, action readerAction, tenantID uuid.UUID, subject string, logAttrs ...any) error {
 	policy, err := s.readerPolicyForTenant(ctx, tenantID)
 	if err != nil {
 		return err
 	}
+	return s.chargeAction(ctx, policy, action, subject, logAttrs...)
+}
+
+func (s *apiServer) chargeAction(ctx context.Context, policy platformpolicy.Policy, action readerAction, subject string, logAttrs ...any) error {
 	rules := readerRules(policy)[action]
 	if len(rules) == 0 {
 		return nil

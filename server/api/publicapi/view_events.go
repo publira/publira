@@ -22,7 +22,8 @@ import (
 const (
 	// anonymousIDCookieName carries the anonymous actor across requests so a
 	// signed-out reader keeps aggregating into one actor_key. It holds a
-	// server-minted UUIDv7 and nothing else: no IP, no user agent, no email.
+	// server-minted UUIDv7 and the MAC auth.TokenManager.SignAnonymousID puts
+	// beside it, and nothing else: no IP, no user agent, no email.
 	anonymousIDCookieName = "publira_aid"
 
 	// anonymousIDCookieMaxAge outlives every window that reads the raw events
@@ -58,23 +59,28 @@ func (a viewActor) resolved() bool {
 }
 
 // resolveViewActor picks the actor for a view and, for a reader who has never
-// been identified, mints one. The returned cookie is non-nil only when it was
+// been identified, mints one. An identifier is only ever one tokens minted:
+// without tokens no anonymous reader can be told apart, so none is recorded. The returned cookie is non-nil only when it was
 // minted; the caller puts it on the response so the reader's next request
 // resolves to the same anonymous_id.
 //
 // A caller whose bearer was rejected gets no minted identifier. userID is unset
 // for it the same way it is for a signed-out reader, but the two are not the
 // same case: a rejected bearer usually comes from a caller that cannot keep the
-// cookie either — web-storefront sends one or the other and never relays the
-// Set-Cookie — so minting would open a new actor on every request and put back
+// cookie either — web-storefront sends one or the other, and keeps a minted
+// identifier only from a call it made without a bearer — so minting would open
+// a new actor on every request and put back
 // exactly the unbounded actor growth this instrumentation was moved out of the
 // detail reads to stop. Such a view is attributed to a cookie when one came
 // with it, and otherwise not recorded at all.
-func resolveViewActor(userID uuid.NullUUID, header *connect.Header) (viewActor, *http.Cookie) {
+func resolveViewActor(tokens *auth.TokenManager, userID uuid.NullUUID, header *connect.Header) (viewActor, *http.Cookie) {
 	if userID.Valid {
 		return viewActor{userID: userID}, nil
 	}
-	if id, ok := anonymousIDFromCookie(header); ok {
+	if tokens == nil {
+		return viewActor{}, nil
+	}
+	if id, ok := anonymousIDFromCookie(tokens, header); ok {
 		return viewActor{anonymousID: uuid.NullUUID{UUID: id, Valid: true}}, nil
 	}
 	if _, hasBearer := auth.BearerTokenFromHeader(header); hasBearer {
@@ -84,13 +90,15 @@ func resolveViewActor(userID uuid.NullUUID, header *connect.Header) (viewActor, 
 	if err != nil {
 		return viewActor{}, nil
 	}
-	return viewActor{anonymousID: uuid.NullUUID{UUID: minted, Valid: true}}, newAnonymousIDCookie(minted)
+	return viewActor{anonymousID: uuid.NullUUID{UUID: minted, Valid: true}}, newAnonymousIDCookie(tokens, minted)
 }
 
-// anonymousIDFromCookie accepts the cookie only when it parses as a non-nil
-// UUID. A client-supplied value reaches content_events.anonymous_id directly,
-// so anything else is treated as absent and replaced by a minted identifier.
-func anonymousIDFromCookie(header *connect.Header) (uuid.UUID, bool) {
+// anonymousIDFromCookie accepts the cookie only when it carries an identifier
+// this server minted. The value reaches content_events.anonymous_id, and each
+// new one is another unique viewer, so a value the caller made up — a bare
+// UUID included, which is what the cookie held before it was signed — is
+// treated as absent and replaced by a minted identifier.
+func anonymousIDFromCookie(tokens *auth.TokenManager, header *connect.Header) (uuid.UUID, bool) {
 	if header == nil {
 		return uuid.Nil, false
 	}
@@ -98,11 +106,7 @@ func anonymousIDFromCookie(header *connect.Header) (uuid.UUID, bool) {
 	if err != nil {
 		return uuid.Nil, false
 	}
-	id, err := uuid.Parse(strings.TrimSpace(cookie.Value))
-	if err != nil || id == uuid.Nil {
-		return uuid.Nil, false
-	}
-	return id, true
+	return tokens.VerifyAnonymousID(cookie.Value)
 }
 
 // newAnonymousIDCookie keeps the attribute set minimal: the value is never read
@@ -111,10 +115,10 @@ func anonymousIDFromCookie(header *connect.Header) (uuid.UUID, bool) {
 // unconditional — a client that drops the cookie is minted a fresh identifier
 // on its next request, which is a better failure than putting an actor key on
 // the wire in plain HTTP.
-func newAnonymousIDCookie(id uuid.UUID) *http.Cookie {
+func newAnonymousIDCookie(tokens *auth.TokenManager, id uuid.UUID) *http.Cookie {
 	return &http.Cookie{
 		Name:     anonymousIDCookieName,
-		Value:    id.String(),
+		Value:    tokens.SignAnonymousID(id),
 		Path:     "/",
 		MaxAge:   int(anonymousIDCookieMaxAge / time.Second),
 		HttpOnly: true,
@@ -248,6 +252,11 @@ func (s *apiServer) resolveContentViewTarget(
 // mint a fresh actor and add a row no one read, while a cache hit would record
 // nothing at all. Here the caller is the reader's own request.
 //
+// Every call spends the calling client's allowance first, signed in or not,
+// and one past it is refused with resource_exhausted and records nothing: a
+// signed-out call without an identifier files a new viewer, so without the
+// allowance one client could add viewers, and views, as fast as it can send.
+//
 // The target is resolved before anything is written, so an unpublished or
 // foreign public ID is NotFound rather than a recorded view. Once the target
 // resolves the recording itself reports nothing: a view is instrumentation, and
@@ -262,6 +271,9 @@ func (s *apiServer) RecordContentView(
 	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.chargePlatformClientAction(ctx, actionRecordContentViewFromClient); err != nil {
 		return nil, err
 	}
 	target, err := s.resolveContentViewTarget(ctx, tenant.ID, surface, req.Target)
@@ -293,7 +305,7 @@ func (s *apiServer) instrumentViewEvent(
 	episodeID uuid.NullUUID,
 	viewerUserID uuid.NullUUID,
 ) {
-	actor, minted := resolveViewActor(viewerUserID, requestHeader)
+	actor, minted := resolveViewActor(s.tokens, viewerUserID, requestHeader)
 	if minted != nil && responseHeader != nil {
 		// Handed over even when the event below is skipped or deduped, so the
 		// reader's next request is already attributable to the same actor.

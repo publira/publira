@@ -115,7 +115,7 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 	// The same reader coming back inside the debounce window is the case the
 	// partial unique index exists for.
 	second := episodeViewRequest(tenant, episode.ID.String())
-	secondRespCtx, secondRespCall := testutil.NewClientContext(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+anonymousID.String()))
+	secondRespCtx, secondRespCall := testutil.NewClientContext(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+signedAnonymousID(anonymousID)))
 	_, err = client.RecordContentView(secondRespCtx, second)
 	if err != nil {
 		t.Fatalf("second RecordContentView: %v", err)
@@ -171,7 +171,7 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 	req := episodeViewRequest(tenant, episode.ID.String())
 	// A member may well be carrying an anonymous cookie from before they signed
 	// in; the member is the actor either way.
-	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+uuid.Must(uuid.NewV7()).String())
+	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+signedAnonymousID(uuid.Must(uuid.NewV7())))
 	if _, err := env.contentViewClient().RecordContentView(testutil.WithBearer(ctx, token), req); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testi
 		go func() {
 			defer wg.Done()
 			req := episodeViewRequest(tenant, episode.ID.String())
-			_, errs[i] = client.RecordContentView(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+anonymousID.String()), req)
+			_, errs[i] = client.RecordContentView(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+signedAnonymousID(anonymousID)), req)
 		}()
 	}
 	wg.Wait()

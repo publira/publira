@@ -196,6 +196,14 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit api_key_request = 24;
+  // How many page views one client may have ContentViewService
+  // .RecordContentView record, counted per client address whether or not the
+  // reader is signed in, since a view needs no account. A call past it is
+  // refused with RESOURCE_EXHAUSTED and records nothing.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit content_view_per_client = 25;
 }
 
 // The reads one client may make of a storefront in 10 seconds, counted per

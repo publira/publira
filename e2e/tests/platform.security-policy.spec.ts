@@ -133,6 +133,12 @@ const SAVED_LIMITS = [
     window: "hour",
   },
   {
+    column: "content_view_limit_per_client",
+    label: "Page views recorded per client",
+    shorter: 45,
+    window: "minute",
+  },
+  {
     column: "api_key_request_limit",
     label: "API key requests per key",
     shorter: 1001,

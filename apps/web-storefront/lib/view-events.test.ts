@@ -1,3 +1,4 @@
+import type { RecordContentViewRequest } from "@publira/api-client/public/catalog";
 import { ContentViewTargetType } from "@publira/api-client/public/catalog";
 import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,10 +29,12 @@ vi.mock("./api-client", () => ({
 
 const CLIENT_FORWARDED = "for=198.51.100.7";
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const STORED_ACTOR_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const STORED_ACTOR_ID =
+  "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.c2lnbmVkLWJ5LXRoZS1hcGk";
+
+const MINTED_ACTOR_ID =
+  "cccccccc-cccc-4ccc-8ccc-cccccccccccc.bWludGVkLWJ5LXRoZS1hcGk";
 
 const cookieStore = (stored?: string) => {
   const set = vi.fn();
@@ -46,42 +49,52 @@ const cookieStore = (stored?: string) => {
   return set;
 };
 
-const forwardedHeaders = (): Record<string, string> => {
+interface CallOptions {
+  headers: Record<string, string>;
+  onHeader?: (header: Headers) => void;
+}
+
+/** Answers the RPC with the `Set-Cookie` headers the API would send. */
+const respondWith = (...setCookies: string[]) => {
+  mockRecordContentView.mockImplementation(
+    (_request: RecordContentViewRequest, options: CallOptions) => {
+      options.onHeader?.(
+        new Headers(setCookies.map((value) => ["set-cookie", value]))
+      );
+
+      return Promise.resolve({});
+    }
+  );
+};
+
+const callOptions = (): CallOptions => {
   // SAFETY: `recordContentView` is called with the request and then the call
   // options, whose `headers` the module builds as a plain record.
   const [, options] = mockRecordContentView.mock.calls[0] as [
     unknown,
-    { headers: Record<string, string> },
+    CallOptions,
   ];
 
-  return options.headers;
+  return options;
 };
+
+const minted = `publira_aid=${MINTED_ACTOR_ID}; Path=/; Max-Age=15552000; HttpOnly; Secure; SameSite=Lax`;
 
 describe("recordContentView", () => {
   beforeEach(() => {
     mockResolveAccessToken.mockResolvedValue("");
-    mockRecordContentView.mockResolvedValue({});
+    respondWith();
   });
 
-  it("mints an actor for a signed-out reader, stores it, and forwards it with the reader's address", async () => {
+  it("sends a signed-out reader without an actor with only their address, and keeps the one the API mints", async () => {
     const set = cookieStore();
+    respondWith("other=1; Path=/", minted);
 
     await recordContentView({
       id: "e0000000-0000-4000-8000-000000000001",
       kind: "episode",
       tenantId: TENANT_ID,
     });
-
-    // SAFETY: the module sets the actor cookie with one options object that
-    // names it, its value, and how long it lives.
-    const [written] = set.mock.calls[0] as [
-      { maxAge: number; name: string; value: string },
-    ];
-
-    expect(written.name).toBe(VIEW_ACTOR_COOKIE_NAME);
-    expect(written.value).toMatch(UUID_PATTERN);
-    // Outlives the raw events, and expires rather than living on forever.
-    expect(written.maxAge).toBe(180 * 24 * 60 * 60);
 
     expect(mockRecordContentView).toHaveBeenCalledWith(
       {
@@ -92,16 +105,23 @@ describe("recordContentView", () => {
         },
         tenant: { tenantId: TENANT_ID },
       },
-      {
-        headers: {
-          Cookie: `publira_aid=${written.value}`,
-          Forwarded: CLIENT_FORWARDED,
-        },
-      }
+      expect.objectContaining({ headers: { Forwarded: CLIENT_FORWARDED } })
     );
+
+    // SAFETY: the module sets the actor cookie with one options object that
+    // names it, its value, and how long it lives.
+    const [written] = set.mock.calls[0] as [
+      { maxAge: number; name: string; value: string },
+    ];
+
+    expect(set).toHaveBeenCalledTimes(1);
+    expect(written.name).toBe(VIEW_ACTOR_COOKIE_NAME);
+    expect(written.value).toBe(MINTED_ACTOR_ID);
+    // Outlives the raw events, and expires rather than living on forever.
+    expect(written.maxAge).toBe(180 * 24 * 60 * 60);
   });
 
-  it("keeps the actor the reader already carries", async () => {
+  it("forwards the actor the reader already carries and keeps it", async () => {
     const set = cookieStore(STORED_ACTOR_ID);
 
     await recordContentView({
@@ -120,19 +140,39 @@ describe("recordContentView", () => {
         },
         tenant: { tenantId: TENANT_ID },
       },
-      {
+      expect.objectContaining({
         headers: {
           Cookie: `publira_aid=${STORED_ACTOR_ID}`,
           Forwarded: CLIENT_FORWARDED,
         },
-      }
+      })
     );
   });
 
-  it.each(["not-a-uuid", "00000000-0000-0000-0000-000000000000"])(
-    "replaces %s, which the API would not accept, instead of forwarding it",
+  // A bare UUID is what this app used to mint itself. The API files no view
+  // under an identifier it did not sign, so it answers with one of its own.
+  it("replaces a stored actor the API answered with a new one", async () => {
+    const set = cookieStore("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    respondWith(minted);
+
+    await recordContentView({
+      id: "5e000000-0000-4000-8000-000000000001",
+      kind: "series",
+      tenantId: TENANT_ID,
+    });
+
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: VIEW_ACTOR_COOKIE_NAME,
+        value: MINTED_ACTOR_ID,
+      })
+    );
+  });
+
+  it.each(["has space", "semi;colon", "x".repeat(129)])(
+    "does not forward %s, which could not be an identifier the API minted",
     async (stored) => {
-      const set = cookieStore(stored);
+      cookieStore(stored);
 
       await recordContentView({
         id: "5e000000-0000-4000-8000-000000000001",
@@ -140,14 +180,14 @@ describe("recordContentView", () => {
         tenantId: TENANT_ID,
       });
 
-      expect(set).toHaveBeenCalledTimes(1);
-      expect(forwardedHeaders().Cookie).not.toContain(stored);
+      expect(callOptions().headers).toEqual({ Forwarded: CLIENT_FORWARDED });
     }
   );
 
-  it("sends only the bearer for a signed-in reader, minting no actor", async () => {
+  it("sends only the bearer for a signed-in reader and keeps no actor", async () => {
     const set = cookieStore();
     mockResolveAccessToken.mockResolvedValue("header.payload.signature");
+    respondWith(minted);
 
     await recordContentView({
       id: "e0000000-0000-4000-8000-000000000001",
@@ -156,13 +196,13 @@ describe("recordContentView", () => {
     });
 
     expect(set).not.toHaveBeenCalled();
-    expect(forwardedHeaders()).toEqual({
+    expect(callOptions().headers).toEqual({
       Authorization: "Bearer header.payload.signature",
     });
   });
 
   it("leaves the reader's page alone when the RPC fails", async () => {
-    cookieStore(STORED_ACTOR_ID);
+    const set = cookieStore();
     mockRecordContentView.mockRejectedValue(new Error("unavailable"));
 
     await expect(
@@ -172,5 +212,6 @@ describe("recordContentView", () => {
         tenantId: TENANT_ID,
       })
     ).resolves.toBeUndefined();
+    expect(set).not.toHaveBeenCalled();
   });
 });

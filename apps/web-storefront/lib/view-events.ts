@@ -31,22 +31,24 @@ export interface ContentView {
 }
 
 /**
- * The cookie name the public API reads the anonymous view actor from.
+ * The cookie name the public API reads the anonymous view actor from, and
+ * mints one under in `Set-Cookie` when a call carries none.
  *
  * It is a **request** header this app writes, never a cookie the reader's
  * browser holds: the API's own `Set-Cookie` would be addressed to the API's
- * host, and the reader never talks to that host. The identifier the reader
- * carries lives in {@link VIEW_ACTOR_COOKIE_NAME} instead, on this app's own
- * terms, and is forwarded here on each recorded view.
+ * host, and the reader never talks to that host. This app reads the value out
+ * of that `Set-Cookie` instead, keeps it in {@link VIEW_ACTOR_COOKIE_NAME} on
+ * its own terms, and forwards it here on each recorded view.
  */
 const API_ANONYMOUS_ID_COOKIE_NAME = "publira_aid";
 
 /**
  * The signed-out reader's view actor, kept the same way as every other cookie
  * this app owns: host-only, `HttpOnly`, `SameSite=Lax`, and `Secure`
- * outside development. The value is a UUID this app mints and nothing else —
- * no address, no user agent, no account — so it is stored as-is rather than
- * sealed like the session cookie.
+ * outside development. The value is the identifier the API minted, signed by
+ * the API so that nobody can make one up, and nothing else — no address, no
+ * user agent, no account — so it is stored as-is rather than sealed like the
+ * session cookie.
  */
 export const VIEW_ACTOR_COOKIE_NAME = profileCookieName(
   "publira_web_storefront_view_actor"
@@ -68,15 +70,17 @@ const viewActorCookieOptions = {
   secure: process.env.NODE_ENV === "production",
 };
 
-const NIL_UUID = "00000000-0000-0000-0000-000000000000";
-
 /**
- * A stored actor is accepted only when it is a non-nil UUID, which is exactly
- * what the API accepts. Anything else — a hand-edited cookie, a value from an
- * older format — is replaced rather than forwarded, so the request never
- * carries an identifier the API would silently discard.
+ * What a stored actor has to look like to be forwarded at all. The value is
+ * the API's and opaque here: only the API can tell whether it minted it, and
+ * it answers one it did not with a fresh identifier, which replaces it. This
+ * only keeps out of the request a value that could not be one — empty, too
+ * long, or holding a character a `Cookie` header cannot carry.
  */
-const viewActorIdSchema = z.uuid().refine((value) => value !== NIL_UUID);
+const viewActorIdSchema = z
+  .string()
+  .max(128)
+  .regex(/^[\w.-]+$/u);
 
 const readStoredViewActorId = (raw: string | undefined): string => {
   const parsed = viewActorIdSchema.safeParse(raw?.trim() ?? "");
@@ -84,31 +88,21 @@ const readStoredViewActorId = (raw: string | undefined): string => {
   return parsed.success ? parsed.data : "";
 };
 
-/**
- * The signed-out reader's actor, minting one on first view.
- *
- * **Route Handlers and Server Actions only.** Minting writes a cookie, which
- * needs a response whose headers are still open.
- */
-const resolveAnonymousViewActorId = async (): Promise<string> => {
-  const cookieStore = await cookies();
+/** The identifier the API minted in a `Set-Cookie` of its response, if any. */
+const mintedViewActorId = (header: Headers): string => {
+  for (const setCookie of header.getSetCookie()) {
+    const [pair = ""] = setCookie.split(";", 1);
+    const separator = pair.indexOf("=");
 
-  const stored = readStoredViewActorId(
-    cookieStore.get(VIEW_ACTOR_COOKIE_NAME)?.value
-  );
-
-  if (stored) {
-    return stored;
+    if (
+      separator > 0 &&
+      pair.slice(0, separator).trim() === API_ANONYMOUS_ID_COOKIE_NAME
+    ) {
+      return readStoredViewActorId(pair.slice(separator + 1));
+    }
   }
 
-  const minted = crypto.randomUUID();
-  cookieStore.set({
-    ...viewActorCookieOptions,
-    name: VIEW_ACTOR_COOKIE_NAME,
-    value: minted,
-  });
-
-  return minted;
+  return "";
 };
 
 /**
@@ -127,27 +121,63 @@ const resolveAnonymousViewActorId = async (): Promise<string> => {
  * API's host, which the reader never talks to, so every later beacon would open
  * another single-use actor.
  *
+ * A reader who carries no actor yet sends none, and the API mints one. This
+ * app mints none of its own: the API files a view only under an identifier it
+ * signed, so one made up here would be replaced on every call.
+ *
  * The anonymous call carries the reader's address as well, which a call with a
  * session gets from the client's interceptor, so that `publira server` charges
- * it to the reader's own read allowance. Without it the call reaches the API
- * as one of this app's own, which no allowance counts.
+ * it to the reader's own allowances. Without it the call reaches the API as
+ * one of this app's own, which no allowance counts.
  */
-const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
+const buildViewActorHeaders = async (): Promise<{
+  anonymous: boolean;
+  headers: Record<string, string>;
+}> => {
   const accessToken = await resolveAccessToken();
 
   if (accessToken) {
-    return { Authorization: `Bearer ${accessToken}` };
+    return {
+      anonymous: false,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    };
   }
 
-  const [{ headers: clientAddress }, actorId] = await Promise.all([
+  const [{ headers: clientAddress }, cookieStore] = await Promise.all([
     buildClientAddressHeaders(),
-    resolveAnonymousViewActorId(),
+    cookies(),
   ]);
 
+  const actorId = readStoredViewActorId(
+    cookieStore.get(VIEW_ACTOR_COOKIE_NAME)?.value
+  );
+
   return {
-    ...clientAddress,
-    Cookie: `${API_ANONYMOUS_ID_COOKIE_NAME}=${actorId}`,
+    anonymous: true,
+    headers: actorId
+      ? {
+          ...clientAddress,
+          Cookie: `${API_ANONYMOUS_ID_COOKIE_NAME}=${actorId}`,
+        }
+      : clientAddress,
   };
+};
+
+/**
+ * Keeps the identifier the API minted for the reader, so their next view is
+ * filed under the same actor.
+ *
+ * **Route Handlers and Server Actions only.** It writes a cookie, which needs
+ * a response whose headers are still open.
+ */
+const storeViewActorId = async (value: string): Promise<void> => {
+  const cookieStore = await cookies();
+
+  cookieStore.set({
+    ...viewActorCookieOptions,
+    name: VIEW_ACTOR_COOKIE_NAME,
+    value,
+  });
 };
 
 /**
@@ -170,7 +200,8 @@ export const recordContentView = async ({
   kind,
   tenantId,
 }: ContentView): Promise<void> => {
-  const headers = await buildViewActorHeaders();
+  const { anonymous, headers } = await buildViewActorHeaders();
+  let minted = "";
 
   try {
     await apiClient.contentView.recordContentView(
@@ -179,10 +210,22 @@ export const recordContentView = async ({
         target: { id, type: contentViewTargetTypeByKind[kind] },
         tenant: { tenantId },
       },
-      { headers }
+      {
+        headers,
+        onHeader: (header) => {
+          minted = mintedViewActorId(header);
+        },
+      }
     );
   } catch {
     // An episode that has since been unpublished, a tenant that no longer
-    // resolves, an API that is down: none of them are the reader's problem.
+    // resolves, an API that is down, a client past its allowance: none of
+    // them are the reader's problem.
+  }
+
+  // The API mints nothing for a call that carried a bearer, so an identifier
+  // only ever comes back to a signed-out reader.
+  if (anonymous && minted) {
+    await storeViewActorId(minted);
   }
 };

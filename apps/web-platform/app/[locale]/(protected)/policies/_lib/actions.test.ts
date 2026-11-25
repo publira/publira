@@ -53,6 +53,8 @@ const securityForm = (extra: Record<string, string> = {}): FormData => {
     api_key_request_per_minute: "600",
     coin_payment_per_day: "500",
     coin_payment_per_minute: "20",
+    content_view_per_client_per_day: "3000",
+    content_view_per_client_per_minute: "60",
     data_export_per_day: "1",
     data_export_per_hour: "1",
     disposable_email_domains_url: "",
@@ -137,6 +139,7 @@ describe("updatePlatformSecurityPolicyAction", () => {
       expect.objectContaining({
         apiKeyRequest: { perDay: 100_000, perMinute: 600 },
         coinPayment: { perDay: 500, perMinute: 20 },
+        contentViewPerClient: { perDay: 3000, perMinute: 60 },
         dataExport: { perDay: 1, perHour: 1 },
         iconChange: { perDay: 20, perMinute: 5 },
         identityLink: { perDay: 20, perMinute: 5 },

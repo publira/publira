@@ -131,6 +131,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "coin_payment_per_minute",
   },
+  contentViewPerClientPerDay: {
+    kind: "value",
+    name: "content_view_per_client_per_day",
+  },
+  contentViewPerClientPerMinute: {
+    kind: "value",
+    name: "content_view_per_client_per_minute",
+  },
   dataExportPerDay: {
     kind: "value",
     name: "data_export_per_day",
@@ -327,6 +335,10 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
 
   const dataExport = t("platform.policy.security.data_export_title");
 
+  const contentViewPerClient = t(
+    "platform.policy.security.content_view_per_client_title"
+  );
+
   const apiKeyRequest = t("platform.policy.security.api_key_request_title");
 
   const listUrlInvalid = t(
@@ -354,6 +366,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       apiKeyRequestPerMinute: limitSchema(t, apiKeyRequest),
       coinPaymentPerDay: limitSchema(t, coinPayment),
       coinPaymentPerMinute: limitSchema(t, coinPayment),
+      contentViewPerClientPerDay: limitSchema(t, contentViewPerClient),
+      contentViewPerClientPerMinute: limitSchema(t, contentViewPerClient),
       dataExportPerDay: limitSchema(t, dataExport),
       dataExportPerHour: limitSchema(t, dataExport),
       disposableEmailDomainsUrl: optionalTrimmedString(
@@ -517,6 +531,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: dataExport,
           }),
           short: "dataExportPerHour",
+        },
+        {
+          day: "contentViewPerClientPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: contentViewPerClient,
+          }),
+          short: "contentViewPerClientPerMinute",
         },
         {
           day: "apiKeyRequestPerDay",
