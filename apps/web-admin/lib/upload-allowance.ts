@@ -18,6 +18,11 @@ export const TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES = SERIES_IMPORT_MAX_BYTES;
  * one upload, and twice a tenant's share keeps one tenant from taking all of
  * it.
  *
+ * Measured on the production image, one series import of the largest ZIP took
+ * the container to about 1.6GiB, which a 1GiB container does not survive, and
+ * two at once, filling this sum, to about 2.8GiB. The ECS guide gives a console
+ * task 4GiB on that measure, so changing this sum changes that figure too.
+ *
  * The count is per process: every copy of the console holds what it was sent
  * and nothing else, so it is a copy's own memory that it bounds.
  */

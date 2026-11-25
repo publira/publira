@@ -2,8 +2,8 @@
 title: 在AWS Fargate上執行Amazon ECS
 description: 將安裝實例作為AWS Fargate上的Amazon ECS服務，在CloudFront與Application Load Balancer之後執行，從參數與任務定義，一直到第一次登入租戶主控台。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-25
+source_updated: 2026-11-25
 ---
 
 本頁從一個已準備好代管服務的VPC開始，帶著安裝實例一路走到第一次登入租戶主控台；其中每個處理程序都是AWS Fargate上的一個Amazon ECS服務，並以位於Application Load Balancer前方的CloudFront作為邊緣。它執行的步驟與[安裝](../2-installing.md)相同；每個步驟為何存在、每個密鑰保護什麼、每個資料庫角色能存取什麼，都在該頁說明。邊緣則依[邊緣](../4-edge/index.md#邊緣必須做的事)的要求設置於前方。本頁涵蓋ECS與Fargate特有的部分：每個部分會成為哪些資源，以及如何用這些資源滿足上述兩頁的每項要求。
@@ -673,7 +673,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 }
 ```
 
-`web-storefront`採用與`publira server`相同的`PUBLIRA_TRUSTED_PROXIES`，用來找出它要傳給租戶Google代碼閘道的讀者位址。`web-admin.json`與此相同，只是把所有出現`web-storefront`之處換成`web-admin`，連接埠（包括健康檢查中的連接埠）以`4000`取代`3000`，`PUBLIRA_AUTH_SECRET`使用`/publira/admin-auth-secret`，沒有`PUBLIRA_TRUSTED_PROXIES`（`web-admin`不會讀取它），並多一個密鑰：來自`/publira/web-service-token`的`PUBLIRA_WEB_SERVICE_TOKEN`。
+`web-storefront`採用與`publira server`相同的`PUBLIRA_TRUSTED_PROXIES`，用來找出它要傳給租戶Google代碼閘道的讀者位址。`web-admin.json`與此相同，只是把所有出現`web-storefront`之處換成`web-admin`，連接埠（包括健康檢查中的連接埠）以`4000`取代`3000`，`PUBLIRA_AUTH_SECRET`使用`/publira/admin-auth-secret`，沒有`PUBLIRA_TRUSTED_PROXIES`（`web-admin`不會讀取它），並多一個密鑰：來自`/publira/web-service-token`的`PUBLIRA_WEB_SERVICE_TOKEN`。此外，`"memory"`使用`"4096"`取代`"1024"`，`"cpu"`維持`"512"`，Fargate允許這個CPU搭配最多4 GiB的記憶體。主控台會將一次上傳完整地讀入記憶體，而且不只一份；一個任務同時最多接受512 MiB的上傳，其中一個租戶最多占256 MiB。這足以容納兩次以[租戶主控台中的上傳](../4-edge/index.md#租戶主控台中的上傳)所允許的最大ZIP進行的系列匯入，而這兩次匯入同時進行時，主控台的記憶體達到了約2.8 GiB。若為1024 MiB，任務會在第一次匯入時因記憶體不足而被停止。超出這些限制的上傳不會排隊等候，而是被拒絕，並顯示訊息請工作人員稍後重新傳送，因此任務需要的記憶體不會超過這個數值；要同時接受更多上傳，就增加任務數。
 
 註冊這四個任務定義，並為每一個建立服務，附上各自使用的安全群組、目標群組與Cloud Map名稱：
 
