@@ -11,26 +11,12 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 )
 
-// The tenant console checks the password of the same account on top of its own
-// sessions, through loginguard. Both have to count against one allowance, or a
-// guesser holding a session of each would get two budgets to rotate between.
-func TestVerifyPasswordSharesTheTenantConsolesStepUpAllowance(t *testing.T) {
-	tenantID, userID := uuid.New(), uuid.New()
-
-	got := readerActionSubject(actionVerifyPassword, tenantID, userID)
-	if want := loginguard.StepUpSubject(tenantID.String(), userID.String()); got != want {
-		t.Fatalf("storefront step-up subject = %q, want the tenant console's %q", got, want)
-	}
-}
-
 func TestReaderRulesFollowThePlatformPolicy(t *testing.T) {
 	policy := platformpolicy.Defaults()
-	policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: 6, PerDay: 8}
 	policy.Community.CommentPost = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 7}
 	policy.Community.CommentReport = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 5}
 	policy.Community.EpisodeRating = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 9}
@@ -56,7 +42,6 @@ func TestReaderRulesFollowThePlatformPolicy(t *testing.T) {
 		actionPostComment:                    {{Limit: 3, Window: time.Minute}, {Limit: 7, Window: 24 * time.Hour}},
 		actionReportComment:                  {{Limit: 2, Window: time.Minute}, {Limit: 5, Window: 24 * time.Hour}},
 		actionRateEpisode:                    {{Limit: 4, Window: time.Minute}, {Limit: 9, Window: 24 * time.Hour}},
-		actionVerifyPassword:                 {{Limit: 6, Window: time.Minute}, {Limit: 8, Window: 24 * time.Hour}},
 		actionUpdateViewerPreferences:        {{Limit: 11, Window: time.Minute}, {Limit: 12, Window: 24 * time.Hour}},
 		actionSubmitContactMessage:           {{Limit: 1, Window: time.Hour}, {Limit: 2, Window: 24 * time.Hour}},
 		actionSubmitContactMessageFromClient: {{Limit: 13, Window: time.Hour}, {Limit: 14, Window: 24 * time.Hour}},

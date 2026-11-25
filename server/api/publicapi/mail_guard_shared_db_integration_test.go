@@ -44,10 +44,17 @@ type consoleClients struct {
 func startConsolesWithMailGuard(t *testing.T, env *publicDBEnv, mail *mailguard.Guard) consoleClients {
 	t.Helper()
 
+	return startConsolesWith(t, env, loginguard.NewDefault(), mail)
+}
+
+// startConsolesWith is startConsolesWithMailGuard over login as well.
+func startConsolesWith(t *testing.T, env *publicDBEnv, login *loginguard.Guard, mail *mailguard.Guard) consoleClients {
+	t.Helper()
+
 	adminDB := env.PG.OpenAdminDB(t)
 	adminRecorder := auditlog.NewAsync(dbmodels.New(adminDB), adminDB, slog.Default())
 	t.Cleanup(adminRecorder.Close)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, adminRecorder, nil, nil, loginguard.NewDefault(), mail)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, adminRecorder, nil, nil, login, mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
@@ -55,7 +62,7 @@ func startConsolesWithMailGuard(t *testing.T, env *publicDBEnv, mail *mailguard.
 	platformDB := env.PG.OpenPlatformDB(t)
 	platformRecorder := auditlog.NewAsync(dbmodels.New(platformDB), nil, slog.Default())
 	t.Cleanup(platformRecorder.Close)
-	platformAPI := platformapi.NewWithAsyncRecorder(platformDB, dbmodels.New(platformDB), slog.Default(), nil, nil, testutil.TokenManager(), platformRecorder, nil, loginguard.NewDefault(), mail)
+	platformAPI := platformapi.NewWithAsyncRecorder(platformDB, dbmodels.New(platformDB), slog.Default(), nil, nil, testutil.TokenManager(), platformRecorder, nil, login, mail)
 
 	mux := http.NewServeMux()
 	adminAPI.Register(mux)

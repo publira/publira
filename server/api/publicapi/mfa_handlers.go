@@ -357,7 +357,7 @@ func (s *apiServer) mfaActorFromSession(ctx context.Context, tenantCtx *publirat
 // either, alongside the lock the codes count toward; a step that succeeds
 // clears it through clearMfaAction.
 func (s *apiServer) chargeMfaAction(ctx context.Context, actor mfaActor, action string) error {
-	if err := s.chargeReaderAction(ctx, actionVerifyPassword, actor.Tenant.ID, actor.User.ID); err != nil {
+	if err := s.chargeStepUp(ctx, actor.Tenant.ID, actor.User.ID); err != nil {
 		auth.AuditEvent(ctx, action, "failure", actor.Tenant.PublicID, actor.User.PublicID, "rate_limited")
 		return err
 	}
@@ -365,7 +365,7 @@ func (s *apiServer) chargeMfaAction(ctx context.Context, actor mfaActor, action 
 }
 
 func (s *apiServer) clearMfaAction(ctx context.Context, actor mfaActor) {
-	s.clearReaderAction(ctx, actionVerifyPassword, actor.Tenant.ID, actor.User.ID)
+	s.clearStepUp(ctx, actor.Tenant.ID, actor.User.ID)
 }
 
 // refuseConsoleFactor refuses setting an authenticator up on the site for an

@@ -36,22 +36,6 @@ const (
 	// Every press of the rating control charges, because every press that adds
 	// a point files an event of its own.
 	actionRateEpisode readerAction = "episode.rate"
-	// The step-up password check ChangePassword, DeleteMe and RequestEmailChange
-	// make on top of the session, and the codes the two-step verification RPCs
-	// check, from VerifyMfa's sign-in to DisableMfa. One action for all of
-	// them: an allowance held per RPC would hand a guesser a budget for each to
-	// rotate between, and a code is as much the account's secret as its
-	// password is.
-	//
-	// This one is charged before the password is verified rather than before the
-	// first write, so an attempt past the limit costs no bcrypt and reaches no
-	// row, and it is cleared once a password verifies — the count is there to
-	// bound guessing, and the caller who knows the password is not guessing.
-	// resource_exhausted is what distinguishes the refusal from the
-	// invalid_argument a wrong password gets, so a client can tell the reader to
-	// come back later instead of repeating "your password is wrong" at someone
-	// who typed it correctly.
-	actionVerifyPassword readerAction = "password.verify"
 	// How the reader wants the viewer laid out. The control that writes it sits
 	// in the viewer rather than on a settings screen, so a press is as cheap as
 	// a rating's and the budget is the same size.
@@ -165,7 +149,6 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionPostComment:                    minuteDayRules(community.CommentPost),
 		actionReportComment:                  minuteDayRules(community.CommentReport),
 		actionRateEpisode:                    minuteDayRules(community.EpisodeRating),
-		actionVerifyPassword:                 minuteDayRules(policy.PasswordVerification),
 		actionUpdateViewerPreferences:        minuteDayRules(community.ViewerPreferencesUpdate),
 		actionUpdateNotificationSettings:     minuteDayRules(community.NotificationSettingsUpdate),
 		actionSubmitContactMessage:           hourDayRules(community.ContactMessagePerAccount),
@@ -350,25 +333,21 @@ func (s *apiServer) chargeAction(ctx context.Context, policy platformpolicy.Poli
 	return rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
 }
 
-// clearReaderAction gives the reader back everything action has cost them.
-//
-// It is the counterpart the step-up password check needs and no other action
-// uses: a budget that bounds guessing has to be cleared by the attempt that was
-// not a guess. Holding the count past a password that verified would lock an
-// account out of its own settings over typos, and it would bound nothing —
-// what the limit is there for is the caller who does not know the password, and
-// that caller never gets this far.
-func (s *apiServer) clearReaderAction(ctx context.Context, action readerAction, tenantID, userID uuid.UUID) {
-	policy, err := s.guards.policy.Policy(ctx)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to resolve the platform policy to clear a reader allowance", "action", string(action), "error", err)
-		return
-	}
-	rules := readerRules(policy)[action]
-	if len(rules) == 0 {
-		return
-	}
-	s.guards.limiter.Reset(ctx, readerActionSubject(action, tenantID, userID), rules...)
+// chargeStepUp spends one of the account's step-up allowances, before the
+// password ChangePassword, DeleteMe and RequestEmailChange ask for on top of
+// the session is verified, and before every code the two-step verification RPCs
+// check, VerifyMfa at sign-in included. The allowance is the login guard's
+// rather than one of the reader actions above, because the tenant console
+// checks the password of the same account and has to spend the same counters:
+// the guard is the one object every API a process serves shares.
+func (s *apiServer) chargeStepUp(ctx context.Context, tenantID, userID uuid.UUID) error {
+	return s.login.ChargeStepUp(ctx, tenantID.String(), userID.String())
+}
+
+// clearStepUp clears the account's step-up count once a password or a code
+// verified.
+func (s *apiServer) clearStepUp(ctx context.Context, tenantID, userID uuid.UUID) {
+	s.login.ClearStepUp(ctx, tenantID.String(), userID.String())
 }
 
 // duplicateCommentKey names one reader repeating themselves on one episode.

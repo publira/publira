@@ -23,9 +23,7 @@ import (
 func newStepUpLimitedEnv(t *testing.T, limit int) *publicDBEnv {
 	t.Helper()
 
-	return newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
-		policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: limit, PerDay: limit}
-	}))
+	return newPublicDBEnvWithLoginGuard(t, stepUpGuardWith(platformpolicy.MinuteDay{PerMinute: limit, PerDay: limit}))
 }
 
 func wrongPasswordChangePassword(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, token string) error {

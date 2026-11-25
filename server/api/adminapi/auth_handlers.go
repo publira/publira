@@ -634,8 +634,7 @@ func (s *adminServer) RequestEmailChange(
 	// Charged here rather than at the top: every check above refuses on what the
 	// caller typed instead of on the account's password, so none of them is a
 	// guess and none of them should cost an allowance.
-	stepUp, err := s.login.BeginStepUp(ctx, tenant.ID.String(), user.ID.String())
-	if err != nil {
+	if err := s.login.ChargeStepUp(ctx, tenant.ID.String(), user.ID.String()); err != nil {
 		auth.AuditEvent(ctx, "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "password_rate_limited")
 		return nil, err
 	}
@@ -643,7 +642,7 @@ func (s *adminServer) RequestEmailChange(
 		auth.AuditEvent(ctx, "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
-	stepUp.Verified(ctx)
+	s.login.ClearStepUp(ctx, tenant.ID.String(), user.ID.String())
 
 	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},

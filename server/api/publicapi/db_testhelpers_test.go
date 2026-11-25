@@ -66,8 +66,7 @@ func newPublicDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *public
 }
 
 // newPublicDBEnvWith starts the server over guards and mail, and over login
-// when it is not nil. A nil login keeps the built-in limits over counters of
-// the server's own.
+// when it is not nil. A nil login keeps openLoginGuard.
 func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard, login *loginguard.Guard) *publicDBEnv {
 	t.Helper()
 
@@ -95,6 +94,7 @@ func newPublicDBEnvConfigured(t *testing.T, guards readerGuards, mail *mailguard
 	// counters would otherwise be the deployment's shared Redis, where one run
 	// of these tests would charge the budget of the next.
 	api := newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil)
+	api.login = openLoginGuard()
 	configure(api, db)
 	server := httptest.NewServer(handlerFromServer(api))
 	t.Cleanup(server.Close)
@@ -163,6 +163,21 @@ func guardsWith(adjust func(*platformpolicy.Policy)) readerGuards {
 		limiter: testutil.Limiter(),
 		policy:  platformpolicy.Fixed(policy),
 	}
+}
+
+// openLoginGuard is openPolicy over in-process counters for the login guard,
+// which holds the step-up allowance as well as the sign-in limit: the cases
+// that are not about either check passwords on top of a session far more often
+// than the built-in step-up limit allows.
+func openLoginGuard() *loginguard.Guard {
+	return stepUpGuardWith(openPolicy().PasswordVerification)
+}
+
+// stepUpGuardWith is openLoginGuard with the step-up allowance at perAccount.
+func stepUpGuardWith(perAccount platformpolicy.MinuteDay) *loginguard.Guard {
+	policy := openPolicy()
+	policy.PasswordVerification = perAccount
+	return loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil)
 }
 
 // openMailGuard is openReaderGuards for the mail limit: the cases that are not

@@ -201,9 +201,10 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	tokens := cfg.tokens
 	encryptor := deps.encryptor
 
-	// One sign-in limit and one mail limit for the namespaces served here. The
-	// storefront and the tenant console sign in and mail the same accounts, and
-	// one source may reach all three, so counters kept in this process when no
+	// One sign-in limit, which holds the step-up password allowance as well, and
+	// one mail limit for the namespaces served here. The storefront and the
+	// tenant console sign in, check the passwords of, and mail the same accounts,
+	// and one source may reach all three, so counters kept in this process when no
 	// Redis is named have to be one set rather than one per namespace. The
 	// policy is read as the least of the logins held here that may read it.
 	policy := platformpolicy.NewResolver(dbmodels.New(pools.leastPrivileged()), platformpolicy.CacheTTL, logger)

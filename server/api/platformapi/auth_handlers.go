@@ -463,8 +463,7 @@ func (s *platformServer) RequestEmailChange(
 	// Charged here rather than at the top: every check above refuses on what the
 	// caller typed instead of on the account's password, so none of them is a
 	// guess and none of them should cost an allowance.
-	stepUp, err := s.login.BeginStepUp(ctx, loginguard.PlatformScope, platformUser.ID.String())
-	if err != nil {
+	if err := s.login.ChargeStepUp(ctx, loginguard.PlatformScope, platformUser.ID.String()); err != nil {
 		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "password_rate_limited")
 		return nil, err
 	}
@@ -472,7 +471,7 @@ func (s *platformServer) RequestEmailChange(
 		auth.AuditEvent(ctx, "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
-	stepUp.Verified(ctx)
+	s.login.ClearStepUp(ctx, loginguard.PlatformScope, platformUser.ID.String())
 
 	_, err = s.queriesFor(ctx).GetPlatformUserByEmail(ctx, newEmail)
 	if err == nil {
