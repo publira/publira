@@ -16,8 +16,9 @@ import {
 } from "#lib/episode-pages-upload";
 import { requiredRecordId } from "#lib/form-schemas";
 import type { AdminMessageAccessor } from "#lib/messages";
+import type { PageUploadForm } from "#lib/page-upload-request";
 import {
-  readPageUploadForm,
+  handlePageUpload,
   refuse,
   respond,
   signInAgain,
@@ -37,28 +38,10 @@ const replaceFormSchema = (t: AdminMessageAccessor) =>
     ),
   });
 
-/**
- * Puts the image the episode edit screen submits in the place of one of the
- * episode's pages.
- *
- * It is checked as the page upload beside it is, before the body is read, and
- * held to {@link EPISODE_PAGE_REPLACE_MAX_BYTES}: one page, which may still be
- * twice what a Server Action takes. The answer is JSON for the screen's
- * `fetch`; a success expires the episode's tags, and the screen refreshes
- * itself.
- */
-export const POST = async (request: NextRequest) => {
-  const form = await readPageUploadForm(request, {
-    maxBytes: EPISODE_PAGE_REPLACE_MAX_BYTES,
-    tooLarge: (t) => t("admin.series.episodes.image_replace.too_large"),
-  });
-
-  if ("response" in form) {
-    return form.response;
-  }
-
-  const { formData, locale, t, tenantId } = form;
-
+const replacePage = async (
+  request: NextRequest,
+  { formData, locale, t, tenantId }: PageUploadForm
+) => {
   const parsed = replaceFormSchema(t).safeParse(
     toFormDataInput(formData, {
       episodeId: { kind: "value", name: "episode_id" },
@@ -108,3 +91,23 @@ export const POST = async (request: NextRequest) => {
     200
   );
 };
+
+/**
+ * Puts the image the episode edit screen submits in the place of one of the
+ * episode's pages.
+ *
+ * It is checked as the page upload beside it is, before the body is read, and
+ * held to {@link EPISODE_PAGE_REPLACE_MAX_BYTES}: one page, which may still be
+ * twice what a Server Action takes. The answer is JSON for the screen's
+ * `fetch`; a success expires the episode's tags, and the screen refreshes
+ * itself.
+ */
+export const POST = (request: NextRequest) =>
+  handlePageUpload(
+    request,
+    {
+      maxBytes: EPISODE_PAGE_REPLACE_MAX_BYTES,
+      tooLarge: (t) => t("admin.series.episodes.image_replace.too_large"),
+    },
+    (form) => replacePage(request, form)
+  );

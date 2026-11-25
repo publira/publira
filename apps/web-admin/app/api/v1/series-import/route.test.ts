@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as AdminAuthModule from "#lib/admin-auth";
 import { SERIES_IMPORT_MAX_BYTES } from "#lib/series-import-manifest";
+import {
+  reserveUploadBytes,
+  TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES,
+} from "#lib/upload-allowance";
 
 const {
   mockAssertSameOrigin,
@@ -268,5 +272,40 @@ describe("POST /api/v1/series-import", () => {
 
     expect(response.status).toBe(422);
     expect(mockRevalidateTag).not.toHaveBeenCalled();
+  });
+  it("refuses an import while the tenant's other uploads fill its share, before reading the body", async () => {
+    const release = reserveUploadBytes(TENANT_ID, 1);
+
+    try {
+      const response = await post(
+        { archive: zipFile(validManifest) },
+        { "content-length": String(TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES) }
+      );
+
+      expect(response.status).toBe(429);
+      expect(response.headers.get("retry-after")).toBe("30");
+      const body = await response.json();
+
+      expect(body.message).toBe(
+        "Other uploads are being processed right now, so this one was not accepted. Wait a moment and send it again."
+      );
+      expect(mockRunSeriesImport).not.toHaveBeenCalled();
+    } finally {
+      release?.();
+    }
+  });
+
+  it("stops counting an import once it has answered", async () => {
+    const response = await post({ archive: zipFile(validManifest) });
+
+    expect(response.status).toBe(200);
+
+    const release = reserveUploadBytes(
+      TENANT_ID,
+      TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES
+    );
+
+    expect(release).not.toBeNull();
+    release?.();
   });
 });
