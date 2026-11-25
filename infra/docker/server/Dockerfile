@@ -21,7 +21,7 @@
 #   docker run --rm publira/publira:local          # publira server
 #   docker run --rm publira/publira:local worker   # publira worker
 
-FROM golang:1.27.4-trixie@sha256:0f82c58710c405cc012da2fbd2b04bde9ced20392a89f66062822d711d7d6b4b AS builder
+FROM golang:1.27.4-trixie@sha256:430985542100b871e108ccc00e8dcc5eef08ca14ee5825e98ebf563d8ffec4ee AS builder
 
 # libvips is built from its release rather than taken from Debian, because
 # Debian's libvips42t64 is built with every loader libvips has and depends on
