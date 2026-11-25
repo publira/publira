@@ -91,19 +91,21 @@ test.describe("web-admin auth", () => {
     ).toBeVisible();
   });
 
-  test("an external next is dropped and the dashboard is served", async ({
-    page,
-  }) => {
-    await page.goto(
-      adminUrl(`/login?next=${encodeURIComponent("//evil.example")}`)
-    );
-    await fillLoginForm(page, SEED_ADMIN);
+  // A browser drops a tab from a URL, so `/<TAB>/evil.example` resolves to
+  // `//evil.example` just as the plain form does.
+  for (const next of ["//evil.example", "/\t/evil.example"]) {
+    test(`an external next (${JSON.stringify(next)}) is dropped and the dashboard is served`, async ({
+      page,
+    }) => {
+      await page.goto(adminUrl(`/login?next=${encodeURIComponent(next)}`));
+      await fillLoginForm(page, SEED_ADMIN);
 
-    await expectSameOriginPath(page, WEB_ADMIN_BASE_URL, "/");
-    await expect(
-      page.getByRole("heading", { exact: true, name: "Dashboard" })
-    ).toBeVisible();
-  });
+      await expectSameOriginPath(page, WEB_ADMIN_BASE_URL, "/");
+      await expect(
+        page.getByRole("heading", { exact: true, name: "Dashboard" })
+      ).toBeVisible();
+    });
+  }
 
   test("signing out clears the cookie and returns to login", async ({
     page,

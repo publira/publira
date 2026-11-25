@@ -1,4 +1,5 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
+import { isSameOriginPath } from "@publira/utils";
 import {
   decryptSessionPayload,
   isSessionExpired,
@@ -35,16 +36,7 @@ export const RETURN_TO_HEADER_NAME = "x-publira-return-to";
 export const sanitizeRedirectPath = (
   path: string | null | undefined
 ): string => {
-  if (!path || !path.startsWith("/")) {
-    return "/";
-  }
-
-  // Browsers can treat `/\evil.example` as the protocol-relative `//evil.example`.
-  if (
-    path.startsWith("//") ||
-    path.startsWith("/\\") ||
-    path.startsWith("/login")
-  ) {
+  if (!path || !isSameOriginPath(path) || path.startsWith("/login")) {
     return "/";
   }
 

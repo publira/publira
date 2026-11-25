@@ -42,6 +42,15 @@ describe("sanitizeRedirectPath", () => {
     expect(sanitizeRedirectPath("/login")).toBe("/");
     expect(sanitizeRedirectPath("/login?next=/series")).toBe("/");
   });
+
+  it("rejects paths a browser resolves to another origin", () => {
+    // URL parsers drop a tab or a line break, so each of these becomes
+    // `//evil.example`.
+    expect(sanitizeRedirectPath("/\t/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/\n/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/\r/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/series\\evil.example")).toBe("/");
+  });
 });
 
 describe("buildLoginPath", () => {

@@ -40,6 +40,26 @@ describe("nextPathSearchParamSchema", () => {
   });
 });
 
+/** The `next` value a request for `/login?next=<query>` carries, decoded. */
+const decodedNext = (query: string): string | null =>
+  new URL(`https://console.example/login?next=${query}`).searchParams.get(
+    "next"
+  );
+
+describe("nextPath schemas and encoded controls", () => {
+  it("refuses a tab, a line break, or a backslash that the query decodes to", () => {
+    for (const query of [
+      "/%09/evil.example",
+      "/%0A/evil.example",
+      "/%0D/evil.example",
+      "/%5Cevil.example",
+    ]) {
+      expect(nextPathSearchParamSchema.parse(decodedNext(query))).toBe("/");
+      expect(nextPathFormSchema.parse(decodedNext(query))).toBe("/");
+    }
+  });
+});
+
 describe("nextPathFormSchema", () => {
   it("applies the same sanitization as the query schema", () => {
     expect(nextPathFormSchema.parse("/operators")).toBe("/operators");

@@ -30,6 +30,15 @@ describe("sanitizeRedirectPath", () => {
     expect(sanitizeRedirectPath(null)).toBe("/");
   });
 
+  it("normalizes paths a browser resolves to another origin", () => {
+    // URL parsers drop a tab or a line break, so each of these becomes
+    // `//evil.example`.
+    expect(sanitizeRedirectPath("/\t/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/\n/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/\r/evil.example")).toBe("/");
+    expect(sanitizeRedirectPath("/tenants\\evil.example")).toBe("/");
+  });
+
   it("does not return to /login itself", () => {
     expect(sanitizeRedirectPath("/login?next=%2Ftenants")).toBe("/");
   });

@@ -83,19 +83,21 @@ test.describe("web-platform auth", () => {
     ).toBeVisible();
   });
 
-  test("an external next is dropped and the console top is served", async ({
-    page,
-  }) => {
-    await page.goto(
-      platformUrl(`/login?next=${encodeURIComponent("//evil.example")}`)
-    );
-    await fillLoginForm(page, SEED_PLATFORM_SUPER_ADMIN);
+  // A browser drops a tab from a URL, so `/<TAB>/evil.example` resolves to
+  // `//evil.example` just as the plain form does.
+  for (const next of ["//evil.example", "/\t/evil.example"]) {
+    test(`an external next (${JSON.stringify(next)}) is dropped and the console top is served`, async ({
+      page,
+    }) => {
+      await page.goto(platformUrl(`/login?next=${encodeURIComponent(next)}`));
+      await fillLoginForm(page, SEED_PLATFORM_SUPER_ADMIN);
 
-    await expectSameOriginPath(page, WEB_PLATFORM_BASE_URL, "/");
-    await expect(
-      page.getByRole("heading", { name: "Cross-tenant operations hub" })
-    ).toBeVisible();
-  });
+      await expectSameOriginPath(page, WEB_PLATFORM_BASE_URL, "/");
+      await expect(
+        page.getByRole("heading", { name: "Cross-tenant operations hub" })
+      ).toBeVisible();
+    });
+  }
 
   test("signing out clears the cookie and returns to login", async ({
     page,
