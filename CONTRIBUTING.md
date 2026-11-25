@@ -211,8 +211,6 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
     --trailer "Assisted-by: Claude Code:claude-opus-5"
   ```
 
-  The trailer is the only disclosure: a commit or a pull request body carries no link to the agent's session, which only its owner can open, and no "generated with" footer. Claude Code adds both, and a co-author trailer, unless told otherwise; `attribution` in [`.claude/settings.json`](.claude/settings.json) turns them off in this repository, and the `Assisted-by` trailer is still passed by hand, because the setting cannot name the model.
-
 - **Keep one Issue per pull request.** Link it with `Fixes #NNN` in the body so the merge closes it. When a change needs several pull requests, split the Issue rather than the fix.
 - **Stack a change that spans the backend and the web apps.** The backend (`proto/`, `db/`, `server/`, and the code `task gen` generates from them) goes in a pull request against `main`, the web apps (`apps/`, `packages/`) in a second one stacked on it, and each closes its own Issue. A web edit that only follows from the backend change and has no screen of its own — an audit-log label and its catalog entries, a new entry in a table the web apps keep, a new service on an `@publira/api-client` client, a type or a call site re-fitted to regenerated code — stays in the backend pull request instead; anything a user sees or operates as new, a screen, a form, a control, or a flow, is still the stacked layer. Stacks are managed with GitHub's [`gh stack`](https://github.com/github/gh-stack) extension, which needs installing, and `rerere` turned on so that a conflict resolved in one layer is replayed in the layer above:
 
