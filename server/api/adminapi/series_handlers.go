@@ -569,6 +569,9 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
+	if err := refuseCreditShareChange(ctx, nil, requestedCreditShares(creditsToLink), "creator_credits"); err != nil {
+		return nil, err
+	}
 	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.GenreIds)
 	if err != nil {
 		return nil, err
@@ -833,6 +836,22 @@ func (s *adminServer) UpdateSeries(
 	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+	}
+	if !mayChangeCreditShares(ctx) {
+		// Read after UpdateSeriesBase, whose row lock on the series keeps
+		// another save from changing the shares between this read and the
+		// rewrite below.
+		storedCredits, err := s.seriesCreatorRows(txCtx, []uuid.UUID{current.ID})
+		if err != nil {
+			return nil, err
+		}
+		stored := make(creditShares, len(storedCredits))
+		for _, row := range storedCredits {
+			stored[[2]uuid.UUID{row.CreatorID, row.RoleID.UUID}] = row.ShareBps
+		}
+		if err := refuseCreditShareChange(ctx, stored, requestedCreditShares(creditsToLink), "creator_credits"); err != nil {
+			return nil, err
+		}
 	}
 	var synopsis *string
 	if req.Synopsis != nil {

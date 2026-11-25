@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author with the tax and withholding it states, and export it as CSV.
 published: 2026-10-07
-updated: 2026-11-15
+updated: 2026-11-25
 ---
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -159,7 +159,7 @@ An Author is paid a share of each episode they are credited on. The share is set
 - **On an episode**, **Authors** changes that episode's own credits and shares, and **Save authors** stores them.
 - **On the series' episode list**, **Credits** › **Set share** changes one credit's share on many episodes at once.
 
-A share is between 0 and 100 percent, with up to two decimal places, and the shares on an episode add up to no more than 100. A share of 0 credits an Author without paying them. An Editor can set shares too, since they edit the catalog.
+A share is between 0 and 100 percent, with up to two decimal places, and the shares on an episode add up to no more than 100. A share of 0 credits an Author without paying them. Only a Tenant admin can change a share. An Editor still corrects who a series or an episode credits, as long as no credit ends up paid differently: a save that changes a share, removes a paid credit or puts someone else in its place, or pays a new credit is refused. So is **Set share**, and so are **Replace** and **Remove** on a credit that is paid on any episode of the range.
 
 For each credit, a month's payout is:
 

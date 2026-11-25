@@ -86,6 +86,12 @@ type SeriesCreatorCredit struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The creator's share of an episode's sales, in basis points. 10000 is
 	// 100%; a zero share records a credit without compensation.
+	//
+	// Every member of staff reads it, and a tenant_admin alone changes it. A
+	// save by anyone else, an API key included, that would leave any credit paid
+	// other than before is permission_denied: a changed share, a paid credit
+	// dropped, and a paid credit moved onto another creator or role all are, and
+	// a credit such a save adds has to be paid nothing.
 	ShareBps  int32  `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
 	CreatorId string `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	// A role of this tenant. Credits carry no order of their own across roles:
@@ -4462,9 +4468,11 @@ func (x *ListEpisodeReviewsResponse) GetRounds() []*EpisodeReviewRound {
 // separately: what the series carries is what the next episode is created
 // with, and what an episode carries is what that episode shipped with.
 type EpisodeCreatorCredit struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	ShareBps  int32                  `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	CreatorId string                 `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Read and changed as SeriesCreatorCredit.share_bps is: a tenant_admin alone
+	// changes what a credit is paid.
+	ShareBps  int32  `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
+	CreatorId string `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	// A role of this tenant. Credits carry no order of their own across roles:
 	// the role's priority is what puts the leading one first.
 	RoleId        string `protobuf:"bytes,5,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
@@ -4787,7 +4795,9 @@ func (x *AddEpisodeCreditOperation) GetCredit() *EpisodeCreatorCredit {
 
 // Rewrites one credit into another across the range, on the rows that came
 // from the series alone. An episode that credits the same person as a guest
-// keeps that row, and says so in the response.
+// keeps that row, and says so in the response. The row keeps its share, so for
+// anyone but a tenant_admin the operation is permission_denied where the credit
+// is paid anything on an episode of the range.
 type ReplaceEpisodeCreditOperation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	From          *EpisodeCreatorCredit  `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
@@ -4840,7 +4850,9 @@ func (x *ReplaceEpisodeCreditOperation) GetTo() *EpisodeCreatorCredit {
 	return nil
 }
 
-// Drops one credit across the range, again from the series' rows alone.
+// Drops one credit across the range, again from the series' rows alone. For
+// anyone but a tenant_admin it is permission_denied where the credit is paid
+// anything on an episode of the range.
 type RemoveEpisodeCreditOperation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Credit        *EpisodeCreatorCredit  `protobuf:"bytes,1,opt,name=credit,proto3" json:"credit,omitempty"`
@@ -4885,7 +4897,8 @@ func (x *RemoveEpisodeCreditOperation) GetCredit() *EpisodeCreatorCredit {
 	return nil
 }
 
-// Changes the standing credit's share on every episode of the range.
+// Changes the standing credit's share on every episode of the range. A
+// tenant_admin alone may; anyone else is permission_denied.
 type SetEpisodeCreditShareOperation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Credit        *EpisodeCreatorCredit  `protobuf:"bytes,1,opt,name=credit,proto3" json:"credit,omitempty"`

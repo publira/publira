@@ -63,7 +63,7 @@ A tenant's console staff hold one of three roles, ranked the way `auth.ResolveTe
 
 | Level | Helper | What is placed there |
 | --- | --- | --- |
-| `tenant_admin` | `requireTenantAdmin` | Members and invitations; every write to a tenant setting, the site settings and the branding included; email, payment, push and sign-in integrations, reads and writes alike; reader accounts and anything that shows their addresses, the contact inbox among them; access tickets; royalties and their exports; the audit log; deleting an episode or a series, which takes what readers left on it with it, and deleting a label, a creator, or a page |
+| `tenant_admin` | `requireTenantAdmin` | Members and invitations; every write to a tenant setting, the site settings and the branding included; email, payment, push and sign-in integrations, reads and writes alike; reader accounts and anything that shows their addresses, the contact inbox among them; access tickets; royalties and their exports, and changing the share a credit is paid, which decides them; the audit log; deleting an episode or a series, which takes what readers left on it with it, and deleting a label, a creator, or a page |
 | `tenant_editor` | `requireTenantEditor` | Every other write to the catalogue (series, episodes, credits, free windows, creators, labels, genres, creator roles), to pages, and to announcements, and the moderation of comments |
 | `tenant_auditor` | `requireTenantAuditor` | Every read an editor needs for that work, which a tenant_auditor may make too: the catalogue, pages, announcements, comments and their reports, the dashboard and engagement, and the tenant's own settings, which every member of staff may see but only a tenant_admin change |
 
@@ -75,7 +75,7 @@ The handler calls its level's helper itself, exactly once, rather than through a
 
 A tenant's API key passes all three helpers, since what it may call is decided before any handler too, by `apiKeyProcedures` and the key's scopes. `TestAPIKeyProceduresKeepToTheirScopes` keeps the read scopes to reads and `catalog:write` to `AdminSeriesService`'s `tenant_editor` writes, so placing an RPC at a level never opens it to a key; listing it in `apiKeyProcedures` does.
 
-A level gates the RPC, not what is in the answer: an RPC may still leave a field out for a weaker role, the way `GetCreator` answers the reader accounts linked to a creator to a tenant_admin alone.
+A level gates the RPC, not what is in the answer or in every field of the request: an RPC may still leave a field out for a weaker role, the way `GetCreator` answers the reader accounts linked to a creator to a tenant_admin alone, and refuse a change to a field a weaker role may not make, the way a credit write is `tenant_editor` while the share on the credit is money and a tenant_admin's. A save of credits by an editor or an API key is refused when it would leave any credit paid other than before, which `refuseCreditShareChange` checks against the stored credits rather than against the shares the request names, since dropping a paid credit or moving it onto someone else changes a payout as surely as a new share does.
 
 ## A role variable resolves on its own, and no one else's
 

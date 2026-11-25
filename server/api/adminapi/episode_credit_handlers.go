@@ -120,8 +120,13 @@ func (s *adminServer) ReplaceEpisodeCredits(
 		return nil, s.internalDBError(ctx, "failed to list episode credits before replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	sourceByPair := make(map[[2]uuid.UUID]string, len(existing))
+	stored := make(creditShares, len(existing))
 	for _, row := range existing {
 		sourceByPair[[2]uuid.UUID{row.CreatorID, row.RoleID.UUID}] = row.Source
+		stored[[2]uuid.UUID{row.CreatorID, row.RoleID.UUID}] = row.ShareBps
+	}
+	if err := refuseCreditShareChange(ctx, stored, requestedCreditShares(credits), "creator_credits"); err != nil {
+		return nil, err
 	}
 
 	if err := s.queriesFor(txCtx).DeleteEpisodeCreatorsByEpisodeID(txCtx, episode.ID); err != nil {

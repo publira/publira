@@ -12,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -63,6 +64,10 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES000001"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByIDsForTenantAndSeries)).
 		WillReturnRows(lockedEpisodes)
+	// An editor's replace reads what the range pays the credit first, and
+	// moves it only where that is nothing.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
+		WillReturnRows(episodeCreditRows())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesHoldingBothEpisodeCredits)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BulkReplaceEpisodeCreator)).
@@ -141,7 +146,7 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantAdmin)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now))

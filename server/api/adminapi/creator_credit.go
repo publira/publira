@@ -9,8 +9,10 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // creatorCredit is one credit a save asked for, with both ends resolved: the
@@ -93,6 +95,58 @@ func setCreatorCreditShares(credits []creatorCredit, shares []int32) {
 	for index := range credits {
 		credits[index].shareBps = shares[index]
 	}
+}
+
+// creditShares is what each credit of a list is paid, by the (creator, role)
+// pair that identifies the credit. A pair the list does not hold is paid
+// nothing, which is what reading the map for it answers.
+type creditShares map[[2]uuid.UUID]int32
+
+func requestedCreditShares(credits []creatorCredit) creditShares {
+	shares := make(creditShares, len(credits))
+	for _, credit := range credits {
+		shares[[2]uuid.UUID{credit.creator.ID, credit.role.ID}] = credit.shareBps
+	}
+	return shares
+}
+
+// mayChangeCreditShares reports whether the caller may change what a credit
+// is paid. The share decides an Author's payout, which is money and therefore
+// a tenant_admin's, while the credits it sits on are catalogue an editor
+// writes: an editor or an API key may change who is credited, and not what
+// any credit is paid.
+func mayChangeCreditShares(ctx context.Context) bool {
+	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	return ok && sessionCtx.Role == auth.RoleTenantAdmin
+}
+
+// errCreditShareChangeRefused is the refusal of a write that would change
+// what a credit is paid, by a caller mayChangeCreditShares turns away.
+func errCreditShareChangeRefused(field string) error {
+	return rpcerrors.NewFieldViolationError(connect.CodePermissionDenied, errors.New("tenant admin role required to change a credit's share"), field)
+}
+
+// refuseCreditShareChange refuses a write that leaves any credit paid other
+// than before, unless the caller may change shares. Comparing the whole list
+// rather than the shares the request states is what covers every way a write
+// could move money: a changed share, a paid credit dropped, and a paid credit
+// moved onto another person or role, which is the old pair dropped and a new
+// one added at the old share.
+func refuseCreditShareChange(ctx context.Context, before, after creditShares, field string) error {
+	if mayChangeCreditShares(ctx) {
+		return nil
+	}
+	for pair, share := range before {
+		if after[pair] != share {
+			return errCreditShareChangeRefused(field)
+		}
+	}
+	for pair, share := range after {
+		if before[pair] != share {
+			return errCreditShareChangeRefused(field)
+		}
+	}
+	return nil
 }
 
 // resolveCreatorCredits reads the credits a save asked for, keeping the order

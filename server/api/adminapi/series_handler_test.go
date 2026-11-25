@@ -70,6 +70,15 @@ func addSeriesRow(
 	return rows.AddRow(id, publicID, title, nil, nil, "Synopsis", nil, nil, nil, "ongoing", []byte("{}"), "all", true, createdAt, createdAt, nil, nil, int64(0), "all")
 }
 
+// expectStoredSeriesCreditShares answers the read of the credits a series
+// carries, which an editor's save compares its own against so that it changes
+// no share. The series carries none here.
+func expectStoredSeriesCreditShares(mock sqlmock.Sqlmock, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
+		WithArgs(pq.Array([]uuid.UUID{seriesID})).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
+}
+
 // Every series a read returns is presented with the creators, genres, and tags
 // it carries, each of them read for the whole page at once.
 func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
@@ -801,6 +810,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectStoredSeriesCreditShares(mock, seriesID)
 	expectSeriesTranslationUpsert(mock, tenantID, seriesID, "ja", "After", "New synopsis", true)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
@@ -874,6 +884,7 @@ func TestUpdateSeriesPublishingTheSeriesQueuesTheAnnouncementsItOwes(t *testing.
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectStoredSeriesCreditShares(mock, seriesID)
 	expectSeriesTranslationUpsert(mock, tenantID, seriesID, "ja", "Series", "", false)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1), false, false, false, false, false, false, false, false, false).
@@ -947,6 +958,7 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectStoredSeriesCreditShares(mock, seriesID)
 	expectSeriesTranslationUpsert(mock, tenantID, seriesID, "ja", "After", "Synopsis", true)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, "hiatus", pq.Array([]int32{1, 4}), "r18", sql.NullString{}, "rtl", int32(1), false, false, false, true, true, true, false, false, false).
@@ -1181,6 +1193,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectStoredSeriesCreditShares(mock, seriesID)
 	expectSeriesTranslationUpsert(mock, tenantID, seriesID, "ja", "After", "New synopsis", true)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).

@@ -26,6 +26,12 @@ export type SeriesCreatorCredit = Message<"publira.admin.v1.SeriesCreatorCredit"
    * The creator's share of an episode's sales, in basis points. 10000 is
    * 100%; a zero share records a credit without compensation.
    *
+   * Every member of staff reads it, and a tenant_admin alone changes it. A
+   * save by anyone else, an API key included, that would leave any credit paid
+   * other than before is permission_denied: a changed share, a paid credit
+   * dropped, and a paid credit moved onto another creator or role all are, and
+   * a credit such a save adds has to be paid nothing.
+   *
    * @generated from field: int32 share_bps = 3;
    */
   shareBps: number;
@@ -2414,6 +2420,9 @@ export const ListEpisodeReviewsResponseSchema: GenMessage<ListEpisodeReviewsResp
  */
 export type EpisodeCreatorCredit = Message<"publira.admin.v1.EpisodeCreatorCredit"> & {
   /**
+   * Read and changed as SeriesCreatorCredit.share_bps is: a tenant_admin alone
+   * changes what a credit is paid.
+   *
    * @generated from field: int32 share_bps = 3;
    */
   shareBps: number;
@@ -2561,7 +2570,9 @@ export const AddEpisodeCreditOperationSchema: GenMessage<AddEpisodeCreditOperati
 /**
  * Rewrites one credit into another across the range, on the rows that came
  * from the series alone. An episode that credits the same person as a guest
- * keeps that row, and says so in the response.
+ * keeps that row, and says so in the response. The row keeps its share, so for
+ * anyone but a tenant_admin the operation is permission_denied where the credit
+ * is paid anything on an episode of the range.
  *
  * @generated from message publira.admin.v1.ReplaceEpisodeCreditOperation
  */
@@ -2585,7 +2596,9 @@ export const ReplaceEpisodeCreditOperationSchema: GenMessage<ReplaceEpisodeCredi
   messageDesc(file_publira_admin_v1_series, 65);
 
 /**
- * Drops one credit across the range, again from the series' rows alone.
+ * Drops one credit across the range, again from the series' rows alone. For
+ * anyone but a tenant_admin it is permission_denied where the credit is paid
+ * anything on an episode of the range.
  *
  * @generated from message publira.admin.v1.RemoveEpisodeCreditOperation
  */
@@ -2604,7 +2617,8 @@ export const RemoveEpisodeCreditOperationSchema: GenMessage<RemoveEpisodeCreditO
   messageDesc(file_publira_admin_v1_series, 66);
 
 /**
- * Changes the standing credit's share on every episode of the range.
+ * Changes the standing credit's share on every episode of the range. A
+ * tenant_admin alone may; anyone else is permission_denied.
  *
  * @generated from message publira.admin.v1.SetEpisodeCreditShareOperation
  */
