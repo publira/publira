@@ -216,6 +216,11 @@ export type SendPlatformSmtpTestEmailRequest = Message<"publira.platform.v1.Send
   username: string;
 
   /**
+   * SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED send the
+   * stored password, and only to the host, port, username, and encryption it
+   * was saved with; a test naming another one is refused with a violation of
+   * password until it states its own.
+   *
    * @generated from field: publira.platform.v1.SecretUpdateMode password_update_mode = 6;
    */
   passwordUpdateMode: SecretUpdateMode;

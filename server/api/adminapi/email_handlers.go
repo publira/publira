@@ -336,11 +336,19 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 	if found && existing.PasswordEncrypted.Valid {
 		existingPassword = existing.PasswordEncrypted.String
 	}
-	password, err := emailsettings.ResolvePasswordForTest(existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
-	if err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+	stated := tenantEmailSettingsFromTestRequest(req, "")
+	saved := emailsettings.SMTPSettings{
+		Host:       existing.Host.String,
+		Port:       existing.Port.Int32,
+		Username:   existing.Username.String,
+		Encryption: existing.Encryption.String,
 	}
-	settings := emailsettings.WithTenantFromName(tenantEmailSettingsFromTestRequest(req, password), tenant.Name)
+	password, err := emailsettings.ResolvePasswordForTest(stated, saved, existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
+	if err != nil {
+		return emailsettings.SMTPSettings{}, tenantEmailSettingsError(err)
+	}
+	stated.Password = password
+	settings := emailsettings.WithTenantFromName(stated, tenant.Name)
 	if err := emailsettings.Validate(settings, true); err != nil {
 		return emailsettings.SMTPSettings{}, tenantEmailSettingsError(err)
 	}

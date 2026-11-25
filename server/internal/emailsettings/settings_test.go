@@ -17,10 +17,72 @@ func TestDecryptPasswordNilManagerEncryptedEnvelope(t *testing.T) {
 	}
 }
 
+// savedServer is the server encryptedSMTPPassword was saved for.
+var savedServer = SMTPSettings{Host: "smtp.example.com", Port: 587, Username: "mailer", Encryption: "starttls"}
+
 func TestResolvePasswordForTestNilManagerEncryptedEnvelope(t *testing.T) {
-	_, err := ResolvePasswordForTest(encryptedSMTPPassword, secretupdate.Unchanged, "", nil)
+	_, err := ResolvePasswordForTest(savedServer, savedServer, encryptedSMTPPassword, secretupdate.Unchanged, "", nil)
 	if !errors.Is(err, ErrSecretManagerUnavailable) {
 		t.Fatalf("ResolvePasswordForTest error = %v, want ErrSecretManagerUnavailable", err)
+	}
+}
+
+// stubSecretManager opens every stored password as "saved-password".
+type stubSecretManager struct{}
+
+func (stubSecretManager) EncryptString(string) (string, error) { return encryptedSMTPPassword, nil }
+func (stubSecretManager) DecryptString(string) (string, error) { return "saved-password", nil }
+
+// The saved password goes only to the server it was saved for. A test that
+// names another one has to state a password of its own, and a test that names
+// no username sends none.
+func TestResolvePasswordForTestSendsTheSavedPasswordOnlyToItsServer(t *testing.T) {
+	with := func(change func(*SMTPSettings)) SMTPSettings {
+		settings := savedServer
+		change(&settings)
+		return settings
+	}
+	for _, tc := range []struct {
+		name     string
+		settings SMTPSettings
+		mode     secretupdate.Mode
+		password string
+		want     string
+		field    string
+		is       error
+	}{
+		{name: "the saved server", settings: savedServer, mode: secretupdate.Unchanged, want: "saved-password"},
+		{name: "the saved server with no mode stated", settings: savedServer, mode: secretupdate.Unspecified, want: "saved-password"},
+		{name: "the saved host in another case and padded", settings: with(func(s *SMTPSettings) { s.Host = " SMTP.Example.COM " }), mode: secretupdate.Unchanged, want: "saved-password"},
+		{name: "another host", settings: with(func(s *SMTPSettings) { s.Host = "smtp.elsewhere.example" }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "another port", settings: with(func(s *SMTPSettings) { s.Port = 2525 }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "another username", settings: with(func(s *SMTPSettings) { s.Username = "someone-else" }), mode: secretupdate.Unchanged, field: FieldPassword, is: ErrServerChanged},
+		{name: "no encryption", settings: with(func(s *SMTPSettings) { s.Encryption = "none" }), mode: secretupdate.Unspecified, field: FieldPassword, is: ErrServerChanged},
+		{name: "no username", settings: with(func(s *SMTPSettings) { s.Username = "" }), mode: secretupdate.Unchanged, field: FieldUsername, is: ErrPasswordWithoutUsername},
+		{name: "another host with a password of its own", settings: with(func(s *SMTPSettings) { s.Host = "smtp.elsewhere.example" }), mode: secretupdate.Replace, password: "its-own-password", want: "its-own-password"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ResolvePasswordForTest(tc.settings, savedServer, encryptedSMTPPassword, tc.mode, tc.password, stubSecretManager{})
+			if tc.is == nil {
+				if err != nil || got != tc.want {
+					t.Fatalf("ResolvePasswordForTest = %q, %v; want %q", got, err, tc.want)
+				}
+				return
+			}
+			if got != "" || !errors.Is(err, tc.is) || fielderr.Field(err) != tc.field {
+				t.Fatalf("ResolvePasswordForTest = %q, %v on %q; want %v on %q", got, err, fielderr.Field(err), tc.is, tc.field)
+			}
+		})
+	}
+}
+
+// With no password saved there is nothing to keep from another server, so the
+// test goes out with none and Validate decides whether it needs one.
+func TestResolvePasswordForTestWithNothingSaved(t *testing.T) {
+	elsewhere := savedServer
+	elsewhere.Host = "smtp.elsewhere.example"
+	if got, err := ResolvePasswordForTest(elsewhere, SMTPSettings{}, "", secretupdate.Unchanged, "", nil); got != "" || err != nil {
+		t.Fatalf("ResolvePasswordForTest = %q, %v; want an empty password", got, err)
 	}
 }
 
@@ -29,7 +91,7 @@ func TestEncryptUpdatedPasswordRefusesABlankReplacementAsAPassword(t *testing.T)
 	if !errors.Is(err, ErrPasswordRequired) {
 		t.Fatalf("EncryptUpdatedPassword(replace, blank) error = %v, want ErrPasswordRequired", err)
 	}
-	_, err = ResolvePasswordForTest(encryptedSMTPPassword, secretupdate.Replace, "", nil)
+	_, err = ResolvePasswordForTest(savedServer, savedServer, encryptedSMTPPassword, secretupdate.Replace, "", nil)
 	if !errors.Is(err, ErrPasswordRequired) {
 		t.Fatalf("ResolvePasswordForTest(replace, blank) error = %v, want ErrPasswordRequired", err)
 	}
@@ -78,7 +140,7 @@ func TestAnAbsentPasswordResolvesToAnEmptyOne(t *testing.T) {
 	if password, err := DecryptPassword("", nil); password != "" || err != nil {
 		t.Fatalf("DecryptPassword(empty) = %q, %v; want an empty password", password, err)
 	}
-	if password, err := ResolvePasswordForTest(encryptedSMTPPassword, secretupdate.Clear, "", nil); password != "" || err != nil {
+	if password, err := ResolvePasswordForTest(savedServer, savedServer, encryptedSMTPPassword, secretupdate.Clear, "", nil); password != "" || err != nil {
 		t.Fatalf("ResolvePasswordForTest(clear) = %q, %v; want an empty password", password, err)
 	}
 }

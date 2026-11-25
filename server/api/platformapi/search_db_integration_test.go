@@ -185,8 +185,8 @@ func TestDBUpdatePlatformSearchSettingsRefusesAnUnknownEngineAndAStaleRevision(t
 }
 
 // The test asks the engine the request names with the password the request
-// states, or with the stored one when it states none, and reports what it
-// found.
+// states, or with the stored one when it states none and names the URL and the
+// username that password was saved for, and reports what it found.
 func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 	t.Parallel()
 
@@ -227,6 +227,69 @@ func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 	}
 	if got := countAuditActions(t, pg, "platform_search_connection_tested"); got != 2 {
 		t.Fatalf("audit entries = %d, want one per test", got)
+	}
+}
+
+// The stored password goes only to the URL and the username it was saved for:
+// a test that names another one and states no password of its own is refused
+// on the password, and no engine is asked.
+func TestDBTestPlatformSearchConnectionKeepsTheStoredPasswordToItsEngine(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		url      string
+		username string
+	}{
+		{name: "another URL", url: "https://search.elsewhere.example", username: "publira"},
+		{name: "another username", url: "https://search.example.com", username: "someone-else"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			probe := &recordingProbe{probe: completeOpenSearch()}
+			client, pg, operator := newSearchClient(t, probe)
+			if _, err := updateSearchSettings(client, operator, searchUpdateRequest(0)); err != nil {
+				t.Fatalf("UpdatePlatformSearchSettings: %v", err)
+			}
+			probe.asked = nil
+
+			for _, mode := range []publirasplatformv1.SecretUpdateMode{
+				publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNSPECIFIED,
+				publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+			} {
+				_, err := client.TestPlatformSearchConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformSearchConnectionRequest{
+					Engine:             publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+					Url:                tc.url,
+					Username:           tc.username,
+					PasswordUpdateMode: mode,
+				})
+				if connect.CodeOf(err) != connect.CodeInvalidArgument {
+					t.Fatalf("TestPlatformSearchConnection(%v) = %v, want invalid_argument", mode, err)
+				}
+				assertFieldViolation(t, err, platformsearch.FieldPassword)
+			}
+			if len(probe.asked) != 0 {
+				t.Fatalf("asked = %v, want no engine asked", probe.asked)
+			}
+
+			// The same destination with its password stated is tested.
+			if _, err := client.TestPlatformSearchConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformSearchConnectionRequest{
+				Engine:             publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+				Url:                tc.url,
+				Username:           tc.username,
+				PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
+				Password:           "a-password-of-its-own",
+			}); err != nil {
+				t.Fatalf("TestPlatformSearchConnection(replace): %v", err)
+			}
+			if len(probe.asked) != 1 || probe.asked[0].Password != "a-password-of-its-own" {
+				t.Fatalf("asked = %v, want only the stated password", probe.asked)
+			}
+			if got := countAuditActions(t, pg, "platform_search_connection_tested"); got != 1 {
+				t.Fatalf("audit entries = %d, want one for the test that ran", got)
+			}
+		})
 	}
 }
 

@@ -159,6 +159,92 @@ func TestSendTenantSmtpTestEmailRefusesWhenOverrideDisabled(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// The tenant's saved password goes only to the server it was saved for: a test
+// that names another host, port, username, or encryption and states no
+// password of its own is refused on the password, and nothing is sent.
+func TestSendTenantSmtpTestEmailKeepsTheSavedPasswordToItsServer(t *testing.T) {
+	cases := []struct {
+		name       string
+		host       string
+		port       int32
+		username   string
+		encryption string
+		wantSent   bool
+	}{
+		{name: "the saved server", host: "smtp.saved.example", port: 465, username: "saved-user", encryption: "tls", wantSent: true},
+		{name: "another host", host: "smtp.elsewhere.example", port: 465, username: "saved-user", encryption: "tls"},
+		{name: "another port", host: "smtp.saved.example", port: 2525, username: "saved-user", encryption: "tls"},
+		{name: "another username", host: "smtp.saved.example", port: 465, username: "someone-else", encryption: "tls"},
+		{name: "no encryption", host: "smtp.saved.example", port: 465, username: "saved-user", encryption: "none"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("sqlmock.New: %v", err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			encryptor := newAdminTestEncryptor(t)
+			encrypted, err := encryptor.EncryptString("saved-password")
+			if err != nil {
+				t.Fatalf("EncryptString: %v", err)
+			}
+			tester := &adminSMTPTesterStub{}
+			handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester)
+			if err != nil {
+				t.Fatalf("new admin handler: %v", err)
+			}
+			ts := httptest.NewServer(handler)
+			t.Cleanup(ts.Close)
+
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantSMTPConfigByTenantID)).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows(tenantSMTPColumns()).
+					AddRow(tenantID, true, "smtp.saved.example", 465, "saved-user", encrypted, "tls", "Saved Sender", "saved@example.com", nil, now, now))
+			if tc.wantSent {
+				expectAdminAuditLogInsert(mock)
+			}
+
+			client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			req := &publiraadminv1.SendTenantSmtpTestEmailRequest{
+				Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				RecipientType:       publiraadminv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
+				SmtpOverrideEnabled: true,
+				Host:                tc.host,
+				Port:                tc.port,
+				Username:            tc.username,
+				PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+				Encryption:          tc.encryption,
+				FromAddress:         "saved@example.com",
+			}
+			_, err = client.SendTenantSmtpTestEmail(testutil.WithBearer(context.Background(), sessionToken), req)
+			if tc.wantSent {
+				if err != nil {
+					t.Fatalf("SendTenantSmtpTestEmail: %v", err)
+				}
+				if tester.settings.Password != "saved-password" {
+					t.Fatalf("test message password = %q, want the saved one", tester.settings.Password)
+				}
+			} else {
+				connectErr, ok := errors.AsType[*connect.Error](err)
+				if !ok || connectErr.Code() != connect.CodeInvalidArgument || violatedField(t, connectErr) != emailsettings.FieldPassword {
+					t.Fatalf("SendTenantSmtpTestEmail = %v, want invalid_argument on password", err)
+				}
+				if tester.recipient != "" {
+					t.Fatalf("tester.recipient = %q, want no test message sent", tester.recipient)
+				}
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 // The connection test goes out under the sender name real mail would carry: the
 // one in the form, or the tenant's name when the form leaves it empty.
 func TestSendTenantSmtpTestEmailNamesTheSender(t *testing.T) {

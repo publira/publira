@@ -432,7 +432,9 @@ export type TestPlatformSearchConnectionRequest = Message<"publira.platform.v1.T
   /**
    * SECRET_UPDATE_MODE_UNCHANGED tests with the stored password, so an
    * operator can test a saved configuration without handling its credential
-   * again.
+   * again. The stored password is sent only with the url and the username it
+   * was saved with; a test naming another one is refused with a violation of
+   * password until it states its own.
    *
    * @generated from field: publira.platform.v1.SecretUpdateMode password_update_mode = 4;
    */

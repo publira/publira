@@ -515,6 +515,34 @@ func TestSetupRefusesAnSMTPPasswordWithoutAUsername(t *testing.T) {
 	}
 }
 
+// The stored search password is kept only for the engine it was saved for: a
+// run that moves the engine to another URL under the same username asks for
+// the password again, and saves nothing without it.
+func TestSetupAsksForTheSearchPasswordWhenTheEngineMoves(t *testing.T) {
+	env := startSetupEnv(t)
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		`INSERT INTO platform_search_config (engine, url, index_alias, username, password_encrypted)
+		VALUES ('opensearch', 'https://search.example.com', 'publira-catalog', 'publira', 'enc:v1:k1:nonce:ciphertext')`,
+	); err != nil {
+		t.Fatalf("seed platform_search_config: %v", err)
+	}
+
+	var stderr bytes.Buffer
+	args := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password",
+		"--engine", "opensearch", "--url", "https://search.elsewhere.example", "--search-username", "publira")
+	code, _ := runSetup(t, pipedConsole("", &stderr), args...)
+	if code != 2 || !strings.Contains(stderr.String(), "--search-password-file, --search-password-stdin, or --search-password-env is required") {
+		t.Fatalf("exit code = %d, stderr = \n%s\nwant the search password asked for", code, stderr.String())
+	}
+	var url string
+	if err := env.pg.DB.QueryRowContext(context.Background(), `SELECT url FROM platform_search_config`).Scan(&url); err != nil {
+		t.Fatalf("read platform_search_config: %v", err)
+	}
+	if url != "https://search.example.com" {
+		t.Fatalf("saved url = %q, want the stored one left alone", url)
+	}
+}
+
 // An engine is tested before it is saved, so one that does not answer stops
 // the run with nothing saved for it, and the search stays on sql.
 func TestSetupRefusesASearchEngineThatFailsItsTest(t *testing.T) {

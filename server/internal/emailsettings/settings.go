@@ -34,6 +34,9 @@ var (
 	// send it with.
 	ErrPasswordWithoutUsername = errors.New("username is required with a password")
 	ErrInvalidRecipient        = errors.New("invalid recipient")
+	// ErrServerChanged refuses to send the saved password to a server other
+	// than the one it was saved for.
+	ErrServerChanged = errors.New("the saved password belongs to another server; give the password as well")
 )
 
 type SecretManager interface {
@@ -167,7 +170,14 @@ func EncryptUpdatedPassword(existingEncrypted string, mode secretupdate.Mode, ne
 	}
 }
 
-func ResolvePasswordForTest(existingEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, error) {
+// ResolvePasswordForTest answers the password a test of settings sends: the one
+// stated, none, or the one saved beside saved. The saved password is a secret
+// the settings RPCs never answer with, so it goes only to the server it was
+// saved for: a test that names another host, port, username, or encryption is
+// refused with [ErrServerChanged] on the password until it states a password
+// of its own, and one that names no username is refused as [Validate] would
+// refuse the saved password beside it, without opening it.
+func ResolvePasswordForTest(settings, saved SMTPSettings, savedEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, error) {
 	resolved, err := secretupdate.Resolve(mode, newPassword, ErrPasswordRequired)
 	if err != nil {
 		return "", err
@@ -177,9 +187,28 @@ func ResolvePasswordForTest(existingEncrypted string, mode secretupdate.Mode, ne
 		return newPassword, nil
 	case secretupdate.Clear:
 		return "", nil
-	default:
-		return DecryptPassword(existingEncrypted, mgr)
 	}
+	if strings.TrimSpace(savedEncrypted) == "" {
+		return "", nil
+	}
+	if Normalize(settings).Username == "" {
+		return "", &fielderr.Invalid{Field: FieldUsername, Err: ErrPasswordWithoutUsername}
+	}
+	if !sameServer(settings, saved) {
+		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrServerChanged}
+	}
+	return DecryptPassword(savedEncrypted, mgr)
+}
+
+// sameServer reports whether a and b log in to the same server as the same
+// user over the same encryption. Host names are compared without case, as DNS
+// resolves them.
+func sameServer(a, b SMTPSettings) bool {
+	a, b = Normalize(a), Normalize(b)
+	return strings.EqualFold(a.Host, b.Host) &&
+		a.Port == b.Port &&
+		a.Username == b.Username &&
+		a.Encryption == b.Encryption
 }
 
 // DecryptPassword opens a stored password, answering an empty one for none:
