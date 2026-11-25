@@ -119,6 +119,9 @@ func (s *adminServer) BulkEditEpisodeCredits(
 		lockedIDs = append(lockedIDs, row.ID)
 	}
 
+	if err := s.refuseBulkCreditShareChange(txCtx, lockedIDs, req, credits, field); err != nil {
+		return nil, err
+	}
 	outcome, err := s.applyBulkCreditOperation(txCtx, tenant.ID, lockedIDs, req, credits)
 	if err != nil {
 		return nil, err
@@ -211,6 +214,45 @@ func bulkCreditPairs(msg *publiraadminv1.BulkEditEpisodeCreditsRequest) ([]credi
 	default:
 		return nil, ""
 	}
+}
+
+// refuseBulkCreditShareChange refuses an operation that would change what a
+// credit is paid, for a caller mayChangeCreditShares turns away. A set_share
+// changes nothing else, and an add writes its credit at no share. A replace
+// carries the share the credit holds over to the credit it becomes, and a
+// remove drops it, so either is refused where the credit it acts on is paid
+// anything on an episode of the range. The episodes are locked by then, so the
+// shares read here are the ones the operation would act on.
+func (s *adminServer) refuseBulkCreditShareChange(
+	ctx context.Context,
+	episodeIDs []uuid.UUID,
+	msg *publiraadminv1.BulkEditEpisodeCreditsRequest,
+	credits []creatorCredit,
+	field string,
+) error {
+	if mayChangeCreditShares(ctx) {
+		return nil
+	}
+	switch msg.GetOperation().(type) {
+	case *publiraadminv1.BulkEditEpisodeCreditsRequest_SetShare:
+		return errCreditShareChangeRefused(field)
+	case *publiraadminv1.BulkEditEpisodeCreditsRequest_Replace, *publiraadminv1.BulkEditEpisodeCreditsRequest_Remove:
+		rows, err := s.queriesFor(ctx).ListEpisodeCreatorsByEpisodeIDs(ctx, episodeIDs)
+		if err != nil {
+			return s.internalDBError(ctx, "failed to list episode credits before a range edit", err)
+		}
+		for _, row := range rows {
+			// A row written on the episode itself is one the operation passes
+			// over, whatever it is paid.
+			if row.Source == creditSourceEpisode || row.ShareBps == 0 {
+				continue
+			}
+			if row.CreatorID == credits[0].creator.ID && row.RoleID.UUID == credits[0].role.ID {
+				return errCreditShareChangeRefused(field)
+			}
+		}
+	}
+	return nil
 }
 
 // applyBulkCreditOperation runs the one statement the operation amounts to and

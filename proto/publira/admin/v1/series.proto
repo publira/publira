@@ -14,6 +14,12 @@ message SeriesCreatorCredit {
   reserved "creator_public_id", "role_public_id";
   // The creator's share of an episode's sales, in basis points. 10000 is
   // 100%; a zero share records a credit without compensation.
+  //
+  // Every member of staff reads it, and a tenant_admin alone changes it. A
+  // save by anyone else, an API key included, that would leave any credit paid
+  // other than before is permission_denied: a changed share, a paid credit
+  // dropped, and a paid credit moved onto another creator or role all are, and
+  // a credit such a save adds has to be paid nothing.
   int32 share_bps = 3;
   string creator_id = 4;
   // A role of this tenant. Credits carry no order of their own across roles:
@@ -830,6 +836,8 @@ message ListEpisodeReviewsResponse {
 message EpisodeCreatorCredit {
   reserved 1, 2;
   reserved "creator_public_id", "role_public_id";
+  // Read and changed as SeriesCreatorCredit.share_bps is: a tenant_admin alone
+  // changes what a credit is paid.
   int32 share_bps = 3;
   string creator_id = 4;
   // A role of this tenant. Credits carry no order of their own across roles:
@@ -877,18 +885,23 @@ message AddEpisodeCreditOperation {
 
 // Rewrites one credit into another across the range, on the rows that came
 // from the series alone. An episode that credits the same person as a guest
-// keeps that row, and says so in the response.
+// keeps that row, and says so in the response. The row keeps its share, so for
+// anyone but a tenant_admin the operation is permission_denied where the credit
+// is paid anything on an episode of the range.
 message ReplaceEpisodeCreditOperation {
   EpisodeCreatorCredit from = 1;
   EpisodeCreatorCredit to = 2;
 }
 
-// Drops one credit across the range, again from the series' rows alone.
+// Drops one credit across the range, again from the series' rows alone. For
+// anyone but a tenant_admin it is permission_denied where the credit is paid
+// anything on an episode of the range.
 message RemoveEpisodeCreditOperation {
   EpisodeCreatorCredit credit = 1;
 }
 
-// Changes the standing credit's share on every episode of the range.
+// Changes the standing credit's share on every episode of the range. A
+// tenant_admin alone may; anyone else is permission_denied.
 message SetEpisodeCreditShareOperation {
   EpisodeCreatorCredit credit = 1;
 }
