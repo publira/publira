@@ -116,6 +116,20 @@ const answerPages = (
   );
 };
 
+/**
+ * A sitemap of three files, each ended by the rows a file can hold: 100 API
+ * pages of 500 rows. Only the first row of each page and the whole last page
+ * are translated, so a walk over it renders a few hundred entries rather than
+ * the 50,000 URLs of a file the URL limit ends. Its files start at `""`,
+ * `p100`, and `p200`.
+ */
+const answerIndexedCatalogue = () =>
+  answerPages(201, (page, index) =>
+    index === 0 || page === 200
+      ? seriesEntry(`S${page}-${index}`)
+      : untranslatedSeriesEntry(`S${page}-${index}`)
+  );
+
 const countOf = (xml: string, needle: string): number =>
   xml.split(needle).length - 1;
 
@@ -529,11 +543,11 @@ describe("getSitemapChunk", () => {
 
 describe("getSitemapFileTokens", () => {
   it("names where each file starts under the tags its files carry", async () => {
-    answerPages(40);
+    answerIndexedCatalogue();
 
     await expect(
       getSitemapFileTokens(` ${TENANT_ID} `, ADDRESS)
-    ).resolves.toStrictEqual({ ok: true, value: ["", "p19", "p39"] });
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p100", "p200"] });
     expect(mockCacheTag).toHaveBeenCalledWith(
       `tenant:${TENANT_ID}:series:detail`
     );
@@ -606,7 +620,7 @@ describe("respondWithSitemap", () => {
   });
 
   it("answers an index of files once the sitemap outgrows one", async () => {
-    answerPages(40);
+    answerIndexedCatalogue();
 
     const response = await respondWithSitemap({ tenant_id: TENANT_ID });
     const xml = await response.text();
@@ -643,7 +657,7 @@ describe("respondWithSitemap", () => {
 
 describe("respondWithSitemapFile", () => {
   it("answers the first file of an indexed sitemap with the index pages", async () => {
-    answerPages(40);
+    answerIndexedCatalogue();
 
     const response = await respondWithSitemapFile({
       sitemap_id: "0.xml",
@@ -657,7 +671,7 @@ describe("respondWithSitemapFile", () => {
   });
 
   it("answers a later file of an indexed sitemap without the index pages", async () => {
-    answerPages(40);
+    answerIndexedCatalogue();
 
     const response = await respondWithSitemapFile({
       sitemap_id: "2.xml",
@@ -667,12 +681,12 @@ describe("respondWithSitemapFile", () => {
     const xml = await response.text();
 
     expect(xml).not.toContain(`<loc>${ORIGIN}/</loc>`);
-    expect(xml).toContain(`<loc>${ORIGIN}/series/S39-0</loc>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/series/S200-0</loc>`);
     expect(countOf(xml, "<url>")).toBe(500 * LOCALE_COUNT);
   });
 
   it("reads a file from where it starts rather than through the files before it", async () => {
-    answerPages(40);
+    answerIndexedCatalogue();
 
     await respondWithSitemapFile({ sitemap_id: "2.xml", tenant_id: TENANT_ID });
 
@@ -684,14 +698,14 @@ describe("respondWithSitemapFile", () => {
 
     expect(fromStart).toHaveLength(1);
     expect(mockListSitemapEntries.mock.calls.at(-1)).toStrictEqual([
-      { limit: 500, tenant: { tenantId: TENANT_ID }, token: "p39" },
+      { limit: 500, tenant: { tenantId: TENANT_ID }, token: "p200" },
     ]);
   });
 
   it.each(["3.xml", "one.xml", "1"])(
     "answers 404 for the file %s the sitemap does not have",
     async (sitemapId) => {
-      answerPages(40);
+      answerIndexedCatalogue();
 
       const response = await respondWithSitemapFile({
         sitemap_id: sitemapId,
