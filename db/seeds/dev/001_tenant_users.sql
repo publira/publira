@@ -94,7 +94,7 @@ ON CONFLICT (platform_user_id, role) DO NOTHING;
 WITH admin_user_seed AS (
     SELECT '018f0e6d-1000-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at)
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at, password_proven_at)
 SELECT
     aus.id,
     t.id,
@@ -103,6 +103,7 @@ SELECT
     '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
     'Tenant Admin',
     'active',
+    NOW(),
     NOW()
 FROM admin_user_seed aus
 JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
@@ -112,7 +113,8 @@ SET tenant_id = EXCLUDED.tenant_id,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
-    email_verified_at = EXCLUDED.email_verified_at;
+    email_verified_at = EXCLUDED.email_verified_at,
+    password_proven_at = EXCLUDED.password_proven_at;
 
 INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
 SELECT
@@ -124,10 +126,13 @@ FROM users u
 WHERE u.email = 'admin@example.com'
 ON CONFLICT (user_id, role) DO NOTHING;
 
+-- Both accounts carry password_proven_at, as a password reset or an accepted
+-- invitation leaves it, so the console's Members screen gives the member a
+-- role on the spot instead of mailing it an invitation.
 WITH member_user_seed AS (
     SELECT '018f0e6f-1000-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at)
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status, email_verified_at, password_proven_at)
 SELECT
     mus.id,
     t.id,
@@ -136,6 +141,7 @@ SELECT
     '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
     'Sample Member',
     'active',
+    NOW(),
     NOW()
 FROM member_user_seed mus
 JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
@@ -145,4 +151,5 @@ SET tenant_id = EXCLUDED.tenant_id,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
-    email_verified_at = EXCLUDED.email_verified_at;
+    email_verified_at = EXCLUDED.email_verified_at,
+    password_proven_at = EXCLUDED.password_proven_at;
